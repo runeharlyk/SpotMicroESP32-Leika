@@ -1,200 +1,345 @@
-#include "esp_camera.h"
+#include <Arduino.h>
+#include "OV2640.h"
 #include <WiFi.h>
-#include "esp_timer.h"
-#include "img_converters.h"
-#include "Arduino.h"
-#include "fb_gfx.h"
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
-#include "esp_http_server.h"
+#include <WebServer.h>
+#include <WiFiClient.h>
 
+#include <index_other.h>
+
+//#define USE_SONAR
+//#define USE_MPU
+//#define USE_OLED
+//#define USE_PWM
+#define USE_WEBSOCKET
+//#define USE_BUTTON
+
+#define FILESYSTEM SPIFFS
+#if FILESYSTEM == FFat
+#include <FFat.h>
+#endif
+#if FILESYSTEM == SPIFFS
+#include <SPIFFS.h>
+#endif
+
+#ifdef USE_SONAR
 #include <NewPing.h>
-#include <SPI.h>
+#endif
+//#include <SPI.h>
 #include "Wire.h"
+#ifdef USE_OLED
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#endif
+#ifdef USE_MPU
 #include <MPU6050_light.h>
+#endif
+#ifdef USE_PWM
 #include <Adafruit_PWMServoDriver.h>
+#endif
+#ifdef USE_WEBSOCKET
+#include <WebSocketsServer.h>
+#endif
+
 
 #define CAMERA_MODEL_AI_THINKER
 #include <camera_pins.h>
 
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
+const char* ssid = "";
+const char* password = "";
 
-#define PART_BOUNDARY "123456789000000000000987654321"
+const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
+                      "Access-Control-Allow-Origin: *\r\n" \
+                      "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
+const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
+const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
+const int hdrLen = strlen(HEADER);
+const int bdrLen = strlen(BOUNDARY);
+const int cntLen = strlen(CTNTTYPE);
 
-static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
-static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
-
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-
+#ifdef USE_BUTTON
 int buttonLed = 2;
 int button = 16;
+bool servosEnabled = true;
+int currentButtonState = 0;
+#endif
 
+#ifdef USE_SONAR
 NewPing sonar[2] = {
   NewPing(12, 12, 200),
   NewPing(13, 13, 200)
 };
+#endif
 
-MPU6050 mpu(Wire);
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+#ifdef USE_MPU
+  MPU6050 mpu(Wire);
+  bool MPU_READY = false;
+#endif
 
-httpd_handle_t stream_httpd = NULL;
+#ifdef USE_PWM
+  Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
+  bool PWM_READY = false;
+  
+#endif
+#ifdef USE_OLED
+  #define SCREEN_WIDTH 128
+  #define SCREEN_HEIGHT 64
+  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+  bool OLED_READY = false;
+#endif
+
+#ifdef USE_WEBSOCKET
+WebSocketsServer webSocket = WebSocketsServer(81);
+#endif
+OV2640 cam;
+
+WebServer server(80);
 
 long timer = 0;
+
+String formatBytes(size_t bytes) {
+  if (bytes < 1024) {
+    return String(bytes) + "B";
+  } else if (bytes < (1024 * 1024)) {
+    return String(bytes / 1024.0) + "KB";
+  } else if (bytes < (1024 * 1024 * 1024)) {
+    return String(bytes / 1024.0 / 1024.0) + "MB";
+  } else {
+    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+  }
+}
+
+String getContentType(String filename) {
+  if (server.hasArg("download")) {
+    return "application/octet-stream";
+  } else if (filename.endsWith(".htm")) {
+    return "text/html";
+  } else if (filename.endsWith(".html")) {
+    return "text/html";
+  } else if (filename.endsWith(".css")) {
+    return "text/css";
+  } else if (filename.endsWith(".js")) {
+    return "application/javascript";
+  } else if (filename.endsWith(".png")) {
+    return "image/png";
+  } else if (filename.endsWith(".gif")) {
+    return "image/gif";
+  } else if (filename.endsWith(".jpg")) {
+    return "image/jpeg";
+  } else if (filename.endsWith(".ico")) {
+    return "image/x-icon";
+  } else if (filename.endsWith(".xml")) {
+    return "text/xml";
+  } else if (filename.endsWith(".pdf")) {
+    return "application/x-pdf";
+  } else if (filename.endsWith(".zip")) {
+    return "application/x-zip";
+  } else if (filename.endsWith(".gz")) {
+    return "application/x-gzip";
+  }
+  return "text/plain";
+}
+
+bool exists(String path){
+  bool yes = false;
+  File file = FILESYSTEM.open(path, "r");
+  if(!file.isDirectory()){
+    yes = true;
+  }
+  file.close();
+  return yes;
+}
+
+bool loadFromSdCard(String path) {
+  Serial.println("handleFileRead: " + path);
+  if (path.endsWith("/")) {
+    path += "index.htm";
+  }
+  String contentType = getContentType(path);
+  String pathWithGz = path + ".gz";
+  if (exists(pathWithGz) || exists(path)) {
+    if (exists(pathWithGz)) {
+      path += ".gz";
+    }
+    File file = FILESYSTEM.open(path, "r");
+    Serial.println(file);
+    server.streamFile(file, contentType);
+    file.close();
+    return true;
+  }
+  return false;
+}
+
+#ifdef USE_WEBSOCKET
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+    Serial.printf("Got event [%u]", type);
+    switch(type) {
+        case WStype_DISCONNECTED:
+            Serial.printf("[%u] Disconnected!\n", num);
+            break;
+        case WStype_CONNECTED:
+            {
+                IPAddress ip = webSocket.remoteIP(num);
+                Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+
+				// send message to client
+				  webSocket.sendTXT(num, "Connected");
+            }
+            break;
+        case WStype_TEXT:
+            Serial.printf("[%u] get Text: %s\n", num, payload);
+
+            // send message to client
+            // webSocket.sendTXT(num, "message here");
+
+            // send data to all connected clients
+            // webSocket.broadcastTXT("message here");
+            break;
+        case WStype_BIN:
+            Serial.printf("[%u] get binary length: %u\n", num, length);
+            //hexdump(payload, length);
+
+            // send message to client
+            // webSocket.sendBIN(num, payload, length);
+            break;
+		case WStype_ERROR:			
+		case WStype_FRAGMENT_TEXT_START:
+		case WStype_FRAGMENT_BIN_START:
+		case WStype_FRAGMENT:
+		case WStype_FRAGMENT_FIN:
+			break;
+    }
+
+}
+#endif
+
+#ifdef USE_BUTTON
 static unsigned long last_interrupt_time = 0;
-bool servosEnabled = true;
+#endif
+void handle_jpg_stream(void)
+{
+  char buf[32];
+  int s;
 
-void toggleServo(){
-  Serial.print("Servos is enabled:");
-  Serial.println(servosEnabled);
-  //if(servosEnabled){
-  //  pwm.sleep();
-  //} else {
-  //  pwm.wakeup();
-  //}
-  servosEnabled = !servosEnabled;
-}
+  WiFiClient client = server.client();
 
-void IRAM_ATTR powerToggle(){
-  unsigned long interrupt_time = millis();
-  if (interrupt_time - last_interrupt_time > 200) {
-    toggleServo();
-    digitalWrite(buttonLed, servosEnabled);
-  }
-  last_interrupt_time = interrupt_time;
-}
+  client.write(HEADER, hdrLen);
+  client.write(BOUNDARY, bdrLen);
 
-static esp_err_t stream_handler(httpd_req_t *req){
-  camera_fb_t * fb = NULL;
-  esp_err_t res = ESP_OK;
-  size_t _jpg_buf_len = 0;
-  uint8_t * _jpg_buf = NULL;
-  char * part_buf[64];
-
-  res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-  if(res != ESP_OK){
-    return res;
-  }
-
-  while(true){
-    fb = esp_camera_fb_get();
-    if (!fb) {
-      Serial.println("Camera capture failed");
-      res = ESP_FAIL;
-    } else {
-      if(fb->width > 400){
-        if(fb->format != PIXFORMAT_JPEG){
-          bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-          esp_camera_fb_return(fb);
-          fb = NULL;
-          if(!jpeg_converted){
-            Serial.println("JPEG compression failed");
-            res = ESP_FAIL;
-          }
-        } else {
-          _jpg_buf_len = fb->len;
-          _jpg_buf = fb->buf;
-        }
-      }
-    }
-    if(res == ESP_OK){
-      size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
-      res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-    }
-    if(res == ESP_OK){
-      res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
-    }
-    if(res == ESP_OK){
-      res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-    }
-    if(fb){
-      esp_camera_fb_return(fb);
-      fb = NULL;
-      _jpg_buf = NULL;
-    } else if(_jpg_buf){
-      free(_jpg_buf);
-      _jpg_buf = NULL;
-    }
-    if(res != ESP_OK){
-      break;
-    }
-    Serial.printf("MJPG: %uB\n",(uint32_t)(_jpg_buf_len));
-  }
-  return res;
-}
-
-void startCameraServer(){
-  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.server_port = 80;
-
-  httpd_uri_t index_uri = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = stream_handler,
-    .user_ctx  = NULL
-  };
-  
-  Serial.printf("Starting web server on port: '%d'\n", config.server_port);
-  if (httpd_start(&stream_httpd, &config) == ESP_OK) {
-    httpd_register_uri_handler(stream_httpd, &index_uri);
+  while (true)
+  {
+    if (!client.connected()) break;
+    cam.run();
+    s = cam.getSize();
+    client.write(CTNTTYPE, cntLen);
+    sprintf( buf, "%d\r\n\r\n", s );
+    client.write(buf, strlen(buf));
+    client.write((char *)cam.getfb(), s);
+    client.write(BOUNDARY, bdrLen);
   }
 }
 
-void setupMPU(){
-  Wire.begin(14, 15);
-  
+const char JHEADER[] = "HTTP/1.1 200 OK\r\n" \
+                       "Content-disposition: inline; filename=capture.jpg\r\n" \
+                       "Content-type: image/jpeg\r\n\r\n";
+const int jhdLen = strlen(JHEADER);
+
+void handle_jpg(void)
+{
+  WiFiClient client = server.client();
+
+  if (!client.connected()) return;
+  cam.run();
+  client.write(JHEADER, jhdLen);
+  client.write((char *)cam.getfb(), cam.getSize());
+}
+
+void handle_stream_viewing()
+{
+  char temp[index_simple_html_len];
+
+   snprintf(temp, index_simple_html_len, index_simple_html);
+  server.send(200, "text/html; charset=utf-8", index_simple_html);
+}
+
+void handleNotFound()
+{
+  if (loadFromSdCard(server.uri())) {
+    Serial.println("Sending file from SPIFFS");
+    return;
+  }
+  String message = "Server is running!\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  server.send(200, "text/plain", message);
+}
+#ifdef USE_MPU
+bool setupMPU(){
   byte status = mpu.begin();
   Serial.print(F("MPU6050 status: "));
   Serial.println(status);
-  while(status!=0){ 
-    status = mpu.begin();
-    Serial.print(F("MPU6050 status: "));
-    Serial.println(status);
-    delay(500);
-  } // stop everything if could not connect to MPU6050
-  
+  if(status != 0){ return 0; }
   Serial.println(F("Calculating offsets, do not move MPU6050"));
   delay(1000);
-  mpu.calcOffsets(true,true); // gyro and accelero
+  mpu.calcOffsets(true,true);
   Serial.println("Done!\n");
+  return 1;
 }
-
-void setupOLED(){
+#endif
+#ifdef USE_OLED
+bool setupOLED(){
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+    return 0;
   }
 
   display.display();
   delay(200);
   display.clearDisplay();
+  return 1;
 }
-
-void setupPWMController(){
+#endif
+#ifdef USE_PWM
+bool setupPWMController(){
   pwm.begin();
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(50);
+  return 1;
 }
-
+#endif
+#ifdef USE_BUTTON
+bool debounce() {
+  static uint16_t state = 0;
+  state = (state<<1) | digitalRead(button) | 0xfe00;
+  return (state == 0xff00);
+}
+#endif
 void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
- 
+  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+  
   Serial.begin(115200);
   Serial.setDebugOutput(false);
 
+  Wire.begin(14, 15);
+
+  #ifdef USE_BUTTON
   pinMode(buttonLed, OUTPUT);
   pinMode(button, INPUT);
- 
-  attachInterrupt(button, powerToggle, RISING);
+  #endif
   
-  setupMPU();
-  setupOLED();
-  setupPWMController();
+  #ifdef USE_MPU
+  MPU_READY = setupMPU();
+  #endif
+  #ifdef USE_PWM
+  PWM_READY = setupPWMController();
+  #endif
+  #ifdef USE_OLED
+  OLED_READY = setupOLED();
+  #endif
   
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -229,11 +374,7 @@ void setup() {
   }
   
   // Camera init
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
-    return;
-  }
+  cam.init(config);
   // Wi-Fi connection
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -245,44 +386,45 @@ void setup() {
   
   Serial.print("Camera Stream Ready! Go to: http://");
   Serial.print(WiFi.localIP());
-  display.setTextSize(2);             // Normal 1:1 pixel scale
-  display.setTextColor(WHITE);        // Draw white text
-  display.setCursor(0,0);             // Start at top-left corner
-  display.println(WiFi.localIP());  
-  display.display();
+  #ifdef USE_OLED
+  if(OLED_READY){
+    display.setTextSize(2);
+    display.setTextColor(WHITE);
+    display.setCursor(0,0);
+    display.println(WiFi.localIP());
+    display.display();
+  }
+  #endif
   
-  startCameraServer();
+  server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
+  server.on("/jpg", HTTP_GET, handle_jpg);
+  server.on("/", HTTP_GET, handle_stream_viewing);
+  server.onNotFound(handleNotFound);
+  server.begin();
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
 }
 
 void loop() {
-  delay(1);
-  /*for (uint8_t i = 0; i < 2; i++) { // Loop through each sensor and display results.
-    delay(200); // Wait 50ms between pings (about 20 pings/sec). 29ms should be the shortest delay between pings.
-    Serial.print(i);
-    Serial.print("=");
-    Serial.print(sonar[i].ping_cm());
-    Serial.print("cm ");
-  }
- mpu.update();
+  server.handleClient();
+  webSocket.loop();
 
-  if(millis() - timer > 1000){ // print data every second
-    Serial.print(F("TEMPERATURE: "));Serial.println(mpu.getTemp());
-    Serial.print(F("ACCELERO  X: "));Serial.print(mpu.getAccX());
-    Serial.print("\tY: ");Serial.print(mpu.getAccY());
-    Serial.print("\tZ: ");Serial.println(mpu.getAccZ());
-  
-    Serial.print(F("GYRO      X: "));Serial.print(mpu.getGyroX());
-    Serial.print("\tY: ");Serial.print(mpu.getGyroY());
-    Serial.print("\tZ: ");Serial.println(mpu.getGyroZ());
-  
-    Serial.print(F("ACC ANGLE X: "));Serial.print(mpu.getAccAngleX());
-    Serial.print("\tY: ");Serial.println(mpu.getAccAngleY());
-    
-    Serial.print(F("ANGLE     X: "));Serial.print(mpu.getAngleX());
-    Serial.print("\tY: ");Serial.print(mpu.getAngleY());
-    Serial.print("\tZ: ");Serial.println(mpu.getAngleZ());
-    Serial.println(F("=====================================================\n"));
+
+  if(millis() - timer > 500) {
+    Serial.println("Sending message to websocket client");
+    String letme = "LET ME TELL YOU SOMETHING";
+    if(webSocket.broadcastTXT(letme)){
+      Serial.println("Send message to websocket client");
+    }
     timer = millis();
-  }*/
+  }
+
+  #ifdef USE_BUTTON
+  if (debounce()) {
+    servosEnabled = !servosEnabled;
+    digitalWrite(buttonLed, servosEnabled);
+  }
+  #endif
 }
 
