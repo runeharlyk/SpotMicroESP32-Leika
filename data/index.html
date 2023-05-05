@@ -3,7 +3,10 @@
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="/favicon.png" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta viewport-fit="cover">
+		<meta name="mobile-web-app-capable" content="yes">
+		<title>Spot Micro</title>
 		<meta http-equiv="content-security-policy" content="">
         <style>
 			body {
@@ -42,7 +45,7 @@
 		<script>
             const init = () => {
 
-                let websocket = new WebSocket("ws://192.168.0.175:81")
+                let websocket = new WebSocket(`ws://${location.hostname}`)
                 websocket.onopen = (event) => {
                     console.log(event);
                 };
@@ -50,7 +53,7 @@
                     console.log(event.data);
                 }
 
-                document.getElementById("stream").src = "//192.168.0.175/mjpeg/1"
+                document.getElementById("stream").src = `//${location.hostname}/stream`
             }
             init()
 		</script>

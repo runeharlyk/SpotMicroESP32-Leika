@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include "OV2640.h"
 #include <WiFi.h>
-#include <WebServer.h>
-#include <WiFiClient.h>
 
 #include <index_other.h>
 
@@ -18,6 +16,8 @@
 #include <FFat.h>
 #endif
 #if FILESYSTEM == SPIFFS
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #endif
 
@@ -36,25 +36,20 @@
 #ifdef USE_PWM
 #include <Adafruit_PWMServoDriver.h>
 #endif
-#ifdef USE_WEBSOCKET
-#include <WebSocketsServer.h>
-#endif
 
+#include <AsyncJpegStreamHandler.h>
+#include <CaptivePortalHandler.h>
+#include <WebsocketHandler.h>
 
 #define CAMERA_MODEL_AI_THINKER
 #include <camera_pins.h>
 
 const char* ssid = "";
 const char* password = "";
-
-const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
-                      "Access-Control-Allow-Origin: *\r\n" \
-                      "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
-const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
-const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
-const int hdrLen = strlen(HEADER);
-const int bdrLen = strlen(BOUNDARY);
-const int cntLen = strlen(CTNTTYPE);
+DNSServer dnsServer;
+AsyncWebSocket ws(WEBSOCKET_PATH);
+AsyncEventSource events(EVENTSOURCE_PATH);
+AsyncWebServer server(HTTP_PORT);
 
 #ifdef USE_BUTTON
 int buttonLed = 2;
@@ -87,196 +82,26 @@ NewPing sonar[2] = {
   bool OLED_READY = false;
 #endif
 
-#ifdef USE_WEBSOCKET
-WebSocketsServer webSocket = WebSocketsServer(81);
-#endif
 OV2640 cam;
 
-WebServer server(80);
 
 long timer = 0;
 
-String formatBytes(size_t bytes) {
-  if (bytes < 1024) {
-    return String(bytes) + "B";
-  } else if (bytes < (1024 * 1024)) {
-    return String(bytes / 1024.0) + "KB";
-  } else if (bytes < (1024 * 1024 * 1024)) {
-    return String(bytes / 1024.0 / 1024.0) + "MB";
   } else {
-    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+  }
   }
 }
 
-String getContentType(String filename) {
-  if (server.hasArg("download")) {
-    return "application/octet-stream";
-  } else if (filename.endsWith(".htm")) {
-    return "text/html";
-  } else if (filename.endsWith(".html")) {
-    return "text/html";
-  } else if (filename.endsWith(".css")) {
-    return "text/css";
-  } else if (filename.endsWith(".js")) {
-    return "application/javascript";
-  } else if (filename.endsWith(".png")) {
-    return "image/png";
-  } else if (filename.endsWith(".gif")) {
-    return "image/gif";
-  } else if (filename.endsWith(".jpg")) {
-    return "image/jpeg";
-  } else if (filename.endsWith(".ico")) {
-    return "image/x-icon";
-  } else if (filename.endsWith(".xml")) {
-    return "text/xml";
-  } else if (filename.endsWith(".pdf")) {
-    return "application/x-pdf";
-  } else if (filename.endsWith(".zip")) {
-    return "application/x-zip";
-  } else if (filename.endsWith(".gz")) {
-    return "application/x-gzip";
   }
-  return "text/plain";
+
 }
 
-bool exists(String path){
-  bool yes = false;
-  File file = FILESYSTEM.open(path, "r");
-  if(!file.isDirectory()){
-    yes = true;
-  }
-  file.close();
-  return yes;
-}
-
-bool loadFromSdCard(String path) {
-  Serial.println("handleFileRead: " + path);
-  if (path.endsWith("/")) {
-    path += "index.htm";
-  }
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";
-  if (exists(pathWithGz) || exists(path)) {
-    if (exists(pathWithGz)) {
-      path += ".gz";
     }
-    File file = FILESYSTEM.open(path, "r");
-    Serial.println(file);
-    server.streamFile(file, contentType);
-    file.close();
-    return true;
-  }
-  return false;
-}
-
-#ifdef USE_WEBSOCKET
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-    Serial.printf("Got event [%u]", type);
-    switch(type) {
-        case WStype_DISCONNECTED:
-            Serial.printf("[%u] Disconnected!\n", num);
-            break;
-        case WStype_CONNECTED:
-            {
-                IPAddress ip = webSocket.remoteIP(num);
-                Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-
-				// send message to client
-				  webSocket.sendTXT(num, "Connected");
-            }
-            break;
-        case WStype_TEXT:
-            Serial.printf("[%u] get Text: %s\n", num, payload);
-
-            // send message to client
-            // webSocket.sendTXT(num, "message here");
-
-            // send data to all connected clients
-            // webSocket.broadcastTXT("message here");
-            break;
-        case WStype_BIN:
-            Serial.printf("[%u] get binary length: %u\n", num, length);
-            //hexdump(payload, length);
-
-            // send message to client
-            // webSocket.sendBIN(num, payload, length);
-            break;
-		case WStype_ERROR:			
-		case WStype_FRAGMENT_TEXT_START:
-		case WStype_FRAGMENT_BIN_START:
-		case WStype_FRAGMENT:
-		case WStype_FRAGMENT_FIN:
-			break;
-    }
-
-}
-#endif
-
-#ifdef USE_BUTTON
-static unsigned long last_interrupt_time = 0;
-#endif
-void handle_jpg_stream(void)
-{
-  char buf[32];
-  int s;
-
-  WiFiClient client = server.client();
-
-  client.write(HEADER, hdrLen);
-  client.write(BOUNDARY, bdrLen);
-
-  while (true)
-  {
-    if (!client.connected()) break;
-    cam.run();
-    s = cam.getSize();
-    client.write(CTNTTYPE, cntLen);
-    sprintf( buf, "%d\r\n\r\n", s );
-    client.write(buf, strlen(buf));
-    client.write((char *)cam.getfb(), s);
-    client.write(BOUNDARY, bdrLen);
   }
 }
 
-const char JHEADER[] = "HTTP/1.1 200 OK\r\n" \
-                       "Content-disposition: inline; filename=capture.jpg\r\n" \
-                       "Content-type: image/jpeg\r\n\r\n";
-const int jhdLen = strlen(JHEADER);
-
-void handle_jpg(void)
-{
-  WiFiClient client = server.client();
-
-  if (!client.connected()) return;
-  cam.run();
-  client.write(JHEADER, jhdLen);
-  client.write((char *)cam.getfb(), cam.getSize());
 }
 
-void handle_stream_viewing()
-{
-  char temp[index_simple_html_len];
-
-   snprintf(temp, index_simple_html_len, index_simple_html);
-  server.send(200, "text/html; charset=utf-8", index_simple_html);
-}
-
-void handleNotFound()
-{
-  if (loadFromSdCard(server.uri())) {
-    Serial.println("Sending file from SPIFFS");
-    return;
-  }
-  String message = "Server is running!\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-  server.send(200, "text/plain", message);
-}
 #ifdef USE_MPU
 bool setupMPU(){
   byte status = mpu.begin();
@@ -396,27 +221,12 @@ void setup() {
   }
   #endif
   
-  server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
-  server.on("/jpg", HTTP_GET, handle_jpg);
-  server.on("/", HTTP_GET, handle_stream_viewing);
-  server.onNotFound(handleNotFound);
-  server.begin();
 
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
 }
 
-void loop() {
-  server.handleClient();
-  webSocket.loop();
 
 
   if(millis() - timer > 500) {
-    Serial.println("Sending message to websocket client");
-    String letme = "LET ME TELL YOU SOMETHING";
-    if(webSocket.broadcastTXT(letme)){
-      Serial.println("Send message to websocket client");
-    }
     timer = millis();
   }
 
