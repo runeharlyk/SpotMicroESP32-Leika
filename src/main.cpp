@@ -4,11 +4,11 @@
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <SPIFFS.h>
-#include <esp_camera.h>
 #include <ArduinoOTA.h>
 #include "soc/soc.h"           // Disable brownout problems
 #include "soc/rtc_cntl_reg.h"  // Disable brownout problems
 
+#include <SPI.h>
 #include <Wire.h>
 #include <NewPing.h>
 #include <MPU6050_light.h>
@@ -47,9 +47,19 @@ bool OLED_READY = false;
 
 const bool USE_CAPTIVE_PORTAL = false;
 
+int lastState = LOW;
+int currentState;
+
 long timer = 0;
 
+#ifdef __cplusplus
+  extern "C" {
+    #endif
+    uint8_t temprature_sens_read();
+    #ifdef __cplusplus
   }
+#endif
+uint8_t temprature_sens_read();
 
 bool setupOLED(){
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
@@ -71,14 +81,16 @@ void setupWiFi(){
     WiFi.begin(SSID, PASS);
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-      Serial.print(".");
     }
-    Serial.println("");
-    Serial.print("WiFi connected: ");
-    Serial.println(WiFi.localIP());
-    if(OLED_READY){
-      display.setTextSize(2);
-      display.setCursor(0,0);
+    if(OLED_READY) {
+      display.setTextColor(WHITE, BLACK);
+      display.setTextSize(1);
+      int16_t x1 = 0;
+      int16_t y1 = 0;
+      uint16_t h = 0;
+      uint16_t w = 0;
+      display.getTextBounds(WiFi.localIP().toString(), 0, 0, &x1, &y1, &w, &h);
+      display.setCursor(SCREEN_WIDTH/2 - w/2, SCREEN_HEIGHT/2 - h/2);
       display.println(WiFi.localIP());
       display.display();
     }
@@ -133,6 +145,9 @@ void setup(){
   Serial.begin(BAUDRATE);
   Serial.setDebugOutput(SERIAL_DEBUG_OUTPUT);
 
+  pinMode(BUTTON_LED, OUTPUT);
+  //pinMode(BUTTON, INPUT);
+
   Wire.begin(SDA, SCL);
   SPIFFS.begin();
 
@@ -142,7 +157,10 @@ void setup(){
 
   setupCamera();
   setupWiFi();
+  setupOAT();
   setupServer();
+
+  digitalWrite(BUTTON_LED, HIGH);
 }
 
 void loop(){
@@ -150,9 +168,51 @@ void loop(){
   if(USE_CAPTIVE_PORTAL) dnsServer.processNextRequest();
   ws.cleanupClients();
 
-  if(millis() - timer > 500) {
-    String message = String(WiFi.RSSI());
-    ws.textAll(message);
+  currentState = digitalRead(BUTTON);
+
+  if (lastState == HIGH && currentState == LOW)
+    disable_servos();
+  lastState = currentState;
+
+  if(millis() - timer > 50) {
+
+    /*int sketchSize = ESP.getSketchSize();
+    int sketchSpace = ESP.getFreeSketchSpace();
+    const char* SdkVersion = ESP.getSdkVersion();
+    uint32_t mhz = ESP.getCpuFreqMHz();
+    uint32_t heapSize = ESP.getHeapSize();
+    uint32_t psramSize = ESP.getPsramSize();
+
+    size_t filesystem_used = SPIFFS.usedBytes();
+    size_t filesystem_total = SPIFFS.totalBytes();
+
+    int64_t sec = esp_timer_get_time() / 1000000;
+    int64_t upDays = int64_t(floor(sec/86400));
+    int upHours = int64_t(floor(sec/3600)) % 24;
+    int upMin = int64_t(floor(sec/60)) % 60;
+    int upSec = sec % 60;*/
+
+    mpu.update();
+    size_t numContent = 13;
+    float content[numContent];
+    content[0] = WiFi.RSSI();
+    content[1] = mpu.getTemp();
+    content[2] = mpu.getAccX();
+    content[3] = mpu.getAccY();
+    content[4] = mpu.getAccZ();
+    content[5] = mpu.getAngleX();
+    content[6] = mpu.getAngleY();
+    content[7] = mpu.getAngleZ();
+    content[8] = (temprature_sens_read() - 32) / 1.8;
+    content[9] = sonar[0].ping_cm();
+    content[10] = sonar[1].ping_cm();
+    content[11] = ESP.getFreeHeap();
+    content[12] = ESP.getFreePsram();
+
+    uint8_t* buf = (uint8_t*) &content;
+    size_t buf_len = sizeof(buf);
+
+    ws.binaryAll(buf, buf_len * numContent);
     timer = millis();
   }
 }
