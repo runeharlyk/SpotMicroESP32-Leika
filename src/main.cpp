@@ -83,8 +83,9 @@ void setupWiFi(){
       display.display();
     }
   }
-  MDNS.addService("http", "tcp", HTTP_PORT);
-  MDNS.begin(HOSTNAME);
+  if(MDNS.begin(HOSTNAME)){
+    MDNS.addService("http", "tcp", HTTP_PORT);
+  }
 }
 
 void setupServer(){
