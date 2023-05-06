@@ -33,6 +33,7 @@
  */
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+#define SCREEN_RESET -1
 
 
 /*
@@ -55,3 +56,15 @@
 #define USS_LEFT 12
 #define USS_RIGHT 13
 #define USS_MAX_DISTANCE 200
+
+/*
+ * Button settings
+ */
+#define BUTTON 16
+#define BUTTON_LED 2
+
+/*
+ * PWM controller settings
+ */
+#define SERVO_OSCILLATOR_FREQUENCY 27000000
+#define SERVO_FREQ 50

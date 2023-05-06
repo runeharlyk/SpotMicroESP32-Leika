@@ -20,6 +20,11 @@
 #include <config.h>
 #include <camera.h>
 
+#include <servo.h>
+#include <ik_task.h>
+
+static const char* TAG = "MAIN";
+
 DNSServer dnsServer;
 AsyncWebSocket ws(WEBSOCKET_PATH);
 AsyncEventSource events(EVENTSOURCE_PATH);
@@ -31,8 +36,7 @@ NewPing sonar[2] = {
 };
 
 MPU6050 mpu(Wire);
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, SCREEN_RESET);
 
 bool MPU_READY = false;
 bool PWM_READY = false;
@@ -101,11 +105,6 @@ bool setupMPU(){
   return 1;
 }
 
-bool setupPWMController(){
-  pwm.begin();
-  pwm.setOscillatorFrequency(27000000);
-  pwm.setPWMFreq(50);
-  return 1;
 }
 
 void setup(){
@@ -117,7 +116,7 @@ void setup(){
 
   OLED_READY = setupOLED();
   MPU_READY = setupMPU();
-  PWM_READY = setupPWMController();
+  PWM_READY = setup_pwm_controller();
 
   setupCamera();
   setupWiFi();
