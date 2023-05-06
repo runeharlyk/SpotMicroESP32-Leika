@@ -5,6 +5,7 @@
 #include <ESPmDNS.h>
 #include <SPIFFS.h>
 #include <esp_camera.h>
+#include <ArduinoOTA.h>
 
 #include <Wire.h>
 #include <NewPing.h>
@@ -105,6 +106,23 @@ bool setupMPU(){
   return 1;
 }
 
+void setupOAT(){
+  ArduinoOTA.onStart([]() { events.send("Update Start", "ota"); });
+  ArduinoOTA.onEnd([]() { events.send("Update End", "ota"); });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    char p[32];
+    sprintf(p, "Progress: %u%%\n", (progress/(total/100)));
+    events.send(p, "ota");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    if(error == OTA_AUTH_ERROR) events.send("Auth Failed", "ota");
+    else if(error == OTA_BEGIN_ERROR) events.send("Begin Failed", "ota");
+    else if(error == OTA_CONNECT_ERROR) events.send("Connect Failed", "ota");
+    else if(error == OTA_RECEIVE_ERROR) events.send("Recieve Failed", "ota");
+    else if(error == OTA_END_ERROR) events.send("End Failed", "ota");
+  });
+  ArduinoOTA.setHostname(HOSTNAME);
+  ArduinoOTA.begin();
 }
 
 void setup(){
@@ -124,6 +142,7 @@ void setup(){
 }
 
 void loop(){
+  ArduinoOTA.handle();
   if(USE_CAPTIVE_PORTAL) dnsServer.processNextRequest();
   ws.cleanupClients();
 
