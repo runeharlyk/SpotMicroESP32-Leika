@@ -6,6 +6,8 @@
 #include <SPIFFS.h>
 #include <esp_camera.h>
 #include <ArduinoOTA.h>
+#include "soc/soc.h"           // Disable brownout problems
+#include "soc/rtc_cntl_reg.h"  // Disable brownout problems
 
 #include <Wire.h>
 #include <NewPing.h>
@@ -126,6 +128,7 @@ void setupOAT(){
 }
 
 void setup(){
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(BAUDRATE);
   Serial.setDebugOutput(SERIAL_DEBUG_OUTPUT);
 
