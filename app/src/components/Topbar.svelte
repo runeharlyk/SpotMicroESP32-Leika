@@ -1,20 +1,33 @@
 <script lang="ts">
-	import { isConnected } from '../lib/socket';
+	import { isConnected, data } from '../lib/socket';
+
+	const toggleFullScreen = () => {
+		if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+		else if (document.exitFullscreen) document.exitFullscreen();
+	};
 </script>
 
-<div class="absolute top-0 flex justify-center w-full z-20">
-	<svg height="40" width="300" class="Settings_topSVG__2VXbU">
-		<path stroke="none" fill="#36393f" d="M 0 0 C 40 0 40 40 80 40 H 220 C 260 40 260 0 300 0 Z" />
-	</svg>
-	<div
-		class="absolute flex gap-1 h-10 w-36 justify-center items-center dots
-        {$isConnected ? 'connected' : 'disconnected'}"
-	>
-		<span class="dot h-4 w-4" />
-		<span class="dot h-4 w-4" />
-		<span class="dot h-4 w-4" />
-		<span class="dot h-4 w-4" />
+<div class="absolute top-0 flex justify-between w-full z-20" on:dblclick={toggleFullScreen}>
+	<div class="w-20 p-2">☰</div>
+	<div class="flex justify-center">
+		<svg height="40" width="300" class="Settings_topSVG__2VXbU">
+			<path
+				stroke="none"
+				fill="#36393f"
+				d="M 0 0 C 40 0 40 40 80 40 H 220 C 260 40 260 0 300 0 Z"
+			/>
+		</svg>
+		<div
+			class="absolute flex gap-1 h-10 w-36 justify-center items-center dots
+			{$isConnected ? 'connected' : 'disconnected'}"
+		>
+			<span class="dot h-4 w-4" />
+			<span class="dot h-4 w-4" />
+			<span class="dot h-4 w-4" />
+			<span class="dot h-4 w-4" />
+		</div>
 	</div>
+	<div class="w-20 p-2 text-right">{Math.floor($data[1])}°🌡️</div>
 </div>
 
 <style scoped>
