@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import location from '../../lib/location';
 
-	let videoStream = '//leika.local/stream';
+	let videoStream = `//${location}/stream`;
 
 	onDestroy(() => {
 		videoStream = '#';

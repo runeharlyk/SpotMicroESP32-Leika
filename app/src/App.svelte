@@ -4,9 +4,10 @@
 	import { connect } from './lib/socket';
 	import Stream from './components/Views/Stream.svelte';
 	import Controls from './components/Controls.svelte';
+	import location from './lib/location';
 
 	onMount(() => {
-		connect('ws://leika.local');
+		connect(`ws://${location}`);
 	});
 </script>
 
