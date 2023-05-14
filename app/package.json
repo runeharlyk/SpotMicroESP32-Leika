@@ -29,7 +29,8 @@
     "vite-plugin-singlefile": "^0.13.5"
   },
   "dependencies": {
-    "nipplejs": "^0.10.1"
+    "nipplejs": "^0.10.1",
+    "svelte-hero-icons": "^5.0.0"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
