@@ -33,6 +33,8 @@ void Spot::handle(){
     if(USE_CAPTIVE_PORTAL) _dnsServer.processNextRequest();
     ArduinoOTA.handle();
     _ws.cleanupClients();
+
+    broadcast_data();
 }
 
 esp_err_t Spot::initialize_wifi(){
@@ -49,6 +51,34 @@ esp_err_t Spot::initialize_wifi(){
 
 uint8_t Spot::cpu_temperature(){
     return (temprature_sens_read() - 32) / 1.8;
+}
+
+esp_err_t Spot::broadcast_data(){
+    if(millis() - _last_broadcast < 50) return ESP_OK;
+
+    size_t numContent = 13;
+    float content[numContent];
+    content[0] = WiFi.RSSI();
+    content[1] = _mpu.getTemp();
+    content[2] = _mpu.getAccX();
+    content[3] = _mpu.getAccY();
+    content[4] = _mpu.getAccZ();
+    content[5] = _mpu.getAngleX();
+    content[6] = _mpu.getAngleY();
+    content[7] = _mpu.getAngleZ();
+    content[8] = cpu_temperature();
+    content[9] = _leftUss.ping_cm();
+    content[10] = _rightUss.ping_cm();
+    content[11] = ESP.getFreeHeap();
+    content[12] = ESP.getFreePsram();
+
+    uint8_t* buf = (uint8_t*) &content;
+    size_t buf_len = sizeof(buf);
+
+    _ws.binaryAll(buf, buf_len * numContent);
+    _last_broadcast = millis();
+
+    return ESP_OK;
 }
 
 esp_err_t Spot::_initialize_camera(){

@@ -46,6 +46,8 @@ class Spot {
         esp_err_t initialize_wifi();
 
         uint8_t cpu_temperature();
+
+        esp_err_t broadcast_data();
     
     private:
         esp_err_t _initialize_camera();
@@ -68,6 +70,8 @@ class Spot {
         MPU6050 _mpu;
         NewPing _leftUss;
         NewPing _rightUss;
+
+        unsigned long _last_broadcast{0};
 };
 
 void display_ip_and_ssid(Adafruit_SSD1306* display, String ip, const char* ssid);
