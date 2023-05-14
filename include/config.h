@@ -12,6 +12,7 @@
 #define HTTP_PORT 80
 #define WEBSOCKET_PATH "/"
 #define EVENTSOURCE_PATH "/events"
+#define USE_CAPTIVE_PORTAL false
 
 
 /*
