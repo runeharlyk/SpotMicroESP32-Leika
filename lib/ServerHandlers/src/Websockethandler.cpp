@@ -1,4 +1,6 @@
-#include <ESPAsyncWebServer.h>
+#include <WebsocketHandler.h>
+
+uint8_t wsData[6] = {};
 
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
@@ -16,25 +18,20 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
     String msg = "";
     if(info->final && info->index == 0 && info->len == len){
       //the whole message is in a single frame and we got all of it's data
-      Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
+      //Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
 
       if(info->opcode == WS_TEXT){
         for(size_t i=0; i < info->len; i++) {
           msg += (char) data[i];
         }
       } else {
-        char buff[3];
+        char buff[6];
         for(size_t i=0; i < info->len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
-          msg += buff ;
+            wsData[i] = (uint8_t) data[i];
+          //sprintf(buff, "%02x ", (uint8_t) data[i]);
+          //msg += buff ;
         }
       }
-      Serial.printf("%s\n",msg.c_str());
-
-      if(info->opcode == WS_TEXT)
-        client->text("I got your text message");
-      else
-        client->binary("I got your binary message");
     } else {
       //message is comprised of multiple frames or the frame is split into multiple packets
       if(info->index == 0){

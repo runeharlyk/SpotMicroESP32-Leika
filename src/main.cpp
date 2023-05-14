@@ -17,7 +17,6 @@
 #include <Adafruit_GFX.h>
 
 #include <AsyncJpegStreamHandler.h>
-#include <CaptivePortalHandler.h>
 #include <WebsocketHandler.h>
 
 #include <config.h>
@@ -104,7 +103,6 @@ void setupServer(){
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.on("/stream", HTTP_GET, streamJpg);
-  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   server.begin();
 }
