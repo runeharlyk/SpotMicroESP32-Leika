@@ -9,4 +9,11 @@
 	});
 </script>
 
-<img src={videoStream} class="object-contain w-full h-full" alt="Live stream is down" />
+<div class="w-full h-full">
+	<img
+		src={videoStream}
+		class="absolute object-cover blur-3xl w-full h-full -z-10"
+		alt="Live stream is down"
+	/>
+	<img src={videoStream} class="object-contain w-full h-full" alt="Live stream is down" />
+</div>
