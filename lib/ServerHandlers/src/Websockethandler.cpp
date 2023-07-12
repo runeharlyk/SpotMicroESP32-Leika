@@ -1,70 +1,75 @@
 #include <WebsocketHandler.h>
 
-uint8_t wsData[6] = {};
+uint8_t inputData[6] = {};
+uint16_t servoData[12] = {};
 
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
-  if(type == WS_EVT_CONNECT){
-    Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
-    client->printf("Hello Client %u :)", client->id());
-    client->ping();
-  } else if(type == WS_EVT_DISCONNECT){
-    Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
-  } else if(type == WS_EVT_ERROR){
-    Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
-  } else if(type == WS_EVT_PONG){
-    Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len)?(char*)data:"");
-  } else if(type == WS_EVT_DATA){
-    AwsFrameInfo * info = (AwsFrameInfo*)arg;
-    String msg = "";
-    if(info->final && info->index == 0 && info->len == len){
-      //the whole message is in a single frame and we got all of it's data
-      //Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
-
-      if(info->opcode == WS_TEXT){
-        for(size_t i=0; i < info->len; i++) {
-          msg += (char) data[i];
-        }
-      } else {
-        char buff[6];
-        for(size_t i=0; i < info->len; i++) {
-            wsData[i] = (uint8_t) data[i];
-          //sprintf(buff, "%02x ", (uint8_t) data[i]);
-          //msg += buff ;
-        }
-      }
-    } else {
-      //message is comprised of multiple frames or the frame is split into multiple packets
-      if(info->index == 0){
-        if(info->num == 0)
-          Serial.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
-        Serial.printf("ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
-      }
-
-      Serial.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: ", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT)?"text":"binary", info->index, info->index + len);
-
-      if(info->opcode == WS_TEXT){
-        for(size_t i=0; i < len; i++) {
-          msg += (char) data[i];
-        }
-      } else {
-        char buff[3];
-        for(size_t i=0; i < len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
-          msg += buff ;
-        }
-      }
-      Serial.printf("%s\n",msg.c_str());
-
-      if((info->index + len) == info->len){
-        Serial.printf("ws[%s][%u] frame[%u] end[%llu]\n", server->url(), client->id(), info->num, info->len);
-        if(info->final){
-          Serial.printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
-          if(info->message_opcode == WS_TEXT)
-            client->text("I got your text message");
-          else
-            client->binary("I got your binary message");
-        }
-      }
-    }
+esp_err_t parseControllerPacket(uint8_t* data, uint64_t lenght){
+  log_i("parsing controller packet");
+  for(size_t i=0; i < lenght; i++) {
+    inputData[i] = (uint8_t) data[i];
   }
+  return ESP_OK;
+}
+
+esp_err_t parseServoPacket(uint8_t* _data, uint64_t lenght){
+  log_i("parsing servo packet");
+  uint16_t* data = (uint16_t*)_data;
+  for(size_t i=0; i < lenght/2; i++) {
+    servoData[i] = data[i];
+  }
+  log_i("done parsing servo packet. There was %u int", lenght);
+  return ESP_OK;
+}
+
+enum data_packet_t {
+  CONTROLLER_PACKET,
+  SERVO_PACKET,
+  toggle,
+};
+
+void handleWebSocketBufferMessage(void* arg, uint8_t* data, size_t len, AsyncWebSocket* server, AsyncWebSocketClient* client) {
+  wsm.identifier = data[0];
+  wsm.data = data+1;
+  wsm.len = len;
+  wsm.is_handled = false;
+}
+
+void handleWebSocketMessage(void* arg, uint8_t* data, size_t len, AsyncWebSocket* server, AsyncWebSocketClient* client) {
+    AwsFrameInfo* info = (AwsFrameInfo*)arg;
+    if(info->final && info->index == 0 && info->len == len){
+        if(info->opcode == WS_TEXT) return;
+        handleWebSocketBufferMessage(arg, data, len, server, client);
+    }
+}
+
+void handleNewConnection(AsyncWebSocket* server, AsyncWebSocketClient* client){
+    log_i("ws[%s][%u] connect\n", server->url(), client->id());
+
+    StaticJsonDocument<600> json;
+    json["ssid"] = "Rune private network";
+    json["password"] = "a9b8c7d6e5f4g3H2I1";
+    json["sketchSize"] = ESP.getSketchSize();
+    json["sketchMD5"] = ESP.getSketchMD5();
+    json["freeSketchSize"] = ESP.getFreeSketchSpace();
+    json["chipCores"] = ESP.getChipCores();
+    json["chipModel"] = ESP.getChipModel();
+    json["chipRevision"] = ESP.getChipRevision();
+    json["cpuFreq"] = ESP.getCpuFreqMHz();
+    json["heapSize"] = ESP.getHeapSize();
+    json["psramSize"] = ESP.getPsramSize();
+    json["sdkVersion"] = ESP.getSdkVersion();
+    json["eFuseMac"] = ESP.getEfuseMac();
+    json["resetReason"] = esp_reset_reason();
+
+    char data[400];
+    size_t len = serializeJson(json, data);
+    client->text(data, len);
+}
+
+void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
+    if (type == WS_EVT_CONNECT) handleNewConnection(server, client);
+    else if (type == WS_EVT_DISCONNECT) log_i("ws[%s][%u] disconnect\n", server->url(), client->id());
+    else if (type == WS_EVT_ERROR) log_i("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+    else if (type == WS_EVT_PONG) log_i("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len) ? (char*)data : "");
+    else if (type == WS_EVT_DATA) handleWebSocketMessage(arg, data, len, server, client);
 }

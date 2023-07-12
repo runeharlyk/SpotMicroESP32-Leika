@@ -1,5 +1,7 @@
 #include <spot.h>
 
+websocket_message wsm;
+
 Spot::Spot() 
     : _events(EVENTSOURCE_PATH)
     , _ws(WEBSOCKET_PATH)
@@ -56,21 +58,24 @@ uint8_t Spot::cpu_temperature(){
 esp_err_t Spot::broadcast_data(){
     if(millis() - _last_broadcast < 50) return ESP_OK;
 
-    size_t numContent = 13;
-    float content[numContent];
-    content[0] = WiFi.RSSI();
-    content[1] = _mpu.getTemp();
-    content[2] = _mpu.getAccX();
-    content[3] = _mpu.getAccY();
-    content[4] = _mpu.getAccZ();
-    content[5] = _mpu.getAngleX();
-    content[6] = _mpu.getAngleY();
-    content[7] = _mpu.getAngleZ();
-    content[8] = cpu_temperature();
-    content[9] = _leftUss.ping_cm();
-    content[10] = _rightUss.ping_cm();
-    content[11] = ESP.getFreeHeap();
-    content[12] = ESP.getFreePsram();
+    _mpu.update();
+    size_t numContent = 14;
+    float content[numContent] = {
+        WiFi.RSSI(),
+        _mpu.getTemp(),
+        _mpu.getAngleX(),
+        _mpu.getAngleY(),
+        _mpu.getAngleZ(),
+        cpu_temperature(),
+        _leftUss.ping_cm(),
+        _rightUss.ping_cm(),
+        ESP.getFreeHeap(),
+        ESP.getFreePsram(),
+        ESP.getMinFreeHeap(),
+        ESP.getMinFreePsram(),
+        ESP.getMaxAllocHeap(),
+        ESP.getMaxAllocPsram(),
+    };
 
     uint8_t* buf = (uint8_t*) &content;
     size_t buf_len = sizeof(buf);

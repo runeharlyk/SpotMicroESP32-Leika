@@ -8,7 +8,7 @@ export const data = writable(new Float32Array(13))
 
 export const status:Writable<WebSocketStatus> = writable('CLOSED')
 
-export const socket = writable(null)
+export const socket:Writable<WebSocket> = writable(null)
 
 export const connect = (url:string) => {
     status.set('CONNECTING')
