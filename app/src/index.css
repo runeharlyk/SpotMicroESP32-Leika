@@ -1,3 +1,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* @layer base {
+    :root {
+        --primary: 98 0 238;
+        --primary-variant: 55 0 179;
+        --secondary: 55 0 179;
+        --secondary-variant: 55 0 179;
+        --background: 255 255 255;
+        --surface: 251 251 250;
+        --error: 176 0 32;
+        --on-primary: 255 255 255;
+        --on-secondary: 0 0 0;
+        --on-background: 0 0 0;
+        --on-surface: 0 0 0;
+        --on-error: 255 255 255;
+    }
+  
+    :root[class~="dark"] {
+        --primary: 98 0 238;
+        --primary-variant: 55 0 179;
+        --secondary: 55 0 179;
+        --secondary-variant: 55 0 179;
+        --background: 30 30 30;
+        --surface: 36 36 36;
+        --error: 176 0 32;
+        --on-primary: 255 255 255;
+        --on-secondary: 255 255 255;
+        --on-background: 255 255 255;
+        --on-surface: 255 255 255;
+        --on-error: 255 255 255;
+    }
+  } */
