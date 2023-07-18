@@ -13,6 +13,7 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^2.0.3",
     "@tsconfig/svelte": "^4.0.1",
+    "@types/three": "^0.154.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "autoprefixer": "^10.4.14",
@@ -29,8 +30,14 @@
     "vite-plugin-singlefile": "^0.13.5"
   },
   "dependencies": {
+    "mathjs": "^11.8.2",
     "nipplejs": "^0.10.1",
-    "svelte-hero-icons": "^5.0.0"
+    "svelte-hero-icons": "^5.0.0",
+    "svelte-routing": "^1.11.0",
+    "three": "^0.154.0",
+    "urdf-loader": "^0.12.0",
+    "uzip": "^0.20201231.0",
+    "xacro-parser": "^0.3.9"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
