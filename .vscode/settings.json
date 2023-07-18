@@ -4,4 +4,11 @@
     },
     "editor.tabSize": 4,
     "editor.detectIndentation": false,
+    "cmake.sourceDirectory": "C:/data/repos/Hardware/Spot Micro - Leika/.pio/libdeps/esp32cam/esp32-camera",
+    "cSpell.words": [
+        "lerp",
+        "URDF",
+        "uzip",
+        "xacro"
+    ]
 }

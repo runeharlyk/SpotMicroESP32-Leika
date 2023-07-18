@@ -4,7 +4,11 @@ export type WebSocketStatus = 'OPEN' | 'CONNECTING' | 'CLOSED'
 
 export const isConnected = writable(false)
 
-export const data = writable(new Float32Array(13))
+export const dataBuffer = writable(new Float32Array(13))
+
+export const servoBuffer = writable(new Int8Array(12))
+
+export const data = writable();
 
 export const status:Writable<WebSocketStatus> = writable('CLOSED')
 
@@ -32,7 +36,7 @@ const _disconnected = () => {
 
 const _message = (event) => {    
     if (event.data instanceof ArrayBuffer) {
-        let buffer = new Uint8Array(event.data);
-        data.set(new Float32Array(buffer.buffer));
-    }
+        let buffer = new Int8Array(event.data);
+        servoBuffer.set(buffer);
+    } else dataBuffer.set(JSON.parse(event.data));
 }
