@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { isConnected, data } from '../lib/socket';
-	import { Icon, ArrowsPointingIn, ArrowsPointingOut, Bars3, Power } from 'svelte-hero-icons';
+	import { isConnected, dataBuffer } from '../lib/socket';
+	import { Icon, ArrowsPointingIn, ArrowsPointingOut, Bars3, Power, Cube } from 'svelte-hero-icons';
 	import { tweened } from 'svelte/motion';
 	import { quadInOut } from 'svelte/easing';
-	import { sidebarOpen } from '../lib/store';
+	import { emulateModel, sidebarOpen } from '../lib/store';
+	import { text } from 'svelte/internal';
 
 	let isFullscreen = false;
 
@@ -31,7 +32,7 @@
                 <Icon src={Bars3} size="32" />
             </button>
         </div>
-        <div class="w-20 p-4 text-right">{Math.floor($data[5])}°🌡️</div>
+        <div class="w-20 p-4 text-right">{Math.floor($dataBuffer[5])}°🌡️</div>
     </div>
     <div class="absolute flex justify-center w-full">
         <div>
@@ -46,6 +47,9 @@
                         </button>
                         <button>
                             <Icon src={Power} size="32" />
+                        </button>
+                        <button class:text-blue-600={$emulateModel} on:click={() => emulateModel.update(v => {v = !v; return v})}>
+                            <Icon src={Cube} size="32"/>
                         </button>
                     </div>
                 {/if}
