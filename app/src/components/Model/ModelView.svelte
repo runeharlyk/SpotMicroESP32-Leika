@@ -20,8 +20,7 @@ import URDFLoader from 'urdf-loader';
 import { servoBuffer } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
-	import { outControllerData } from '../../lib/store';
-	import { solve } from '../../lib/kinematics';
+import { outControllerData } from '../../lib/store';
 
 let el: HTMLCanvasElement;
 let scene, camera, renderer, robot, controls;
