@@ -6,7 +6,7 @@ export const isConnected = writable(false)
 
 export const dataBuffer = writable(new Float32Array(13))
 
-export const servoBuffer = writable(new Int8Array(12))
+export const servoBuffer:Writable<Int8Array|number[]> = writable(new Int8Array(12))
 
 export const data = writable();
 
