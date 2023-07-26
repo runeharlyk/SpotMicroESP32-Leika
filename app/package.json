@@ -30,7 +30,6 @@
     "vite-plugin-singlefile": "^0.13.5"
   },
   "dependencies": {
-    "gl-matrix": "^3.4.3",
     "mathjs": "^11.8.2",
     "nipplejs": "^0.10.1",
     "svelte-hero-icons": "^5.0.0",
