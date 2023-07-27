@@ -48,7 +48,7 @@
                         <button>
                             <Icon src={Power} size="32" />
                         </button>
-                        <button class:text-blue-600={$emulateModel} on:click={() => emulateModel.update(v => {v = !v; return v})}>
+                        <button class:text-blue-600={$emulateModel} on:click={() => emulateModel.update(v => !v)}>
                             <Icon src={Cube} size="32"/>
                         </button>
                     </div>

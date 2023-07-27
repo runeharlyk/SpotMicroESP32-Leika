@@ -22,6 +22,14 @@ export const connect = (url:string) => {
     _socket.onclose = _disconnected;
     _socket.onmessage = _message;
     socket.set(_socket)
+
+    servoBuffer.subscribe(data => {
+        if(_socket.readyState !== 1) return
+        const buffer = []
+        buffer[0] = 1
+        buffer.push(...data)
+        _socket.send(new Int8Array(buffer))
+    })
 }
 
 const _connected = () => {

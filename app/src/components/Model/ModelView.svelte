@@ -14,7 +14,11 @@ import {
     MathUtils,
     LoaderUtils,
     GridHelper,
-	Camera
+	Camera,
+	FogExp2,
+	MeshBasicMaterial,
+	CanvasTexture,
+	CircleGeometry
 } from 'three';
 import { XacroLoader } from 'xacro-parser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -24,9 +28,11 @@ import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
 import Kinematic from '../../lib/kinematic';
+import location from '../../lib/location';
 
-let el: HTMLCanvasElement;
-let scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot;
+let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement, scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot, isLoaded = false;
+
+let context: CanvasRenderingContext2D, texture: CanvasTexture
 
 let modelAngles:number[] | Int8Array = new Array(12).fill(0)
 let modelTargetAngles:number[] | Int8Array = new Array(12).fill(0)
@@ -36,6 +42,11 @@ let modelTargeBodyAngles:EulerAngle = {omega: 0, phi: 0, psi: 0 }
 
 let modelBodyPoint:Point = {x: 0, y: 0, z: 0 }
 let modelTargetBodyPoint:Point = {x: 0, y: 0, z: 0 }
+
+const dir = [ -1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
+const videoStream = `//${location}/stream`;
+
+let showModel = true, showStream = false
 
 const servoNames = [
     "front_left_shoulder", "front_left_leg", "front_left_foot", 
@@ -83,12 +94,10 @@ const stand = () => {
 const calculateKinematics = () => {
     const kinematic = new Kinematic();
     const angles: number[] = [degToRad(modelTargeBodyAngles.omega), degToRad(modelTargeBodyAngles.phi), degToRad(modelTargeBodyAngles.psi)];
-    const center: number[] = [modelBodyPoint.x, modelBodyPoint.y, modelBodyPoint.z];
+    const center: number[] = [modelTargetBodyPoint.x, modelTargetBodyPoint.y, modelTargetBodyPoint.z];
     const Lp = [[100,-100,100,1],[100,-100,-100,1],[-100,-100,100,1],[-100,-100,-100,1]]  
 
     const legs = kinematic.calcIK(Lp, angles, center)
-
-    const dir = [ -1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
 
     const legsAngles = legs
         .map(x => x.map(y => radToDeg(y)))
@@ -102,12 +111,16 @@ onMount(async () => {
     createScene()
 
     outControllerData.subscribe(data => {
-        modelTargeBodyAngles = {omega:(data[1]-128) / 3, phi:(data[2]-128) / 3, psi:(data[3]-128) / 4}
+        modelTargeBodyAngles = {omega:0, phi:(data[1]-128) / 3, psi:(data[2]-128) / 4}
+        modelTargetBodyPoint = {x:(data[4]-128) / 2, y:data[5], z:(data[3]-128) / 2} // (data[5]-128) / 4
         calculateKinematics()
-        //modelTargetBodyPoint = data.bodyPoint
     })
 
     servoBuffer.subscribe(angles => modelTargetAngles = angles)
+
+    modelTargeBodyAngles = {omega:0, phi:0, psi:0}
+    modelTargetBodyPoint = {x:0, y:0, z:0}
+    stand()
 });
 
 const cacheModelFiles = async () => {
@@ -136,6 +149,7 @@ const loadModel = () => {
         robot.rotation.z = Math.PI / 2;
         robot.traverse(c => c.castShadow = true);
         robot.updateMatrixWorld(true);
+        robot.scale.setScalar(10);      
 
         scene.add( robot );
 
@@ -144,40 +158,51 @@ const loadModel = () => {
 
 const createScene = () => {
     scene = new Scene();
+    
     camera = new PerspectiveCamera();
     camera.position.set(-0.5, 0.5, 1);
 
-    renderer = new WebGLRenderer({ antialias: true, canvas: el });
+    renderer = new WebGLRenderer({ antialias: true, canvas: canvas, alpha: true });
     renderer.outputEncoding = sRGBEncoding;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    const directionalLight = new DirectionalLight(0xffffff, 1.0);
+    const directionalLight = new DirectionalLight(0xffffff, 0.9);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.setScalar(1024);
-    directionalLight.position.set(5, 30, 5);
+    directionalLight.shadow.mapSize.setScalar(2048);
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    directionalLight.position.set(50, 100, 100);
+    directionalLight.shadow.radius = 5
     scene.add(directionalLight);
 
-    const ambientLight = new AmbientLight(0xffffff, 0.2);
+    const ambientLight = new AmbientLight(0xffffff, 0.3);
     scene.add(ambientLight);
 
-    const ground = new Mesh(new PlaneGeometry(), new ShadowMaterial({ opacity: 0.25 }));
+    if(!showStream) scene.fog = new FogExp2( 0xcccccc, 0.015 );
+
+    const ground = new Mesh( new PlaneGeometry(),  new ShadowMaterial({side: 2}));
     ground.rotation.x = -Math.PI / 2;
     ground.scale.setScalar(30);
+    ground.position.y = -2
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const size = 10;
-    const divisions = 50;
+    context = streamCanvas.getContext("2d");
+    texture = new CanvasTexture( stream );
+    const liveStream = new Mesh( new CircleGeometry(35, 32), new MeshBasicMaterial({ map: texture }))
+    liveStream.position.z = -50
+    liveStream.visible = showStream
+    scene.add(liveStream)
 
-    const gridHelper = new GridHelper(size, divisions);
-    gridHelper.position.y = -0.24
+    const gridHelper = new GridHelper(250, 125);
+    gridHelper.position.y = -2;
     scene.add(gridHelper);
 
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.minDistance = 0;
-    controls.maxDistance = 4;
+    controls.minDistance = 10;
+    controls.maxDistance = 30;
     controls.update();
 
     loadModel()
@@ -199,6 +224,21 @@ const render = () => {
 
     if(!robot) return
 
+    if(!isLoaded){
+        const intervalId = setInterval(() => {
+            robot.traverse(c => c.castShadow = true);
+        }, 10);
+        setTimeout(() => {
+            clearInterval(intervalId)
+        }, 1000);
+        isLoaded = true;
+    } 
+    
+    if(isLoaded && showStream) {
+        context.drawImage(stream, 0, 0)
+        texture.needsUpdate = true;
+    }
+
     for (let i = 0; i < servoNames.length; i++) {
         modelAngles[i] = lerp(robot.joints[servoNames[i]].angle * (180/Math.PI), modelTargetAngles[i], 0.1)
         robot.joints[servoNames[i]].setJointValue(MathUtils.degToRad(modelAngles[i]));
@@ -206,11 +246,7 @@ const render = () => {
 
     modelBodyAngles.omega = lerp(robot.rotation.x * (180/Math.PI), modelTargeBodyAngles.omega - 90, 0.1)
     modelBodyAngles.phi = lerp(robot.rotation.y * (180/Math.PI), modelTargeBodyAngles.phi, 0.1)
-    modelBodyAngles.psi = lerp(robot.rotation.z * (180/Math.PI), modelTargeBodyAngles.psi + 90, 0.1)
-
-    // robot.rotation.x =  MathUtils.degToRad(modelBodyAngles.omega)
-    // robot.rotation.y = MathUtils.degToRad(modelBodyAngles.phi)
-    // robot.rotation.z = MathUtils.degToRad(modelBodyAngles.psi)    
+    modelBodyAngles.psi = lerp(robot.rotation.z * (180/Math.PI), modelTargeBodyAngles.psi + 90, 0.1)  
 }
 </script>
   
@@ -225,18 +261,18 @@ const render = () => {
     </div>
     <div class="w-full">
     <h1 class="text-on-background text-xl mt-4">Motor angles</h1>
-        {#each servoNames as name, i}
+        {#each Object.entries(robot?.joints ?? {}).filter(x => x[1].jointValue.length > 0) as [name, joint], i}
             <div class="flex justify-between mb-2">
                 <span class="w-40">{name}: </span>
-                <input type="range" min="-180" max="180" step="0.1" class="accent-primary" bind:value={$servoBuffer[i]}>
-                <input class="w-24 bg-background" min="-180" max="180" step="0.1" bind:value={$servoBuffer[i]}> 
+                <input type="range" min="{radToDeg(joint.limit.lower)}" max="{radToDeg(joint.limit.upper)}" step="0.1" class="accent-primary" bind:value={$servoBuffer[i]}>
+                <input class="w-24 bg-background" min="{radToDeg(joint.limit.lower)}" max="{radToDeg(joint.limit.upper)}" step="0.1" bind:value={$servoBuffer[i]}> 
             </div>
         {/each}
     </div>
 
     <div>
     <h1 class="text-on-background text-xl mb-2">Body rotation</h1>
-        {#each Object.entries(modelBodyAngles) as [name, angle]}
+        {#each Object.keys(modelBodyAngles) as name}
             <div class="flex justify-between mb-2">
                 <span class="w-40">{name}: </span>
                 <input type="range" min="-180" max="180" step="0.1" class="accent-primary" bind:value={modelTargeBodyAngles[name]} on:input={calculateKinematics}>
@@ -247,7 +283,7 @@ const render = () => {
 
     <div>
         <h1 class="text-on-background text-xl mb-2">Body position</h1>
-            {#each Object.entries(modelBodyPoint) as [name, coordinate]}
+            {#each Object.keys(modelBodyPoint) as name}
                 <div class="flex justify-between mb-2">
                     <span class="w-40">{name}: </span>
                     <input type="range" min="-180" max="180" step="0.1" class="accent-primary" bind:value={modelTargetBodyPoint[name]} on:input={calculateKinematics}>
@@ -257,4 +293,14 @@ const render = () => {
         </div>
 </div>
 
-<canvas bind:this={el} class="absolute"></canvas>
+{#if showStream}
+    <img
+        bind:this={stream}
+        src={videoStream}
+        class="hidden"
+        alt="Live stream is down"
+        crossorigin="anonymous"
+    />
+    {/if}
+<canvas bind:this={streamCanvas} class="hidden"></canvas>
+<canvas bind:this={canvas} class="absolute"></canvas>
