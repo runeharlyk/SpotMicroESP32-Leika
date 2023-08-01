@@ -29,6 +29,7 @@ import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
 import Kinematic from '../../lib/kinematic';
 import location from '../../lib/location';
+import FileCache from '../../lib/cache';
 
 let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement, scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot, isLoaded = false;
 
@@ -124,17 +125,15 @@ onMount(async () => {
 });
 
 const cacheModelFiles = async () => {
-    const cacheKey = "files"
-    const cache = await caches.open(cacheKey)
-
     let data = await fetch("/stl.zip").then(data => data.arrayBuffer())
     
     var files = uzip.parse(data);
+    await FileCache.openDatabase()
     
     for(const [path, data] of Object.entries(files) as [path:string, data:Uint8Array][]){
         const url = new URL(path, window.location.href)
-        cache.put(url, new Response(data));   
-    }    
+        FileCache.saveFile(url.toString(), data)
+    }
 }
 
 const loadModel = () => {

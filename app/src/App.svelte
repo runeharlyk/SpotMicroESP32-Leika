@@ -8,6 +8,7 @@
 	import Health from './routes/SystemHealth.svelte';
 	import location from './lib/location';
 	import Sidebar from './components/Sidebar.svelte';
+    import FileCache from './lib/cache';
 
 	export let url = window.location.pathname;
 	onMount(() => {
@@ -18,9 +19,18 @@
     const registerFetchIntercept = () => {
         const { fetch: originalFetch } = window;
         window.fetch = async (...args) => {
-            const cache = await caches.open("files")
             const [resource, config] = args;
-            return await cache.match(resource) ?? originalFetch(resource, config)
+            await FileCache.openDatabase();
+            let file;
+            try {
+                file = await FileCache.getFile(resource.url);
+            } catch (error) {
+                console.log(error);
+            }
+
+            return file 
+            ? new Response(file)
+            : originalFetch(resource, config) 
         };
     }
 </script>
