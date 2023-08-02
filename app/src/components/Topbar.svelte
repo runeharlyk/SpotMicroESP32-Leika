@@ -4,7 +4,6 @@
 	import { tweened } from 'svelte/motion';
 	import { quadInOut } from 'svelte/easing';
 	import { emulateModel, sidebarOpen } from '../lib/store';
-	import { text } from 'svelte/internal';
 
 	let isFullscreen = false;
 
@@ -25,9 +24,9 @@
 	};
 </script>
 
-<div class="absolute flex justify-between w-full z-20 h-10" on:dblclick={handleClick}>
+<div class="absolute flex justify-between w-full z-10 h-10" on:dblclick={handleClick}>
     <div class="absolute flex justify-between w-full">
-        <div class="w-20 p-4">
+        <div class="w-20 p-4 z-20">
             <button on:click={() => sidebarOpen.set(true)}>
                 <Icon src={Bars3} size="32" />
             </button>
