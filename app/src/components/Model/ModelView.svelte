@@ -18,12 +18,14 @@ import {
 	FogExp2,
 	MeshBasicMaterial,
 	CanvasTexture,
-	CircleGeometry
+	CircleGeometry,
+	Object3D,
+	type Event
 } from 'three';
 import { XacroLoader } from 'xacro-parser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import URDFLoader from 'urdf-loader';
-import { servoBuffer } from '../../lib/socket'
+import { dataBuffer, servoBuffer } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
@@ -31,7 +33,7 @@ import Kinematic from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
 
-let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement, scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot, isLoaded = false;
+let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement, scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot: Object3D<Event>, isLoaded = false;
 
 let context: CanvasRenderingContext2D, texture: CanvasTexture
 
@@ -45,7 +47,7 @@ let modelBodyPoint:Point = {x: 0, y: 0, z: 0 }
 let modelTargetBodyPoint:Point = {x: 0, y: 0, z: 0 }
 
 const dir = [ -1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
-const videoStream = `//${location}/stream`;
+const videoStream = `//${location}/api/stream`;
 
 let showModel = true, showStream = false
 
@@ -222,6 +224,8 @@ const render = () => {
     renderer.render(scene, camera);
 
     if(!robot) return
+
+    robot.rotation.z = lerp(robot.rotation.z, MathUtils.degToRad($dataBuffer[1]), 0.1)
 
     if(!isLoaded){
         const intervalId = setInterval(() => {

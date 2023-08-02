@@ -25,6 +25,8 @@
 <div class="w-full h-full absolute top-0 p-4 flex justify-center items-center">
     <Card class="w-full h-1/2">
         <CardHeader>Servo calibration</CardHeader>
+        <div>Servo</div>
+        <input type="number" class="bg-background" bind:value={servo}>
         <div class="flex w-full">
             <label for="pwm">Pwm ({pwm})</label>
             <div class="flex w-full">

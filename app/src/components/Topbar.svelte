@@ -31,7 +31,10 @@
                 <Icon src={Bars3} size="32" />
             </button>
         </div>
-        <div class="w-20 p-4 text-right">{Math.floor($dataBuffer[5])}°🌡️</div>
+        <div class="w-20 p-4 text-right">{Math.floor($dataBuffer[0])}°🌡️<br>
+            {Math.floor($dataBuffer[9]*10)/10}V<br>
+            {Math.floor($dataBuffer[8]*1000)/1000}A
+        </div>
     </div>
     <div class="absolute flex justify-center w-full">
         <div>

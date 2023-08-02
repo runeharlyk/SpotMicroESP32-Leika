@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import location from '../lib/location';
 
-	let videoStream = `//${location}/stream`;
+	let videoStream = `//${location}/api/stream`;
 
 	onDestroy(() => {
 		videoStream = '#';

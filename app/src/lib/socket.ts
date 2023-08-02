@@ -45,6 +45,8 @@ const _disconnected = () => {
 const _message = (event) => {    
     if (event.data instanceof ArrayBuffer) {
         let buffer = new Int8Array(event.data);
-        servoBuffer.set(buffer);
+        if(buffer.length === 44) {
+            dataBuffer.set(new Float32Array(buffer.buffer) )
+        }
     } else dataBuffer.set(JSON.parse(event.data));
 }

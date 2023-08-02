@@ -1,4 +1,4 @@
-#include <AsyncJpegStreamHandler.h>
+#include <AsyncJpegStream.h>
 
 static const char* STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
@@ -124,6 +124,5 @@ void streamJpg(AsyncWebServerRequest *request){
         request->send(501);
         return;
     }
-    response->addHeader("Access-Control-Allow-Origin", "*");
     request->send(response);
 }
