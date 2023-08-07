@@ -321,7 +321,7 @@ void handleWebSocketBuffer(uint8_t* data) {
     if(data[0] == 0) g_ptrServo->setBody(data[1], data[2], data[3], data[4], data[5], data[6]);
     else if(data[0] == 1) {
         log_i("About to update all servos");
-        int8_t* angles = (int8_t*)data+1;  
+        int16_t* angles = (int16_t*)data+1;  
 
         g_ptrServo->SetAngles(angles);
     }

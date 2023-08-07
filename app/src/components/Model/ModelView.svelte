@@ -37,8 +37,8 @@ let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImag
 
 let context: CanvasRenderingContext2D, texture: CanvasTexture
 
-let modelAngles:number[] | Int8Array = new Array(12).fill(0)
-let modelTargetAngles:number[] | Int8Array = new Array(12).fill(0)
+let modelAngles:number[] | Int16Array = new Array(12).fill(0)
+let modelTargetAngles:number[] | Int16Array = new Array(12).fill(0)
 
 let modelBodyAngles:EulerAngle = {omega: 0, phi: 0, psi: 0 }
 let modelTargeBodyAngles:EulerAngle = {omega: 0, phi: 0, psi: 0 }

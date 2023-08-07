@@ -24,7 +24,7 @@ class Servo : public Adafruit_PWMServoDriver {
     
     Servo() : Adafruit_PWMServoDriver() {}
 
-    void SetAngles(int8_t* angle) {
+    void SetAngles(int16_t* angle) {
         for(size_t i = 0; i < 12; i++)
             servo_angles[i] = angle[i];
         updateServos();
@@ -108,7 +108,7 @@ class Servo : public Adafruit_PWMServoDriver {
 
     position_t spot_position = {.omega=0,.phi=0,.psi=0,.xm=-40,.ym=-170, .zm=0, .set=1};
     position_t goal_position = {0,};
-    int8_t servo_angles[12]{0,};
+    int16_t servo_angles[12]{0,};
 };
 
 extern DRAM_ATTR std::unique_ptr<Servo> g_ptrServo;

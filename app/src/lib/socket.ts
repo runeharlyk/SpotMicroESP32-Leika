@@ -6,7 +6,7 @@ export const isConnected = writable(false)
 
 export const dataBuffer = writable(new Float32Array(13))
 
-export const servoBuffer:Writable<Int8Array|number[]> = writable(new Int8Array(12))
+export const servoBuffer:Writable<Int16Array|number[]> = writable(new Int16Array(12))
 
 export const data = writable();
 
@@ -28,7 +28,7 @@ export const connect = (url:string) => {
         const buffer = []
         buffer[0] = 1
         buffer.push(...data)
-        _socket.send(new Int8Array(buffer))
+        _socket.send(new Int16Array(buffer))
     })
 }
 
