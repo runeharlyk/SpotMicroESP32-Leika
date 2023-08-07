@@ -219,28 +219,31 @@ const handleResize = () => {
     camera.updateProjectionMatrix();
 }
 
+const handleVideoStream = () => {
+    if(!isLoaded || !showStream) return
+    context.drawImage(stream, 0, 0)
+    texture.needsUpdate = true;
+}
+
+const handleRobotShadow = () => {
+    if(isLoaded) return
+    const intervalId = setInterval(() => {
+        robot.traverse(c => c.castShadow = true);
+    }, 10);
+    setTimeout(() => {
+        clearInterval(intervalId)
+    }, 1000);
+    isLoaded = true;
+}
 const render = () => {
     requestAnimationFrame(render);
     renderer.render(scene, camera);
 
     if(!robot) return
 
-    robot.rotation.z = lerp(robot.rotation.z, MathUtils.degToRad($dataBuffer[1]), 0.1)
-
-    if(!isLoaded){
-        const intervalId = setInterval(() => {
-            robot.traverse(c => c.castShadow = true);
-        }, 10);
-        setTimeout(() => {
-            clearInterval(intervalId)
-        }, 1000);
-        isLoaded = true;
-    } 
+    handleRobotShadow()
     
-    if(isLoaded && showStream) {
-        context.drawImage(stream, 0, 0)
-        texture.needsUpdate = true;
-    }
+    handleVideoStream()
 
     for (let i = 0; i < servoNames.length; i++) {
         modelAngles[i] = lerp(robot.joints[servoNames[i]].angle * (180/Math.PI), modelTargetAngles[i], 0.1)
