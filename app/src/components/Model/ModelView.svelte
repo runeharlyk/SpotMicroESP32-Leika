@@ -1,30 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-import {
-    WebGLRenderer,
-    PerspectiveCamera,
-    Scene,
-    Mesh,
-    PlaneGeometry,
-    ShadowMaterial,
-    DirectionalLight,
-    PCFSoftShadowMap,
-    sRGBEncoding,
-    AmbientLight,
-    MathUtils,
-    LoaderUtils,
-    GridHelper,
-	Camera,
-	FogExp2,
-	MeshBasicMaterial,
-	CanvasTexture,
-	CircleGeometry,
-	Object3D,
-	type Event
-} from 'three';
-import { XacroLoader } from 'xacro-parser';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import URDFLoader from 'urdf-loader';
+import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
 import { dataBuffer, servoBuffer } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
@@ -32,16 +8,17 @@ import { outControllerData } from '../../lib/store';
 import Kinematic from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
+import SceneBuilder from './sceneBuilder';
 
-let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement, scene: Scene, camera: Camera, renderer: WebGLRenderer, controls: OrbitControls, robot: Object3D<Event>, isLoaded = false;
-
+let sceneManager:SceneBuilder
+let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement
 let context: CanvasRenderingContext2D, texture: CanvasTexture
 
 let modelAngles:number[] | Int16Array = new Array(12).fill(0)
 let modelTargetAngles:number[] | Int16Array = new Array(12).fill(0)
 
-let modelBodyAngles:EulerAngle = {omega: 0, phi: 0, psi: 0 }
-let modelTargeBodyAngles:EulerAngle = {omega: 0, phi: 0, psi: 0 }
+let modelBodyAngles:EulerAngle = { omega: 0, phi: 0, psi: 0 }
+let modelTargeBodyAngles:EulerAngle = { omega: 0, phi: 0, psi: 0 }
 
 let modelBodyPoint:Point = {x: 0, y: 0, z: 0 }
 let modelTargetBodyPoint:Point = {x: 0, y: 0, z: 0 }
@@ -138,116 +115,51 @@ const cacheModelFiles = async () => {
     }
 }
 
-const loadModel = () => {
-    const url = '/spot_micro.urdf.xacro';
-    const xacroLoader = new XacroLoader();
-    xacroLoader.load( url, xml => {
-        const urdfLoader = new URDFLoader();
-        urdfLoader.workingPath = LoaderUtils.extractUrlBase( url );
+const createScene = () => {
+    sceneManager = new SceneBuilder()
+        .addRenderer({ antialias: true, canvas: canvas, alpha: true})
+        .addPerspectiveCamera({x:-0.5, y:0.5, z:1})
+        .addOrbitControls(10, 30)
+        .addGroundPlane({x:0, y:-2, z:0})
+        .addGridHelper({size:250, divisions:125, y:-2})
+        .addAmbientLight({color:0xffffff, intensity:0.3})
+        .addDirectionalLight({x:50, y:100, z:100, color:0xffffff, intensity:0.9})
+        .addArrowHelper({origin:{x:0, y:0, z:0}, direction:{x:0, y:-2, z:0}})
+        .addFogExp2(0xcccccc, 0.015)
+        .loadModel('/spot_micro.urdf.xacro')
+        .handleResize()
+        .addRenderCb(render)
+        .startRenderLoop()
 
-        robot = urdfLoader.parse( xml );
-        robot.rotation.x = -Math.PI / 2;
-        robot.rotation.z = Math.PI / 2;
-        robot.traverse(c => c.castShadow = true);
-        robot.updateMatrixWorld(true);
-        robot.scale.setScalar(10);      
-
-        scene.add( robot );
-
-    },  (error) =>  console.log(error));
+    addVideoStream()
 }
 
-const createScene = () => {
-    scene = new Scene();
-    
-    camera = new PerspectiveCamera();
-    camera.position.set(-0.5, 0.5, 1);
-
-    renderer = new WebGLRenderer({ antialias: true, canvas: canvas, alpha: true });
-    renderer.outputEncoding = sRGBEncoding;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
-
-    const directionalLight = new DirectionalLight(0xffffff, 0.9);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.setScalar(2048);
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.position.set(50, 100, 100);
-    directionalLight.shadow.radius = 5
-    scene.add(directionalLight);
-
-    const ambientLight = new AmbientLight(0xffffff, 0.3);
-    scene.add(ambientLight);
-
-    if(!showStream) scene.fog = new FogExp2( 0xcccccc, 0.015 );
-
-    const ground = new Mesh( new PlaneGeometry(),  new ShadowMaterial({side: 2}));
-    ground.rotation.x = -Math.PI / 2;
-    ground.scale.setScalar(30);
-    ground.position.y = -2
-    ground.receiveShadow = true;
-    scene.add(ground);
-
+const addVideoStream = () => {
     context = streamCanvas.getContext("2d");
     texture = new CanvasTexture( stream );
     const liveStream = new Mesh( new CircleGeometry(35, 32), new MeshBasicMaterial({ map: texture }))
     liveStream.position.z = -50
     liveStream.visible = showStream
-    scene.add(liveStream)
-
-    const gridHelper = new GridHelper(250, 125);
-    gridHelper.position.y = -2;
-    scene.add(gridHelper);
-
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.minDistance = 10;
-    controls.maxDistance = 30;
-    controls.update();
-
-    loadModel()
-    handleResize()
-    render()
-}
-
-const handleResize = () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    sceneManager.scene.add(liveStream)
 }
 
 const handleVideoStream = () => {
-    if(!isLoaded || !showStream) return
+    if(!showStream) return
     context.drawImage(stream, 0, 0)
     texture.needsUpdate = true;
 }
 
-const handleRobotShadow = () => {
-    if(isLoaded) return
-    const intervalId = setInterval(() => {
-        robot.traverse(c => c.castShadow = true);
-    }, 10);
-    setTimeout(() => {
-        clearInterval(intervalId)
-    }, 1000);
-    isLoaded = true;
-}
 const render = () => {
-    requestAnimationFrame(render);
-    renderer.render(scene, camera);
-
+    const robot = sceneManager.model
     if(!robot) return
 
-    handleRobotShadow()
+    sceneManager.model.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
     
     handleVideoStream()
 
     for (let i = 0; i < servoNames.length; i++) {
         modelAngles[i] = lerp(robot.joints[servoNames[i]].angle * (180/Math.PI), modelTargetAngles[i], 0.1)
-        robot.joints[servoNames[i]].setJointValue(MathUtils.degToRad(modelAngles[i]));
+        robot.joints[servoNames[i]].setJointValue(degToRad(modelAngles[i]));
     }
 
     modelBodyAngles.omega = lerp(robot.rotation.x * (180/Math.PI), modelTargeBodyAngles.omega - 90, 0.1)
@@ -256,7 +168,7 @@ const render = () => {
 }
 </script>
   
-<svelte:window on:resize={handleResize}></svelte:window>
+<svelte:window on:resize={sceneManager.handleResize}></svelte:window>
 
 <div class="absolute top-0 z-10 left-0 m-10">
     <h1 class="text-on-background text-xl mb-2">Poses</h1>
@@ -267,7 +179,7 @@ const render = () => {
     </div>
     <div class="w-full">
     <h1 class="text-on-background text-xl mt-4">Motor angles</h1>
-        {#each Object.entries(robot?.joints ?? {}).filter(x => x[1].jointValue.length > 0) as [name, joint], i}
+        {#each Object.entries(sceneManager?.model?.joints ?? {}).filter(x => x[1].jointValue.length > 0) as [name, joint], i}
             <div class="flex justify-between mb-2">
                 <span class="w-40">{name}: </span>
                 <input type="range" min="{radToDeg(joint.limit.lower)}" max="{radToDeg(joint.limit.upper)}" step="0.1" class="accent-primary" bind:value={$servoBuffer[i]}>
