@@ -207,6 +207,11 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
     npm install
     ```
 
+1. Configure device settings
+    1. Make a copy of *include/secrets.example.h* in the same folder
+    2. Rename the copy to *secrets.h*
+    3. Configure relevant settings
+
 ## Usage
 
 ### Developing
