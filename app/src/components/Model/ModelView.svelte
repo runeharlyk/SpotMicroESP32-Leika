@@ -5,7 +5,7 @@ import { dataBuffer, servoBuffer } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
-import Kinematic from '../../lib/kinematic';
+import Kinematic, { ForwardKinematics } from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
 import SceneBuilder from './sceneBuilder';
@@ -122,11 +122,12 @@ const createScene = () => {
         .addOrbitControls(10, 30)
         .addGroundPlane({x:0, y:-2, z:0})
         .addGridHelper({size:250, divisions:125, y:-2})
-        .addAmbientLight({color:0xffffff, intensity:0.3})
-        .addDirectionalLight({x:50, y:100, z:100, color:0xffffff, intensity:0.9})
+        .addAmbientLight({color:0xffffff, intensity:0.7})
+        .addDirectionalLight({x:10, y:100, z:10, color:0xffffff, intensity:1})
         .addArrowHelper({origin:{x:0, y:0, z:0}, direction:{x:0, y:-2, z:0}})
         .addFogExp2(0xcccccc, 0.015)
         .loadModel('/spot_micro.urdf.xacro')
+        .addDragControl((name:string, angle:number) => modelTargetAngles[servoNames.indexOf(name)] = angle * (180/Math.PI))
         .handleResize()
         .addRenderCb(render)
         .startRenderLoop()
@@ -153,7 +154,11 @@ const render = () => {
     const robot = sceneManager.model
     if(!robot) return
 
-    sceneManager.model.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
+    const forwardKinematics = new ForwardKinematics()
+
+    const points = forwardKinematics.calculateFootpoints(modelTargetAngles.map(ang => degToRad(ang)) as number[])
+    robot.position.y = Math.max(...points.map(coord => coord[0] / 100)) - 2.7
+    robot.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
     
     handleVideoStream()
 

@@ -340,3 +340,42 @@ export default class Kinematic {
       return transposed;
     }
   }
+
+
+export class ForwardKinematics {
+    private l1: number;
+    private l2: number;
+    private l3: number;
+    private l4: number;
+  
+    constructor() {
+      this.l1 = 50;
+      this.l2 = 20;
+      this.l3 = 120;
+      this.l4 = 155;
+    }
+  
+    public calculateFootpoint(theta1: number, theta2: number, theta3: number): number[] {
+      const { cos, sin } = Math;
+  
+      const x = this.l1 * cos(theta1) + this.l2 * cos(theta1) + this.l3 * cos(theta1 + theta2) + this.l4 * cos(theta1 + theta2 + theta3);
+      const y = this.l1 * sin(theta1) + this.l2 * sin(theta1) + this.l3 * sin(theta1 + theta2) + this.l4 * sin(theta1 + theta2 + theta3);
+      const z = 0; 
+  
+      return [x, y, z];
+    }
+
+    public calculateFootpoints(angles: number[]): number[][] {
+        const footpoints: number[][] = [];
+    
+        for (let i = 0; i < angles.length; i += 3) {
+          const theta1 = angles[i];
+          const theta2 = angles[i + 1];
+          const theta3 = angles[i + 2];
+          const footpoint = this.calculateFootpoint(theta1, theta2, theta3);
+          footpoints.push(footpoint);
+        }
+    
+        return footpoints;
+      }
+  }
