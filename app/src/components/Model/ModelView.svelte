@@ -5,7 +5,7 @@ import { dataBuffer, servoBuffer } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
-import Kinematic from '../../lib/kinematic';
+import Kinematic, { ForwardKinematics } from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
 import SceneBuilder from './sceneBuilder';
@@ -154,7 +154,11 @@ const render = () => {
     const robot = sceneManager.model
     if(!robot) return
 
-    sceneManager.model.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
+    const forwardKinematics = new ForwardKinematics()
+
+    const points = forwardKinematics.calculateFootpoints(modelTargetAngles.map(ang => degToRad(ang)) as number[])
+    robot.position.y = Math.max(...points.map(coord => coord[0] / 100)) - 2.7
+    robot.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
     
     handleVideoStream()
 
