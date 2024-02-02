@@ -16,9 +16,11 @@ import { Mesh,
     CanvasTexture,
     type ColorRepresentation, 
     type WebGLRendererParameters,
+    MeshPhongMaterial,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import URDFLoader from "urdf-loader";
+import URDFLoader, { type URDFMimicJoint } from "urdf-loader";
+import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
 import { XacroLoader } from "xacro-parser";
 
 export const addScene = () => new Scene()
@@ -62,6 +64,7 @@ export default class SceneBuilder {
     public liveStreamTexture: CanvasTexture
     private fog:FogExp2
     private isLoaded:boolean = false
+    highlightMaterial: any;
 
     constructor() {
         this.scene = new Scene()
@@ -163,6 +166,38 @@ export default class SceneBuilder {
         return this
     }
 
+    private setJointValue(jointName:string, angle:number) {
+        if (!this.model) return;
+        if (!this.model.joints[jointName]) return;
+        this.model.joints[jointName].setJointValue(angle)
+    }
+
+    isJoint = j => j.isURDFJoint && j.jointType !== 'fixed';
+
+    highlightLinkGeometry = (m, revert:boolean, material) => {
+        const traverse = c => {
+            if (c.type === 'Mesh') {
+                if (revert) {
+                    c.material = c.__origMaterial;
+                    delete c.__origMaterial;
+                } else {
+                    c.__origMaterial = c.material;
+                    c.material = material;
+                }
+            }
+
+            if (c === m || !this.isJoint(c)) {
+                for (let i = 0; i < c.children.length; i++) {
+                    const child = c.children[i];
+                    if (!child.isURDFCollider) {
+                        traverse(c.children[i]);
+                    }
+                }
+            }
+        };
+        traverse(m);
+    };
+
     public loadModel = (urlXacro:string) => {
         const xacroLoader = new XacroLoader();
         xacroLoader.load(urlXacro, xml => {
@@ -180,6 +215,36 @@ export default class SceneBuilder {
 
         }, (error) => console.log(error));
         return this 
+    }
+
+    public addDragControl = (updateAngle) => {
+        const highlightColor = '#FFFFFF'
+        const highlightMaterial =
+            new MeshPhongMaterial({
+                shininess: 10,
+                color: highlightColor,
+                emissive: highlightColor,
+                emissiveIntensity: 0.25,
+            });
+        
+        const dragControls = new PointerURDFDragControls(this.scene, this.camera, this.renderer.domElement);
+        dragControls.updateJoint = (joint:URDFMimicJoint, angle:number) => {
+            this.setJointValue(joint.name, angle);
+            updateAngle(joint.name, angle)
+        };
+        dragControls.onDragStart = () => {
+            this.controls.enabled = false;
+        };
+        dragControls.onDragEnd = () => {
+            this.controls.enabled = true;
+        };
+        dragControls.onHover = (joint:URDFMimicJoint) => {
+            this.highlightLinkGeometry(joint, false, highlightMaterial);
+        }
+        dragControls.onUnhover = (joint:URDFMimicJoint) => {
+            this.highlightLinkGeometry(joint, true, highlightMaterial);
+        }
+        return this
     }
 
     public toggleFog = () => {

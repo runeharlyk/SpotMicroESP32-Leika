@@ -127,6 +127,7 @@ const createScene = () => {
         .addArrowHelper({origin:{x:0, y:0, z:0}, direction:{x:0, y:-2, z:0}})
         .addFogExp2(0xcccccc, 0.015)
         .loadModel('/spot_micro.urdf.xacro')
+        .addDragControl((name:string, angle:number) => modelTargetAngles[servoNames.indexOf(name)] = angle * (180/Math.PI))
         .handleResize()
         .addRenderCb(render)
         .startRenderLoop()
