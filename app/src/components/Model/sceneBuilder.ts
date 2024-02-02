@@ -159,9 +159,9 @@ export default class SceneBuilder {
     }
 
     public addArrowHelper = (options?:arrowOptions) => {
-        const dir = new Vector3(options.direction.x ?? 0, options.direction.y ?? 0, options.direction.z ?? 0);
-        const origin = new Vector3(options.origin.x ?? 0, options.origin.y ?? 0, options.origin.z ?? 0);
-        const arrowHelper = new ArrowHelper( dir, origin, options.length ?? 1.5, options.color ?? 0xff0000 );
+        const dir = new Vector3(options?.direction.x ?? 0, options?.direction.y ?? 0, options?.direction.z ?? 0);
+        const origin = new Vector3(options?.origin.x ?? 0, options?.origin.y ?? 0, options?.origin.z ?? 0);
+        const arrowHelper = new ArrowHelper( dir, origin, options?.length ?? 1.5, options?.color ?? 0xff0000 );
         this.scene.add( arrowHelper );
         return this
     }
