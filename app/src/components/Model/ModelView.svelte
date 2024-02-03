@@ -85,6 +85,7 @@ const createScene = () => {
         .addRenderer({ antialias: true, canvas: canvas, alpha: true})
         .addPerspectiveCamera({x:-0.5, y:0.5, z:1})
         .addOrbitControls(10, 30)
+        .addSky()
         .addGroundPlane({x:0, y:-2, z:0})
         .addGridHelper({size:250, divisions:125, y:-2})
         .addAmbientLight({color:0xffffff, intensity:0.7})
