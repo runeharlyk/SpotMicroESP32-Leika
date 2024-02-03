@@ -272,18 +272,14 @@ export default class SceneBuilder {
             this.setJointValue(joint.name, angle);
             updateAngle(joint.name, angle)
         };
-        dragControls.onDragStart = () => {
-            this.controls.enabled = false;
-        };
-        dragControls.onDragEnd = () => {
-            this.controls.enabled = true;
-        };
-        dragControls.onHover = (joint:URDFMimicJoint) => {
-            this.highlightLinkGeometry(joint, false, highlightMaterial);
-        }
-        dragControls.onUnhover = (joint:URDFMimicJoint) => {
-            this.highlightLinkGeometry(joint, true, highlightMaterial);
-        }
+        dragControls.onDragStart = () => this.controls.enabled = false;
+        dragControls.onDragEnd = () => this.controls.enabled = true;
+        dragControls.onHover = (joint:URDFMimicJoint) => this.highlightLinkGeometry(joint, false, highlightMaterial);
+        dragControls.onUnhover = (joint:URDFMimicJoint) => this.highlightLinkGeometry(joint, true, highlightMaterial);
+
+        this.renderer.domElement.addEventListener('touchstart', (data) => dragControls._mouseDown(data.touches[0]));
+        this.renderer.domElement.addEventListener('touchmove', (data) => dragControls._mouseMove(data.touches[0]))
+        this.renderer.domElement.addEventListener('touchup', (data) => dragControls._mouseUp(data.touches[0]));
         return this
     }
 
