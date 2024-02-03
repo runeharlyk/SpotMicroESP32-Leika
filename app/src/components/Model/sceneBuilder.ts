@@ -17,7 +17,11 @@ import { Mesh,
     type ColorRepresentation, 
     type WebGLRendererParameters,
     MeshPhongMaterial,
+    EquirectangularReflectionMapping,
+    ACESFilmicToneMapping,
+    MathUtils,
 } from "three";
+import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import URDFLoader, { type URDFMimicJoint } from "urdf-loader";
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
@@ -68,6 +72,9 @@ export default class SceneBuilder {
 
     constructor() {
         this.scene = new Scene()
+        if (this.scene.environment?.mapping) {
+            this.scene.environment.mapping = EquirectangularReflectionMapping;
+        } 
         return this
     }
 
@@ -76,7 +83,37 @@ export default class SceneBuilder {
         this.renderer.outputColorSpace = "srgb";
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = PCFSoftShadowMap;
+        this.renderer.toneMapping = ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.85;
         document.body.appendChild(this.renderer.domElement);
+        return this
+    }
+
+    public addSky = () => {
+        const sky = new Sky();
+        sky.scale.setScalar(450000);
+        this.scene.add(sky);
+        const effectController = {
+            turbidity: 10,
+            rayleigh: 3,
+            mieCoefficient: 0.005,
+            mieDirectionalG: 0.7,
+            elevation: -10,
+            azimuth: 180,
+            exposure: this.renderer.toneMappingExposure
+        };
+        const uniforms = sky.material.uniforms;
+        uniforms['turbidity'].value = effectController.turbidity;
+        uniforms['rayleigh'].value = effectController.rayleigh;
+        uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+        uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
+        this.renderer.toneMappingExposure = 0.5;
+        const phi = MathUtils.degToRad( 90 - effectController.elevation );
+        const theta = MathUtils.degToRad( effectController.azimuth );
+        const sun = new Vector3();
+
+        sun.setFromSphericalCoords( 1, phi, theta );
+        uniforms[ 'sunPosition' ].value.copy( sun );
         return this
     }
 
@@ -126,6 +163,9 @@ export default class SceneBuilder {
     public addGridHelper = (options:gridHelperOptions) => {
         this.gridHelper = new GridHelper(options.size, options.divisions);
         this.gridHelper.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
+        this.gridHelper.material.opacity = 0.2;
+        this.gridHelper.material.depthWrite = false;
+        this.gridHelper.material.transparent = true;
         this.scene.add(this.gridHelper);
         return this
     }
