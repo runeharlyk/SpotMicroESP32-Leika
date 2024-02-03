@@ -3,9 +3,13 @@
 	import { Icon, Bars3, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
 	import { emulateModel, sidebarOpen } from '../lib/store';
 
-    const views = ["Robot camera", "Virtual environment"]
+    const views = ["Virtual environment", "Robot camera"]
     const modes = ["Drive", "Choreography"]
 
+	let selected_view = views[0];
+	let selected_modes = modes[0];
+
+    $: emulateModel.set(selected_view === views[0])
 </script>
 
 
@@ -14,13 +18,13 @@
     <button class="ml-2" on:click={() => sidebarOpen.set(true)}>
         <Icon src={Bars3} size="32" />
     </button>
-        <select>
+        <select bind:value={selected_modes} class="rounded-md outline outline-2 text-zinc-200 outline-zinc-600 bg-zinc-800">
             {#each modes as mode}
             <option>{mode}</option>
             {/each}
         </select>
         
-        <select>
+        <select bind:value={selected_view} class="rounded-md outline outline-2 text-zinc-200 outline-zinc-600 bg-zinc-800">
             {#each views as view}
             <option>{view}</option>
             {/each}
