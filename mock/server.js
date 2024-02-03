@@ -326,5 +326,8 @@ app.post("/system/stop", (req, res) => {
   model.running = false;
   model.res.send(settings);
 });
-
+app.get("/", function (req, res) {
+  res.status(200).sendFile(`/`, { root: path });
+});
+app.get("*.*", express.static(path, { maxAge: "1y" }));
 app.listen(port, () => console.log(`Open at http://localhost:${port}`));
