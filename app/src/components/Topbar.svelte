@@ -1,117 +1,55 @@
 <script lang="ts">
-	import { isConnected, dataBuffer } from '../lib/socket';
-	import { Icon, ArrowsPointingIn, ArrowsPointingOut, Bars3, Power, Cube } from 'svelte-hero-icons';
-	import { tweened } from 'svelte/motion';
-	import { quadInOut } from 'svelte/easing';
+	import { isConnected, dataBuffer, status } from '../lib/socket';
+	import { Icon, Bars3, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
 	import { emulateModel, sidebarOpen } from '../lib/store';
 
-	let isFullscreen = false;
+    const views = ["Robot camera", "Virtual environment"]
+    const modes = ["Drive", "Choreography"]
 
-	const width = tweened(0, {
-		duration: 250,
-		easing: quadInOut
-	});
-
-	function handleClick() {
-		if ($width === 0) width.set(75);
-		else width.set(0);
-	}
-
-	const toggleFullScreen = () => {
-		if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-		else if (document.exitFullscreen) document.exitFullscreen();
-		isFullscreen = !document.fullscreenElement;
-	};
 </script>
 
-<div class="absolute flex justify-between w-full z-10 h-10" on:dblclick={handleClick}>
-    <div class="absolute flex justify-between w-full">
-        <div class="w-20 p-4 z-20">
-            <button on:click={() => sidebarOpen.set(true)}>
-                <Icon src={Bars3} size="32" />
-            </button>
-        </div>
-        <div class="w-20 p-4 text-right">{Math.floor($dataBuffer[0])}°🌡️<br>
-            {Math.floor($dataBuffer[9]*10)/10}V<br>
-            {Math.floor($dataBuffer[8]*1000)/1000}A
-        </div>
+
+<div class="topbar absolute left-0 top-0 w-full z-10 flex justify-between bg-zinc-800">
+    <div class="flex gap-2 py-2">
+    <button class="ml-2" on:click={() => sidebarOpen.set(true)}>
+        <Icon src={Bars3} size="32" />
+    </button>
+        <select>
+            {#each modes as mode}
+            <option>{mode}</option>
+            {/each}
+        </select>
+        
+        <select>
+            {#each views as view}
+            <option>{view}</option>
+            {/each}
+        </select>
     </div>
-    <div class="absolute flex justify-center w-full">
-        <div>
-            <div
-                style="height:{$width}px; width:300px; background-color:#36393f"
-                class="rounded-b-xl overflow-hidden flex justify-end flex-col"
-            >
-                {#if $width !== 0}
-                    <div class="flex justify-evenly p-4 w-full">
-                        <button on:click={toggleFullScreen}>
-                            <Icon src={isFullscreen ? ArrowsPointingIn : ArrowsPointingOut} size="32" />
-                        </button>
-                        <button>
-                            <Icon src={Power} size="32" />
-                        </button>
-                        <button class:text-blue-600={$emulateModel} on:click={() => emulateModel.update(v => !v)}>
-                            <Icon src={Cube} size="32"/>
-                        </button>
-                    </div>
-                {/if}
-            </div>
-            <div class="flex justify-center" on:mouseup={handleClick}>
-                <svg height="40" width="300" class="Settings_topSVG__2VXbU">
-                    <path
-                        stroke="none"
-                        fill="#36393f"
-                        d="M 0 0 C 40 0 40 40 80 40 H 220 C 260 40 260 0 300 0 Z"
-                    />
-                </svg>
-                <div
-                    class="absolute flex gap-1 h-10 w-36 justify-center items-center dots
-                {$isConnected ? 'connected' : 'disconnected'}"
-                >
-                    <span class="dot h-4 w-4" />
-                    <span class="dot h-4 w-4" />
-                    <span class="dot h-4 w-4" />
-                    <span class="dot h-4 w-4" />
-                </div>
-            </div>
-        </div>
+
+    <div class="flex gap-2 p-2">
+        <button class="action_button bg-zinc-600">
+            <Icon src={Power} size="24" />
+        </button>
+        <button class="action_button"><Icon src={Battery100} size="24" /></button>
+        <button class="action_button"><Icon src={$isConnected ? Signal : SignalSlash} size="24" /></button>
+    </div>
+    <div>
+        <button class="h-full w-20 bg-red-600 text-white">STOP</button>
     </div>
 </div>
 
-<style scoped>
-	.dot {
-		background-color: grey;
-	}
-	.disconnected .dot {
-		animation: _fade 0.5s 3s infinite alternate forwards;
-	}
-	.connected .dot:first-child {
-		background-color: #00bbe3;
-		transform: scale(1.1);
-	}
-	.dots .dot:first-child {
-		animation-delay: 0.25s;
-	}
-	.dots .dot:nth-child(2) {
-		animation-delay: 0.5s;
-	}
-	.dots .dot:nth-child(3) {
-		animation-delay: 0.75s;
-	}
-	.dots .dot:last-child {
-		animation-delay: 1s;
-	}
-	.dots .dot:last-child {
-		animation-delay: 1s;
-	}
-	@keyframes _fade {
-		from {
-			background-color: #00bbe3;
-			transform: scale(1.1);
-		}
-		to {
-			background-color: grey;
-			transform: scale(1.1);
-		}
-	}
+<style>
+    .topbar {
+        height: 50px;
+    }
+    .action_button {
+        border-radius: 4px;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        outline: 1px solid #52525b;
+    }
 </style>
