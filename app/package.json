@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "cross-env FOR_EMBEDDED=true vite build",
+    "build:web": "cross-env FOR_EMBEDDED=false vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --plugin-search-dir . --write ."
@@ -17,6 +18,7 @@
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
     "autoprefixer": "^10.4.17",
+    "cross-env": "^7.0.3",
     "husky": "^9.0.7",
     "lint-staged": "^15.2.0",
     "postcss": "^8.4.33",

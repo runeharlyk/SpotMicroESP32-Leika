@@ -3,11 +3,14 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import viteCompression from 'vite-plugin-compression';
 
+const forEmbedded = process.env.FOR_EMBEDDED == 'true'
+
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [svelte(), viteSingleFile(), viteCompression({deleteOriginFile: true})],
+	plugins: [svelte(), viteSingleFile(),
+        ...(forEmbedded ? [  viteCompression({deleteOriginFile: true})]: [])],
 	build: {
-		outDir: '../data',
+		outDir: forEmbedded ? '../data': './build',
 		emptyOutDir: true
 	}
 });
