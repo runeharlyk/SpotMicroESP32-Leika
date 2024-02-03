@@ -19,6 +19,15 @@ const randomFloatFromInterval = (min, max) =>
 const radToDeg = (val) => val * (180 / Math.PI);
 const degToRad = (val) => val * (Math.PI / 180);
 
+function createNewClientState() {
+  return {
+    model: JSON.parse(JSON.stringify(model)),
+    settings: JSON.parse(JSON.stringify(settings)),
+    logs: [...logs],
+    subscriptions: {},
+  };
+}
+
 function subscribeClientToCategory(ws, category) {
   if (!subscriptions[category]) {
     subscriptions[category] = new Set();
@@ -183,6 +192,8 @@ const updateAngles = (angles) => {
 };
 
 wss.on("connection", (ws) => {
+  const clientState = createNewClientState();
+  ws.clientState = clientState;
   ws.on("error", console.error);
 
   ws.on("message", (message) => {
@@ -213,9 +224,12 @@ wss.on("connection", (ws) => {
         break;
       case "kinematic/angle":
         if (data.angle && data.id) {
-          model.servos.angles[data.id] = data.angle;
+          ws.clientState.model.servos.angles[data.id] = data.angle;
           ws.send(
-            JSON.stringify({ type: "angles", angles: model.servos.angles })
+            JSON.stringify({
+              type: "angles",
+              angles: ws.clientState.model.servos.angles,
+            })
           );
         } else {
           ws.send(JSON.stringify(updateAngle(data.id, data.angle)));
@@ -223,11 +237,11 @@ wss.on("connection", (ws) => {
         break;
       case "kinematic/angles":
         if (data.angles) {
-          model.servos.angles = data.angles;
+          ws.clientState.model.servos.angles = data.angles;
           ws.send(
             JSON.stringify({
               type: "angles",
-              angles: model.servos.angles,
+              angles: ws.clientState.model.servos.angles,
             })
           );
         } else {
