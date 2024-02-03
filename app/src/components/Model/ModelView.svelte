@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
-import { dataBuffer, servoBuffer } from '../../lib/socket'
+import { dataBuffer, servoBuffer, socket, angles, log, mpu } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
@@ -20,10 +20,6 @@ let modelTargetAngles:number[] | Int16Array = new Array(12).fill(0)
 let modelBodyAngles:EulerAngle = { omega: 0, phi: 0, psi: 0 }
 let modelTargeBodyAngles:EulerAngle = { omega: 0, phi: 0, psi: 0 }
 
-let modelBodyPoint:Point = {x: 0, y: 0, z: 0 }
-let modelTargetBodyPoint:Point = {x: 0, y: 0, z: 0 }
-
-const dir = [ -1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
 const videoStream = `//${location}/api/stream`;
 
 let showModel = true, showStream = false
@@ -53,54 +49,18 @@ interface BodyState {
     legPositions:[number, number, number, number];
 }
 
-const radToDeg = (val:number) => val * (180 / Math.PI)
 const degToRad = (val:number) => val * (Math.PI / 180)
-
-const idle = () => {
-    const angles = new Array(12).fill(0)
-    servoBuffer.set(angles) 
-}
-
-const rest = () => {
-    const angles = [0, 90, -180, 0, 90, -180, 0, 90, -180, 0, 90, -180, ]
-    servoBuffer.set(angles) 
-}
-
-const stand = () => {
-    const angles = [0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90]
-    servoBuffer.set(angles) 
-}
-
-const calculateKinematics = () => {
-    const kinematic = new Kinematic();
-    const angles: number[] = [degToRad(modelTargeBodyAngles.omega), degToRad(modelTargeBodyAngles.phi), degToRad(modelTargeBodyAngles.psi)];
-    const center: number[] = [modelTargetBodyPoint.x, modelTargetBodyPoint.y, modelTargetBodyPoint.z];
-    const Lp = [[100,-100,100,1],[100,-100,-100,1],[-100,-100,100,1],[-100,-100,-100,1]]  
-
-    const legs = kinematic.calcIK(Lp, angles, center)
-
-    const legsAngles = legs
-        .map(x => x.map(y => radToDeg(y)))
-        .flat()
-        .map((x, i) => x * dir[i])
-    servoBuffer.set(legsAngles)
-}
 
 onMount(async () => {
     await cacheModelFiles()
     createScene()
 
-    outControllerData.subscribe(data => {
-        modelTargeBodyAngles = {omega:0, phi:(data[1]-128) / 3, psi:(data[2]-128) / 4}
-        modelTargetBodyPoint = {x:(data[4]-128) / 2, y:data[5], z:(data[3]-128) / 2} // (data[5]-128) / 4
-        calculateKinematics()
+    outControllerData.subscribe(data => {        
+        $socket.send(JSON.stringify({
+            type: "kinematic/bodystate", 
+            angles:[0, (data[1]-128)/3, (data[2]-128) / 4], 
+            position:[(data[4]-128)/2, data[5], (data[3]-128)/2]}))
     })
-
-    servoBuffer.subscribe(angles => modelTargetAngles = angles)
-
-    modelTargeBodyAngles = {omega:0, phi:0, psi:0}
-    modelTargetBodyPoint = {x:0, y:0, z:0}
-    stand()
 });
 
 const cacheModelFiles = async () => {
@@ -115,6 +75,11 @@ const cacheModelFiles = async () => {
     }
 }
 
+const updateAngles = (name:string, angle:number) => {
+    modelTargetAngles[servoNames.indexOf(name)] = angle * (180/Math.PI)
+    $socket.send(JSON.stringify({type:"kinematic/angle", angle:angle * (180/Math.PI), id:servoNames.indexOf(name)}))
+}
+
 const createScene = () => {
     sceneManager = new SceneBuilder()
         .addRenderer({ antialias: true, canvas: canvas, alpha: true})
@@ -127,7 +92,7 @@ const createScene = () => {
         .addArrowHelper({origin:{x:0, y:0, z:0}, direction:{x:0, y:-2, z:0}})
         .addFogExp2(0xcccccc, 0.015)
         .loadModel('/spot_micro.urdf.xacro')
-        .addDragControl((name:string, angle:number) => modelTargetAngles[servoNames.indexOf(name)] = angle * (180/Math.PI))
+        .addDragControl(updateAngles) 
         .handleResize()
         .addRenderCb(render)
         .startRenderLoop()
@@ -156,10 +121,11 @@ const render = () => {
 
     const forwardKinematics = new ForwardKinematics()
 
-    const points = forwardKinematics.calculateFootpoints(modelTargetAngles.map(ang => degToRad(ang)) as number[])
+    const points = forwardKinematics.calculateFootpoints(modelAngles.map(ang => degToRad(ang)) as number[])
     robot.position.y = Math.max(...points.map(coord => coord[0] / 100)) - 2.7
-    robot.rotation.z = lerp(robot.rotation.z, degToRad($dataBuffer[1] + 90), 0.1)
-    
+    robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1)
+    modelTargetAngles = $angles 
+   
     handleVideoStream()
 
     for (let i = 0; i < servoNames.length; i++) {
@@ -176,7 +142,7 @@ const render = () => {
 <svelte:window on:resize={sceneManager.handleResize}></svelte:window>
 
 <div class="absolute top-0 z-10 left-0 m-10">
-    <h1 class="text-on-background text-xl mb-2">Poses</h1>
+    <!-- <h1 class="text-on-background text-xl mb-2">Poses</h1>
     <div class="flex gap-4">
         <button class="outline outline-primary p-2 rounded-md" on:click={idle}>Idle</button>
         <button class="outline outline-primary p-2 rounded-md" on:click={rest}>Rest</button>
@@ -213,7 +179,7 @@ const render = () => {
                     <input class="w-24 bg-background" min="-180" max="180" step="0.1" bind:value={modelTargetBodyPoint[name]} on:input={calculateKinematics}> 
                 </div>
             {/each}
-        </div>
+        </div> -->
 </div>
 
 {#if showStream}
