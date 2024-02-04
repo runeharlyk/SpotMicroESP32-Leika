@@ -6,13 +6,13 @@
 	import Controller from './routes/Controller.svelte';
 	import Config from './routes/Config.svelte';
 	import Health from './routes/SystemHealth.svelte';
-	import location from './lib/location';
 	import Sidebar from './components/Sidebar.svelte';
     import FileCache from './lib/cache';
+	import { socketLocation } from './lib/location';
 
-	export let url = window.location.pathname;
+	export let url = window.location.pathname 
 	onMount(() => {
-		connect(`ws://${location}`);
+		connect(socketLocation);
         registerFetchIntercept()
 	});
 
@@ -21,9 +21,9 @@
         window.fetch = async (...args) => {
             const [resource, config] = args;
             await FileCache.openDatabase();
-            let file;
+            let file: BodyInit | Uint8Array | undefined | null;
             try {
-                file = await FileCache.getFile(resource.url);
+                file = await FileCache.getFile(resource.toString());
             } catch (error) {
                 console.log(error);
             }
