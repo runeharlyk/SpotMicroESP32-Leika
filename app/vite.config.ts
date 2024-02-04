@@ -7,8 +7,8 @@ const forEmbedded = process.env.FOR_EMBEDDED == 'true'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [svelte(), viteSingleFile(),
-        ...(forEmbedded ? [  viteCompression({deleteOriginFile: true})]: [])],
+	plugins: [svelte(), 
+        ...(forEmbedded ? [ viteSingleFile(), viteCompression({deleteOriginFile: true})]: [])],
 	build: {
 		outDir: forEmbedded ? '../data': './build',
 		emptyOutDir: true
