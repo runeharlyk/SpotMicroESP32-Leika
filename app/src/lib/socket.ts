@@ -20,7 +20,7 @@ export const data = writable();
 
 export const status:Writable<WebSocketStatus> = writable('CLOSED')
 
-export const socket:Writable<WebSocket> = writable(null)
+export const socket:Writable<WebSocket> = writable()
 
 export const connect = (url:string) => {
     status.set('CONNECTING')

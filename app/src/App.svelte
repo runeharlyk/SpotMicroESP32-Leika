@@ -6,9 +6,9 @@
 	import Controller from './routes/Controller.svelte';
 	import Config from './routes/Config.svelte';
 	import Health from './routes/SystemHealth.svelte';
-	import Sidebar from './components/Sidebar.svelte';
     import FileCache from './lib/cache';
 	import { socketLocation } from './lib/location';
+    import Settings from './routes/Settings.svelte';
 
 	export let url = window.location.pathname 
 	onMount(() => {
@@ -37,9 +37,9 @@
 
 <Router {url}>
 	<TopBar />
-	<Sidebar />
 	<div class="absolute w-full h-full bg-background text-on-background">
 		<Route path="/" component={Controller} />
+		<Route path="/settings/*page" component={Settings} />
 		<Route path="/config" component={Config} />
 		<Route path="/health" component={Health} />
 	</div>

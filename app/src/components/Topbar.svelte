@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { isConnected, dataBuffer, status } from '../lib/socket';
 	import { Icon, Bars3, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
-	import { emulateModel, sidebarOpen } from '../lib/store';
+	import { emulateModel } from '../lib/store';
+    import { Link } from 'svelte-routing'
 
     const views = ["Virtual environment", "Robot camera"]
     const modes = ["Drive", "Choreography"]
@@ -15,9 +16,9 @@
 
 <div class="topbar absolute left-0 top-0 w-full z-10 flex justify-between bg-zinc-800">
     <div class="flex gap-2 py-2">
-    <button class="ml-2" on:click={() => sidebarOpen.set(true)}>
-        <Icon src={Bars3} size="32" />
-    </button>
+        <Link to="/settings">
+            <Icon src={Bars3} size="32" />
+        </Link>
         <select bind:value={selected_modes} class="rounded-md outline outline-2 text-zinc-200 outline-zinc-600 bg-zinc-800">
             {#each modes as mode}
             <option>{mode}</option>
