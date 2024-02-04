@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode MOCK",
     "build": "cross-env FOR_EMBEDDED=true vite build",
-    "build:web": "cross-env FOR_EMBEDDED=false vite build",
+    "build:web": "cross-env FOR_EMBEDDED=false vite build --mode WEB",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --plugin-search-dir . --write ."
