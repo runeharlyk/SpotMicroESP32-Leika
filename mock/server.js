@@ -162,7 +162,7 @@ const updateSystem = () => {
   return system;
 };
 
-const updateBodyState = (angles, position) => {
+const updateBodyState = (model, angles, position) => {
   const Lp = [
     [100, -100, 100, 1],
     [100, -100, -100, 1],
@@ -253,7 +253,7 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({
               type: "angles",
-              angles: updateBodyState(data.angles, data.position),
+              angles: updateBodyState(ws.clientState.model, data.angles, data.position),
             })
           );
         } else {
@@ -310,7 +310,7 @@ app.post("/kinematic/angles/", (req, res) =>
 app.get("/kinematic/bodystate", (req, res) => res.send(model.servos.angles));
 app.post("/kinematic/bodystate", (req, res) => {
   sendUpdateToSubscribers("angles", model.servos.angles);
-  res.send(updateBodyState(req.body.angles, req.body.position));
+  res.send(updateBodyState(model, req.body.angles, req.body.position));
 });
 
 // ----------------------------------------------------------- //
