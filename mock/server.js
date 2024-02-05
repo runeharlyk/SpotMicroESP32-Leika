@@ -270,16 +270,16 @@ wss.on("connection", (ws) => {
         ws.send(JSON.stringify({ type: "logs", logs:ws.clientState.logs }));
         break;
       case "system/info":
-        ws.send(JSON.stringify(updateSystem()));
+        ws.send(JSON.stringify({ type: "info", info: updateSystem() }));
         break;
       case "system/settings":
         if (data.settings) {
           Object.entries(data.settings).forEach(
-            ([key, value]) => (settings[key] = value)
+            ([key, value]) => (ws.clientState.settings[key] = value)
           );
-          ws.send(JSON.stringify(settings));
+          ws.send(JSON.stringify(ws.clientState.settings));
         } else {
-          ws.send(JSON.stringify(settings));
+          ws.send(JSON.stringify({type:"settings", settings: ws.clientState.settings}));
         }
         break;
       case "system/stop":

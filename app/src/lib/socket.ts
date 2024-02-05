@@ -10,7 +10,7 @@ export const battery = writable({})
 export const mpu = writable({heading:0})
 export const distances = writable({})
 export const settings = writable({})
-export const systemInfo = writable({})
+export const systemInfo = writable({} as number)
 
 export const dataBuffer = writable(new Float32Array(13))
 
@@ -66,6 +66,17 @@ const _message = (event:any) => {
         switch (data.type) {
             case "angles":
                 angles.set(data.angles)
+                break
+            case "logs":
+                log.set(data.logs)
+                break
+            case "log":
+                log.update(entries => {entries.push(data.log); return entries})
+                break
+            case "settings":
+                settings.set(data.settings)
+            case "info":
+                systemInfo.set(data.info)
                 break
             case "mpu":
                 mpu.set(data.mpu)
