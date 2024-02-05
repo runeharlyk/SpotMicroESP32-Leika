@@ -1,11 +1,11 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
-import { dataBuffer, servoBuffer, socket, angles, log, mpu } from '../../lib/socket'
+import {socket, angles, mpu } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
 import { outControllerData } from '../../lib/store';
-import Kinematic, { ForwardKinematics } from '../../lib/kinematic';
+import { ForwardKinematics } from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
 import SceneBuilder from './sceneBuilder';
