@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount } from 'svelte';
+import { onDestroy, onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
 import { dataBuffer, servoBuffer, socket, angles, log, mpu } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
@@ -62,6 +62,10 @@ onMount(async () => {
             position:[(data[4]-128)/2, data[5], (data[3]-128)/2]}))
     })
 });
+
+onDestroy(() => {
+    canvas.remove()
+})
 
 const cacheModelFiles = async () => {
     let data = await fetch("/stl.zip").then(data => data.arrayBuffer())
