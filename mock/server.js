@@ -277,8 +277,9 @@ wss.on("connection", (ws) => {
         }
         break;
       case "system/stop":
-        model.running = false;
-        ws.send(JSON.stringify(settings));
+        ws.clientState.model.running = false;
+        ws.clientState.logs.push("[2024-02-05 19:10:00] [Warning] STOPPING SERVOS")
+        ws.send(JSON.stringify({type:"log", log:ws.clientState.logs.last()}));
         break;
       default:
         ws.send(JSON.stringify({ error: "Unknown request type" }));

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { isConnected, dataBuffer, status } from '../lib/socket';
+	import { isConnected, status, socket } from '../lib/socket';
 	import { Icon, Bars3, XMark, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
 	import { emulateModel } from '../lib/store';
     import { Link, useLocation } from 'svelte-routing'
@@ -15,6 +15,12 @@
 
     $: emulateModel.set(selected_view === views[0])
     $: settingOpen = $location.pathname.includes('/settings')
+
+    const stop = () => {
+        if ($isConnected) {
+            $socket.send(JSON.stringify({type:"system/stop"}))
+        }
+    }
 </script>
 
 
@@ -50,7 +56,7 @@
         <button class="action_button"><Icon src={$isConnected ? Signal : SignalSlash} size="24" /></button>
     </div>
     <div>
-        <button class="h-full w-20 bg-red-600 text-white">STOP</button>
+        <button class="h-full w-20 bg-red-600 text-white" on:click={stop}>STOP</button>
     </div>
 </div>
 
