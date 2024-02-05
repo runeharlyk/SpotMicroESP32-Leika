@@ -214,7 +214,7 @@ export default class SceneBuilder {
 
     isJoint = j => j.isURDFJoint && j.jointType !== 'fixed';
 
-    highlightLinkGeometry = (m, revert:boolean, material) => {
+    highlightLinkGeometry = (m: URDFMimicJoint, revert:boolean, material: MeshPhongMaterial) => {
         const traverse = c => {
             if (c.type === 'Mesh') {
                 if (revert) {
@@ -238,26 +238,13 @@ export default class SceneBuilder {
         traverse(m);
     };
 
-    public loadModel = (urlXacro:string) => {
-        const xacroLoader = new XacroLoader();
-        xacroLoader.load(urlXacro, xml => {
-            const urdfLoader = new URDFLoader();
-            urdfLoader.workingPath = LoaderUtils.extractUrlBase(urlXacro);
-
-            this.model = urdfLoader.parse(xml);
-            this.model.rotation.x = -Math.PI / 2;
-            this.model.rotation.z = Math.PI / 2;
-            this.model.traverse(c => c.castShadow = true);
-            this.model.updateMatrixWorld(true);
-            this.model.scale.setScalar(10);      
-
-            this.scene.add(this.model);
-
-        }, (error) => console.log(error));
+    public addModel = (model: any) => {
+        this.model = model
+        this.scene.add(model)
         return this 
     }
 
-    public addDragControl = (updateAngle) => {
+    public addDragControl = (updateAngle:any) => {
         const highlightColor = '#FFFFFF'
         const highlightMaterial =
             new MeshPhongMaterial({

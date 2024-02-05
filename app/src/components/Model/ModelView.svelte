@@ -4,7 +4,7 @@ import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
 import {socket, angles, mpu } from '../../lib/socket'
 import { lerp } from '../../lib/utils';
 import uzip from 'uzip';
-import { outControllerData } from '../../lib/store';
+import { model, outControllerData } from '../../lib/store';
 import { ForwardKinematics } from '../../lib/kinematic';
 import location from '../../lib/location';
 import FileCache from '../../lib/cache';
@@ -37,23 +37,11 @@ interface EulerAngle {
     psi: number;
 }
 
-interface Point {
-    x: number;
-    y: number;
-    z: number;
-}
-
-interface BodyState {
-    euler: EulerAngle;
-    position: Point;
-    legPositions:[number, number, number, number];
-}
-
 const degToRad = (val:number) => val * (Math.PI / 180)
 
 onMount(async () => {
     await cacheModelFiles()
-    createScene()
+    await createScene()
 
     outControllerData.subscribe(data => {        
         $socket.send(JSON.stringify({
@@ -84,7 +72,7 @@ const updateAngles = (name:string, angle:number) => {
     $socket.send(JSON.stringify({type:"kinematic/angle", angle:angle * (180/Math.PI), id:servoNames.indexOf(name)}))
 }
 
-const createScene = () => {
+const createScene = async () => {
     sceneManager = new SceneBuilder()
         .addRenderer({ antialias: true, canvas: canvas, alpha: true})
         .addPerspectiveCamera({x:-0.5, y:0.5, z:1})
@@ -96,7 +84,7 @@ const createScene = () => {
         .addDirectionalLight({x:10, y:100, z:10, color:0xffffff, intensity:1})
         .addArrowHelper({origin:{x:0, y:0, z:0}, direction:{x:0, y:-2, z:0}})
         .addFogExp2(0xcccccc, 0.015)
-        .loadModel('/spot_micro.urdf.xacro')
+        .addModel($model)
         .addDragControl(updateAngles) 
         .handleResize()
         .addRenderCb(render)

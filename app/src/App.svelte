@@ -9,11 +9,16 @@
     import FileCache from './lib/cache';
 	import { socketLocation } from './lib/location';
     import Settings from './routes/Settings.svelte';
+	import { jointNames, model } from './lib/store';
+	import { loadModelAsync } from './lib/modelLoader';
 
 	export let url = window.location.pathname 
-	onMount(() => {
+	onMount(async () => {
 		connect(socketLocation);
         registerFetchIntercept()
+        const [urdf, JOINT_NAME] = await loadModelAsync('/spot_micro.urdf.xacro') 
+        jointNames.set(JOINT_NAME)
+        model.set(urdf)
 	});
 
     const registerFetchIntercept = () => {
