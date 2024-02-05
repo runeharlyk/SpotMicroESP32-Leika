@@ -23,7 +23,7 @@ function createNewClientState() {
   return {
     model: JSON.parse(JSON.stringify(model)),
     settings: JSON.parse(JSON.stringify(settings)),
-    logs: [...logs],
+    logs: JSON.parse(JSON.stringify(logs)),
     subscriptions: {},
   };
 }
@@ -50,6 +50,12 @@ const sendUpdateToSubscribers = (category, data) => {
       client.send(message);
     }
   }
+};
+
+if (!Array.prototype.last){
+    Array.prototype.last = function(){
+        return this[this.length - 1];
+    };
 };
 
 const model = {
@@ -96,10 +102,10 @@ const settings = {
 };
 
 const logs = [
-  "Booting up",
-  "Starting webserver",
-  "Loading setting",
-  "Connected to Rune private network",
+  "[2023-02-05 10:00:00] [verbose] Booting up",
+  "[2023-02-05 10:00:10] [verbose] Starting webserver",
+  "[2023-02-05 10:00:20] [verbose] Loading setting",
+  "[2023-02-05 10:00:30] [verbose] Connected to Rune private network",
 ];
 
 const system = {
@@ -260,8 +266,8 @@ wss.on("connection", (ws) => {
           ws.send(JSON.stringify({ angles: model.servos.angles }));
         }
         break;
-      case "system/log":
-        ws.send(JSON.stringify(logs));
+      case "system/logs":
+        ws.send(JSON.stringify({ type: "logs", logs:ws.clientState.logs }));
         break;
       case "system/info":
         ws.send(JSON.stringify(updateSystem()));
