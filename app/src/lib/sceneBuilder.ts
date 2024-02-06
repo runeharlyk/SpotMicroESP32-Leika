@@ -23,9 +23,8 @@ import { Mesh,
 } from "three";
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import URDFLoader, { type URDFMimicJoint } from "urdf-loader";
+import { type URDFMimicJoint } from "urdf-loader";
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
-import { XacroLoader } from "xacro-parser";
 
 export const addScene = () => new Scene()
 
@@ -55,6 +54,13 @@ interface arrowOptions {
 type directionalLight = position & light
 
 type gridHelperOptions = gridOptions & position
+
+function calculateCurrentSunElevation() {
+    let now = new Date();
+    let decimalTime = now.getHours() + now.getMinutes() / 60;
+    let normalizedTime = ((decimalTime - 6) % 12) / 6 - 1;
+    return 10 * Math.sin(normalizedTime * Math.PI);
+}
 
 export default class SceneBuilder {
     public scene: Scene
@@ -98,7 +104,7 @@ export default class SceneBuilder {
             rayleigh: 3,
             mieCoefficient: 0.005,
             mieDirectionalG: 0.7,
-            elevation: -10,
+            elevation: calculateCurrentSunElevation(),
             azimuth: 180,
             exposure: this.renderer.toneMappingExposure
         };

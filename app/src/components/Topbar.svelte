@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { isConnected, status, socket } from '../lib/socket';
+	import { isConnected, status, socket } from '$lib/socket';
 	import { Icon, Bars3, XMark, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
-	import { emulateModel } from '../lib/store';
+	import { emulateModel } from '$lib/store';
     import { Link, useLocation } from 'svelte-routing'
 
     const views = ["Virtual environment", "Robot camera"]

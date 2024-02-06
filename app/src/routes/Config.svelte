@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Card, CardHeader } from "../components/index";
-	import { socket, isConnected } from "../lib/socket";
-    import { throttler } from "../lib/throttle";
+	import { socket, isConnected } from "$lib/socket";
+    import { throttler } from "$lib/throttle";
 
     let throttle = new throttler();
     let throttle_timing = 25;

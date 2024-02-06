@@ -1,14 +1,14 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
-import {socket, angles, mpu } from '../../lib/socket'
-import { lerp } from '../../lib/utils';
+import {socket, angles, mpu } from '$lib/socket'
+import { lerp } from '$lib/utils';
 import uzip from 'uzip';
-import { model, outControllerData } from '../../lib/store';
-import { ForwardKinematics } from '../../lib/kinematic';
-import location from '../../lib/location';
-import FileCache from '../../lib/cache';
-import SceneBuilder from './sceneBuilder';
+import { model, outControllerData } from '$lib/store';
+import { ForwardKinematics } from '$lib/kinematic';
+import location from '$lib/location';
+import FileCache from '$lib/cache';
+import SceneBuilder from '$lib/sceneBuilder';
 
 let sceneManager:SceneBuilder
 let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement
