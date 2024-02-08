@@ -134,47 +134,6 @@ const render = () => {
   
 <svelte:window on:resize={sceneManager.handleResize}></svelte:window>
 
-<div class="absolute top-0 z-10 left-0 m-10">
-    <!-- <h1 class="text-on-background text-xl mb-2">Poses</h1>
-    <div class="flex gap-4">
-        <button class="outline outline-primary p-2 rounded-md" on:click={idle}>Idle</button>
-        <button class="outline outline-primary p-2 rounded-md" on:click={rest}>Rest</button>
-        <button class="outline outline-primary p-2 rounded-md" on:click={stand}>Stand</button>
-    </div>
-    <div class="w-full">
-    <h1 class="text-on-background text-xl mt-4">Motor angles</h1>
-        {#each Object.entries(sceneManager?.model?.joints ?? {}).filter(x => x[1].jointValue.length > 0) as [name, joint], i}
-            <div class="flex justify-between mb-2">
-                <span class="w-40">{name}: </span>
-                <input type="range" min="{radToDeg(joint.limit.lower)}" max="{radToDeg(joint.limit.upper)}" step="0.1" class="accent-primary" bind:value={$servoBuffer[i]}>
-                <input class="w-24 bg-background" min="{radToDeg(joint.limit.lower)}" max="{radToDeg(joint.limit.upper)}" step="0.1" bind:value={$servoBuffer[i]}> 
-            </div>
-        {/each}
-    </div>
-
-    <div>
-    <h1 class="text-on-background text-xl mb-2">Body rotation</h1>
-        {#each Object.keys(modelBodyAngles) as name}
-            <div class="flex justify-between mb-2">
-                <span class="w-40">{name}: </span>
-                <input type="range" min="-180" max="180" step="0.1" class="accent-primary" bind:value={modelTargeBodyAngles[name]} on:input={calculateKinematics}>
-                <input class="w-24 bg-background" min="-180" max="180" step="0.1" bind:value={modelTargeBodyAngles[name]} on:input={calculateKinematics}> 
-            </div>
-        {/each}
-    </div>
-
-    <div>
-        <h1 class="text-on-background text-xl mb-2">Body position</h1>
-            {#each Object.keys(modelBodyPoint) as name}
-                <div class="flex justify-between mb-2">
-                    <span class="w-40">{name}: </span>
-                    <input type="range" min="-180" max="180" step="0.1" class="accent-primary" bind:value={modelTargetBodyPoint[name]} on:input={calculateKinematics}>
-                    <input class="w-24 bg-background" min="-180" max="180" step="0.1" bind:value={modelTargetBodyPoint[name]} on:input={calculateKinematics}> 
-                </div>
-            {/each}
-        </div> -->
-</div>
-
 {#if showStream}
     <img
         bind:this={stream}
