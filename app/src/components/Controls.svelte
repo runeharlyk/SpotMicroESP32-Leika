@@ -1,9 +1,9 @@
 <script lang="ts">
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
-	import { throttler } from '../lib/throttle';
-	import { socket } from '../lib/socket';
-	import { emulateModel, input, outControllerData } from '../lib/store';
+	import { throttler } from '$lib/throttle';
+	import { socket } from '$lib/socket';
+	import { emulateModel, input, outControllerData } from '$lib/store';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;

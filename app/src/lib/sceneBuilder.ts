@@ -17,11 +17,14 @@ import { Mesh,
     type ColorRepresentation, 
     type WebGLRendererParameters,
     MeshPhongMaterial,
+    EquirectangularReflectionMapping,
+    ACESFilmicToneMapping,
+    MathUtils,
 } from "three";
+import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import URDFLoader, { type URDFMimicJoint } from "urdf-loader";
+import { type URDFMimicJoint } from "urdf-loader";
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
-import { XacroLoader } from "xacro-parser";
 
 export const addScene = () => new Scene()
 
@@ -52,6 +55,13 @@ type directionalLight = position & light
 
 type gridHelperOptions = gridOptions & position
 
+function calculateCurrentSunElevation() {
+    let now = new Date();
+    let decimalTime = now.getHours() + now.getMinutes() / 60;
+    let normalizedTime = ((decimalTime - 6) % 12) / 6 - 1;
+    return 10 * Math.sin(normalizedTime * Math.PI);
+}
+
 export default class SceneBuilder {
     public scene: Scene
     public camera: PerspectiveCamera
@@ -68,6 +78,9 @@ export default class SceneBuilder {
 
     constructor() {
         this.scene = new Scene()
+        if (this.scene.environment?.mapping) {
+            this.scene.environment.mapping = EquirectangularReflectionMapping;
+        } 
         return this
     }
 
@@ -76,7 +89,37 @@ export default class SceneBuilder {
         this.renderer.outputColorSpace = "srgb";
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = PCFSoftShadowMap;
+        this.renderer.toneMapping = ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.85;
         document.body.appendChild(this.renderer.domElement);
+        return this
+    }
+
+    public addSky = () => {
+        const sky = new Sky();
+        sky.scale.setScalar(450000);
+        this.scene.add(sky);
+        const effectController = {
+            turbidity: 10,
+            rayleigh: 3,
+            mieCoefficient: 0.005,
+            mieDirectionalG: 0.7,
+            elevation: calculateCurrentSunElevation(),
+            azimuth: 180,
+            exposure: this.renderer.toneMappingExposure
+        };
+        const uniforms = sky.material.uniforms;
+        uniforms['turbidity'].value = effectController.turbidity;
+        uniforms['rayleigh'].value = effectController.rayleigh;
+        uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+        uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
+        this.renderer.toneMappingExposure = 0.5;
+        const phi = MathUtils.degToRad( 90 - effectController.elevation );
+        const theta = MathUtils.degToRad( effectController.azimuth );
+        const sun = new Vector3();
+
+        sun.setFromSphericalCoords( 1, phi, theta );
+        uniforms[ 'sunPosition' ].value.copy( sun );
         return this
     }
 
@@ -126,6 +169,9 @@ export default class SceneBuilder {
     public addGridHelper = (options:gridHelperOptions) => {
         this.gridHelper = new GridHelper(options.size, options.divisions);
         this.gridHelper.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
+        this.gridHelper.material.opacity = 0.2;
+        this.gridHelper.material.depthWrite = false;
+        this.gridHelper.material.transparent = true;
         this.scene.add(this.gridHelper);
         return this
     }
@@ -174,7 +220,7 @@ export default class SceneBuilder {
 
     isJoint = j => j.isURDFJoint && j.jointType !== 'fixed';
 
-    highlightLinkGeometry = (m, revert:boolean, material) => {
+    highlightLinkGeometry = (m: URDFMimicJoint, revert:boolean, material: MeshPhongMaterial) => {
         const traverse = c => {
             if (c.type === 'Mesh') {
                 if (revert) {
@@ -198,26 +244,13 @@ export default class SceneBuilder {
         traverse(m);
     };
 
-    public loadModel = (urlXacro:string) => {
-        const xacroLoader = new XacroLoader();
-        xacroLoader.load(urlXacro, xml => {
-            const urdfLoader = new URDFLoader();
-            urdfLoader.workingPath = LoaderUtils.extractUrlBase(urlXacro);
-
-            this.model = urdfLoader.parse(xml);
-            this.model.rotation.x = -Math.PI / 2;
-            this.model.rotation.z = Math.PI / 2;
-            this.model.traverse(c => c.castShadow = true);
-            this.model.updateMatrixWorld(true);
-            this.model.scale.setScalar(10);      
-
-            this.scene.add(this.model);
-
-        }, (error) => console.log(error));
+    public addModel = (model: any) => {
+        this.model = model
+        this.scene.add(model)
         return this 
     }
 
-    public addDragControl = (updateAngle) => {
+    public addDragControl = (updateAngle:any) => {
         const highlightColor = '#FFFFFF'
         const highlightMaterial =
             new MeshPhongMaterial({
@@ -232,18 +265,14 @@ export default class SceneBuilder {
             this.setJointValue(joint.name, angle);
             updateAngle(joint.name, angle)
         };
-        dragControls.onDragStart = () => {
-            this.controls.enabled = false;
-        };
-        dragControls.onDragEnd = () => {
-            this.controls.enabled = true;
-        };
-        dragControls.onHover = (joint:URDFMimicJoint) => {
-            this.highlightLinkGeometry(joint, false, highlightMaterial);
-        }
-        dragControls.onUnhover = (joint:URDFMimicJoint) => {
-            this.highlightLinkGeometry(joint, true, highlightMaterial);
-        }
+        dragControls.onDragStart = () => this.controls.enabled = false;
+        dragControls.onDragEnd = () => this.controls.enabled = true;
+        dragControls.onHover = (joint:URDFMimicJoint) => this.highlightLinkGeometry(joint, false, highlightMaterial);
+        dragControls.onUnhover = (joint:URDFMimicJoint) => this.highlightLinkGeometry(joint, true, highlightMaterial);
+
+        this.renderer.domElement.addEventListener('touchstart', (data) => dragControls._mouseDown(data.touches[0]));
+        this.renderer.domElement.addEventListener('touchmove', (data) => dragControls._mouseMove(data.touches[0]))
+        this.renderer.domElement.addEventListener('touchup', (data) => dragControls._mouseUp(data.touches[0]));
         return this
     }
 

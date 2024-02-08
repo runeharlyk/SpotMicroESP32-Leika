@@ -4,6 +4,14 @@ export type WebSocketStatus = 'OPEN' | 'CONNECTING' | 'CLOSED'
 
 export const isConnected = writable(false)
 
+export const angles = writable(new Int16Array(12).fill(0))
+export const log = writable([])
+export const battery = writable({})
+export const mpu = writable({heading:0})
+export const distances = writable({})
+export const settings = writable({})
+export const systemInfo = writable({} as number)
+
 export const dataBuffer = writable(new Float32Array(13))
 
 export const servoBuffer:Writable<Int16Array|number[]> = writable(new Int16Array(12))
@@ -12,7 +20,7 @@ export const data = writable();
 
 export const status:Writable<WebSocketStatus> = writable('CLOSED')
 
-export const socket:Writable<WebSocket> = writable(null)
+export const socket:Writable<WebSocket> = writable()
 
 export const connect = (url:string) => {
     status.set('CONNECTING')
@@ -42,11 +50,43 @@ const _disconnected = () => {
     isConnected.set(false)
 }
 
-const _message = (event) => {    
+const _message = (event:any) => {    
     if (event.data instanceof ArrayBuffer) {
         let buffer = new Int8Array(event.data);
         if(buffer.length === 44) {
             dataBuffer.set(new Float32Array(buffer.buffer) )
         }
-    } else dataBuffer.set(JSON.parse(event.data));
+    } else {
+        let data = event.data
+        try {
+            data = JSON.parse(event.data)
+        } catch (error) {
+            console.warn(error)
+        }
+        switch (data.type) {
+            case "angles":
+                angles.set(data.angles)
+                break
+            case "logs":
+                log.set(data.logs)
+                break
+            case "log":
+                log.update(entries => {entries.push(data.log); return entries})
+                break
+            case "settings":
+                settings.set(data.settings)
+            case "info":
+                systemInfo.set(data.info)
+                break
+            case "mpu":
+                mpu.set(data.mpu)
+                break
+            case "distances":
+                distances.set(data.distances)
+                break
+             case "battery":
+                battery.set(data.battery)
+                break    
+        }
+    }
 }

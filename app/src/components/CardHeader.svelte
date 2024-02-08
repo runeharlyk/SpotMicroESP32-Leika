@@ -1,1 +1,0 @@
-<h2 class={`${$$props.class} text-lg border-b border-gray-600 text-on-background`}><slot/></h2>
