@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable } from "svelte/store";
 
 export const persistentStore = (key:string, initialValue:any) => {
     const savedValue = JSON.parse(localStorage.getItem(key) as string);

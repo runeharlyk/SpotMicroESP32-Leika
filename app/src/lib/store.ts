@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { persistentStore } from './utils';
+import { persistentStore } from '$lib/utilities';
 
 export const emulateModel = writable(true);
 
