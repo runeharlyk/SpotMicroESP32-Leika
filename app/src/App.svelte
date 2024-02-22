@@ -2,13 +2,14 @@
 	import { Router, Route } from 'svelte-routing';
 	import { onMount } from 'svelte';
 	import TopBar from './components/TopBar.svelte';
-	import { connect } from './lib/socket';
+	import { connect } from '$lib/socket';
 	import Controller from './routes/Controller.svelte';
-    import FileCache from './lib/cache';
-	import { socketLocation } from './lib/location';
+    import FileService from '$lib/services/file-service';
+	import { socketLocation } from '$lib/location';
     import Settings from './routes/Settings.svelte';
-	import { jointNames, model } from './lib/store';
-	import { loadModelAsync } from './lib/modelLoader';
+	import { jointNames, model } from '$lib/store';
+	import { loadModelAsync } from '$lib/utilities';
+	import type { Result } from '$lib/utilities/result';
 
 	export let url = window.location.pathname 
 	onMount(async () => {
@@ -23,16 +24,10 @@
         const { fetch: originalFetch } = window;
         window.fetch = async (...args) => {
             const [resource, config] = args;
-            await FileCache.openDatabase();
-            let file: BodyInit | Uint8Array | undefined | null;
-            try {
-                file = await FileCache.getFile(resource.toString());
-            } catch (error) {
-                console.log(error);
-            }
-
-            return file 
-            ? new Response(file)
+            let file: Result<Uint8Array | undefined, string>;
+            file = await FileService.getFile(resource.toString());
+            return file.isOk() 
+            ? new Response(file.inner)
             : originalFetch(resource, config) 
         };
     }

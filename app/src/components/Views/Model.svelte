@@ -7,7 +7,7 @@ import uzip from 'uzip';
 import { model, outControllerData } from '$lib/store';
 import { ForwardKinematics } from '$lib/kinematic';
 import location from '$lib/location';
-import FileCache from '$lib/cache';
+import FileService from '$lib/services/file-service';
 import SceneBuilder from '$lib/sceneBuilder';
 
 let sceneManager:SceneBuilder
@@ -59,11 +59,11 @@ const cacheModelFiles = async () => {
     let data = await fetch("/stl.zip").then(data => data.arrayBuffer())
     
     var files = uzip.parse(data);
-    await FileCache.openDatabase()
+    await FileService.openDatabase()
     
     for(const [path, data] of Object.entries(files) as [path:string, data:Uint8Array][]){
         const url = new URL(path, window.location.href)
-        FileCache.saveFile(url.toString(), data)
+        FileService.saveFile(url.toString(), data)
     }
 }
 
