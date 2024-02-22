@@ -1,12 +1,18 @@
-export class Err<T> {
+export class Err<T, U> {
   #inner: T
+  #exception?: U
 
-  constructor(inner: T) {
+  constructor(inner: T, exception?: U) {
     this.#inner = inner
+    this.#exception = exception
   }
 
   get inner(): T {
     return this.#inner
+  }
+
+  get exception(): U | undefined {
+    return this.#exception;
   }
 
   /**
@@ -21,7 +27,7 @@ export class Err<T> {
    * Type guard for `Err`
    * @returns `true` if `Err`; `false` if `Ok`
    */
-  isErr(): this is Err<T> {
+  isErr(): this is Err<T, U> {
     return true
   }
 
@@ -30,7 +36,7 @@ export class Err<T> {
    * @param inner
    * @returns `Err(inner)`
    */
-  static new<E>(inner: E): Err<E> {
-    return new Err<E>(inner)
+  static new<E, F>(inner: E, exception: F): Err<E, F> {
+    return new Err<E, F>(inner, exception)
   }
 }
