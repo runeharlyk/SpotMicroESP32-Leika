@@ -2,7 +2,7 @@
 import { onDestroy, onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
 import {socket, angles, mpu } from '$lib/socket'
-import { lerp } from '$lib/utils';
+import { lerp } from '$lib/utilities';
 import uzip from 'uzip';
 import { model, outControllerData } from '$lib/store';
 import { ForwardKinematics } from '$lib/kinematic';
