@@ -1,7 +1,7 @@
 <script lang="ts">
     import { socket, isConnected, systemInfo } from "../../lib/socket";
     import { onMount } from 'svelte'
-	import { humanFileSize } from "../../lib/utils";
+	import { humanFileSize } from "$lib/utilities";
     
     onMount(() => {
         if ($isConnected) {
