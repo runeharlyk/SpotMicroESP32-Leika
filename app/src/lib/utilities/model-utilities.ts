@@ -19,7 +19,7 @@ export const loadModelAsync = async (url:string):Promise<[URDFRobot, string[]]> 
         model.updateMatrixWorld(true);
         model.scale.setScalar(10);
         const joints = Object.entries(model.joints)
-            .filter(joint => joint[1]._jointType !== 'fixed')
+            .filter(joint => joint[1].jointType !== 'fixed')
             .map(joint => joint[0])
 
         resolve([model, joints]); 
