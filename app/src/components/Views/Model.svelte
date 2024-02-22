@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial} from 'three';
-import {socket, angles, mpu } from '$lib/socket'
+import socketService from '$lib/services/socket-service';
 import { lerp } from '$lib/utilities';
 import uzip from 'uzip';
 import { model, outControllerData } from '$lib/store';
@@ -9,6 +9,9 @@ import { ForwardKinematics } from '$lib/kinematic';
 import { location } from '$lib/utilities';
 import FileService from '$lib/services/file-service';
 import SceneBuilder from '$lib/sceneBuilder';
+
+const angles = socketService.angles
+const mpu = socketService.mpu
 
 let sceneManager:SceneBuilder
 let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement
@@ -44,7 +47,7 @@ onMount(async () => {
     await createScene()
 
     outControllerData.subscribe(data => {        
-        $socket.send(JSON.stringify({
+        socketService.send(JSON.stringify({
             type: "kinematic/bodystate", 
             angles:[0, (data[1]-128)/3, (data[2]-128) / 4], 
             position:[(data[4]-128)/2, data[5], (data[3]-128)/2]}))
@@ -59,7 +62,6 @@ const cacheModelFiles = async () => {
     let data = await fetch("/stl.zip").then(data => data.arrayBuffer())
     
     var files = uzip.parse(data);
-    await FileService.openDatabase()
     
     for(const [path, data] of Object.entries(files) as [path:string, data:Uint8Array][]){
         const url = new URL(path, window.location.href)
@@ -69,7 +71,7 @@ const cacheModelFiles = async () => {
 
 const updateAngles = (name:string, angle:number) => {
     modelTargetAngles[servoNames.indexOf(name)] = angle * (180/Math.PI)
-    $socket.send(JSON.stringify({type:"kinematic/angle", angle:angle * (180/Math.PI), id:servoNames.indexOf(name)}))
+    socketService.send(JSON.stringify({type:"kinematic/angle", angle:angle * (180/Math.PI), id:servoNames.indexOf(name)}))
 }
 
 const createScene = async () => {
@@ -117,7 +119,7 @@ const render = () => {
     const points = forwardKinematics.calculateFootpoints(modelAngles.map(ang => degToRad(ang)) as number[])
     robot.position.y = Math.max(...points.map(coord => coord[0] / 100)) - 2.7
     robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1)
-    modelTargetAngles = $angles 
+    modelTargetAngles = $angles
    
     handleVideoStream()
 

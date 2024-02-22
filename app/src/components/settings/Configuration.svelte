@@ -1,11 +1,14 @@
 <script lang="ts">
-    import { socket, isConnected, settings } from "../../lib/socket";
+    import socketService from "$lib/services/socket-service";
     import { onMount } from 'svelte'
     
+    let isConnected = socketService.isConnected
+    let settings = socketService.settings
+
     onMount(() => {
         if ($isConnected) {
             const message = JSON.stringify({type: 'system/settings'})
-            $socket.send(message)
+            socketService.send(message)
         }
     })
 

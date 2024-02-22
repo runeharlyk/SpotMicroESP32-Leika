@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { isConnected, status, socket } from '$lib/socket';
+	import socketService from '$lib/services/socket-service';
 	import { Icon, Bars3, XMark, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
 	import { emulateModel } from '$lib/store';
     import { Link, useLocation } from 'svelte-routing'
@@ -12,13 +12,14 @@
 	let selected_view = views[0];
 	let selected_modes = modes[0];
     let settingOpen = window.location.pathname.includes('/settings')
+    let isConnected = socketService.isConnected
 
     $: emulateModel.set(selected_view === views[0])
     $: settingOpen = $location.pathname.includes('/settings')
 
     const stop = () => {
         if ($isConnected) {
-            $socket.send(JSON.stringify({type:"system/stop"}))
+            socketService.send(JSON.stringify({type:"system/stop"}))
         }
     }
 </script>

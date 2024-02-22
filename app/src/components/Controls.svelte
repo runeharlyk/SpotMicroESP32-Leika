@@ -2,7 +2,7 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { throttler } from '$lib/utilities';
-	import { socket } from '$lib/socket';
+	import socketService from '$lib/services/socket-service';
 	import { emulateModel, input, outControllerData } from '$lib/store';
 
 	let throttle = new throttler();
@@ -64,7 +64,7 @@
 
         outControllerData.set(data)
 
-        if(!$emulateModel) $socket.send(data);
+        if(!$emulateModel) socketService.send(data);
 	};
 
 </script>

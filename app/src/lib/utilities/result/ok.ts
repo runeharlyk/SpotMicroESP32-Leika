@@ -33,4 +33,12 @@ export class Ok<T> {
   static new<T>(inner: T): Ok<T> {
     return new Ok<T>(inner)
   }
+
+  /**
+   * Create an empty `Ok`
+   * @returns `Ok(void)` 
+   */
+  static void(): Ok<void> {
+    return new Ok(undefined)
+  }
 }

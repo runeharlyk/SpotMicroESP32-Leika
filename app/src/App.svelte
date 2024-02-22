@@ -2,9 +2,9 @@
 	import { Router, Route } from 'svelte-routing';
 	import { onMount } from 'svelte';
 	import TopBar from './components/TopBar.svelte';
-	import { connect } from '$lib/socket';
+	import socketService from '$lib/services/socket-service';
 	import Controller from './routes/Controller.svelte';
-    import FileService from '$lib/services/file-service';
+    import fileService from '$lib/services/file-service';
     import Settings from './routes/Settings.svelte';
 	import { jointNames, model } from '$lib/store';
 	import { loadModelAsync } from '$lib/utilities';
@@ -13,7 +13,7 @@
 
 	export let url = window.location.pathname 
 	onMount(async () => {
-		connect(socketLocation);
+		socketService.connect(socketLocation);
         registerFetchIntercept()
         const [urdf, JOINT_NAME] = await loadModelAsync('/spot_micro.urdf.xacro') 
         jointNames.set(JOINT_NAME)
@@ -25,7 +25,7 @@
         window.fetch = async (...args) => {
             const [resource, config] = args;
             let file: Result<Uint8Array | undefined, string>;
-            file = await FileService.getFile(resource.toString());
+            file = await fileService.getFile(resource.toString());
             return file.isOk() 
             ? new Response(file.inner)
             : originalFetch(resource, config) 
