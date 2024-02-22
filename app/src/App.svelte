@@ -5,10 +5,10 @@
 	import { connect } from '$lib/socket';
 	import Controller from './routes/Controller.svelte';
     import FileService from '$lib/services/file-service';
-	import { socketLocation } from '$lib/location';
     import Settings from './routes/Settings.svelte';
 	import { jointNames, model } from '$lib/store';
 	import { loadModelAsync } from '$lib/utilities';
+	import { socketLocation } from '$lib/utilities';
 	import type { Result } from '$lib/utilities/result';
 
 	export let url = window.location.pathname 

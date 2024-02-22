@@ -6,7 +6,7 @@ import { lerp } from '$lib/utilities';
 import uzip from 'uzip';
 import { model, outControllerData } from '$lib/store';
 import { ForwardKinematics } from '$lib/kinematic';
-import location from '$lib/location';
+import { location } from '$lib/utilities';
 import FileService from '$lib/services/file-service';
 import SceneBuilder from '$lib/sceneBuilder';
 
