@@ -1,7 +1,7 @@
 <script lang="ts">
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
-	import { throttler } from '$lib/throttle';
+	import { throttler } from '$lib/utilities';
 	import { socket } from '$lib/socket';
 	import { emulateModel, input, outControllerData } from '$lib/store';
 
