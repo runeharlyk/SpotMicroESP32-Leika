@@ -15,9 +15,15 @@
 	onMount(async () => {
 		socketService.connect(socketLocation);
         registerFetchIntercept()
-        const [urdf, JOINT_NAME] = await loadModelAsync('/spot_micro.urdf.xacro') 
-        jointNames.set(JOINT_NAME)
-        model.set(urdf)
+        const modelRes = await loadModelAsync('/spot_micro.urdf.xacro') 
+        
+        if (modelRes.isOk()) {
+            const [urdf, JOINT_NAME] = modelRes.inner
+            jointNames.set(JOINT_NAME)
+            model.set(urdf)
+        } else {
+            console.error(modelRes.inner, {"exception": modelRes.exception})
+        }
 	});
 
     const registerFetchIntercept = () => {

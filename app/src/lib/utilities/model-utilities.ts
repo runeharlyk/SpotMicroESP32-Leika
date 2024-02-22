@@ -1,8 +1,9 @@
 import { LoaderUtils } from "three";
 import URDFLoader, { type URDFRobot } from "urdf-loader"
 import { XacroLoader } from "xacro-parser"
+import { Result } from "$lib/utilities";
 
-export const loadModelAsync = async (url:string):Promise<[URDFRobot, string[]]> => {
+export const loadModelAsync = async (url:string):Promise<Result<[URDFRobot, string[]], string>> => {
   return new Promise((resolve, reject) => {
     const xacroLoader = new XacroLoader();
     
@@ -22,9 +23,9 @@ export const loadModelAsync = async (url:string):Promise<[URDFRobot, string[]]> 
             .filter(joint => joint[1].jointType !== 'fixed')
             .map(joint => joint[0])
 
-        resolve([model, joints]); 
-      } catch (error) {
-        reject(error); 
+            resolve(Result.ok([model, joints])); 
+        } catch (error) {
+            resolve(Result.err("Failed to load model", error)); 
       }
     }, (error) => reject(error)); 
   });
