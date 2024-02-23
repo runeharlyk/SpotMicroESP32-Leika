@@ -24,7 +24,7 @@ import {
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { type URDFMimicJoint } from 'urdf-loader';
+import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader';
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls';
 
 export const addScene = () => new Scene();
@@ -71,7 +71,7 @@ export default class SceneBuilder {
 	public controls: OrbitControls;
 	public callback: Function;
 	public gridHelper: GridHelper;
-	public model: Object3D<Event>;
+	public model: URDFRobot;
 	public liveStreamTexture: CanvasTexture;
 	private fog: FogExp2;
 	private isLoaded: boolean = false;
@@ -232,10 +232,10 @@ export default class SceneBuilder {
 		this.model.joints[jointName].setJointValue(angle);
 	}
 
-	isJoint = (j) => j.isURDFJoint && j.jointType !== 'fixed';
+	isJoint = (j: URDFJoint) => j.isURDFJoint && j.jointType !== 'fixed';
 
 	highlightLinkGeometry = (m: URDFMimicJoint, revert: boolean, material: MeshPhongMaterial) => {
-		const traverse = (c) => {
+		const traverse = (c: any) => {
 			if (c.type === 'Mesh') {
 				if (revert) {
 					c.material = c.__origMaterial;
@@ -295,7 +295,7 @@ export default class SceneBuilder {
 		this.renderer.domElement.addEventListener('touchmove', (data) =>
 			dragControls._mouseMove(data.touches[0])
 		);
-		this.renderer.domElement.addEventListener('touchup', (data) =>
+		this.renderer.domElement.addEventListener('touchend', (data) =>
 			dragControls._mouseUp(data.touches[0])
 		);
 		return this;
