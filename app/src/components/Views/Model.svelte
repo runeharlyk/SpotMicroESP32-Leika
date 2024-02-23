@@ -2,7 +2,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial } from 'three';
 	import socketService from '$lib/services/socket-service';
-	import { lerp } from '$lib/utilities';
 	import uzip from 'uzip';
 	import { model, outControllerData } from '$lib/store';
 	import { ForwardKinematics } from '$lib/kinematic';
@@ -10,6 +9,7 @@
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
+	import { lerp } from 'three/src/math/MathUtils';
 
 	let sceneManager: SceneBuilder;
 	let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement;
