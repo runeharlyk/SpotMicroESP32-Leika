@@ -5,7 +5,7 @@ import { WebSocketServer } from "ws";
 
 const app = express();
 const kinematic = new Kinematic();
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 2096 });
 
 app.use(cors());
 app.use(express.json());
