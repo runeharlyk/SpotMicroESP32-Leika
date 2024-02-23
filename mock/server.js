@@ -89,6 +89,7 @@ const model = {
     rssi: 100,
   },
   running: true,
+  mode: "stand",
 };
 
 const settings = {
@@ -197,99 +198,170 @@ const updateAngles = (angles) => {
   return model.servos.angles;
 };
 
+const bufferToController = (buffer) => {
+  return {
+    stop: buffer[0],
+    lx: buffer[1],
+    ly: buffer[2],
+    rx: buffer[3],
+    ry: buffer[4],
+    h: buffer[5],
+    s: buffer[6],
+  };
+};
+
+const unpackMessageBuffer = (data) => {
+  return {
+    angles: [0, data.rx / 4, data.ry / 4],
+    position: [data.ly / 2, 70, data.lx / 2],
+  };
+};
+
+const updateStanding = (ws, controller) => {
+  if (!ws.clientState.model.running) return;
+  const data = unpackMessageBuffer(controller);
+  ws.send(
+    JSON.stringify({
+      type: "angles",
+      data: updateBodyState(ws.clientState.model, data.angles, data.position),
+    })
+  );
+};
+
+const handelController = (ws, buffer) => {
+  const controllerData = bufferToController(new Int8Array(buffer));
+  if (controllerData.stop) {
+    ws.clientState.model.running = false;
+    ws.clientState.logs.push("[2024-02-05 19:10:00] [Warning] STOPPING SERVOS");
+    ws.send(JSON.stringify({ type: "log", data: ws.clientState.logs.last() }));
+    return;
+  }
+  if (ws.clientState.model.mode === "stand") {
+    updateStanding(ws, controllerData);
+  }
+};
+
+const handleBufferMessage = (ws, buffer) => {
+  if (buffer.length === 6) {
+    handelController(ws, buffer);
+  }
+};
+
+const handleJsonMessage = (ws, message) => {
+  let data = message;
+  try {
+    data = JSON.parse(message);
+  } catch (error) {
+    return;
+  }
+  switch (data.type) {
+    case "subscribe":
+      subscribeClientToCategory(ws, data.category);
+      break;
+    case "unsubscribe":
+      unsubscribeClientFromCategory(ws, data.category);
+      break;
+    case "sensor/battery":
+      ws.send({ type: "battery", data: JSON.stringify(updateBattery()) });
+      break;
+    case "sensor/mpu":
+      ws.send({ type: "battery", data: JSON.stringify(updateMpu()) });
+      break;
+    case "sensor/distances":
+      ws.send(JSON.stringify(updateDistances()));
+      break;
+    case "sensor/distance":
+      ws.send(JSON.stringify({ distance: updateDistance(data.position) }));
+      break;
+    case "kinematic/angle":
+      if (data.angle && data.id) {
+        ws.clientState.model.servos.angles[data.id] = data.angle;
+        ws.send(
+          JSON.stringify({
+            type: "angles",
+            data: ws.clientState.model.servos.angles,
+          })
+        );
+      } else {
+        ws.send(JSON.stringify(updateAngle(data.id, data.angle)));
+      }
+      break;
+    case "kinematic/angles":
+      if (data.angles) {
+        ws.clientState.model.servos.angles = data.angles;
+        ws.send(
+          JSON.stringify({
+            type: "angles",
+            data: ws.clientState.model.servos.angles,
+          })
+        );
+      } else {
+        ws.send(JSON.stringify(updateAngles(data.angles)));
+      }
+      break;
+    case "kinematic/bodystate":
+      if (data.angles) {
+        ws.send(
+          JSON.stringify({
+            type: "angles",
+            data: updateBodyState(
+              ws.clientState.model,
+              data.angles,
+              data.position
+            ),
+          })
+        );
+      } else {
+        ws.send(JSON.stringify({ angles: model.servos.angles }));
+      }
+      break;
+    case "system/logs":
+      ws.send(JSON.stringify({ type: "logs", data: ws.clientState.logs }));
+      break;
+    case "system/info":
+      ws.send(JSON.stringify({ type: "info", data: updateSystem() }));
+      break;
+    case "system/settings":
+      if (data.settings) {
+        Object.entries(data.settings).forEach(
+          ([key, value]) => (ws.clientState.settings[key] = value)
+        );
+        ws.send(JSON.stringify(ws.clientState.settings));
+      } else {
+        ws.send(
+          JSON.stringify({
+            type: "settings",
+            settings: ws.clientState.settings,
+          })
+        );
+      }
+      break;
+    case "system/stop":
+      ws.clientState.model.running = false;
+      ws.clientState.logs.push(
+        "[2024-02-05 19:10:00] [Warning] STOPPING SERVOS"
+      );
+      ws.send(
+        JSON.stringify({ type: "log", data: ws.clientState.logs.last() })
+      );
+      break;
+    default:
+      ws.send(JSON.stringify({ error: "Unknown request type" }));
+  }
+};
+
 wss.on("connection", (ws) => {
   const clientState = createNewClientState();
   ws.clientState = clientState;
   ws.on("error", console.error);
 
   ws.on("message", (message) => {
-    let data = message;
-    try {
-      data = JSON.parse(message);
-    } catch (error) {
+    if (typeof message === "object") {
+      handleBufferMessage(ws, message);
       return;
     }
-    switch (data.type) {
-      case "subscribe":
-        subscribeClientToCategory(ws, data.category);
-        break;
-      case "unsubscribe":
-        unsubscribeClientFromCategory(ws, data.category);
-        break;
-      case "sensor/battery":
-        ws.send({ type: "battery", data: JSON.stringify(updateBattery()) });
-        break;
-      case "sensor/mpu":
-        ws.send({ type: "battery", data: JSON.stringify(updateMpu()) });
-        break;
-      case "sensor/distances":
-        ws.send(JSON.stringify(updateDistances()));
-        break;
-      case "sensor/distance":
-        ws.send(JSON.stringify({ distance: updateDistance(data.position) }));
-        break;
-      case "kinematic/angle":
-        if (data.angle && data.id) {
-          ws.clientState.model.servos.angles[data.id] = data.angle;
-          ws.send(
-            JSON.stringify({
-              type: "angles",
-              data: ws.clientState.model.servos.angles,
-            })
-          );
-        } else {
-          ws.send(JSON.stringify(updateAngle(data.id, data.angle)));
-        }
-        break;
-      case "kinematic/angles":
-        if (data.angles) {
-          ws.clientState.model.servos.angles = data.angles;
-          ws.send(
-            JSON.stringify({
-              type: "angles",
-              data: ws.clientState.model.servos.angles,
-            })
-          );
-        } else {
-          ws.send(JSON.stringify(updateAngles(data.angles)));
-        }
-        break;
-      case "kinematic/bodystate":
-        if (data.angles) {
-          ws.send(
-            JSON.stringify({
-              type: "angles",
-              data: updateBodyState(ws.clientState.model, data.angles, data.position),
-            })
-          );
-        } else {
-          ws.send(JSON.stringify({ angles: model.servos.angles }));
-        }
-        break;
-      case "system/logs":
-        ws.send(JSON.stringify({ type: "logs", data:ws.clientState.logs }));
-        break;
-      case "system/info":
-        ws.send(JSON.stringify({ type: "info", data: updateSystem() }));
-        break;
-      case "system/settings":
-        if (data.settings) {
-          Object.entries(data.settings).forEach(
-            ([key, value]) => (ws.clientState.settings[key] = value)
-          );
-          ws.send(JSON.stringify(ws.clientState.settings));
-        } else {
-          ws.send(JSON.stringify({type:"settings", settings: ws.clientState.settings}));
-        }
-        break;
-      case "system/stop":
-        ws.clientState.model.running = false;
-        ws.clientState.logs.push("[2024-02-05 19:10:00] [Warning] STOPPING SERVOS")
-        ws.send(JSON.stringify({type:"log", data:ws.clientState.logs.last()}));
-        break;
-      default:
-        ws.send(JSON.stringify({ error: "Unknown request type" }));
-    }
+
+    handleJsonMessage(ws, message);
   });
 
   ws.on("close", () => {

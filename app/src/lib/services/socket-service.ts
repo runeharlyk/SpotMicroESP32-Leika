@@ -2,6 +2,7 @@ import { isConnected, socketData } from '$lib/stores';
 import { Result, Ok } from '$lib/utilities';
 import { resultService } from '$lib/services';
 import { type WebSocketJsonMsg } from '$lib/models';
+import type { Writable } from 'svelte/store';
 
 type WebsocketOutData = string | ArrayBufferLike | Blob | ArrayBufferView;
 
@@ -35,6 +36,10 @@ class SocketService {
 			return Ok.void();
 		}
 		return Result.err('The connection is not open');
+	}
+
+	public addPublisher(store: Writable<WebsocketOutData>, type?: string) {
+		store.subscribe((data) => this.send(type ? JSON.stringify({ type, data }) : data));
 	}
 
 	private handleConnected(): void {

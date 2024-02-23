@@ -3,13 +3,13 @@
 	import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial } from 'three';
 	import socketService from '$lib/services/socket-service';
 	import uzip from 'uzip';
-	import { model, outControllerData } from '$lib/store';
+	import { model } from '$lib/store';
 	import { ForwardKinematics } from '$lib/kinematic';
 	import { location } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
-	import { lerp } from 'three/src/math/MathUtils';
+	import { lerp, degToRad } from 'three/src/math/MathUtils';
 
 	let sceneManager: SceneBuilder;
 	let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement;
@@ -47,21 +47,9 @@
 		psi: number;
 	}
 
-	const degToRad = (val: number) => val * (Math.PI / 180);
-
 	onMount(async () => {
 		await cacheModelFiles();
 		await createScene();
-
-		outControllerData.subscribe((data) => {
-			socketService.send(
-				JSON.stringify({
-					type: 'kinematic/bodystate',
-					angles: [0, (data[1] - 128) / 3, (data[2] - 128) / 4],
-					position: [(data[4] - 128) / 2, data[5], (data[3] - 128) / 2]
-				})
-			);
-		});
 	});
 
 	onDestroy(() => {

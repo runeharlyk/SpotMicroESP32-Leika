@@ -10,7 +10,7 @@ export const input = writable({
 	speed: 0
 });
 
-export const outControllerData = writable(new Uint8Array([0, 128, 128, 128, 128, 70, 0]));
+export const outControllerData = writable(new Int8Array([0, 0, 0, 0, 0, 70, 0]));
 
 export const jointNames = persistentStore('joint_names', []);
 
