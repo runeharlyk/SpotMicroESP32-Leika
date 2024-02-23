@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import location from '$lib/location';
+	import { location } from '$lib/utilities';
 
 	let videoStream = `//${location}/api/stream`;
 

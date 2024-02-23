@@ -2,40 +2,40 @@
 	import { Router, Route } from 'svelte-routing';
 	import { onMount } from 'svelte';
 	import TopBar from './components/TopBar.svelte';
-	import { connect } from './lib/socket';
+	import socketService from '$lib/services/socket-service';
 	import Controller from './routes/Controller.svelte';
-    import FileCache from './lib/cache';
-	import { socketLocation } from './lib/location';
-    import Settings from './routes/Settings.svelte';
-	import { jointNames, model } from './lib/store';
-	import { loadModelAsync } from './lib/modelLoader';
+	import { fileService } from '$lib/services';
+	import Settings from './routes/Settings.svelte';
+	import { jointNames, model, outControllerData } from '$lib/store';
+	import { loadModelAsync } from '$lib/utilities';
+	import { socketLocation } from '$lib/utilities';
+	import type { Result } from '$lib/utilities/result';
 
-	export let url = window.location.pathname 
+	export let url = window.location.pathname;
 	onMount(async () => {
-		connect(socketLocation);
-        registerFetchIntercept()
-        const [urdf, JOINT_NAME] = await loadModelAsync('/spot_micro.urdf.xacro') 
-        jointNames.set(JOINT_NAME)
-        model.set(urdf)
+		socketService.connect(socketLocation);
+		socketService.addPublisher(outControllerData);
+		registerFetchIntercept();
+		const modelRes = await loadModelAsync('/spot_micro.urdf.xacro');
+
+		if (modelRes.isOk()) {
+			const [urdf, JOINT_NAME] = modelRes.inner;
+			jointNames.set(JOINT_NAME);
+			model.set(urdf);
+		} else {
+			console.error(modelRes.inner, { exception: modelRes.exception });
+		}
 	});
 
-    const registerFetchIntercept = () => {
-        const { fetch: originalFetch } = window;
-        window.fetch = async (...args) => {
-            const [resource, config] = args;
-            await FileCache.openDatabase();
-            let file: BodyInit | Uint8Array | undefined | null;
-            try {
-                file = await FileCache.getFile(resource.toString());
-            } catch (error) {
-                console.log(error);
-            }
-
-            return file 
-            ? new Response(file)
-            : originalFetch(resource, config) 
-        };
-    }
+	const registerFetchIntercept = () => {
+		const { fetch: originalFetch } = window;
+		window.fetch = async (...args) => {
+			const [resource, config] = args;
+			let file: Result<Uint8Array | undefined, string>;
+			file = await fileService.getFile(resource.toString());
+			return file.isOk() ? new Response(file.inner) : originalFetch(resource, config);
+		};
+	};
 </script>
 
 <Router {url}>

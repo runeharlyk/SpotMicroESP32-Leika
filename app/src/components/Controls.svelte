@@ -1,8 +1,8 @@
 <script lang="ts">
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
-	import { throttler } from '$lib/throttle';
-	import { socket } from '$lib/socket';
+	import { throttler, toInt8 } from '$lib/utilities';
+	import socketService from '$lib/services/socket-service';
 	import { emulateModel, input, outControllerData } from '$lib/store';
 
 	let throttle = new throttler();
@@ -13,7 +13,7 @@
 
 	let mode = 'rest'; // 'rest' | 'stand' | 'stand+' | 'walk'
 
-	let data = new Uint8Array(6);
+	let data = new Int8Array(6);
 
 	onMount(() => {
 		left = nipplejs.create({
@@ -25,12 +25,18 @@
 		});
 
 		left.on('move', (evt, data) => {
-            input.update(o => {o.left = data.vector; return o;})
+			input.update((o) => {
+				o.left = data.vector;
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
 		left.on('end', (evt, data) => {
-            input.update(o => {o.left = { x: 0, y: 0 }; return o;})
+			input.update((o) => {
+				o.left = { x: 0, y: 0 };
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
@@ -43,30 +49,35 @@
 		});
 
 		right.on('move', (evt, data) => {
-            input.update(o => {o.right = data.vector; return o;})
+			input.update((o) => {
+				o.right = data.vector;
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
 		right.on('end', (evt, data) => {
-            input.update(o => {o.right = { x: 0, y: 0 }; return o;})
+			input.update((o) => {
+				o.right = { x: 0, y: 0 };
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 	});
 
 	const updateData = () => {
 		data[0] = 0;
-		data[1] = $input.left.x * 127 + 128;
-		data[2] = $input.left.y * 127 + 128;
-		data[3] = $input.right.x * 127 + 128;
-		data[4] = $input.right.y * 127 + 128;
-		data[5] = $input.height;
-		data[6] = $input.speed;
+		data[1] = toInt8($input.left.x, -1, 1);
+		data[2] = toInt8($input.left.y, -1, 1);
+		data[3] = toInt8($input.right.x, -1, 1);
+		data[4] = toInt8($input.right.y, -1, 1);
+		data[5] = toInt8($input.height, 0, 100);
+		data[6] = toInt8($input.speed, 0, 100);
 
-        outControllerData.set(data)
+		outControllerData.set(data);
 
-        if(!$emulateModel) $socket.send(data);
+        if (!$emulateModel) socketService.send(data);
 	};
-
 </script>
 
 <div class="absolute top-0 left-0 w-screen h-screen">

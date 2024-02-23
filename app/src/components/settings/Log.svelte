@@ -1,18 +1,20 @@
 <script lang="ts">
-    import { socket, isConnected, log } from "../../lib/socket";
-    import { onMount } from 'svelte'
-    
-    onMount(() => {
-        if ($isConnected) {
-            const message = JSON.stringify({type: 'system/logs'})
-            $socket.send(message)
-        }
-    })
+	import socketService from '$lib/services/socket-service';
+	import { onMount } from 'svelte';
 
+	let isConnected = socketService.isConnected;
+	let log = socketService.log;
+
+	onMount(() => {
+		if ($isConnected) {
+			const message = JSON.stringify({ type: 'system/logs' });
+			socketService.send(message);
+		}
+	});
 </script>
 
 <div class="w-full h-full">
-    {#each $log as entry}
-        <div>{entry}</div>
-    {/each}
+	{#each $log as entry}
+		<div>{entry}</div>
+	{/each}
 </div>
