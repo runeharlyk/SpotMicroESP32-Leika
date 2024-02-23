@@ -25,12 +25,18 @@
 		});
 
 		left.on('move', (evt, data) => {
-            input.update(o => {o.left = data.vector; return o;})
+			input.update((o) => {
+				o.left = data.vector;
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
 		left.on('end', (evt, data) => {
-            input.update(o => {o.left = { x: 0, y: 0 }; return o;})
+			input.update((o) => {
+				o.left = { x: 0, y: 0 };
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
@@ -43,12 +49,18 @@
 		});
 
 		right.on('move', (evt, data) => {
-            input.update(o => {o.right = data.vector; return o;})
+			input.update((o) => {
+				o.right = data.vector;
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 
 		right.on('end', (evt, data) => {
-            input.update(o => {o.right = { x: 0, y: 0 }; return o;})
+			input.update((o) => {
+				o.right = { x: 0, y: 0 };
+				return o;
+			});
 			throttle.throttle(updateData, throttle_timing);
 		});
 	});
@@ -62,11 +74,10 @@
 		data[5] = $input.height;
 		data[6] = $input.speed;
 
-        outControllerData.set(data)
+		outControllerData.set(data);
 
-        if(!$emulateModel) socketService.send(data);
+		if (!$emulateModel) socketService.send(data);
 	};
-
 </script>
 
 <div class="absolute top-0 left-0 w-screen h-screen">

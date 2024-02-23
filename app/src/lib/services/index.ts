@@ -1,2 +1,2 @@
-export * from './file-service'
-export * from './socket-service'
+export { default as fileService } from './file-service';
+export { default as socketService } from './socket-service';
