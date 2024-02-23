@@ -8,10 +8,8 @@
 	import { ForwardKinematics } from '$lib/kinematic';
 	import { location } from '$lib/utilities';
 	import { fileService } from '$lib/services';
+	import { servoAngles, mpu } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
-
-	const angles = socketService.angles;
-	const mpu = socketService.mpu;
 
 	let sceneManager: SceneBuilder;
 	let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement;
@@ -142,7 +140,7 @@
 		);
 		robot.position.y = Math.max(...points.map((coord) => coord[0] / 100)) - 2.7;
 		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
-		modelTargetAngles = $angles;
+		modelTargetAngles = $servoAngles;
 
 		handleVideoStream();
 
