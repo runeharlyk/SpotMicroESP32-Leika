@@ -1,7 +1,7 @@
 <script lang="ts">
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
-	import { throttler } from '$lib/utilities';
+	import { throttler, toUint8 } from '$lib/utilities';
 	import socketService from '$lib/services/socket-service';
 	import { emulateModel, input, outControllerData } from '$lib/store';
 
@@ -67,12 +67,12 @@
 
 	const updateData = () => {
 		data[0] = 0;
-		data[1] = $input.left.x * 127 + 128;
-		data[2] = $input.left.y * 127 + 128;
-		data[3] = $input.right.x * 127 + 128;
-		data[4] = $input.right.y * 127 + 128;
-		data[5] = $input.height;
-		data[6] = $input.speed;
+		data[1] = toUint8($input.left.x, -1, 1);
+		data[2] = toUint8($input.left.y, -1, 1);
+		data[3] = toUint8($input.right.x, -1, 1);
+		data[4] = toUint8($input.right.y, -1, 1);
+		data[5] = toUint8($input.height, 0, 100);;
+		data[6] = toUint8($input.speed, 0, 100);
 
 		outControllerData.set(data);
 
