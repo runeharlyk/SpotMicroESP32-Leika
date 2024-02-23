@@ -217,10 +217,10 @@ wss.on("connection", (ws) => {
         unsubscribeClientFromCategory(ws, data.category);
         break;
       case "sensor/battery":
-        ws.send({ type: "battery", battery: JSON.stringify(updateBattery()) });
+        ws.send({ type: "battery", data: JSON.stringify(updateBattery()) });
         break;
       case "sensor/mpu":
-        ws.send({ type: "battery", mpu: JSON.stringify(updateMpu()) });
+        ws.send({ type: "battery", data: JSON.stringify(updateMpu()) });
         break;
       case "sensor/distances":
         ws.send(JSON.stringify(updateDistances()));
@@ -234,7 +234,7 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({
               type: "angles",
-              angles: ws.clientState.model.servos.angles,
+              data: ws.clientState.model.servos.angles,
             })
           );
         } else {
@@ -247,7 +247,7 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({
               type: "angles",
-              angles: ws.clientState.model.servos.angles,
+              data: ws.clientState.model.servos.angles,
             })
           );
         } else {
@@ -259,7 +259,7 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({
               type: "angles",
-              angles: updateBodyState(ws.clientState.model, data.angles, data.position),
+              data: updateBodyState(ws.clientState.model, data.angles, data.position),
             })
           );
         } else {
@@ -267,10 +267,10 @@ wss.on("connection", (ws) => {
         }
         break;
       case "system/logs":
-        ws.send(JSON.stringify({ type: "logs", logs:ws.clientState.logs }));
+        ws.send(JSON.stringify({ type: "logs", data:ws.clientState.logs }));
         break;
       case "system/info":
-        ws.send(JSON.stringify({ type: "info", info: updateSystem() }));
+        ws.send(JSON.stringify({ type: "info", data: updateSystem() }));
         break;
       case "system/settings":
         if (data.settings) {
@@ -285,7 +285,7 @@ wss.on("connection", (ws) => {
       case "system/stop":
         ws.clientState.model.running = false;
         ws.clientState.logs.push("[2024-02-05 19:10:00] [Warning] STOPPING SERVOS")
-        ws.send(JSON.stringify({type:"log", log:ws.clientState.logs.last()}));
+        ws.send(JSON.stringify({type:"log", data:ws.clientState.logs.last()}));
         break;
       default:
         ws.send(JSON.stringify({ error: "Unknown request type" }));
