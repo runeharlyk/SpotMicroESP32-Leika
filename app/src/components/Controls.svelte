@@ -71,7 +71,7 @@
 		data[2] = toUint8($input.left.y, -1, 1);
 		data[3] = toUint8($input.right.x, -1, 1);
 		data[4] = toUint8($input.right.y, -1, 1);
-		data[5] = toUint8($input.height, 0, 100);;
+		data[5] = toUint8($input.height, 0, 100);
 		data[6] = toUint8($input.speed, 0, 100);
 
 		outControllerData.set(data);
