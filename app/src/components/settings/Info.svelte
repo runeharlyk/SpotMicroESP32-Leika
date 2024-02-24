@@ -2,10 +2,7 @@
 	import { onMount } from 'svelte';
 	import { humanFileSize } from '$lib/utilities';
 	import socketService from '$lib/services/socket-service';
-
-	let isConnected = socketService.isConnected;
-	let settings = socketService.settings;
-	let systemInfo = socketService.systemInfo;
+	import { isConnected, systemInfo } from '$lib/stores';
 
 	onMount(() => {
 		if ($isConnected) {

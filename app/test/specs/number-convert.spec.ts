@@ -42,5 +42,3 @@ describe('toInt8', () => {
 		expect(toInt8(2, -1, 1)).toBe(127);
 	});
 });
-
-

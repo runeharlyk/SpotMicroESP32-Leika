@@ -1,9 +1,7 @@
 <script lang="ts">
-	import socketService from '$lib/services/socket-service';
+	import { socketService } from '$lib/services';
+	import { isConnected, settings } from '$lib/stores';
 	import { onMount } from 'svelte';
-
-	let isConnected = socketService.isConnected;
-	let settings = socketService.settings;
 
 	onMount(() => {
 		if ($isConnected) {

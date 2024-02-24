@@ -2,7 +2,7 @@
 	import Stream from '$components/Views/Stream.svelte';
 	import Model from '$components/Views/Model.svelte';
 	import Controls from '$components/Controls.svelte';
-	import { emulateModel } from '$lib/store';
+	import { emulateModel } from '$lib/stores';
 </script>
 
 <div class="flex justify-center items-center w-full h-full">

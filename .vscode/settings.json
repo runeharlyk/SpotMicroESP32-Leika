@@ -6,17 +6,18 @@
     "editor.detectIndentation": false,
     "cmake.sourceDirectory": "C:/data/repos/Hardware/Spot Micro - Leika/.pio/libdeps/esp32cam/esp32-camera",
     "cSpell.words": [
-        "Adafruit",
-        "IRAM",
-        "Leika",
-        "lerp",
-        "MDNS",
-        "Psram",
-        "smnc",
-        "ssid",
-        "URDF",
-        "uzip",
-        "WEBSERVER",
-        "xacro"
+      "Adafruit",
+      "IRAM",
+      "Leika",
+      "lerp",
+      "MDNS",
+      "nipplejs",
+      "Psram",
+      "smnc",
+      "ssid",
+      "URDF",
+      "uzip",
+      "WEBSERVER",
+      "xacro"
     ]
 }

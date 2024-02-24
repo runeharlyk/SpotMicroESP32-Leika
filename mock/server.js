@@ -19,20 +19,27 @@ const randomFloatFromInterval = (min, max) =>
 const radToDeg = (val) => val * (180 / Math.PI);
 const degToRad = (val) => val * (Math.PI / 180);
 
+const lerp = (start, end, amt) => {
+  return (1 - amt) * start + amt * end;
+};
+
 function createNewClientState() {
   return {
     model: JSON.parse(JSON.stringify(model)),
     settings: JSON.parse(JSON.stringify(settings)),
     logs: JSON.parse(JSON.stringify(logs)),
     subscriptions: {},
+    mode: "idle",
+    controller: {
+      stop: 0,
+      lx: 0,
+      ly: 0,
+      rx: 0,
+      ry: 0,
+      h: 70,
+      s: 0,
+    },
   };
-}
-
-function subscribeClientToCategory(ws, category) {
-  if (!subscriptions[category]) {
-    subscriptions[category] = new Set();
-  }
-  subscriptions[category].add(ws);
 }
 
 const unsubscribeClientFromCategory = (ws, category) => {
@@ -52,11 +59,11 @@ const sendUpdateToSubscribers = (category, data) => {
   }
 };
 
-if (!Array.prototype.last){
-    Array.prototype.last = function(){
-        return this[this.length - 1];
-    };
-};
+if (!Array.prototype.last) {
+  Array.prototype.last = function () {
+    return this[this.length - 1];
+  };
+}
 
 const model = {
   battery: {
@@ -90,6 +97,8 @@ const model = {
   },
   running: true,
   mode: "stand",
+  rotation: [0, 0, 0],
+  position: [0, 0, 0],
 };
 
 const settings = {
@@ -217,27 +226,110 @@ const unpackMessageBuffer = (data) => {
   };
 };
 
-const updateStanding = (ws, controller) => {
-  if (!ws.clientState.model.running) return;
-  const data = unpackMessageBuffer(controller);
-  ws.send(
+const rest = {
+  rotation: [0, 0, 0],
+  position: [0, 10, 0],
+};
+
+const idle = (client) => {
+  for (let i = 0; i < 3; i++) {
+    client.clientState.model.position[i] = lerp(
+      client.clientState.model.position[i],
+      rest.position[i],
+      0.01
+    );
+    client.clientState.model.rotation[i] = lerp(
+      client.clientState.model.rotation[i],
+      rest.rotation[i],
+      0.01
+    );
+  }
+  client.send(
     JSON.stringify({
       type: "angles",
-      data: updateBodyState(ws.clientState.model, data.angles, data.position),
+      data: updateBodyState(
+        client.clientState.model,
+        client.clientState.model.rotation,
+        client.clientState.model.position
+      ),
     })
   );
 };
 
+const stand = (client) => {
+  if (!client.clientState.model.running) return;
+  const data = unpackMessageBuffer(client.clientState.controller);
+  client.send(
+    JSON.stringify({
+      type: "angles",
+      data: updateBodyState(
+        client.clientState.model,
+        data.angles,
+        data.position
+      ),
+    })
+  );
+};
+
+// https://www.hindawi.com/journals/cin/2016/9853070/
+
+const step = (model, controller, tick) => {
+  const y1 = -100 * Math.sin(-0.05 * tick) - 150;
+  const y2 = -100 * Math.sin(-0.05 * tick + Math.PI) - 150;
+  const x1 = Math.abs((tick % 120) - 60) - 60;
+  const Lp = [
+    // -50  is minimum
+    [100, y1, 100, 1],
+    [100, y2, -100, 1],
+    [-100, y2, 100, 1],
+    [-100, y1, -100, 1],
+  ];
+
+  model.servos.angles = kinematic
+    .calcIK(
+      Lp,
+      model.rotation.map((x) => degToRad(x)),
+      model.position
+    )
+    .flat()
+    .map((x, i) => radToDeg(x * model.servos.dir[i]));
+  return model.servos.angles;
+};
+
+const walk = (client) => {
+  const angles = step(
+    client.clientState.model,
+    client.clientState.controller,
+    client.tick
+  );
+  client.send(JSON.stringify({ type: "angles", data: angles }));
+};
+
+const start_dynamics = (client) => {
+  client.tick = 0;
+  client.clientState.mode = "idle";
+  client.clientState.next_mode = "walk";
+  const modes = { idle, stand, walk };
+  client.id = setInterval(() => {
+    client.tick += 1;
+
+    if (client.clientState.mode !== client.clientState.next_mode) {
+      // Transition
+      client.clientState.mode = client.clientState.next_mode;
+    } else {
+      modes[client.clientState.mode](client);
+    }
+  }, 10);
+};
+
 const handelController = (ws, buffer) => {
   const controllerData = bufferToController(new Int8Array(buffer));
+  ws.clientState.controller = controllerData;
   if (controllerData.stop) {
     ws.clientState.model.running = false;
     ws.clientState.logs.push("[2024-02-05 19:10:00] [Warning] STOPPING SERVOS");
     ws.send(JSON.stringify({ type: "log", data: ws.clientState.logs.last() }));
     return;
-  }
-  if (ws.clientState.model.mode === "stand") {
-    updateStanding(ws, controllerData);
   }
 };
 
@@ -247,19 +339,11 @@ const handleBufferMessage = (ws, buffer) => {
   }
 };
 
-const handleJsonMessage = (ws, message) => {
-  let data = message;
-  try {
-    data = JSON.parse(message);
-  } catch (error) {
-    return;
-  }
+const handleJsonMessage = (ws, data) => {
   switch (data.type) {
-    case "subscribe":
-      subscribeClientToCategory(ws, data.category);
-      break;
-    case "unsubscribe":
-      unsubscribeClientFromCategory(ws, data.category);
+    case "mode":
+      ws.clientState.next_mode = data.data;
+      //   ws.send({ type: "battery", data: JSON.stringify(updateBattery()) });
       break;
     case "sensor/battery":
       ws.send({ type: "battery", data: JSON.stringify(updateBattery()) });
@@ -353,15 +437,17 @@ const handleJsonMessage = (ws, message) => {
 wss.on("connection", (ws) => {
   const clientState = createNewClientState();
   ws.clientState = clientState;
+  start_dynamics(ws);
   ws.on("error", console.error);
 
   ws.on("message", (message) => {
-    if (typeof message === "object") {
+    let data = message;
+    try {
+      data = JSON.parse(message);
+      handleJsonMessage(ws, data);
+    } catch (error) {
       handleBufferMessage(ws, message);
-      return;
     }
-
-    handleJsonMessage(ws, message);
   });
 
   ws.on("close", () => {

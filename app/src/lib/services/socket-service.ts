@@ -39,7 +39,9 @@ class SocketService {
 	}
 
 	public addPublisher(store: Writable<WebsocketOutData>, type?: string) {
-		store.subscribe((data) => this.send(type ? JSON.stringify({ type, data }) : data));
+		const publish = (data: WebsocketOutData) =>
+			this.send(type ? JSON.stringify({ type, data }) : data);
+		store.subscribe(publish);
 	}
 
 	private handleConnected(): void {
