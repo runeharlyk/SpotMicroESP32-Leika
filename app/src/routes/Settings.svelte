@@ -5,13 +5,10 @@
 	import Configuration from '../components/settings/Configuration.svelte';
 	import {
 		Icon,
-		Wifi,
-		CommandLine,
 		InformationCircle,
 		BookOpen,
 		AdjustmentsVertical,
-		Cog6Tooth,
-		Newspaper
+		Cog6Tooth
 	} from 'svelte-hero-icons';
 	import Calibration from '../components/settings/Calibration.svelte';
 

@@ -6,15 +6,16 @@
 	import Controller from './routes/Controller.svelte';
 	import { fileService } from '$lib/services';
 	import Settings from './routes/Settings.svelte';
-	import { jointNames, model, outControllerData } from '$lib/store';
-	import { loadModelAsync } from '$lib/utilities';
-	import { socketLocation } from '$lib/utilities';
+	import { jointNames, model, outControllerData, mode } from '$lib/stores';
+	import { loadModelAsync, socketLocation } from '$lib/utilities';
 	import type { Result } from '$lib/utilities/result';
 
 	export let url = window.location.pathname;
 	onMount(async () => {
 		socketService.connect(socketLocation);
 		socketService.addPublisher(outControllerData);
+		socketService.addPublisher(mode, 'mode');
+
 		registerFetchIntercept();
 		const modelRes = await loadModelAsync('/spot_micro.urdf.xacro');
 

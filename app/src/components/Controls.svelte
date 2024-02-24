@@ -1,18 +1,15 @@
 <script lang="ts">
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
-	import { throttler, toInt8 } from '$lib/utilities';
-	import socketService from '$lib/services/socket-service';
-	import { emulateModel, input, outControllerData } from '$lib/store';
+	import { capitalize, throttler, toInt8 } from '$lib/utilities';
+	import { input, outControllerData, mode, modes } from '$lib/stores';
+	import type { vector } from '$lib/models';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;
 	let right: nipplejs.JoystickManager;
 
 	let throttle_timing = 40;
-
-	let mode = 'rest'; // 'rest' | 'stand' | 'stand+' | 'walk'
-
 	let data = new Int8Array(6);
 
 	onMount(() => {
@@ -24,22 +21,6 @@
 			restOpacity: 0.3
 		});
 
-		left.on('move', (evt, data) => {
-			input.update((o) => {
-				o.left = data.vector;
-				return o;
-			});
-			throttle.throttle(updateData, throttle_timing);
-		});
-
-		left.on('end', (evt, data) => {
-			input.update((o) => {
-				o.left = { x: 0, y: 0 };
-				return o;
-			});
-			throttle.throttle(updateData, throttle_timing);
-		});
-
 		right = nipplejs.create({
 			zone: document.getElementById('right') as HTMLElement,
 			color: 'grey',
@@ -48,22 +29,19 @@
 			restOpacity: 0.3
 		});
 
-		right.on('move', (evt, data) => {
-			input.update((o) => {
-				o.right = data.vector;
-				return o;
-			});
-			throttle.throttle(updateData, throttle_timing);
-		});
-
-		right.on('end', (evt, data) => {
-			input.update((o) => {
-				o.right = { x: 0, y: 0 };
-				return o;
-			});
-			throttle.throttle(updateData, throttle_timing);
-		});
+		left.on('move', (_, data) => handleJoyMove('left', data.vector));
+		left.on('end', (_, __) => handleJoyMove('left', { x: 0, y: 0 }));
+		right.on('move', (_, data) => handleJoyMove('right', data.vector));
+		right.on('end', (_, __) => handleJoyMove('right', { x: 0, y: 0 }));
 	});
+
+	const handleJoyMove = (key: 'left' | 'right', data: vector) => {
+		input.update((inputData) => {
+			inputData[key] = data;
+			return inputData;
+		});
+		throttle.throttle(updateData, throttle_timing);
+	};
 
 	const updateData = () => {
 		data[0] = 0;
@@ -75,8 +53,22 @@
 		data[6] = toInt8($input.speed, 0, 100);
 
 		outControllerData.set(data);
+	};
 
-        if (!$emulateModel) socketService.send(data);
+	const handleKeyup = (event: KeyboardEvent) => {
+		const down = event.type === 'keydown';
+		input.update((data) => {
+			if (event.key === 'w') data.left.y = down ? -1 : 0;
+			if (event.key === 'a') data.left.x = down ? -1 : 0;
+			if (event.key === 's') data.left.y = down ? 1 : 0;
+			if (event.key === 'd') data.left.x = down ? 1 : 0;
+			return data;
+		});
+		throttle.throttle(updateData, throttle_timing);
+	};
+
+	const changeMode = (modeValue: Modes) => {
+		mode.set(modeValue);
 	};
 </script>
 
@@ -86,4 +78,15 @@
 		<div class="flex-1" />
 		<div id="right" class="flex w-60 items-center" />
 	</div>
+	<div class="absolute bottom-0 z-10 p-4 gap-4 flex">
+		{#each modes as modeValue}
+			<button
+				on:click={() => changeMode(modeValue)}
+				class="rounded-md outline outline-2 text-zinc-200 outline-zinc-600 p-2">
+                {capitalize(modeValue)}
+            </button>
+		{/each}
+	</div>
 </div>
+
+<svelte:window on:keyup={handleKeyup} on:keydown={handleKeyup} />

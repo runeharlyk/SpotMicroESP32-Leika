@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { jointNames } from '../../lib/store';
+	import { jointNames } from '../../lib/stores';
 
 	type Servo = {
 		id: number;
@@ -10,7 +10,7 @@
 		pwmFor180: number;
 	};
 
-	let servos: any[] = [];
+	let servos: Servo[] = [];
 
 	onMount(() => {
 		jointNames.subscribe((data) => {
@@ -58,7 +58,8 @@
 				id="minPWM"
 				class="bg-zinc-800"
 				value={servos[selectedServo].minPWM}
-				on:blur={(event) => updateServoValue(selectedServo, 'minPWM', Number(event.target.value))}
+				on:blur={(event) =>
+					updateServoValue(selectedServo ?? 0, 'minPWM', Number(event.target?.value))}
 			/>
 
 			<label for="maxPWM">Max PWM:</label>
@@ -67,7 +68,8 @@
 				id="maxPWM"
 				class="bg-zinc-800"
 				value={servos[selectedServo].maxPWM}
-				on:blur={(event) => updateServoValue(selectedServo, 'maxPWM', Number(event.target.value))}
+				on:blur={(event) =>
+					updateServoValue(selectedServo ?? 0, 'maxPWM', Number(event.target?.value))}
 			/>
 
 			<label for="pwmFor180">PWM for 180°:</label>
@@ -77,7 +79,7 @@
 				class="bg-zinc-800"
 				value={servos[selectedServo].pwmFor180}
 				on:blur={(event) =>
-					updateServoValue(selectedServo, 'pwmFor180', Number(event.target.value))}
+					updateServoValue(selectedServo ?? 0, 'pwmFor180', Number(event.target?.value))}
 			/>
 		</div>
 	{/if}

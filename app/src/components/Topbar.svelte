@@ -1,8 +1,9 @@
 <script lang="ts">
 	import socketService from '$lib/services/socket-service';
 	import { Icon, Bars3, XMark, Power, Battery100, Signal, SignalSlash } from 'svelte-hero-icons';
-	import { emulateModel } from '$lib/store';
+	import { emulateModel } from '$lib/stores';
 	import { Link, useLocation } from 'svelte-routing';
+	import { isConnected } from '$lib/stores';
 
 	const views = ['Virtual environment', 'Robot camera'];
 	const modes = ['Drive', 'Choreography'];
@@ -12,7 +13,6 @@
 	let selected_view = views[0];
 	let selected_modes = modes[0];
 	let settingOpen = window.location.pathname.includes('/settings');
-	let isConnected = socketService.isConnected;
 
 	$: emulateModel.set(selected_view === views[0]);
 	$: settingOpen = $location.pathname.includes('/settings');

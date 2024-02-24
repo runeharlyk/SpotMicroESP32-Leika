@@ -3,11 +3,11 @@
 	import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial } from 'three';
 	import socketService from '$lib/services/socket-service';
 	import uzip from 'uzip';
-	import { model } from '$lib/store';
+	import { model } from '$lib/stores';
 	import { ForwardKinematics } from '$lib/kinematic';
 	import { location } from '$lib/utilities';
 	import { fileService } from '$lib/services';
-	import { servoAngles, mpu } from '$lib/stores';
+	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
 
@@ -18,34 +18,9 @@
 	let modelAngles: number[] | Int16Array = new Array(12).fill(0);
 	let modelTargetAngles: number[] | Int16Array = new Array(12).fill(0);
 
-	let modelBodyAngles: EulerAngle = { omega: 0, phi: 0, psi: 0 };
-	let modelTargeBodyAngles: EulerAngle = { omega: 0, phi: 0, psi: 0 };
-
 	const videoStream = `//${location}/api/stream`;
 
-	let showModel = true,
-		showStream = false;
-
-	const servoNames = [
-		'front_left_shoulder',
-		'front_left_leg',
-		'front_left_foot',
-		'front_right_shoulder',
-		'front_right_leg',
-		'front_right_foot',
-		'rear_left_shoulder',
-		'rear_left_leg',
-		'rear_left_foot',
-		'rear_right_shoulder',
-		'rear_right_leg',
-		'rear_right_foot'
-	];
-
-	interface EulerAngle {
-		omega: number;
-		phi: number;
-		psi: number;
-	}
+	let showStream = false;
 
 	onMount(async () => {
 		await cacheModelFiles();
@@ -68,12 +43,12 @@
 	};
 
 	const updateAngles = (name: string, angle: number) => {
-		modelTargetAngles[servoNames.indexOf(name)] = angle * (180 / Math.PI);
+		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
 		socketService.send(
 			JSON.stringify({
 				type: 'kinematic/angle',
 				angle: angle * (180 / Math.PI),
-				id: servoNames.indexOf(name)
+				id: $jointNames.indexOf(name)
 			})
 		);
 	};
@@ -100,7 +75,7 @@
 	};
 
 	const addVideoStream = () => {
-		context = streamCanvas.getContext('2d');
+		context = streamCanvas.getContext('2d')!;
 		texture = new CanvasTexture(stream);
 		const liveStream = new Mesh(
 			new CircleGeometry(35, 32),
@@ -132,26 +107,14 @@
 
 		handleVideoStream();
 
-		for (let i = 0; i < servoNames.length; i++) {
+		for (let i = 0; i < $jointNames.length; i++) {
 			modelAngles[i] = lerp(
-				robot.joints[servoNames[i]].angle * (180 / Math.PI),
+				(robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
 				modelTargetAngles[i],
 				0.1
 			);
-			robot.joints[servoNames[i]].setJointValue(degToRad(modelAngles[i]));
+			robot.joints[$jointNames[i]].setJointValue(degToRad(modelAngles[i]));
 		}
-
-		modelBodyAngles.omega = lerp(
-			robot.rotation.x * (180 / Math.PI),
-			modelTargeBodyAngles.omega - 90,
-			0.1
-		);
-		modelBodyAngles.phi = lerp(robot.rotation.y * (180 / Math.PI), modelTargeBodyAngles.phi, 0.1);
-		modelBodyAngles.psi = lerp(
-			robot.rotation.z * (180 / Math.PI),
-			modelTargeBodyAngles.psi + 90,
-			0.1
-		);
 	};
 </script>
 

@@ -1,11 +1,20 @@
+export type vector = { x: number; y: number };
+
+export interface ControllerInput {
+	left: vector;
+	right: vector;
+	height: number;
+	speed: number;
+}
+
 export type angles = number[] | Int16Array;
 
-type AnglesData = {
+export type AnglesData = {
 	type: 'angles';
 	data: angles;
 };
 
-type LogData = {
+export type LogData = {
 	type: 'log';
 	data: string;
 };
