@@ -1,119 +1,119 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="spot_micro_rviz">
 
-  <material name="white">
-    <color rgba="1 1 1 1"/>
-  </material>
-  <material name="black">
-    <color rgba="0.1 0.1 0.1 1"/>
-  </material>
-  <material name="blue">
-    <color rgba="0 0.75 1 1"/>
-  </material>
+    <material name="shell_color">
+        <color rgba="1 1 1 1" />
+    </material>
+    <material name="body_color">
+        <color rgba="0.1 0.1 0.1 1" />
+    </material>
+    <material name="foot_color">
+        <color rgba="0 0.75 1 1" />
+    </material>
 
-  <!-- Params -->
+    <!-- Params -->
 
-  <xacro:property name="body_length" value="0.140" />
-  <xacro:property name="body_width" value="0.110" />
-  <xacro:property name="body_height" value="0.070" />
+    <xacro:property name="body_length" value="0.140" />
+    <xacro:property name="body_width" value="0.110" />
+    <xacro:property name="body_height" value="0.070" />
 
-  <xacro:property name="front_length" value="0.058" />
-  <xacro:property name="rear_length" value="0.040" />
+    <xacro:property name="front_length" value="0.058" />
+    <xacro:property name="rear_length" value="0.040" />
 
-  <xacro:property name="shoulder_length" value="0.044" />
-  <xacro:property name="shoulder_width" value="0.038" />
+    <xacro:property name="shoulder_length" value="0.044" />
+    <xacro:property name="shoulder_width" value="0.038" />
 
-  <xacro:property name="leg_length" value="0.1075" />
-  <xacro:property name="foot_length" value="0.130" />
+    <xacro:property name="leg_length" value="0.1075" />
+    <xacro:property name="foot_length" value="0.130" />
 
-  <xacro:property name="toe_radius" value="0.020" />
-  <!--  <xacro:property name="toe_radius" value="0.014" /> -->
-  <xacro:property name="toe_width" value="0.020" />
-  <xacro:property name="shift" value="0.055" />
-  <xacro:property name="shiftx" value="0.093" />
-  <xacro:property name="shifty" value="0.039" />
+    <xacro:property name="toe_radius" value="0.020" />
+    <!--  <xacro:property name="toe_radius" value="0.014" /> -->
+    <xacro:property name="toe_width" value="0.020" />
+    <xacro:property name="shift" value="0.055" />
+    <xacro:property name="shiftx" value="0.093" />
+    <xacro:property name="shifty" value="0.039" />
 
-  <!-- Macros -->
+    <!-- Macros -->
 
-  <xacro:macro name="gen_shoulder" params="name left">
-    <link name="${name}">
-      <visual>
-        <xacro:if value="${left}">
-        <geometry>
-          <mesh filename="package://stl/lshoulder.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 0 3.14159" xyz="0.135 0.015 -0.01"/>
-        </xacro:if>
-        <xacro:unless value="${left}">
-        <geometry>
-          <mesh filename="package://stl/rshoulder.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 0 3.14159" xyz="0.135 0.095 -0.01"/>
-        </xacro:unless>
-        <material name="black"/>
-      </visual>
-      <collision>
-        <geometry>
-          <box size="${shoulder_length} ${shoulder_width} ${body_height}"/>
-        </geometry>
-        <origin rpy="0 0 0" xyz="0 0 0"/>
-      </collision>
-      <inertial>
-        <mass value="0.10"/>
-        <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100" />
-      </inertial>
-    </link>
-  </xacro:macro>
+    <xacro:macro name="gen_shoulder" params="name left">
+        <link name="${name}">
+            <visual>
+                <xacro:if value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/lshoulder.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 0 3.14159" xyz="0.135 0.015 -0.01" />
+                </xacro:if>
+                <xacro:unless value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/rshoulder.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 0 3.14159" xyz="0.135 0.095 -0.01" />
+                </xacro:unless>
+                <material name="body_color" />
+            </visual>
+            <collision>
+                <geometry>
+                    <box size="${shoulder_length} ${shoulder_width} ${body_height}" />
+                </geometry>
+                <origin rpy="0 0 0" xyz="0 0 0" />
+            </collision>
+            <inertial>
+                <mass value="0.10" />
+                <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100" />
+            </inertial>
+        </link>
+    </xacro:macro>
 
-  <xacro:macro name="gen_shoulder_joint" params="pos shiftx shifty">
-    <joint name="${pos}_shoulder" type="revolute">
-      <parent link="base_link"/>
-      <child link="${pos}_shoulder_link"/>
-      <axis xyz="1 0 0"/>
-      <origin rpy="0 0 0" xyz="${shiftx} ${shifty} 0"/>
-      <limit effort="1000.0" lower="-0.548" upper="0.548" velocity="0.7"/>
-      <dynamics damping="0.0" friction="0.5"/>
-    </joint>
-  </xacro:macro>
+    <xacro:macro name="gen_shoulder_joint" params="pos shiftx shifty">
+        <joint name="${pos}_shoulder" type="revolute">
+            <parent link="base_link" />
+            <child link="${pos}_shoulder_link" />
+            <axis xyz="1 0 0" />
+            <origin rpy="0 0 0" xyz="${shiftx} ${shifty} 0" />
+            <limit effort="1000.0" lower="-0.548" upper="0.548" velocity="0.7" />
+            <dynamics damping="0.0" friction="0.5" />
+        </joint>
+    </xacro:macro>
 
-  <xacro:macro name="gen_leg" params="name left">
-    <link name="${name}_cover">
-      <visual>
-        <xacro:if value="${left}">
-        <geometry>
-          <mesh filename="package://stl/larm_cover.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 -0.139 3.14159" xyz="0.130 -0.040 -0.025"/>
-        </xacro:if>
-        <xacro:unless value="${left}">
-        <geometry>
-          <mesh filename="package://stl/rarm_cover.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 -0.139 3.14159" xyz="0.130 0.15 -0.025"/>
-        </xacro:unless>
-        <material name="white"/>
-      </visual>
-    </link>
-    <link name="${name}">
-      <visual>
-        <xacro:if value="${left}">
-        <geometry>
-          <mesh filename="package://stl/larm.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 -0.139 3.14159" xyz="0.130 -0.040 -0.025"/>
-        </xacro:if>
-        <xacro:unless value="${left}">
-        <geometry>
-          <mesh filename="package://stl/rarm.stl" scale="0.001 0.001 0.001"/>
-        </geometry>
-        <origin rpy="0 -0.139 3.14159" xyz="0.130 0.15 -0.025"/>
-        </xacro:unless>
-        <material name="black"/>
-<!--        <geometry>
+    <xacro:macro name="gen_leg" params="name left">
+        <link name="${name}_cover">
+            <visual>
+                <xacro:if value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/larm_cover.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 -0.139 3.14159" xyz="0.130 -0.040 -0.025" />
+                </xacro:if>
+                <xacro:unless value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/rarm_cover.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 -0.139 3.14159" xyz="0.130 0.15 -0.025" />
+                </xacro:unless>
+                <material name="shell_color" />
+            </visual>
+        </link>
+        <link name="${name}">
+            <visual>
+                <xacro:if value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/larm.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 -0.139 3.14159" xyz="0.130 -0.040 -0.025" />
+                </xacro:if>
+                <xacro:unless value="${left}">
+                    <geometry>
+                        <mesh filename="package://stl/rarm.stl" scale="0.001 0.001 0.001" />
+                    </geometry>
+                    <origin rpy="0 -0.139 3.14159" xyz="0.130 0.15 -0.025" />
+                </xacro:unless>
+                <material name="body_color" />
+                <!--        <geometry>
           <box size="0.028 0.036 ${leg_length}"/>
         </geometry>
         <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.050"/>
-        <material name="white"/>-->
+        <material name="shell_color"/>-->
       </visual>
       <collision>
         <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.050"/>
@@ -150,17 +150,17 @@
       <visual>
         <xacro:if value="${left}">
         <geometry>
-          <mesh filename="package://stl/lfoot.stl" scale="0.001 0.001 0.001"/>
+                        <mesh filename="package://stl/lfoot.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <origin rpy="0 0 3.14159" xyz="0.120 -0.04 0.1"/>
+                    <origin rpy="0 0 3.14159" xyz="0.120 -0.04 0.1" />
         </xacro:if>
         <xacro:unless value="${left}">
         <geometry>
-          <mesh filename="package://stl/rfoot.stl" scale="0.001 0.001 0.001"/>
+                        <mesh filename="package://stl/rfoot.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <origin rpy="0 0 3.14159" xyz="0.120 0.15 0.1"/>
+                    <origin rpy="0 0 3.14159" xyz="0.120 0.15 0.1" />
         </xacro:unless>
-        <material name="black"/>
+                <material name="body_color" />
       </visual>
       <collision>
         <geometry>
@@ -190,10 +190,10 @@
     <link name="${name}">
       <visual>
         <geometry>
-        <mesh filename="package://stl/foot.stl" scale="0.001 0.001 0.001"/>
+                    <mesh filename="package://stl/foot.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <origin rpy="0 -0.40010 3.14159" xyz="0.00 0.01 0.015"/>
-        <material name="blue"/>
+                <origin rpy="0 -0.40010 3.14159" xyz="0.00 0.01 0.015" />
+                <material name="foot_color" />
       </visual>
       <collision>
         <geometry>
@@ -229,14 +229,14 @@
     <xacro:gen_toe_joint pos="${pos}"/>
   </xacro:macro>
 
-  <!-- Robot Body -->
+    <!-- Robot Body -->
 
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="package://stl/mainbody.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://stl/mainbody.stl" scale="0.001 0.001 0.001" />
       </geometry>
-      <material name="black"/> 
+            <material name="body_color" /> 
       <origin rpy="0 0 0" xyz="-0.042 -0.055 -0.010"/>
     </visual>
     <collision>
@@ -255,10 +255,10 @@
   <link name="rear_link">
     <visual>
       <geometry>
-        <mesh filename="package://stl/backpart.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://stl/backpart.stl" scale="0.001 0.001 0.001" />
       </geometry>
-      <origin rpy="0 0 3.14159" xyz="0.04 0.055 -0.010"/>
-      <material name="white"/>
+            <origin rpy="0 0 3.14159" xyz="0.04 0.055 -0.010" />
+            <material name="shell_color" />
     </visual>
     <collision>
       <geometry>
@@ -279,10 +279,10 @@
   <link name="front_link">
     <visual>
       <geometry>
-        <mesh filename="package://stl/frontpart.stl" scale="0.001 0.001 0.001"/>
+                <mesh filename="package://stl/frontpart.stl" scale="0.001 0.001 0.001" />
       </geometry>
-      <origin rpy="0 0 3.14159" xyz="0.040 0.055 -0.010"/>
-      <material name="white"/>
+            <origin rpy="0 0 3.14159" xyz="0.040 0.055 -0.010" />
+            <material name="shell_color" />
     </visual>
     <collision>
       <geometry>
@@ -300,7 +300,7 @@
     <child link="front_link"/>
   </joint>
 
-  <!-- create Legs -->
+    <!-- create Legs -->
 
   <xacro:gen_full_leg_joint pos="front_left" shiftx="${shiftx}" shifty="${shifty}" shift="${shift}" left="true"/>
   <xacro:gen_full_leg_joint pos="front_right" shiftx="${shiftx}" shifty="-${shifty}" shift="-${shift}" left="false"/>

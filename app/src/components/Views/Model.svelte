@@ -1,35 +1,54 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { CanvasTexture, CircleGeometry, Mesh, MeshBasicMaterial } from 'three';
+	import { BufferGeometry, CanvasTexture, CircleGeometry, CubicBezierCurve3, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import socketService from '$lib/services/socket-service';
 	import uzip from 'uzip';
 	import { model } from '$lib/stores';
-	import { ForwardKinematics } from '$lib/kinematic';
-	import { location } from '$lib/utilities';
+	import { footColor, isEmbeddedApp, location, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
+    import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-	let sceneManager: SceneBuilder;
+	let sceneManager = new SceneBuilder();
 	let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement;
 	let context: CanvasRenderingContext2D, texture: CanvasTexture;
 
 	let modelAngles: number[] | Int16Array = new Array(12).fill(0);
 	let modelTargetAngles: number[] | Int16Array = new Array(12).fill(0);
 
+    let feet_trace = new Array(4).fill([]);
+    let trace_lines: BufferGeometry<NormalBufferAttributes>[] = []
+
 	const videoStream = `//${location}/api/stream`;
 
 	let showStream = false;
 
+    let settings = {
+        'Trace feet':true,
+        'Trace points': 30
+    }
+
 	onMount(async () => {
-		await cacheModelFiles();
-		await createScene();
+        await cacheModelFiles()
+        await createScene();
+        if (!isEmbeddedApp) createPanel();
 	});
 
 	onDestroy(() => {
 		canvas.remove();
 	});
+
+    const createPanel = () => {
+        const panel = new GUI({width: 310});
+        panel.close();
+        panel.domElement.id = 'three-gui-panel';
+ 
+        const visibility = panel.addFolder('Visualization');
+        visibility.add(settings, 'Trace feet')
+        visibility.add(settings, 'Trace points', 1, 1000, 1)
+    }
 
 	const cacheModelFiles = async () => {
 		let data = await fetch('/stl.zip').then((data) => data.arrayBuffer());
@@ -54,13 +73,13 @@
 	};
 
 	const createScene = async () => {
-		sceneManager = new SceneBuilder()
+		sceneManager
 			.addRenderer({ antialias: true, canvas: canvas, alpha: true })
 			.addPerspectiveCamera({ x: -0.5, y: 0.5, z: 1 })
-			.addOrbitControls(10, 30)
+			.addOrbitControls(8, 30)
 			.addSky()
-			.addGroundPlane({ x: 0, y: -2, z: 0 })
-			.addGridHelper({ size: 250, divisions: 125, y: -2 })
+			.addGroundPlane()
+			.addGridHelper({ size: 250, divisions: 125 })
 			.addAmbientLight({ color: 0xffffff, intensity: 0.7 })
 			.addDirectionalLight({ x: 10, y: 100, z: 10, color: 0xffffff, intensity: 1 })
 			.addArrowHelper({ origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: -2, z: 0 } })
@@ -72,6 +91,14 @@
 			.startRenderLoop();
 
 		addVideoStream();
+
+		for (let i = 0; i < 4; i++) {
+			const geometry = new BufferGeometry();
+			const material = new LineBasicMaterial({ color: footColor() });
+			const line = new Line(geometry, material);
+			trace_lines.push(geometry);
+			sceneManager.scene.add(line);
+		}
 	};
 
 	const addVideoStream = () => {
@@ -92,16 +119,30 @@
 		texture.needsUpdate = true;
 	};
 
+    const renderTraceLines = (foot_positions: Vector3[]) => {
+        if (!settings['Trace feet']) {
+            if (!feet_trace.length) return 
+            trace_lines.forEach((line, i) => line.setFromPoints(feet_trace[i].slice(-1)))
+            feet_trace = new Array(4).fill([])
+            return
+        }
+        
+        trace_lines.forEach((line, i) => {
+            feet_trace[i].push(foot_positions[i])
+            feet_trace[i] = feet_trace[i].slice(-settings['Trace points'])
+            line.setFromPoints(feet_trace[i]);
+        })
+    }
+
 	const render = () => {
 		const robot = sceneManager.model;
 		if (!robot) return;
 
-		const forwardKinematics = new ForwardKinematics();
+        const toes = toeWorldPositions(robot)
 
-		const points = forwardKinematics.calculateFootpoints(
-			modelAngles.map((ang) => degToRad(ang)) as number[]
-		);
-		robot.position.y = Math.max(...points.map((coord) => coord[0] / 100)) - 2.7;
+        renderTraceLines(toes)
+
+		robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
 		modelTargetAngles = $servoAngles;
 

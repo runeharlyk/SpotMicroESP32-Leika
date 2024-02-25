@@ -13,3 +13,8 @@
 body {
 	margin: 0;
 }
+
+#three-gui-panel {
+    top: 50px;
+    right:0px
+}
