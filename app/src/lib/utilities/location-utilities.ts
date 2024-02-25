@@ -1,8 +1,11 @@
-const forWeb = import.meta.env.MODE === 'WEB';
-const mock = import.meta.env.MODE === 'MOCK';
+export const webAppBuild = import.meta.env.MODE === 'WEB';
+export const hostname = window.location.hostname;
 
-export const location = mock ? `${window.location.hostname}:2096` : 'leika.local';
+export const isSecure = window.location.protocol === 'https:';
 
-export const socketLocation = forWeb
-	? `wss://${window.location.hostname}:2096`
-	: `ws://${location}`;
+export const location = import.meta.env.VITE_API_URL.replace('hostname', hostname);
+
+const socketScheme = isSecure ? 'wss://' : 'ws://';
+
+export const socketLocation =
+	socketScheme + import.meta.env.VITE_SOCKET_URL.replace('hostname', hostname);
