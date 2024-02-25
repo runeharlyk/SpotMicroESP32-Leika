@@ -336,7 +336,7 @@ const handelController = (ws, buffer) => {
 };
 
 const handleBufferMessage = (ws, buffer) => {
-  if (buffer.length === 6) {
+  if (buffer.length === 7) {
     handelController(ws, buffer);
   }
 };
