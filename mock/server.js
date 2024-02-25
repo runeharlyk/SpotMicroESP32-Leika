@@ -226,21 +226,23 @@ const unpackMessageBuffer = (data) => {
   };
 };
 
-const rest = {
+const rest_stance = {
   rotation: [0, 0, 0],
   position: [0, 10, 0],
 };
 
-const idle = (client) => {
+const idle = () => {};
+
+const rest = (client) => {
   for (let i = 0; i < 3; i++) {
     client.clientState.model.position[i] = lerp(
       client.clientState.model.position[i],
-      rest.position[i],
+      rest_stance.position[i],
       0.01
     );
     client.clientState.model.rotation[i] = lerp(
       client.clientState.model.rotation[i],
-      rest.rotation[i],
+      rest_stance.rotation[i],
       0.01
     );
   }
@@ -309,7 +311,7 @@ const start_dynamics = (client) => {
   client.tick = 0;
   client.clientState.mode = "idle";
   client.clientState.next_mode = "walk";
-  const modes = { idle, stand, walk };
+  const modes = { rest, idle, stand, walk };
   client.id = setInterval(() => {
     client.tick += 1;
 
