@@ -1,4 +1,4 @@
-import { LoaderUtils } from 'three';
+import { LoaderUtils, Vector3 } from 'three';
 import URDFLoader, { type URDFRobot } from 'urdf-loader';
 import { XacroLoader } from 'xacro-parser';
 import { Result } from '$lib/utilities';
@@ -35,4 +35,16 @@ export const loadModelAsync = async (
 			(error) => reject(error)
 		);
 	});
+};
+
+export const toeWorldPositions = (robot: URDFRobot) => {
+	const toe_positions: Vector3[] = [];
+	robot.traverse((child) => {
+		if (child.name.includes('toe') && !child.name.includes('_link')) {
+			const worldPosition = new Vector3();
+			child.getWorldPosition(worldPosition);
+			toe_positions.push(worldPosition);
+		}
+	});
+	return toe_positions;
 };
