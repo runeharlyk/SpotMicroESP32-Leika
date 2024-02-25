@@ -2,15 +2,17 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
-	import { input, outControllerData, mode, modes } from '$lib/stores';
+	import { input, outControllerData, mode, modes, type Modes } from '$lib/stores';
 	import type { vector } from '$lib/models';
+    import Range from './input/Range.svelte';
+	import Button from './input/Button.svelte';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;
 	let right: nipplejs.JoystickManager;
 
 	let throttle_timing = 40;
-	let data = new Int8Array(6);
+	let data = new Int8Array(7);
 
 	onMount(() => {
 		left = nipplejs.create({
@@ -67,6 +69,15 @@
 		throttle.throttle(updateData, throttle_timing);
 	};
 
+    const handleRange = (event:CustomEvent, key: 'speed' | 'height') => {
+        const value:number = event.detail
+        input.update((inputData) => {
+			inputData[key] = value;
+			return inputData;
+		});
+        throttle.throttle(updateData, throttle_timing);
+    }
+
 	const changeMode = (modeValue: Modes) => {
 		mode.set(modeValue);
 	};
@@ -78,14 +89,23 @@
 		<div class="flex-1" />
 		<div id="right" class="flex w-60 items-center" />
 	</div>
-	<div class="absolute bottom-0 z-10 p-4 gap-4 flex">
+	<div class="absolute bottom-0 z-10 p-4 gap-4 flex items-end">
 		{#each modes as modeValue}
-			<button
-				on:click={() => changeMode(modeValue)}
-				class="rounded-md outline outline-2 text-zinc-200 outline-zinc-600 p-2">
-                {capitalize(modeValue)}
-            </button>
+			<div>
+				<Button
+					on:click={() => changeMode(modeValue)}
+					active={$mode === modeValue}
+				>
+					{capitalize(modeValue)}
+				</Button>
+			</div>
 		{/each}
+        <div>
+            {#if $mode === 'walk'}
+			    <Range label="Speed" on:value={(e) => handleRange(e, 'speed')}></Range>
+            {/if}
+            <Range label="Height" on:value={(e) => handleRange(e, 'height')}></Range>
+        </div>
 	</div>
 </div>
 
