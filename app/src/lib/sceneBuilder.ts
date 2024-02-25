@@ -131,11 +131,11 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public addGroundPlane = (options: position) => {
+	public addGroundPlane = (options?: position) => {
 		this.ground = new Mesh(new PlaneGeometry(), new ShadowMaterial({ side: 2 }));
 		this.ground.rotation.x = -Math.PI / 2;
 		this.ground.scale.setScalar(30);
-		this.ground.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
+		this.ground.position.set(options?.x ?? 0, options?.y ?? 0, options?.z ?? 0);
 		this.ground.receiveShadow = true;
 		this.scene.add(this.ground);
 		return this;

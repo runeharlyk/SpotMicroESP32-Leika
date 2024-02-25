@@ -7,9 +7,9 @@
 
 <div class="flex justify-center items-center w-full h-full">
 	{#if $emulateModel}
-		<Model />
+    <Model />
 	{:else}
-		<Stream />
+    <Stream />
 	{/if}
 	<Controls />
 </div>

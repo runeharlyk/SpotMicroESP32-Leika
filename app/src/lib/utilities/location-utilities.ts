@@ -1,4 +1,3 @@
-export const webAppBuild = import.meta.env.MODE === 'WEB';
 export const hostname = window.location.hostname;
 
 export const isSecure = window.location.protocol === 'https:';
