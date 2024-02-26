@@ -1,5 +1,5 @@
-import { throttler } from '../../src/lib/utilities';
-import { describe, it, expect, beforeEach, afterEach, test, vitest } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vitest } from 'vitest';
+import { throttler } from '../../src/lib/utilities/buffer-utilities';
 
 describe('throttler', () => {
 	let throttleInstance: throttler;
