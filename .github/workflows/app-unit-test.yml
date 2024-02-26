@@ -26,6 +26,7 @@ jobs:
       with:
         node-version: 'latest'
         cache: 'pnpm'
+        cache-dependency-path: './app/pnpm-lock.yaml'
 
     - name: Install dependencies
       run: pnpm ci
