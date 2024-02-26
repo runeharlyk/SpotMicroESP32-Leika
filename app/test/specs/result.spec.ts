@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Result } from '../../src/lib/utilities';
+import { Result } from '../../src/lib/utilities/result';
 
 describe('Result', () => {
 	it('should create a success result correctly', () => {
