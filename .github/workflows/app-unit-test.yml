@@ -1,11 +1,13 @@
 name: CI
 
-# This workflow is triggered on pushes and pull requests to the main branch.
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
+    
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -13,7 +15,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
 
     - name: Setup Node.js
       uses: actions/setup-node@v2
