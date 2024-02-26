@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { humanFileSize } from '../../src/lib/utilities';
+import { humanFileSize } from '../../src/lib/utilities/string-utilities';
 
 describe('humanFileSize', () => {
 	it('returns "0B" for 0 bytes', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toUint8, toInt8 } from '../../src/lib/utilities';
+import { toUint8, toInt8 } from '../../src/lib/utilities/math-utilities';
 
 describe('toUint8', () => {
 	it('min interval value should get 0', () => {
