@@ -27,7 +27,8 @@
 
     let settings = {
         'Trace feet':true,
-        'Trace points': 30
+        'Trace points': 30,
+        'Fix camera on robot': true
     }
 
 	onMount(async () => {
@@ -48,6 +49,7 @@
         const visibility = panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
         visibility.add(settings, 'Trace points', 1, 1000, 1)
+        visibility.add(settings, 'Fix camera on robot')
     }
 
 	const cacheModelFiles = async () => {
@@ -141,6 +143,10 @@
         const toes = toeWorldPositions(robot)
 
         renderTraceLines(toes)
+
+        if (settings['Fix camera on robot']) {
+            sceneManager.controls.target = robot.position.clone()
+        }
 
 		robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
