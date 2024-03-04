@@ -12,7 +12,7 @@
 	let right: nipplejs.JoystickManager;
 
 	let throttle_timing = 40;
-	let data = new Int8Array(7);
+	let data = new Int8Array($outControllerData.length);
 
 	onMount(() => {
 		left = nipplejs.create({
@@ -46,13 +46,14 @@
 	};
 
 	const updateData = () => {
-		data[0] = 0;
-		data[1] = toInt8($input.left.x, -1, 1);
-		data[2] = toInt8($input.left.y, -1, 1);
-		data[3] = toInt8($input.right.x, -1, 1);
-		data[4] = toInt8($input.right.y, -1, 1);
-		data[5] = toInt8($input.height, 0, 100);
-		data[6] = toInt8($input.speed, 0, 100);
+		data[0] = 1;
+		data[1] = 0;
+		data[2] = toInt8($input.left.x, -1, 1);
+		data[3] = toInt8($input.left.y, -1, 1);
+		data[4] = toInt8($input.right.x, -1, 1);
+		data[5] = toInt8($input.right.y, -1, 1);
+		data[6] = toInt8($input.height, 0, 100);
+		data[7] = toInt8($input.speed, 0, 100);
 
 		outControllerData.set(data);
 	};
