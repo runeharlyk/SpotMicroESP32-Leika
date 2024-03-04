@@ -20,13 +20,12 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 from pkg_resources import parse_version
-import spot
+import simulation.entities.spot as spot
 import pybullet_utils.bullet_client as bullet_client
 from gym.envs.registration import register
 from simulation.GymEnvs.heightfield import HeightField
 from OpenLoopSM.SpotOL import BezierStepper
 from raspberry_pi.src.Kinematics import LieAlgebra as LA
-from simulation.GymEnvs.spot_env_randomizer import SpotEnvRandomizer
 
 NUM_SUBSTEPS = 5
 NUM_MOTORS = 12

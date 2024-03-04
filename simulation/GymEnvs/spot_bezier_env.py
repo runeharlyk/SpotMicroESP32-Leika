@@ -6,7 +6,7 @@ import time
 import numpy as np
 import pybullet_data
 from gym import spaces
-import spot
+import entities.spot as spot
 from gym.envs.registration import register
 
 from simulation.GymEnvs.spot_gym_env import spotGymEnv

@@ -17,7 +17,7 @@ import math
 import re
 import sys
 import numpy as np
-import motor
+import entities.motor as motor
 import pybullet_data
 
 sys.path.append("../")

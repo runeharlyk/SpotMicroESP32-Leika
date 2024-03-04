@@ -1,12 +1,14 @@
-#!/usr/bin/env python
-
+# SCRIPT FOR SHOWING WALKING GAIT
 import numpy as np
 import copy
+import sys
 
-from .GymEnvs.spot_bezier_env import spotBezierEnv
-from .util.gui import GUI
-from .Kinematics.SpotKinematics import SpotModel
-from .GaitGenerator.Bezier import BezierGait
+sys.path.append("../../..")
+
+from GymEnvs.spot_bezier_env import spotBezierEnv
+from util.gui import GUI
+from raspberry_pi.src.Kinematics.SpotKinematics import SpotModel
+from raspberry_pi.src.GaitGenerator.Bezier import BezierGait
 
 
 class GaitState:
@@ -39,7 +41,7 @@ class BodyState:
         self.worldFeetPositions = {}
 
 
-class Simulator:
+class Gait:
     def __init__(
         self,
         env: spotBezierEnv,
@@ -62,7 +64,7 @@ class Simulator:
 
         self.dt = 0.01
 
-    def step(self, model, command):
+    def step(self):
         self.gait_state.update_gait_state(self.dt)
         self.gui.UserInput(self.body_state, self.gait_state)
         self.gait_state.contacts = self.state[-4:]
@@ -92,7 +94,6 @@ if __name__ == "__main__":
         on_rack=False,
         height_field=False,
         draw_foot_path=False,
-        env_randomizer=None,
     )
     gui = GUI(env.spot.quadruped)
     bodyState = BodyState()
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     spot = SpotModel()
     bezierGait = BezierGait()
 
-    gait = Simulator(env, gui, bodyState, gaitState, spot, bezierGait)
+    gait = Gait(env, gui, bodyState, gaitState, spot, bezierGait)
 
     while True:
         done = gait.step()

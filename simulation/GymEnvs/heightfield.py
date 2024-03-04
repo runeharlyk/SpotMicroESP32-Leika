@@ -13,6 +13,7 @@ https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/
 
 import pybullet as p
 import pybullet_data as pd
+import random
 
 textureId = -1
 
@@ -24,7 +25,6 @@ updateHeightfield = False
 heightfieldSource = useProgrammatic
 numHeightfieldRows = 256
 numHeightfieldColumns = 256
-import random
 random.seed(10)
 
 
