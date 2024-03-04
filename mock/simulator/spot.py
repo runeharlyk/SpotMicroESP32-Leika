@@ -16,12 +16,12 @@ import copy
 import math
 import re
 import numpy as np
-import motor
+from . import motor
 from util import pybullet_data
 
 print(pybullet_data.getDataPath())
-from Kinematics.SpotKinematics import SpotModel
-import Kinematics.LieAlgebra as LA
+from .Kinematics.SpotKinematics import SpotModel
+from .Kinematics import LieAlgebra as LA
 
 INIT_POSITION = [0, 0, 0.25]
 INIT_RACK_POSITION = [0, 0, 1]

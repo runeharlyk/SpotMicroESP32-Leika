@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
-from Kinematics.LegKinematics import LegIK
-from Kinematics.LieAlgebra import RpToTrans, TransToRp, TransInv, RPY, TransformVector
+from .LegKinematics import LegIK
+from .LieAlgebra import RpToTrans, TransToRp, TransInv, RPY, TransformVector
 from collections import OrderedDict
 
 

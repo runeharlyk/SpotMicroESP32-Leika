@@ -1,12 +1,34 @@
 import asyncio
 from enum import Enum
 import json
+import sys
 import websockets
 from model import model
+from MotionController import GaitState
+from simulator.GaitGenerator.Bezier import BezierGait
+from simulator.GymEnvs.spot_bezier_env import spotBezierEnv
+from simulator.Kinematics.SpotKinematics import SpotModel
+from simulator.util.gui import GUI
+from simulator.simulator import BodyState, Simulator
 import struct
+
+sys.path.append("./simulator/GymEnvs")
 
 clients = {}
 
+env = spotBezierEnv(
+    render=True,
+    on_rack=False,
+    height_field=False,
+    draw_foot_path=False,
+    env_randomizer=None,
+)
+gui = GUI(env.spot.quadruped)
+bodyState = BodyState()
+gaitState = GaitState()
+spot = SpotModel()
+bezierGait = BezierGait()
+simulator = Simulator()
 
 class Command(Enum):
     ESTOP = 0
