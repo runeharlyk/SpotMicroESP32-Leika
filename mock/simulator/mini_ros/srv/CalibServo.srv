@@ -1,6 +1,0 @@
-# Request
-int8 servo_num
-int32 servo_pulse
----
-# Response
-string Response

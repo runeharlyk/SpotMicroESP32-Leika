@@ -1,2 +1,0 @@
-int8 servo_num
-int32 servo_pulse
