@@ -12,7 +12,7 @@ https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybul
 """
 
 import numpy as np
-import env_randomizer_base
+from . import env_randomizer_base
 
 # Relative range.
 spot_BASE_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%

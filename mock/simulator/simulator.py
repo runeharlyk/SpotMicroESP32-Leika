@@ -4,12 +4,12 @@ import numpy as np
 import copy
 import sys
 
-sys.path.append("../../")
+# sys.path.append("../../")
 
-from GymEnvs.spot_bezier_env import spotBezierEnv
-from util.gui import GUI
-from Kinematics.SpotKinematics import SpotModel
-from GaitGenerator.Bezier import BezierGait
+from .GymEnvs.spot_bezier_env import spotBezierEnv
+from .util.gui import GUI
+from .Kinematics.SpotKinematics import SpotModel
+from .GaitGenerator.Bezier import BezierGait
 
 
 class GaitState:

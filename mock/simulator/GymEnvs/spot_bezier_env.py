@@ -10,13 +10,11 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 from pkg_resources import parse_version
-import spot
+from .. import spot
 import pybullet_utils.bullet_client as bullet_client
 from gym.envs.registration import register
-from OpenLoopSM.SpotOL import BezierStepper
-from spot_gym_env import spotGymEnv
-import Kinematics.LieAlgebra as LA
-from spot_env_randomizer import SpotEnvRandomizer
+from ..spot_gym_env import spotGymEnv
+from ..spot_env_randomizer import SpotEnvRandomizer
 
 SENSOR_NOISE_STDDEV = spot.SENSOR_NOISE_STDDEV
 
