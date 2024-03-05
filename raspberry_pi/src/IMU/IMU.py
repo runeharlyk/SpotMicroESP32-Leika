@@ -1,5 +1,5 @@
 import numpy as np
-from .IMUBase import IMUBase
+from src.imu.IMUBase import IMUBase
 
 class IMU(IMUBase):
     def __init__(self) -> None:

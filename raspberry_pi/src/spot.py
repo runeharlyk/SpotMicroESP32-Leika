@@ -9,14 +9,24 @@ from .State import BodyState, GaitState
 sys.path.append("../../..")
 
 class Spot:
-    def __init__(self, kinematic, IMU=None):
+    def __init__(self, kinematic, camera, imu, hardware_interface, controller_interface):
+        self.kinematic = kinematic
+        self.camera = camera
+        self.imu = imu
+        self.hardware_interface = hardware_interface
+        self.controller_interface = controller_interface
+
         self.body_state = BodyState()
         self.gait_state = GaitState()
-        self.kinematic = kinematic
         self.gait_controller = BezierGait()
-        self.IMU = IMU
 
         self.body_state.worldFeetPositions = copy.deepcopy(self.kinematic.WorldToFoot)
+
+    def start(self):
+        self.controller_interface.start()
+
+    def stop(self):
+        self.controller_interface.stop()
 
     def joint_angles(self):
         return self.kinematic.IK(
@@ -25,27 +35,20 @@ class Spot:
             self.body_state.worldFeetPositions,
         )
 
-    def run(self, state, command):
-        self.gait_state.update_gait_state(self.dt)
-        self.gui.UserInput(self.body_state, self.gait_state)
-        self.gait_state.contacts = self.state[-4:]
-        self.body_state.worldFeetPositions = copy.deepcopy(self.spot.WorldToFoot)
+    def run(self, dt=.01):
+        self.gait_state.update_gait_state(dt)
+        # self.gui.UserInput(self.body_state, self.gait_state)
 
-        self.bezier_gait.generate_trajectory(self.body_state, self.gait_state, self.dt)
+        self.gait_controller.generate_trajectory(self.body_state, self.gait_state, dt)
 
         self.update_environment()
 
-        self.state, _, done, _ = self.env.step(self.action)
-        if done:
-            print("DONE")
-            return True
-
     def update_environment(self):
-        joint_angles = self.spot.IK(
+        joint_angles = self.kinematic.IK(
             self.body_state.rotation,
             self.body_state.position,
             self.body_state.worldFeetPositions,
         )
-        self.env.pass_joint_angles(joint_angles.reshape(-1))
+        self.hardware_interface.set_actuator_positions(joint_angles.reshape(-1))
 
 
