@@ -6,9 +6,9 @@ import time
 import numpy as np
 import pybullet_data
 from gym import spaces
-import entities.spot as spot
 from gym.envs.registration import register
 
+from simulation.entities import spot
 from simulation.GymEnvs.spot_gym_env import spotGymEnv
 
 SENSOR_NOISE_STDDEV = spot.SENSOR_NOISE_STDDEV

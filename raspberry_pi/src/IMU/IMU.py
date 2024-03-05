@@ -1,7 +1,7 @@
 import numpy as np
+from .IMUBase import IMUBase
 
-
-class IMU:
+class IMU(IMUBase):
     def __init__(self) -> None:
         pass
 

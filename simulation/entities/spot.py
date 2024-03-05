@@ -17,9 +17,9 @@ import math
 import re
 import sys
 import numpy as np
-import entities.motor as motor
 import pybullet_data
 
+from simulation.entities import motor
 sys.path.append("../")
 
 from raspberry_pi.src.Kinematics.SpotKinematics import SpotModel
@@ -397,14 +397,14 @@ class Spot(object):
             print(pybullet_data.getDataPath())
             if self._self_collision_enabled:
                 self.quadruped = self._pybullet_client.loadURDF(
-                    pybullet_data.getDataPath() + "/spot.urdf",
+                    self._urdf_root + "/spot.urdf",
                     init_position,
                     useFixedBase=self._on_rack,
                     flags=self._pybullet_client.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT,
                 )
             else:
                 self.quadruped = self._pybullet_client.loadURDF(
-                    pybullet_data.getDataPath() + "/spot.urdf",
+                    self._urdf_root + "/spot.urdf",
                     init_position,
                     INIT_ORIENTATION,
                     useFixedBase=self._on_rack,
