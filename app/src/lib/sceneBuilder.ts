@@ -197,6 +197,7 @@ export default class SceneBuilder {
 
 	public startRenderLoop = () => {
 		this.renderer.setAnimationLoop(() => {
+            this.controls.update();
 			this.renderer.render(this.scene, this.camera);
 			this.handleRobotShadow();
 			if (this.callback) this.callback();

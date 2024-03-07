@@ -17,10 +17,12 @@ type WebsocketOutData = string | ArrayBufferLike | Blob | ArrayBufferView;
 
 class SocketService {
 	private socket!: WebSocket;
+    private url?:string
 
 	constructor() {}
 
 	public connect(url: string): void {
+        this.url = url
 		this.socket = new WebSocket(url);
 		this.socket.binaryType = 'arraybuffer';
 		this.socket.onopen = () => this.handleConnected();
@@ -50,6 +52,7 @@ class SocketService {
 
 	private handleDisconnected(): void {
 		isConnected.set(false);
+        setTimeout(() => this.connect(this.url as string), 500)
 	}
 
 	private getJsonFromMessage(msg: string): Result<WebSocketJsonMsg, string> {

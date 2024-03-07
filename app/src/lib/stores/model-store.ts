@@ -14,7 +14,7 @@ export type Modes = (typeof modes)[number];
 
 export const mode: Writable<Modes> = writable('idle');
 
-export const outControllerData = writable(new Int8Array([0, 0, 0, 0, 0, 70, 0]));
+export const outControllerData = writable(new Int8Array([0, 0, 0, 0, 0, 0, 70, 0]));
 
 export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },

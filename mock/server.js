@@ -209,13 +209,14 @@ const updateAngles = (angles) => {
 
 const bufferToController = (buffer) => {
   return {
-    stop: buffer[0],
-    lx: buffer[1],
-    ly: buffer[2],
-    rx: buffer[3],
-    ry: buffer[4],
-    h: buffer[5],
-    s: buffer[6],
+    command: buffer[0],
+    stop: buffer[1],
+    lx: buffer[2],
+    ly: buffer[3],
+    rx: buffer[4],
+    ry: buffer[5],
+    h: buffer[6],
+    s: buffer[7],
   };
 };
 
@@ -276,15 +277,31 @@ const stand = (client) => {
 // https://www.hindawi.com/journals/cin/2016/9853070/
 
 const step = (model, controller, tick) => {
-  const y1 = -100 * Math.sin(-0.05 * tick) - 150;
-  const y2 = -100 * Math.sin(-0.05 * tick + Math.PI) - 150;
-  const x1 = Math.abs((tick % 120) - 60) - 60;
+  const arc_height = controller.h;
+  const speed = (controller.s + 128) / 255 / 4;
+
+  const T_stride_s = 500 / 1000;
+  const overlay = 10 / 100;
+
+  const T_stance_s = T_stride_s * (0.5 + overlay);
+  const T_swing_s = T_stride_s * (0.5 - overlay);
+
+  const x = Math.abs((tick % 200) - 100);
+
+  const y1 = Math.min(
+    Math.max(-arc_height * Math.sin(-speed * tick) - 150, -200),
+    -100
+  );
+  const y2 = Math.min(
+    Math.max(-arc_height * Math.sin(-speed * tick + Math.PI) - 150, -200),
+    -100
+  );
   const Lp = [
     // -50  is minimum
     [100, y1, 100, 1],
     [100, y2, -100, 1],
-    [-100, y2, 100, 1],
-    [-100, y1, -100, 1],
+    [-65, y2, 100, 1],
+    [-65, y1, -100, 1],
   ];
 
   model.servos.angles = kinematic
@@ -336,7 +353,7 @@ const handelController = (ws, buffer) => {
 };
 
 const handleBufferMessage = (ws, buffer) => {
-  if (buffer.length === 6) {
+  if (buffer.length === 8) {
     handelController(ws, buffer);
   }
 };
