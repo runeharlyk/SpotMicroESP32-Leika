@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from typing import Any
 
 
 class CameraBase():
@@ -7,5 +6,5 @@ class CameraBase():
         pass
 
     @abstractmethod
-    def get_image(self) -> Any:
+    def update(self) -> None:
         raise NotImplementedError

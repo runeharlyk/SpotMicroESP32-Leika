@@ -41,7 +41,6 @@ class WebsocketController:
         clients[client_id] = {
             "websocket": websocket,
         }
-        print("Got a new connection")
         try:
             async for message in websocket:
                 if isinstance(message, bytes):

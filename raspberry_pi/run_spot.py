@@ -16,16 +16,23 @@ def main():
     imu = IMU()
     hardware_interface = HardwareInterface()
     # shared_controller_state = SharedState()
-    controller_interface = WebsocketController() # shared_controller_state)
+    shared_controller_state = SharedState()
+    controller_interface = WebsocketController(shared_controller_state)
 
-    spot = Spot(kinematics, camera, imu, hardware_interface, controller_interface)
+    spot = Spot(
+        kinematics, 
+        camera, 
+        imu, 
+        hardware_interface, 
+        controller_interface, 
+        shared_controller_state
+    )
 
     spot.start()
 
     try:
         while True:
-            spot.run(shared_state.get_latest_state().__dict__)
-            time.sleep(1)
+            spot.run()
     except KeyboardInterrupt:
         spot.stop()
 

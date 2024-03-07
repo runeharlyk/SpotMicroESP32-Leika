@@ -12,7 +12,7 @@ class StreamingHandler(BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 while True:
-                    frame = self.server.camera.get_image()
+                    frame = self.server.camera.get_frame()
                     _, jpeg = cv2.imencode('.jpg', frame)
                     self.wfile.write(b'--frame\r\n')
                     self.send_header('Content-Type', 'image/jpeg')
@@ -49,3 +49,5 @@ class StreamingServerThread:
         self.server_thread.daemon = True
         self.server_thread.start()
 
+    def stop(self):
+        self.server_thread.join()

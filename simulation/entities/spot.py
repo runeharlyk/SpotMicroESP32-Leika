@@ -22,7 +22,7 @@ import pybullet_data
 from simulation.entities import motor
 sys.path.append("../")
 
-from raspberry_pi.src.Kinematics.SpotKinematics import SpotModel
+from raspberry_pi.src.kinematics.SpotKinematics import SpotModel
 
 INIT_POSITION = [0, 0, 0.25]
 INIT_RACK_POSITION = [0, 0, 1]

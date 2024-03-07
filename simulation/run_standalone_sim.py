@@ -7,7 +7,7 @@ sys.path.append("../../..")
 
 from GymEnvs.spot_bezier_env import spotBezierEnv
 from util.gui import GUI
-from raspberry_pi.src.Kinematics.SpotKinematics import SpotModel
+from raspberry_pi.src.kinematics.SpotKinematics import SpotModel
 from raspberry_pi.src.GaitGenerator.Bezier import BezierGait
 
 

@@ -25,7 +25,7 @@ import pybullet_utils.bullet_client as bullet_client
 
 import simulation.entities.spot as spot
 from simulation.GymEnvs.heightfield import HeightField
-from raspberry_pi.src.Kinematics import LieAlgebra as LA
+from raspberry_pi.src.kinematics import LieAlgebra as LA
 from simulation.OpenLoopSM.SpotOL import BezierStepper
 
 NUM_SUBSTEPS = 5

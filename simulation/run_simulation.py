@@ -3,8 +3,8 @@ from os import sys
 sys.path.append('../')
 
 from raspberry_pi.src.spot import Spot
-from raspberry_pi.src.Kinematics.SpotKinematics import SpotModel
-from raspberry_pi.src.IMU.IMU import IMU
+from raspberry_pi.src.kinematics.SpotKinematics import SpotModel
+from raspberry_pi.src.imu.IMU import IMU
 
 # from GymEnvs.spot_bezier_env import spotBezierEnv
 from simulator import Simulator
