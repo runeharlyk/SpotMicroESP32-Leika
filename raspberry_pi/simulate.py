@@ -27,8 +27,9 @@ def main():
     )
 
     kinematics = SpotModel()
-    camera = WebCamera()
-    camera = PyBulletCamera(env.spot.quadruped)
+    # camera = WebCamera()
+    frame_queue = Queue(maxsize=10) 
+    camera = PyBulletCamera(env.spot.quadruped, frame_queue=frame_queue)
     imu = IMU()
     hardware_interface = PyBulletHardwareInterface(env)
     # shared_controller_state = SharedState()
@@ -36,7 +37,8 @@ def main():
 
     spot = Spot(
         kinematics, 
-        camera, 
+        camera,
+        frame_queue,
         imu, 
         hardware_interface, 
         controller_interface, 

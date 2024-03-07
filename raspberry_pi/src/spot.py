@@ -14,7 +14,7 @@ def map_value(x, from_low, from_high, to_low, to_high):
     return ((x - from_low) / (from_high - from_low)) * (to_high - to_low) + to_low
 
 class Spot:
-    def __init__(self, kinematic, camera:CameraBase, imu, hardware_interface, controller_interface, shared_controller_state):
+    def __init__(self, kinematic, camera:CameraBase, frame_queue, imu, hardware_interface, controller_interface, shared_controller_state):
         self.kinematic = kinematic
         self.camera = camera
         self.imu = imu
@@ -22,7 +22,7 @@ class Spot:
         self.controller_interface = controller_interface
         self.shared_controller_state = shared_controller_state
 
-        self.camera_stream = StreamingServerThread(self.camera)
+        self.camera_stream = StreamingServerThread(frame_queue)
 
         self.body_state = BodyState()
         self.gait_state = GaitState()
@@ -31,9 +31,8 @@ class Spot:
         self.body_state.worldFeetPositions = copy.deepcopy(self.kinematic.WorldToFoot)
 
     def start(self):
-        
         self.controller_interface.start()
-        self.camera_stream.start()
+        self.camera_stream.start_process()
 
     def stop(self):
         self.controller_interface.stop()
@@ -52,7 +51,7 @@ class Spot:
         # self.gait_state.target_yaw_rate = map_value(controller.rx, -127, 128, -2.0, 2.0)
 
     def run(self, dt=.01):
-        # self.camera.update()
+        self.camera.update()
         controller = self.shared_controller_state.get_latest_state()
         self.handle_input(controller)
         self.gait_state.update_gait_state(dt)

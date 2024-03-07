@@ -8,7 +8,7 @@ class WebCamera(CameraBase):
         self._last_frame = None
         super().__init__()
 
-    def get_frame(self):
+    def get_image(self):
         self._last_frame
 
     def update(self) -> None:

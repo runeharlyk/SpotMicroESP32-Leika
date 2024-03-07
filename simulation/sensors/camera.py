@@ -1,4 +1,5 @@
 import math
+from queue import Empty
 import cv2
 import numpy as np
 import pybullet as pb
@@ -18,7 +19,7 @@ projectionMatrix = pb.computeProjectionMatrixFOV(
 distance = 100000
 
 class PyBulletCamera(CameraBase):
-    def __init__(self, model_id, view_matrix=viewMatrix, projection_matrix=projectionMatrix, width=640, height=480):
+    def __init__(self, model_id, frame_queue, view_matrix=viewMatrix, projection_matrix=projectionMatrix, width=640, height=480):
         """
         Initializes the camera with PyBullet view and projection matrices.
         :param view_matrix: The view matrix for the camera in PyBullet.
@@ -32,10 +33,7 @@ class PyBulletCamera(CameraBase):
         self.projection_matrix = projection_matrix
         self.width = width
         self.height = height
-        self._last_frame = None
-
-    def get_frame(self):
-        self._last_frame
+        self.frame_queue = frame_queue
 
     def update(self):
         """
@@ -44,7 +42,15 @@ class PyBulletCamera(CameraBase):
         """
 
         self.update_view_matrix()
-        self._last_frame = self.get_frame()
+        frame = self.get_frame()
+        if frame is not None:
+            # Only keep the latest frame to avoid filling up the queue
+            while not self.frame_queue.empty():
+                try:
+                    self.frame_queue.get_nowait()
+                except Empty:
+                    pass
+            self.frame_queue.put(frame)
     
     def get_frame(self):
         # Capture an image from the simulation
