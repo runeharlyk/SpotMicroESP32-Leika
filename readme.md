@@ -1,26 +1,21 @@
 <h1 align="center">
-  <br>
+  <br />
   <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika">
-  <img src="https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg" alt="Markdownify" width="200"></a>
-  <br>
+    <img src="https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg" alt="Markdownify" width="200">
+  </a>
+  <br>  
   Spot Micro - Leika
-  <br>
 </h1>
 
 <h4 align="center">A small quadruped robot, inspired by boston dynamic <a href="https://bostondynamics.com/products/spot/" target="_blank">Spot</a>.</h4>
 
 <!-- <p align="center">
-  <a href="https://badge.fury.io/js/electron-markdownify">
-    <img src="https://badge.fury.io/js/electron-markdownify.svg"
-         alt="Gitter">
+  <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml">
+    <img src="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg" alt="Gitter">
   </a>
-  <a href="https://gitter.im/amitmerchant1990/electron-markdownify"><img src="https://badges.gitter.im/amitmerchant1990/electron-markdownify.svg"></a>
-  <a href="https://saythanks.io/to/bullredeyes@gmail.com">
-      <img src="https://img.shields.io/badge/SayThanks.io-%E2%98%BC-1EAEDB.svg">
-  </a>
-  <a href="https://www.paypal.me/AmitMerchant">
-    <img src="https://img.shields.io/badge/$-donate-ff69b4.svg?maxAge=2592000&amp;style=flat">
-  </a>
+  <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml">
+    <img src="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml/badge.svg"></a>
+
 </p> -->
 
 <p align="center">
@@ -28,7 +23,7 @@
   <a href="#overview">Overview</a> •
   <a href="#getting-started">Getting started</a> •
   <a href="#credits">Credits</a> •
-  <a href="#external-links-and-references">Related</a> •
+  <!-- <a href="#external-links-and-references">Related</a> • -->
   <a href="#license">License</a>
 </p>
 
@@ -84,6 +79,10 @@ By focusing on practicality and simplicity in both hardware and software, it off
 * 4x 18650 Li-ion battery in 2P2S configuration
 * Couple of resistors (10K, 47.7k, 33K)
 * 4x Servo extension cables
+
+#### Connection Diagram
+
+![alt text](images/connection_diagram.png)
 
 ### Body
 
