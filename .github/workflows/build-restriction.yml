@@ -3,8 +3,12 @@ name: Embedded app build size
 on:
   push:
     branches: [ master ]
+    paths:
+        - 'app/**'  
   pull_request:
     branches: [ master ]
+    paths:
+        - 'app/**'  
     
 permissions:
   contents: read
