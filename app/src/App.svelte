@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Router, Route } from 'svelte-routing';
 	import { onMount } from 'svelte';
-	import TopBar from './components/TopBar.svelte';
+	import TopBar from './components/Topbar.svelte';
 	import socketService from '$lib/services/socket-service';
 	import Controller from './routes/Controller.svelte';
 	import { fileService } from '$lib/services';
