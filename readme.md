@@ -1,7 +1,6 @@
-
 <h1 align="center">
   <br>
-  <a href="http://www.amitmerchant.com/electron-markdownify">
+  <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika">
   <img src="https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg" alt="Markdownify" width="200"></a>
   <br>
   Spot Micro - Leika
@@ -36,10 +35,19 @@
 <!-- GIF
 ![screenshot](https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg) -->
 
+## Status
+
+<div style="display:flex;gap:20px">
+
+[![Frontend Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml)
+
+[![Embedded app build size](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml)
+</div>
+
 ## Key Features
 
 * Live preview - Make changes, See changes
-  * Instantly test and preview code in emulation 
+  * Instantly test and preview code in emulation
 * Live stream
   * Camera livestream, battery voltage, servo position, distance sensors and much more.
 * Full kinematic model
@@ -56,7 +64,7 @@ This repository contains the complete source code for a Spot Micro quadruped rob
 Execution of the software takes place on a ESP32 cam, which runs various number of FreeRTos task for seamless robotic operations.
 By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
 
-The repo is based the following template: [ESP32-rapid-development-template](https://github.com/runeharlyk/ESP32-rapid-development-template)
+<!-- The repo is based the following template: [ESP32-rapid-development-template](https://github.com/runeharlyk/ESP32-rapid-development-template) -->
 
 ### Electronics
 
@@ -115,26 +123,26 @@ The libraries includes:
 
 The software utilizes a couple of FreeRTos task
 | Task | Description | Priority | Core
-| --- | --- | --- | --- |
-| Idle0 task | Burns cpu time to track cpu usage for core 0 | 1 | 0 |
-| Idle1 task | Burns cpu time to track cpu usage for core 1 | 1 | 1 |
-| JSON writer task | Write serialized JSON objects to SPIFFS at request, with some delay | 2 | 0 |
-| Movement task | Handles movement, updating gait and servos | 3 | 0 |
-| Network task | Handles connection either as STA or AP | 5 | 1 |
+| --- | --- | --- | ---
+| Idle0 task | Burns cpu time to track cpu usage for core 0 | 1 | 0
+| Idle1 task | Burns cpu time to track cpu usage for core 1 | 1 | 1
+| JSON writer task | Write serialized JSON objects to SPIFFS at request, with some delay | 2 | 0
+| Movement task | Handles movement, updating gait and servos | 3 | 0
+| Network task | Handles connection either as STA or AP | 5 | 1
 
 #### Feature flags
 
 To dis-/enable the major feature I use defines. Define them in either featureflags.h or in platformio.ini's build_flags.
-| Feature | Description | Default |
-| --- | --- | --- |
-| USE_WIFI | Whether or not to use wifi | 1 |
-| WAIT_FOR_WIFI | Whether or not the device should wait for a connection or restart | 0 |
-| USE_WEBSERVER | Whether or not to use async webserver | 1 |
-| USE_MDNS | Whether or not to use MDNS | 1 |
-| USE_DNS_SERVER | Whether or not to use DNS server | 0 |
-| USE_MPU | Whether or not to use MPU | 1 |
-| USE_POWER_BUTTON | Whether or not to use power button | 1 |
-| USE_USS | Whether or not to use ultra sonic sensors | 1 |
+| Feature | Description | Default
+| --- | --- | ---
+| USE_WIFI | Whether or not to use wifi | 1
+| WAIT_FOR_WIFI | Whether or not the device should wait for a connection or restart | 0
+| USE_WEBSERVER | Whether or not to use async webserver | 1
+| USE_MDNS | Whether or not to use MDNS | 1
+| USE_DNS_SERVER | Whether or not to use DNS server | 0
+| USE_MPU | Whether or not to use MPU | 1
+| USE_POWER_BUTTON | Whether or not to use power button | 1
+| USE_USS | Whether or not to use ultra sonic sensors | 1
 
 ### 📲Web application
 
@@ -147,26 +155,26 @@ Therefore there is placed a lot of thought behind the functionality and dependen
 
 For the development dependencies I choose the following
 
-| Dependencies | Description |
-| --- | --- |
-| Svelte | Svelte is a compiled JS framework that has a very small footprint. Furthermore it make the development process fast and enjoyable. | --- |
-| Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production | --- |
-| Typescript | TypeScript's integration of static typing enhances code reliability and maintainability. | --- |
-| Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design. | --- |
-| Vite single file plugin | This plugin inline all JS and CSS in the *index.html* file, which is necessary as SPIFFS max file length is 32 bytes. | --- |
-| Vite compression plugin | This plugin compresses the *index.html* file making the final footprint a lot smaller. | --- |
+| Dependencies | Description
+| --- | ---
+| Svelte | Svelte is a compiled JS framework that has a very small footprint. Furthermore it make the development process fast and enjoyable.
+| Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production
+| Typescript | TypeScript's integration of static typing enhances code reliability and maintainability.
+| Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design.
+| Vite single file plugin | This plugin inline all JS and CSS in the *index.html* file, which is necessary as SPIFFS max file length is 32 bytes.
+| Vite compression plugin | This plugin compresses the *index.html* file making the final footprint a lot smaller.
 
 #### Libraries
 
 For the app functionality I choose the following:
 
-| Dependencies | Description |
-| --- | --- |
-| [Three](https://www.npmjs.com/package/three) | Easy to use, lightweight, cross-browser, general purpose 3D library. |
-| [Urdf-loader](https://www.npmjs.com/package/urdf-loader) | Utilities for loading URDF files into THREE.js and a Web Component that loads and renders the model. |
-| [Xacro-parser](https://www.npmjs.com/package/xacro-parser) | Javascript parser and loader for processing the ROS Xacro file format. |
-| [NippleJS](https://www.npmjs.com/package/nipplejs) | A vanilla virtual joystick for touch capable interfaces. |
-| [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library. |
+| Dependencies | Description
+| --- | ---
+| [Three](https://www.npmjs.com/package/three) | Easy to use, lightweight, cross-browser, general purpose 3D library.
+| [Urdf-loader](https://www.npmjs.com/package/urdf-loader) | Utilities for loading URDF files into THREE.js and a Web Component that loads and renders the model.
+| [Xacro-parser](https://www.npmjs.com/package/xacro-parser) | Javascript parser and loader for processing the ROS Xacro file format.
+| [NippleJS](https://www.npmjs.com/package/nipplejs) | A vanilla virtual joystick for touch capable interfaces.
+| [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library.
 
 ### Space issues
 
@@ -219,7 +227,7 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 1. Run the app
 
     ```sh
-    npm run dev
+    pnpm run dev
     ```
 
 ### Building
@@ -227,7 +235,7 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 1. Build the app
 
     ```sh
-    npm run build
+    pnpm run build
     ```
 
 1. Upload Filesystem Image using platformIO
