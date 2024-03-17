@@ -1,0 +1,48 @@
+name: Embedded app build size
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # defaults:
+    #   run:
+    #     working-directory: ./app
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 'latest'
+        cache: 'pnpm'
+        cache-dependency-path: './app/pnpm-lock.yaml'
+
+    - name: Install dependencies
+      run: cd app && pnpm install
+    - name: Build app
+      run: cd app && pnpm build
+    - name: List files
+      run: cd esp32 && ls
+
+
+    - name: Check index.html size
+      run: |
+        SIZE=$(stat --format=%s esp32/data/index.html.gz)
+        MAXSIZE=204800
+        if [ $SIZE -gt $MAXSIZE ]; then
+        echo "index.html is larger than 200KB ($SIZE bytes)"
+        exit 1
+        else
+        echo "index.html size is within limit ($SIZE bytes)"
+        fi
