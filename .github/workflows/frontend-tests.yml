@@ -3,8 +3,12 @@ name: Frontend Tests
 on:
   push:
     branches: [ master ]
+    paths:
+        - 'app/**'  
   pull_request:
     branches: [ master ]
+    paths:
+        - 'app/**'  
     
 permissions:
   contents: read
