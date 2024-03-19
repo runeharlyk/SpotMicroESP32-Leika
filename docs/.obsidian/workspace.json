@@ -11,15 +11,8 @@
             "id": "e338073e64d4becc",
             "type": "leaf",
             "state": {
-              "type": "canvas",
-              "state": {
-                "file": "Untitled.canvas",
-                "viewState": {
-                  "x": 436,
-                  "y": -211.74998474121094,
-                  "zoom": -0.5
-                }
-              }
+              "type": "empty",
+              "state": {}
             }
           },
           {
@@ -28,7 +21,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "readme.md",
+                "file": "api.md",
                 "mode": "source",
                 "source": false
               }
@@ -101,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "readme.md",
+                "file": "api.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +111,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "readme.md",
+                "file": "api.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -141,7 +134,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "readme.md"
+                "file": "api.md"
               }
             }
           }
@@ -164,9 +157,17 @@
   },
   "active": "cdbb92cef28dd635",
   "lastOpenFiles": [
-    "Untitled.canvas",
+    "Spot.md",
+    "Simulation/Simulation.md",
+    "Simulation/Pasted image 20240319103157.png",
+    "Simulation",
+    "Electronic connections.canvas",
+    "Getting started.md",
+    "media/PIO-upload.png",
+    "media",
     "api.md",
-    "Architecture & Design principles.md",
-    "readme.md"
+    "readme.md",
+    "Untitled.canvas",
+    "Architecture & Design principles.md"
   ]
 }
