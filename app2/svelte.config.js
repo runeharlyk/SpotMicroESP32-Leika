@@ -9,8 +9,10 @@ const config = {
 
 	kit: {
 		adapter: adapter({
-			pages: '../esp32/data',
-			assets: '../esp32/data',
+			pages: 'build',
+			assets: 'build',
+			pages: '../esp32/www',
+			assets: '../esp32/www',
 			fallback: 'index.html',
 			precompress: false,
 			strict: true
