@@ -27,9 +27,7 @@ build_www_dir = env["PROJECT_DIR"] + "/../app2/build"
 www_dir = "www"
 
 def find_latest_timestamp_for_app():
-  list_of_files = glob.glob(source_www_dir+'/**/*', recursive=True) 
-  latest_file = max(list_of_files, key=os.path.getmtime)
-  return os.path.getmtime(latest_file)
+  return max((os.path.getmtime(f) for f in glob.glob(f'{source_www_dir}/**/*', recursive=True)))
 
 def should_regenerate_output_file():
     if not flag_exists("EMBED_WWW") or not os.path.exists(output_file):
@@ -37,14 +35,13 @@ def should_regenerate_output_file():
     last_source_change = find_latest_timestamp_for_app()
     last_build = os.path.getmtime(output_file)
 
-    print(f'Newest interface file: {datetime.fromtimestamp(last_source_change):%Y-%m-%d %H:%M:%S}, WWW Outputfile: {datetime.fromtimestamp(last_build):%Y-%m-%d %H:%M:%S}')
+    print(f'Newest file: {datetime.fromtimestamp(last_source_change)}, Outputfile: {datetime.fromtimestamp(last_build)}')
     
-    if (last_build < last_source_change):
-        print("Svelte source files are updated. Need to regenerate.")
+    if last_build < last_source_change:
+        print("Svelte files updated. Regenerating.")
         return True
-    print("Current outputfile is O.K. No need to regenerate.")
+    print("Outputfile up-to-date.")
     return False
-
 
 def gzip_file(file):
     with open(file, 'rb') as f_in:
@@ -52,9 +49,8 @@ def gzip_file(file):
             copyfileobj(f_in, f_out)
     os.remove(file)
 
-def is_compressed_filetype(filetype):
-    compressed_types = ['zip', 'gz', 'rar', '7z', 'jpg', 'jpeg', 'png', 'mp4', 'mp3']
-    return filetype.lower() in compressed_types
+def is_compressed(filetype):
+    return filetype.lower() in ['zip', 'gz', 'rar', '7z', 'jpg', 'jpeg', 'png', 'mp4', 'mp3']
 
 def flag_exists(flag):
     buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
@@ -70,34 +66,23 @@ def build_progmem():
 
         assetMap = {}
 
-        # Iterate over all files in the build directory
         for idx, path in enumerate(Path(www_dir).rglob("*.*")):
             asset_path = path.relative_to(www_dir).as_posix()
+            filetype, asset_mime = path.suffix.lstrip('.'), mimetypes.guess_type(asset_path)[0] or 'application/octet-stream'
             print(f"Converting {asset_path}")
-
             asset_var = f'WEB_ASSET_DATA_{idx}'
-            filetype = asset_path.split('.')[-1]
-            asset_mime, _ = mimetypes.guess_type(asset_path)
-            asset_mime = asset_mime if asset_mime else f'application/octet-stream'
 
-            progmem.write('// ' + str(asset_path) + '\n')
-            progmem.write('const uint8_t ' + asset_var + '[] = {\n  ')
+            progmem.write(f'// {asset_path}\n')
+            progmem.write(f'const uint8_t {asset_var}[] = {{\n  ')
+            file_data = gzip.compress(path.read_bytes()) if not is_compressed(filetype) else path.read_bytes()
             
-            # Open path as binary file, compress and read into byte array
-            size = 0
-            with open(path, "rb") as f:
-                file_data = f.read()
-                if not is_compressed_filetype(filetype):
-                    file_data = gzip.compress(file_data)
-                for byte in file_data:
-                    if not (size % 16):
-                        progmem.write('\n\t')
-                    
-                    progmem.write(f"0x{byte:02X},")
-                    size += 1
+            for i, byte in enumerate(file_data):
+                if i and not (i % 16):
+                    progmem.write('\n\t')
+                progmem.write(f"0x{byte:02X},")
 
             progmem.write('\n};\n\n')
-            assetMap[asset_path] = { "name": asset_var, "mime": asset_mime, "size": size }
+            assetMap[asset_path] = { "name": asset_var, "mime": asset_mime, "size": len(file_data) }
         
         progmem.write('typedef std::function<void(const String& uri, const String& contentType, const uint8_t * content, size_t len)> RouteRegistrationHandler;\n\n')
         progmem.write('class WWWData {\n')
