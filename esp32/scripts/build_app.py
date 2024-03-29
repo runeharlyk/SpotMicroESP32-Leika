@@ -20,10 +20,13 @@ import glob
 from datetime import datetime
 
 Import("env")
+buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
+project_dir = env["PROJECT_DIR"]
 
-output_file = env["PROJECT_DIR"] + "/lib/ESP32-sveltekit/WWWData.h"
-source_www_dir = env["PROJECT_DIR"] + "/../app2/src"
-build_www_dir = env["PROJECT_DIR"] + "/../app2/build"
+app_dir = project_dir + "/../app2"
+output_file = project_dir + "/lib/ESP32-sveltekit/WWWData.h"
+source_www_dir = app_dir + "/src"
+build_www_dir = app_dir + "/build"
 www_dir = "www"
 
 def find_latest_timestamp_for_app():
@@ -35,12 +38,12 @@ def should_regenerate_output_file():
     last_source_change = find_latest_timestamp_for_app()
     last_build = os.path.getmtime(output_file)
 
-    print(f'Newest file: {datetime.fromtimestamp(last_source_change)}, Outputfile: {datetime.fromtimestamp(last_build)}')
+    print(f'Newest file: {datetime.fromtimestamp(last_source_change)}, output file: {datetime.fromtimestamp(last_build)}')
     
     if last_build < last_source_change:
         print("Svelte files updated. Regenerating.")
         return True
-    print("Outputfile up-to-date.")
+    print("Output file up-to-date.")
     return False
 
 def gzip_file(file):
@@ -53,7 +56,6 @@ def is_compressed(filetype):
     return filetype.lower() in ['zip', 'gz', 'rar', '7z', 'jpg', 'jpeg', 'png', 'mp4', 'mp3']
 
 def flag_exists(flag):
-    buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
     for define in buildFlags.get("CPPDEFINES"):
         if (define == flag or (isinstance(define, list) and define[0] == flag)):
             return True
