@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { BufferGeometry, CanvasTexture, CircleGeometry, CubicBezierCurve3, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
+	import { BufferGeometry, Line, LineBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import socketService from '$lib/services/socket-service';
 	import uzip from 'uzip';
 	import { model } from '$lib/stores';
@@ -11,29 +11,30 @@
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-	let sceneManager = new SceneBuilder();
-	let canvas: HTMLCanvasElement, streamCanvas: HTMLCanvasElement, stream: HTMLImageElement;
-	let context: CanvasRenderingContext2D, texture: CanvasTexture;
+    export let sky = true
+    export let orbit = false
+    export let panel = true
+    export let debug = false
 
-	let modelAngles: number[] | Int16Array = new Array(12).fill(0);
-	let modelTargetAngles: number[] | Int16Array = new Array(12).fill(0);
+	let sceneManager = new SceneBuilder();
+	let canvas: HTMLCanvasElement
+
+	let modelAngles: number[] | Int16Array = [0, 45, 45, 0, 45, 45, 0, 45, 45, 0, 45, 45]// new Array(12).fill(0);
+	let modelTargetAngles: number[] | Int16Array = [0, 45, 45, 0, 45, 45, 0, 45, 45, 0, 45, 45] //new Array(12).fill(0);
 
     let feet_trace = new Array(4).fill([]);
     let trace_lines: BufferGeometry<NormalBufferAttributes>[] = []
 
-	const videoStream = `//${location}/api/stream`;
-
-	let showStream = false;
-
     let settings = {
-        'Trace feet':true,
-        'Trace points': 30
+        'Trace feet':debug,
+        'Trace points': 30,
+        'Fix camera on robot': true
     }
 
 	onMount(async () => {
         await cacheModelFiles()
         await createScene();
-        if (!isEmbeddedApp) createPanel();
+        if (!isEmbeddedApp && panel) createPanel();
 	});
 
 	onDestroy(() => {
@@ -74,50 +75,30 @@
 
 	const createScene = async () => {
 		sceneManager
-			.addRenderer({ antialias: true, canvas: canvas, alpha: true })
+			.addRenderer({ antialias: true, canvas, alpha: true })
 			.addPerspectiveCamera({ x: -0.5, y: 0.5, z: 1 })
-			.addOrbitControls(8, 30)
-			// .addSky()
-            .setEnvironment("Asphalt")
+			.addOrbitControls(8, 30, orbit)
 			.addGroundPlane()
-			.addGridHelper({ grid:{size: 250, divisions: 125 }})
+			// .addGridHelper({ grid:{size: 250, divisions: 125 }})
 			.addAmbientLight({ color: 0xffffff, intensity: 0.7 })
 			.addDirectionalLight({ x: 10, y: 100, z: 10, color: 0xffffff, intensity: 1 })
-			.addArrowHelper({ origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: -2, z: 0 } })
+			// .addArrowHelper({ origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: -2, z: 0 } })
 			.addFogExp2(0xcccccc, 0.015)
 			.addModel($model)
 			.addDragControl(updateAngles)
-			.handleResize()
+			.fillParent()
 			.addRenderCb(render)
 			.startRenderLoop();
+        
+        if (sky) sceneManager.addSky()
 
-		addVideoStream();
-
-		for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i++) {
 			const geometry = new BufferGeometry();
 			const material = new LineBasicMaterial({ color: footColor() });
 			const line = new Line(geometry, material);
 			trace_lines.push(geometry);
 			sceneManager.scene.add(line);
 		}
-	};
-
-	const addVideoStream = () => {
-		context = streamCanvas.getContext('2d')!;
-		texture = new CanvasTexture(stream);
-		const liveStream = new Mesh(
-			new CircleGeometry(35, 32),
-			new MeshBasicMaterial({ map: texture })
-		);
-		liveStream.position.z = -50;
-		liveStream.visible = showStream;
-		sceneManager.scene.add(liveStream);
-	};
-
-	const handleVideoStream = () => {
-		if (!showStream) return;
-		context.drawImage(stream, 0, 0);
-		texture.needsUpdate = true;
 	};
 
     const renderTraceLines = (foot_positions: Vector3[]) => {
@@ -143,11 +124,13 @@
 
         renderTraceLines(toes)
 
+        if (settings['Fix camera on robot']) {
+            sceneManager.controls.target = robot.position.clone()
+        }
+
 		robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
 		modelTargetAngles = $servoAngles;
-
-		handleVideoStream();
 
 		for (let i = 0; i < $jointNames.length; i++) {
 			modelAngles[i] = lerp(
@@ -158,18 +141,10 @@
 			robot.joints[$jointNames[i]].setJointValue(degToRad(modelAngles[i]));
 		}
 	};
+
+
 </script>
 
-<svelte:window on:resize={sceneManager.handleResize} />
+<svelte:window on:resize={sceneManager.fillParent} />
 
-{#if showStream}
-	<img
-		bind:this={stream}
-		src={videoStream}
-		class="hidden"
-		alt="Live stream is down"
-		crossorigin="anonymous"
-	/>
-{/if}
-<canvas bind:this={streamCanvas} class="hidden"></canvas>
-<canvas bind:this={canvas} class="absolute"></canvas>
+<canvas bind:this={canvas}></canvas>

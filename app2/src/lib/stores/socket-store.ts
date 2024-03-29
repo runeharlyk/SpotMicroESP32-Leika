@@ -2,7 +2,9 @@ import { writable, type Writable } from 'svelte/store';
 import { type angles } from '$lib/models';
 
 export const isConnected = writable(false);
-export const servoAngles: Writable<angles> = writable(new Int16Array(12).fill(0));
+export const servoAngles: Writable<angles> = writable([
+	0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90
+]);
 export const logs = writable([] as string[]);
 export const battery = writable({});
 export const mpu = writable({ heading: 0 });

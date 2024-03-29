@@ -30,12 +30,11 @@
 
 	const registerFetchIntercept = () => {
 		const { fetch: originalFetch } = window;
-		window.fetch = async (...args) => {
-			const [resource, config] = args;
-			let file: Result<Uint8Array | undefined, string>;
-			file = await fileService.getFile(resource.toString());
-			return file.isOk() ? new Response(file.inner) : originalFetch(resource, config);
-		};
+		window.fetch = async (resource, config) => {
+            let url = resource instanceof Request ? resource.url : resource.toString();
+            let file = await fileService.getFile(url);
+            return file.isOk() ? new Response(file.inner) : originalFetch(resource, config);
+        };
 	};
 </script>
 

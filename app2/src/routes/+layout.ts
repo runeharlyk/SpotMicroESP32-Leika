@@ -1,24 +1,20 @@
 import { jointNames, model } from '$lib/stores';
 import { loadModelAsync } from '$lib/utilities/model-utilities';
-import type { Result } from '$lib/utilities/result';
 
 export const prerender = true;
 export const ssr = false;
 
 const registerFetchIntercept = async () => {
-	if (typeof WebSocket === 'undefined') return;
 	const { fetch: originalFetch } = window;
 	const fileService = (await import('$lib/services/file-service')).default;
-	window.fetch = async (...args) => {
-		const [resource, config] = args;
-		let file: Result<Uint8Array | undefined, string>;
-		file = await fileService.getFile(resource.toString());
+	window.fetch = async (resource, config) => {
+		let url = resource instanceof Request ? resource.url : resource.toString();
+		let file = await fileService.getFile(url);
 		return file.isOk() ? new Response(file.inner) : originalFetch(resource, config);
 	};
 };
 
 const setup = async () => {
-	if (typeof WebSocket === 'undefined') return;
 	const outControllerData = (await import('$lib/stores/model-store')).outControllerData;
 	const mode = (await import('$lib/stores/model-store')).mode;
 	const socketLocation = (await import('$lib/utilities/location-utilities')).socketLocation;
@@ -40,11 +36,13 @@ const setup = async () => {
 
 export const load = async () => {
 	await setup();
-	// const result = await fetch('/rest/features');
-	const item = {}; //await result.json();
+	const result = await fetch('/rest/features');
+	const features = await result.json();
 	return {
-		features: item,
-		title: 'spot-micro-controller',
-		github: 'runeharlyk/spotmicro'
+		features,
+		title: 'Spot micro controller',
+		github: 'runeharlyk/SpotMicroESP32-Leika',
+		app_name: 'Spot Micro Controller',
+		copyright: '2024 Rune Harlyk'
 	};
 };

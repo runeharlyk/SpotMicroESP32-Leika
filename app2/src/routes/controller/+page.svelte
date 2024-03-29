@@ -1,5 +1,9 @@
-<script>
-	import Model from "$lib/components/Views/Model.svelte";
+<script lang="ts">
+    import Visualization from "$lib/components/Visualization.svelte";
 </script>
 
-<Model />
+<div class="grow flex">
+    <div class="absolute h-screen w-full top-0">
+        <Visualization />
+    </div>
+</div> 

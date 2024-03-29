@@ -1,34 +1,32 @@
 <script lang="ts">
-	// import logo from '$lib/assets/logo.png';
-	import Github from '~icons/tabler/brand-github';
-	import Discord from '~icons/tabler/brand-discord';
-	import Users from '~icons/tabler/users';
-	import Settings from '~icons/tabler/settings';
-	import Health from '~icons/tabler/stethoscope';
-	import Update from '~icons/tabler/refresh-alert';
-	import WiFi from '~icons/tabler/wifi';
-	import Router from '~icons/tabler/router';
-	import AP from '~icons/tabler/access-point';
-	import Remote from '~icons/tabler/network';
+	import logo from '$lib/assets/logo512.png';
+	import MdiGithub from '~icons/mdi/github';
+	import Users from '~icons/mdi/users';
+	import Settings from '~icons/mdi/settings';
+    import MdiController from '~icons/mdi/controller';
+	import Health from '~icons/mdi/stethoscope';
+	import Update from '~icons/mdi/reload';
+	import WiFi from '~icons/mdi/wifi';
+	import Router from '~icons/mdi/router';
+	import AP from '~icons/mdi/access-point';
+	import Remote from '~icons/mdi/network';
 	import Control from '~icons/tabler/adjustments';
-	import Avatar from '~icons/tabler/user-circle';
-	import Logout from '~icons/tabler/logout';
-	import Copyright from '~icons/tabler/copyright';
+	import Avatar from '~icons/mdi/user-circle';
+	import Logout from '~icons/mdi/logout';
+	import Copyright from '~icons/mdi/copyright';
 	import MQTT from '~icons/tabler/topology-star-3';
-	import NTP from '~icons/tabler/clock-check';
-	import Metrics from '~icons/tabler/report-analytics';
+	import NTP from '~icons/mdi/clock-check';
+	import Metrics from '~icons/mdi/report-bar';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	// import { user } from '$lib/stores/user';
+	import { user } from '$lib/stores/user';
 	import { createEventDispatcher } from 'svelte';
 
-	const appName = 'ESP32 SvelteKit';
+	const appName = $page.data.app_name;
 
-	const copyright = '2023 theelims';
+	const copyright = $page.data.copyright;
 
 	const github = { href: 'https://github.com/' + $page.data.github, active: true };
-
-	const discord = { href: '.', active: false };
 
 	type menuItem = {
 		title: string;
@@ -48,13 +46,13 @@
 	};
 
 	let menuItems = [
-		{
-			title: 'Demo App',
-			icon: Control,
-			href: '/demo',
-			feature: true,
-			active: false
-		},
+        {
+            title: 'Controller',
+            icon: MdiController,
+            href: '/controller',
+            feature: true,
+            active: false
+        },
 		{
 			title: 'Connections',
 			icon: Remote,
@@ -101,7 +99,7 @@
 			title: 'Users',
 			icon: Users,
 			href: '/user',
-			feature: $page.data.features.security, //&& $user.admin,
+			feature: $page.data.features.security && $user.admin,
 			active: false
 		},
 		{
@@ -131,7 +129,7 @@
 						($page.data.features.ota ||
 							$page.data.features.upload_firmware ||
 							$page.data.features.download_firmware) &&
-						(!$page.data.features.security),// || $user.admin),
+						(!$page.data.features.security || $user.admin),
 					active: false
 				}
 			]
@@ -178,7 +176,7 @@
 		class="rounded-box mb-4 flex items-center hover:scale-[1.02] active:scale-[0.98]"
 		on:click={() => setActiveMenuItem(menuItems, '')}
 	>
-		<!-- <img src={logo} alt="Logo" class="h-12 w-12" /> -->
+		<img src={logo} alt="Logo" class="h-12 w-12" />
 		<h1 class="px-4 text-2xl font-bold">{appName}</h1>
 	</a>
 	<ul class="menu rounded-box menu-vertical flex-nowrap overflow-y-auto">
@@ -234,12 +232,12 @@
 	{#if $page.data.features.security}
 		<div class="flex items-center">
 			<Avatar class="h-8 w-8" />
-			<span class="flex-grow px-4 text-xl font-bold">$user.username</span>
+			<span class="flex-grow px-4 text-xl font-bold">{$user.username}</span>
 			<!-- svelte-ignore a11y-click-events-have-key-events -->
 			<div
 				class="btn btn-ghost"
 				on:click={() => {
-					// user.invalidate();
+					user.invalidate();
 				}}
 			>
 				<Logout class="h-8 w-8 rotate-180" />
@@ -251,12 +249,7 @@
 	<div class="flex items-center">
 		{#if github.active}
 			<a href={github.href} class="btn btn-ghost" target="_blank" rel="noopener noreferrer"
-				><Github class="h-5 w-5" /></a
-			>
-		{/if}
-		{#if discord.active}
-			<a href={discord.href} class="btn btn-ghost" target="_blank" rel="noopener noreferrer"
-				><Discord class="h-5 w-5" /></a
+				><MdiGithub class="h-5 w-5" /></a
 			>
 		{/if}
 		<div class="inline-flex flex-grow items-center justify-end text-sm">
