@@ -14,17 +14,8 @@ const registerFetchIntercept = async () => {
 	};
 };
 
-const setup = async () => {
-	const outControllerData = (await import('$lib/stores/model-store')).outControllerData;
-	const mode = (await import('$lib/stores/model-store')).mode;
-	const socketLocation = (await import('$lib/utilities/location-utilities')).socketLocation;
-	const socketService = (await import('$lib/services/socket-service')).default;
-	socketService.connect(socketLocation);
-	socketService.addPublisher(outControllerData);
-	socketService.addPublisher(mode, 'mode');
-	await registerFetchIntercept();
+const loadModelFiles = async () => {
 	const modelRes = await loadModelAsync('/spot_micro.urdf.xacro');
-
 	if (modelRes.isOk()) {
 		const [urdf, JOINT_NAME] = modelRes.inner;
 		jointNames.set(JOINT_NAME);
@@ -34,8 +25,9 @@ const setup = async () => {
 	}
 };
 
-export const load = async () => {
-	await setup();
+export const load = async ({ fetch }) => {
+	await registerFetchIntercept();
+	await loadModelFiles();
 	const result = await fetch('/rest/features');
 	const features = await result.json();
 	return {

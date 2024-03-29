@@ -180,7 +180,7 @@
 		<h1 class="px-4 text-2xl font-bold">{appName}</h1>
 	</a>
 	<ul class="menu rounded-box menu-vertical flex-nowrap overflow-y-auto">
-		{#each menuItems as menuItem, i (menuItem.title)}
+		{#each menuItems as menuItem (menuItem.title)}
 			{#if menuItem.feature}
 				{#if menuItem.submenu}
 					<li>

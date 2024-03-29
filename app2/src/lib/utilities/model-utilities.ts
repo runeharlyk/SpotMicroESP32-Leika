@@ -33,7 +33,7 @@ export const loadModelAsync = async (
 					resolve(Result.err('Failed to load model', error));
 				}
 			},
-			(error) => reject(error)
+			(error) => resolve(Result.err('Failed to load model', error))
 		);
 	});
 };

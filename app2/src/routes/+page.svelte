@@ -7,7 +7,7 @@
 </script>
 
 <div class="hero bg-base-100 h-screen">
-	<div class="card md:card-side bg-base-200 shadow-2xl">
+	<div class="card md:card-side bg-base-200 shadow-2xl flex justify-center items-center">
         <div class="w-64 h-64">
             <Visualization sky={false} orbit={true} panel={false}/>
         </div>

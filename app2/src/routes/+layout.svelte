@@ -17,20 +17,15 @@
 
 	export let data: LayoutData;
 
-	onMount(() => {
+	onMount(async () => {
 		if ($user.bearer_token !== '') {
 			validateUser($user);
 		}
-		menuOpen = false;
 		connectToEventSource();
 	});
 
 	onDestroy(() => {
 		NotificationSource?.close();
-	});
-
-	onDestroy(() => {
-		NotificationSource.close();
 	});
 
 	async function validateUser(userdata: userProfile) {
@@ -186,15 +181,13 @@
 			<Statusbar />
 
 			<!-- Main page content here -->
-                <slot />
+            <slot />
 		</div>
 		<!-- Side Navigation -->
 		<div class="drawer-side z-30 shadow-lg">
 			<label for="main-menu" class="drawer-overlay" />
 			<Menu
-				on:menuClicked={() => {
-					menuOpen = false;
-				}}
+				on:menuClicked={() => menuOpen = false}
 			/>
 		</div>
 	</div>
