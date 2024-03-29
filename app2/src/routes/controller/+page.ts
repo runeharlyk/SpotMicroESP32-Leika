@@ -1,3 +1,3 @@
 export const load = async () => {
-	return { title: 'Spot Micro' };
+	return { title: 'Controller' };
 };

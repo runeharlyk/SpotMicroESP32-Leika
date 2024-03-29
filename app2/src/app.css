@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+#three-gui-panel {
+    top: 64px;
+    right: 0px;
+}
+
+@media (max-width: 1023px) {
+    #three-gui-panel {
+        top: 48px;
+    }
+}

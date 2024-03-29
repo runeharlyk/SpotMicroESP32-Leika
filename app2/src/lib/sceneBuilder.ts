@@ -11,8 +11,6 @@ import {
 	GridHelper,
 	ArrowHelper,
 	Vector3,
-	LoaderUtils,
-	Object3D,
 	FogExp2,
 	CanvasTexture,
 	type ColorRepresentation,
@@ -92,7 +90,7 @@ export default class SceneBuilder {
 		this.renderer.shadowMap.type = PCFSoftShadowMap;
 		this.renderer.toneMapping = ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 0.85;
-		document.body.appendChild(this.renderer.domElement);
+		if (!parameters.canvas) document.body.appendChild(this.renderer.domElement);
 		return this;
 	};
 
@@ -126,7 +124,7 @@ export default class SceneBuilder {
 
 	public addPerspectiveCamera = (options: position) => {
 		this.camera = new PerspectiveCamera();
-		this.camera.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
+		this.camera.position.set(options.x ?? 0, options.y ?? 2.7, options.z ?? 0);
 		this.scene.add(this.camera);
 		return this;
 	};
@@ -141,10 +139,11 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public addOrbitControls = (minDistance: number, maxDistance: number) => {
+	public addOrbitControls = (minDistance: number, maxDistance: number, autoRotate = true) => {
 		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 		this.controls.minDistance = minDistance;
 		this.controls.maxDistance = maxDistance;
+		this.controls.autoRotate = autoRotate;
 		this.controls.update();
 		return this;
 	};
@@ -182,10 +181,20 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public handleResize = () => {
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
+	public fillParent = () => {
+		const parentElement = this.renderer.domElement.parentElement;
+		if (parentElement) {
+			const width = parentElement.clientWidth;
+			const height = parentElement.clientHeight;
+			this.handleResize(width, height);
+		}
+		return this;
+	};
+
+	public handleResize = (width = window.innerWidth, height = window.innerHeight) => {
+		this.renderer.setSize(width, height);
 		this.renderer.setPixelRatio(window.devicePixelRatio);
-		this.camera.aspect = window.innerWidth / window.innerHeight;
+		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
 		return this;
 	};
@@ -198,6 +207,7 @@ export default class SceneBuilder {
 	public startRenderLoop = () => {
 		this.renderer.setAnimationLoop(() => {
 			this.renderer.render(this.scene, this.camera);
+			this.controls.update();
 			this.handleRobotShadow();
 			if (this.callback) this.callback();
 			if (!this.liveStreamTexture) return;

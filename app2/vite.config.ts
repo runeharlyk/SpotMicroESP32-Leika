@@ -1,5 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import Icons from 'unplugin-icons/vite';
 import viteLittleFS from './vite-plugin-littlefs';
 
@@ -13,5 +13,22 @@ export default defineConfig({
 	],
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}']
+	},
+	server: {
+		proxy: {
+			'/rest': {
+				target: 'http://192.168.0.130',
+				changeOrigin: true
+			},
+			'/events': {
+				target: 'http://192.168.0.130',
+				changeOrigin: true
+			},
+			'/ws': {
+				target: 'ws://192.168.0.130',
+				changeOrigin: true,
+				ws: true
+			}
+		}
 	}
 });
