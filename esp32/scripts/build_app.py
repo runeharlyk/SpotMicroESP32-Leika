@@ -52,9 +52,6 @@ def gzip_file(file):
             copyfileobj(f_in, f_out)
     os.remove(file)
 
-def is_compressed(filetype):
-    return filetype.lower() in ['zip', 'gz', 'rar', '7z', 'jpg', 'jpeg', 'png', 'mp4', 'mp3']
-
 def flag_exists(flag):
     for define in buildFlags.get("CPPDEFINES"):
         if (define == flag or (isinstance(define, list) and define[0] == flag)):
@@ -76,7 +73,7 @@ def build_progmem():
 
             progmem.write(f'// {asset_path}\n')
             progmem.write(f'const uint8_t {asset_var}[] = {{\n  ')
-            file_data = gzip.compress(path.read_bytes()) if not is_compressed(filetype) else path.read_bytes()
+            file_data = gzip.compress(path.read_bytes())
             
             for i, byte in enumerate(file_data):
                 if i and not (i % 16):
