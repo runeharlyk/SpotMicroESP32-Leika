@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+#nipple_0_0, #nipple_1_1 {
+    z-index: 10!important;
+}
+
 #three-gui-panel {
     top: 64px;
     right: 0px;
