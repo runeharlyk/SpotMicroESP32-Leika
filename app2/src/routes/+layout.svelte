@@ -28,8 +28,8 @@
 		}
 		connectToEventSource();
         connectToSocket()
-        addPublisher(outControllerData)
-        addPublisher(mode)
+        addPublisher(outControllerData, "controller")
+        addPublisher(mode, "mode")
         addPublisher(servoAngles as unknown as Writable<WebsocketOutData>, "angles")
 	});
 
@@ -59,8 +59,6 @@
 
     const addPublisher = (store: Writable<WebsocketOutData>, type?: string) => {
         const publish = (data: WebsocketOutData) => {
-            console.log('Got updated', data);
-            
             if (socket.readyState === WebSocket.OPEN)
             throttle.throttle(
                 () => socket.send(type ? JSON.stringify({ type, data }) : data), 

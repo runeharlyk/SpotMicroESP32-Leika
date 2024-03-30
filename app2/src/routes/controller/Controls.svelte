@@ -4,8 +4,6 @@
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
 	import { input, outControllerData, mode, modes, type Modes } from '$lib/stores';
 	import type { vector } from '$lib/models';
-    import Range from './input/Range.svelte';
-	import Button from './input/Button.svelte';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;
@@ -69,7 +67,7 @@
 		throttle.throttle(updateData, throttle_timing);
 	};
 
-    const handleRange = (event:CustomEvent, key: 'speed' | 'height') => {
+    const handleRange = (event:Event, key: 'speed' | 'height') => {
         const value:number = event.detail
         input.update((inputData) => {
 			inputData[key] = value;
@@ -91,20 +89,17 @@
 	</div>
 	<div class="absolute bottom-0 z-10 p-4 gap-4 flex items-end">
 		{#each modes as modeValue}
-			<div>
-				<Button
-					on:click={() => changeMode(modeValue)}
-					active={$mode === modeValue}
-				>
-					{capitalize(modeValue)}
-				</Button>
-			</div>
+            <button class="btn btn-outline" class:btn-active={$mode === modeValue} on:click={() => changeMode(modeValue)}>
+                {capitalize(modeValue)}
+            </button>
 		{/each}
         <div>
             {#if $mode === 'walk'}
-			    <Range label="Speed" on:value={(e) => handleRange(e, 'speed')}></Range>
+                <label for="speed">Speed</label>
+                <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm" />
             {/if}
-            <Range label="Height" on:value={(e) => handleRange(e, 'height')}></Range>
+            <label for="height">Height</label>
+            <input type="range" name="height" min="0" max="100" on:input={(e) => handleRange(e, 'height')} class="range range-sm" />
         </div>
 	</div>
 </div>
