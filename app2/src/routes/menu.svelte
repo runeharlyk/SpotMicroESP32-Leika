@@ -10,7 +10,6 @@
 	import Router from '~icons/mdi/router';
 	import AP from '~icons/mdi/access-point';
 	import Remote from '~icons/mdi/network';
-	import Control from '~icons/tabler/adjustments';
 	import Avatar from '~icons/mdi/user-circle';
 	import Logout from '~icons/mdi/logout';
 	import Copyright from '~icons/mdi/copyright';
