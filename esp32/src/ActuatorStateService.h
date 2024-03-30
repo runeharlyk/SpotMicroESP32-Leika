@@ -110,9 +110,12 @@ class ActuatorStateService : public StatefulService<ActuatorState> {
         {
             TickType_t xLastWakeTime;
             xLastWakeTime = xTaskGetTickCount();
+            int dir = 2;
             while (1)
             {
-                _state.angles[1] = (_state.angles[1] + 5) % 90;
+                _state.angles[1] += dir;
+                if (_state.angles[1] >= 90) dir = -1;
+                if (_state.angles[1] <= 0) dir = 1;
                 StaticJsonDocument<MAX_ESP_ANGLE_SIZE> doc;
                 String message;
                 JsonArray array = doc.createNestedArray("angles");
