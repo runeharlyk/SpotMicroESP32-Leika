@@ -2,15 +2,13 @@ import { writable, type Writable } from 'svelte/store';
 import { type angles } from '$lib/models';
 
 export const isConnected = writable(false);
-export const servoAngles: Writable<angles> = writable([
+export const servoAngles: Writable<number[]> = writable([
 	0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90
 ]);
 export const logs = writable([] as string[]);
 export const battery = writable({});
 export const mpu = writable({ heading: 0 });
 export const distances = writable({});
-export const settings = writable({});
-export const systemInfo = writable({} as number);
 
 export interface socketDataCollection {
 	angles: Writable<angles>;
@@ -18,8 +16,6 @@ export interface socketDataCollection {
 	battery: Writable<unknown>;
 	mpu: Writable<unknown>;
 	distances: Writable<unknown>;
-	settings: Writable<unknown>;
-	systemInfo: Writable<unknown>;
 }
 
 export const socketData = {
@@ -27,7 +23,5 @@ export const socketData = {
 	logs,
 	battery,
 	mpu,
-	distances,
-	settings,
-	systemInfo
+	distances
 };

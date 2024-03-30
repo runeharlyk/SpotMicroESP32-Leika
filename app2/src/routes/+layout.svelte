@@ -14,18 +14,57 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
+	import { mode, outControllerData, servoAngles, socketData } from '$lib/stores';
+	import { throttler } from '$lib/utilities';
 
 	export let data: LayoutData;
+
+    type WebsocketOutData = string | ArrayBufferLike | Blob | ArrayBufferView;
 
 	onMount(async () => {
 		if ($user.bearer_token !== '') {
 			validateUser($user);
 		}
 		connectToEventSource();
+        connectToSocket()
+        addPublisher(outControllerData)
+        addPublisher(mode)
 	});
+
+    const connectToSocket = () => {
+        const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
+
+	    socket = new WebSocket('ws://' + $page.url.host + '/ws' + ws_token);
+        socket.onmessage = ((event: MessageEvent) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'log') {
+                socketData.logs.update((entries) => {
+                    entries.push(message.data);
+                    return entries;
+                });
+            } else if (message.data && message.type in socketData) {
+                const store = socketData[message.type as keyof typeof socketData];
+                 if (JSON.stringify(get(store)) !== JSON.stringify(message.data))
+                    store.set(message.data);
+            }
+        });
+    }
+
+    const addPublisher = (store: Writable<WebsocketOutData>, type?: string) => {
+        const publish = (data: WebsocketOutData) => {
+            console.log('Got updated', data);
+            
+            if (socket.readyState === WebSocket.OPEN)
+            throttle.throttle(
+                () => socket.send(type ? JSON.stringify({ type, data }) : data), 
+                100);
+        }
+		store.subscribe(publish);
+	}
 
 	onDestroy(() => {
 		NotificationSource?.close();
+        socket?.close();
 	});
 
 	async function validateUser(userdata: userProfile) {
@@ -47,8 +86,10 @@
 	}
 
 	let menuOpen = false;
+    let throttle = new throttler();
 
 	let NotificationSource: EventSource;
+    let socket: WebSocket
 	let reconnectIntervalId: number = 0;
 	let connectionLost = false;
 	let unresponsiveTimeout: number;
@@ -155,7 +196,7 @@
 
 	function reconnectEventSource() {
 		if (connectionLost === false) {
-			NotificationSource.close;
+			NotificationSource.close();
 			notifications.error('Connection to device lost', 5000);
 			if (reconnectIntervalId === 0) {
 				reconnectIntervalId = setInterval(connectToEventSource, 2000) as unknown as number;
