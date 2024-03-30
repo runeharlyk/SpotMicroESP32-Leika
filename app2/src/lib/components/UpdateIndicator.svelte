@@ -29,6 +29,10 @@
 				}
 			);
 			const results = await response.json();
+            if (results.message == "Not Found") {
+                console.error('Error: Could not find releases in the repository');
+                return;
+            }
 
 			update = false;
 			firmwareVersion = '';

@@ -28,7 +28,8 @@ public:
 
     static void read(ActuatorState &settings, JsonObject &root)
     {
-        JsonArray array = root.createNestedArray("state");
+        root["type"] = "angles";
+        JsonArray array = root.createNestedArray("data");
         for(int i = 0; i < 12; i++)
         {
             array.add(settings.state[i]);
@@ -37,26 +38,23 @@ public:
 
     static StateUpdateResult update(JsonObject &root, ActuatorState &actuatorState)
     {
-        Serial.print("New state array: [");
-        JsonArray array = root["state"];
+        if (root["type"] != "angles") return StateUpdateResult::UNCHANGED;
+        JsonArray array = root["data"];
         bool changed = false;
         for(int i = 0; i < 12; i++)
         {
-            Serial.print(array[i].as<int16_t>());
-            Serial.print(", ");
             if (actuatorState.state[i] != array[i].as<int16_t>())
             {
                 actuatorState.state[i] = array[i];
                 changed = true;
             }
         }
-        Serial.println("]");
         return changed ? StateUpdateResult::CHANGED : StateUpdateResult::UNCHANGED;
     }
 
     static void homeAssistRead(ActuatorState &settings, JsonObject &root)
     {
-        JsonArray array = root.createNestedArray("state");
+        JsonArray array = root.createNestedArray("angles");
         for(int i = 0; i < 12; i++)
         {
             array.add(settings.state[i]);
@@ -65,7 +63,7 @@ public:
 
     static StateUpdateResult homeAssistUpdate(JsonObject &root, ActuatorState &actuatorState)
     {
-        JsonArray array = root["state"];
+        JsonArray array = root["angles"];
         if(array.size() != 12) return StateUpdateResult::ERROR;
         
         bool changed = false;

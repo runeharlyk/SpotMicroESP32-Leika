@@ -4,6 +4,6 @@
 
 <div class="grow flex">
     <div class="absolute h-screen w-full top-0">
-        <Visualization />
+        <Visualization debug />
     </div>
 </div> 

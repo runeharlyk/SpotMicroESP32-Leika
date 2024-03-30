@@ -78,7 +78,7 @@
 					<button
 						class="btn btn-primary inline-flex items-center"
 						on:click={() => {
-							signInUser({ username: username, password: password });
+							signInUser({ username, password });
 						}}><Login class="mr-2 h-5 w-5" /><span>Login</span></button
 					>
 				</div>
