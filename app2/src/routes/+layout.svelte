@@ -29,7 +29,7 @@
 		connectToEventSource();
         connectToSocket()
         addPublisher(outControllerData, "controller")
-        addPublisher(mode, "mode")
+        addPublisher(mode as unknown as Writable<WebsocketOutData>, "mode")
         addPublisher(servoAngles as unknown as Writable<WebsocketOutData>, "angles")
 	});
 
@@ -123,6 +123,15 @@
 					console.log('Server is unresponsive');
 					reconnectEventSource();
 				}, 2000) as unknown as number; // Detect unresponsiveness after 2 seconds
+			},
+			false
+		);
+
+        NotificationSource.addEventListener(
+			'motion',
+			(event) => {
+                const data = JSON.parse(event.data);
+                servoAngles.set(data.angles);
 			},
 			false
 		);

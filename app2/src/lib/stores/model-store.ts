@@ -12,7 +12,14 @@ export const modes = ['idle', 'rest', 'stand', 'walk'] as const;
 
 export type Modes = (typeof modes)[number];
 
-export const mode: Writable<Modes> = writable('idle');
+export enum ModesEnum {
+	Idle,
+	Rest,
+	Stand,
+	Walk
+}
+
+export const mode: Writable<ModesEnum> = writable(ModesEnum.Idle);
 
 export const outControllerData = writable(new Int8Array([0, 0, 0, 0, 0, 70, 0]));
 

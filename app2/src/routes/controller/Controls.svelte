@@ -2,7 +2,7 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
-	import { input, outControllerData, mode, modes, type Modes } from '$lib/stores';
+	import { input, outControllerData, mode, modes, type Modes, ModesEnum } from '$lib/stores';
 	import type { vector } from '$lib/models';
 
 	let throttle = new throttler();
@@ -77,7 +77,7 @@
     }
 
 	const changeMode = (modeValue: Modes) => {
-		mode.set(modeValue);
+		mode.set(modes.indexOf(modeValue));
 	};
 </script>
 
@@ -89,12 +89,12 @@
 	</div>
 	<div class="absolute bottom-0 z-10 p-4 gap-4 flex items-end">
 		{#each modes as modeValue}
-            <button class="btn btn-outline" class:btn-active={$mode === modeValue} on:click={() => changeMode(modeValue)}>
+            <button class="btn btn-outline" class:btn-active={$mode === modes.indexOf(modeValue)} on:click={() => changeMode(modeValue)}>
                 {capitalize(modeValue)}
             </button>
 		{/each}
         <div>
-            {#if $mode === 'walk'}
+            {#if $mode === ModesEnum.Walk}
                 <label for="speed">Speed</label>
                 <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm" />
             {/if}
