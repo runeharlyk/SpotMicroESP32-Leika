@@ -1,8 +1,14 @@
 <script lang="ts">
 	import Controls from '$lib/components/Controls.svelte';
+	import { isConnected } from '$lib/stores';
 </script>
-
 <div>
-	<Controls />
-    <slot/>
+    {#if $isConnected}
+        <Controls />
+        <slot/>
+    {:else}
+        <div class="flex justify-center items-center">
+            <h2>Waiting for connection</h2>
+        </div>
+    {/if}
 </div>

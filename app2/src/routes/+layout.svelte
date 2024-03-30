@@ -14,7 +14,8 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
-	import { mode, outControllerData, servoAngles, socketData } from '$lib/stores';
+	import { get, type Writable } from 'svelte/store';
+	import { isConnected, mode, outControllerData, servoAngles, socketData } from '$lib/stores';
 	import { throttler } from '$lib/utilities';
 
 	export let data: LayoutData;
@@ -29,12 +30,18 @@
         connectToSocket()
         addPublisher(outControllerData)
         addPublisher(mode)
+        addPublisher(servoAngles as unknown as Writable<WebsocketOutData>, "angles")
 	});
 
     const connectToSocket = () => {
         const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
 
 	    socket = new WebSocket('ws://' + $page.url.host + '/ws' + ws_token);
+        socket.onopen = (event) => isConnected.set(true);
+        socket.onclose = (event) => {
+            isConnected.set(false)
+            notifications.error('Websocket disconnected', 5000);
+        };
         socket.onmessage = ((event: MessageEvent) => {
             const message = JSON.parse(event.data);
             if (message.type === 'log') {
