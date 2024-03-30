@@ -14,6 +14,7 @@
     export let orbit = false
     export let panel = true
     export let debug = false
+    export let ground = true
 
 	let sceneManager = new SceneBuilder();
 	let canvas: HTMLCanvasElement
@@ -79,16 +80,18 @@
 			.addRenderer({ antialias: true, canvas, alpha: true })
 			.addPerspectiveCamera({ x: -0.5, y: 0.5, z: 1 })
 			.addOrbitControls(8, 30, orbit)
-			.addGroundPlane()
-			// .addGridHelper({ grid:{size: 250, divisions: 125 }})
-			.addAmbientLight({ color: 0xffffff, intensity: 0.7 })
-			.addDirectionalLight({ x: 10, y: 100, z: 10, color: 0xffffff, intensity: 1 })
-			// .addArrowHelper({ origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: -2, z: 0 } })
+            .addDirectionalLight({ x: 10, y: 20, z: 10, color: 0xffffff, intensity: 0.9 })
+			.addAmbientLight({ color: 0xffffff, intensity: 0.6 })
 			.addFogExp2(0xcccccc, 0.015)
 			.addModel($model)
 			.fillParent()
 			.addRenderCb(render)
 			.startRenderLoop();
+            
+            if (ground) sceneManager
+			.addGroundPlane()
+            .addGridHelper({ size: 30, divisions: 25 })
+        
         
         if (sky) sceneManager.addSky()
         if (debug) sceneManager.addDragControl(updateAngles)
