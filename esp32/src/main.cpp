@@ -6,9 +6,10 @@
 
 DRAM_ATTR PsychicHttpServer server;
 
-DRAM_ATTR ESP32SvelteKit esp32sveltekit(&server, 120);
+DRAM_ATTR ESP32SvelteKit esp32sveltekit(&server, 125);
 
-ActuatorStateService actuatorStateService = ActuatorStateService(&server, esp32sveltekit.getSecurityManager());
+ActuatorStateService actuatorStateService = ActuatorStateService(&server, esp32sveltekit.getNotificationEvents(), esp32sveltekit.getSecurityManager());
+
 
 
 void setup()

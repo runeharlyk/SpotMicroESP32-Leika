@@ -16,6 +16,7 @@
 
 ActuatorStateService::ActuatorStateService(
     PsychicHttpServer *server,
+    NotificationEvents *notificationEvents,
     SecurityManager *securityManager
     ) : _httpEndpoint(
             ActuatorState::read,
@@ -32,7 +33,8 @@ ActuatorStateService::ActuatorStateService(
         server,
         ACTUATOR_SETTINGS_SOCKET_PATH,
         securityManager,
-        AuthenticationPredicates::IS_AUTHENTICATED)
+        AuthenticationPredicates::IS_AUTHENTICATED),
+     _notificationEvents(notificationEvents)
 {
     // Setup actuator hardware
 
@@ -44,6 +46,15 @@ void ActuatorStateService::begin()
     _httpEndpoint.begin();
     _webSocketServer.begin();
     onConfigUpdated();
+    xTaskCreatePinnedToCore(
+        this->_loopImpl,            // Function that should be called
+        "Motion Service",           // Name of the task (for debugging)
+        4096,                       // Stack size (bytes)
+        this,                       // Pass reference to this class instance
+        (tskIDLE_PRIORITY + 1),     // task priority
+        NULL,                       // Task handle
+        ESP32SVELTEKIT_RUNNING_CORE // Pin to application core
+    );
 }
 
 void ActuatorStateService::onConfigUpdated()

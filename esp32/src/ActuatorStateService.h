@@ -17,14 +17,29 @@
 
 #include <HttpEndpoint.h>
 #include <WebSocketServer.h>
+#include <NotificationEvents.h>
 
 #define ACTUATOR_SETTINGS_ENDPOINT_PATH "/rest/actuators"
 #define ACTUATOR_SETTINGS_SOCKET_PATH "/ws"
 
+#define MOTION_INTERVAL 100
+
+#define MAX_ESP_ANGLE_SIZE 256
+
+enum class MOTION_STATE
+{
+    IDLE,
+    REST,
+    STAND,
+    WALK
+};
+
 class ActuatorState
 {
 public:
-    int16_t state[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
+    int16_t angles[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
+    int8_t controller[7] = {0, 0, 0, 0, 0, 0 ,0};
+    MOTION_STATE motionState = MOTION_STATE::IDLE;
 
     static void read(ActuatorState &settings, JsonObject &root)
     {
@@ -32,20 +47,25 @@ public:
         JsonArray array = root.createNestedArray("data");
         for(int i = 0; i < 12; i++)
         {
-            array.add(settings.state[i]);
+            array.add(settings.angles[i]);
         }
     }
 
     static StateUpdateResult update(JsonObject &root, ActuatorState &actuatorState)
     {
+        if (root["type"] == "mode") {
+            if (actuatorState.motionState == (MOTION_STATE)root["data"].as<int>()) return StateUpdateResult::UNCHANGED;
+            actuatorState.motionState = (MOTION_STATE)root["data"].as<int>();
+            return StateUpdateResult::UNCHANGED;
+        }
         if (root["type"] != "angles") return StateUpdateResult::UNCHANGED;
         JsonArray array = root["data"];
         bool changed = false;
         for(int i = 0; i < 12; i++)
         {
-            if (actuatorState.state[i] != array[i].as<int16_t>())
+            if (actuatorState.angles[i] != array[i].as<int16_t>())
             {
-                actuatorState.state[i] = array[i];
+                actuatorState.angles[i] = array[i];
                 //changed = true;
             }
         }
@@ -57,7 +77,7 @@ public:
         JsonArray array = root.createNestedArray("angles");
         for(int i = 0; i < 12; i++)
         {
-            array.add(settings.state[i]);
+            array.add(settings.angles[i]);
         }
     }
 
@@ -69,9 +89,9 @@ public:
         bool changed = false;
         for(int i = 0; i < 12; i++)
         {
-            if (actuatorState.state[i] != array[i].as<int16_t>())
+            if (actuatorState.angles[i] != array[i].as<int16_t>())
             {
-                actuatorState.state[i] = array[i];
+                actuatorState.angles[i] = array[i];
                 changed = true;
             }
         }
@@ -81,9 +101,31 @@ public:
 
 class ActuatorStateService : public StatefulService<ActuatorState> {
     public:
-        ActuatorStateService(PsychicHttpServer *server, SecurityManager *securityManager);
+        ActuatorStateService(PsychicHttpServer *server, NotificationEvents *notificationEvents, SecurityManager *securityManager);
         void begin();
+    protected:
+        NotificationEvents *_notificationEvents;
+        static void _loopImpl(void *_this) { static_cast<ActuatorStateService *>(_this)->_loop(); }
+        void _loop()
+        {
+            TickType_t xLastWakeTime;
+            xLastWakeTime = xTaskGetTickCount();
+            while (1)
+            {
+                _state.angles[1] = (_state.angles[1] + 5) % 90;
+                StaticJsonDocument<MAX_ESP_ANGLE_SIZE> doc;
+                String message;
+                JsonArray array = doc.createNestedArray("angles");
+                for(int16_t num : _state.angles) {
+                    array.add(num);
+                }
+                doc["mode"] = (int)_state.motionState;
 
+                serializeJson(doc, message);
+                _notificationEvents->send(message, "motion", millis());
+                vTaskDelayUntil(&xLastWakeTime, MOTION_INTERVAL / portTICK_PERIOD_MS);
+            }
+        };
     private:
         HttpEndpoint<ActuatorState> _httpEndpoint;
         WebSocketServer<ActuatorState> _webSocketServer;
