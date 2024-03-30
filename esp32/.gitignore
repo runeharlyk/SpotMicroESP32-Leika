@@ -1,4 +1,5 @@
 .pio
 data/
+www/
 include/secrets.h
 lib/*
