@@ -2,7 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { BufferGeometry, Line, LineBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import uzip from 'uzip';
-	import { model } from '$lib/stores';
+	import { model, servoAnglesOut } from '$lib/stores';
 	import { footColor, isEmbeddedApp, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
@@ -71,7 +71,7 @@
 
 	const updateAngles = (name: string, angle: number) => {
 		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
-        servoAngles.set(modelTargetAngles)
+        servoAnglesOut.set(modelTargetAngles)
 	};
 
 	const createScene = async () => {

@@ -15,7 +15,7 @@
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
 	import { get, type Writable } from 'svelte/store';
-	import { isConnected, mode, outControllerData, servoAngles, socketData } from '$lib/stores';
+	import { isConnected, mode, outControllerData, servoAngles, servoAnglesOut, socketData } from '$lib/stores';
 	import { throttler } from '$lib/utilities';
 
 	export let data: LayoutData;
@@ -30,7 +30,7 @@
         connectToSocket()
         addPublisher(outControllerData, "controller")
         addPublisher(mode as unknown as Writable<WebsocketOutData>, "mode")
-        addPublisher(servoAngles as unknown as Writable<WebsocketOutData>, "angles")
+        addPublisher(servoAnglesOut as unknown as Writable<WebsocketOutData>, "angles")
 	});
 
     const connectToSocket = () => {
