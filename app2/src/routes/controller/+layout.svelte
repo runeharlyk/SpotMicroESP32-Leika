@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Controls from '$lib/components/Controls.svelte';
+	import Controls from './Controls.svelte';
 	import { isConnected } from '$lib/stores';
 </script>
 <div>
