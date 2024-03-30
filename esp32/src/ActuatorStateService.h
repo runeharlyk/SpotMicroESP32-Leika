@@ -46,7 +46,7 @@ public:
             if (actuatorState.state[i] != array[i].as<int16_t>())
             {
                 actuatorState.state[i] = array[i];
-                changed = true;
+                //changed = true;
             }
         }
         return changed ? StateUpdateResult::CHANGED : StateUpdateResult::UNCHANGED;

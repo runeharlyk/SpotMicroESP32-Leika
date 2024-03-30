@@ -73,6 +73,7 @@ export default class SceneBuilder {
 	public liveStreamTexture: CanvasTexture;
 	private fog: FogExp2;
 	private isLoaded: boolean = false;
+	public isDragging: boolean = false;
 	highlightMaterial: any;
 
 	constructor() {
@@ -292,8 +293,14 @@ export default class SceneBuilder {
 			this.setJointValue(joint.name, angle);
 			updateAngle(joint.name, angle);
 		};
-		dragControls.onDragStart = () => (this.controls.enabled = false);
-		dragControls.onDragEnd = () => (this.controls.enabled = true);
+		dragControls.onDragStart = () => {
+			this.controls.enabled = false;
+			this.isDragging = true;
+		};
+		dragControls.onDragEnd = () => {
+			this.controls.enabled = true;
+			this.isDragging = false;
+		};
 		dragControls.onHover = (joint: URDFMimicJoint) =>
 			this.highlightLinkGeometry(joint, false, highlightMaterial);
 		dragControls.onUnhover = (joint: URDFMimicJoint) =>

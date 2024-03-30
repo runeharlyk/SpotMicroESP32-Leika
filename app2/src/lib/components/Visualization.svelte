@@ -3,7 +3,7 @@
 	import { BufferGeometry, Line, LineBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import uzip from 'uzip';
 	import { model } from '$lib/stores';
-	import { footColor, isEmbeddedApp, location, toeWorldPositions } from '$lib/utilities';
+	import { footColor, isEmbeddedApp, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
@@ -35,10 +35,13 @@
         await cacheModelFiles()
         await createScene();
         if (!isEmbeddedApp && panel) createPanel();
-        servoAngles.subscribe(angles => {
-            modelTargetAngles = angles
-        })
+        servoAngles.subscribe(updateAnglesFromStore)
 	});
+    
+    const updateAnglesFromStore = (angles: number[]) => {
+        if (sceneManager.isDragging) return
+        modelTargetAngles = angles;
+    }
 
 	onDestroy(() => {
         canvas.remove()
@@ -68,6 +71,7 @@
 
 	const updateAngles = (name: string, angle: number) => {
 		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
+        servoAngles.set(modelTargetAngles)
 	};
 
 	const createScene = async () => {
