@@ -7,9 +7,9 @@
 
 #define SERIAL_BAUD_RATE 115200
 
-PsychicHttpServer server;
+DRAM_ATTR PsychicHttpServer server;
 
-ESP32SvelteKit esp32sveltekit(&server, 120);
+DRAM_ATTR ESP32SvelteKit esp32sveltekit(&server, 120);
 
 LightMqttSettingsService lightMqttSettingsService = LightMqttSettingsService(&server,
                                                                              esp32sveltekit.getFS(),
@@ -28,12 +28,11 @@ void setup()
     esp32sveltekit.begin();
 
     lightStateService.begin();
-    // start the light service
+
     lightMqttSettingsService.begin();
 }
 
 void loop()
 {
-    // Delete Arduino loop task, as it is not needed in this example
     vTaskDelete(NULL);
 }
