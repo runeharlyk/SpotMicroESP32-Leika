@@ -131,6 +131,7 @@ void ESP32SvelteKit::setupServer() {
                                        "Accept, Content-Type, Authorization");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials",
                                        "true");
+  DefaultHeaders::Instance().addHeader("Server", _appName);
 #endif
 }
 
