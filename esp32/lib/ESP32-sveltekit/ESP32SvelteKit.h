@@ -10,6 +10,7 @@
  *
  *   Copyright (C) 2018 - 2023 rjwats
  *   Copyright (C) 2023 theelims
+ *   Copyright (C) 2024 runeharlyk
  *
  *   All Rights Reserved. This software may be modified and distributed under
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
@@ -52,11 +53,11 @@
 #endif
 
 #ifndef APP_VERSION
-#define APP_VERSION "demo"
+#define APP_VERSION "v1"
 #endif
 
 #ifndef APP_NAME
-#define APP_NAME "ESP32 SvelteKit Demo"
+#define APP_NAME "SpotMicro"
 #endif
 
 #ifndef ESP32SVELTEKIT_RUNNING_CORE
@@ -206,6 +207,9 @@ private:
 protected:
     static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->_loop(); }
     void _loop();
+    void setupServer();
+    void setupMDNS();
+    void startServices();
 };
 
 #endif
