@@ -1,16 +1,25 @@
+#define CAMERA_MODEL_AI_THINKER
+
 #include <ESP32SvelteKit.h>
-#include <ActuatorStateService.h>
+#include <LightMqttSettingsService.h>
+#include <LightStateService.h>
 #include <PsychicHttpServer.h>
 
 #define SERIAL_BAUD_RATE 115200
 
-DRAM_ATTR PsychicHttpServer server;
+PsychicHttpServer server;
 
-DRAM_ATTR ESP32SvelteKit esp32sveltekit(&server, 125);
+ESP32SvelteKit esp32sveltekit(&server, 120);
 
-ActuatorStateService actuatorStateService = ActuatorStateService(&server, esp32sveltekit.getNotificationEvents(), esp32sveltekit.getSecurityManager());
+LightMqttSettingsService lightMqttSettingsService = LightMqttSettingsService(&server,
+                                                                             esp32sveltekit.getFS(),
+                                                                             esp32sveltekit.getSecurityManager());
 
-
+LightStateService lightStateService = LightStateService(&server,
+                                                        esp32sveltekit.getSocket(),
+                                                        esp32sveltekit.getSecurityManager(),
+                                                        esp32sveltekit.getMqttClient(),
+                                                        &lightMqttSettingsService);
 
 void setup()
 {
@@ -18,10 +27,13 @@ void setup()
 
     esp32sveltekit.begin();
 
-    actuatorStateService.begin();
+    lightStateService.begin();
+    // start the light service
+    lightMqttSettingsService.begin();
 }
 
 void loop()
 {
+    // Delete Arduino loop task, as it is not needed in this example
     vTaskDelete(NULL);
 }

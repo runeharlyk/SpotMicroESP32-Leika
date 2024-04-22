@@ -2,4 +2,4 @@
 data/
 www/
 include/secrets.h
-lib/*
+;lib/*
