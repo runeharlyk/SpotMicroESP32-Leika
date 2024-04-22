@@ -79,9 +79,7 @@ void ESP32SvelteKit::setupServer() {
   _server->listen(80);
 
 #ifdef EMBED_WWW
-  // Serve static resources from PROGMEM
-  ESP_LOGV("ESP32SvelteKit",
-           "Registering routes from PROGMEM static resources");
+  ESP_LOGV("ESP32SvelteKit","Registering routes from PROGMEM static resources");
   WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
     PsychicHttpRequestCallback requestHandler = [contentType, content, len](PsychicRequest *request) {
       PsychicResponse response(request);
@@ -125,14 +123,11 @@ void ESP32SvelteKit::setupServer() {
 
 #if defined(ENABLE_CORS)
   ESP_LOGV("ESP32SvelteKit", "Enabling CORS headers");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin",
-                                       CORS_ORIGIN);
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers",
-                                       "Accept, Content-Type, Authorization");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials",
-                                       "true");
-  DefaultHeaders::Instance().addHeader("Server", _appName);
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
 #endif
+  DefaultHeaders::Instance().addHeader("Server", _appName);
 }
 
 void ESP32SvelteKit::setupMDNS() {
@@ -145,7 +140,6 @@ void ESP32SvelteKit::setupMDNS() {
 }
 
 void ESP32SvelteKit::startServices() {
-  // Start the services
   _apStatus.begin();
   _socket.begin();
   _apSettingsService.begin();
@@ -188,10 +182,10 @@ void ESP32SvelteKit::startServices() {
 
 void ESP32SvelteKit::_loop() {
   while (1) {
-    _wifiSettingsService.loop(); // 30 seconds
-    _apSettingsService.loop();   // 10 seconds
+    _wifiSettingsService.loop();
+    _apSettingsService.loop();
 #if FT_ENABLED(FT_MQTT)
-    _mqttSettingsService.loop(); // 5 seconds
+    _mqttSettingsService.loop();
 #endif
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
