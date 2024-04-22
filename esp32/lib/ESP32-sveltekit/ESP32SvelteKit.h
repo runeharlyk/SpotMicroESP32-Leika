@@ -37,6 +37,7 @@
 #include <RestartService.h>
 #include <SecuritySettingsService.h>
 #include <SleepService.h>
+#include <Wire.h>
 #include <SystemStatus.h>
 #include <WiFiScanner.h>
 #include <WiFiSettingsService.h>
