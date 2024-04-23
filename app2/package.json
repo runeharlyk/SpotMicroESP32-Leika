@@ -47,7 +47,7 @@
 	"dependencies": {
 		"chart.js": "^4.4.2",
 		"compare-versions": "^6.1.0",
-		"daisyui": "^4.9.0",
+		"daisyui": "^4.10.2",
 		"jwt-decode": "^4.0.0",
 		"nipplejs": "^0.10.1",
 		"svelte-dnd-list": "^0.1.8",
