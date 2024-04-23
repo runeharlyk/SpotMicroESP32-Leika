@@ -20,7 +20,7 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define RESTART_SERVICE_PATH "/rest/restart"
+#define RESTART_SERVICE_PATH "/api/restart"
 
 class RestartService
 {

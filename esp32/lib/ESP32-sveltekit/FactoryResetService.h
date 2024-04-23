@@ -23,7 +23,7 @@
 #include <FS.h>
 
 #define FS_CONFIG_DIRECTORY "/config"
-#define FACTORY_RESET_SERVICE_PATH "/rest/factoryReset"
+#define FACTORY_RESET_SERVICE_PATH "/api/factoryReset"
 
 class FactoryResetService
 {

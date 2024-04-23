@@ -15,7 +15,7 @@
     import MdiMoonAndStars from '~icons/mdi/moon-and-stars';
 
 	async function postSleep() {
-		const response = await fetch('/rest/sleep', {
+		const response = await fetch('/api/sleep', {
 			method: 'POST',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'

@@ -36,7 +36,7 @@
 
 	async function scanNetworks() {
 		scanActive = true;
-		const scan = await fetch('/rest/scanNetworks', {
+		const scan = await fetch('/api/scanNetworks', {
 			method: 'GET',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -50,7 +50,7 @@
 	}
 
 	async function pollingResults() {
-		const response = await fetch('/rest/listNetworks', {
+		const response = await fetch('/api/listNetworks', {
 			method: 'GET',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',

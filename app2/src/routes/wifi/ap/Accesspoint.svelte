@@ -22,7 +22,7 @@
 
 	async function getAPStatus() {
 		try {
-			const response = await fetch('/rest/apStatus', {
+			const response = await fetch('/api/apStatus', {
 				method: 'GET',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -38,7 +38,7 @@
 
 	async function getAPSettings() {
 		try {
-			const response = await fetch('/rest/apSettings', {
+			const response = await fetch('/api/apSettings', {
 				method: 'GET',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -96,7 +96,7 @@
 
 	async function postAPSettings(data: ApSettings) {
 		try {
-			const response = await fetch('/rest/apSettings', {
+			const response = await fetch('/api/apSettings', {
 				method: 'POST',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',

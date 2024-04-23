@@ -19,7 +19,7 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define SLEEP_SERVICE_PATH "/rest/sleep"
+#define SLEEP_SERVICE_PATH "/api/sleep"
 
 #ifndef WAKEUP_PIN_NUMBER
 #define WAKEUP_PIN_NUMBER 0

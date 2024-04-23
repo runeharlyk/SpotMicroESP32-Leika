@@ -24,7 +24,7 @@
 #include <SecurityManager.h>
 #include <RestartService.h>
 
-#define UPLOAD_FIRMWARE_PATH "/rest/uploadFirmware"
+#define UPLOAD_FIRMWARE_PATH "/api/uploadFirmware"
 
 enum FileType
 {

@@ -40,7 +40,7 @@
 
 	async function getSecuritySettings() {
 		try {
-			const response = await fetch('/rest/securitySettings', {
+			const response = await fetch('/api/securitySettings', {
 				method: 'GET',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -56,7 +56,7 @@
 
 	async function postSecuritySettings(data: SecuritySettings) {
 		try {
-			const response = await fetch('/rest/securitySettings', {
+			const response = await fetch('/api/securitySettings', {
 				method: 'POST',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -81,7 +81,7 @@
 
 	async function validateUser(userdata: userProfile) {
 		try {
-			const response = await fetch('/rest/verifyAuthorization', {
+			const response = await fetch('/api/verifyAuthorization', {
 				method: 'GET',
 				headers: {
 					Authorization: 'Bearer ' + userdata.bearer_token,

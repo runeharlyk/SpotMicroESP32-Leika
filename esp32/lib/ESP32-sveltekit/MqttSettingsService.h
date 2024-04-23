@@ -59,7 +59,7 @@
 #endif
 
 #define MQTT_SETTINGS_FILE "/config/mqttSettings.json"
-#define MQTT_SETTINGS_SERVICE_PATH "/rest/mqttSettings"
+#define MQTT_SETTINGS_SERVICE_PATH "/api/mqttSettings"
 
 #define MQTT_RECONNECTION_DELAY 5000
 

@@ -42,10 +42,10 @@
 #endif
 
 #define SECURITY_SETTINGS_FILE "/config/securitySettings.json"
-#define SECURITY_SETTINGS_PATH "/rest/securitySettings"
+#define SECURITY_SETTINGS_PATH "/api/securitySettings"
 
 #define GENERATE_TOKEN_SIZE 512
-#define GENERATE_TOKEN_PATH "/rest/generateToken"
+#define GENERATE_TOKEN_PATH "/api/generateToken"
 
 #if FT_ENABLED(FT_SECURITY)
 

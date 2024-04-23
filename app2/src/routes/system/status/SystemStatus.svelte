@@ -31,7 +31,7 @@
 
 	async function getSystemStatus() {
 		try {
-			const response = await fetch('/rest/systemStatus', {
+			const response = await fetch('/api/systemStatus', {
 				method: 'GET',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -53,7 +53,7 @@
 		(systemInformation = { ...systemInformation, ...data });
 
 	async function postRestart() {
-		const response = await fetch('/rest/restart', {
+		const response = await fetch('/api/restart', {
 			method: 'POST',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
@@ -77,7 +77,7 @@
 	}
 
 	async function postFactoryReset() {
-		const response = await fetch('/rest/factoryReset', {
+		const response = await fetch('/api/factoryReset', {
 			method: 'POST',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
@@ -101,7 +101,7 @@
 	}
 
 	async function postSleep() {
-		const response = await fetch('/rest/sleep', {
+		const response = await fetch('/api/sleep', {
 			method: 'POST',
 			headers: {
 				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'

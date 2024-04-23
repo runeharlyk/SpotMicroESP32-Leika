@@ -59,7 +59,7 @@
 
 	async function postGithubDownload(url: string) {
 		try {
-			const apiResponse = await fetch('/rest/downloadUpdate', {
+			const apiResponse = await fetch('/api/downloadUpdate', {
 				method: 'POST',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
