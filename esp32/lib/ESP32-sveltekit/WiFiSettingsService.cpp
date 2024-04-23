@@ -14,15 +14,15 @@
 
 #include <WiFiSettingsService.h>
 
-WiFiSettingsService::WiFiSettingsService(PsychicHttpServer *server,
-                                         FS *fs,
-                                         SecurityManager *securityManager,
-                                         EventSocket *socket) : _server(server),
-                                                                _securityManager(securityManager),
-                                                                _httpEndpoint(WiFiSettings::read, WiFiSettings::update, this, server, WIFI_SETTINGS_SERVICE_PATH, securityManager,
-                                                                              AuthenticationPredicates::IS_ADMIN, WIFI_SETTINGS_BUFFER_SIZE),
-                                                                _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, fs, WIFI_SETTINGS_FILE), _lastConnectionAttempt(0),
-                                                                _socket(socket)
+WiFiSettingsService::WiFiSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager,
+                                         EventSocket *socket)
+    : _server(server), _securityManager(securityManager),
+      _httpEndpoint(WiFiSettings::read, WiFiSettings::update, this, server, WIFI_SETTINGS_SERVICE_PATH, securityManager,
+                    AuthenticationPredicates::IS_ADMIN, WIFI_SETTINGS_BUFFER_SIZE),
+      _eventEndpoint(WiFiSettings::read, WiFiSettings::update, this, socket, EVENT_WIFI_SETTINGS,
+                     WIFI_SETTINGS_BUFFER_SIZE),
+      _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, fs, WIFI_SETTINGS_FILE), _lastConnectionAttempt(0),
+      _socket(socket)
 {
     addUpdateHandler([&](const String &originId)
                      { reconfigureWiFiConnection(); },
@@ -52,6 +52,7 @@ void WiFiSettingsService::begin()
     _socket->registerEvent(EVENT_RSSI);
 
     _httpEndpoint.begin();
+    _eventEndpoint.begin();
 }
 
 void WiFiSettingsService::reconfigureWiFiConnection()

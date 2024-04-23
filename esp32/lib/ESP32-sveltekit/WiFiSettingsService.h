@@ -15,16 +15,17 @@
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
  **/
 
-#include <WiFi.h>
-#include <WiFiMulti.h>
-#include <SettingValue.h>
-#include <StatefulService.h>
+#include <EventEndpoint.h>
 #include <EventSocket.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
 #include <JsonUtils.h>
-#include <SecurityManager.h>
 #include <PsychicHttp.h>
+#include <SecurityManager.h>
+#include <SettingValue.h>
+#include <StatefulService.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
 #include <vector>
 
 #ifndef FACTORY_WIFI_SSID
@@ -52,6 +53,7 @@
 #define WIFI_SETTINGS_BUFFER_SIZE 2048
 
 #define EVENT_RSSI "rssi"
+#define EVENT_WIFI_SETTINGS "WiFiSettings"
 
 // Struct defining the wifi settings
 typedef struct
@@ -214,6 +216,7 @@ private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     HttpEndpoint<WiFiSettings> _httpEndpoint;
+    EventEndpoint<WiFiSettings> _eventEndpoint;
     FSPersistence<WiFiSettings> _fsPersistence;
     EventSocket *_socket;
     unsigned long _lastConnectionAttempt;
