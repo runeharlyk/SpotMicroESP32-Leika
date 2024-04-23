@@ -33,6 +33,7 @@
 	import Check from '~icons/tabler/check';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import type { KnownNetworkItem, WifiSettings, WifiStatus } from '$lib/types/models';
+	import { socket } from '$lib/stores';
 
 	let networkEditable: KnownNetworkItem = {
 		ssid: '',
@@ -101,16 +102,13 @@
 		return wifiSettings;
 	}
 
-	const interval = setInterval(async () => {
-		getWifiStatus();
-	}, 5000);
-
-	onDestroy(() => clearInterval(interval));
+	onDestroy(() => socket.off('WiFiSettings'));
 
 	onMount(() => {
-		if (!$page.data.features.security || $user.admin) {
-			getWifiSettings();
-		}
+        socket.on<WifiSettings>('WiFiSettings', (data) => {
+            wifiSettings = data
+            dndNetworkList = wifiSettings.wifi_networks
+        })
 	});
 
 	async function postWiFiSettings(data: WifiSettings) {
