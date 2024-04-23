@@ -20,7 +20,7 @@
 
 	async function signInUser(data: SignInData) {
 		try {
-			const response = await fetch('/rest/signIn', {
+			const response = await fetch('/api/signIn', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

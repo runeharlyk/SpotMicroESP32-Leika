@@ -16,7 +16,7 @@
 
 	async function getBrokerSettings() {
 		try {
-			const response = await fetch('/rest/brokerSettings', {
+			const response = await fetch('/api/brokerSettings', {
 				method: 'GET',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
@@ -38,7 +38,7 @@
 
 	async function postBrokerSettings() {
 		try {
-			const response = await fetch('/rest/brokerSettings', {
+			const response = await fetch('/api/brokerSettings', {
 				method: 'POST',
 				headers: {
 					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',

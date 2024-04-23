@@ -21,8 +21,8 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define SCAN_NETWORKS_SERVICE_PATH "/rest/scanNetworks"
-#define LIST_NETWORKS_SERVICE_PATH "/rest/listNetworks"
+#define SCAN_NETWORKS_SERVICE_PATH "/api/scanNetworks"
+#define LIST_NETWORKS_SERVICE_PATH "/api/listNetworks"
 
 #define MAX_WIFI_SCANNER_SIZE 1024
 

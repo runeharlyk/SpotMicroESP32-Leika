@@ -61,7 +61,7 @@
 #endif
 
 #define AP_SETTINGS_FILE "/config/apSettings.json"
-#define AP_SETTINGS_SERVICE_PATH "/rest/apSettings"
+#define AP_SETTINGS_SERVICE_PATH "/api/apSettings"
 
 #define AP_MODE_ALWAYS 0
 #define AP_MODE_DISCONNECTED 1

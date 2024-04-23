@@ -16,9 +16,10 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			'/rest': {
+			'/api': {
 				target: 'http://192.168.0.172',
-				changeOrigin: true
+				changeOrigin: true,
+				ws: true
 			},
 			'/ws': {
 				target: 'ws://192.168.0.172',

@@ -28,7 +28,7 @@ const loadModelFiles = async () => {
 export const load = async ({ fetch }) => {
 	await registerFetchIntercept();
 	await loadModelFiles();
-	const result = await fetch('/rest/features');
+	const result = await fetch('/api/features');
 	const features = await result.json();
 	return {
 		features,

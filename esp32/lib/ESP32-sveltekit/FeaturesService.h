@@ -23,7 +23,7 @@
 #include <vector>
 
 #define MAX_FEATURES_SIZE 256
-#define FEATURES_SERVICE_PATH "/rest/features"
+#define FEATURES_SERVICE_PATH "/api/features"
 
 typedef struct
 {
