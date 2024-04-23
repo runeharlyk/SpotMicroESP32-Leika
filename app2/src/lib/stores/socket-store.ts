@@ -1,7 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { type angles } from '$lib/models';
 
-export const isConnected = writable(false);
 export const servoAnglesOut: Writable<number[]> = writable([
 	0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90
 ]);

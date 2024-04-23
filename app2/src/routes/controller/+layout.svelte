@@ -1,9 +1,9 @@
 <script lang="ts">
 	import Controls from './Controls.svelte';
-	import { isConnected } from '$lib/stores';
+	import { socket } from '$lib/stores';
 </script>
 <div>
-    {#if $isConnected}
+    {#if $socket}
         <Controls />
         <slot/>
     {:else}

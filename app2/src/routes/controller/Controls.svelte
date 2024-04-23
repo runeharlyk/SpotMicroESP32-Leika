@@ -2,7 +2,7 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
-	import { input, outControllerData, mode, modes, type Modes, ModesEnum } from '$lib/stores';
+	import { input, outControllerData, mode, modes, type Modes, ModesEnum, socket } from '$lib/stores';
 	import type { vector } from '$lib/models';
 
 	let throttle = new throttler();

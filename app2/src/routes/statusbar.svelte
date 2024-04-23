@@ -39,7 +39,7 @@
 	}
 </script>
 
-<div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16">
+<div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2">
 	<div class="flex-1">
 		<!-- Page Hamburger Icon here -->
 		<label for="main-menu" class="btn btn-ghost btn-circle btn-sm drawer-button"
