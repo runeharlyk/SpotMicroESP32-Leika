@@ -17,15 +17,11 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/rest': {
-				target: 'http://192.168.0.130',
-				changeOrigin: true
-			},
-			'/events': {
-				target: 'http://192.168.0.130',
+				target: 'http://192.168.0.172',
 				changeOrigin: true
 			},
 			'/ws': {
-				target: 'ws://192.168.0.130',
+				target: 'ws://192.168.0.172',
 				changeOrigin: true,
 				ws: true
 			}

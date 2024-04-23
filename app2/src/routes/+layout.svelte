@@ -14,65 +14,57 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
-	import { get, type Writable } from 'svelte/store';
-	import { isConnected, mode, outControllerData, servoAngles, servoAnglesOut, socketData } from '$lib/stores';
-	import { throttler } from '$lib/utilities';
+	import { mode, outControllerData, servoAnglesOut, socket } from '$lib/stores';
+	import type { Analytics } from '$lib/types/models';
 
 	export let data: LayoutData;
-
-    type WebsocketOutData = string | ArrayBufferLike | Blob | ArrayBufferView;
 
 	onMount(async () => {
 		if ($user.bearer_token !== '') {
 			await validateUser($user);
 		}
-		connectToEventSource();
-        connectToSocket()
-        addPublisher(outControllerData, "controller")
-        addPublisher(mode as unknown as Writable<WebsocketOutData>, "mode")
-        addPublisher(servoAnglesOut as unknown as Writable<WebsocketOutData>, "angles")
-	});
-
-    const connectToSocket = () => {
         const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
+		socket.init(`ws://${window.location.host}/ws/events${ws_token}`);
 
-	    socket = new WebSocket('ws://' + $page.url.host + '/ws' + ws_token);
-        socket.onopen = (event) => isConnected.set(true);
-        socket.onclose = (event) => {
-            isConnected.set(false)
-            notifications.error('Websocket disconnected', 5000);
-        };
-        socket.onmessage = ((event: MessageEvent) => {
-            const message = JSON.parse(event.data);
-            if (message.type === 'log') {
-                socketData.logs.update((entries) => {
-                    entries.push(message.data);
-                    return entries;
-                });
-            } else if (message.data && message.type in socketData) {
-                const store = socketData[message.type as keyof typeof socketData];
-                 if (JSON.stringify(get(store)) !== JSON.stringify(message.data))
-                    store.set(message.data);
-            }
-        });
-    }
+		addEventListeners();
 
-    const addPublisher = (store: Writable<WebsocketOutData>, type?: string) => {
-        const publish = (data: WebsocketOutData) => {
-            if (socket.readyState === WebSocket.OPEN)
-            throttle.throttle(
-                () => socket.send(type ? JSON.stringify({ type, data }) : data), 
-                100);
-        }
-		store.subscribe(publish);
-	}
-
-	onDestroy(() => {
-		disconnectEventSource();
-        socket?.close();
+        outControllerData.subscribe((data) => socket.sendEvent("input", data));
+        mode.subscribe((data) => socket.sendEvent("mode", data));
+        servoAnglesOut.subscribe((data) => socket.sendEvent("angles", data));
 	});
 
-	async function validateUser(userdata: userProfile) {
+    onDestroy(() => {
+        removeEventListeners();
+    });
+
+    const addEventListeners = () => {
+		socket.on('open', handleOpen);
+		socket.on('close', handleClose);
+		socket.on('error', handleError);
+		socket.on('rssi', handleNetworkStatus);
+		socket.on('infoToast', handleInfoToast);
+		socket.on('successToast', handleSuccessToast);
+		socket.on('warningToast', handleWarningToast);
+		socket.on('errorToast', handleErrorToast);
+		if ($page.data.features.analytics) socket.on('analytics', handleAnalytics);
+		if ($page.data.features.battery) socket.on('battery', handleBattery);
+		if ($page.data.features.download_firmware) socket.on('otastatus', handleOAT);
+	};
+
+    const removeEventListeners = () => {
+		socket.off('analytics', handleAnalytics);
+		socket.off('open', handleOpen);
+		socket.off('close', handleClose);
+		socket.off('rssi', handleNetworkStatus);
+		socket.off('infoToast', handleInfoToast);
+		socket.off('successToast', handleSuccessToast);
+		socket.off('warningToast', handleWarningToast);
+		socket.off('errorToast', handleErrorToast);
+		socket.off('battery', handleBattery);
+		socket.off('otastatus', handleOAT);
+	};
+
+    async function validateUser(userdata: userProfile) {
 		try {
 			const response = await fetch('/rest/verifyAuthorization', {
 				method: 'GET',
@@ -89,74 +81,31 @@
 		}
 	}
 
-	let menuOpen = false;
-    let throttle = new throttler();
+	const handleOpen = () => {
+		notifications.success('Connection to device established', 5000);
+	};
 
-    let socket: WebSocket
-	let eventSourceUrl = '/events';
-	let eventSource: EventSource;
-	let unresponsiveTimeoutId: number;
-
-	function connectToEventSource() {
-		eventSource = new EventSource(eventSourceUrl);
-
-		eventSource.addEventListener('open', () => {
-			notifications.success('Connection to device established', 5000);
-			telemetry.setRSSI('found'); // Update store and flag as server being available again
-		});
-
-		eventSource.addEventListener('rssi', (event) => {
-			telemetry.setRSSI(event.data);
-			resetUnresponsiveCheck();
-		});
-
-		eventSource.addEventListener('error', (event) => {
-			reconnectEventSource();
-		});
-
-		eventSource.addEventListener('infoToast', (event) => {
-			notifications.info(event.data, 5000);
-		});
-
-		eventSource.addEventListener('successToast', (event) => {
-			notifications.success(event.data, 5000);
-		});
-
-		eventSource.addEventListener('warningToast', (event) => {
-			notifications.warning(event.data, 5000);
-		});
-
-		eventSource.addEventListener('errorToast', (event) => {
-			notifications.error(event.data, 5000);
-		});
-
-		eventSource.addEventListener('battery', (event) => {
-			telemetry.setBattery(event.data);
-		});
-
-		eventSource.addEventListener('download_ota', (event) => {
-			telemetry.setDownloadOTA(event.data);
-		});
-		eventSource.addEventListener('analytics', (event) => {
-			analytics.addData(event.data);
-		});
-	}
-
-	function disconnectEventSource() {
-		clearTimeout(unresponsiveTimeoutId);
-		eventSource?.close();
-	}
-
-	function reconnectEventSource() {
+	const handleClose = () => {
 		notifications.error('Connection to device lost', 5000);
-		disconnectEventSource();
-		connectToEventSource();
-	}
+		telemetry.setRSSI('lost');
+	};
 
-	function resetUnresponsiveCheck() {
-		clearTimeout(unresponsiveTimeoutId);
-		unresponsiveTimeoutId = setTimeout(() => reconnectEventSource(), 2000);
-	}
+	const handleError = (data: any) => console.error(data);
+
+	const handleInfoToast = (data: string) => notifications.info(data, 5000);
+	const handleWarningToast = (data: string) => notifications.warning(data, 5000);
+	const handleErrorToast = (data: string) => notifications.error(data, 5000);
+	const handleSuccessToast = (data: string) => notifications.success(data, 5000);
+
+	const handleAnalytics = (data: Analytics) => analytics.addData(data);
+
+	const handleNetworkStatus = (data: string) => telemetry.setRSSI(data);
+
+	const handleBattery = (data: string) => telemetry.setBattery(data);
+
+	const handleOAT = (data: string) => telemetry.setDownloadOTA(data);
+
+	let menuOpen = false;
 
 </script>
 
