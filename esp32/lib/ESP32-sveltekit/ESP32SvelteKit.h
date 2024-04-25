@@ -18,32 +18,33 @@
 
 #include <Arduino.h>
 
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <AnalyticsService.h>
-#include <FeaturesService.h>
 #include <APSettingsService.h>
 #include <APStatus.h>
+#include <AnalyticsService.h>
 #include <AuthenticationService.h>
 #include <BatteryService.h>
-#include <FactoryResetService.h>
 #include <DownloadFirmwareService.h>
+#include <ESPFS.h>
+#include <ESPmDNS.h>
 #include <EventSocket.h>
+#include <FactoryResetService.h>
+#include <FeaturesService.h>
 #include <MqttSettingsService.h>
 #include <MqttStatus.h>
 #include <NTPSettingsService.h>
 #include <NTPStatus.h>
-#include <UploadFirmwareService.h>
+#include <PsychicHttp.h>
 #include <RestartService.h>
 #include <SecuritySettingsService.h>
 #include <SleepService.h>
-#include <Wire.h>
 #include <SystemStatus.h>
+#include <TaskManager.h>
+#include <UploadFirmwareService.h>
+#include <WiFi.h>
 #include <WiFiScanner.h>
 #include <WiFiSettingsService.h>
 #include <WiFiStatus.h>
-#include <ESPFS.h>
-#include <PsychicHttp.h>
+#include <Wire.h>
 
 #ifdef EMBED_WWW
 #include <WWWData.h>
