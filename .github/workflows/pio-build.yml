@@ -1,4 +1,4 @@
-name: Frontend Tests
+name: PlatformIO Build
 
 on:
   push:
@@ -12,6 +12,9 @@ on:
     
 permissions:
   contents: read
+
+env:
+  DEVICE: esp32cam
 
 jobs:
   build:
@@ -27,5 +30,5 @@ jobs:
         python-version: '3.x'
     - name: Install PlatformIO
       run: pip install platformio
-    - name: Run PlatformIO Test
-      run: pio test -e esp32cam
+    - name: Build using PlatformIO
+      run: pio run -e $DEVICE
