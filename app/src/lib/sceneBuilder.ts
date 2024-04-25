@@ -11,8 +11,6 @@ import {
 	GridHelper,
 	ArrowHelper,
 	Vector3,
-	LoaderUtils,
-	Object3D,
 	FogExp2,
 	CanvasTexture,
 	type ColorRepresentation,
@@ -20,7 +18,8 @@ import {
 	MeshPhongMaterial,
 	EquirectangularReflectionMapping,
 	ACESFilmicToneMapping,
-	MathUtils
+	MathUtils,
+	MeshStandardMaterial
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -75,7 +74,9 @@ export default class SceneBuilder {
 	public liveStreamTexture: CanvasTexture;
 	private fog: FogExp2;
 	private isLoaded: boolean = false;
+	public isDragging: boolean = false;
 	highlightMaterial: any;
+	sky: Sky;
 
 	constructor() {
 		this.scene = new Scene();
@@ -92,14 +93,14 @@ export default class SceneBuilder {
 		this.renderer.shadowMap.type = PCFSoftShadowMap;
 		this.renderer.toneMapping = ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 0.85;
-		document.body.appendChild(this.renderer.domElement);
+		if (!parameters?.canvas) document.body.appendChild(this.renderer.domElement);
 		return this;
 	};
 
 	public addSky = () => {
-		const sky = new Sky();
-		sky.scale.setScalar(450000);
-		this.scene.add(sky);
+		this.sky = new Sky();
+		this.sky.scale.setScalar(450000);
+		this.scene.add(this.sky);
 		const effectController = {
 			turbidity: 10,
 			rayleigh: 3,
@@ -109,7 +110,7 @@ export default class SceneBuilder {
 			azimuth: 180,
 			exposure: this.renderer.toneMappingExposure
 		};
-		const uniforms = sky.material.uniforms;
+		const uniforms = this.sky.material.uniforms;
 		uniforms['turbidity'].value = effectController.turbidity;
 		uniforms['rayleigh'].value = effectController.rayleigh;
 		uniforms['mieCoefficient'].value = effectController.mieCoefficient;
@@ -126,13 +127,14 @@ export default class SceneBuilder {
 
 	public addPerspectiveCamera = (options: position) => {
 		this.camera = new PerspectiveCamera();
-		this.camera.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
+		this.camera.position.set(options.x ?? 0, options.y ?? 2.7, options.z ?? 0);
 		this.scene.add(this.camera);
 		return this;
 	};
 
 	public addGroundPlane = (options?: position) => {
-		this.ground = new Mesh(new PlaneGeometry(), new ShadowMaterial({ side: 2 }));
+		var planeMaterial = new MeshStandardMaterial({ color: 0x808080, side: 2, opacity: 0.5 });
+		this.ground = new Mesh(new PlaneGeometry(), planeMaterial);
 		this.ground.rotation.x = -Math.PI / 2;
 		this.ground.scale.setScalar(30);
 		this.ground.position.set(options?.x ?? 0, options?.y ?? 0, options?.z ?? 0);
@@ -141,10 +143,11 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public addOrbitControls = (minDistance: number, maxDistance: number) => {
+	public addOrbitControls = (minDistance: number, maxDistance: number, autoRotate = true) => {
 		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 		this.controls.minDistance = minDistance;
 		this.controls.maxDistance = maxDistance;
+		this.controls.autoRotate = autoRotate;
 		this.controls.update();
 		return this;
 	};
@@ -158,11 +161,13 @@ export default class SceneBuilder {
 	public addDirectionalLight = (options: directionalLight) => {
 		const directionalLight = new DirectionalLight(options.color, options.intensity);
 		directionalLight.castShadow = true;
-		directionalLight.shadow.mapSize.setScalar(2048);
-		directionalLight.shadow.mapSize.width = 1024;
-		directionalLight.shadow.mapSize.height = 1024;
+		directionalLight.shadow.camera.top = 10;
+		directionalLight.shadow.camera.bottom = -10;
+		directionalLight.shadow.camera.right = 10;
+		directionalLight.shadow.camera.left = -10;
+		directionalLight.shadow.mapSize.set(4096, 4096);
+
 		directionalLight.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
-		directionalLight.shadow.radius = 5;
 		this.scene.add(directionalLight);
 		return this;
 	};
@@ -182,10 +187,20 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public handleResize = () => {
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
+	public fillParent = () => {
+		const parentElement = this.renderer.domElement.parentElement;
+		if (parentElement) {
+			const width = parentElement.clientWidth;
+			const height = parentElement.clientHeight;
+			this.handleResize(width, height);
+		}
+		return this;
+	};
+
+	public handleResize = (width = window.innerWidth, height = window.innerHeight) => {
+		this.renderer.setSize(width, height);
 		this.renderer.setPixelRatio(window.devicePixelRatio);
-		this.camera.aspect = window.innerWidth / window.innerHeight;
+		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
 		return this;
 	};
@@ -198,6 +213,7 @@ export default class SceneBuilder {
 	public startRenderLoop = () => {
 		this.renderer.setAnimationLoop(() => {
 			this.renderer.render(this.scene, this.camera);
+			this.controls.update();
 			this.handleRobotShadow();
 			if (this.callback) this.callback();
 			if (!this.liveStreamTexture) return;
@@ -282,8 +298,14 @@ export default class SceneBuilder {
 			this.setJointValue(joint.name, angle);
 			updateAngle(joint.name, angle);
 		};
-		dragControls.onDragStart = () => (this.controls.enabled = false);
-		dragControls.onDragEnd = () => (this.controls.enabled = true);
+		dragControls.onDragStart = () => {
+			this.controls.enabled = false;
+			this.isDragging = true;
+		};
+		dragControls.onDragEnd = () => {
+			this.controls.enabled = true;
+			this.isDragging = false;
+		};
 		dragControls.onHover = (joint: URDFMimicJoint) =>
 			this.highlightLinkGeometry(joint, false, highlightMaterial);
 		dragControls.onUnhover = (joint: URDFMimicJoint) =>

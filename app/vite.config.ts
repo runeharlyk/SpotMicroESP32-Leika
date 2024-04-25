@@ -1,30 +1,31 @@
-import { defineConfig, loadEnv } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { viteSingleFile } from 'vite-plugin-singlefile';
-import viteCompression from 'vite-plugin-compression';
-import path from 'path';
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+import Icons from 'unplugin-icons/vite';
+import viteLittleFS from './vite-plugin-littlefs';
 
-// https://vitejs.dev/config/
-export default ({ mode }) => {
-	process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
-	const embeddedBuild = process.env.VITE_EMBEDDED_BUILD == 'true';
-
-	return defineConfig({
-		plugins: [
-			svelte(),
-			...(embeddedBuild ? [viteSingleFile(), viteCompression({ deleteOriginFile: true })] : [])
-		],
-		build: {
-			outDir: embeddedBuild ? '../esp32/data' : './build',
-			emptyOutDir: true
-		},
-		resolve: {
-			alias: {
-				$lib: path.resolve('./src/lib/'),
-				$components: path.resolve('./src/components'),
-				$utils: path.resolve('./src/utils'),
-				$stores: path.resolve('./src/stores')
+export default defineConfig({
+	plugins: [
+		sveltekit(),
+		Icons({
+			compiler: 'svelte'
+		}),
+		viteLittleFS()
+	],
+	test: {
+		include: ['src/**/*.{test,spec}.{js,ts}']
+	},
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://192.168.0.172',
+				changeOrigin: true,
+				ws: true
+			},
+			'/ws': {
+				target: 'ws://192.168.0.172',
+				changeOrigin: true,
+				ws: true
 			}
 		}
-	});
-};
+	}
+});
