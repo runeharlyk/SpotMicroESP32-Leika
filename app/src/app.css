@@ -1,20 +1,18 @@
-:root {
-	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-	line-height: 1.5;
-	font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-	font-synthesis: none;
-	text-rendering: optimizeLegibility;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	-webkit-text-size-adjust: 100%;
-}
-
-body {
-	margin: 0;
+#nipple_0_0, #nipple_1_1 {
+    z-index: 10!important;
 }
 
 #three-gui-panel {
-    top: 50px;
-    right:0px
+    top: 64px;
+    right: 0px;
+}
+
+@media (max-width: 1023px) {
+    #three-gui-panel {
+        top: 48px;
+    }
 }
