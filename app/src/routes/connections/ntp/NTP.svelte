@@ -235,7 +235,7 @@
 	</div>
 
 	{#if !$page.data.features.security || $user.admin}
-		<Collapsible open={false} class="shadow-lg" on:closed={getNTPSettings}>
+		<Collapsible open={false} on:closed={getNTPSettings}>
 			<span slot="title">Change NTP Settings</span>
 			<form
 				class="form-control w-full"
