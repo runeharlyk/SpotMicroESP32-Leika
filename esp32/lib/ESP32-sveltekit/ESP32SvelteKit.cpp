@@ -16,7 +16,7 @@
 #include <ESP32SvelteKit.h>
 
 ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
-    : _server(server), _numberEndpoints(numberEndpoints),
+    : _server(server), _numberEndpoints(numberEndpoints), _taskManager(),
       _featureService(server), _securitySettingsService(server, &ESPFS),
       _wifiSettingsService(server, &ESPFS, &_securitySettingsService, &_socket),
       _wifiScanner(server, &_securitySettingsService),
@@ -32,7 +32,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _uploadFirmwareService(server, &_securitySettingsService),
 #endif
 #if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_securitySettingsService, &_socket),
+      _downloadFirmwareService(server, &_securitySettingsService, &_socket, &_taskManager),
 #endif
 #if FT_ENABLED(FT_MQTT)
       _mqttSettingsService(server, &ESPFS, &_securitySettingsService),
@@ -48,7 +48,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _batteryService(&_socket),
 #endif
 #if FT_ENABLED(FT_ANALYTICS)
-      _analyticsService(&_socket),
+      _analyticsService(&_socket, &_taskManager),
 #endif
       _restartService(server, &_securitySettingsService),
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
@@ -69,7 +69,7 @@ void ESP32SvelteKit::begin() {
   startServices();
 
   ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-  xTaskCreatePinnedToCore(this->_loopImpl, "ESP32 SvelteKit Loop", 4096, this,
+  _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this,
                           (tskIDLE_PRIORITY + 1), NULL,
                           ESP32SVELTEKIT_RUNNING_CORE);
 }
@@ -178,6 +178,8 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(FT_BATTERY)
   _batteryService.begin();
 #endif
+
+  _taskManager.begin();
 }
 
 void ESP32SvelteKit::_loop() {

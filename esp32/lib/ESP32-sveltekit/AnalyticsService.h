@@ -13,37 +13,32 @@
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
  **/
 
-#include <WiFi.h>
 #include <ArduinoJson.h>
 #include <ESPFS.h>
 #include <EventSocket.h>
+#include <TaskManager.h>
+#include <WiFi.h>
 
-#define MAX_ESP_ANALYTICS_SIZE 1024
+#define MAX_ESP_ANALYTICS_SIZE 2024
 #define EVENT_ANALYTICS "analytics"
 #define ANALYTICS_INTERVAL 2000
 
 class AnalyticsService
 {
 public:
-    AnalyticsService(EventSocket *socket) : _socket(socket){};
+  AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager){};
 
-    void begin()
-    {
-        _socket->registerEvent(EVENT_ANALYTICS);
+  void begin()
+  {
+      _socket->registerEvent(EVENT_ANALYTICS);
 
-        xTaskCreatePinnedToCore(
-            this->_loopImpl,            // Function that should be called
-            "Analytics Service",        // Name of the task (for debugging)
-            5120,                       // Stack size (bytes)
-            this,                       // Pass reference to this class instance
-            (tskIDLE_PRIORITY),         // task priority
-            NULL,                       // Task handle
-            ESP32SVELTEKIT_RUNNING_CORE // Pin to application core
-        );
-    };
+      _taskManager->createTask(&AnalyticsService::_loopImpl, "Analytics Service", 8120, this, tskIDLE_PRIORITY, nullptr,
+                               ESP32SVELTEKIT_RUNNING_CORE);
+  };
 
 protected:
     EventSocket *_socket;
+    TaskManager *_taskManager;
 
     static void _loopImpl(void *_this) { static_cast<AnalyticsService *>(_this)->_loop(); }
     void _loop()
@@ -62,6 +57,19 @@ protected:
             doc["fs_used"] = ESPFS.usedBytes();
             doc["fs_total"] = ESPFS.totalBytes();
             doc["core_temp"] = temperatureRead();
+            doc["cpu0_usage"] = _taskManager->getCpuUsage(0);
+            doc["cpu1_usage"] = _taskManager->getCpuUsage(1);
+            doc["cpu_usage"] = _taskManager->getCpuUsage();
+            // Add _taskManager->getTaskNames() as a JSON array
+            JsonArray tasks = doc.createNestedArray("tasks");
+            for (auto const &task : _taskManager->getTasks())
+            {
+                JsonObject nested = tasks.createNestedObject();
+                nested["name"] = task.name;
+                nested["stackSize"] = task.stackSize;
+                nested["priority"] = task.priority;
+                nested["coreId"] = task.coreId;
+            }
 
             serializeJson(doc, message);
             _socket->emit(EVENT_ANALYTICS, message);

@@ -9,7 +9,10 @@ let analytics_data = {
 	max_alloc_heap: <number[]>[],
 	fs_used: <number[]>[],
 	fs_total: <number[]>[],
-	core_temp: <number[]>[]
+	core_temp: <number[]>[],
+	cpu0_usage: <number[]>[],
+	cpu1_usage: <number[]>[],
+	cpu_usage: <number[]>[]
 };
 
 const maxAnalyticsData = 1000; // roughly 33 Minutes of data at 1 update per 2 seconds
@@ -35,7 +38,10 @@ function createAnalytics() {
 				),
 				fs_used: [...analytics_data.fs_used, content.fs_used / 1000].slice(-maxAnalyticsData),
 				fs_total: [...analytics_data.fs_total, content.fs_total / 1000].slice(-maxAnalyticsData),
-				core_temp: [...analytics_data.core_temp, content.core_temp].slice(-maxAnalyticsData)
+				core_temp: [...analytics_data.core_temp, content.core_temp].slice(-maxAnalyticsData),
+				cpu0_usage: [...analytics_data.cpu0_usage, content.cpu0_usage].slice(-maxAnalyticsData),
+				cpu1_usage: [...analytics_data.cpu1_usage, content.cpu1_usage].slice(-maxAnalyticsData),
+				cpu_usage: [...analytics_data.cpu_usage, content.cpu_usage].slice(-maxAnalyticsData)
 			}));
 		}
 	};

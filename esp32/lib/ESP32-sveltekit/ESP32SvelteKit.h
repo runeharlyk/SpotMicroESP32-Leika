@@ -148,6 +148,11 @@ public:
         return &_featureService;
     }
 
+    TaskManager *getTaskManager()
+    {
+        return &_taskManager;
+    }
+
     void factoryReset()
     {
         _factoryResetService.factoryReset();
@@ -203,6 +208,7 @@ private:
     RestartService _restartService;
     FactoryResetService _factoryResetService;
     SystemStatus _systemStatus;
+    TaskManager _taskManager;
 
     String _appName = APP_NAME;
 

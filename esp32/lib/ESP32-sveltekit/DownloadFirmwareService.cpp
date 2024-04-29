@@ -107,9 +107,9 @@ void updateTask(void *param)
 
 DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server,
                                                  SecurityManager *securityManager,
-                                                 EventSocket *socket) : _server(server),
+                                                 EventSocket *socket, TaskManager *taskManager) : _server(server),
                                                                         _securityManager(securityManager),
-                                                                        _socket(socket)
+                                                                        _socket(socket), _taskManager(taskManager)
 {
 }
 
@@ -148,9 +148,9 @@ esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonV
 
     _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
-    if (xTaskCreatePinnedToCore(
+    if (_taskManager->createTask(
             &updateTask,                // Function that should be called
-            "Update",                   // Name of the task (for debugging)
+            "Firmware download",          // Name of the task (for debugging)
             OTA_TASK_STACK_SIZE,        // Stack size (bytes)
             &downloadURL,               // Pass reference to this class instance
             (configMAX_PRIORITIES - 1), // Pretty high task priority

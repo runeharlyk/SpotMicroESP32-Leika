@@ -108,6 +108,9 @@ export type Analytics = {
 	fs_total: number;
 	fs_used: number;
 	uptime: number;
+	cpu0_usage: number;
+	cpu1_usage: number;
+	cpu_usage: number;
 };
 
 export type Rssi = {
