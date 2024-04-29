@@ -74,6 +74,22 @@ export type NTPStatus = {
 	uptime: number;
 };
 
+export type RSSI = {
+	rssi: number;
+	ssid: string;
+};
+
+export type Battery = {
+	soc: number;
+	charging: boolean;
+};
+
+export type DownloadOTA = {
+	status: string;
+	progress: number;
+	error: string;
+};
+
 export type NTPSettings = {
 	enabled: boolean;
 	server: string;
@@ -92,6 +108,11 @@ export type Analytics = {
 	fs_total: number;
 	fs_used: number;
 	uptime: number;
+};
+
+export type Rssi = {
+	rssi: number;
+	ssid: string;
 };
 
 export type StaticSystemInformation = {
