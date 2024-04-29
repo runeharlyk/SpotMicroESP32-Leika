@@ -15,7 +15,7 @@
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
 	import { mode, outControllerData, servoAnglesOut, socket } from '$lib/stores';
-	import type { Analytics } from '$lib/types/models';
+	import type { Analytics, Battery, DownloadOTA, Rssi } from '$lib/types/models';
 
 	export let data: LayoutData;
 
@@ -87,7 +87,7 @@
 
 	const handleClose = () => {
 		notifications.error('Connection to device lost', 5000);
-		telemetry.setRSSI('lost');
+		telemetry.setRSSI(0);
 	};
 
 	const handleError = (data: any) => console.error(data);
@@ -99,11 +99,11 @@
 
 	const handleAnalytics = (data: Analytics) => analytics.addData(data);
 
-	const handleNetworkStatus = (data: string) => telemetry.setRSSI(data);
+	const handleNetworkStatus = (data: number) => telemetry.setRSSI(data);
 
-	const handleBattery = (data: string) => telemetry.setBattery(data);
+	const handleBattery = (data: Battery) => telemetry.setBattery(data);
 
-	const handleOAT = (data: string) => telemetry.setDownloadOTA(data);
+	const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data);
 
 	let menuOpen = false;
 

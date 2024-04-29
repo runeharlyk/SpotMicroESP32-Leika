@@ -1,9 +1,9 @@
+import type { Battery, DownloadOTA } from '$lib/types/models';
 import { writable } from 'svelte/store';
 
 let telemetry_data = {
 	rssi: {
-		rssi: 0,
-		disconnected: true
+		rssi: 0
 	},
 	battery: {
 		soc: 100,
@@ -21,28 +21,22 @@ function createTelemetry() {
 
 	return {
 		subscribe,
-		setRSSI: (data: string) => {
-			if (!isNaN(Number(data))) {
-				update((telemetry_data) => ({
-					...telemetry_data,
-					rssi: { rssi: Number(data), disconnected: false }
-				}));
-			} else {
-				update((telemetry_data) => ({ ...telemetry_data, rssi: { rssi: 0, disconnected: true } }));
-			}
-		},
-		setBattery: (data: string) => {
-			const content = JSON.parse(data);
+		setRSSI: (data: number) => {
 			update((telemetry_data) => ({
 				...telemetry_data,
-				battery: { soc: content.soc, charging: content.charging }
+				rssi: { rssi: data }
 			}));
 		},
-		setDownloadOTA: (data: string) => {
-			const content = JSON.parse(data);
+		setBattery: (data: Battery) => {
 			update((telemetry_data) => ({
 				...telemetry_data,
-				download_ota: { status: content.status, progress: content.progress, error: content.error }
+				battery: { soc: data.soc, charging: data.charging }
+			}));
+		},
+		setDownloadOTA: (data: DownloadOTA) => {
+			update((telemetry_data) => ({
+				...telemetry_data,
+				download_ota: { status: data.status, progress: data.progress, error: data.error }
 			}));
 		}
 	};
