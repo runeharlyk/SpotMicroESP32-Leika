@@ -11,6 +11,9 @@
 
 	Chart.register(...registerables);
 
+    let cpuChartElement: HTMLCanvasElement;
+	let cpuChart: Chart;
+
 	let heapChartElement: HTMLCanvasElement;
 	let heapChart: Chart;
 
@@ -21,6 +24,87 @@
 	let temperatureChart: Chart;
 
 	onMount(() => {
+        cpuChart = new Chart(cpuChartElement, {
+			type: 'line',
+			data: {
+				labels: $analytics.cpu_usage,
+				datasets: [
+					{
+						label: 'Cpu usage core 0',
+						borderColor: daisyColor('--p'),
+						backgroundColor: daisyColor('--p', 50),
+						borderWidth: 2,
+						data: $analytics.cpu0_usage,
+						yAxisID: 'y'
+					},
+                    {
+						label: 'Cpu usage core 1',
+						borderColor: daisyColor('--p'),
+						backgroundColor: daisyColor('--p', 50),
+						borderWidth: 2,
+						data: $analytics.cpu1_usage,
+						yAxisID: 'y'
+					},
+                    {
+						label: 'Cpu usage total',
+						borderColor: daisyColor('--s'),
+						backgroundColor: daisyColor('--s', 50),
+						borderWidth: 2,
+						data: $analytics.cpu_usage,
+						yAxisID: 'y'
+					},
+				]
+			},
+			options: {
+				maintainAspectRatio: false,
+				responsive: true,
+				plugins: {
+					legend: {
+						display: true
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false
+					}
+				},
+				elements: {
+					point: {
+						radius: 1
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: daisyColor('--bc', 10)
+						},
+						ticks: {
+							color: daisyColor('--bc')
+						},
+						display: false
+					},
+					y: {
+						type: 'linear',
+						title: {
+							display: true,
+							text: 'Cpu usage [%]',
+							color: daisyColor('--bc'),
+							font: {
+								size: 16,
+								weight: 'bold'
+							}
+						},
+						position: 'left',
+						min: 0,
+						max: Math.round($analytics.total_heap[0]),
+						grid: { color: daisyColor('--bc', 10) },
+						ticks: {
+							color: daisyColor('--bc')
+						},
+						border: { color: daisyColor('--bc', 10) }
+					}
+				}
+			}
+		});
 		heapChart = new Chart(heapChartElement, {
 			type: 'line',
 			data: {
@@ -230,6 +314,12 @@
 	});
 
 	function updateData() {
+        cpuChart.data.labels = $analytics.cpu_usage;
+		cpuChart.data.datasets[0].data = $analytics.cpu0_usage;
+		cpuChart.data.datasets[1].data = $analytics.cpu1_usage;
+		cpuChart.data.datasets[2].data = $analytics.cpu_usage;
+		cpuChart.update('none');
+
 		heapChart.data.labels = $analytics.uptime;
 		heapChart.data.datasets[0].data = $analytics.free_heap;
 		heapChart.data.datasets[1].data = $analytics.max_alloc_heap;
@@ -275,6 +365,15 @@
 <SettingsCard collapsible={false}>
 	<Metrics slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
 	<span slot="title">System Metrics</span>
+
+    <div class="w-full overflow-x-auto">
+		<div
+			class="flex w-full flex-col space-y-1 h-60"
+			transition:slide|local={{ duration: 300, easing: cubicOut }}
+		>
+			<canvas bind:this={cpuChartElement} />
+		</div>
+	</div>
 
 	<div class="w-full overflow-x-auto">
 		<div

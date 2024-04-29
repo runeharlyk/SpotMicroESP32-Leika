@@ -215,8 +215,8 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network)
 
 void WiFiSettingsService::updateRSSI()
 {
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), WiFi.isConnected() ? "%d" : "disconnected", WiFi.RSSI());
+    char buffer[4];
+    snprintf(buffer, sizeof(buffer), "%d", WiFi.RSSI());
     _socket->emit(EVENT_RSSI, buffer);
 }
 
