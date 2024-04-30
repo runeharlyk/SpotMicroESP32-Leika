@@ -42,13 +42,13 @@
 ## Key Features
 
 * Live preview - Make changes, See changes
-  * Instantly test and preview code in emulation
+  <!-- * Instantly test and preview code in emulation -->
 * Live stream
   * Camera livestream, battery voltage, servo position, distance sensors and much more.
-* Full kinematic model
+<!-- * Full kinematic model -->
 * Dual joystick controller
 * Dark/Light mode
-* Servo calibration tool
+<!-- * Servo calibration tool -->
 * Full screen mode
   * Immersive, distraction free.
 * Self hosted, self included
@@ -106,7 +106,8 @@ The software make use of a range of different libraries to enhance the functiona
 Up to date list can be seen in platformio.ini file.
 The libraries includes:
 
-* AsyncWebServer
+* Esp32SvelteKit
+* PsychicHttp
 * ArduinoJson
 * Adafruit SSD1306
 * Adafruit GFX Library
@@ -117,31 +118,36 @@ The libraries includes:
 * Adafruit Unified Sensor
 * UrlEncode
 * MPU6050 light
+* SPI
 
 #### Structure
 
 The software utilizes a couple of FreeRTos task
 | Task | Description | Priority | Core
 | --- | --- | --- | ---
-| Idle0 task | Burns cpu time to track cpu usage for core 0 | 1 | 0
-| Idle1 task | Burns cpu time to track cpu usage for core 1 | 1 | 1
-| JSON writer task | Write serialized JSON objects to SPIFFS at request, with some delay | 2 | 0
-| Movement task | Handles movement, updating gait and servos | 3 | 0
-| Network task | Handles connection either as STA or AP | 5 | 1
+| Idle0 task | Burns cpu time to track cpu usage for core 0 | 0 | 0
+| Idle1 task | Burns cpu time to track cpu usage for core 1 | 0 | 1
+| Analytics service task | Periodically sends analytics data | 1 | 0
+| Spot service task | Handle synchronous services | 2 | 0
 
 #### Feature flags
 
 To dis-/enable the major feature I use defines. Define them in either featureflags.h or in platformio.ini's build_flags.
 | Feature | Description | Default
 | --- | --- | ---
-| USE_WIFI | Whether or not to use wifi | 1
-| WAIT_FOR_WIFI | Whether or not the device should wait for a connection or restart | 0
-| USE_WEBSERVER | Whether or not to use async webserver | 1
-| USE_MDNS | Whether or not to use MDNS | 1
-| USE_DNS_SERVER | Whether or not to use DNS server | 0
-| USE_MPU | Whether or not to use MPU | 1
-| USE_POWER_BUTTON | Whether or not to use power button | 1
-| USE_USS | Whether or not to use ultra sonic sensors | 1
+| FT_BATTERY | Whether or not to use battery | 0
+| FT_NTP | Whether or not to use time server | 1
+| FT_SECURITY | Whether or not to use login system | 0
+| FT_MQTT | Whether or not to use MQTT | 0
+| FT_SLEEP | Whether or not include sleep management | 0
+| FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 1
+| FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 1
+| FT_ANALYTICS | Whether or not to use analytics service | 1
+| TF_MDNS | Whether or not to use MDNS | 1
+| TF_DNS_SERVER | Whether or not to use DNS server | 1
+| TF_MPU | Whether or not to use MPU | 1
+| TF_POWER_BUTTON | Whether or not to use power button | 1
+| TF_USS | Whether or not to use ultra sonic sensors | 1
 
 ### 📲Web application
 
@@ -156,7 +162,7 @@ For the development dependencies I choose the following
 
 | Dependencies | Description
 | --- | ---
-| Svelte | Svelte is a compiled JS framework that has a very small footprint. Furthermore it make the development process fast and enjoyable.
+| Svelte | SvelteKit is an application framework built on top of Svelte, enhancing it with features like routing, server-side rendering, and static site generation. It streamlines the development process by integrating server-side capabilities with Svelte's client-side benefits. Furthermore it make the development process fast and enjoyable.
 | Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production
 | Typescript | TypeScript's integration of static typing enhances code reliability and maintainability.
 | Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design.
@@ -174,6 +180,7 @@ For the app functionality I choose the following:
 | [Xacro-parser](https://www.npmjs.com/package/xacro-parser) | Javascript parser and loader for processing the ROS Xacro file format.
 | [NippleJS](https://www.npmjs.com/package/nipplejs) | A vanilla virtual joystick for touch capable interfaces.
 | [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library.
+| [ChartJS](https://www.npmjs.com/package/chart.js) | Simple and flexible charting library.
 
 ### Space issues
 
@@ -211,13 +218,11 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 
     ```sh
     cd app
-    npm install
+    pnpm install
     ```
 
 1. Configure device settings
-    1. Make a copy of *include/secrets.example.h* in the same folder
-    2. Rename the copy to *secrets.h*
-    3. Configure relevant settings
+    1. Update `factory_settings.ini` with relevant settings
 
 ## Usage
 
@@ -241,23 +246,6 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 
 ## Future
 
-* [ ] Error handling. If something fails flag it, so everything knows is not working.
-* [ ] Host AP with captive portal if initial wifi connection fails or power button is held.
-* [ ] Websocket statistics
-* [ ] Websocket auto reconnect
-* [ ] Iterate to position
-* [ ] Walking gait
-* [ ] Different scene environments (Playground, forest, dessert etc)
-* [ ] Group gridhelper, ground and environment items so they can be moved together
-* [ ] Clamp, lerping of servo motors to a max servo speed (deg/s)
-* [ ] Gait selection (w/ auto option based on speed)
-* [ ] Interactive notebook for learning and playing with the kinematic equations, with extra visuals (full grid system)
-* [ ] Disable servo command
-* [ ] Show arrow forces on robot (accelerometer and center of gravity)
-* [ ] Plane polygon for contact points
-* [ ] Semi transparent boxes for leg workspace
-* [ ] Options button
-
 See the [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed features (and known issues).
 
 <!-- ## External Links and References -->
@@ -266,12 +254,12 @@ See the [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues)
 
 This project takes great inspiration from the following resources:
 
-1. [Kinematics](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
 1. [Spot Micro Quadruped Project - mike4192](https://github.com/mike4192/spotMicro)
+1. [Kinematics](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
+1. [ESP32SvelteKit template](https://github.com/theelims/ESP32-sveltekit)
 1. [SpotMicroAi](https://gitlab.com/public-open-source/spotmicroai)
 1. [Spot Micro - Leika](https://github.com/runeharlyk/SpotMicro-Leika/tree/main)
 1. [NightDriverStrip](https://github.com/PlummersSoftwareLLC/NightDriverStrip)
-1. [ESP32-rapid-development-template](https://github.com/runeharlyk/ESP32-rapid-development-template)
 
 ## Support
 
