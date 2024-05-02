@@ -10,7 +10,7 @@
 	let right: nipplejs.JoystickManager;
 
 	let throttle_timing = 40;
-	let data = new Int8Array(7);
+	let data = new Array(7);
 
 	onMount(() => {
 		left = nipplejs.create({

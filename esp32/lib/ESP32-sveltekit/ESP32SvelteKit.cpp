@@ -53,7 +53,8 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _restartService(server, &_securitySettingsService),
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
       _systemStatus(server, &_securitySettingsService),
-      _fileExplorer(server, &_securitySettingsService){
+      _fileExplorer(server, &_securitySettingsService),
+      _motionService(_server, &_socket, &_securitySettingsService, &_taskManager) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -181,6 +182,7 @@ void ESP32SvelteKit::startServices() {
 #endif
   _taskManager.begin();
   _fileExplorer.begin();
+  _motionService.begin();
 }
 
 void IRAM_ATTR ESP32SvelteKit::_loop() {

@@ -32,6 +32,7 @@
 #include <FeaturesService.h>
 #include <MqttSettingsService.h>
 #include <MqttStatus.h>
+#include <MotionService.h>
 #include <NTPSettingsService.h>
 #include <NTPStatus.h>
 #include <PsychicHttp.h>
@@ -159,6 +160,11 @@ public:
         return &_fileExplorer;
     }
 
+    MotionService *getMotionService()
+    {
+        return &_motionService;
+    }
+
     void factoryReset()
     {
         _factoryResetService.factoryReset();
@@ -216,6 +222,7 @@ private:
     SystemStatus _systemStatus;
     TaskManager _taskManager;
     FileExplorer _fileExplorer;
+    MotionService _motionService;
 
     String _appName = APP_NAME;
 
