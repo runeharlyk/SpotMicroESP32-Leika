@@ -183,12 +183,15 @@ void ESP32SvelteKit::startServices() {
   _fileExplorer.begin();
 }
 
-void ESP32SvelteKit::_loop() {
+void IRAM_ATTR ESP32SvelteKit::_loop() {
   while (1) {
     _wifiSettingsService.loop();
     _apSettingsService.loop();
 #if FT_ENABLED(FT_MQTT)
     _mqttSettingsService.loop();
+#endif
+#if FT_ENABLED(FT_ANALYTICS)
+    _analyticsService.loop();
 #endif
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
