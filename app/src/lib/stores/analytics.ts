@@ -15,7 +15,7 @@ let analytics_data = {
 	cpu_usage: <number[]>[]
 };
 
-const maxAnalyticsData = 1000; // roughly 33 Minutes of data at 1 update per 2 seconds
+const maxAnalyticsData = 100;
 
 function createAnalytics() {
 	const { subscribe, update } = writable(analytics_data);

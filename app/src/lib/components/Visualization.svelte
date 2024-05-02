@@ -73,7 +73,7 @@
 
 	const updateAngles = (name: string, angle: number) => {
 		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
-        Throttler.throttle(() => servoAnglesOut.set(modelTargetAngles), 100)
+        Throttler.throttle(() => servoAnglesOut.set(modelTargetAngles.map(num => Math.round(num))), 100)
 	};
 
 	const createScene = async () => {

@@ -17,7 +17,6 @@
 
 #include <HttpEndpoint.h>
 #include <WebSocketServer.h>
-#include <NotificationEvents.h>
 
 #define ACTUATOR_SETTINGS_ENDPOINT_PATH "/rest/actuators"
 #define ACTUATOR_SETTINGS_SOCKET_PATH "/ws"
@@ -101,10 +100,9 @@ public:
 
 class ActuatorStateService : public StatefulService<ActuatorState> {
     public:
-        ActuatorStateService(PsychicHttpServer *server, NotificationEvents *notificationEvents, SecurityManager *securityManager);
+        ActuatorStateService(PsychicHttpServer *server, SecurityManager *securityManager);
         void begin();
     protected:
-        NotificationEvents *_notificationEvents;
         static void _loopImpl(void *_this) { static_cast<ActuatorStateService *>(_this)->_loop(); }
         void _loop()
         {
@@ -125,7 +123,7 @@ class ActuatorStateService : public StatefulService<ActuatorState> {
                 doc["mode"] = (int)_state.motionState;
 
                 serializeJson(doc, message);
-                _notificationEvents->send(message, "motion", millis());
+                // _notificationEvents->send(message, "motion", millis());
                 vTaskDelayUntil(&xLastWakeTime, MOTION_INTERVAL / portTICK_PERIOD_MS);
             }
         };

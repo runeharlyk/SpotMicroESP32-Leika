@@ -26,6 +26,6 @@ export const outControllerData = writable(new Array([0, 0, 0, 0, 0, 70, 0]));
 export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },
 	right: { x: 0, y: 0 },
-	height: 70,
-	speed: 0
+	height: 50,
+	speed: 50
 });

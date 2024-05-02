@@ -16,7 +16,6 @@
 
 ActuatorStateService::ActuatorStateService(
     PsychicHttpServer *server,
-    NotificationEvents *notificationEvents,
     SecurityManager *securityManager
     ) : _httpEndpoint(
             ActuatorState::read,
@@ -33,8 +32,7 @@ ActuatorStateService::ActuatorStateService(
         server,
         ACTUATOR_SETTINGS_SOCKET_PATH,
         securityManager,
-        AuthenticationPredicates::IS_AUTHENTICATED),
-     _notificationEvents(notificationEvents)
+        AuthenticationPredicates::IS_AUTHENTICATED)
 {
     // Setup actuator hardware
 
