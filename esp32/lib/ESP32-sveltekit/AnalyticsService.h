@@ -25,56 +25,57 @@
 
 class AnalyticsService
 {
-public:
-  AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager){};
+  public:
+    AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager){};
 
-  void begin()
-  {
-      _socket->registerEvent(EVENT_ANALYTICS);
-
-      _taskManager->createTask(&AnalyticsService::_loopImpl, "Analytics Service", 8120, this, tskIDLE_PRIORITY, nullptr,
-                               ESP32SVELTEKIT_RUNNING_CORE);
-  };
-
-protected:
-    EventSocket *_socket;
-    TaskManager *_taskManager;
-
-    static void _loopImpl(void *_this) { static_cast<AnalyticsService *>(_this)->_loop(); }
-    void _loop()
+    void begin()
     {
-        TickType_t xLastWakeTime = xTaskGetTickCount();
-        StaticJsonDocument<MAX_ESP_ANALYTICS_SIZE> doc;
-        char message[MAX_ESP_ANALYTICS_SIZE];
-        while (1)
+        _socket->registerEvent(EVENT_ANALYTICS);
+    };
+
+    void loop()
+    {
+        unsigned long currentMillis = millis();
+
+        if (!_lastUpdate || (currentMillis - _lastUpdate) >= ANALYTICS_INTERVAL)
         {
-            doc.clear();
-            doc["uptime"] = millis() / 1000;
-            doc["free_heap"] = ESP.getFreeHeap();
-            doc["total_heap"] = ESP.getHeapSize();
-            doc["min_free_heap"] = ESP.getMinFreeHeap();
-            doc["max_alloc_heap"] = ESP.getMaxAllocHeap();
-            doc["fs_used"] = ESPFS.usedBytes();
-            doc["fs_total"] = ESPFS.totalBytes();
-            doc["core_temp"] = temperatureRead();
-            doc["cpu0_usage"] = _taskManager->getCpuUsage(0);
-            doc["cpu1_usage"] = _taskManager->getCpuUsage(1);
-            doc["cpu_usage"] = _taskManager->getCpuUsage();
-            // Add _taskManager->getTaskNames() as a JSON array
-            JsonArray tasks = doc.createNestedArray("tasks");
-            for (auto const &task : _taskManager->getTasks())
-            {
-                JsonObject nested = tasks.createNestedObject();
-                nested["name"] = task.name;
-                nested["stackSize"] = task.stackSize;
-                nested["priority"] = task.priority;
-                nested["coreId"] = task.coreId;
-            }
-
-            serializeJson(doc, message);
-            _socket->emit(EVENT_ANALYTICS, message);
-
-            vTaskDelayUntil(&xLastWakeTime, ANALYTICS_INTERVAL / portTICK_PERIOD_MS);
+            _lastUpdate = currentMillis;
+            updateAnalytics();
         }
     };
+    StaticJsonDocument<MAX_ESP_ANALYTICS_SIZE> doc;
+    char message[MAX_ESP_ANALYTICS_SIZE];
+
+  private:
+    EventSocket *_socket;
+    TaskManager *_taskManager;
+    unsigned long _lastUpdate;
+
+    void updateAnalytics() {
+        doc.clear();
+        doc["uptime"] = millis() / 1000;
+        doc["free_heap"] = ESP.getFreeHeap();
+        doc["total_heap"] = ESP.getHeapSize();
+        doc["min_free_heap"] = ESP.getMinFreeHeap();
+        doc["max_alloc_heap"] = ESP.getMaxAllocHeap();
+        doc["fs_used"] = ESPFS.usedBytes();
+        doc["fs_total"] = ESPFS.totalBytes();
+        doc["core_temp"] = temperatureRead();
+        doc["cpu0_usage"] = _taskManager->getCpuUsage(0);
+        doc["cpu1_usage"] = _taskManager->getCpuUsage(1);
+        doc["cpu_usage"] = _taskManager->getCpuUsage();
+        // Add _taskManager->getTaskNames() as a JSON array
+        JsonArray tasks = doc.createNestedArray("tasks");
+        for (auto const &task : _taskManager->getTasks())
+        {
+            JsonObject nested = tasks.createNestedObject();
+            nested["name"] = task.name;
+            nested["stackSize"] = task.stackSize;
+            nested["priority"] = task.priority;
+            nested["coreId"] = task.coreId;
+        }
+
+        serializeJson(doc, message);
+        _socket->emit(EVENT_ANALYTICS, message);
+    }
 };
