@@ -23,6 +23,8 @@
 			stroke-width="2"
 			stroke="currentColor"
 			fill="none"
+            role="button"
+            tabindex="0"
 			stroke-linecap="round"
 			stroke-linejoin="round"
 		>
@@ -45,6 +47,8 @@
 			stroke-width="2"
 			stroke="currentColor"
 			fill="none"
+            role="button"
+            tabindex="0"
 			stroke-linecap="round"
 			stroke-linejoin="round"
 		>

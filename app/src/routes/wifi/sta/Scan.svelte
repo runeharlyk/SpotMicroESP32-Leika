@@ -115,6 +115,8 @@
 									on:click={() => {
 										storeNetwork(network.ssid);
 									}}
+                                    role="button"
+                                    tabindex="0"
 								>
 									<div class="mask mask-hexagon bg-primary h-auto w-10 shrink-0">
 										<Network class="text-primary-content h-auto w-full scale-75" />
