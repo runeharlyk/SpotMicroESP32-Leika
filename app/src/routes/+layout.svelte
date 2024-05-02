@@ -13,7 +13,7 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
-	import { mode, outControllerData, servoAnglesOut, socket } from '$lib/stores';
+	import { ModesEnum, mode, outControllerData, servoAngles, servoAnglesOut, socket } from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 
 	onMount(async () => {
@@ -25,9 +25,9 @@
 
 		addEventListeners();
 
-        outControllerData.subscribe((data) => socket.sendEvent("input", data));
-        mode.subscribe((data) => socket.sendEvent("mode", data));
-        servoAnglesOut.subscribe((data) => socket.sendEvent("angles", data));
+        outControllerData.subscribe((data) => socket.sendEvent("input", {data}));
+        mode.subscribe((data) => socket.sendEvent("mode", {data}));
+        servoAnglesOut.subscribe((data) => socket.sendEvent("angles", {data}));
 	});
 
     onDestroy(() => {
@@ -43,6 +43,8 @@
 		socket.on('successToast', handleSuccessToast);
 		socket.on('warningToast', handleWarningToast);
 		socket.on('errorToast', handleErrorToast);
+		socket.on('mode', (data:ModesEnum) => mode.set(data));
+		socket.on('angles', (angles:number[]) => { if (angles.length) servoAngles.set(angles)});
 		if ($page.data.features.analytics) socket.on('analytics', handleAnalytics);
 		if ($page.data.features.battery) socket.on('battery', handleBattery);
 		if ($page.data.features.download_firmware) socket.on('otastatus', handleOAT);

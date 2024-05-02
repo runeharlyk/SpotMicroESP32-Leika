@@ -3,7 +3,7 @@
 	import { BufferGeometry, Line, LineBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import uzip from 'uzip';
 	import { model, servoAnglesOut } from '$lib/stores';
-	import { footColor, isEmbeddedApp, toeWorldPositions } from '$lib/utilities';
+	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
@@ -22,6 +22,7 @@
 	let currentModelAngles: number[] = new Array(12).fill(0);
 	let modelTargetAngles: number[] = new Array(12).fill(0)
     let gui_panel: GUI
+    let Throttler = new throttler()
 
     let feet_trace = new Array(4).fill([]);
     let trace_lines: BufferGeometry<NormalBufferAttributes>[] = []
@@ -72,7 +73,7 @@
 
 	const updateAngles = (name: string, angle: number) => {
 		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
-        servoAnglesOut.set(modelTargetAngles)
+        Throttler.throttle(() => servoAnglesOut.set(modelTargetAngles), 100)
 	};
 
 	const createScene = async () => {
