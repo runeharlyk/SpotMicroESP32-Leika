@@ -1,6 +1,4 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { openModal, closeModal } from 'svelte-modals';
 	import { slide } from 'svelte/transition';
@@ -22,8 +20,6 @@
 	import Warning from '~icons/tabler/alert-triangle';
 	import Cancel from '~icons/tabler/x';
 	import Check from '~icons/tabler/check';
-
-	export let data: PageData;
 
 	type userSetting = {
 		username: string;

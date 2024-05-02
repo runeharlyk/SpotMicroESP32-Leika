@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { LayoutData } from './$types';
 	import { onDestroy, onMount } from 'svelte';
 	import { user } from '$lib/stores/user';
 	import { telemetry } from '$lib/stores/telemetry';
@@ -15,9 +14,7 @@
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
 	import { mode, outControllerData, servoAnglesOut, socket } from '$lib/stores';
-	import type { Analytics, Battery, DownloadOTA, Rssi } from '$lib/types/models';
-
-	export let data: LayoutData;
+	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 
 	onMount(async () => {
 		if ($user.bearer_token !== '') {
@@ -137,6 +134,7 @@
 
 <Modals>
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
 		slot="backdrop"
 		class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur"
