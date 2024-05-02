@@ -10,8 +10,6 @@
 #define INPUT_EVENT "input"
 #define MODE_EVENT "mode"
 
-#define MOTION_INTERVAL 100
-
 enum class MOTION_STATE
 {
     IDLE,
@@ -40,18 +38,7 @@ class MotionService
 
         _socket->onEvent(ANGLES_EVENT, [&](JsonObject &root, int originId) { anglesEvent(root, originId); });
         _socket->onSubscribe(ANGLES_EVENT,
-                             std::bind(&MotionService::syncState, this, std::placeholders::_1, std::placeholders::_2));
-    }
-
-    void syncState(const String &originId, bool sync = false)
-    {
-        DynamicJsonDocument jsonDocument{200};
-        char output[200];
-        JsonObject root = jsonDocument.to<JsonObject>();
-        root["angles"] = angles;
-        serializeJson(root, output);
-        ESP_LOGV("MotionState", "Syncing state: %s", output);
-        _socket->emit(ANGLES_EVENT, output, originId.c_str());
+                             std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
     }
 
     void anglesEvent(JsonObject &root, int originId)
@@ -61,19 +48,12 @@ class MotionService
         {
             angles[i] = array[i];
         }
-        char output[100];
-        serializeJson(array, output);
-        sprintf(output, "[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d]", angles[0], angles[1], angles[2], angles[3], angles[4],
-                angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
-        _socket->emit(ANGLES_EVENT, output, String(originId).c_str());
+        syncAngles(String(originId));
     }
 
     void handleInput(JsonObject &root, int originId)
     {
-        String jsonString;
         JsonArray array = root["data"].as<JsonArray>();
-        serializeJson(array, jsonString);
-        ESP_LOGI("MotionService", "%s", jsonString.c_str());
         for (int i = 0; i < 7; i++)
         {
             input[i] = array[i];
@@ -90,14 +70,63 @@ class MotionService
         _socket->emit(MODE_EVENT, output, String(originId).c_str());
     }
 
+    void syncAngles(const String &originId = "", bool sync = false) {
+        char output[100];
+        sprintf(output, "[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d]", angles[0], angles[1], angles[2], angles[3], angles[4],
+                angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
+        _socket->emit(ANGLES_EVENT, output, String(originId).c_str());
+
+    }
+
+    int lerp(int start, int end, float t) {
+        return (1 - t) * start + t * end;
+    }
+
+    bool updateMotion() {
+        bool updated = false;
+        switch (motionState) {
+            case MOTION_STATE::IDLE:
+                break;
+            case MOTION_STATE::REST:
+                for (int i = 0; i < 12; i++) {
+                    int16_t new_angle = lerp(angles[i], rest_angles[i], 0.5);
+                    if (new_angle != angles[i]) {
+                        angles[i] = new_angle;
+                        updated = true;
+                    }
+                }
+                break;
+            case MOTION_STATE::WALK:
+                angles[1] += dir;
+                if (angles[1] >= 90) dir = -1;
+                if (angles[1] <= 0) dir = 1;
+                updated = true;
+                break;
+        }
+        return updated;
+    }
+
+    void loop() {
+        if (auto currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= MotionInterval) {
+            _lastUpdate = currentMillis;
+            if (updateMotion()) syncAngles();
+        }
+    }
+
   private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
     SecurityManager *_securityManager;
     TaskManager *_taskManager;
+
+    constexpr static int MotionInterval = 100;
+
     int8_t input[7] = {0, 0, 0, 0, 0, 0, 0};
     int16_t angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int16_t rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     MOTION_STATE motionState = MOTION_STATE::IDLE;
+    unsigned long _lastUpdate;
+    int dir = 2;
 };
 
 #endif
