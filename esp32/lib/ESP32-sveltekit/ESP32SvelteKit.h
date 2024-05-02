@@ -23,6 +23,7 @@
 #include <AnalyticsService.h>
 #include <AuthenticationService.h>
 #include <BatteryService.h>
+#include <FileExplorerService.h>
 #include <DownloadFirmwareService.h>
 #include <ESPFS.h>
 #include <ESPmDNS.h>
@@ -153,6 +154,11 @@ public:
         return &_taskManager;
     }
 
+    FileExplorer *getFileExplorer()
+    {
+        return &_fileExplorer;
+    }
+
     void factoryReset()
     {
         _factoryResetService.factoryReset();
@@ -209,6 +215,7 @@ private:
     FactoryResetService _factoryResetService;
     SystemStatus _systemStatus;
     TaskManager _taskManager;
+    FileExplorer _fileExplorer;
 
     String _appName = APP_NAME;
 

@@ -52,7 +52,8 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
 #endif
       _restartService(server, &_securitySettingsService),
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
-      _systemStatus(server, &_securitySettingsService) {
+      _systemStatus(server, &_securitySettingsService),
+      _fileExplorer(server, &_securitySettingsService){
 }
 
 void ESP32SvelteKit::begin() {
@@ -178,8 +179,8 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(FT_BATTERY)
   _batteryService.begin();
 #endif
-
   _taskManager.begin();
+  _fileExplorer.begin();
 }
 
 void ESP32SvelteKit::_loop() {

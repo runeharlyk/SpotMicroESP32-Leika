@@ -5,6 +5,7 @@
 	import Settings from '~icons/mdi/settings';
     import MdiController from '~icons/mdi/controller';
 	import Health from '~icons/mdi/stethoscope';
+	import Folder from '~icons/mdi/folder-outline';
 	import Update from '~icons/mdi/reload';
 	import WiFi from '~icons/mdi/wifi';
 	import Router from '~icons/mdi/router';
@@ -108,6 +109,13 @@
 					title: 'System Status',
 					icon: Health,
 					href: '/system/status',
+					feature: true,
+					
+				},
+                {
+					title: 'File System',
+					icon: Folder,
+					href: '/system/filesystem',
 					feature: true,
 					
 				},
