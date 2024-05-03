@@ -45,7 +45,7 @@
 		<label for="main-menu" class="btn btn-ghost btn-circle btn-sm drawer-button"
 			><Hamburger class="h-6 w-auto" /></label
 		>
-		<span class="px-2 text-xl font-bold lg:text-2xl">{$page.data.title}</span>
+		<h1 class="px-2 text-xl font-bold lg:text-2xl">{$page.data.title}</h1>
 	</div>
 	<div class="indicator flex-none">
 		<UpdateIndicator />
