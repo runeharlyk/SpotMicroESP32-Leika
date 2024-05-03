@@ -150,7 +150,7 @@ def add_app_to_filesystem():
     www_path = Path(filesystem_dir)
     if www_path.exists() and www_path.is_dir():
         rmtree(www_path)
-    print("Copying and compress interface to data directory")
+    print("Copying and compress app to data directory")
     copytree(build_path, www_path)
     for current_path, _, files in os.walk(www_path):
         for file in files:
@@ -159,7 +159,7 @@ def add_app_to_filesystem():
     env.Execute("pio run --target uploadfs")
 
 
-print("running: build_interface.py")
+print("running: build_app.py")
 if should_regenerate_output_file():
     build_webapp()
     embed_webapp()
