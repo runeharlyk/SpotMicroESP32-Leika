@@ -43,8 +43,8 @@
 
 * Live preview - Make changes, See changes
   <!-- * Instantly test and preview code in emulation -->
-* Live stream
-  * Camera livestream, battery voltage, servo position, distance sensors and much more.
+* Real time data sync
+  <!-- * Camera live stream, battery voltage, servo position, distance sensors and much more. -->
 <!-- * Full kinematic model -->
 * Dual joystick controller
 * Dark/Light mode
@@ -127,7 +127,6 @@ The software utilizes a couple of FreeRTos task
 | --- | --- | --- | ---
 | Idle0 task | Burns cpu time to track cpu usage for core 0 | 0 | 0
 | Idle1 task | Burns cpu time to track cpu usage for core 1 | 0 | 1
-| Analytics service task | Periodically sends analytics data | 1 | 0
 | Spot service task | Handle synchronous services | 2 | 0
 
 #### Feature flags
@@ -162,11 +161,11 @@ For the development dependencies I choose the following
 
 | Dependencies | Description
 | --- | ---
-| Svelte | SvelteKit is an application framework built on top of Svelte, enhancing it with features like routing, server-side rendering, and static site generation. It streamlines the development process by integrating server-side capabilities with Svelte's client-side benefits. Furthermore it make the development process fast and enjoyable.
+| SvelteKit | SvelteKit is an application framework built on top of Svelte, enhancing it with features like routing, server-side rendering, and static site generation. It streamlines the development process by integrating server-side capabilities with Svelte's client-side benefits. Furthermore it make the development process fast and enjoyable.
 | Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production
 | Typescript | TypeScript's integration of static typing enhances code reliability and maintainability.
 | Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design.
-| Vite single file plugin | This plugin inline all JS and CSS in the *index.html* file, which is necessary as SPIFFS max file length is 32 bytes.
+<!-- | Vite single file plugin | This plugin inline all JS and CSS in the *index.html* file, which is necessary as SPIFFS max file length is 32 bytes. -->
 | Vite compression plugin | This plugin compresses the *index.html* file making the final footprint a lot smaller.
 
 #### Libraries
@@ -182,7 +181,7 @@ For the app functionality I choose the following:
 | [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library.
 | [ChartJS](https://www.npmjs.com/package/chart.js) | Simple and flexible charting library.
 
-### Space issues
+<!-- ### Space issues
 
 As the ESP32 has very limited storage for program and filesystem, it quickly became a challenge to fit the web app and program in the 4mb of flash.
 Just the robot models files were ≈8mb. So the first step was to minify the files.
@@ -200,7 +199,7 @@ The obvious solution was again to compress it, this time by using gzip.
 This made the file size for the *index.html* 184kb. With all the optimization the data folder was only 756 KB. Awesome!
 
 The last step to fitting the web app on the ESP was to expand SPIFFS part of filesystem image.
-At this step I had to cut some corners to make it fit, mainly by disabling over-the-air update. But a last the filesystem image build and uploaded to the ESP!
+At this step I had to cut some corners to make it fit, mainly by disabling over-the-air update. But a last the filesystem image build and uploaded to the ESP! -->
 
 ## Kinematics
 
