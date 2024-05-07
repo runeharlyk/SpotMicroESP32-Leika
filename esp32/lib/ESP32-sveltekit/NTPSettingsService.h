@@ -41,7 +41,6 @@
 #define NTP_SETTINGS_FILE "/config/ntpSettings.json"
 #define NTP_SETTINGS_SERVICE_PATH "/api/ntpSettings"
 
-#define MAX_TIME_SIZE 256
 #define TIME_PATH "/api/time"
 
 class NTPSettings

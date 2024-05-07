@@ -111,7 +111,7 @@ void SystemStatus::begin()
 
 esp_err_t SystemStatus::systemStatus(PsychicRequest *request)
 {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_ESP_STATUS_SIZE);
+    PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
     root["esp_platform"] = ESP_PLATFORM;

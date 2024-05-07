@@ -22,7 +22,6 @@
 #include <SecurityManager.h>
 #include <ESPFS.h>
 
-#define MAX_ESP_STATUS_SIZE 1024
 #define SYSTEM_STATUS_SERVICE_PATH "/api/systemStatus"
 
 class SystemStatus

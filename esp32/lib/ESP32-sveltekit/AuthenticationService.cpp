@@ -27,13 +27,13 @@ void AuthenticationService::begin()
     _server->on(SIGN_IN_PATH, HTTP_POST, [this](PsychicRequest *request, JsonVariant &json)
                 {
         if (json.is<JsonObject>()) {
-            String         username       = json["username"];
-            String         password       = json["password"];
+            String username = json["username"];
+            String password = json["password"];
             Authentication authentication = _securityManager->authenticate(username, password);
             if (authentication.authenticated) {
-                PsychicJsonResponse response = PsychicJsonResponse(request, false, 256);
-                JsonObject          root     = response.getRoot();
-                root["access_token"]         = _securityManager->generateJWT(authentication.user);
+                PsychicJsonResponse response = PsychicJsonResponse(request, false);
+                JsonObject root = response.getRoot();
+                root["access_token"] = _securityManager->generateJWT(authentication.user);
                 return response.send();
             }
         }

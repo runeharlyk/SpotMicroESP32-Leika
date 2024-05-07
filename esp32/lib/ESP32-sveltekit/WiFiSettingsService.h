@@ -50,8 +50,6 @@
 #define WIFI_RECONNECTION_DELAY 1000 * 30
 #define RSSI_EVENT_DELAY 500
 
-#define WIFI_SETTINGS_BUFFER_SIZE 2048
-
 #define EVENT_RSSI "rssi"
 #define EVENT_WIFI_SETTINGS "WiFiSettings"
 
@@ -83,13 +81,13 @@ public:
         root["priority_RSSI"] = settings.priorityBySignalStrength;
 
         // create JSON array from root
-        JsonArray wifiNetworks = root.createNestedArray("wifi_networks");
+        JsonArray wifiNetworks = root["wifi_networks"].to<JsonArray>();
 
         // iterate over the wifiSettings
         for (auto &wifi : settings.wifiSettings)
         {
             // create JSON object for each wifi network
-            JsonObject wifiNetwork = wifiNetworks.createNestedObject();
+            JsonObject wifiNetwork = wifiNetworks.add<JsonObject>();
 
             // add the ssid and password to the JSON object
             wifiNetwork["ssid"] = wifi.ssid;

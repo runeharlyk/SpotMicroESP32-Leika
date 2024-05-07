@@ -95,7 +95,7 @@ public:
         if (_pubTopic.length() > 0 && _mqttClient->connected())
         {
             // serialize to json doc
-            DynamicJsonDocument json(_bufferSize);
+            JsonDocument json;
             JsonObject jsonObject = json.to<JsonObject>();
             _statefulService->read(jsonObject, _stateReader);
 
@@ -116,7 +116,6 @@ public:
 protected:
     StatefulService<T> *_statefulService;
     PsychicMqttClient *_mqttClient;
-    int _bufferSize;
     JsonStateUpdater<T> _stateUpdater;
     JsonStateReader<T> _stateReader;
     String _subTopic;
@@ -136,7 +135,7 @@ protected:
         }
 
         // deserialize from string
-        DynamicJsonDocument json(_bufferSize);
+        JsonDocument json;
         DeserializationError error = deserializeJson(json, payload);
         if (!error && json.is<JsonObject>())
         {

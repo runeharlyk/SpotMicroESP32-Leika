@@ -14,8 +14,6 @@
 
 #include <FactoryResetService.h>
 
-using namespace std::placeholders;
-
 FactoryResetService::FactoryResetService(PsychicHttpServer *server,
                                          FS *fs,
                                          SecurityManager *securityManager) : _server(server),
@@ -28,7 +26,7 @@ void FactoryResetService::begin()
 {
     _server->on(FACTORY_RESET_SERVICE_PATH,
                 HTTP_POST,
-                _securityManager->wrapRequest(std::bind(&FactoryResetService::handleRequest, this, _1), AuthenticationPredicates::IS_ADMIN));
+                _securityManager->wrapRequest(std::bind(&FactoryResetService::handleRequest, this, std::placeholders::_1), AuthenticationPredicates::IS_ADMIN));
 
     ESP_LOGV("FactoryResetService", "Registered POST endpoint: %s", FACTORY_RESET_SERVICE_PATH);
 }

@@ -53,7 +53,7 @@ String toLocalTimeString(tm *time)
 
 esp_err_t NTPStatus::ntpStatus(PsychicRequest *request)
 {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_NTP_STATUS_SIZE);
+    PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
     // grab the current instant in unix seconds

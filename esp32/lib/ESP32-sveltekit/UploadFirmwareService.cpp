@@ -16,7 +16,7 @@
 #include <esp_ota_ops.h>
 #include <esp_app_format.h>
 
-using namespace std::placeholders; // for `_1` etc
+using namespace std::placeholders;
 
 static char md5[33] = "\0";
 
@@ -152,7 +152,7 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request)
     {
         if (strlen(md5) == 32)
         {
-            PsychicJsonResponse response = PsychicJsonResponse(request, false, 256);
+            PsychicJsonResponse response = PsychicJsonResponse(request, false);
             JsonObject root = response.getRoot();
             root["md5"] = md5;
             return response.send();

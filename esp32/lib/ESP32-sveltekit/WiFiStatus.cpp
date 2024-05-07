@@ -63,7 +63,7 @@ void WiFiStatus::onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
 
 esp_err_t WiFiStatus::wifiStatus(PsychicRequest *request)
 {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_WIFI_STATUS_SIZE);
+    PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
     wl_status_t status = WiFi.status();
     root["status"] = (uint8_t)status;

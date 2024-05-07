@@ -13,14 +13,6 @@
 typedef std::function<void(JsonObject &root, int originId)> EventCallback;
 typedef std::function<void(const String &originId, bool sync)> SubscribeCallback;
 
-enum pushEvent
-{
-  PUSHERROR,
-  PUSHWARNING,
-  PUSHINFO,
-  PUSHSUCCESS
-};
-
 class EventSocket
 {
 public:
@@ -41,8 +33,6 @@ public:
   void emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin = false);
   // if onlyToSameOrigin == true, the message will be sent to the originId only, otherwise it will be broadcasted to all clients except the originId
 
-  void pushNotification(String message, pushEvent event);
-
 private:
   PsychicHttpServer *_server;
   PsychicWebSocketHandler _socket;
@@ -58,7 +48,6 @@ private:
 
   bool isEventValid(String event);
 
-  size_t _bufferSize;
   void onWSOpen(PsychicWebSocketClient *client);
   void onWSClose(PsychicWebSocketClient *client);
   esp_err_t onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame);

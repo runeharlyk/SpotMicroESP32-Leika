@@ -23,7 +23,6 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define MAX_NTP_STATUS_SIZE 1024
 #define NTP_STATUS_SERVICE_PATH "/api/ntpStatus"
 
 class NTPStatus

@@ -44,7 +44,6 @@
 #define SECURITY_SETTINGS_FILE "/config/securitySettings.json"
 #define SECURITY_SETTINGS_PATH "/api/securitySettings"
 
-#define GENERATE_TOKEN_SIZE 512
 #define GENERATE_TOKEN_PATH "/api/generateToken"
 
 #if FT_ENABLED(FT_SECURITY)
@@ -61,10 +60,10 @@ public:
         root["jwt_secret"] = settings.jwtSecret;
 
         // users
-        JsonArray users = root.createNestedArray("users");
+        JsonArray users = root.to<JsonArray>();
         for (User user : settings.users)
         {
-            JsonObject userRoot = users.createNestedObject();
+            JsonObject userRoot = users.add<JsonObject>();
             userRoot["username"] = user.username;
             userRoot["password"] = user.password;
             userRoot["admin"] = user.admin;

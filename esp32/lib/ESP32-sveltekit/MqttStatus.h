@@ -22,7 +22,6 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define MAX_MQTT_STATUS_SIZE 1024
 #define MQTT_STATUS_SERVICE_PATH "/api/mqttStatus"
 
 class MqttStatus

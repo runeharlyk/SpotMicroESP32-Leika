@@ -43,7 +43,7 @@ class AnalyticsService
             updateAnalytics();
         }
     };
-    StaticJsonDocument<MAX_ESP_ANALYTICS_SIZE> doc;
+    JsonDocument doc;
     char message[MAX_ESP_ANALYTICS_SIZE];
 
   private:
@@ -65,10 +65,10 @@ class AnalyticsService
         doc["cpu1_usage"] = _taskManager->getCpuUsage(1);
         doc["cpu_usage"] = _taskManager->getCpuUsage();
         // Add _taskManager->getTaskNames() as a JSON array
-        JsonArray tasks = doc.createNestedArray("tasks");
+        JsonArray tasks = doc["tasks"].as<JsonArray>();
         for (auto const &task : _taskManager->getTasks())
         {
-            JsonObject nested = tasks.createNestedObject();
+            JsonObject nested = tasks.add<JsonObject>();
             nested["name"] = task.name;
             nested["stackSize"] = task.stackSize;
             nested["priority"] = task.priority;

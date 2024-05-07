@@ -24,7 +24,7 @@ void BatteryService::begin()
 
 void BatteryService::batteryEvent()
 {
-    StaticJsonDocument<32> doc;
+    JsonDocument doc;
     char message[32];
     doc["soc"] = _lastSOC;
     doc["charging"] = _isCharging;

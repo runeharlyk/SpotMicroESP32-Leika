@@ -52,12 +52,12 @@ esp_err_t WiFiScanner::listNetworks(PsychicRequest *request)
     int numNetworks = WiFi.scanComplete();
     if (numNetworks > -1)
     {
-        PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_WIFI_SCANNER_SIZE);
+        PsychicJsonResponse response = PsychicJsonResponse(request, false);
         JsonObject root = response.getRoot();
-        JsonArray networks = root.createNestedArray("networks");
+        JsonArray networks = root["networks"].to<JsonArray>();
         for (int i = 0; i < numNetworks; i++)
         {
-            JsonObject network = networks.createNestedObject();
+            JsonObject network = networks.add<JsonObject>();
             network["rssi"] = WiFi.RSSI(i);
             network["ssid"] = WiFi.SSID(i);
             network["bssid"] = WiFi.BSSIDstr(i);
