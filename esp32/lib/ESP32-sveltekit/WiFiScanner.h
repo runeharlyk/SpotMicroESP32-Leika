@@ -24,8 +24,6 @@
 #define SCAN_NETWORKS_SERVICE_PATH "/api/scanNetworks"
 #define LIST_NETWORKS_SERVICE_PATH "/api/listNetworks"
 
-#define MAX_WIFI_SCANNER_SIZE 1024
-
 class WiFiScanner
 {
 public:

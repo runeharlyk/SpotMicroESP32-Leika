@@ -22,7 +22,7 @@ void FeaturesService::begin()
 {
     _server->on(FEATURES_SERVICE_PATH, HTTP_GET, [&](PsychicRequest *request)
                 {
-                    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_FEATURES_SIZE);
+                    PsychicJsonResponse response = PsychicJsonResponse(request, false);
                     JsonObject root = response.getRoot();
 
 #if FT_ENABLED(FT_SECURITY)

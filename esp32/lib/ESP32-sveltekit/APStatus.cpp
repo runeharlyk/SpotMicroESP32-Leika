@@ -33,7 +33,7 @@ void APStatus::begin()
 
 esp_err_t APStatus::apStatus(PsychicRequest *request)
 {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_AP_STATUS_SIZE);
+    PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
     root["status"] = _apSettingsService->getAPNetworkStatus();

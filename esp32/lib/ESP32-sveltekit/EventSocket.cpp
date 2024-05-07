@@ -6,8 +6,7 @@ EventSocket::EventSocket(PsychicHttpServer *server,
                          SecurityManager *securityManager,
                          AuthenticationPredicate authenticationPredicate) : _server(server),
                                                                             _securityManager(securityManager),
-                                                                            _authenticationPredicate(authenticationPredicate),
-                                                                            _bufferSize(1024)
+                                                                            _authenticationPredicate(authenticationPredicate)
 {
 }
 
@@ -18,11 +17,6 @@ void EventSocket::begin()
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
     _server->on(EVENT_SERVICE_PATH, &_socket);
-
-    registerEvent("errorToast");
-    registerEvent("warningToast");
-    registerEvent("infoToast");
-    registerEvent("successToast");
 
     ESP_LOGV("EventSocket", "Registered event socket endpoint: %s", EVENT_SERVICE_PATH);
 }
@@ -64,7 +58,7 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
         ESP_LOGV("EventSocket", "ws[%s][%u] request: %s", request->client()->remoteIP().toString().c_str(),
                  request->client()->socket(), (char *)frame->payload);
 
-        DynamicJsonDocument doc = DynamicJsonDocument(_bufferSize);
+        JsonDocument doc;
         DeserializationError error = deserializeJson(doc, (char *)frame->payload, frame->len);
 
         if (!error && doc.is<JsonObject>())
@@ -157,30 +151,6 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         }
     }
     xSemaphoreGive(clientSubscriptionsMutex);
-}
-
-void EventSocket::pushNotification(String message, pushEvent event)
-{
-    String eventType;
-    switch (event)
-    {
-    case (PUSHERROR):
-        eventType = "errorToast";
-        break;
-    case (PUSHWARNING):
-        eventType = "warningToast";
-        break;
-    case (PUSHINFO):
-        eventType = "infoToast";
-        break;
-    case (PUSHSUCCESS):
-        eventType = "successToast";
-        break;
-    default:
-        ESP_LOGW("EventSocket", "Client tried invalid push notification: %s", event);
-        return;
-    }
-    emit(eventType.c_str(), message.c_str());
 }
 
 void EventSocket::handleEventCallbacks(String event, JsonObject &jsonObject, int originId)

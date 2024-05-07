@@ -59,7 +59,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
 
 void ESP32SvelteKit::begin() {
   ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");
-  ESP_LOGI("Running Firmware Version: %s\n", APP_VERSION);
+  ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
   ESPFS.begin(true);
 
   _wifiSettingsService.initWiFi();

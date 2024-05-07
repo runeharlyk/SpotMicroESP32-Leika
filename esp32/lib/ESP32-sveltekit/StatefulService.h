@@ -23,10 +23,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-#ifndef DEFAULT_BUFFER_SIZE
-#define DEFAULT_BUFFER_SIZE 1024
-#endif
-
 enum class StateUpdateResult
 {
     CHANGED = 0, // The update changed the state and propagation should take place if required

@@ -34,7 +34,7 @@ void MqttStatus::begin()
 
 esp_err_t MqttStatus::mqttStatus(PsychicRequest *request)
 {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false, MAX_MQTT_STATUS_SIZE);
+    PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
     root["enabled"] = _mqttSettingsService->isEnabled();

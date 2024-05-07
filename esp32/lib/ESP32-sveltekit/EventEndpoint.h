@@ -27,12 +27,10 @@ public:
     EventEndpoint(JsonStateReader<T> stateReader,
                   JsonStateUpdater<T> stateUpdater,
                   StatefulService<T> *statefulService,
-                  EventSocket *socket, const char *event,
-                  size_t bufferSize = DEFAULT_BUFFER_SIZE) : _stateReader(stateReader),
+                  EventSocket *socket, const char *event) : _stateReader(stateReader),
                                                              _stateUpdater(stateUpdater),
                                                              _statefulService(statefulService),
                                                              _socket(socket),
-                                                             _bufferSize(bufferSize),
                                                              _event(event)
     {
         _statefulService->addUpdateHandler([&](const String &originId)
@@ -53,7 +51,6 @@ private:
     StatefulService<T> *_statefulService;
     EventSocket *_socket;
     const char *_event;
-    size_t _bufferSize;
 
     void updateState(JsonObject &root, int originId)
     {
@@ -62,7 +59,7 @@ private:
 
     void syncState(const String &originId, bool sync = false)
     {
-        DynamicJsonDocument jsonDocument{_bufferSize};
+        JsonDocument jsonDocument;
         JsonObject root = jsonDocument.to<JsonObject>();
         String output;
         _statefulService->read(root, _stateReader);
