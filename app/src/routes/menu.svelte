@@ -4,6 +4,8 @@
 	import Users from '~icons/mdi/users';
 	import Settings from '~icons/mdi/settings';
     import MdiController from '~icons/mdi/controller';
+    import Devices from '~icons/mdi/devices'
+    import Camera from '~icons/mdi/camera-outline';
 	import Health from '~icons/mdi/stethoscope';
 	import Folder from '~icons/mdi/folder-outline';
 	import Update from '~icons/mdi/reload';
@@ -51,6 +53,19 @@
             href: '/controller',
             feature: true,
         },
+        {
+			title: 'Peripherals',
+			icon: Devices,
+			feature: true,
+			submenu: [
+				{
+					title: 'Camera',
+					icon: Camera,
+					href: '/peripherals/camera',
+					feature: $page.data.features.camera,
+				}
+			]
+		},
 		{
 			title: 'Connections',
 			icon: Remote,

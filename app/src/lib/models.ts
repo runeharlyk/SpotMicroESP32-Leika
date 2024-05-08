@@ -155,3 +155,17 @@ export type MQTTSettings = {
 	keep_alive: number;
 	clean_session: boolean;
 };
+
+export type CameraSettings = {
+	framesize: number;
+	quality: number;
+	brightness: number;
+	contrast: number;
+	saturation: number;
+	sharpness: number;
+	denoise: number;
+	special_effect: number;
+	wb_mode: number;
+	vflip: boolean;
+	hmirror: boolean;
+};

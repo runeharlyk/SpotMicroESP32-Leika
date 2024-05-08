@@ -34,6 +34,8 @@
 #include <MqttStatus.h>
 #include <MotionService.h>
 #include <NTPSettingsService.h>
+#include <CameraService.h>
+#include <CameraSettingsService.h>
 #include <NTPStatus.h>
 #include <PsychicHttp.h>
 #include <RestartService.h>
@@ -164,6 +166,16 @@ public:
     {
         return &_motionService;
     }
+#if FT_ENABLED(FT_CAMERA)
+    CameraService *getCameraService()
+    {
+        return &_cameraService;
+    }
+    CameraSettingsService *getCameraSettingsService()
+    {
+        return &_cameraSettingsService;
+    }
+#endif
 
     void factoryReset()
     {
@@ -223,6 +235,10 @@ private:
     TaskManager _taskManager;
     FileExplorer _fileExplorer;
     MotionService _motionService;
+#if FT_ENABLED(FT_CAMERA)
+    CameraService _cameraService;
+    CameraSettingsService _cameraSettingsService;
+#endif
 
     String _appName = APP_NAME;
 
