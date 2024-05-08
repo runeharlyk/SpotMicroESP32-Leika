@@ -10,6 +10,8 @@
 	import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte';
 	import { compareVersions } from 'compare-versions';
 	import { onMount } from 'svelte';
+	import { api } from '$lib/api';
+	import type { GithubRelease } from '$lib/models';
 
 	export let update = false;
 
@@ -17,67 +19,55 @@
 	let firmwareDownloadLink: string;
 
 	async function getGithubAPI() {
-		try {
-			const response = await fetch(
-				'https://api.github.com/repos/' + $page.data.github + '/releases/latest',
-				{
-					method: 'GET',
-					headers: {
-						accept: 'application/vnd.github+json',
-						'X-GitHub-Api-Version': '2022-11-28'
-					}
-				}
-			);
-			const results = await response.json();
-            if (results.message == "Not Found") {
-                console.error('Error: Could not find releases in the repository');
-                return;
+        const headers = {
+            accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        const result = await api.get<GithubRelease>(`https://api.github.com/repos/${$page.data.github}/releases/latest`, {headers})
+        if (result.inner.message === "404" || result.inner.message == "Not Found") {
+            console.warn('Error: Could not find releases in the repository');
+            return
+        }
+        if (result.isErr()) {
+            console.error('Error:', result.inner);
+            return
+        }
+        
+        const results = result.inner;
+        update = false;
+        firmwareVersion = '';
+
+        if (compareVersions(results.tag_name, $page.data.features.firmware_version) === 1) {
+            // iterate over assets and find the correct one
+            for (let i = 0; i < results.assets.length; i++) {
+                // check if the asset is of type *.bin
+                if (
+                    results.assets[i].name.includes('.bin') &&
+                    results.assets[i].name.includes($page.data.features.firmware_built_target)
+                ) {
+                    update = true;
+                    firmwareVersion = results.tag_name;
+                    firmwareDownloadLink = results.assets[i].browser_download_url;
+                    notifications.info('Firmware update available.', 5000);
+                }
             }
-
-			update = false;
-			firmwareVersion = '';
-
-			if (compareVersions(results.tag_name, $page.data.features.firmware_version) === 1) {
-				// iterate over assets and find the correct one
-				for (let i = 0; i < results.assets.length; i++) {
-					// check if the asset is of type *.bin
-					if (
-						results.assets[i].name.includes('.bin') &&
-						results.assets[i].name.includes($page.data.features.firmware_built_target)
-					) {
-						update = true;
-						firmwareVersion = results.tag_name;
-						firmwareDownloadLink = results.assets[i].browser_download_url;
-						notifications.info('Firmware update available.', 5000);
-					}
-				}
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        }
 	}
 
 	async function postGithubDownload(url: string) {
-		try {
-			const apiResponse = await fetch('/api/downloadUpdate', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ download_url: url })
-			});
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post('/api/downloadUpdate', { download_url: url });
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
 	}
 
-	onMount(() => {
+	onMount(async () => {
 		if ($page.data.features.download_firmware && (!$page.data.features.security || $user.admin)) {
-			getGithubAPI();
+			await getGithubAPI();
 			const interval = setInterval(
 				async () => {
-					getGithubAPI();
+					await getGithubAPI();
 				},
 				60 * 60 * 1000
 			); // once per hour

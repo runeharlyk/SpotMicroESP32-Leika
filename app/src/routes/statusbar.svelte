@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import { telemetry } from '$lib/stores/telemetry';
 	import { openModal, closeModal } from 'svelte-modals';
-	import { user } from '$lib/stores/user';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import WiFiOff from '~icons/tabler/wifi-off';
 	import Hamburger from '~icons/tabler/menu-2';
@@ -13,15 +12,9 @@
 	import UpdateIndicator from '$lib/components/UpdateIndicator.svelte';
     import MdiWeatherSunny from '~icons/mdi/weather-sunny';
     import MdiMoonAndStars from '~icons/mdi/moon-and-stars';
+	import { api } from '$lib/api';
 
-	async function postSleep() {
-		const response = await fetch('/api/sleep', {
-			method: 'POST',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
-			}
-		});
-	}
+	const postSleep = async () => await api.post('/api/sleep')
 
 	function confirmSleep() {
 		openModal(ConfirmDialog, {

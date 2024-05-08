@@ -26,24 +26,24 @@
 	import SDK from '~icons/tabler/sdk';
 	import type { SystemInformation, Analytics } from '$lib/types/models';
 	import { socket } from '$lib/stores/socket';
+	import { api } from '$lib/api';
+	import { convertSeconds } from '$lib/utilities';
 
 	let systemInformation: SystemInformation;
 
 	async function getSystemStatus() {
-		try {
-			const response = await fetch('/api/systemStatus', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			systemInformation = await response.json();
-		} catch (error) {
-			console.log('Error:', error);
-		}
+        const result = await api.get<SystemInformation>('/api/systemStatus');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        systemInformation = result.inner
 		return systemInformation;
 	}
+
+    const postFactoryReset = async () => await api.post('/api/factoryReset')
+    
+    const postSleep = async () => await api.post('api/sleep')
 
 	onMount(() => socket.on('analytics', handleSystemData));
 
@@ -52,14 +52,7 @@
 	const handleSystemData = (data: Analytics) =>
 		(systemInformation = { ...systemInformation, ...data });
 
-	async function postRestart() {
-		const response = await fetch('/api/restart', {
-			method: 'POST',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
-			}
-		});
-	}
+	const postRestart = async () => await api.post('/api/restart');
 
 	function confirmRestart() {
 		openModal(ConfirmDialog, {
@@ -72,15 +65,6 @@
 			onConfirm: () => {
 				closeModal();
 				postRestart();
-			}
-		});
-	}
-
-	async function postFactoryReset() {
-		const response = await fetch('/api/factoryReset', {
-			method: 'POST',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
 			}
 		});
 	}
@@ -100,15 +84,6 @@
 		});
 	}
 
-	async function postSleep() {
-		const response = await fetch('/api/sleep', {
-			method: 'POST',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic'
-			}
-		});
-	}
-
 	function confirmSleep() {
 		openModal(ConfirmDialog, {
 			title: 'Confirm Going to Sleep',
@@ -122,33 +97,6 @@
 				postSleep();
 			}
 		});
-	}
-
-	function convertSeconds(seconds: number) {
-		// Calculate the number of seconds, minutes, hours, and days
-		let minutes = Math.floor(seconds / 60);
-		let hours = Math.floor(minutes / 60);
-		let days = Math.floor(hours / 24);
-
-		// Calculate the remaining hours, minutes, and seconds
-		hours = hours % 24;
-		minutes = minutes % 60;
-		seconds = seconds % 60;
-
-		// Create the formatted string
-		let result = '';
-		if (days > 0) {
-			result += days + ' day' + (days > 1 ? 's' : '') + ' ';
-		}
-		if (hours > 0) {
-			result += hours + ' hour' + (hours > 1 ? 's' : '') + ' ';
-		}
-		if (minutes > 0) {
-			result += minutes + ' minute' + (minutes > 1 ? 's' : '') + ' ';
-		}
-		result += seconds + ' second' + (seconds > 1 ? 's' : '');
-
-		return result;
 	}
 </script>
 

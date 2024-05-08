@@ -2,32 +2,24 @@
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import { user } from '$lib/stores/user';
-	import { page } from '$app/stores';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import MQTT from '~icons/tabler/topology-star-3';
 	import Info from '~icons/tabler/info-circle';
 	import type { BrokerSettings } from '$lib/types/models';
+	import { api } from '$lib/api';
 
 	let brokerSettings: BrokerSettings;
 
 	let formField: any;
 
 	async function getBrokerSettings() {
-		try {
-			const response = await fetch('/api/brokerSettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			brokerSettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.get<BrokerSettings>('/api/brokerSettings');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        brokerSettings = result.inner
 	}
 
 	let formErrors = {
@@ -37,25 +29,14 @@
 	};
 
 	async function postBrokerSettings() {
-		try {
-			const response = await fetch('/api/brokerSettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(brokerSettings)
-			});
-			if (response.status == 200) {
-				notifications.success('Broker settings updated.', 3000);
-				brokerSettings = await response.json();
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.post<BrokerSettings>('/api/brokerSettings', brokerSettings);
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            notifications.error('User not authorized.', 3000);
+            return
+        }
+        notifications.success('Broker settings updated.', 3000);
+        brokerSettings = result.inner
 	}
 
 	function handleSubmitBroker() {

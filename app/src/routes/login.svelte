@@ -5,6 +5,8 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade, fly } from 'svelte/transition';
 	import Login from '~icons/tabler/login';
+	import { api } from '$lib/api';
+	import type { JWT } from '$lib/models';
 
 	type SignInData = {
 		password: string;
@@ -19,31 +21,21 @@
 	let token = { access_token: '' };
 
 	async function signInUser(data: SignInData) {
-		try {
-			const response = await fetch('/api/signIn', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-			if (response.status === 200) {
-				token = await response.json();
-				user.init(token.access_token);
-				let username = $user.username;
-				notifications.success('User ' + username + ' signed in', 5000);
-			} else {
-				username = '';
-				password = '';
-				notifications.error('Wrong Username or Password!', 5000);
-				loginFailed = true;
-				setTimeout(() => {
-					loginFailed = false;
-				}, 1500);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post<JWT>('/api/signIn', data)
+		if (result.isErr()){
+            username = '';
+            password = '';
+            notifications.error('Wrong Username or Password!', 5000);
+            loginFailed = true;
+            setTimeout(() => {
+                loginFailed = false;
+            }, 1500);
+            return
+        }
+        token = result.inner;
+        user.init(token.access_token);
+        username = $user.username;
+        notifications.success('User ' + username + ' signed in', 5000);
 	}
 </script>
 

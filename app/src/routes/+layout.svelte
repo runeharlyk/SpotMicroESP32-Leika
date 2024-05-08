@@ -15,6 +15,7 @@
 	import Login from './login.svelte';
 	import { ModesEnum, mode, outControllerData, servoAngles, servoAnglesOut, socket } from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
+	import { api } from '$lib/api';
 
 	onMount(async () => {
 		if ($user.bearer_token !== '') {
@@ -64,20 +65,11 @@
 	};
 
     async function validateUser(userdata: userProfile) {
-		try {
-			const response = await fetch('/api/verifyAuthorization', {
-				method: 'GET',
-				headers: {
-					Authorization: 'Bearer ' + userdata.bearer_token,
-					'Content-Type': 'application/json'
-				}
-			});
-			if (response.status !== 200) {
-				user.invalidate();
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.get('/api/verifyAuthorization')
+        if (result.isErr()){
+            user.invalidate();
+            console.error('Error:', result.inner);
+        }
 	}
 
 	const handleOpen = () => {
