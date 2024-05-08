@@ -20,6 +20,7 @@
 	import Warning from '~icons/tabler/alert-triangle';
 	import Cancel from '~icons/tabler/x';
 	import Check from '~icons/tabler/check';
+	import { api } from '$lib/api';
 
 	type userSetting = {
 		username: string;
@@ -35,63 +36,31 @@
 	let securitySettings: SecuritySettings;
 
 	async function getSecuritySettings() {
-		try {
-			const response = await fetch('/api/securitySettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			securitySettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.get<SecuritySettings>('/api/securitySettings')
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        securitySettings = result.inner
 	}
 
 	async function postSecuritySettings(data: SecuritySettings) {
-		try {
-			const response = await fetch('/api/securitySettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-
-			securitySettings = await response.json();
-			if (response.status == 200) {
-				if (await validateUser($user)) {
-					notifications.success('Security settings updated.', 3000);
-				}
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.post<SecuritySettings>('/api/securitySettings', data)
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            notifications.error('User not authorized.', 3000);
+            return
+        }
+        securitySettings = result.inner
+        if (await validateUser()) {
+            notifications.success('Security settings updated.', 3000);
+        }
 	}
 
-	async function validateUser(userdata: userProfile) {
-		try {
-			const response = await fetch('/api/verifyAuthorization', {
-				method: 'GET',
-				headers: {
-					Authorization: 'Bearer ' + userdata.bearer_token,
-					'Content-Type': 'application/json'
-				}
-			});
-			if (response.status !== 200) {
-				user.invalidate();
-				return false;
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return true;
+	async function validateUser() {
+        const result = await api.get('/api/verifyAuthorization')
+        if (result.isErr()) user.invalidate();
+		return result.isOk();
 	}
 
 	function confirmDelete(index: number) {

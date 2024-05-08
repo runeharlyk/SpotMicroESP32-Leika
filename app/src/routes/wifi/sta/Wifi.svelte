@@ -34,6 +34,7 @@
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import type { KnownNetworkItem, WifiSettings, WifiStatus } from '$lib/types/models';
 	import { socket } from '$lib/stores';
+	import { api } from '$lib/api';
 
 	let networkEditable: KnownNetworkItem = {
 		ssid: '',
@@ -72,35 +73,23 @@
 	let formErrorhostname = false;
 
 	async function getWifiStatus() {
-		try {
-			const response = await fetch('/api/wifiStatus', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			wifiStatus = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.get<WifiStatus>('/api/wifiStatus');
+            if (result.isErr()){
+                console.error(`Error occurred while fetching: `, result.inner);
+                return
+            }
+            wifiStatus = result.inner
 		return wifiStatus;
 	}
 
 	async function getWifiSettings() {
-		try {
-			const response = await fetch('/api/wifiSettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			wifiSettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		dndNetworkList = wifiSettings.wifi_networks;
+        const result = await api.get<WifiSettings>('/api/wifiSettings');
+        if (result.isErr()){
+            console.error(`Error occurred while fetching: `, result.inner);
+            return
+        }
+        wifiSettings = result.inner
+        dndNetworkList = wifiSettings.wifi_networks;
 		return wifiSettings;
 	}
 
@@ -114,24 +103,14 @@
 	});
 
 	async function postWiFiSettings(data: WifiSettings) {
-		try {
-			const response = await fetch('/api/wifiSettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-			if (response.status == 200) {
-				notifications.success('Wi-Fi settings updated.', 3000);
-				wifiSettings = await response.json();
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post<WifiSettings>('/api/wifiSettings', data);
+        if (result.isErr()){
+            console.error(`Error occurred while fetching: `, result.inner);
+            notifications.error('User not authorized.', 3000);
+            return
+        }
+        wifiSettings = result.inner
+        notifications.success('Wi-Fi settings updated.', 3000);
 	}
 
 	function validateHostName() {

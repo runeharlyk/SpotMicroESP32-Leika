@@ -13,6 +13,7 @@
 	import Home from '~icons/tabler/home';
 	import Devices from '~icons/tabler/devices';
 	import type { ApSettings, ApStatus } from '$lib/types/models';
+	import { api } from '$lib/api';
 
 	let apSettings: ApSettings;
 	let apStatus: ApStatus;
@@ -20,34 +21,22 @@
 	let formField: any;
 
 	async function getAPStatus() {
-		try {
-			const response = await fetch('/api/apStatus', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			apStatus = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.get<ApStatus>('/api/apStatus');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        apStatus = result.inner
 		return apStatus;
 	}
 
 	async function getAPSettings() {
-		try {
-			const response = await fetch('/api/apSettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			apSettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
+		const result = await api.get<ApSettings>('/api/apSetting');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        apSettings = result.inner
 		return apSettings;
 	}
 
@@ -94,24 +83,14 @@
 	};
 
 	async function postAPSettings(data: ApSettings) {
-		try {
-			const response = await fetch('/api/apSettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-			if (response.status == 200) {
-				notifications.success('Access Point settings updated.', 3000);
-				apSettings = await response.json();
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post<ApSettings>('/api/apSettings', data);
+        if (result.isErr()){
+            notifications.error('User not authorized.', 3000);
+            console.error('Error:', result.inner);
+            return
+        }
+        notifications.success('Access Point settings updated.', 3000);
+        apSettings = result.inner
 	}
 
 	function handleSubmitAP() {

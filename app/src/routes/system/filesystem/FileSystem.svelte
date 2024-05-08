@@ -3,11 +3,12 @@
 	import Spinner from "$lib/components/Spinner.svelte";
     import FolderIcon from '~icons/mdi/folder-outline';
 	import Folder from "./Folder.svelte";
+	import { api } from "$lib/api";
 
     const getFiles = async () => {
-        const response = await fetch('/api/files/list');
-        if (response.ok) {
-            return response.json();
+        const result = await api.get('/api/files/list')
+        if (result.isOk()) {
+            return result.inner;
         }
     };
 </script>

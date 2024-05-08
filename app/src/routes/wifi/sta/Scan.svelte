@@ -2,8 +2,6 @@
 	import { closeModal } from 'svelte-modals';
 	import { focusTrap } from 'svelte-focus-trap';
 	import { fly } from 'svelte/transition';
-	import { user } from '$lib/stores/user';
-	import { page } from '$app/stores';
 	import Network from '~icons/tabler/router';
 	import AP from '~icons/tabler/access-point';
 	import Cancel from '~icons/tabler/x';
@@ -11,6 +9,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import RssiIndicator from '$lib/components/RSSIIndicator.svelte';
 	import type { NetworkItem } from '$lib/types/models';
+	import { api } from '$lib/api';
+	import type { NetworkList } from '$lib/models';
 
 	// provided by <Modals />
 	export let isOpen: boolean;
@@ -36,13 +36,7 @@
 
 	async function scanNetworks() {
 		scanActive = true;
-		const scan = await fetch('/api/scanNetworks', {
-			method: 'GET',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-				'Content-Type': 'application/json'
-			}
-		});
+        await api.get('/api/scanNetworks');
 		if ((await pollingResults()) == false) {
 			pollingId = setInterval(() => pollingResults(), 1000);
 		}
@@ -50,28 +44,19 @@
 	}
 
 	async function pollingResults() {
-		const response = await fetch('/api/listNetworks', {
-			method: 'GET',
-			headers: {
-				Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-				'Content-Type': 'application/json'
-			}
-		});
-		try {
-			const result = await response.json();
-			listOfNetworks = result.networks;
-			if (listOfNetworks.length) {
-				scanActive = false;
-				clearInterval(pollingId);
-				pollingId = 0;
-				return true;
-			} else {
-				scanActive = false;
-				return false;
-			}
-		} catch {
-			return false;
-		}
+        const result = await api.get<NetworkList>('/api/listNetworks');
+        if (result.isErr()){
+            console.error(`Error occurred while fetching: `, result.inner);
+            return false
+        }
+        let response = result.inner
+        listOfNetworks = response.networks;
+        scanActive = false;
+        if (listOfNetworks.length) {
+            clearInterval(pollingId);
+            pollingId = 0;
+        }
+        return listOfNetworks.length;
 	}
 
 	onMount(() => {
@@ -96,7 +81,7 @@
 		use:focusTrap
 	>
 		<div
-			class="bg-base-100 shadow rounded-box pointer-events-auto flex max-h-full min-w-fit max-w-md flex-col justify-between p-4 shadow-lg"
+			class="bg-base-100 rounded-box pointer-events-auto flex max-h-full min-w-fit max-w-md flex-col justify-between p-4 shadow-lg"
 		>
 			<h2 class="text-base-content text-start text-2xl font-bold">Scan Networks</h2>
 			<div class="divider my-2" />

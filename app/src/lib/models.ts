@@ -7,6 +7,17 @@ export interface ControllerInput {
 	speed: number;
 }
 
+export type GithubRelease = {
+	message: string;
+	tag_name: string;
+	assets: Array<{
+		name: string;
+		browser_download_url: string;
+	}>;
+};
+
+export type JWT = { access_token: string };
+
 export type angles = number[] | Int16Array;
 
 export type WifiStatus = {
@@ -26,7 +37,11 @@ export type WifiStatus = {
 export type WifiSettings = {
 	hostname: string;
 	priority_RSSI: boolean;
-	wifi_networks: networkItem[];
+	wifi_networks: NetworkItem[];
+};
+
+export type NetworkList = {
+	networks: NetworkItem[];
 };
 
 export type KnownNetworkItem = {

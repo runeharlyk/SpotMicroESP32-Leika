@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { user } from '$lib/stores/user';
 	import { page } from '$app/stores';
 	import { openModal, closeModal, closeAllModals } from 'svelte-modals';
 	import { slide } from 'svelte/transition';
@@ -14,43 +13,29 @@
 	import Error from '~icons/tabler/circle-x';
 	import { compareVersions } from 'compare-versions';
 	import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte';
-	import { assets } from '$app/paths';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import Check from '~icons/tabler/check';
+	import { api } from '$lib/api';
 
 	async function getGithubAPI() {
-		try {
-			const githubResponse = await fetch(
-				'https://api.github.com/repos/' + $page.data.github + '/releases',
-				{
-					method: 'GET',
-					headers: {
-						accept: 'application/vnd.github+json',
-						'X-GitHub-Api-Version': '2022-11-28'
-					}
-				}
-			);
-			const results = await githubResponse.json();
-			return results;
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const headers = {
+            accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        const result = await api.get(`https://api.github.com/repos/${$page.data.github}/releases`, {headers})
+        if (result.isErr()) {
+            console.error('Error:', result.inner);
+            return
+        }
+        return result.inner as any;
 	}
 
 	async function postGithubDownload(url: string) {
-		try {
-			const apiResponse = await fetch('/api/downloadUpdate', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ download_url: url })
-			});
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post('/api/downloadUpdate', { download_url: url })
+        if (result.isErr()) {
+            console.error('Error:', result.inner);
+            return
+        }
 	}
 
 	function confirmGithubUpdate(assets: any) {

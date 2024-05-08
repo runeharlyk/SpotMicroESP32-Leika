@@ -12,6 +12,7 @@
 	import MQTT from '~icons/tabler/topology-star-3';
 	import Client from '~icons/tabler/robot';
 	import type { MQTTSettings, MQTTStatus } from '$lib/models';
+	import { api } from '$lib/api';
 
 	let mqttSettings: MQTTSettings;
 	let mqttStatus: MQTTStatus;
@@ -19,34 +20,22 @@
 	let formField: any;
 
 	async function getMQTTStatus() {
-		try {
-			const response = await fetch('/api/mqttStatus', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			mqttStatus = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.get<MQTTStatus>('/api/mqttStatus');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        mqttStatus = result.inner
 		return mqttStatus;
 	}
 
 	async function getMQTTSettings() {
-		try {
-			const response = await fetch('/api/mqttSettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			mqttSettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.get<MQTTSettings>('/api/mqttSettings');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        mqttSettings = result.inner
 		return mqttSettings;
 	}
 
@@ -70,25 +59,15 @@
 	};
 
 	async function postMQTTSettings(data: MQTTSettings) {
-		try {
-			const response = await fetch('/api/mqttSettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-			if (response.status == 200) {
-				notifications.success('MQTT settings updated.', 3000);
-				mqttSettings = await response.json();
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.post<MQTTSettings>('/api/mqttSettings', data);
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            notifications.error('User not authorized.', 3000);
+            return
+        }
+        notifications.success('MQTT settings updated.', 3000);
+        mqttSettings = result.inner
+		return mqttSettings;
 	}
 
 	function handleSubmitMQTT() {

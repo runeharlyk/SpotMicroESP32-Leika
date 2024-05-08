@@ -15,40 +15,27 @@
 	import UTC from '~icons/tabler/clock-pin';
 	import Stopwatch from '~icons/tabler/24-hours';
 	import type { NTPSettings, NTPStatus } from '$lib/types/models';
+	import { api } from '$lib/api';
 
 	let ntpSettings: NTPSettings;
 	let ntpStatus: NTPStatus;
 
 	async function getNTPStatus() {
-		try {
-			const response = await fetch('/api/ntpStatus', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			ntpStatus = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.get<NTPStatus>('/api/ntpStatus');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        ntpStatus = result.inner
 	}
 
 	async function getNTPSettings() {
-		try {
-			const response = await fetch('/api/ntpSettings', {
-				method: 'GET',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				}
-			});
-			ntpSettings = await response.json();
-		} catch (error) {
-			console.error('Error:', error);
-		}
-		return;
+        const result = await api.get<NTPSettings>('/api/ntpSettings');
+        if (result.isErr()){
+            console.error('Error:', result.inner);
+            return
+        }
+        ntpSettings = result.inner
 	}
 
 	const interval = setInterval(async () => {
@@ -70,25 +57,13 @@
 	};
 
 	async function postNTPSettings(data: NTPSettings) {
-		try {
-			const response = await fetch('/api/ntpSettings', {
-				method: 'POST',
-				headers: {
-					Authorization: $page.data.features.security ? 'Bearer ' + $user.bearer_token : 'Basic',
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(data)
-			});
-
-			if (response.status == 200) {
-				notifications.success('Security settings updated.', 3000);
-				ntpSettings = await response.json();
-			} else {
-				notifications.error('User not authorized.', 3000);
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
+        const result = await api.post<NTPSettings>('/api/ntpSettings', data);
+        if (result.isErr()){
+            notifications.error('User not authorized.', 3000);
+            console.error('Error:', result.inner);
+            return
+        }
+        ntpSettings = result.inner
 	}
 
 	function handleSubmitNTP() {
