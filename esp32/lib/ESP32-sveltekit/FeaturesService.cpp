@@ -30,6 +30,7 @@ void FeaturesService::begin() {
         root["sleep"] = FT_SLEEP;
         root["battery"] = FT_BATTERY;
         root["analytics"] = FT_ANALYTICS;
+        root["camera"] = FT_CAMERA;
         root["firmware_version"] = APP_VERSION;
         root["firmware_name"] = APP_NAME;
         root["firmware_built_target"] = BUILD_TARGET;

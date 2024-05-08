@@ -57,4 +57,9 @@
 #define FT_ANALYTICS 1
 #endif
 
+// ESP32 camera off by default
+#ifndef FT_CAMERA
+#define FT_CAMERA 0
+#endif
+
 #endif
