@@ -68,7 +68,8 @@
 	};
 
     const handleRange = (event:Event, key: 'speed' | 'height') => {
-        const value:number = event.detail
+        const value:number = event.target?.value
+        
         input.update((inputData) => {
 			inputData[key] = value;
 			return inputData;

@@ -3,6 +3,7 @@
 
 #include <EventSocket.h>
 #include <TaskManager.h>
+#include <Kinematics.h>
 
 #define DEFAULT_STATE false
 #define LIGHT_SETTINGS_ENDPOINT_PATH "/api/input"
@@ -96,6 +97,33 @@ class MotionService
                     }
                 }
                 break;
+
+            case MOTION_STATE::STAND: {
+
+                float lp[4][4] = {
+                    { 100, -100,  100, 1},
+                    { 100, -100, -100, 1},
+                    {-100, -100,  100, 1},
+                    {-100, -100, -100, 1}
+                };
+                position_t p = {0, 0, 0, 0, static_cast<float>(input[5]), 0, input[0]};
+                float new_angles[12] = {0,};
+                float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
+
+                kinematics.calculate_inverse_kinematics(lp, p, new_angles);
+
+                for (int i = 0; i < 12; i++) {
+                    int16_t new_angle = lerp(angles[i], new_angles[i] * dir[i], 0.3);
+                    if (new_angle != angles[i]) {
+                        angles[i] = new_angle;
+                        updated = true;
+                    }
+                }
+                if (updated) {
+                    ESP_LOGI("MotionService", "New angles: %f %f %f %f %f %f %f %f %f %f %f %f", new_angles[0], new_angles[1], new_angles[2], new_angles[3], new_angles[4], new_angles[5], new_angles[6], new_angles[7], new_angles[8], new_angles[9], new_angles[10], new_angles[11]);
+                }
+                break;
+            }
             case MOTION_STATE::WALK:
                 angles[1] += dir;
                 if (angles[1] >= 90) dir = -1;
@@ -118,12 +146,14 @@ class MotionService
     EventSocket *_socket;
     SecurityManager *_securityManager;
     TaskManager *_taskManager;
+    Kinematics kinematics;
 
     constexpr static int MotionInterval = 100;
 
     int8_t input[7] = {0, 0, 0, 0, 0, 0, 0};
     int16_t angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int16_t rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    int16_t stand_angles[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
     MOTION_STATE motionState = MOTION_STATE::IDLE;
     unsigned long _lastUpdate;
     int dir = 2;
