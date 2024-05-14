@@ -75,7 +75,7 @@
 
 	const handleError = (data: any) => console.error(data);
 
-	const handleAnalytics = (data: Analytics) => analytics.addData(data); 
+	const handleAnalytics = (data: Analytics) => analytics.addData(data);
 
 	const handleNetworkStatus = (data: number) => telemetry.setRSSI(data);
 
