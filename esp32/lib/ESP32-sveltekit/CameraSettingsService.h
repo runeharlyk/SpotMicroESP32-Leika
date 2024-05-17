@@ -1,6 +1,7 @@
 #ifndef CameraSettingsService_h
 #define CameraSettingsService_h
 
+#include <CameraService.h>
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
@@ -137,11 +138,42 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
     void begin() {
         _httpEndpoint.begin();
         _eventEndpoint.begin();
+        sensor_t *s = safe_sensor_get();
+        _state.pixformat = s->pixformat;
+        _state.framesize = s->status.framesize;
+        _state.brightness = s->status.brightness;
+        _state.contrast = s->status.contrast;
+        _state.saturation = s->status.saturation;
+        _state.sharpness = s->status.sharpness;
+        _state.denoise = s->status.denoise;
+        _state.gainceiling = (gainceiling_t)s->status.gainceiling;
+        _state.quality = s->status.quality;
+        _state.colorbar = s->status.colorbar;
+        _state.awb_gain = s->status.awb_gain;
+        _state.wb_mode = s->status.wb_mode;
+        _state.aec2 = s->status.aec2;
+        _state.ae_level = s->status.ae_level;
+        _state.aec_value = s->status.aec_value;
+        _state.agc_gain = s->status.agc_gain;
+        _state.bpc = s->status.bpc;
+        _state.wpc = s->status.wpc;
+        _state.special_effect = s->status.special_effect;
+        _state.raw_gma = s->status.raw_gma;
+        _state.lenc = s->status.lenc;
+        _state.hmirror = s->status.hmirror;
+        _state.vflip = s->status.vflip;
+        _state.dcw = s->status.dcw;
+        safe_sensor_return();
     }
 
     void updateCamera() {
         ESP_LOGI("CameraSettings", "Updating camera settings");
-        sensor_t *s = esp_camera_sensor_get();
+        sensor_t *s = safe_sensor_get();
+        if (!s) {
+            ESP_LOGE("CameraSettings", "Failed to update camera settings");
+            safe_sensor_return();
+            return;
+        }
         s->set_pixformat(s, _state.pixformat);
         s->set_framesize(s, _state.framesize);
         s->set_brightness(s, _state.brightness);
@@ -152,14 +184,11 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
         s->set_gainceiling(s, _state.gainceiling);
         s->set_quality(s, _state.quality);
         s->set_colorbar(s, _state.colorbar);
-        s->set_whitebal(s, _state.whitebal);
         s->set_awb_gain(s, _state.awb_gain);
         s->set_wb_mode(s, _state.wb_mode);
-        s->set_exposure_ctrl(s, _state.exposure_ctrl);
         s->set_aec2(s, _state.aec2);
         s->set_ae_level(s, _state.ae_level);
         s->set_aec_value(s, _state.aec_value);
-        s->set_gain_ctrl(s, _state.gain_ctrl);
         s->set_agc_gain(s, _state.agc_gain);
         s->set_bpc(s, _state.bpc);
         s->set_wpc(s, _state.wpc);
@@ -169,6 +198,7 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
         s->set_hmirror(s, _state.hmirror);
         s->set_vflip(s, _state.vflip);
         s->set_dcw(s, _state.dcw);
+        safe_sensor_return();
     }
 
    private:
