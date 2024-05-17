@@ -1,15 +1,16 @@
 #ifndef CameraService_h
 #define CameraService_h
 
-#define CAMERA_MODEL_AI_THINKER
-
 #include <ArduinoJson.h>
-#include <CameraPins.h>
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 #include <TaskManager.h>
 #include <WiFi.h>
 #include <esp_camera.h>
+#include <async_worker.h>
+
+#define CAMERA_MODEL_AI_THINKER
+#include <CameraPins.h>
 
 #define STREAM_SERVICE_PATH "/api/camera/stream"
 #define STILL_SERVICE_PATH "/api/camera/still"
@@ -17,6 +18,8 @@
 #define PART_BOUNDARY "frame"
 
 camera_fb_t *safe_camera_fb_get();
+sensor_t* safe_sensor_get();
+void safe_sensor_return();
 
 class CameraService
 {
@@ -31,6 +34,7 @@ class CameraService
     SecurityManager *_securityManager;
     PsychicStream _videoStream;
     esp_err_t cameraStill(PsychicRequest *request);
+    esp_err_t cameraStream(PsychicRequest *request);
     esp_err_t InitializeCamera();
 };
 
