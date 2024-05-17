@@ -13,31 +13,6 @@
  **/
 
 #include <SystemStatus.h>
-#include <esp32-hal.h>
-
-#if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
-#include "esp32/rom/rtc.h"
-#define ESP_PLATFORM "ESP32";
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32/rom/rtc.h"
-#define ESP_PLATFORM "ESP32-S2";
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/rom/rtc.h"
-#define ESP_PLATFORM "ESP32-C3";
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/rom/rtc.h"
-#define ESP_PLATFORM "ESP32-S3";
-#else
-#error Target CONFIG_IDF_TARGET is not supported
-#endif
-
-#ifndef ARDUINO_VERSION
-#ifndef STRINGIZE
-#define STRINGIZE(s) #s
-#endif
-#define ARDUINO_VERSION_STR(major, minor, patch) "v" STRINGIZE(major) "." STRINGIZE(minor) "." STRINGIZE(patch)
-#define ARDUINO_VERSION ARDUINO_VERSION_STR(ESP_ARDUINO_VERSION_MAJOR, ESP_ARDUINO_VERSION_MINOR, ESP_ARDUINO_VERSION_PATCH)
-#endif
 
 String verbosePrintResetReason(int reason)
 {
