@@ -106,7 +106,13 @@ class MotionService
                     {-100, -100,  100, 1},
                     {-100, -100, -100, 1}
                 };
-                position_t p = {0, 0, 0, 0, static_cast<float>(input[5]), 0, input[0]};
+                float lx = static_cast<float>(input[1]);
+                float ly = static_cast<float>(input[2]);
+                float rx = static_cast<float>(input[3]);
+                float ry = static_cast<float>(input[4]);
+                float h = static_cast<float>(input[5]);
+                float s = static_cast<float>(input[6]);
+                position_t p = {0, rx / 4, ry / 4, ly / 2, h, lx / 2, input[0]};
                 float new_angles[12] = {0,};
                 float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
 
@@ -120,7 +126,7 @@ class MotionService
                     }
                 }
                 if (updated) {
-                    ESP_LOGI("MotionService", "New angles: %f %f %f %f %f %f %f %f %f %f %f %f", new_angles[0], new_angles[1], new_angles[2], new_angles[3], new_angles[4], new_angles[5], new_angles[6], new_angles[7], new_angles[8], new_angles[9], new_angles[10], new_angles[11]);
+                    ESP_LOGI("MotionService", "New angles: %f %f %f %f %f %f %f %f %f %f %f %f", angles[0], angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
                 }
                 break;
             }

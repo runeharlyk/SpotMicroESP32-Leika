@@ -41,28 +41,33 @@ public:
 
         L = 140;
         W = 75;
-
-        float Ix_data[] = {-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-        dspm::Mat Ix(Ix_data, 4, 4);
     }
     ~Kinematics(){}
 
     esp_err_t calculate_inverse_kinematics(float lp[4][4], position_t p, float result[12]) {
+
+        Tlf.clear();
+        Trf.clear();
+        Tlb.clear();
+        Trb.clear();
+
+        float Ix_data[] = {-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        dspm::Mat Ix(Ix_data, 4, 4);
         
         esp_err_t res = bodyIK(p);
 
-        for (int i = 0; i < 4; ++i) {
-            dspm::Mat temp(lp[i], 4, 1);
-            dspm::Mat result_vec(4, 1);
+        dspm::Mat result_vec(4, 4);
+        result_vec = (Tlf.inverse() * dspm::Mat(lp[0], 4, 1));
+        legIK(result_vec.data, result);
 
-            if (i == 1 || i == 3) {
-                result_vec = Ix * ((i == 1 ? Trf.inverse() : Trb.inverse()) * temp);
-            } else {
-                result_vec = (i == 0 ? Tlf.inverse() : Tlb.inverse()) * temp;
-            }
+        result_vec = Ix * (Trf.inverse() * dspm::Mat(lp[1], 4, 1));
+        legIK(result_vec.data, result + 3);
 
-            legIK(result_vec.data, &result[i * 3]);
-        }
+        result_vec = (Tlb.inverse() * dspm::Mat(lp[2], 4, 1));
+        legIK(result_vec.data, result + 6);
+
+        result_vec = Ix * (Trb.inverse() * dspm::Mat(lp[3], 4, 1));
+        legIK(result_vec.data, result + 9);
 
         return res;
     }
