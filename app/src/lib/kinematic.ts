@@ -78,14 +78,18 @@ export default class Kinematic {
 		];
 	}
 
-	public calcIK(Lp: number[][], position: position_t): number[][] {
+	public calcIK(Lp: number[][], position: position_t): number[] {
 		this.bodyIK(position);
 
 		return [
-			this.legIK(this.multiplyVector(this.inverse(this.Tlf), Lp[0])),
-			this.legIK(this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trf), Lp[1]))),
-			this.legIK(this.multiplyVector(this.inverse(this.Tlb), Lp[2])),
-			this.legIK(this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trb), Lp[3])))
+			...this.legIK(this.multiplyVector(this.inverse(this.Tlf), Lp[0])),
+			...this.legIK(
+				this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trf), Lp[1]))
+			),
+			...this.legIK(this.multiplyVector(this.inverse(this.Tlb), Lp[2])),
+			...this.legIK(
+				this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trb), Lp[3]))
+			)
 		];
 	}
 
