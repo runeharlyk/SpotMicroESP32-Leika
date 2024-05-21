@@ -1,11 +1,38 @@
-export default class Kinematic {
-	private l1: number;
-	private l2: number;
-	private l3: number;
-	private l4: number;
+export interface position_t {
+	omega: number;
+	phi: number;
+	psi: number;
+	xm: number;
+	ym: number;
+	zm: number;
+}
 
-	private L: number;
-	private W: number;
+const { cos, sin, atan2, sqrt, acos } = Math;
+
+export default class Kinematic {
+	l1: number;
+	l2: number;
+	l3: number;
+	l4: number;
+
+	L: number;
+	W: number;
+
+	DEGREES2RAD = 0.017453292519943;
+
+	sHp = sin(Math.PI / 2);
+	cHp = cos(Math.PI / 2);
+
+	Tlf: number[][] = [];
+	Trf: number[][] = [];
+	Tlb: number[][] = [];
+	Trb: number[][] = [];
+
+	point_lf: number[][];
+	point_rf: number[][];
+	point_lb: number[][];
+	point_rb: number[][];
+	Ix: number[][];
 
 	constructor() {
 		this.l1 = 50;
@@ -15,106 +42,99 @@ export default class Kinematic {
 
 		this.L = 140;
 		this.W = 75;
-	}
 
-	bodyIK(
-		omega: number,
-		phi: number,
-		psi: number,
-		xm: number,
-		ym: number,
-		zm: number
-	): number[][][] {
-		const { cos, sin } = Math;
-
-		const Rx: number[][] = [
-			[1, 0, 0, 0],
-			[0, cos(omega), -sin(omega), 0],
-			[0, sin(omega), cos(omega), 0],
-			[0, 0, 0, 1]
-		];
-		const Ry: number[][] = [
-			[cos(phi), 0, sin(phi), 0],
+		this.point_lf = [
+			[this.cHp, 0, this.sHp, this.L / 2],
 			[0, 1, 0, 0],
-			[-sin(phi), 0, cos(phi), 0],
+			[-this.sHp, 0, this.cHp, this.W / 2],
 			[0, 0, 0, 1]
 		];
-		const Rz: number[][] = [
-			[cos(psi), -sin(psi), 0, 0],
-			[sin(psi), cos(psi), 0, 0],
+
+		this.point_rf = [
+			[this.cHp, 0, this.sHp, this.L / 2],
+			[0, 1, 0, 0],
+			[-this.sHp, 0, this.cHp, -this.W / 2],
+			[0, 0, 0, 1]
+		];
+
+		this.point_lb = [
+			[this.cHp, 0, this.sHp, -this.L / 2],
+			[0, 1, 0, 0],
+			[-this.sHp, 0, this.cHp, this.W / 2],
+			[0, 0, 0, 1]
+		];
+
+		this.point_rb = [
+			[this.cHp, 0, this.sHp, -this.L / 2],
+			[0, 1, 0, 0],
+			[-this.sHp, 0, this.cHp, -this.W / 2],
+			[0, 0, 0, 1]
+		];
+		this.Ix = [
+			[-1, 0, 0, 0],
+			[0, 1, 0, 0],
 			[0, 0, 1, 0],
 			[0, 0, 0, 1]
 		];
-		const Rxyz: number[][] = this.matrixMultiply(this.matrixMultiply(Rx, Ry), Rz);
+	}
 
-		const T: number[][] = [
-			[0, 0, 0, xm],
-			[0, 0, 0, ym],
-			[0, 0, 0, zm],
-			[0, 0, 0, 0]
-		];
-		const Tm: number[][] = this.matrixAdd(T, Rxyz);
-
-		const sHp = sin(Math.PI / 2);
-		const cHp = cos(Math.PI / 2);
-		const L = this.L;
-		const W = this.W;
+	public calcIK(Lp: number[][], position: position_t): number[][] {
+		this.bodyIK(position);
 
 		return [
-			this.matrixMultiply(Tm, [
-				[cHp, 0, sHp, L / 2],
-				[0, 1, 0, 0],
-				[-sHp, 0, cHp, W / 2],
-				[0, 0, 0, 1]
-			]),
-			this.matrixMultiply(Tm, [
-				[cHp, 0, sHp, L / 2],
-				[0, 1, 0, 0],
-				[-sHp, 0, cHp, -W / 2],
-				[0, 0, 0, 1]
-			]),
-			this.matrixMultiply(Tm, [
-				[cHp, 0, sHp, -L / 2],
-				[0, 1, 0, 0],
-				[-sHp, 0, cHp, W / 2],
-				[0, 0, 0, 1]
-			]),
-			this.matrixMultiply(Tm, [
-				[cHp, 0, sHp, -L / 2],
-				[0, 1, 0, 0],
-				[-sHp, 0, cHp, -W / 2],
-				[0, 0, 0, 1]
-			])
+			this.legIK(this.multiplyVector(this.inverse(this.Tlf), Lp[0])),
+			this.legIK(this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trf), Lp[1]))),
+			this.legIK(this.multiplyVector(this.inverse(this.Tlb), Lp[2])),
+			this.legIK(this.multiplyVector(this.Ix, this.multiplyVector(this.inverse(this.Trb), Lp[3])))
 		];
+	}
+
+	bodyIK(p: position_t) {
+		const cos_omega = cos(p.omega * this.DEGREES2RAD);
+		const sin_omega = sin(p.omega * this.DEGREES2RAD);
+		const cos_phi = cos(p.phi * this.DEGREES2RAD);
+		const sin_phi = sin(p.phi * this.DEGREES2RAD);
+		const cos_psi = cos(p.psi * this.DEGREES2RAD);
+		const sin_psi = sin(p.psi * this.DEGREES2RAD);
+
+		const Tm: number[][] = [
+			[cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm],
+			[
+				sin_omega * sin_phi * cos_psi + sin_psi * cos_omega,
+				-sin_omega * sin_phi * sin_psi + cos_omega * cos_psi,
+				-sin_omega * cos_phi,
+				p.ym
+			],
+			[
+				sin_omega * sin_psi - sin_phi * cos_omega * cos_psi,
+				sin_omega * cos_psi + sin_phi * sin_psi * cos_omega,
+				cos_omega * cos_phi,
+				p.zm
+			],
+			[0, 0, 0, 1]
+		];
+
+		this.Tlf = this.matrixMultiply(Tm, this.point_lf);
+		this.Trf = this.matrixMultiply(Tm, this.point_rf);
+		this.Tlb = this.matrixMultiply(Tm, this.point_lb);
+		this.Trb = this.matrixMultiply(Tm, this.point_rb);
 	}
 
 	private legIK(point: number[]): number[] {
 		const [x, y, z] = point;
-		const { atan2, cos, sin, sqrt, acos } = Math;
-		const { l1, l2, l3, l4 } = this;
 
-		let F;
+		let F = sqrt(x ** 2 + y ** 2 - this.l1 ** 2);
+		if (isNaN(F)) F = this.l1;
 
-		try {
-			F = sqrt(x ** 2 + y ** 2 - l1 ** 2);
-			if (isNaN(F)) throw new Error('F is NaN');
-		} catch (error) {
-			//console.log(error)
-			F = l1;
-		}
-		const G = F - l2;
+		const G = F - this.l2;
 		const H = sqrt(G ** 2 + z ** 2);
 
-		const theta1 = -atan2(y, x) - atan2(F, -l1);
-		const D = (H ** 2 - l3 ** 2 - l4 ** 2) / (2 * l3 * l4);
-		let theta3: number;
-		try {
-			theta3 = acos(D);
-			if (isNaN(theta3)) throw new Error('theta3 is NaN');
-		} catch (error) {
-			theta3 = 0;
-		}
-		const theta2 = atan2(z, G) - atan2(l4 * sin(theta3), l3 + l4 * cos(theta3));
+		const theta1 = -atan2(y, x) - atan2(F, -this.l1);
+		const D = (H ** 2 - this.l3 ** 2 - this.l4 ** 2) / (2 * this.l3 * this.l4);
+		let theta3 = acos(D);
+		if (isNaN(theta3)) theta3 = 0;
+
+		const theta2 = atan2(z, G) - atan2(this.l4 * sin(theta3), this.l3 + this.l4 * cos(theta3));
 
 		return [theta1, theta2, theta3];
 	}
@@ -165,81 +185,7 @@ export default class Kinematic {
 		return result;
 	}
 
-	private matrixAdd(a: number[][], b: number[][]): number[][] {
-		const result: number[][] = [];
-
-		for (let i = 0; i < a.length; i++) {
-			const row: number[] = [];
-
-			for (let j = 0; j < a[i].length; j++) {
-				row.push(a[i][j] + b[i][j]);
-			}
-
-			result.push(row);
-		}
-
-		return result;
-	}
-
-	public calcLegPoints(angles: number[]): number[][] {
-		const [theta1, theta2, theta3] = angles;
-		const theta23 = theta2 + theta3;
-
-		const T0: number[] = [0, 0, 0, 1];
-		const T1: number[] = this.vectorAdd(T0, [
-			-this.l1 * Math.cos(theta1),
-			this.l1 * Math.sin(theta1),
-			0,
-			0
-		]);
-		const T2: number[] = this.vectorAdd(T1, [
-			-this.l2 * Math.sin(theta1),
-			-this.l2 * Math.cos(theta1),
-			0,
-			0
-		]);
-		const T3: number[] = this.vectorAdd(T2, [
-			-this.l3 * Math.sin(theta1) * Math.cos(theta2),
-			-this.l3 * Math.cos(theta1) * Math.cos(theta2),
-			this.l3 * Math.sin(theta2),
-			0
-		]);
-		const T4: number[] = this.vectorAdd(T3, [
-			-this.l4 * Math.sin(theta1) * Math.cos(theta23),
-			-this.l4 * Math.cos(theta1) * Math.cos(theta23),
-			this.l4 * Math.sin(theta23),
-			0
-		]);
-
-		return [T0, T1, T2, T3, T4];
-	}
-
-	public calcIK(Lp: number[][], angles: number[], center: number[]): number[][] {
-		const [omega, phi, psi] = angles;
-		const [xm, ym, zm] = center;
-
-		const [Tlf, Trf, Tlb, Trb] = this.bodyIK(omega, phi, psi, xm, ym, zm);
-
-		const Ix: number[][] = [
-			[-1, 0, 0, 0],
-			[0, 1, 0, 0],
-			[0, 0, 1, 0],
-			[0, 0, 0, 1]
-		];
-
-		return [
-			this.legIK(this.multiplyVector(this.matrixInverse(Tlf), Lp[0])),
-			this.legIK(this.multiplyVector(Ix, this.multiplyVector(this.matrixInverse(Trf), Lp[1]))),
-			this.legIK(this.multiplyVector(this.matrixInverse(Tlb), Lp[2])),
-			this.legIK(this.multiplyVector(Ix, this.multiplyVector(this.matrixInverse(Trb), Lp[3])))
-		];
-	}
-
-	private vectorAdd(a: number[], b: number[]): number[] {
-		return a.map((val, index) => val + b[index]);
-	}
-
-	private matrixInverse(matrix: number[][]): number[][] {
+	private inverse(matrix: number[][]): number[][] {
 		const det = this.determinant(matrix);
 		const adjugate = this.adjugate(matrix);
 		const scalar = 1 / det;
