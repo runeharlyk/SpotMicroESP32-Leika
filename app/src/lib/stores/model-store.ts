@@ -21,7 +21,7 @@ export enum ModesEnum {
 
 export const mode: Writable<ModesEnum> = writable(ModesEnum.Idle);
 
-export const outControllerData = writable(new Array([0, 0, 0, 0, 0, 70, 0]));
+export const outControllerData = writable([0, 0, 0, 0, 0, 70, 0]);
 
 export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },

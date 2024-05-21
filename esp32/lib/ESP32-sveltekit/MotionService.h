@@ -59,7 +59,7 @@ class MotionService
         {
             input[i] = array[i];
         }
-        ESP_LOGI("MotionService", "Input: %d %d %d %d %d %d %d", input[0], input[1], input[2], input[3], input[4], input[5], input[6]);
+        ESP_LOGI("MotionService", "Input: %.0f %.0f %.0f %.0f %.0f %.0f %.0f", input[0], input[1], input[2], input[3], input[4], input[5], input[6]);
     }
 
     void handleMode(JsonObject &root, int originId)
@@ -73,13 +73,13 @@ class MotionService
 
     void syncAngles(const String &originId = "", bool sync = false) {
         char output[100];
-        sprintf(output, "[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d]", angles[0], angles[1], angles[2], angles[3], angles[4],
+        sprintf(output, "[%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f]", angles[0], angles[1], angles[2], angles[3], angles[4],
                 angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
         _socket->emit(ANGLES_EVENT, output, String(originId).c_str());
 
     }
 
-    int lerp(int start, int end, float t) {
+    float lerp(float start, float end, float t) {
         return (1 - t) * start + t * end;
     }
 
@@ -90,7 +90,7 @@ class MotionService
                 break;
             case MOTION_STATE::REST:
                 for (int i = 0; i < 12; i++) {
-                    int16_t new_angle = lerp(angles[i], rest_angles[i], 0.5);
+                    float new_angle = lerp(angles[i], rest_angles[i], 0.5);
                     if (new_angle != angles[i]) {
                         angles[i] = new_angle;
                         updated = true;
@@ -106,27 +106,34 @@ class MotionService
                     {-100, -100,  100, 1},
                     {-100, -100, -100, 1}
                 };
-                float lx = static_cast<float>(input[1]);
-                float ly = static_cast<float>(input[2]);
-                float rx = static_cast<float>(input[3]);
-                float ry = static_cast<float>(input[4]);
-                float h = static_cast<float>(input[5]);
-                float s = static_cast<float>(input[6]);
-                position_t p = {0, rx / 4, ry / 4, ly / 2, h, lx / 2, input[0]};
+                float lx = input[1];
+                float ly = input[2];
+                float rx = input[3];
+                float ry = input[4];
+                float h = input[5];
+                float s = input[6];
+                position_t p = {
+                    0, 
+                    rx / 4, 
+                    ry / 4, 
+                    ly / 2, 
+                    (h+128)*0.7, 
+                    lx / 2
+                };
                 float new_angles[12] = {0,};
                 float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
 
                 kinematics.calculate_inverse_kinematics(lp, p, new_angles);
 
                 for (int i = 0; i < 12; i++) {
-                    int16_t new_angle = lerp(angles[i], new_angles[i] * dir[i], 0.3);
+                    float new_angle = lerp(angles[i], new_angles[i] * dir[i], 0.3);
                     if (new_angle != angles[i]) {
                         angles[i] = new_angle;
                         updated = true;
                     }
                 }
                 if (updated) {
-                    ESP_LOGI("MotionService", "New angles: %f %f %f %f %f %f %f %f %f %f %f %f", angles[0], angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
+                    ESP_LOGI("MotionService", "New angles: %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f", angles[0], angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
                 }
                 break;
             }
@@ -156,10 +163,10 @@ class MotionService
 
     constexpr static int MotionInterval = 100;
 
-    int8_t input[7] = {0, 0, 0, 0, 0, 0, 0};
-    int16_t angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int16_t rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
-    int16_t stand_angles[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
+    float input[7] = {0, 0, 0, 0, 0, 0, 0};
+    float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    float stand_angles[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
     MOTION_STATE motionState = MOTION_STATE::IDLE;
     unsigned long _lastUpdate;
     int dir = 2;
