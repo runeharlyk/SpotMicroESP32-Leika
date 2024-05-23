@@ -30,12 +30,26 @@
     let trace_lines: BufferGeometry<NormalBufferAttributes>[] = []
 
     let kinematic = new Kinematic()
+    const dir = [-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
+    const Lp = [
+        [100, -100, 100, 1],
+        [100, -100, -100, 1],
+        [-100, -100, 100, 1],
+        [-100, -100, -100, 1],
+    ];
+
 
     let settings = {
-        'Internal kinematic':false,
+        'Internal kinematic':true,
         'Trace feet':debug,
         'Trace points': 30,
-        'Fix camera on robot': true
+        'Fix camera on robot': true,
+        'omega': 0,
+        'phi': 0,
+        'psi': 0,
+        'x': 0,
+        'y': 70,
+        'z': 0
     }
 
 	onMount(async () => {
@@ -56,26 +70,12 @@
                 s: buffer[6],
             };
 
-            const Lp = [
-                [100, -100, 100, 1],
-                [100, -100, -100, 1],
-                [-100, -100, 100, 1],
-                [-100, -100, -100, 1],
-            ];
-            
-            const dir = [-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
-
-            const position:position_t = {
-                omega: 0, 
-                phi: data.rx / 4, 
-                psi: data.ry / 4, 
-                xm: data.ly / 2, 
-                ym: (data.h+128)*0.75, 
-                zm: data.lx / 2
-            }
-
-            let new_angles = kinematic.calcIK(Lp, position).map((x, i) => radToDeg(x * dir[i]));
-            modelTargetAngles = new_angles;
+            settings.omega = 0
+            settings.phi = data.rx / 4, 
+            settings.psi = data.ry / 4, 
+            settings.x = data.ly / 2, 
+            settings.y = (data.h+128)*0.75, 
+            settings.z = data.lx / 2
         })
 	});
     
@@ -97,6 +97,14 @@
 
         const general = gui_panel.addFolder('General');
         general.add(settings, 'Internal kinematic')
+
+        const kinematic = gui_panel.addFolder('Kinematics');
+        kinematic.add(settings, 'omega', -20, 20)
+        kinematic.add(settings, 'phi', -30, 30)
+        kinematic.add(settings, 'psi', -20, 15)
+        kinematic.add(settings, 'x', -90, 90)
+        kinematic.add(settings, 'y', 0, 200)
+        kinematic.add(settings, 'z', -130, 130)
  
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
@@ -164,6 +172,20 @@
         })
     }
 
+    const calculate_kinematics = () => {
+        const position:position_t = {
+            omega: settings.omega,
+            phi: settings.phi,
+            psi: settings.psi,
+            xm: settings.x,
+            ym: settings.y,
+            zm: settings.z
+        }
+
+        let new_angles = kinematic.calcIK(Lp, position).map((x, i) => radToDeg(x * dir[i]));
+        modelTargetAngles = new_angles;
+    }
+
 	const render = () => {
 		const robot = sceneManager.model;
 		if (!robot) return;
@@ -175,6 +197,8 @@
         if (settings['Fix camera on robot']) {
             sceneManager.controls.target = robot.position.clone()
         }
+
+        if (settings['Internal kinematic']) calculate_kinematics()
 
 		robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
