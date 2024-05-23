@@ -13,7 +13,7 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
-	import { ModesEnum, mode, outControllerData, servoAngles, servoAnglesOut, socket } from '$lib/stores';
+	import { ModesEnum, kinematicData, mode, outControllerData, servoAngles, servoAnglesOut, socket } from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 	import { api } from '$lib/api';
 
@@ -29,6 +29,7 @@
         outControllerData.subscribe((data) => socket.sendEvent("input", {data}));
         mode.subscribe((data) => socket.sendEvent("mode", {data}));
         servoAnglesOut.subscribe((data) => socket.sendEvent("angles", {data}));
+        kinematicData.subscribe((data) => socket.sendEvent("position", {data}));
 	});
 
     onDestroy(() => {

@@ -23,6 +23,8 @@ export const mode: Writable<ModesEnum> = writable(ModesEnum.Idle);
 
 export const outControllerData = writable([0, 0, 0, 0, 0, 70, 0]);
 
+export const kinematicData = writable([0, 0, 0, 0, 100, 0]);
+
 export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },
 	right: { x: 0, y: 0 },

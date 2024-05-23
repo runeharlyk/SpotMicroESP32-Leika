@@ -2,7 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { BufferGeometry, Line, LineBasicMaterial, Vector3, type NormalBufferAttributes } from 'three';
 	import uzip from 'uzip';
-	import { model, outControllerData, servoAnglesOut } from '$lib/stores';
+	import { kinematicData, model, outControllerData, servoAnglesOut } from '$lib/stores';
 	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
@@ -38,9 +38,8 @@
         [-100, -100, -100, 1],
     ];
 
-
     let settings = {
-        'Internal kinematic':true,
+        'Internal kinematic':false,
         'Trace feet':debug,
         'Trace points': 30,
         'Fix camera on robot': true,
@@ -99,16 +98,27 @@
         general.add(settings, 'Internal kinematic')
 
         const kinematic = gui_panel.addFolder('Kinematics');
-        kinematic.add(settings, 'omega', -20, 20)
-        kinematic.add(settings, 'phi', -30, 30)
-        kinematic.add(settings, 'psi', -20, 15)
-        kinematic.add(settings, 'x', -90, 90)
-        kinematic.add(settings, 'y', 0, 200)
-        kinematic.add(settings, 'z', -130, 130)
+        kinematic.add(settings, 'omega', -20, 20).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'phi', -30, 30).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'psi', -20, 15).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'x', -90, 90).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'y', 0, 200).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'z', -130, 130).onChange(updateKinematicPosition)
  
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
         visibility.add(settings, 'Trace points', 1, 1000, 1)
+    }
+
+    const updateKinematicPosition = () => {
+        kinematicData.set([
+                settings.omega,
+                settings.phi,
+                settings.psi,
+                settings.x,
+                settings.y,
+                settings.z
+        ])
     }
 
 	const cacheModelFiles = async () => {
@@ -201,7 +211,11 @@
         if (settings['Internal kinematic']) calculate_kinematics()
 
 		robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
-		robot.rotation.z = lerp(robot.rotation.z, degToRad($mpu.heading + 90), 0.1);
+		robot.position.z = lerp(robot.position.z, -settings.x / 100, 0.1);
+
+		robot.rotation.z = lerp(robot.rotation.z, degToRad(settings.phi + $mpu.heading + 90), 0.1);
+        robot.rotation.y = lerp(robot.rotation.y, degToRad(settings.omega - settings.z / 2.5), 0.1);
+        robot.rotation.x = lerp(robot.rotation.x, degToRad(settings.psi - 90), 0.1);
 
 		for (let i = 0; i < $jointNames.length; i++) {
 			currentModelAngles[i] = lerp(
