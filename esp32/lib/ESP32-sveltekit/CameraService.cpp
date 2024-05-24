@@ -32,8 +32,7 @@ CameraService::CameraService(PsychicHttpServer *server,
                              SecurityManager *securityManager)
     : _server(server),
       _taskManager(taskManager),
-      _securityManager(securityManager),
-      _videoStream(_STREAM_CONTENT_TYPE) {}
+      _securityManager(securityManager) {}
 void CameraService::begin() {
     InitializeCamera();
     _server->on(
