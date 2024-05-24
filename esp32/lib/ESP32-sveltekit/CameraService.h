@@ -32,7 +32,6 @@ class CameraService
     PsychicHttpServer *_server;
     TaskManager *_taskManager;
     SecurityManager *_securityManager;
-    PsychicStream _videoStream;
     esp_err_t cameraStill(PsychicRequest *request);
     esp_err_t cameraStream(PsychicRequest *request);
     esp_err_t InitializeCamera();

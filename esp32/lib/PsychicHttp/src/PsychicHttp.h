@@ -12,7 +12,6 @@
 #include "PsychicRequest.h"
 #include "PsychicResponse.h"
 #include "PsychicStaticFileHandler.h"
-#include "PsychicStream.h"
 #include "PsychicStreamResponse.h"
 #include "PsychicUploadHandler.h"
 #include "PsychicWebSocket.h"
