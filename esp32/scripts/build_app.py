@@ -112,7 +112,7 @@ def build_progmem():
 
             asset_var = f"ESP_SVELTEKIT_DATA_{idx}"
             progmem.write(f"// {asset_path}\n")
-            progmem.write(f"const uint8_t {asset_var}[] = {{\n\t")
+            progmem.write(f"const uint8_t {asset_var}[] PROGMEM = {{\n\t")
             file_data = gzip.compress(path.read_bytes())
 
             for i, byte in enumerate(file_data):
