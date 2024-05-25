@@ -162,10 +162,10 @@ public:
             {0, 0, 0, 1}
         };
 
-        dspm_mult_f32_ae32((float*) Tm, (float*) point_lf, (float*) Trb, 4, 4, 4);
+        dspm_mult_f32_ae32((float*) Tm, (float*) point_lf, (float*) Tlf, 4, 4, 4);
         dspm_mult_f32_ae32((float*) Tm, (float*) point_rf, (float*) Trf, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Tm, (float*) point_lb, (float*) Tlf, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Tm, (float*) point_rb, (float*) Tlb, 4, 4, 4);
+        dspm_mult_f32_ae32((float*) Tm, (float*) point_lb, (float*) Tlb, 4, 4, 4);
+        dspm_mult_f32_ae32((float*) Tm, (float*) point_rb, (float*) Trb, 4, 4, 4);
         return ESP_OK;
     }
 
