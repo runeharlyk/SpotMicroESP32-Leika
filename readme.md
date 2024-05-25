@@ -9,15 +9,6 @@
 
 <h4 align="center">A small quadruped robot, inspired by boston dynamic <a href="https://bostondynamics.com/products/spot/" target="_blank">Spot</a>.</h4>
 
-<!-- <p align="center">
-  <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml">
-    <img src="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg" alt="Gitter">
-  </a>
-  <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml">
-    <img src="https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml/badge.svg"></a>
-
-</p> -->
-
 <p align="center">
   <a href="#key-features">Key Features</a> •
   <a href="#overview">Overview</a> •
@@ -36,22 +27,20 @@
 
 [![Frontend Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml)
 
-[![Embedded app build size](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/build-restriction.yml)
 </div>
 
 ## Key Features
 
 * Live preview - Make changes, See changes
-  <!-- * Instantly test and preview code in emulation -->
 * Real time data sync
-  <!-- * Camera live stream, battery voltage, servo position, distance sensors and much more. -->
-<!-- * Full kinematic model -->
+  * Camera live stream
 * Dual joystick controller
 * Dark/Light mode
-<!-- * Servo calibration tool -->
 * Full screen mode
   * Immersive, distraction free.
 * Self hosted, self included
+<!-- * Servo calibration tool -->
+<!-- * Full kinematic model -->
 
 ## Overview
 
@@ -139,18 +128,13 @@ To dis-/enable the major feature I use defines. Define them in either featurefla
 | FT_SECURITY | Whether or not to use login system | 0
 | FT_MQTT | Whether or not to use MQTT | 0
 | FT_SLEEP | Whether or not include sleep management | 0
-| FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 1
-| FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 1
+| FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 0
+| FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 0
 | FT_ANALYTICS | Whether or not to use analytics service | 1
-| TF_MDNS | Whether or not to use MDNS | 1
-| TF_DNS_SERVER | Whether or not to use DNS server | 1
-| TF_MPU | Whether or not to use MPU | 1
-| TF_POWER_BUTTON | Whether or not to use power button | 1
-| TF_USS | Whether or not to use ultra sonic sensors | 1
 
-### 📲Web application
+### 📲 Controller
 
-The web application is a simple Svelte app, which main focus is to calibrate and control the robot.
+The controller is a SvelteKit app, which main focus is to calibrate and control the robot.
 <!-- Write about the emulation, stream, controls and link to the space issues -->
 It is made to be included and hosted by the robot.
 Therefore there is placed a lot of thought behind the functionality and dependencies.
@@ -165,8 +149,6 @@ For the development dependencies I choose the following
 | Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production
 | Typescript | TypeScript's integration of static typing enhances code reliability and maintainability.
 | Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design.
-<!-- | Vite single file plugin | This plugin inline all JS and CSS in the *index.html* file, which is necessary as SPIFFS max file length is 32 bytes. -->
-| Vite compression plugin | This plugin compresses the *index.html* file making the final footprint a lot smaller.
 
 #### Libraries
 
@@ -181,26 +163,6 @@ For the app functionality I choose the following:
 | [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library.
 | [ChartJS](https://www.npmjs.com/package/chart.js) | Simple and flexible charting library.
 
-<!-- ### Space issues
-
-As the ESP32 has very limited storage for program and filesystem, it quickly became a challenge to fit the web app and program in the 4mb of flash.
-Just the robot models files were ≈8mb. So the first step was to minify the files.
-
-My first idea was just to zip the files and then unpack and store them on the browser side.
-This reduced the models footprint to ≈2mb. Great start, but still way to big to fit in flash.
-
-Next step was to make the actual model files smaller, by decimating them.
-Exterior model files where kept in higher resolution while the interior could be reduced more.
-This was the biggest change and made the final footprint of the models ≈550kb.
-A total reduction of ≈94% for the model files.
-
-But the problem was not solved yet. The final *index.html* file was ≈650kb.
-The obvious solution was again to compress it, this time by using gzip.
-This made the file size for the *index.html* 184kb. With all the optimization the data folder was only 756 KB. Awesome!
-
-The last step to fitting the web app on the ESP was to expand SPIFFS part of filesystem image.
-At this step I had to cut some corners to make it fit, mainly by disabling over-the-air update. But a last the filesystem image build and uploaded to the ESP! -->
-
 ## Kinematics
 
 The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
@@ -213,7 +175,7 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
     git clone https://github.com/runeharlyk/SpotMicroESP32-Leika
     ```
 
-1. Install dependencies
+1. Install dependencies with preferable package manager (npm, pnpm, yarn)
 
     ```sh
     cd app
@@ -223,6 +185,10 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 1. Configure device settings
     1. Update `factory_settings.ini` with relevant settings
 
+1. Upload filesystem image using platformIO
+
+1. Upload firmware using platformIO
+
 ## Usage
 
 ### Developing
@@ -230,24 +196,13 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 1. Run the app
 
     ```sh
+    cd app
     pnpm run dev
     ```
-
-### Building
-
-1. Build the app
-
-    ```sh
-    pnpm run build
-    ```
-
-1. Upload Filesystem Image using platformIO
 
 ## Future
 
 See the [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed features (and known issues).
-
-<!-- ## External Links and References -->
 
 ## Credits
 
