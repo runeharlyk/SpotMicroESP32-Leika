@@ -196,4 +196,38 @@ public:
     }
 };
 
+typedef struct {
+    float x, z, yaw;
+} position_target_t;
+
+typedef struct {
+    float step_length;
+    float yaw_rate;
+    float lateral_shift;
+    float step_velocity;
+    float swing_period;
+    float clearance_height;
+    float penetration_depth;
+} gait_state_t;
+
+class GaitPlanner 
+{
+    public:
+        GaitPlanner() { }
+
+        ~GaitPlanner() { }
+
+        void update_trajectory(position_target_t position_target, float dt, body_state_t body_state) {
+            // for (int8_t i = 0; i < 4; i++) {
+            //     body_state.feet_position[i][0] = position_target.x;
+            //     body_state.feet_position[i][3] = position_target.z;
+            // }
+        }
+
+    private:
+        uint16_t time;
+        uint16_t target_yaw;
+};
+
+
 #endif
