@@ -114,52 +114,37 @@ class MotionService
     }
 
     bool updateMotion() {
-        bool updated = false;
+        float new_angles[12] = {0,};
         switch (motionState) {
             case MOTION_STATE::IDLE:
                 break;
             case MOTION_STATE::REST:
-                for (int i = 0; i < 12; i++) {
-                    float new_angle = lerp(angles[i], rest_angles[i], 0.5);
-                    if (new_angle != angles[i]) {
-                        angles[i] = new_angle;
-                        updated = true;
-                    }
-                }
+                update_angles(rest_angles, new_angles, false);
                 break;
 
             case MOTION_STATE::STAND: {
-                float new_angles[12] = {0,};
                 kinematics.calculate_inverse_kinematics(lp, position, new_angles);
-
-                for (int i = 0; i < 12; i++) {
-                    float new_angle = lerp(angles[i], new_angles[i] * dir[i], 0.3);
-                    if (new_angle != angles[i]) {
-                        angles[i] = new_angle;
-                        updated = true;
-                    }
-                }
-                if (updated) {
-                    ESP_LOGI("MotionService", "New angles: %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f", angles[0], angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
-                }
                 break;
             }
             case MOTION_STATE::WALK:
-                float new_angles[12] = {0,};
                 lp[0][1] += walk_dir;
-                if (lp[0][1] >= 200) walk_dir = -1;
-                if (lp[0][1] <= 100) walk_dir = 1;
+                if (lp[0][1] >= 50) walk_dir = -1;
+                if (lp[0][1] <= -100) walk_dir = 1;
 
                 kinematics.calculate_inverse_kinematics(lp, position, new_angles);
-
-                for (int i = 0; i < 12; i++) {
-                    float new_angle = lerp(angles[i], new_angles[i] * dir[i], 0.3);
-                    if (new_angle != angles[i]) {
-                        angles[i] = new_angle;
-                        updated = true;
-                    }
-                }
                 break;
+        }
+        return update_angles(new_angles, angles);
+    }
+
+    bool update_angles(float new_angles[12], float angles[12], bool useLerp = true) {
+        bool updated = false;
+        for (int i = 0; i < 12; i++) {
+            float new_angle = useLerp ? lerp(angles[i], new_angles[i] * dir[i], 0.3) : new_angles[i] * dir[i];
+            if (new_angle != angles[i]) {
+                angles[i] = new_angle;
+                updated = true;
+            }
         }
         return updated;
     }
@@ -180,7 +165,7 @@ class MotionService
 
     constexpr static int MotionInterval = 100;
 
-    position_t position = {0, 0, 0, 0, 0, 0};
+    body_state_t position = {0, 0, 0, 0, 0, 0};
     float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
     float lp[4][4] = {
         { 100, -100,  100, 1},
