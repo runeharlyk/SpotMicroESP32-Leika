@@ -53,7 +53,7 @@ static esp_err_t inverse(float a[4][4], float b[4][4])
 
 typedef  struct {
     float omega, phi, psi, xm, ym, zm;
-} position_t;
+} body_state_t;
 
 
 #define RAD2DEGREES 57.295779513082321 // 180 / PI
@@ -93,7 +93,7 @@ public:
     }
     ~Kinematics(){}
 
-    esp_err_t calculate_inverse_kinematics(float lp[4][4], position_t p, float result[12]) {
+    esp_err_t calculate_inverse_kinematics(float lp[4][4], body_state_t p, float result[12]) {
         esp_err_t ret = ESP_OK;
 
         ret = bodyIK(p);
@@ -119,7 +119,7 @@ public:
         return ret;
     }
 
-    esp_err_t bodyIK(position_t p) {
+    esp_err_t bodyIK(body_state_t p) {
         float cos_omega = cos(p.omega*DEGREES2RAD);
         float sin_omega = sin(p.omega*DEGREES2RAD);
         float cos_phi = cos(p.phi*DEGREES2RAD);
