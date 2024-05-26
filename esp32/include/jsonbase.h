@@ -1,0 +1,4 @@
+#pragma once
+
+#define JSON_BUFFER_BASE_SIZE 2048
+#define JSON_BUFFER_INCREMENT 2048
