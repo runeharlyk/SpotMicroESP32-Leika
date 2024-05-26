@@ -51,8 +51,17 @@ static esp_err_t inverse(float a[4][4], float b[4][4])
         return ESP_OK;
     }
 
-typedef  struct {
+typedef struct {
     float omega, phi, psi, xm, ym, zm;
+    float feet[4][4];
+
+    void updateFeet(const float newFeet[4][4]) {
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                feet[i][j] = newFeet[i][j];
+            }
+        }
+    }
 } body_state_t;
 
 
@@ -93,27 +102,27 @@ public:
     }
     ~Kinematics(){}
 
-    esp_err_t calculate_inverse_kinematics(float lp[4][4], body_state_t p, float result[12]) {
+    esp_err_t calculate_inverse_kinematics(body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 
-        ret = bodyIK(p);
+        ret = bodyIK(body_state);
 
         ret += inverse(Tlf, inv);
-        dspm_mult_f32_ae32((float*) inv, (float*) lp[0], (float*) point, 4, 4, 1);
+        dspm_mult_f32_ae32((float*) inv, (float*) body_state.feet[0], (float*) point, 4, 4, 1);
         legIK((float*) point, result);
 
         ret += inverse(Trf, inv);
         dspm_mult_f32_ae32((float*) Ix, (float*) inv, (float*) Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Q1, (float*) lp[1], (float*) point, 4, 4, 1);
+        dspm_mult_f32_ae32((float*) Q1, (float*) body_state.feet[1], (float*) point, 4, 4, 1);
         legIK((float*) point, result + 3);
 
         ret += inverse(Tlb, inv);
-        dspm_mult_f32_ae32((float*) inv, (float*) lp[2], (float*) point, 4, 4, 1);
+        dspm_mult_f32_ae32((float*) inv, (float*) body_state.feet[2], (float*) point, 4, 4, 1);
         legIK((float*) point, result + 6);
 
         ret += inverse(Trb, inv);
         dspm_mult_f32_ae32((float*) Ix, (float*) inv, (float*) Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Q1, (float*) lp[3], (float*) point, 4, 4, 1);
+        dspm_mult_f32_ae32((float*) Q1, (float*) body_state.feet[3], (float*) point, 4, 4, 1);
         legIK((float*) point, result + 9);
 
         return ret;
