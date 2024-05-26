@@ -3,7 +3,6 @@ import {
 	PerspectiveCamera,
 	PlaneGeometry,
 	Scene,
-	ShadowMaterial,
 	WebGLRenderer,
 	AmbientLight,
 	DirectionalLight,
@@ -23,6 +22,7 @@ import {
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader';
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls';
 
@@ -64,19 +64,20 @@ function calculateCurrentSunElevation() {
 
 export default class SceneBuilder {
 	public scene: Scene;
-	public camera: PerspectiveCamera;
-	public ground: Mesh;
-	public renderer: WebGLRenderer;
-	public controls: OrbitControls;
-	public callback: Function;
-	public gridHelper: GridHelper;
-	public model: URDFRobot;
-	public liveStreamTexture: CanvasTexture;
-	private fog: FogExp2;
+	public camera!: PerspectiveCamera;
+	public ground!: Mesh;
+	public renderer!: WebGLRenderer;
+	public orbit: OrbitControls;
+	public callback: Function | undefined;
+	public gridHelper!: GridHelper;
+	public model!: URDFRobot;
+	public liveStreamTexture!: CanvasTexture;
+	private fog!: FogExp2;
 	private isLoaded: boolean = false;
 	public isDragging: boolean = false;
 	highlightMaterial: any;
-	sky: Sky;
+	sky!: Sky;
+	transformControl: TransformControls;
 
 	constructor() {
 		this.scene = new Scene();
@@ -144,11 +145,11 @@ export default class SceneBuilder {
 	};
 
 	public addOrbitControls = (minDistance: number, maxDistance: number, autoRotate = true) => {
-		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-		this.controls.minDistance = minDistance;
-		this.controls.maxDistance = maxDistance;
-		this.controls.autoRotate = autoRotate;
-		this.controls.update();
+		this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
+		this.orbit.minDistance = minDistance;
+		this.orbit.maxDistance = maxDistance;
+		this.orbit.autoRotate = autoRotate;
+		this.orbit.update();
 		return this;
 	};
 
@@ -213,7 +214,7 @@ export default class SceneBuilder {
 	public startRenderLoop = () => {
 		this.renderer.setAnimationLoop(() => {
 			this.renderer.render(this.scene, this.camera);
-			this.controls.update();
+			this.orbit.update();
 			this.handleRobotShadow();
 			if (this.callback) this.callback();
 			if (!this.liveStreamTexture) return;
@@ -274,6 +275,18 @@ export default class SceneBuilder {
 		traverse(m);
 	};
 
+	public addTransformControls = (model: any) => {
+		this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+		this.transformControl.addEventListener('dragging-changed', (event: any) => {
+			this.orbit.enabled = !event.value;
+			this.isDragging = !event.value;
+		});
+		this.transformControl.attach(model);
+		this.scene.add(this.transformControl);
+		this.transformControl.setMode('rotate');
+		return this;
+	};
+
 	public addModel = (model: any) => {
 		this.model = model;
 		this.scene.add(model);
@@ -299,11 +312,11 @@ export default class SceneBuilder {
 			updateAngle(joint.name, angle);
 		};
 		dragControls.onDragStart = () => {
-			this.controls.enabled = false;
+			this.orbit.enabled = false;
 			this.isDragging = true;
 		};
 		dragControls.onDragEnd = () => {
-			this.controls.enabled = true;
+			this.orbit.enabled = true;
 			this.isDragging = false;
 		};
 		dragControls.onHover = (joint: URDFMimicJoint) =>
