@@ -45,6 +45,8 @@ class MotionService
 
         _socket->onSubscribe(ANGLES_EVENT,
                              std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
+
+        body_state.updateFeet(default_feet_positions);
     }
 
     void anglesEvent(JsonObject &root, int originId)
@@ -60,37 +62,41 @@ class MotionService
     void positionEvent(JsonObject &root, int originId)
     {
         JsonArray array = root["data"].as<JsonArray>();
-        position.omega = array[0];
-        position.phi = array[1];
-        position.psi = array[2];
-        position.xm = array[3];
-        position.ym = array[4];
-        position.zm = array[5];
+        body_state.omega = array[0];
+        body_state.phi = array[1];
+        body_state.psi = array[2];
+        body_state.xm = array[3];
+        body_state.ym = array[4];
+        body_state.zm = array[5];
         // syncAngles(String(originId));
     }
 
     void handleInput(JsonObject &root, int originId)
     {
         JsonArray array = root["data"].as<JsonArray>();
-        for (int i = 0; i < 7; i++)
-        {
-            input[i] = array[i];
+        float lx = array[1];
+        float ly = array[2];
+        float rx = array[3];
+        float ry = array[4];
+        float h = array[5];
+        float s = array[6];
+
+        body_state.ym = (h + 128) * (float)0.7;
+
+        switch (motionState) {
+            case MOTION_STATE::STAND: {
+                body_state.phi = rx / 4;
+                body_state.psi = ry / 4;
+                body_state.xm = ly / 2;
+                body_state.zm = lx / 2;
+                break;
+            }
+            case MOTION_STATE::WALK:
+                position_target.x = rx / 2;
+                position_target.z = ry / 2;
+                position_target.yaw = lx / 2;
+                break;
         }
-        float lx = input[1];
-        float ly = input[2];
-        float rx = input[3];
-        float ry = input[4];
-        float h = input[5];
-        float s = input[6];
-        position = {
-            0, 
-            rx / 4, 
-            ry / 4, 
-            ly / 2, 
-            (h + 128) * (float)0.7, 
-            lx / 2
-        };
-        ESP_LOGI("MotionService", "Input: %.0f %.0f %.0f %.0f %.0f %.0f %.0f", input[0], input[1], input[2], input[3], input[4], input[5], input[6]);
     }
 
     void handleMode(JsonObject &root, int originId)
@@ -117,21 +123,21 @@ class MotionService
         float new_angles[12] = {0,};
         switch (motionState) {
             case MOTION_STATE::IDLE:
+                return false;
                 break;
+
             case MOTION_STATE::REST:
                 update_angles(rest_angles, new_angles, false);
                 break;
 
             case MOTION_STATE::STAND: {
-                kinematics.calculate_inverse_kinematics(lp, position, new_angles);
+                kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
             }
             case MOTION_STATE::WALK:
-                lp[0][1] += walk_dir;
-                if (lp[0][1] >= 50) walk_dir = -1;
-                if (lp[0][1] <= -100) walk_dir = 1;
+                gaitPlanner.update_trajectory(position_target, MotionInterval, body_state);
 
-                kinematics.calculate_inverse_kinematics(lp, position, new_angles);
+                kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
         }
         return update_angles(new_angles, angles);
@@ -162,25 +168,25 @@ class MotionService
     SecurityManager *_securityManager;
     TaskManager *_taskManager;
     Kinematics kinematics;
+    GaitPlanner gaitPlanner;
 
+    MOTION_STATE motionState = MOTION_STATE::IDLE;
+    unsigned long _lastUpdate;
     constexpr static int MotionInterval = 100;
 
-    body_state_t position = {0, 0, 0, 0, 0, 0};
+    body_state_t body_state = {0,};
+    position_target_t position_target = {0,};
+
     float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
-    float lp[4][4] = {
+    float default_feet_positions[4][4] = {
         { 100, -100,  100, 1},
         { 100, -100, -100, 1},
         {-100, -100,  100, 1},
         {-100, -100, -100, 1}
     };
 
-    float input[7] = {0, 0, 0, 0, 0, 0, 0};
-    float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    float angles[12] = {0,};
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
-    float stand_angles[12] = {0, 45, -90, 0, 45, -90, 0, 45, -90, 0, 45, -90};
-    MOTION_STATE motionState = MOTION_STATE::IDLE;
-    unsigned long _lastUpdate;
-    int walk_dir = 2;
 };
 
 #endif
