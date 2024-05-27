@@ -21,7 +21,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "api.md",
+                "file": "Getting started.md",
                 "mode": "source",
                 "source": false
               }
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "api.md",
+                "file": "Getting started.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -111,7 +111,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "api.md",
+                "file": "Getting started.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -134,7 +134,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "api.md"
+                "file": "Getting started.md"
               }
             }
           }
@@ -157,15 +157,15 @@
   },
   "active": "cdbb92cef28dd635",
   "lastOpenFiles": [
+    "api.md",
+    "Getting started.md",
     "Spot.md",
     "Simulation/Simulation.md",
     "Simulation/Pasted image 20240319103157.png",
     "Simulation",
     "Electronic connections.canvas",
-    "Getting started.md",
     "media/PIO-upload.png",
     "media",
-    "api.md",
     "readme.md",
     "Untitled.canvas",
     "Architecture & Design principles.md"
