@@ -1,9 +1,10 @@
 # Welcome to the docs
+
 The docs a structured as obsidian notes to allow for better writing and more expressive content.
 
-TODO:
-READTHEDOCS site
+## Table of content
 
-Read about the robots capabilities: [[Spot]]
-See the Electronic connection diagram: [[Electronic connections.canvas]]
-Read about the [[api]]
+- [Robot build](robot_build.md)
+- [Getting started](getting_started.md)
+- [API](api.md)
+- [Robots capabilities](spot.md)

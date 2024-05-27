@@ -11,24 +11,15 @@
             "id": "e338073e64d4becc",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {}
-            }
-          },
-          {
-            "id": "cdbb92cef28dd635",
-            "type": "leaf",
-            "state": {
               "type": "markdown",
               "state": {
-                "file": "Getting started.md",
+                "file": "readme.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -94,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Getting started.md",
+                "file": "readme.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -111,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Getting started.md",
+                "file": "readme.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -134,7 +125,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Getting started.md"
+                "file": "readme.md"
               }
             }
           }
@@ -155,18 +146,23 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "cdbb92cef28dd635",
+  "active": "e338073e64d4becc",
   "lastOpenFiles": [
-    "api.md",
+    "spot.md",
+    "Electronic connections.canvas",
+    "media/diagram.png",
+    "media/image.png",
     "Getting started.md",
+    "Getting_started.md",
+    "Getting.md",
+    "readme.md",
     "Spot.md",
+    "api.md",
     "Simulation/Simulation.md",
     "Simulation/Pasted image 20240319103157.png",
     "Simulation",
-    "Electronic connections.canvas",
     "media/PIO-upload.png",
     "media",
-    "readme.md",
     "Untitled.canvas",
     "Architecture & Design principles.md"
   ]
