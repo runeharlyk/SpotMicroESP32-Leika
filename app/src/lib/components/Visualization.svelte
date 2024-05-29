@@ -179,8 +179,14 @@
             .addGridHelper({ size: 30, divisions: 25 })
         
         
+        const geometry = new SphereGeometry(0.1, 32, 16 ); 
+        const material = new MeshBasicMaterial( { color: 0xffff00 } ); 
+        target = new Mesh(geometry, material); 
+        if (debug) {
+            sceneManager.scene.add(target);
+            sceneManager.addDragControl(updateAngles)
+        }
         if (sky) sceneManager.addSky()
-        if (debug) sceneManager.addDragControl(updateAngles)
 
         for (let i = 0; i < 4; i++) {
 			const geometry = new BufferGeometry();
@@ -189,11 +195,6 @@
 			trace_lines.push(geometry);
 			sceneManager.scene.add(line);
 		}
-
-        const geometry = new SphereGeometry(0.1, 32, 16 ); 
-        const material = new MeshBasicMaterial( { color: 0xffff00 } ); 
-        target = new Mesh(geometry, material); 
-        sceneManager.scene.add(target);
 	};
 
     const renderTraceLines = (foot_positions: Vector3[]) => {
