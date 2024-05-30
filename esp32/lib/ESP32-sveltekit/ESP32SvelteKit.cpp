@@ -64,8 +64,10 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
-      _motionService(_server, &_socket, &_securitySettingsService,
-                     &_taskManager) {
+      _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
+      _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket),
+      _imuService(&_socket)
+      {
 }
 
 void ESP32SvelteKit::begin() {
@@ -89,7 +91,7 @@ void ESP32SvelteKit::begin() {
 
 void ESP32SvelteKit::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
-    _server->listen(80);
+    _server->listen(100);
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit",
@@ -205,6 +207,10 @@ void ESP32SvelteKit::startServices() {
     _cameraService.begin();
     _cameraSettingsService.begin();
 #endif
+    _deviceConfiguration.begin();
+#if FT_ENABLED(FT_IMU)
+        _imuService.begin();
+#endif
 }
 
 void IRAM_ATTR ESP32SvelteKit::_loop() {
@@ -216,6 +222,9 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #endif
 #if FT_ENABLED(FT_ANALYTICS)
         _analyticsService.loop();
+#endif
+#if FT_ENABLED(FT_IMU)
+        _imuService.loop();
 #endif
         _motionService.loop();
         vTaskDelay(20 / portTICK_PERIOD_MS);

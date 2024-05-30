@@ -62,4 +62,9 @@
 #define FT_CAMERA 0
 #endif
 
+// ESP32 IMU on by default
+#ifndef FT_IMU
+#define FT_IMU 1
+#endif
+
 #endif

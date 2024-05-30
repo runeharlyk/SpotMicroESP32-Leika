@@ -1,55 +1,90 @@
 #pragma once
 
 #include <MPU6050_light.h>
+#include <ArduinoJson.h>
+#include <EventSocket.h>
 
-#define IMU_INTERVAL 2000
+#define IMU_INTERVAL 200
+#define MAX_ESP_IMU_SIZE 250
+#define EVENT_IMU "imu"
 
 class IMUService
 {
 public:
-    IMUService():_imu(Wire){};
+    IMUService(EventSocket *socket) : _socket(socket), _imu(Wire) {};
 
     void begin()
     {
         byte status = _imu.begin();
+        imu_success = status == 0;
         if(status != 0) {
-            ESP_LOGE("IMUService", "MPU initialize failed");
-            vTaskDelete(NULL);
-            return;
+            ESP_LOGE("IMUService", "MPU initialize failed: %d", status);
         }
-        xTaskCreatePinnedToCore(this->_loopImpl, "IMU Service", 4096, this, tskIDLE_PRIORITY, NULL, ESP32SVELTEKIT_RUNNING_CORE);
+        _socket->registerEvent(EVENT_IMU);
+        calibrate();
     };
 
+    bool isIMUSuccess() {
+        return imu_success;
+    }
+
     float getTemp() {
-        return _imu.getTemp();
+        return imu_success ? _imu.getTemp() : -1;
     }
 
     float getAngleX() {
-        return _imu.getAngleX();
+        return imu_success ? _imu.getAngleX() : -1;
     }
 
     float getAngleY() {
-        return _imu.getAngleX();
+        return imu_success ? _imu.getAngleX() : -1;
     }
 
     float getAngleZ() {
-        return _imu.getAngleZ();
+        return imu_success ? _imu.getAngleZ() : -1;
     }
 
-protected:
-    static void _loopImpl(void *_this) { static_cast<IMUService *>(_this)->_loop(); }
-    void _loop()
+    void calibrate() {
+        if (imu_success) {
+            _imu.calcOffsets(true, true);
+        }
+    }
+
+    double round2(double value) {
+        return (int)(value * 100 + 0.5) / 100.0;
+    }
+
+    void loop()
     {
-        vTaskDelay(100);
-        _imu.calcOffsets(true,true);
-        TickType_t xLastWakeTime = xTaskGetTickCount();
-        while (1)
+        unsigned long currentMillis = millis();
+
+        if (currentMillis - _lastUpdate >= _updateInterval)
         {
-            _imu.update();
-            vTaskDelayUntil(&xLastWakeTime, IMU_INTERVAL / portTICK_PERIOD_MS);
+            _lastUpdate = currentMillis;
+            updateImu();
         }
     };
+    
+protected:
+    JsonDocument doc;
+
+    void updateImu() {
+        _imu.update();
+        doc.clear();
+        doc["x"] = round2(getAngleX());
+        doc["y"] = round2(getAngleY());
+        doc["z"] = round2(getAngleZ());
+        doc["temp"] = round2(getTemp());
+
+        serializeJson(doc, message);
+        _socket->emit(EVENT_IMU, message);
+    }
 
 private:
     MPU6050 _imu;
+    EventSocket *_socket;
+    unsigned long _lastUpdate {0};
+    unsigned long _updateInterval {IMU_INTERVAL};
+    bool imu_success {false};
+    char message[MAX_ESP_IMU_SIZE];
 };

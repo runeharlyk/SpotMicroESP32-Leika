@@ -6,6 +6,7 @@
     import MdiController from '~icons/mdi/controller';
     import Devices from '~icons/mdi/devices'
     import Camera from '~icons/mdi/camera-outline';
+    import Rotate3d from '~icons/mdi/rotate-3d';
 	import Health from '~icons/mdi/stethoscope';
 	import Folder from '~icons/mdi/folder-outline';
 	import Update from '~icons/mdi/reload';
@@ -63,6 +64,12 @@
 					icon: Camera,
 					href: '/peripherals/camera',
 					feature: $page.data.features.camera,
+				},
+                {
+					title: 'IMU',
+					icon: Rotate3d,
+					href: '/peripherals/imu',
+					feature: $page.data.features.imu,
 				}
 			]
 		},

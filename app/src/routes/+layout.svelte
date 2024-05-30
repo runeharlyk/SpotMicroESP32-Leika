@@ -40,10 +40,6 @@
 		socket.on('close', handleClose);
 		socket.on('error', handleError);
 		socket.on('rssi', handleNetworkStatus);
-		socket.on('infoToast', handleInfoToast);
-		socket.on('successToast', handleSuccessToast);
-		socket.on('warningToast', handleWarningToast);
-		socket.on('errorToast', handleErrorToast);
 		socket.on('mode', (data:ModesEnum) => mode.set(data));
 		socket.on('angles', (angles:number[]) => { if (angles.length) servoAngles.set(angles)});
 		if ($page.data.features.analytics) socket.on('analytics', handleAnalytics);
@@ -56,10 +52,6 @@
 		socket.off('open', handleOpen);
 		socket.off('close', handleClose);
 		socket.off('rssi', handleNetworkStatus);
-		socket.off('infoToast', handleInfoToast);
-		socket.off('successToast', handleSuccessToast);
-		socket.off('warningToast', handleWarningToast);
-		socket.off('errorToast', handleErrorToast);
 		socket.off('battery', handleBattery);
 		socket.off('otastatus', handleOAT);
 	};
@@ -83,12 +75,7 @@
 
 	const handleError = (data: any) => console.error(data);
 
-	const handleInfoToast = (data: string) => notifications.info(data, 5000);
-	const handleWarningToast = (data: string) => notifications.warning(data, 5000);
-	const handleErrorToast = (data: string) => notifications.error(data, 5000);
-	const handleSuccessToast = (data: string) => notifications.success(data, 5000);
-
-	const handleAnalytics = (data: Analytics) => analytics.addData(data);
+	const handleAnalytics = (data: Analytics) => analytics.addData(data); 
 
 	const handleNetworkStatus = (data: number) => telemetry.setRSSI(data);
 
