@@ -135,3 +135,10 @@ export type StaticSystemInformation = {
 };
 
 export type SystemInformation = Analytics & StaticSystemInformation;
+
+export type IMU = {
+	x: number;
+	y: number;
+	z: number;
+	temp: number;
+};

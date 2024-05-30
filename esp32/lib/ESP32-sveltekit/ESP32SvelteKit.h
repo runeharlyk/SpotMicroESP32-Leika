@@ -25,11 +25,13 @@
 #include <BatteryService.h>
 #include <FileExplorerService.h>
 #include <DownloadFirmwareService.h>
+#include <DeviceConfigurationService.h>
 #include <ESPFS.h>
 #include <ESPmDNS.h>
 #include <EventSocket.h>
 #include <FactoryResetService.h>
 #include <FeaturesService.h>
+#include <IMUService.h>
 #include <MqttSettingsService.h>
 #include <MqttStatus.h>
 #include <MotionService.h>
@@ -166,17 +168,30 @@ public:
     {
         return &_motionService;
     }
+
 #if FT_ENABLED(FT_CAMERA)
     CameraService *getCameraService()
     {
         return &_cameraService;
     }
+
     CameraSettingsService *getCameraSettingsService()
     {
         return &_cameraSettingsService;
     }
 #endif
 
+    DeviceConfigurationService *getDeviceConfigurationService()
+    {
+        return &_deviceConfiguration;
+    }
+
+#if FT_ENABLED(FT_IMU)
+    IMUService *getIMUService()
+    {
+        return &_imuService;
+    }
+#endif
     void factoryReset()
     {
         _factoryResetService.factoryReset();
@@ -238,6 +253,10 @@ private:
 #if FT_ENABLED(FT_CAMERA)
     CameraService _cameraService;
     CameraSettingsService _cameraSettingsService;
+#endif
+    DeviceConfigurationService _deviceConfiguration;
+#if FT_ENABLED(FT_IMU)
+    IMUService _imuService;
 #endif
 
     String _appName = APP_NAME;
