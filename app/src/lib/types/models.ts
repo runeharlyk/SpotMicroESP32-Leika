@@ -140,5 +140,8 @@ export type IMU = {
 	x: number;
 	y: number;
 	z: number;
-	temp: number;
+	imu_temp: number;
+	altitude: number;
+	bmp_temp: number;
+	pressure: number;
 };

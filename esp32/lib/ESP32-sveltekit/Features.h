@@ -67,4 +67,13 @@
 #define FT_IMU 1
 #endif
 
+// ESP32 magnetometer off by default
+#ifndef FT_MAG
+#define FT_MAG 0
+#endif
+
+// ESP32 barometer off by default
+#ifndef FT_BMP
+#define FT_BMP 0
+#endif
 #endif

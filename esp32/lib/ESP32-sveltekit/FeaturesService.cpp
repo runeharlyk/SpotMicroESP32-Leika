@@ -32,6 +32,8 @@ void FeaturesService::begin() {
         root["analytics"] = FT_ANALYTICS;
         root["camera"] = FT_CAMERA;
         root["imu"] = FT_IMU;
+        root["mag"] = FT_MAG;
+        root["bmp"] = FT_BMP;
         root["firmware_version"] = APP_VERSION;
         root["firmware_name"] = APP_NAME;
         root["firmware_built_target"] = BUILD_TARGET;

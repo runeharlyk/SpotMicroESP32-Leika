@@ -91,7 +91,7 @@ void ESP32SvelteKit::begin() {
 
 void ESP32SvelteKit::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
-    _server->listen(100);
+    _server->listen(80);
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit",
