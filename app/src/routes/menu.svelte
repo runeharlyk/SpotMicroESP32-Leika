@@ -69,7 +69,7 @@
 					title: 'IMU',
 					icon: Rotate3d,
 					href: '/peripherals/imu',
-					feature: $page.data.features.imu,
+					feature: $page.data.features.imu || $page.data.features.mag || $page.data.features.bmp,
 				}
 			]
 		},

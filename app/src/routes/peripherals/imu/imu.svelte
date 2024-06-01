@@ -1,7 +1,6 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
     import Rotate3d from '~icons/mdi/rotate-3d';
-	import IMUSetting from './imuSetting.svelte';
     import { imu } from '$lib/stores/imu';
     import { Chart, registerables } from 'chart.js';
 	import { cubicOut } from "svelte/easing";
@@ -13,18 +12,26 @@
 
     Chart.register(...registerables);
 
-    let heapChartElement: HTMLCanvasElement;
-	let heapChart: Chart;
+    let angleChartElement: HTMLCanvasElement;
+	let angleChart: Chart;
 
-    
-    const handleImu = (data: IMU) => imu.addData(data);   
+    let tempChartElement: HTMLCanvasElement;
+	let tempChart: Chart;
+
+    let altitudeChartElement: HTMLCanvasElement;
+	let altitudeChart: Chart;
+
+    const handleImu = (data: IMU) => {
+        console.log(data);
+        
+        imu.addData(data);   
+    }
 
     onMount(() => {
         socket.on('imu', handleImu);
-        heapChart = new Chart(heapChartElement, {
+        angleChart = new Chart(angleChartElement, {
 			type: 'line',
 			data: {
-				// labels: $imu.x,
 				datasets: [
 					{
 						label: 'x',
@@ -32,7 +39,7 @@
 						backgroundColor: daisyColor('--p', 50),
 						borderWidth: 2,
 						data: $imu.x,
-						yAxisID: 'x'
+						yAxisID: 'y'
 					},
 					{
 						label: 'y',
@@ -48,7 +55,7 @@
 						backgroundColor: daisyColor('--a', 50),
 						borderWidth: 2,
 						data: $imu.z,
-						yAxisID: 'z'
+						yAxisID: 'y'
 					}
 				]
 			},
@@ -100,6 +107,138 @@
 				}
 			}
 		});
+        tempChart = new Chart(tempChartElement, {
+			type: 'line',
+			data: {
+				datasets: [
+					{
+						label: 'IMU temperature',
+						borderColor: daisyColor('--p'),
+						backgroundColor: daisyColor('--p', 50),
+						borderWidth: 2,
+						data: $imu.imu_temp,
+						yAxisID: 'y'
+					},
+					{
+						label: 'Barometer temperature',
+						borderColor: daisyColor('--s'),
+						backgroundColor: daisyColor('--s', 50),
+						borderWidth: 2,
+						data: $imu.bmp_temp,
+						yAxisID: 'y'
+					}
+				]
+			},
+			options: {
+				maintainAspectRatio: false,
+				responsive: true,
+				plugins: {
+					legend: {
+						display: true
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false
+					}
+				},
+				elements: {
+					point: {
+						radius: 1
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: daisyColor('--bc', 10)
+						},
+						ticks: {
+							color: daisyColor('--bc')
+						},
+						display: false
+					},
+					y: {
+						type: 'linear',
+						title: {
+							display: true,
+							text: 'Temperature [C°]',
+							color: daisyColor('--bc'),
+							font: {
+								size: 16,
+								weight: 'bold'
+							}
+						},
+						position: 'left',
+						min:  0,
+						max: 10,
+						grid: { color: daisyColor('--bc', 10) },
+						ticks: { color: daisyColor('--bc') },
+						border: { color: daisyColor('--bc', 10) }
+					}
+				}
+			}
+		});
+        altitudeChart = new Chart(altitudeChartElement, {
+			type: 'line',
+			data: {
+				datasets: [
+					{
+						label: 'Altitude',
+						borderColor: daisyColor('--p'),
+						backgroundColor: daisyColor('--p', 50),
+						borderWidth: 2,
+						data: $imu.altitude,
+						yAxisID: 'y'
+					}
+				]
+			},
+			options: {
+				maintainAspectRatio: false,
+				responsive: true,
+				plugins: {
+					legend: {
+						display: true
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false
+					}
+				},
+				elements: {
+					point: {
+						radius: 1
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: daisyColor('--bc', 10)
+						},
+						ticks: {
+							color: daisyColor('--bc')
+						},
+						display: false
+					},
+					y: {
+						type: 'linear',
+						title: {
+							display: true,
+							text: 'Altitude [M]',
+							color: daisyColor('--bc'),
+							font: {
+								size: 16,
+								weight: 'bold'
+							}
+						},
+						position: 'left',
+						min:  0,
+						max: 10,
+						grid: { color: daisyColor('--bc', 10) },
+						ticks: { color: daisyColor('--bc') },
+						border: { color: daisyColor('--bc', 10) }
+					}
+				}
+			}
+		});
         setInterval(() => {
 			updateData(), 200;
 		});
@@ -110,13 +249,26 @@
     })
 
     const updateData = () => {
-        // heapChart.data.labels = $imu.x;
-        heapChart.options.scales!.y!.min = Math.min(Math.min(...$imu.x), Math.min(...$imu.y), Math.min(...$imu.z));
-        heapChart.options.scales!.y!.max = Math.max(Math.max(...$imu.x), Math.max(...$imu.y), Math.max(...$imu.z));
-		heapChart.data.datasets[0].data = $imu.x;
-		heapChart.data.datasets[1].data = $imu.y;
-		heapChart.data.datasets[2].data = $imu.z;
-		heapChart.update('none');
+        angleChart.data.labels = $imu.x;
+		angleChart.data.datasets[0].data = $imu.x;
+		angleChart.data.datasets[1].data = $imu.y;
+		angleChart.data.datasets[2].data = $imu.z;
+        angleChart.options.scales!.y!.min = Math.min(Math.min(...$imu.x), Math.min(...$imu.y), Math.min(...$imu.z)) - 1;
+        angleChart.options.scales!.y!.max = Math.max(Math.max(...$imu.x), Math.max(...$imu.y), Math.max(...$imu.z)) + 1;
+		angleChart.update('none');
+
+        tempChart.data.labels = $imu.imu_temp;
+		tempChart.data.datasets[0].data = $imu.imu_temp;
+		tempChart.data.datasets[1].data = $imu.bmp_temp;
+        tempChart.options.scales!.y!.min = Math.min(Math.min(...$imu.imu_temp), Math.min(...$imu.bmp_temp)) - 1;
+        tempChart.options.scales!.y!.max = Math.max(Math.max(...$imu.imu_temp), Math.max(...$imu.bmp_temp)) + 1;
+		tempChart.update('none');
+
+        altitudeChart.data.labels = $imu.imu_temp;
+		altitudeChart.data.datasets[0].data = $imu.altitude;
+        altitudeChart.options.scales!.y!.min = Math.min(Math.min(...$imu.altitude)) - 1;
+        altitudeChart.options.scales!.y!.max = Math.max(Math.max(...$imu.altitude)) + 1;
+		altitudeChart.update('none');
     }
 
 </script>
@@ -124,19 +276,28 @@
 <SettingsCard collapsible={false}>
     <Rotate3d slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     <span slot="title">IMU</span>
-    <!-- <div class="flex flex-col">
-        {#if $imu.x.length > 0}
-            {#each Object.entries($imu) as [key, value]}
-                <div>{key}: {value[value.length-1]}</div>
-            {/each}
-        {/if}
-    </div> -->
     <div class="w-full overflow-x-auto">
 		<div
 			class="flex w-full flex-col space-y-1 h-60"
 			transition:slide|local={{ duration: 300, easing: cubicOut }}
 		>
-			<canvas bind:this={heapChartElement} />
+			<canvas bind:this={angleChartElement} />
+		</div>
+	</div>
+    <div class="w-full overflow-x-auto">
+		<div
+			class="flex w-full flex-col space-y-1 h-60"
+			transition:slide|local={{ duration: 300, easing: cubicOut }}
+		>
+			<canvas bind:this={tempChartElement} />
+		</div>
+	</div>
+    <div class="w-full overflow-x-auto">
+		<div
+			class="flex w-full flex-col space-y-1 h-60"
+			transition:slide|local={{ duration: 300, easing: cubicOut }}
+		>
+			<canvas bind:this={altitudeChartElement} />
 		</div>
 	</div>
     <!-- <IMUSetting /> -->
