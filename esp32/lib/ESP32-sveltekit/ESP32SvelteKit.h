@@ -186,7 +186,7 @@ public:
         return &_deviceConfiguration;
     }
 
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
     IMUService *getIMUService()
     {
         return &_imuService;
@@ -255,7 +255,7 @@ private:
     CameraSettingsService _cameraSettingsService;
 #endif
     DeviceConfigurationService _deviceConfiguration;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
     IMUService _imuService;
 #endif
 

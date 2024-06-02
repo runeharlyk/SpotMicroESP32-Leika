@@ -112,14 +112,6 @@
 			data: {
 				datasets: [
 					{
-						label: 'IMU temperature',
-						borderColor: daisyColor('--p'),
-						backgroundColor: daisyColor('--p', 50),
-						borderWidth: 2,
-						data: $imu.imu_temp,
-						yAxisID: 'y'
-					},
-					{
 						label: 'Barometer temperature',
 						borderColor: daisyColor('--s'),
 						backgroundColor: daisyColor('--s', 50),
@@ -257,14 +249,13 @@
         angleChart.options.scales!.y!.max = Math.max(Math.max(...$imu.x), Math.max(...$imu.y), Math.max(...$imu.z)) + 1;
 		angleChart.update('none');
 
-        tempChart.data.labels = $imu.imu_temp;
-		tempChart.data.datasets[0].data = $imu.imu_temp;
-		tempChart.data.datasets[1].data = $imu.bmp_temp;
-        tempChart.options.scales!.y!.min = Math.min(Math.min(...$imu.imu_temp), Math.min(...$imu.bmp_temp)) - 1;
-        tempChart.options.scales!.y!.max = Math.max(Math.max(...$imu.imu_temp), Math.max(...$imu.bmp_temp)) + 1;
+        tempChart.data.labels = $imu.bmp_temp;
+		tempChart.data.datasets[0].data = $imu.bmp_temp;
+        tempChart.options.scales!.y!.min = Math.min(...$imu.bmp_temp) - 1;
+        tempChart.options.scales!.y!.max = Math.max(...$imu.bmp_temp) + 1;
 		tempChart.update('none');
 
-        altitudeChart.data.labels = $imu.imu_temp;
+        altitudeChart.data.labels = $imu.altitude;
 		altitudeChart.data.datasets[0].data = $imu.altitude;
         altitudeChart.options.scales!.y!.min = Math.min(Math.min(...$imu.altitude)) - 1;
         altitudeChart.options.scales!.y!.max = Math.max(Math.max(...$imu.altitude)) + 1;
