@@ -66,7 +66,9 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _fileExplorer(server, &_securitySettingsService),
       _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
       _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket),
+#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
       _imuService(&_socket)
+#endif
       {
 }
 
@@ -208,7 +210,7 @@ void ESP32SvelteKit::startServices() {
     _cameraSettingsService.begin();
 #endif
     _deviceConfiguration.begin();
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
         _imuService.begin();
 #endif
 }
@@ -223,7 +225,7 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_ANALYTICS)
         _analyticsService.loop();
 #endif
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
         _imuService.loop();
 #endif
         _motionService.loop();

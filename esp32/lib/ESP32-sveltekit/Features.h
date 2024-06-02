@@ -67,7 +67,7 @@
 #define FT_IMU 1
 #endif
 
-// ESP32 magnetometer off by default
+// ESP32 magnetometer on by default
 #ifndef FT_MAG
 #define FT_MAG 0
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MPU6050_light.h>
+#include "MPU6050_6Axis_MotionApps612.h"
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_HMC5883_U.h>
@@ -16,9 +16,6 @@ class IMUService
 public:
     IMUService(EventSocket *socket) 
     : 
-#if FT_ENABLED(FT_IMU)
-    _imu(Wire),
-#endif
 #if FT_ENABLED(FT_MAG)
     _mag(12345),
 #endif
@@ -32,12 +29,16 @@ public:
     {
         _socket->registerEvent(EVENT_IMU);
 #if FT_ENABLED(FT_IMU)
-        byte status = _imu.begin();
-        imu_success = status == 0;
-        if(status != 0) {
-            ESP_LOGE("IMUService", "MPU initialize failed: %d", status);
+        _imu.initialize();
+        imu_success = _imu.testConnection();
+        devStatus = _imu.dmpInitialize();
+        if(!imu_success) {
+            ESP_LOGE("IMUService", "MPU initialize failed");
         }
-        calibrate();
+        _imu.setDMPEnabled(true);
+        _imu.setI2CMasterModeEnabled(false);
+        _imu.setI2CBypassEnabled(true);
+        _imu.setSleepEnabled(false);
 #endif
 #if FT_ENABLED(FT_MAG)
         mag_success = _mag.begin();
@@ -59,25 +60,27 @@ public:
     }
 
     float getTemp() {
-        return imu_success ? _imu.getTemp() : -1;
+        return imu_success ? imu_temperature : -1;
     }
 
     float getAngleX() {
-        return imu_success ? _imu.getAngleX() : -1;
+        return imu_success ? ypr[0] * 180/M_PI : -1;
     }
 
     float getAngleY() {
-        return imu_success ? _imu.getAngleY() : -1;
+        return imu_success ? ypr[1] * 180/M_PI : -1;
     }
 
     float getAngleZ() {
-        return imu_success ? _imu.getGyroZ() : -1;
+        return imu_success ? ypr[2] * 180/M_PI : -1;
     }
 
-    void calibrate() {
-        if (imu_success) {
-            _imu.calcOffsets(true, true);
-        }
+    bool readIMU() {
+        bool updated = imu_success && _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
+        _imu.dmpGetQuaternion(&q, fifoBuffer);
+        _imu.dmpGetGravity(&gravity, &q);
+        _imu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        return updated;
     }
 #endif
 
@@ -139,26 +142,29 @@ protected:
 
     void updateImu() {
         doc.clear();
+        bool newData = false;
 #if FT_ENABLED(FT_IMU)
-        if (imu_success){
-            _imu.update();
+        newData = imu_success && readIMU();
+        if (imu_success) {
             doc["x"] = round2(getAngleX());
             doc["y"] = round2(getAngleY());
             doc["z"] = round2(getAngleZ());
-            doc["imu_temp"] = round2(getTemp());
+            // doc["imu_temp"] = round2(getTemp());
         }
 #endif
 #if FT_ENABLED(FT_MAG)
-    if (mag_success) {
-        doc["heading"] = round2(getHeading());
-    }
+        newData = newData || mag_success;
+        if (mag_success) {
+            doc["heading"] = round2(getHeading());
+        }
 #endif
 #if FT_ENABLED(FT_BMP)
-    if (bmp_success) {
-        doc["pressure"] = round2(getPressure());
-        doc["altitude"] = round2(getAltitude());
-        doc["bmp_temp"] = round2(getTemperature());
-    }
+        newData = newData || bmp_success;
+        if (bmp_success) {
+            doc["pressure"] = round2(getPressure());
+            doc["altitude"] = round2(getAltitude());
+            doc["bmp_temp"] = round2(getTemperature());
+        }
 #endif
         serializeJson(doc, message);
         _socket->emit(EVENT_IMU, message);
@@ -168,6 +174,12 @@ private:
 #if FT_ENABLED(FT_IMU)
     MPU6050 _imu;
     bool imu_success {false};
+    uint8_t devStatus {false};
+    Quaternion q;
+    uint8_t fifoBuffer[64];
+    VectorFloat gravity;
+    float ypr[3];
+    float imu_temperature {-1};
 #endif
 #if FT_ENABLED(FT_MAG)
     Adafruit_HMC5883_Unified _mag;
