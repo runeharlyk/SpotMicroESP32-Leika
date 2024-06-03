@@ -43,8 +43,7 @@ class MotionService
 
         _socket->onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
 
-        _socket->onSubscribe(ANGLES_EVENT,
-                             std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
+        _socket->onSubscribe(ANGLES_EVENT, std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(default_feet_positions);
     }
@@ -68,7 +67,6 @@ class MotionService
         body_state.xm = array[3];
         body_state.ym = array[4];
         body_state.zm = array[5];
-        // syncAngles(String(originId));
     }
 
     void handleInput(JsonObject &root, int originId)
@@ -91,11 +89,6 @@ class MotionService
                 body_state.zm = lx / 2;
                 break;
             }
-            case MOTION_STATE::WALK:
-                position_target.x = rx / 2;
-                position_target.z = ry / 2;
-                position_target.yaw = lx / 2;
-                break;
         }
     }
 
@@ -135,8 +128,6 @@ class MotionService
                 break;
             }
             case MOTION_STATE::WALK:
-                gaitPlanner.update_trajectory(position_target, MotionInterval, body_state);
-
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
         }
@@ -168,14 +159,12 @@ class MotionService
     SecurityManager *_securityManager;
     TaskManager *_taskManager;
     Kinematics kinematics;
-    GaitPlanner gaitPlanner;
 
     MOTION_STATE motionState = MOTION_STATE::IDLE;
     unsigned long _lastUpdate;
     constexpr static int MotionInterval = 100;
 
     body_state_t body_state = {0,};
-    position_target_t position_target = {0,};
 
     float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
     float default_feet_positions[4][4] = {

@@ -19,7 +19,7 @@ export enum ModesEnum {
 	Walk
 }
 
-export const mode: Writable<ModesEnum> = writable(ModesEnum.Walk);
+export const mode: Writable<ModesEnum> = writable(ModesEnum.Idle);
 
 export const outControllerData = writable([0, 0, 0, 0, 0, 70, 0]);
 

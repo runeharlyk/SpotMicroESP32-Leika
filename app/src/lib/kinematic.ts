@@ -33,7 +33,7 @@ export default class Kinematic {
 	L: number;
 	W: number;
 
-	DEGREES2RAD = 0.017453292519943;
+	DEG2RAD = 0.017453292519943;
 
 	sHp = sin(Math.PI / 2);
 	cHp = cos(Math.PI / 2);
@@ -115,12 +115,12 @@ export default class Kinematic {
 	}
 
 	bodyIK(p: body_state_t) {
-		const cos_omega = cos(p.omega * this.DEGREES2RAD);
-		const sin_omega = sin(p.omega * this.DEGREES2RAD);
-		const cos_phi = cos(p.phi * this.DEGREES2RAD);
-		const sin_phi = sin(p.phi * this.DEGREES2RAD);
-		const cos_psi = cos(p.psi * this.DEGREES2RAD);
-		const sin_psi = sin(p.psi * this.DEGREES2RAD);
+		const cos_omega = cos(p.omega * this.DEG2RAD);
+		const sin_omega = sin(p.omega * this.DEG2RAD);
+		const cos_phi = cos(p.phi * this.DEG2RAD);
+		const sin_phi = sin(p.phi * this.DEG2RAD);
+		const cos_psi = cos(p.psi * this.DEG2RAD);
+		const sin_psi = sin(p.psi * this.DEG2RAD);
 
 		const Tm: number[][] = [
 			[cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm],
