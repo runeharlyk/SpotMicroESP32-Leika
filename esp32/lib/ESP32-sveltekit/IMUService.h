@@ -1,11 +1,11 @@
 #pragma once
 
-#include "MPU6050_6Axis_MotionApps612.h"
-#include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_HMC5883_U.h>
+#include <Adafruit_Sensor.h>
 #include <ArduinoJson.h>
 #include <EventSocket.h>
+#include <MPU6050_6Axis_MotionApps612.h>
 
 #define IMU_INTERVAL 500
 #define MAX_ESP_IMU_SIZE 500
@@ -149,7 +149,6 @@ protected:
             doc["x"] = round2(getAngleX());
             doc["y"] = round2(getAngleY());
             doc["z"] = round2(getAngleZ());
-            // doc["imu_temp"] = round2(getTemp());
         }
 #endif
 #if FT_ENABLED(FT_MAG)

@@ -45,7 +45,7 @@
     ];
 
     let settings = {
-        'Internal kinematic':true,
+        'Internal kinematic':false,
         'Robot transform controls':false,
         'Auto orient robot':true,
         'Trace feet':debug,
@@ -86,14 +86,6 @@
                     settings.psi = data.ry / 4 
                     settings.x = data.ly / 2 
                     settings.z = data.lx / 2
-                    break;
-
-                case ModesEnum.Walk:
-                    // target_position.yaw += data.lx / 100
-                    // const angle = radToDeg(Math.atan2(data.rx, data.ry)) - 90 + $mpu.heading + target_position.yaw;
-                    // const distance = Math.sqrt(data.rx**2 + data.ry**2) / 25
-                    // target_position.x = distance * Math.cos(degToRad(angle))
-                    // target_position.z = distance * Math.sin(degToRad(angle))
                     break;
             }
         })
@@ -267,6 +259,11 @@
         settings.z = -robot.position.x * 100
     }
 
+    const updateTargetPosition = () => {
+        target.position.x = lerp(target.position.x, target_position.x, 0.5)
+        target.position.z = lerp(target.position.z, target_position.z, 0.5)
+    }
+
 	const render = () => {
 		const robot = sceneManager.model;
 		if (!robot) return;
@@ -293,10 +290,7 @@
         }
 
         orient_robot(robot, toes) 
-
-        target.position.x = lerp(target.position.x, target_position.x, 0.5)
-        // target.position.y = lerp(target.position.y, robot.position.y, 0.5)
-        target.position.z = lerp(target.position.z, target_position.z, 0.5)
+        updateTargetPosition();
 	};
 
 
