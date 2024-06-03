@@ -1,5 +1,4 @@
 .pio
 data/
 www/
-include/secrets.h
-;lib/*
+**/.vscode/c_cpp_properties.json
