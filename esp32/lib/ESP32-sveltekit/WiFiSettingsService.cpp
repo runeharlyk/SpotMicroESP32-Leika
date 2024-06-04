@@ -151,10 +151,14 @@ void WiFiSettingsService::connectToWiFi()
                         bestNetworkDb = rssi_scan;
                         bestNetwork = &network;
                         network.available = true;
+                        network.channel = chan_scan;
+                        memcpy(network.bssid, BSSID_scan, 6);
                     }
-                    else if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD)
+                    else if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD && !network.available)
                     { // available network
                         network.available = true;
+                        network.channel = chan_scan;
+                        memcpy(network.bssid, BSSID_scan, 6);
                     }
                 }
                 break;
@@ -178,7 +182,6 @@ void WiFiSettingsService::connectToWiFi()
         {
             ESP_LOGI("WiFiSettingsService", "Connecting to strongest network: %s", bestNetwork->ssid.c_str());
             configureNetwork(*bestNetwork);
-            WiFi.begin(bestNetwork->ssid.c_str(), bestNetwork->password.c_str());
         }
         else // no suitable network to connect
         {
@@ -205,7 +208,7 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network)
     WiFi.setHostname(_state.hostname.c_str());
 
     // attempt to connect to the network
-    WiFi.begin(network.ssid.c_str(), network.password.c_str());
+    WiFi.begin(network.ssid.c_str(), network.password.c_str(), network.channel, network.bssid);
 
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(WIFI_POWER_8_5dBm); // https://www.wemos.cc/en/latest/c3/c3_mini_1_0_0.html#about-wifi
