@@ -186,7 +186,7 @@
 		on:click={() => setActiveMenuItem('')}
 	>
 		<img src={logo} alt="Logo" class="h-12 w-12" />
-		<h1 class="px-4 text-2xl font-bold">{$page.data.appName}</h1>
+		<h1 class="px-4 text-2xl font-bold">{appName}</h1>
 	</a>
 	<ul class="menu rounded-box menu-vertical flex-nowrap overflow-y-auto">
 		{#each menuItems as menuItem, i (menuItem.title)}

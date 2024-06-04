@@ -1,7 +1,7 @@
 #ifndef Kinematics_h
 #define Kinematics_h
 
-#include <esp_dsp.h>
+#include <dspm_mult.h>
 #include <cmath>
 
 #define RAD2DEG 57.295779513082321 // 180 / PI
