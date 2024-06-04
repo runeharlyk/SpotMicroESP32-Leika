@@ -103,7 +103,7 @@ class MotionService
 
     void syncAngles(const String &originId = "", bool sync = false) {
         char output[100];
-        sprintf(output, "[%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f,%0.f]", angles[0], angles[1], angles[2], angles[3], angles[4],
+        sprintf(output, "[%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f,%2.f]", angles[0], angles[1], angles[2], angles[3], angles[4],
                 angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
         _socket->emit(ANGLES_EVENT, output, String(originId).c_str());
     }
