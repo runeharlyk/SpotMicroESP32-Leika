@@ -5,7 +5,7 @@
 
 DRAM_ATTR PsychicHttpServer server;
 
-DRAM_ATTR ESP32SvelteKit spot(&server, 125);
+DRAM_ATTR ESP32SvelteKit spot(&server, 126);
 
 void setup()
 {
