@@ -65,12 +65,11 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
       _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
-      _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket),
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-      _imuService(&_socket)
+      _imuService(&_socket),
 #endif
-      {
-}
+      _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket)
+{ }
 
 void ESP32SvelteKit::begin() {
     ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");

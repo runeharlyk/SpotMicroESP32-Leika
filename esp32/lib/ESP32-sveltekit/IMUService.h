@@ -165,8 +165,10 @@ protected:
             doc["bmp_temp"] = round2(getTemperature());
         }
 #endif
-        serializeJson(doc, message);
-        _socket->emit(EVENT_IMU, message);
+        if(newData) {
+            serializeJson(doc, message);
+            _socket->emit(EVENT_IMU, message);
+        }
     }
 
 private:
