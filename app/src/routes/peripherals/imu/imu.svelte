@@ -9,6 +9,7 @@
 	import { daisyColor } from "$lib/DaisyUiHelper";
 	import { socket } from "$lib/stores";
 	import type { IMU } from "$lib/types/models";
+	import { page } from "$app/stores";
 
     Chart.register(...registerables);
 
@@ -267,29 +268,33 @@
 <SettingsCard collapsible={false}>
     <Rotate3d slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     <span slot="title">IMU</span>
-    <div class="w-full overflow-x-auto">
-		<div
-			class="flex w-full flex-col space-y-1 h-60"
-			transition:slide|local={{ duration: 300, easing: cubicOut }}
-		>
-			<canvas bind:this={angleChartElement} />
-		</div>
-	</div>
-    <div class="w-full overflow-x-auto">
-		<div
-			class="flex w-full flex-col space-y-1 h-60"
-			transition:slide|local={{ duration: 300, easing: cubicOut }}
-		>
-			<canvas bind:this={tempChartElement} />
-		</div>
-	</div>
-    <div class="w-full overflow-x-auto">
-		<div
-			class="flex w-full flex-col space-y-1 h-60"
-			transition:slide|local={{ duration: 300, easing: cubicOut }}
-		>
-			<canvas bind:this={altitudeChartElement} />
-		</div>
-	</div>
+    {#if $page.data.features.imu} 
+        <div class="w-full overflow-x-auto">
+            <div
+            class="flex w-full flex-col space-y-1 h-60"
+            transition:slide|local={{ duration: 300, easing: cubicOut }}
+            >
+                <canvas bind:this={angleChartElement} />
+            </div>
+        </div>
+    {/if}
+    {#if $page.data.features.bmp} 
+        <div class="w-full overflow-x-auto">
+            <div
+                class="flex w-full flex-col space-y-1 h-60"
+                transition:slide|local={{ duration: 300, easing: cubicOut }}
+            >
+                <canvas bind:this={tempChartElement} />
+            </div>
+        </div>
+        <div class="w-full overflow-x-auto">
+            <div
+            class="flex w-full flex-col space-y-1 h-60"
+            transition:slide|local={{ duration: 300, easing: cubicOut }}
+            >
+            <canvas bind:this={altitudeChartElement} />
+        </div>
+    </div>
+    {/if}
     <!-- <IMUSetting /> -->
 </SettingsCard>

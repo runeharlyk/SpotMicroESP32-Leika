@@ -54,6 +54,7 @@ esp_err_t CameraService::InitializeCamera() {
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;
+#if FT_ENABLED(FT_CAMERA)
     camera_config.pin_d0 = Y2_GPIO_NUM;
     camera_config.pin_d1 = Y3_GPIO_NUM;
     camera_config.pin_d2 = Y4_GPIO_NUM;
@@ -70,6 +71,7 @@ esp_err_t CameraService::InitializeCamera() {
     camera_config.pin_sccb_scl = SIOC_GPIO_NUM;
     camera_config.pin_pwdn = PWDN_GPIO_NUM;
     camera_config.pin_reset = RESET_GPIO_NUM;
+#endif
     camera_config.xclk_freq_hz = 20000000;
     camera_config.pixel_format = PIXFORMAT_JPEG;
 

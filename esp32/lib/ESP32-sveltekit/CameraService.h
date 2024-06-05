@@ -8,9 +8,11 @@
 #include <WiFi.h>
 #include <esp_camera.h>
 #include <async_worker.h>
+#include <Features.h>
 
-#define CAMERA_MODEL_AI_THINKER
-#include <CameraPins.h>
+#if FT_ENABLED(FT_CAMERA)
+  #include <CameraPins.h>
+#endif
 
 #define STREAM_SERVICE_PATH "/api/camera/stream"
 #define STILL_SERVICE_PATH "/api/camera/still"
