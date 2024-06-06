@@ -7,6 +7,7 @@
     import Devices from '~icons/mdi/devices'
     import Camera from '~icons/mdi/camera-outline';
     import Rotate3d from '~icons/mdi/rotate-3d';
+    import MotorOutline from '~icons/mdi/motor-outline';
 	import Health from '~icons/mdi/stethoscope';
 	import Folder from '~icons/mdi/folder-outline';
 	import Update from '~icons/mdi/reload';
@@ -64,6 +65,12 @@
 					icon: Camera,
 					href: '/peripherals/camera',
 					feature: $page.data.features.camera,
+				},
+                {
+					title: 'Servo',
+					icon: MotorOutline,
+					href: '/peripherals/servo',
+					feature: true,
 				},
                 {
 					title: 'IMU',
