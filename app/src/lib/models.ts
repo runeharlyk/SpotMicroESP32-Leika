@@ -173,11 +173,11 @@ export type CameraSettings = {
 export type servo = {
 	channel: number;
 	name: string;
-	direction: number;
+	inverted: boolean;
 	angle: number;
-	min_pwm: number;
-	max_pwm: number;
-	min_angle: number;
-	max_angle: number;
 	center_angle: number;
+	// min_pwm: number;
+	// max_pwm: number;
+	// min_angle: number;
+	// max_angle: number;
 };

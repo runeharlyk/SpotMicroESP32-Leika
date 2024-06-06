@@ -16,7 +16,7 @@
         {
             channel: 0,
             name: "Front right hip",
-            direction: direction,
+            inverted: false,
             angle: angle,
             min_pwm: min_pwm,
             max_pwm: max_pwm,
