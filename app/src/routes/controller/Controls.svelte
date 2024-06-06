@@ -88,6 +88,18 @@
 		<div class="flex-1" />
 		<div id="right" class="flex w-60 items-center" />
 	</div>
+    <div class="absolute bottom-0 right-0 p-4 z-10 gap-2 flex-col hidden lg:flex">
+        <div class="flex justify-center w-full">
+            <kbd class="kbd">W</kbd>
+        </div>
+        <div class="flex justify-center gap-2 w-full">
+            <kbd class="kbd">A</kbd>
+            <kbd class="kbd">S</kbd>
+            <kbd class="kbd">D</kbd>
+        </div>
+        <div class="flex justify-center w-full">
+        </div>
+    </div>
 	<div class="absolute bottom-0 z-10 p-4 gap-4 flex items-end">
 		{#each modes as modeValue}
             <button class="btn btn-outline" class:btn-active={$mode === modes.indexOf(modeValue)} on:click={() => changeMode(modeValue)}>
