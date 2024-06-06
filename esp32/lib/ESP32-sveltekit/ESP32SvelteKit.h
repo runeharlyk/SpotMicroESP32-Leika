@@ -26,6 +26,7 @@
 #include <FileExplorerService.h>
 #include <DownloadFirmwareService.h>
 #include <DeviceConfigurationService.h>
+#include <ServoController.h>
 #include <ESPFS.h>
 #include <ESPmDNS.h>
 #include <EventSocket.h>
@@ -99,13 +100,6 @@ public:
         return &_socket;
     }
 
-#if FT_ENABLED(FT_SECURITY)
-    StatefulService<SecuritySettings> *getSecuritySettingsService()
-    {
-        return &_securitySettingsService;
-    }
-#endif
-
     StatefulService<WiFiSettings> *getWiFiSettingsService()
     {
         return &_wifiSettingsService;
@@ -164,10 +158,12 @@ public:
         return &_fileExplorer;
     }
 
+#if FT_ENABLED(FT_MOTION)
     MotionService *getMotionService()
     {
         return &_motionService;
     }
+#endif
 
 #if FT_ENABLED(FT_CAMERA)
     CameraService *getCameraService()
@@ -192,6 +188,14 @@ public:
         return &_imuService;
     }
 #endif
+
+#if FT_ENABLED(FT_SERVO)
+    ServoController *getServoController()
+    {
+        return &_servoController;
+    }
+#endif
+
     void factoryReset()
     {
         _factoryResetService.factoryReset();
@@ -249,7 +253,9 @@ private:
     SystemStatus _systemStatus;
     TaskManager _taskManager;
     FileExplorer _fileExplorer;
+#if FT_ENABLED(FT_MOTION)
     MotionService _motionService;
+#endif
 #if FT_ENABLED(FT_CAMERA)
     CameraService _cameraService;
     CameraSettingsService _cameraSettingsService;
@@ -257,6 +263,9 @@ private:
     DeviceConfigurationService _deviceConfiguration;
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
     IMUService _imuService;
+#endif
+#if FT_ENABLED(FT_SERVO)
+    ServoController _servoController;
 #endif
 
     String _appName = APP_NAME;

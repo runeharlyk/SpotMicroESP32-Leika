@@ -64,9 +64,14 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
+#if FT_ENABLED(FT_MOTION)
       _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
+#endif
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
       _imuService(&_socket),
+#endif
+#if FT_ENABLED(FT_SERVO)
+      _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
       _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket)
 { }
@@ -203,7 +208,9 @@ void ESP32SvelteKit::startServices() {
 #endif
     _taskManager.begin();
     _fileExplorer.begin();
+#if FT_ENABLED(FT_MOTION)
     _motionService.begin();
+#endif
 #if FT_ENABLED(FT_CAMERA)
     _cameraService.begin();
     _cameraSettingsService.begin();
@@ -211,6 +218,10 @@ void ESP32SvelteKit::startServices() {
     _deviceConfiguration.begin();
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
         _imuService.begin();
+#endif
+#if FT_ENABLED(FT_SERVO)
+    _servoController.begin();
+    _servoController.configure();
 #endif
 }
 
@@ -227,7 +238,9 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
         _imuService.loop();
 #endif
+#if FT_ENABLED(FT_MOTION)
         _motionService.loop();
+#endif
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
 }
