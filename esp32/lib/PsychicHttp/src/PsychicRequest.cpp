@@ -452,7 +452,7 @@ bool PsychicRequest::authenticate(const char *username, const char *password)
         _cnonce = _extractParam(authReq, F("cnonce=\""), '\"');
       }
       String _H1 = md5str(String(username) + ':' + _realm + ':' + String(password));
-      ESP_LOGD(PH_TAG, "Hash of user:realm:pass=%s", _H1);
+      ESP_LOGD(PH_TAG, "Hash of user:realm:pass=%s", _H1.c_str());
       String _H2 = "";
       if (_method == HTTP_GET)
       {
@@ -474,7 +474,7 @@ bool PsychicRequest::authenticate(const char *username, const char *password)
       {
         _H2 = md5str(String(F("GET:")) + _uri);
       }
-      ESP_LOGD(PH_TAG, "Hash of GET:uri=%s", _H2);
+      ESP_LOGD(PH_TAG, "Hash of GET:uri=%s", _H2.c_str());
       String _responsecheck = "";
       if (authReq.indexOf("qop=auth") != -1 || authReq.indexOf("qop=\"auth\"") != -1)
       {
@@ -484,7 +484,7 @@ bool PsychicRequest::authenticate(const char *username, const char *password)
       {
         _responsecheck = md5str(_H1 + ':' + _nonce + ':' + _H2);
       }
-      ESP_LOGD(PH_TAG, "The Proper response=%s", _responsecheck);
+      ESP_LOGD(PH_TAG, "The Proper response=%s", _responsecheck.c_str());
       if (_resp == _responsecheck)
       {
         authReq = "";
