@@ -76,4 +76,10 @@
 #ifndef FT_BMP
 #define FT_BMP 0
 #endif
+
+// ESP32 GPS off by default
+#ifndef FT_GPS
+#define FT_GPS 0
+#endif
+
 #endif
