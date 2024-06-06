@@ -169,3 +169,15 @@ export type CameraSettings = {
 	vflip: boolean;
 	hmirror: boolean;
 };
+
+export type servo = {
+	channel: number;
+	name: string;
+	direction: number;
+	angle: number;
+	min_pwm: number;
+	max_pwm: number;
+	min_angle: number;
+	max_angle: number;
+	center_angle: number;
+};
