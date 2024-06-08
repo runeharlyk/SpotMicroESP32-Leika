@@ -14,6 +14,8 @@
 
 #include <APSettingsService.h>
 
+static const char* TAG = "APSettingsService";
+
 APSettingsService::APSettingsService(PsychicHttpServer *server,
                                      FS *fs,
                                      SecurityManager *securityManager) : _server(server),
@@ -45,9 +47,7 @@ void APSettingsService::reconfigureAP()
 
 void APSettingsService::recoveryMode()
 {
-#ifdef SERIAL_INFO
-    Serial.println("Recovery Mode needed");
-#endif
+    ESP_LOGI(TAG, "Recovery Mode needed");
     _lastManaged = millis() - MANAGE_NETWORK_DELAY;
     _recoveryMode = true;
     _reconfigureAp = true;
@@ -56,7 +56,7 @@ void APSettingsService::recoveryMode()
 void APSettingsService::loop()
 {
     unsigned long currentMillis = millis();
-    unsigned long manageElapsed = (unsigned long)(currentMillis - _lastManaged);
+    unsigned long manageElapsed = (currentMillis - _lastManaged);
     if (manageElapsed >= MANAGE_NETWORK_DELAY)
     {
         _lastManaged = currentMillis;
@@ -86,9 +86,7 @@ void APSettingsService::manageAP()
 
 void APSettingsService::startAP()
 {
-#ifdef SERIAL_INFO
-    Serial.println("Starting software access point");
-#endif
+    ESP_LOGI(TAG, "Starting software access point");
     WiFi.softAPConfig(_state.localIP, _state.gatewayIP, _state.subnetMask);
     WiFi.softAP(_state.ssid.c_str(), _state.password.c_str(), _state.channel, _state.ssidHidden, _state.maxClients);
 #if CONFIG_IDF_TARGET_ESP32C3
@@ -97,10 +95,7 @@ void APSettingsService::startAP()
     if (!_dnsServer)
     {
         IPAddress apIp = WiFi.softAPIP();
-#ifdef SERIAL_INFO
-        Serial.print("Starting captive portal on ");
-        Serial.println(apIp);
-#endif
+        ESP_LOGI(TAG, "Starting captive portal on %s", apIp.toString().c_str());
         _dnsServer = new DNSServer;
         _dnsServer->start(DNS_PORT, "*", apIp);
     }
@@ -110,16 +105,12 @@ void APSettingsService::stopAP()
 {
     if (_dnsServer)
     {
-#ifdef SERIAL_INFO
-        Serial.println("Stopping captive portal");
-#endif
+        ESP_LOGI(TAG, "Stopping captive portal");
         _dnsServer->stop();
         delete _dnsServer;
         _dnsServer = nullptr;
     }
-#ifdef SERIAL_INFO
-    Serial.println("Stopping software access point");
-#endif
+    ESP_LOGI(TAG, "Stopping AP");
     WiFi.softAPdisconnect(true);
 }
 
