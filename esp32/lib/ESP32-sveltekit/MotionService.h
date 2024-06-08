@@ -97,7 +97,7 @@ class MotionService
         ESP_LOGV("MotionService", "Mode %d", root["data"].as<int>());
         motionState = (MOTION_STATE)root["data"].as<int>();
         char output[2];
-        sprintf(output, "%d", motionState);
+        sprintf(output, "%d", (int)motionState);
         _socket->emit(MODE_EVENT, output, String(originId).c_str());
     }
 
@@ -147,7 +147,7 @@ class MotionService
     }
 
     void loop() {
-        if (auto currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= MotionInterval) {
+        if (int currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= MotionInterval) {
             _lastUpdate = currentMillis;
             if (updateMotion()) syncAngles();
         }
