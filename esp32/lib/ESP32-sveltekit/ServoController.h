@@ -8,7 +8,7 @@
 
 #define SERVO_OSCILLATOR_FREQUENCY 27000000
 #define SERVO_FREQ 50
-#define SERVO_CONFIG_FILE "/config/deviceConfig.json"
+#define SERVO_CONFIG_FILE "/config/servoConfig.json"
 #define SERVO_CONFIGURATION_SETTINGS_PATH "/api/servo/configuration"
 
 struct servo_t
@@ -29,7 +29,7 @@ class ServoConfiguration {
 
     static void read(ServoConfiguration &settings, JsonObject &root) {
         root["is_active"] = settings.is_active;
-        root["servo_pwm_frequency"] = settings.servo_oscillator_frequency;
+        root["servo_pwm_frequency"] = settings.servo_pwm_frequency;
         root["servo_oscillator_frequency"] = settings.servo_oscillator_frequency;
 
         JsonArray servos = root["servos"].to<JsonArray>();
@@ -89,6 +89,8 @@ class ServoController : public Adafruit_PWMServoDriver, public StatefulService<S
     }
 
     void configure() {
+        _httpEndpoint.begin();
+        _fsPersistence.readFromFS();
         setOscillatorFrequency(_state.servo_oscillator_frequency);
         setPWMFreq(_state.servo_pwm_frequency);
         ESP_LOGI("ServoController", "Configured with oscillator frequency %d and PWM frequency %d", _state.servo_oscillator_frequency, _state.servo_pwm_frequency);
