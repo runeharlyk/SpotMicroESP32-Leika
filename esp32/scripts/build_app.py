@@ -27,7 +27,7 @@ project_dir = env["PROJECT_DIR"]
 buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
 interface_dir = project_dir + "/../app"
-output_file = project_dir + "/lib/ESP32-Sveltekit/WWWData.h"
+output_file = project_dir + "/lib/ESP32-sveltekit/WWWData.h"
 source_www_dir = interface_dir + "/src"
 build_dir = interface_dir + "/build"
 filesystem_dir = project_dir + "/data/www"
