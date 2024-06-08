@@ -5,12 +5,11 @@
 </script>
 <div>
     {#if !$socket}
-    <div class="flex flex-col h-full justify-center items-center">
-        <Spinner/>
+        <div class="absolute left-0 flex flex-col w-screen h-screen justify-center items-center backdrop-blur-sm z-10">
+            <Spinner/>
             <h2>Waiting for connection</h2>
         </div>
-    {:else}
-        <Controls />
-        <slot/>
     {/if}
+    <Controls />
+    <slot/>
 </div>

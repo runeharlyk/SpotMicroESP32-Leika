@@ -22,7 +22,7 @@
 	};
 </script>
 
-<div class="toast toast-end mr-4">
+<div class="toast toast-end mr-4 z-20">
 	{#each $notifications as notification (notification.id)}
 		<div
 			animate:flip={{ duration: 400 }}
