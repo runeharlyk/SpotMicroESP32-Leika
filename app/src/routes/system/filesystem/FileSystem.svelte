@@ -9,7 +9,7 @@
     let filename = '';
 
     const getFiles = async () => {
-        const result = await api.get<Directory>('/api/files/list')
+        const result = await api.get<Directory>('/api/files')
         if (result.isOk()) {
             return result.inner;
         }

@@ -5,7 +5,8 @@
 #include <PsychicHttp.h>
 #include <SecurityManager.h>
 
-#define FILE_EXPLORER_SERVICE_PATH "/api/files/list"
+#define FILE_EXPLORER_SERVICE_PATH "/api/files"
+#define FILE_EXPLORER_DELETE_SERVICE_PATH "/api/files/delete"
 
 class FileExplorer
 {
@@ -20,6 +21,9 @@ class FileExplorer
         _server->on(FILE_EXPLORER_SERVICE_PATH, HTTP_GET,
                     _securityManager->wrapRequest(std::bind(&FileExplorer::explore, this, std::placeholders::_1),
                                                   AuthenticationPredicates::IS_AUTHENTICATED));
+        _server->on(FILE_EXPLORER_DELETE_SERVICE_PATH, HTTP_POST,
+                    _securityManager->wrapCallback(std::bind(&FileExplorer::deleteFile, this, std::placeholders::_1, std::placeholders::_2),
+                                                  AuthenticationPredicates::IS_AUTHENTICATED));
 
         ESP_LOGV("APStatus", "Registered GET endpoint: %s", FILE_EXPLORER_SERVICE_PATH);
     }
@@ -27,9 +31,21 @@ class FileExplorer
   private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
+
     esp_err_t explore(PsychicRequest *request)
     {
         return request->reply(200, "application/json", listFiles("/").c_str());
+    }
+
+    esp_err_t deleteFile(PsychicRequest *request, JsonVariant &json)
+    {
+        if (json.is<JsonObject>())
+        {
+            String filename = json["file"];
+            ESP_LOGI("FileExplorer", "Deleting file: %s", filename.c_str());
+            return ESPFS.remove(filename.c_str()) ? request->reply(200) : request->reply(500);
+        }
+        return request->reply(400);
     }
 
     String listFiles(const String &directory, bool isRoot = true)

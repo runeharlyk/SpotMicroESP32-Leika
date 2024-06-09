@@ -6,10 +6,24 @@
 
 #include <Adafruit_PWMServoDriver.h>
 
-#define SERVO_OSCILLATOR_FREQUENCY 27000000
-#define SERVO_FREQ 50
 #define SERVO_CONFIG_FILE "/config/servoConfig.json"
 #define SERVO_CONFIGURATION_SETTINGS_PATH "/api/servo/configuration"
+
+#ifndef FACTORY_SERVO_NUM
+    #define FACTORY_SERVO_NUM 12
+#endif
+
+#ifndef FACTORY_SERVO_PWM_FREQUENCY
+    #define FACTORY_SERVO_PWM_FREQUENCY 50
+#endif
+
+#ifndef FACTORY_SERVO_OSCILLATOR_FREQUENCY
+    #define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
+#endif
+
+#ifndef FACTORY_SERVO_CENTER_ANGLE
+    #define FACTORY_SERVO_CENTER_ANGLE 90
+#endif
 
 struct servo_t
 {
@@ -22,8 +36,8 @@ struct servo_t
 
 class ServoConfiguration {
    public:
-    int32_t servo_oscillator_frequency {SERVO_OSCILLATOR_FREQUENCY};
-    int32_t servo_pwm_frequency {SERVO_FREQ};
+    int32_t servo_oscillator_frequency {FACTORY_SERVO_OSCILLATOR_FREQUENCY};
+    int32_t servo_pwm_frequency {FACTORY_SERVO_PWM_FREQUENCY};
     std::vector<servo_t> servos_config;
     bool is_active {false};
 
@@ -47,9 +61,9 @@ class ServoConfiguration {
     }
 
     static StateUpdateResult update(JsonObject &root, ServoConfiguration &settings) {
-        settings.is_active = root["is_active"];
-        settings.servo_pwm_frequency = root["servo_pwm_frequency"];
-        settings.servo_oscillator_frequency = root["servo_oscillator_frequency"];
+        settings.is_active = root["is_active"] | false;
+        settings.servo_pwm_frequency = root["servo_pwm_frequency"] | FACTORY_SERVO_PWM_FREQUENCY;
+        settings.servo_oscillator_frequency = root["servo_oscillator_frequency"] | FACTORY_SERVO_OSCILLATOR_FREQUENCY;
         settings.servos_config.clear();
 
         JsonArray servos = root["servos"];
@@ -69,6 +83,17 @@ class ServoConfiguration {
 
                 settings.servos_config.push_back(new_servo);
                 i++;
+            }
+        } else {
+            for (int8_t i = 0; i < FACTORY_SERVO_NUM; i++) {
+                ESP_LOGI("WiFiSettings", "Adding servo %d", i);
+                settings.servos_config.push_back(servo_t {
+                    .name = "Servo " + String(i),
+                    .channel = i,
+                    .inverted = 1,
+                    .angle = 0,
+                    .center_angle = FACTORY_SERVO_CENTER_ANGLE
+                });
             }
         }
         return StateUpdateResult::CHANGED;

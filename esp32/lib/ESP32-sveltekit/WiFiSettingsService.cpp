@@ -118,7 +118,7 @@ void WiFiSettingsService::connectToWiFi()
     }
     else if (scanResult == 0)
     {
-        ESP_LOGW("WiFiSettingsService", "No networks found.");
+        ESP_LOGI("WiFiSettingsService", "No networks found.");
     }
     else
     {
