@@ -79,9 +79,6 @@ void updateTask(void *param)
         _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
         ESP_LOGE("Download OTA", "HTTP Update failed with error (%d): %s", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-#ifdef SERIAL_INFO
-        Serial.printf("HTTP Update failed with error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-#endif
         break;
     case HTTP_UPDATE_NO_UPDATES:
 
@@ -91,15 +88,9 @@ void updateTask(void *param)
         _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
         ESP_LOGE("Download OTA", "HTTP Update failed, has same firmware version");
-#ifdef SERIAL_INFO
-        Serial.println("HTTP Update failed, has same firmware version");
-#endif
         break;
     case HTTP_UPDATE_OK:
         ESP_LOGI("Download OTA", "HTTP Update successful - Restarting");
-#ifdef SERIAL_INFO
-        Serial.println("HTTP Update successful - Restarting");
-#endif
         break;
     }
     vTaskDelete(NULL);
@@ -135,9 +126,6 @@ esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonV
 
     String downloadURL = json["download_url"];
     ESP_LOGI("Download OTA", "Starting OTA from: %s", downloadURL.c_str());
-#ifdef SERIAL_INFO
-    Serial.println("Starting OTA from: " + downloadURL);
-#endif
 
     doc["status"] = "preparing";
     doc["progress"] = 0;
