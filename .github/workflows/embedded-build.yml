@@ -40,4 +40,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-artifacts
-          path: build/firmware
+          path: esp32/build/firmware
