@@ -119,18 +119,12 @@ String MqttSettingsService::getLastError()
 void MqttSettingsService::onMqttConnect(bool sessionPresent)
 {
     ESP_LOGI("MQTT", "Connected to MQTT: %s", _mqttClient.getMqttConfig()->uri);
-#ifdef SERIAL_INFO
-    Serial.printf("Connected to MQTT: %s\n", _mqttClient.getMqttConfig()->uri);
-#endif
     _lastError = "None";
 }
 
 void MqttSettingsService::onMqttDisconnect(bool sessionPresent)
 {
     ESP_LOGI("MQTT", "Disconnected from MQTT.");
-#ifdef SERIAL_INFO
-    Serial.println("Disconnected from MQTT.");
-#endif
 }
 
 void MqttSettingsService::onMqttError(esp_mqtt_error_codes_t error)
@@ -173,9 +167,6 @@ void MqttSettingsService::configureMqtt()
     // only connect if WiFi is connected and MQTT is enabled
     if (_state.enabled && WiFi.isConnected())
     {
-#ifdef SERIAL_INFO
-        Serial.println("Connecting to MQTT...");
-#endif
         _mqttClient.setServer(retainCstr(_state.uri.c_str(), &_retainedHost));
         if (_state.username.length() > 0)
         {
