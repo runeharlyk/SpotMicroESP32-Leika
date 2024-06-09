@@ -181,3 +181,9 @@ export type servo = {
 	// min_angle: number;
 	// max_angle: number;
 };
+
+export type File = number;
+
+export interface Directory {
+	[key: string]: File | Directory;
+}
