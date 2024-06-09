@@ -170,20 +170,23 @@ export type CameraSettings = {
 	hmirror: boolean;
 };
 
-export type servo = {
-	channel: number;
-	name: string;
-	inverted: boolean;
-	angle: number;
-	center_angle: number;
-	// min_pwm: number;
-	// max_pwm: number;
-	// min_angle: number;
-	// max_angle: number;
-};
-
 export type File = number;
 
 export interface Directory {
 	[key: string]: File | Directory;
 }
+
+export type Servo = {
+	name: string;
+	channel: number;
+	inverted: boolean;
+	angle: number;
+	center_angle: number;
+};
+
+export type ServoConfiguration = {
+	is_active: boolean;
+	servo_pwm_frequency: number;
+	servo_oscillator_frequency: number;
+	servos: Servo[];
+};

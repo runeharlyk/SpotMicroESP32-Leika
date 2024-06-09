@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { servo } from "$lib/models";
-    export let servo: servo;
+    import type { Servo } from "$lib/models";
+    export let servo: Servo;
 </script>
 
 <div>
