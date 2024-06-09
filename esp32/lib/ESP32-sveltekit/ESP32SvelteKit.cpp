@@ -143,7 +143,7 @@ void ESP32SvelteKit::setupServer() {
     });
 #endif
 #ifdef SERVE_CONFIG_FILES
-    _server->serveStatic("/config/", ESPFS, "/config/");
+    _server->serveStatic("/api/config/", ESPFS, "/config/");
 #endif
 
 #if defined(ENABLE_CORS)

@@ -1,7 +1,8 @@
-<script>
+<script lang="ts">
 	import File from './File.svelte';
     import FolderIcon from '~icons/mdi/folder-outline';
     import FolderOpenOutline from '~icons/mdi/folder-open-outline';
+	import { createEventDispatcher } from 'svelte';
 
 	export let expanded = false;
 	export let name;
@@ -10,6 +11,12 @@
 	function toggle() {
 		expanded = !expanded;
 	}
+
+    const dispatch = createEventDispatcher();
+
+    const updateSelected = async (event:any) => {
+        dispatch('selected', { name:event.detail.name });
+    }
 </script>
 
 <button class="flex pl-2" on:click={toggle}>
@@ -26,9 +33,9 @@
         {#each Object.entries(files) as [name, content]}
             <li class="p-1">
                 {#if typeof content == 'object'}
-					<svelte:self {name} files={content} />
+					<svelte:self {name} files={content} on:selected={updateSelected} />
 				{:else}
-					<File {name} />
+					<File {name} on:selected={updateSelected}/>
 				{/if}
 			</li>
 		{/each}
