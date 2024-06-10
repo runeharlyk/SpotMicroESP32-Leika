@@ -50,13 +50,13 @@ export default class Kinematic {
 	Ix: number[][];
 
 	constructor() {
-		this.l1 = 50;
-		this.l2 = 20;
-		this.l3 = 120;
-		this.l4 = 155;
+		this.l1 = 60.5;
+		this.l2 = 10;
+		this.l3 = 100.7;
+		this.l4 = 118.5;
 
-		this.L = 140;
-		this.W = 75;
+		this.L = 207.5;
+		this.W = 78;
 
 		this.point_lf = [
 			[this.cHp, 0, this.sHp, this.L / 2],
