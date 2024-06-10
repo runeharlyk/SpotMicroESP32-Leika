@@ -40,4 +40,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-artifacts
-          path: .pio/build/**
+          path: esp32/build/firmware
