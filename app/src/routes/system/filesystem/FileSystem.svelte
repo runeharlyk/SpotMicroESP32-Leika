@@ -25,6 +25,14 @@
         return ''
     }
 
+    const deleteFile = async (name: string) => {
+        const result = await api.post(`/api/files/delete`, { file: "/config/"+ name })
+        if (result.isOk()) {
+            return result.inner;
+        }
+        return ''
+    }
+
     const updateSelected = async (event:any) => {
         filename = event.detail.name;
     }
