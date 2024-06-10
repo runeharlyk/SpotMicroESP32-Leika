@@ -1,10 +1,12 @@
 import { writable } from 'svelte/store';
 
+const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const;
+type SocketEvent = (typeof socketEvents)[number];
+
 function createWebSocket() {
 	let listeners = new Map<string, Set<(data?: unknown) => void>>();
 	const { subscribe, set } = writable(false);
-	const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const;
-	type SocketEvent = (typeof socketEvents)[number];
+	const reconnectTimeoutTime = 5000;
 	let unresponsiveTimeoutId: number;
 	let reconnectTimeoutId: number;
 	let ws: WebSocket;
@@ -21,7 +23,7 @@ function createWebSocket() {
 		clearTimeout(unresponsiveTimeoutId);
 		clearTimeout(reconnectTimeoutId);
 		listeners.get(reason)?.forEach((listener) => listener(event));
-		reconnectTimeoutId = setTimeout(connect, 1000);
+		reconnectTimeoutId = setTimeout(connect, reconnectTimeoutTime);
 	}
 
 	function connect() {
@@ -74,7 +76,7 @@ function createWebSocket() {
 
 	function resetUnresponsiveCheck() {
 		clearTimeout(unresponsiveTimeoutId);
-		unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), 2000);
+		unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime);
 	}
 
 	function send(msg: unknown) {

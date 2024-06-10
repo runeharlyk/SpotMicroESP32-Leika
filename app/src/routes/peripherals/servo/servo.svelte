@@ -1,6 +1,13 @@
 <script lang="ts">
     import type { Servo } from "$lib/models";
+	import { createEventDispatcher } from "svelte";
     export let servo: Servo;
+
+    const dispatch = createEventDispatcher();
+
+    const sweep = () => {
+        dispatch('sweep', {channel: servo.channel});
+    };
 </script>
 
 <div>
@@ -19,5 +26,5 @@
         <span class="text-sm text-gray-500 dark:text-gray-400 absolute start-1/2 -translate-x-1/2 rtl:translate-x-1/2 -bottom-6">90</span>
         <span class="text-sm text-gray-500 dark:text-gray-400 absolute end-0 -bottom-6">180</span>
     </div>
-    <button class="btn btn-neutral btn-sm">Sweep range</button>
+    <button class="btn btn-neutral btn-sm" on:click={sweep}>Sweep range</button>
 </div>
