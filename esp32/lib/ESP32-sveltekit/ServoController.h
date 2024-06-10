@@ -212,12 +212,12 @@ class ServoController : public Adafruit_PWMServoDriver,
             if (servo.state == SERVO_STATE::SERVO_STATE_ACTIVE) {
                 continue;
             } else if (servo.state == SERVO_STATE::SERVO_STATE_SWEEPING_FORWARD) {
-                servo.angle += 1;
+                servo.angle += 2;
                 if (servo.angle >= 180) {
                     servo.state = SERVO_STATE::SERVO_STATE_SWEEPING_BACKWARD;
                 }
             } else if (servo.state == SERVO_STATE::SERVO_STATE_SWEEPING_BACKWARD) {
-                servo.angle -= 1;
+                servo.angle -= 2;
                 if (servo.angle <= 0) {
                     servo.state = SERVO_STATE::SERVO_STATE_ACTIVE;
                 }
@@ -241,5 +241,5 @@ class ServoController : public Adafruit_PWMServoDriver,
 
     bool is_active{true};
     unsigned long _lastUpdate;
-    constexpr static int ServoInterval = 100;
+    constexpr static int ServoInterval = 2;
 };
