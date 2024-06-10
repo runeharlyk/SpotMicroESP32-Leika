@@ -241,6 +241,9 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_MOTION)
         _motionService.loop();
 #endif
+#if FT_ENABLED(FT_SERVO)
+    _servoController.loop();
+#endif
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
 }
