@@ -82,7 +82,8 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         xSemaphoreGive(clientSubscriptionsMutex);
         return;
     }
-    String msg = "[\"" + String(event) + "\"," + String(payload) + "]";
+    char msg[strlen(event) + strlen(payload) + 10];
+    snprintf(msg, sizeof(msg), "[\"%s\",%s]", event, payload);
 
     // if onlyToSameOrigin == true, send the message back to the origin
     if (onlyToSameOrigin && originSubscriptionId > 0)
@@ -90,9 +91,8 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         auto *client = _socket.getClient(originSubscriptionId);
         if (client)
         {
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event, client->remoteIP().toString().c_str(),
-                     msg.c_str());
-            client->sendMessage(msg.c_str());
+            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event, client->remoteIP().toString().c_str(), msg);
+            client->sendMessage(msg);
         }
     }
     else
@@ -108,9 +108,8 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
                 subscriptions.remove(subscription);
                 continue;
             }
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event, client->remoteIP().toString().c_str(),
-                     msg.c_str());
-            client->sendMessage(msg.c_str());
+            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event, client->remoteIP().toString().c_str(), msg);
+            client->sendMessage(msg);
         }
     }
     xSemaphoreGive(clientSubscriptionsMutex);
