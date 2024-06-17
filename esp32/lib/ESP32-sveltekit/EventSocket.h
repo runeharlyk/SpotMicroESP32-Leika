@@ -24,11 +24,7 @@ public:
 
   void onSubscribe(String event, SubscribeCallback callback);
 
-  void emit(String event, String payload);
-
-  void emit(const char *event, const char *payload);
-
-  void emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin = false);
+  void emit(const char *event, const char *payload, const char *originId = "", bool onlyToSameOrigin = false);
   // if onlyToSameOrigin == true, the message will be sent to the originId only, otherwise it will be broadcasted to all clients except the originId
 
 private:
