@@ -23,7 +23,6 @@ void FeaturesService::begin() {
         JsonObject root = response.getRoot();
 
         root["security"] = FT_SECURITY;
-        root["mqtt"] = FT_MQTT;
         root["ntp"] = FT_NTP;
         root["upload_firmware"] = FT_UPLOAD_FIRMWARE;
         root["download_firmware"] = FT_DOWNLOAD_FIRMWARE;

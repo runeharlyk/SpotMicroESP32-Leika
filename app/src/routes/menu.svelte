@@ -18,7 +18,6 @@
 	import Avatar from '~icons/mdi/user-circle';
 	import Logout from '~icons/mdi/logout';
 	import Copyright from '~icons/mdi/copyright';
-	import MQTT from '~icons/tabler/topology-star-3';
 	import NTP from '~icons/mdi/clock-check';
 	import Metrics from '~icons/mdi/report-bar';
 	import { page } from '$app/stores';
@@ -85,13 +84,6 @@
 			icon: Remote,
 			feature: $page.data.features.mqtt || $page.data.features.ntp,
 			submenu: [
-				{
-					title: 'MQTT',
-					icon: MQTT,
-					href: '/connections/mqtt',
-					feature: $page.data.features.mqtt,
-					
-				},
 				{
 					title: 'NTP',
 					icon: NTP,

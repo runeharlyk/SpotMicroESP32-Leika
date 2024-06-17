@@ -33,8 +33,6 @@
 #include <FactoryResetService.h>
 #include <FeaturesService.h>
 #include <IMUService.h>
-#include <MqttSettingsService.h>
-#include <MqttStatus.h>
 #include <MotionService.h>
 #include <NTPSettingsService.h>
 #include <CameraService.h>
@@ -114,18 +112,6 @@ public:
     StatefulService<NTPSettings> *getNTPSettingsService()
     {
         return &_ntpSettingsService;
-    }
-#endif
-
-#if FT_ENABLED(FT_MQTT)
-    StatefulService<MqttSettings> *getMqttSettingsService()
-    {
-        return &_mqttSettingsService;
-    }
-
-    PsychicMqttClient *getMqttClient()
-    {
-        return _mqttSettingsService.getMqttClient();
     }
 #endif
 
@@ -231,10 +217,6 @@ private:
 #endif
 #if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
-#endif
-#if FT_ENABLED(FT_MQTT)
-    MqttSettingsService _mqttSettingsService;
-    MqttStatus _mqttStatus;
 #endif
 #if FT_ENABLED(FT_SECURITY)
     AuthenticationService _authenticationService;

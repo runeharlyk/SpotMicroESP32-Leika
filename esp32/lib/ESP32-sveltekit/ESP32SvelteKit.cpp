@@ -40,10 +40,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _downloadFirmwareService(server, &_securitySettingsService, &_socket,
                                &_taskManager),
 #endif
-#if FT_ENABLED(FT_MQTT)
-      _mqttSettingsService(server, &ESPFS, &_securitySettingsService),
-      _mqttStatus(server, &_mqttSettingsService, &_securitySettingsService),
-#endif
 #if FT_ENABLED(FT_SECURITY)
       _authenticationService(server, &_securitySettingsService),
 #endif
@@ -189,10 +185,6 @@ void ESP32SvelteKit::startServices() {
     _ntpSettingsService.begin();
     _ntpStatus.begin();
 #endif
-#if FT_ENABLED(FT_MQTT)
-    _mqttSettingsService.begin();
-    _mqttStatus.begin();
-#endif
 #if FT_ENABLED(FT_SECURITY)
     _authenticationService.begin();
     _securitySettingsService.begin();
@@ -229,9 +221,6 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
     while (1) {
         _wifiSettingsService.loop();
         _apSettingsService.loop();
-#if FT_ENABLED(FT_MQTT)
-        _mqttSettingsService.loop();
-#endif
 #if FT_ENABLED(FT_ANALYTICS)
         _analyticsService.loop();
 #endif
