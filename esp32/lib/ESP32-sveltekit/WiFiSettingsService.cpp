@@ -48,8 +48,6 @@ void WiFiSettingsService::initWiFi()
 
 void WiFiSettingsService::begin()
 {
-    _socket->registerEvent(EVENT_RSSI);
-
     _httpEndpoint.begin();
     _eventEndpoint.begin();
 }

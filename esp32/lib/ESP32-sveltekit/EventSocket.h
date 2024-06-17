@@ -20,8 +20,6 @@ public:
 
   void begin();
 
-  void registerEvent(String event);
-
   void onEvent(String event, EventCallback callback);
 
   void onSubscribe(String event, SubscribeCallback callback);
@@ -39,14 +37,11 @@ private:
   SecurityManager *_securityManager;
   AuthenticationPredicate _authenticationPredicate;
 
-  std::vector<String> events;
   std::map<String, std::list<int>> client_subscriptions;
   std::map<String, std::list<EventCallback>> event_callbacks;
   std::map<String, std::list<SubscribeCallback>> subscribe_callbacks;
   void handleEventCallbacks(String event, JsonObject &jsonObject, int originId);
   void handleSubscribeCallbacks(String event, const String &originId);
-
-  bool isEventValid(String event);
 
   void onWSOpen(PsychicWebSocketClient *client);
   void onWSClose(PsychicWebSocketClient *client);

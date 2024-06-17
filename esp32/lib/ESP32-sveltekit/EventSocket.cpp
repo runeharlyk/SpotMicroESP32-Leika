@@ -21,19 +21,6 @@ void EventSocket::begin()
     ESP_LOGV("EventSocket", "Registered event socket endpoint: %s", EVENT_SERVICE_PATH);
 }
 
-void EventSocket::registerEvent(String event)
-{
-    if (!isEventValid(event))
-    {
-        ESP_LOGV("EventSocket", "Registering event: %s", event.c_str());
-        events.push_back(event);
-    }
-    else
-    {
-        ESP_LOGW("EventSocket", "Event already registered: %s", event.c_str());
-    }
-}
-
 void EventSocket::onWSOpen(PsychicWebSocketClient *client)
 {
     ESP_LOGI("EventSocket", "ws[%s][%u] connect", client->remoteIP().toString().c_str(), client->socket());
@@ -67,15 +54,8 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
             if (event == "subscribe")
             {
                 // only subscribe to events that are registered
-                if (isEventValid(doc["data"].as<String>()))
-                {
-                    client_subscriptions[doc["data"]].push_back(request->client()->socket());
-                    handleSubscribeCallbacks(doc["data"], String(request->client()->socket()));
-                }
-                else
-                {
-                    ESP_LOGW("EventSocket", "Client tried to subscribe to unregistered event: %s", doc["data"].as<String>().c_str());
-                }
+                client_subscriptions[doc["data"]].push_back(request->client()->socket());
+                handleSubscribeCallbacks(doc["data"], String(request->client()->socket()));
             }
             else if (event == "unsubscribe")
             {
@@ -104,13 +84,6 @@ void EventSocket::emit(const char *event, const char *payload)
 
 void EventSocket::emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin)
 {
-    // Only process valid events
-    if (!isEventValid(String(event)))
-    {
-        ESP_LOGW("EventSocket", "Method tried to emit unregistered event: %s", event);
-        return;
-    }
-
     int originSubscriptionId = originId[0] ? atoi(originId) : -1;
     xSemaphoreTake(clientSubscriptionsMutex, portMAX_DELAY);
     auto &subscriptions = client_subscriptions[event];
@@ -171,26 +144,11 @@ void EventSocket::handleSubscribeCallbacks(String event, const String &originId)
 
 void EventSocket::onEvent(String event, EventCallback callback)
 {
-    if (!isEventValid(event))
-    {
-        ESP_LOGW("EventSocket", "Method tried to register unregistered event: %s", event.c_str());
-        return;
-    }
     event_callbacks[event].push_back(callback);
 }
 
 void EventSocket::onSubscribe(String event, SubscribeCallback callback)
 {
-    if (!isEventValid(event))
-    {
-        ESP_LOGW("EventSocket", "Method tried to subscribe to unregistered event: %s", event.c_str());
-        return;
-    }
     subscribe_callbacks[event].push_back(callback);
     ESP_LOGI("EventSocket", "onSubscribe for event: %s", event.c_str());
-}
-
-bool EventSocket::isEventValid(String event)
-{
-    return std::find(events.begin(), events.end(), event) != events.end();
 }
