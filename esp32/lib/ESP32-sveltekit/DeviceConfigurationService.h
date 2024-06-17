@@ -23,8 +23,12 @@
 /*
  * I2C software connection 
  */
-#define SDA 14
-#define SCL 15
+#ifndef SDA_PIN
+    #define SDA_PIN 14
+#endif
+#ifndef SCL_PIN
+    #define SCL_PIN 15
+#endif
 
 /*
  * Ultra sonic sensors
@@ -45,8 +49,8 @@ public:
 
 class DeviceConfiguration {
    public:
-    int sda = SDA;
-    int scl = SCL;
+    int sda = SDA_PIN;
+    int scl = SCL_PIN;
     std::vector<PinConfig> pins;
 
     static void read(DeviceConfiguration &settings, JsonObject &root) {
@@ -55,8 +59,8 @@ class DeviceConfiguration {
     }
 
     static StateUpdateResult update(JsonObject &root, DeviceConfiguration &settings) {
-        settings.sda = root["sda"] | SDA;
-        settings.scl = root["scl"] | SCL;
+        settings.sda = root["sda"] | SDA_PIN;
+        settings.scl = root["scl"] | SCL_PIN;
         return StateUpdateResult::CHANGED;
     };
 };
