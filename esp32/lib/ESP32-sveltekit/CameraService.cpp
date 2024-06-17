@@ -78,7 +78,9 @@ esp_err_t CameraService::InitializeCamera() {
     if (psramFound()) {
         camera_config.frame_size = FRAMESIZE_SVGA;
         camera_config.jpeg_quality = 10;
+        camera_config.fb_location = CAMERA_FB_IN_PSRAM;
         camera_config.fb_count = 2;
+        camera_config.grab_mode = CAMERA_GRAB_LATEST;
     } else {
         camera_config.frame_size = FRAMESIZE_SVGA;
         camera_config.jpeg_quality = 12;
@@ -87,7 +89,8 @@ esp_err_t CameraService::InitializeCamera() {
 
     log_i("Initializing camera");
     esp_err_t err = esp_camera_init(&camera_config);
-    if (err != ESP_OK) log_e("Camera probe failed with error 0x%x", err);
+    if (err == ESP_OK) ESP_LOGI("CameraService", "Camera probe successful");
+    else ESP_LOGE("CameraService", "Camera probe failed with error 0x%x", err);
 
     return err;
 }
@@ -95,7 +98,7 @@ esp_err_t CameraService::InitializeCamera() {
 esp_err_t CameraService::cameraStill(PsychicRequest *request) {
     camera_fb_t *fb = safe_camera_fb_get();
     if (!fb) {
-        Serial.println("Camera capture failed");
+        ESP_LOGE("CameraService", "Camera capture failed");
         request->reply(500, "text/plain", "Camera capture failed");
         return ESP_FAIL;
     }
