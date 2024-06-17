@@ -72,16 +72,6 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     return ESP_OK;
 }
 
-void EventSocket::emit(String event, String payload)
-{
-    emit(event.c_str(), payload.c_str(), "");
-}
-
-void EventSocket::emit(const char *event, const char *payload)
-{
-    emit(event, payload, "");
-}
-
 void EventSocket::emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin)
 {
     int originSubscriptionId = originId[0] ? atoi(originId) : -1;
