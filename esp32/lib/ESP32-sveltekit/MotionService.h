@@ -30,11 +30,6 @@ class MotionService
 
     void begin()
     {
-        _socket->registerEvent(INPUT_EVENT);
-        _socket->registerEvent(ANGLES_EVENT);
-        _socket->registerEvent(MODE_EVENT);
-        _socket->registerEvent(POSITION_EVENT);
-
         _socket->onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
 
         _socket->onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });

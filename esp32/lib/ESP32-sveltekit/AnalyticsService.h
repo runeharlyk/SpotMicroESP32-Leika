@@ -30,7 +30,6 @@ class AnalyticsService
 
     void begin()
     {
-        _socket->registerEvent(EVENT_ANALYTICS);
     };
 
     void loop()

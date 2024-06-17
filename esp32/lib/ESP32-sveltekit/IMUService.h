@@ -27,7 +27,6 @@ public:
 
     void begin()
     {
-        _socket->registerEvent(EVENT_IMU);
 #if FT_ENABLED(FT_IMU)
         _imu.initialize();
         imu_success = _imu.testConnection();

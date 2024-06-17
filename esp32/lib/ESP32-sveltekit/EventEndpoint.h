@@ -40,7 +40,6 @@ public:
 
     void begin()
     {
-        _socket->registerEvent(_event);
         _socket->onEvent(_event, std::bind(&EventEndpoint::updateState, this, std::placeholders::_1, std::placeholders::_2));
         _socket->onSubscribe(_event, std::bind(&EventEndpoint::syncState, this, std::placeholders::_1, std::placeholders::_2));
     }

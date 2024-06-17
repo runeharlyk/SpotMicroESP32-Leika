@@ -19,7 +19,6 @@ BatteryService::BatteryService(EventSocket *socket) : _socket(socket)
 
 void BatteryService::begin()
 {
-    _socket->registerEvent(EVENT_BATTERY);
 }
 
 void BatteryService::batteryEvent()
