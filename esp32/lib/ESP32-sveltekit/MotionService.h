@@ -54,7 +54,7 @@ class MotionService
 
         body_state.updateFeet(default_feet_positions);
 
-        _taskManager->createTask(this->_loopImpl, "MotionService", 2048, this);
+        _taskManager->createTask(this->_loopImpl, "MotionService", 4096, this, (tskIDLE_PRIORITY + 2));
     }
 
     void anglesEvent(JsonObject &root, int originId)
