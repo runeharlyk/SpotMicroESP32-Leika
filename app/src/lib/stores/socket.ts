@@ -34,26 +34,26 @@ function createWebSocket() {
 			listeners.get('open')?.forEach((listener) => listener(ev));
 			for (const event of listeners.keys()) {
 				if (socketEvents.includes(event as SocketEvent)) continue;
-				sendEvent('subscribe', event);
+				subscribeToEvent(event);
 			}
 		};
 		ws.onmessage = (message) => {
 			resetUnresponsiveCheck();
 			let data = message.data;
-
 			if (data instanceof ArrayBuffer) {
 				listeners.get('binary')?.forEach((listener) => listener(data));
 				return;
 			}
-			listeners.get('message')?.forEach((listener) => listener(data));
+			data = data.substring(1);
+
+			if (!data) return;
+
+			let event = data.substring(data.indexOf('/') + 1, data.indexOf('['));
+			let payload = data.substring(data.indexOf('[') + 1, data.lastIndexOf(']'));
+
 			try {
-				data = JSON.parse(message.data);
-			} catch (error) {
-				listeners.get('error')?.forEach((listener) => listener(error));
-				return;
-			}
-			listeners.get('json')?.forEach((listener) => listener(data));
-			const [event, payload] = data;
+				payload = JSON.parse(payload);
+			} catch (error) {}
 			if (event) listeners.get(event)?.forEach((listener) => listener(payload));
 		};
 		ws.onerror = (ev) => disconnect('error', ev);
@@ -65,7 +65,7 @@ function createWebSocket() {
 		if (!eventListeners) return;
 
 		if (!eventListeners.size) {
-			sendEvent('unsubscribe', event);
+			unsubscribeToEvent(event);
 		}
 		if (listener) {
 			eventListeners?.delete(listener);
@@ -79,25 +79,30 @@ function createWebSocket() {
 		unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime);
 	}
 
-	function send(msg: unknown) {
+	function sendEvent(event: string, data: unknown) {
 		if (!ws || ws.readyState !== WebSocket.OPEN) return;
-		ws.send(JSON.stringify(msg));
+		ws.send(`2/${event}[${JSON.stringify(data)}]`);
 	}
 
-	function sendEvent(event: string, data: unknown) {
-		send({ event, data });
+	function unsubscribeToEvent(event: string) {
+		if (!ws || ws.readyState !== WebSocket.OPEN) return;
+		ws.send('1/' + event);
+	}
+
+	function subscribeToEvent(event: string) {
+		if (!ws || ws.readyState !== WebSocket.OPEN) return;
+		ws.send('0/' + event);
 	}
 
 	return {
 		subscribe,
-		send,
 		sendEvent,
 		init,
 		on: <T>(event: string, listener: (data: T) => void): (() => void) => {
 			let eventListeners = listeners.get(event);
 			if (!eventListeners) {
 				if (!socketEvents.includes(event as SocketEvent)) {
-					sendEvent('subscribe', event);
+					subscribeToEvent(event);
 				}
 				eventListeners = new Set();
 				listeners.set(event, eventListeners);
