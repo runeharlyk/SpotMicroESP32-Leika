@@ -106,8 +106,8 @@ The libraries includes:
 * Adafruit ADS1X15
 * Adafruit HMC5883 Unified
 * Adafruit Unified Sensor
-* UrlEncode
-* MPU6050 light
+* I2Cdevlib-MPU6050
+* NewPing
 * SPI
 
 #### Structure
@@ -118,10 +118,11 @@ The software utilizes a couple of FreeRTos task
 | Idle0 task | Burns cpu time to track cpu usage for core 0 | 0 | 0
 | Idle1 task | Burns cpu time to track cpu usage for core 1 | 0 | 1
 | Spot service task | Handle synchronous services | 2 | 0
+| Camera streaming tasks | Handle streaming to a single client | 1 | -1
 
 #### Feature flags
 
-To dis-/enable the major feature I use defines. Define them in either featureflags.h or in platformio.ini's build_flags.
+To dis-/enable the major feature defines are used. Define them in either features.ini or in platformio.ini's build_flags.
 | Feature | Description | Default
 | --- | --- | ---
 | FT_BATTERY | Whether or not to use battery | 0
@@ -132,6 +133,11 @@ To dis-/enable the major feature I use defines. Define them in either featurefla
 | FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 0
 | FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 0
 | FT_ANALYTICS | Whether or not to use analytics service | 1
+| FT_MOTION | Whether or not to use motion service | 1
+| FT_IMU | Whether or not to use imu (MPU6050) | 1
+| FT_MAG | Whether or not to use magnetometer (HMC5883) | 1
+| FT_BMP | Whether or not to use barometer (BMP085) | 1
+| FT_SERVO | Whether or not to use servo (PCA9685) | 1
 
 ### 📲 Controller
 
