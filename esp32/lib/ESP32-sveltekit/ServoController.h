@@ -248,4 +248,5 @@ class ServoController : public Adafruit_PWMServoDriver,
     bool is_active{true};
     unsigned long _lastUpdate;
     constexpr static int ServoInterval = 2;
+    int8_t dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
 };
