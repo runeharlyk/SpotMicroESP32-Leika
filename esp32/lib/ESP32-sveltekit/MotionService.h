@@ -23,8 +23,20 @@ enum class MOTION_STATE
 class MotionService
 {
   public:
-    MotionService(PsychicHttpServer *server, EventSocket *socket, SecurityManager *securityManager, TaskManager *taskManager)
-        : _server(server), _socket(socket), _securityManager(securityManager), _taskManager(taskManager)
+    MotionService(
+        PsychicHttpServer *server,
+        EventSocket *socket, 
+        SecurityManager *securityManager,
+        #if FT_ENABLED(FT_SERVO)
+        ServoController *servoController,
+        #endif
+     TaskManager *taskManager
+     )
+        : _server(server), _socket(socket), _securityManager(securityManager),
+        #if FT_ENABLED(FT_SERVO)
+        _servoController(servoController),
+        #endif
+         _taskManager(taskManager)
     {
     }
 
@@ -41,6 +53,8 @@ class MotionService
         _socket->onSubscribe(ANGLES_EVENT, std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(default_feet_positions);
+
+        _taskManager->createTask(this->_loopImpl, "MotionService", 2048, this);
     }
 
     void anglesEvent(JsonObject &root, int originId)
@@ -93,6 +107,9 @@ class MotionService
         motionState = (MOTION_STATE)root["data"].as<int>();
         char output[2];
         sprintf(output, "%d", (int)motionState);
+        #if FT_ENABLED(FT_SERVO)
+        motionState == MOTION_STATE::IDLE ? _servoController->deactivate() : _servoController->activate();
+        #endif
         _socket->emit(MODE_EVENT, output, String(originId).c_str());
     }
 
@@ -100,6 +117,9 @@ class MotionService
         char output[100];
         sprintf(output, "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0], angles[1], angles[2], angles[3], angles[4],
                 angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
+        #if FT_ENABLED(FT_SERVO)
+        _servoController->setAngles(angles);
+        #endif
         _socket->emit(ANGLES_EVENT, output, String(originId).c_str());
     }
 
@@ -141,23 +161,29 @@ class MotionService
         return updated;
     }
 
-    void loop() {
-        if (int currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= MotionInterval) {
-            _lastUpdate = currentMillis;
+    void _loop() {
+        TickType_t xLastWakeTime = xTaskGetTickCount();
+        for(;;) {
             if (updateMotion()) syncAngles();
+            vTaskDelayUntil(&xLastWakeTime, MotionInterval / portTICK_PERIOD_MS);
         }
     }
+
+    static void _loopImpl(void *_this) { static_cast<MotionService *>(_this)->_loop(); } 
 
   private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
     SecurityManager *_securityManager;
     TaskManager *_taskManager;
+    #if FT_ENABLED(FT_SERVO)
+        ServoController *_servoController;
+    #endif
     Kinematics kinematics;
 
     MOTION_STATE motionState = MOTION_STATE::IDLE;
     unsigned long _lastUpdate;
-    constexpr static int MotionInterval = 100;
+    constexpr static int MotionInterval = 25;
 
     body_state_t body_state = {0,};
 

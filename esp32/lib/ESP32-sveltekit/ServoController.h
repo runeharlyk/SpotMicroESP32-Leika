@@ -195,6 +195,12 @@ class ServoController : public Adafruit_PWMServoDriver,
         }
     }
 
+    void setAngles(float angles[12]) {
+        for (int i = 0; i < 12; i++) {
+            _state.servos_config[i].angle = angles[i] * dir[i];
+        }
+    }
+
     void setAngle(servo_t* servo) {
         int8_t channel = servo->channel;
         bool invert = servo->inverted;

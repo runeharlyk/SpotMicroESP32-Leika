@@ -3,16 +3,18 @@
 	import type { ServoConfiguration, Servo } from '$lib/models';
 	import MotorOutline from '~icons/mdi/motor-outline';
 	import ServoController from './servo.svelte';
-	import { api } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
+
 	import { socket } from '$lib/stores';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { throttler as Throttler } from '$lib/utilities';
 
 	let servo_config: ServoConfiguration;
 	let servos: Servo[];
 	let last_servo_config: ServoConfiguration;
 
 	let isLoading = true;
+    const throttler = new Throttler()
 
 	$: updateServoConfig(servo_config, servos);
 
@@ -41,12 +43,14 @@
 				JSON.stringify(servo_config[key as keyof ServoConfiguration]) !==
 				JSON.stringify(last_servo_config[key as keyof ServoConfiguration])
 			) {
-				changes[key as keyof ServoConfiguration] = servo_config[key as keyof ServoConfiguration];
+                changes[key as keyof ServoConfiguration] = servo_config[key as keyof ServoConfiguration];
 			}
 		}
 
 		if (Object.keys(changes).length > 0) {
-			socket.sendEvent('servoConfiguration', changes);
+            throttler.throttle(() => {
+                socket.sendEvent('servoConfiguration', changes);
+            }, 100)
 			last_servo_config = structuredClone(servo_config);
 		}
 	};
@@ -54,6 +58,10 @@
     const sweep = (event:any) => {
         let channel = event.detail.channel;
         socket.sendEvent('servoConfiguration', {servos:[{channel, sweep: true}]});
+    };
+
+    const centerServos = () => {
+        socket.sendEvent('servoConfiguration', {servos:[...servos.map(servo => ({channel: servo.channel, angle: servo.center_angle}))]});
     };
 
 	onMount(() => {
@@ -64,6 +72,10 @@
 			last_servo_config = structuredClone(data);
 		});
 	});
+
+    onDestroy(() => {
+        socket.off('servoConfiguration');
+    });
 </script>
 
 <SettingsCard collapsible={false}>
@@ -92,6 +104,7 @@
 			<span class="flex justify-between items-center gap-1">
 				Is active <input type="checkbox" bind:checked={servo_config.is_active} class="toggle" />
 			</span>
+            <button class="btn btn-neutral btn-sm mt-1" on:click={centerServos}>Center servos</button>
 		</div>
 		<div class="divider"></div>
 		{#each servos as servo}
