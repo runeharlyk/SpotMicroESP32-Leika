@@ -18,6 +18,8 @@
 #include <JsonUtils.h>
 
 #define EVENT_BATTERY "battery"
+#define BATTERY_INTERVAL 10000
+#define BATTERY_CHECK_INTERVAL 1000
 
 class BatteryService
 {
