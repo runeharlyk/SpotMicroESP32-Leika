@@ -242,25 +242,29 @@
     })
 
     const updateData = () => {
-        angleChart.data.labels = $imu.x;
-		angleChart.data.datasets[0].data = $imu.x;
-		angleChart.data.datasets[1].data = $imu.y;
-		angleChart.data.datasets[2].data = $imu.z;
-        angleChart.options.scales!.y!.min = Math.min(Math.min(...$imu.x), Math.min(...$imu.y), Math.min(...$imu.z)) - 1;
-        angleChart.options.scales!.y!.max = Math.max(Math.max(...$imu.x), Math.max(...$imu.y), Math.max(...$imu.z)) + 1;
-		angleChart.update('none');
+        if ($page.data.features.imu) {
+            angleChart.data.labels = $imu.x;
+            angleChart.data.datasets[0].data = $imu.x;
+            angleChart.data.datasets[1].data = $imu.y;
+            angleChart.data.datasets[2].data = $imu.z;
+            angleChart.options.scales!.y!.min = Math.min(Math.min(...$imu.x), Math.min(...$imu.y), Math.min(...$imu.z)) - 1;
+            angleChart.options.scales!.y!.max = Math.max(Math.max(...$imu.x), Math.max(...$imu.y), Math.max(...$imu.z)) + 1;
+            angleChart.update('none');
+        }
 
-        tempChart.data.labels = $imu.bmp_temp;
-		tempChart.data.datasets[0].data = $imu.bmp_temp;
-        tempChart.options.scales!.y!.min = Math.min(...$imu.bmp_temp) - 1;
-        tempChart.options.scales!.y!.max = Math.max(...$imu.bmp_temp) + 1;
-		tempChart.update('none');
-
-        altitudeChart.data.labels = $imu.altitude;
-		altitudeChart.data.datasets[0].data = $imu.altitude;
-        altitudeChart.options.scales!.y!.min = Math.min(Math.min(...$imu.altitude)) - 1;
-        altitudeChart.options.scales!.y!.max = Math.max(Math.max(...$imu.altitude)) + 1;
-		altitudeChart.update('none');
+        if ($page.data.features.bmp) {
+            tempChart.data.labels = $imu.bmp_temp;
+            tempChart.data.datasets[0].data = $imu.bmp_temp;
+            tempChart.options.scales!.y!.min = Math.min(...$imu.bmp_temp) - 1;
+            tempChart.options.scales!.y!.max = Math.max(...$imu.bmp_temp) + 1;
+            tempChart.update('none');
+    
+            altitudeChart.data.labels = $imu.altitude;
+            altitudeChart.data.datasets[0].data = $imu.altitude;
+            altitudeChart.options.scales!.y!.min = Math.min(Math.min(...$imu.altitude)) - 1;
+            altitudeChart.options.scales!.y!.max = Math.max(Math.max(...$imu.altitude)) + 1;
+            altitudeChart.update('none');
+        }
     }
 
 </script>
