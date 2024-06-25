@@ -6,6 +6,7 @@
  *   https://github.com/theelims/ESP32-sveltekit
  *
  *   Copyright (C) 2023 theelims
+ *   Copyright (C) 2024 runeharlyk
  *
  *   All Rights Reserved. This software may be modified and distributed under
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
@@ -24,9 +25,9 @@ void BatteryService::begin()
 void BatteryService::batteryEvent()
 {
     JsonDocument doc;
-    char message[32];
-    doc["soc"] = _lastSOC;
-    doc["charging"] = _isCharging;
+    char message[64];
+    doc["voltage"] = _voltage;
+    doc["current"] = _current;
     serializeJson(doc, message);
     _socket->emit(EVENT_BATTERY, message);
 }
