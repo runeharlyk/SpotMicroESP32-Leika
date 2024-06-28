@@ -76,11 +76,20 @@
     onDestroy(() => {
         socket.off('servoConfiguration');
     });
+
+    let angle = 90;
+
+    const updateAngle = () => {
+        throttler.throttle(() => {
+            socket.sendEvent('servoConfiguration', {data:new Array(12).fill(angle)});
+        }, 10)
+    }
 </script>
 
 <SettingsCard collapsible={false}>
 	<MotorOutline slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
 	<span slot="title">Servo</span>
+    <input type="range" min="-90" max="90" bind:value={angle} on:input={updateAngle} class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
 
 	{#if isLoading}
 		<Spinner />

@@ -223,7 +223,6 @@ void ESP32SvelteKit::startServices() {
 #endif
 #if FT_ENABLED(FT_SERVO)
     _servoController.begin();
-    _servoController.configure();
 #endif
 #if FT_ENABLED(FT_WS2812)
     _ledService.begin();
