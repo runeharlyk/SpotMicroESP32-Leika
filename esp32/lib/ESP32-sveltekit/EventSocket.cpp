@@ -29,13 +29,10 @@ const char* getEventName(const char* msg) {
 }
 
 const char* getEventPayload(const char* msg) {
-    const char* start = strchr(msg + 4, '\"') - 1;
+    const char* start = strchr(msg + 2, '[');
     const char* end = msg + strlen(msg) - 1;
-    if (*start == '\"') {
+    if (*start == '[') {
         start++;
-    }
-    if (*(end - 1) == '\"') {
-        end--;
     }
     int len = end - start;
     if (len < 0) return nullptr;
@@ -83,52 +80,55 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     ESP_LOGV("EventSocket", "ws[%s][%u] opcode[%d]", request->client()->remoteIP().toString().c_str(),
              request->client()->socket(), frame->type);
 
-    if (frame->type == HTTPD_WS_TYPE_TEXT)
+    if (frame->type != HTTPD_WS_TYPE_TEXT)
     {
-        ESP_LOGV("EventSocket", "Received message: %s", (char *)frame->payload);
-        char* msg = (char *)frame->payload;
+        ESP_LOGE("EventSocket", "Unsupported frame type");
+        return ESP_OK;
+    }
 
-        message_type_t message_type = char_to_message_type(msg[0]);
+    ESP_LOGV("EventSocket", "Received message: %s", (char *)frame->payload);
+    char* msg = (char *)frame->payload;
 
-        if (message_type == PING) {
-            ESP_LOGV("EventSocket", "Ping");
-            request->client()->sendMessage("3");
-            return ESP_OK;
-        } else if (message_type == PONG) {
-            ESP_LOGV("EventSocket", "Pong");
-            return ESP_OK;
-        }
+    message_type_t message_type = char_to_message_type(msg[0]);
 
-        const char* event = getEventName(msg);
+    if (message_type == PING) {
+        ESP_LOGV("EventSocket", "Ping");
+        request->client()->sendMessage("3");
+        return ESP_OK;
+    } else if (message_type == PONG) {
+        ESP_LOGV("EventSocket", "Pong");
+        return ESP_OK;
+    }
 
-        if (!event) {
-            ESP_LOGE("EventSocket", "Invalid event name");
-            return ESP_OK;
-        }
-        
-        if (message_type == CONNECT) {
-            ESP_LOGV("EventSocket", "Connect: %s", event);
-            client_subscriptions[event].push_back(request->client()->socket());
-            handleSubscribeCallbacks(event, String(request->client()->socket()));
-        } else if (message_type == DISCONNECT) {
-            ESP_LOGV("EventSocket", "Disconnect: %s", event);
-            client_subscriptions[event].remove(request->client()->socket());
-        } else if (message_type == EVENT) {
-            const char* payload = getEventPayload(msg);
-            if (!payload) {
-                ESP_LOGE("EventSocket", "Invalid event payload");
-                return ESP_OK;
-            }
-            JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, payload);
-            if (error) {
-                ESP_LOGE("EventSocket", "Failed to parse JSON payload");
-                return ESP_OK;
-            }
-            JsonObject jsonObject = doc.as<JsonObject>();
-            handleEventCallbacks(event, jsonObject, request->client()->socket());
+    const char* event = getEventName(msg);
+
+    if (!event) {
+        ESP_LOGE("EventSocket", "Invalid event name");
+        return ESP_OK;
+    }
+    
+    if (message_type == CONNECT) {
+        ESP_LOGV("EventSocket", "Connect: %s", event);
+        client_subscriptions[event].push_back(request->client()->socket());
+        handleSubscribeCallbacks(event, String(request->client()->socket()));
+    } else if (message_type == DISCONNECT) {
+        ESP_LOGV("EventSocket", "Disconnect: %s", event);
+        client_subscriptions[event].remove(request->client()->socket());
+    } else if (message_type == EVENT) {
+        const char* payload = getEventPayload(msg);
+        if (!payload) {
+            ESP_LOGE("EventSocket", "Invalid event payload");
             return ESP_OK;
         }
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        if (error) {
+            ESP_LOGE("EventSocket", "Failed to parse JSON payload");
+            return ESP_OK;
+        }
+        JsonObject jsonObject = doc.as<JsonObject>();
+        handleEventCallbacks(event, jsonObject, request->client()->socket());
+        return ESP_OK;
     }
     return ESP_OK;
 }
