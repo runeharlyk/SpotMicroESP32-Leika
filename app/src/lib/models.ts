@@ -86,12 +86,6 @@ export type LightState = {
 	led_on: boolean;
 };
 
-export type BrokerSettings = {
-	mqtt_path: string;
-	name: string;
-	unique_id: string;
-};
-
 export type NTPStatus = {
 	status: number;
 	utc_time: string;
@@ -137,24 +131,6 @@ export type StaticSystemInformation = {
 };
 
 export type SystemInformation = Analytics & StaticSystemInformation;
-
-
-export type MQTTStatus = {
-	enabled: boolean;
-	connected: boolean;
-	client_id: string;
-	last_error: string;
-};
-
-export type MQTTSettings = {
-	enabled: boolean;
-	uri: string;
-	username: string;
-	password: string;
-	client_id: string;
-	keep_alive: number;
-	clean_session: boolean;
-};
 
 export type CameraSettings = {
 	framesize: number;

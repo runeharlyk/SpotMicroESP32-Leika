@@ -82,7 +82,7 @@
 		{
 			title: 'Connections',
 			icon: Remote,
-			feature: $page.data.features.mqtt || $page.data.features.ntp,
+			feature: $page.data.features.ntp,
 			submenu: [
 				{
 					title: 'NTP',

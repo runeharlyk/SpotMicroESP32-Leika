@@ -128,7 +128,6 @@ To dis-/enable the major feature defines are used. Define them in either feature
 | FT_BATTERY | Whether or not to use battery | 0
 | FT_NTP | Whether or not to use time server | 1
 | FT_SECURITY | Whether or not to use login system | 0
-| FT_MQTT | Whether or not to use MQTT | 0
 | FT_SLEEP | Whether or not include sleep management | 0
 | FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 0
 | FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 0

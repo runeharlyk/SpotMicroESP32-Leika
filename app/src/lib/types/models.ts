@@ -56,16 +56,6 @@ export type ApSettings = {
 	subnet_mask: string;
 };
 
-export type LightState = {
-	led_on: boolean;
-};
-
-export type BrokerSettings = {
-	mqtt_path: string;
-	name: string;
-	unique_id: string;
-};
-
 export type NTPStatus = {
 	status: number;
 	utc_time: string;
