@@ -14,7 +14,9 @@
 
 enum class MOTION_STATE
 {
+    DEACTIVATED,
     IDLE,
+    CALIBRATION,
     REST,
     STAND,
     WALK
@@ -108,7 +110,7 @@ class MotionService
         char output[2];
         itoa((int)motionState, output, 10);
         #if FT_ENABLED(FT_SERVO)
-        motionState == MOTION_STATE::IDLE ? _servoController->deactivate() : _servoController->activate();
+        motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
         #endif
         _socket->emit(MODE_EVENT, output, String(originId).c_str());
     }
@@ -130,8 +132,15 @@ class MotionService
     bool updateMotion() {
         float new_angles[12] = {0,};
         switch (motionState) {
+            case MOTION_STATE::DEACTIVATED:
+                return false;
+                break;
             case MOTION_STATE::IDLE:
                 return false;
+                break;
+
+            case MOTION_STATE::CALIBRATION:
+                update_angles(calibration_angles, new_angles, false);
                 break;
 
             case MOTION_STATE::REST:
@@ -153,7 +162,7 @@ class MotionService
         bool updated = false;
         for (int i = 0; i < 12; i++) {
             float new_angle = useLerp ? lerp(angles[i], new_angles[i] * dir[i], 0.3) : new_angles[i] * dir[i];
-            if (new_angle != angles[i]) {
+            if (!isEqual(new_angle, angles[i], 0.1)) {
                 angles[i] = new_angle;
                 updated = true;
             }
@@ -169,6 +178,11 @@ class MotionService
         }
     }
 
+    bool isEqual(float a, float b, float epsilon) 
+    { 
+        return std::fabs(a - b) < epsilon; 
+    } 
+
     static void _loopImpl(void *_this) { static_cast<MotionService *>(_this)->_loop(); } 
 
   private:
@@ -181,7 +195,7 @@ class MotionService
     #endif
     Kinematics kinematics;
 
-    MOTION_STATE motionState = MOTION_STATE::IDLE;
+    MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
     constexpr static int MotionInterval = 25;
 
@@ -197,6 +211,7 @@ class MotionService
 
     float angles[12] = {0,};
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    float calibration_angles[12] = {0,};
 };
 
 #endif

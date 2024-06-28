@@ -6,6 +6,7 @@
 #include <StatefulService.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "servoConfiguration"
+#define EVENT_STATE "servoState"
 
 #ifndef FACTORY_SERVO_NUM
 #define FACTORY_SERVO_NUM 12
@@ -33,12 +34,13 @@ class ServoController {
         pca.begin();
         pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
         pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
-        // deactivate();
+        deactivate();
         ESP_LOGI("ServoController",
                  "Configured with oscillator frequency %d and PWM frequency %d",
                  FACTORY_SERVO_OSCILLATOR_FREQUENCY, FACTORY_SERVO_PWM_FREQUENCY);
 
         _socket->onEvent(EVENT_CONFIGURATION_SETTINGS, [&](JsonObject &root, int originId) { servoEvent(root, originId); });
+        _socket->onEvent(EVENT_STATE, [&](JsonObject &root, int originId) { stateEvent(root, originId); });
     }
 
     void servoEvent(JsonObject &root, int originId) {
@@ -48,6 +50,10 @@ class ServoController {
             this->angles[i] = array[i];
         }
         syncAngles(String(originId));
+    }
+
+    void stateEvent(JsonObject &root, int originId) {
+        (root["active"] | false) ? activate() : deactivate();
     }
 
     void syncAngles(const String &originId) {
@@ -73,12 +79,13 @@ class ServoController {
 
     void setAngles(float angles[12]) {
         for (int i = 0; i < 12; i++) {
-            this->angles[i] = angles[i];
+            this->target_angles[i] = angles[i] * dir[i];
         }
     }
 
     void updateServoState() {
         for (int i = 0; i < 12; i++) {
+            this->angles[i] = lerp(this->angles[i], target_angles[i], 0.2);
             int16_t angle = dir[i] * angles[i] + 90;
             uint16_t pwm = angle * servo_conversion[i] + min_pwm[i];
             pca.setPWM(i, 0, pwm);
@@ -92,6 +99,10 @@ class ServoController {
         }
     }
 
+    float lerp(float start, float end, float t) {
+        return (1 - t) * start + t * end;
+    }
+
    private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
@@ -103,6 +114,7 @@ class ServoController {
     constexpr static int ServoInterval = 2;
     int8_t dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float min_pwm[12] = {125,125,125,125,125,125,125,125,125,125,125,125};
     const float servo_conversion[12] {2.2,2.1055555,1.96923,2.2,2.1055555,1.96923,2.2,2.1055555,1.96923,2.2,2.1055555,1.96923};
 };
