@@ -1,7 +1,7 @@
 <h1 align="center">
   <br />
   <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika">
-    <img src="https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg" alt="Markdownify" width="200">
+    <img src="https://raw.githubusercontent.com/runeharlyk/SpotMicro-Leika/main/assets/logo.jpg" alt="Leika" width="350">
   </a>
   <br>  
   Spot Micro - Leika
@@ -14,7 +14,6 @@
   <a href="#overview">Overview</a> •
   <a href="#getting-started">Documentation</a> •
   <a href="#credits">Credits</a> •
-  <!-- <a href="#external-links-and-references">Related</a> • -->
   <a href="#license">License</a>
 </p>
 
@@ -37,20 +36,20 @@
   * Camera live stream, sensors, analytics, etc
 * Full kinematic model
 * Dual joystick controller
-* Highly customizable
 * Robot mirroring visualization
+* Highly customizable
 * Self hosted, self included
 <!-- * Servo calibration tool -->
 
 ## Overview
 
-This repository contains the complete source code for a Spot Micro quadruped robot.
+This repository contains the source code for a Spot Micro quadruped robot.
 Execution of the software takes place on a ESP32 cam, which runs various number of FreeRTos task for seamless robotic operations.
 By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
 
 ### Documentation
 
-You can find the current steps to get a fresh new doggo up and barking on [/docs](https://github.com/runeharlyk/SpotMicroESP32-Leika/edit/master/docs/readme.md)
+You can find the current steps to get a fresh new doggo up and barking on [/docs](https://github.com/runeharlyk/SpotMicroESP32-Leika/master/docs/readme.md)
 
 1. [Components](1_components.md)
 1. [Assembly](2_assembly.md)
@@ -65,7 +64,7 @@ You can find a description for the current esp32 firmware and controller [here](
 
 ## Kinematics
 
-The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot). A C++ and TypeScript library was written to enable onboard calculation and fast development iteration using robot mirroring. 
+The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot). A C++ and TypeScript library was written to enable onboard calculation and fast development iteration using the robot mirroring. 
 
 ## Getting started
 
@@ -89,20 +88,9 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 
 1. Upload firmware using platformIO
 
-## Usage
-
-### Developing
-
-1. Run the app
-
-    ```sh
-    cd app
-    pnpm run dev
-    ```
-
 ## Future
 
-See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed features (and known issues).
+See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for full list of proposed and active features (and known issues).
 
 ## Credits
 
