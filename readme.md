@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#key-features">Key Features</a> •
   <a href="#overview">Overview</a> •
-  <a href="#getting-started">Getting started</a> •
+  <a href="#getting-started">Documentation</a> •
   <a href="#credits">Credits</a> •
   <!-- <a href="#external-links-and-references">Related</a> • -->
   <a href="#license">License</a>
@@ -33,23 +33,20 @@
 ## Key Features
 
 * Live preview - Make changes, See changes
-* Real time data sync
-  * Camera live stream
+* Real time data
+  * Camera live stream, sensors, analytics, etc
+* Full kinematic model
 * Dual joystick controller
-* Dark/Light mode
-* Full screen mode
-  * Immersive, distraction free.
+* Highly customizable
+* Robot mirroring visualization
 * Self hosted, self included
 <!-- * Servo calibration tool -->
-<!-- * Full kinematic model -->
 
 ## Overview
 
 This repository contains the complete source code for a Spot Micro quadruped robot.
 Execution of the software takes place on a ESP32 cam, which runs various number of FreeRTos task for seamless robotic operations.
 By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
-
-<!-- The repo is based the following template: [ESP32-rapid-development-template](https://github.com/runeharlyk/ESP32-rapid-development-template) -->
 
 ### Documentation
 
@@ -68,7 +65,7 @@ You can find a description for the current esp32 firmware and controller [here](
 
 ## Kinematics
 
-The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
+The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot). A C++ and TypeScript library was written to enable onboard calculation and fast development iteration using robot mirroring. 
 
 ## Getting started
 
@@ -105,7 +102,7 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 
 ## Future
 
-See the [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed features (and known issues).
+See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed features (and known issues).
 
 ## Credits
 
