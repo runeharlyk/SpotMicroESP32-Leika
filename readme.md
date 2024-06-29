@@ -51,123 +51,20 @@ By focusing on practicality and simplicity in both hardware and software, it off
 
 <!-- The repo is based the following template: [ESP32-rapid-development-template](https://github.com/runeharlyk/ESP32-rapid-development-template) -->
 
-### Electronics
+### Documentation
 
-* ESP32 cam - Brain
-* OV2640 160° - Camera
-* PCA9685 - Servo board
-* 12x 20kg(or higher) servo motors
-* MPU6050 - Inertial measurement unit
-* GY-271 - Magnetometer
-* SZBK07 - 20A DC-DC Buck Converter
-* LM2596 or XL4015 - DC-DC Stepdown Module
-* 2x HC-SR04 - Ultrasonic Distance Sensor
-* 0.96" SD1306 - OLED diplay
-* ACS712 - Current sensor
-* ADS1115 - 16 bit analog to digital converter
-* Power button w/ led
-* 4x 18650 Li-ion battery in 2P2S configuration
-* Couple of resistors (10K, 47.7k, 33K)
-* 4x Servo extension cables
+You can find the current steps to get a fresh new doggo up and barking on [/docs](https://github.com/runeharlyk/SpotMicroESP32-Leika/edit/master/docs/readme.md)
 
-#### Connection Diagram
+1. [Components](1_components.md)
+1. [Assembly](2_assembly.md)
+1. [Software](3_software.md)
+1. [Turning on for the first time](4_configuring.md)
+1. [Running](5_running.md)
+1. [Developing](6_developing.md)
+1. [Contributing](7_contributing.md)
 
-![alt text](images/connection_diagram.png)
-
-### Body
-
-The robots is 3D printed and is a combination of different Spot Micro designs, with some minor modification on top.
-The original design is developed by KDY0523.
-
-* [robjk reinforced shoulder remix](https://www.thingiverse.com/thing:4937631)
-* [Kooba SpotMicroESP32 remix](https://www.thingiverse.com/thing:4559827)
-* [KDY0532 original design](https://www.thingiverse.com/thing:3445283)
-
-The 3D prints is assembled with some additional component:
-
-* 84x M2x8 screws + M2 nuts
-* 92x M3x8 screws + M3 nuts
-* 64x M3x20 screws + M3 nuts
-* 12x 625ZZ ball bearings
-
-### Software
-
-The software make use of a range of different libraries to enhance the functionality.
-Up to date list can be seen in platformio.ini file.
-The libraries includes:
-
-* Esp32SvelteKit
-* PsychicHttp
-* ArduinoJson
-* Adafruit SSD1306
-* Adafruit GFX Library
-* Adafruit BusIO
-* Adafruit PWM Servo Driver Library
-* Adafruit ADS1X15
-* Adafruit HMC5883 Unified
-* Adafruit Unified Sensor
-* I2Cdevlib-MPU6050
-* NewPing
-* SPI
-
-#### Structure
-
-The software utilizes a couple of FreeRTos task
-| Task | Description | Priority | Core
-| --- | --- | --- | ---
-| Idle0 task | Burns cpu time to track cpu usage for core 0 | 0 | 0
-| Idle1 task | Burns cpu time to track cpu usage for core 1 | 0 | 1
-| Spot service task | Handle synchronous services | 2 | 0
-| Camera streaming tasks | Handle streaming to a single client | 1 | -1
-
-#### Feature flags
-
-To dis-/enable the major feature defines are used. Define them in either features.ini or in platformio.ini's build_flags.
-| Feature | Description | Default
-| --- | --- | ---
-| FT_BATTERY | Whether or not to use battery | 0
-| FT_NTP | Whether or not to use time server | 1
-| FT_SECURITY | Whether or not to use login system | 0
-| FT_SLEEP | Whether or not include sleep management | 0
-| FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 0
-| FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 0
-| FT_ANALYTICS | Whether or not to use analytics service | 1
-| FT_MOTION | Whether or not to use motion service | 1
-| FT_IMU | Whether or not to use imu (MPU6050) | 1
-| FT_MAG | Whether or not to use magnetometer (HMC5883) | 1
-| FT_BMP | Whether or not to use barometer (BMP085) | 1
-| FT_SERVO | Whether or not to use servo (PCA9685) | 1
-
-### 📲 Controller
-
-The controller is a SvelteKit app, which main focus is to calibrate and control the robot.
-<!-- Write about the emulation, stream, controls and link to the space issues -->
-It is made to be included and hosted by the robot.
-Therefore there is placed a lot of thought behind the functionality and dependencies.
-
-#### Development dependencies
-
-For the development dependencies I choose the following
-
-| Dependencies | Description
-| --- | ---
-| SvelteKit | SvelteKit is an application framework built on top of Svelte, enhancing it with features like routing, server-side rendering, and static site generation. It streamlines the development process by integrating server-side capabilities with Svelte's client-side benefits. Furthermore it make the development process fast and enjoyable.
-| Vite | Vite is a frontend tool that is used for building fast and optimized web applications. Is serves code local during development and bundles assets for production
-| Typescript | TypeScript's integration of static typing enhances code reliability and maintainability.
-| Tailwind CSS | Tailwind CSS accelerates web development with its utility-first approach, ensuring rapid styling and consistent design.
-
-#### Libraries
-
-For the app functionality I choose the following:
-
-| Dependencies | Description
-| --- | ---
-| [Three](https://www.npmjs.com/package/three) | Easy to use, lightweight, cross-browser, general purpose 3D library.
-| [Urdf-loader](https://www.npmjs.com/package/urdf-loader) | Utilities for loading URDF files into THREE.js and a Web Component that loads and renders the model.
-| [Xacro-parser](https://www.npmjs.com/package/xacro-parser) | Javascript parser and loader for processing the ROS Xacro file format.
-| [NippleJS](https://www.npmjs.com/package/nipplejs) | A vanilla virtual joystick for touch capable interfaces.
-| [Uzip](https://www.npmjs.com/package/uzip) | Simple, tiny and fast ZIP library.
-| [ChartJS](https://www.npmjs.com/package/chart.js) | Simple and flexible charting library.
+#### Software
+You can find a description for the current esp32 firmware and controller [here](https://github.com/runeharlyk/SpotMicroESP32-Leika/new/master/docs/software_description.md).
 
 ## Kinematics
 
@@ -217,11 +114,14 @@ This project takes great inspiration from the following resources:
 1. [Spot Micro Quadruped Project - mike4192](https://github.com/mike4192/spotMicro)
 1. [Kinematics](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
 1. [ESP32SvelteKit template](https://github.com/theelims/ESP32-sveltekit)
+1. [SpotMicro ESP32 - Maarten Weyn](https://github.com/maartenweyn/SpotMicro_ESP32)
 1. [SpotMicroAi](https://gitlab.com/public-open-source/spotmicroai)
 1. [Spot Micro - Leika](https://github.com/runeharlyk/SpotMicro-Leika/tree/main)
 1. [NightDriverStrip](https://github.com/PlummersSoftwareLLC/NightDriverStrip)
 
 ## Support
+
+If you like the project and want to follow it evolving concidering ✨-ing the project
 
 <a href="https://bmc.link/runeharlyk" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/purple_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
