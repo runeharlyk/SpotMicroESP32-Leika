@@ -60,7 +60,7 @@ You can find the current steps to get a fresh new doggo up and barking on [/docs
 1. [Contributing](docs/7_contributing.md)
 
 #### Software
-You can find a description for the current esp32 firmware and controller [here](https://github.com/runeharlyk/SpotMicroESP32-Leika/new/master/docs/software_description.md).
+You can find a description for the current esp32 firmware and controller [here](docs/software_description.md).
 
 ## Kinematics
 
@@ -117,7 +117,7 @@ If you like the project and want to follow it evolving concidering ✨-ing the p
 
 ## License
 
-[MIT](https://github.com/runeharlyk/SpotMicroESP32-Leika/blob/master/LICENSE.md)
+[MIT](LICENSE.md)
 
 ---
 
