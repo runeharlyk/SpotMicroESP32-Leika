@@ -49,15 +49,15 @@ By focusing on practicality and simplicity in both hardware and software, it off
 
 ### Documentation
 
-You can find the current steps to get a fresh new doggo up and barking on [/docs](https://github.com/runeharlyk/SpotMicroESP32-Leika/master/docs/readme.md)
+You can find the current steps to get a fresh new doggo up and barking on [/docs](docs/readme.md)
 
-1. [Components](1_components.md)
-1. [Assembly](2_assembly.md)
-1. [Software](3_software.md)
-1. [Turning on for the first time](4_configuring.md)
-1. [Running](5_running.md)
-1. [Developing](6_developing.md)
-1. [Contributing](7_contributing.md)
+1. [Components](docs/1_components.md)
+1. [Assembly](docs/2_assembly.md)
+1. [Software](docs/3_software.md)
+1. [Turning on for the first time](docs/4_configuring.md)
+1. [Running](docs/5_running.md)
+1. [Developing](docs/6_developing.md)
+1. [Contributing](docs/7_contributing.md)
 
 #### Software
 You can find a description for the current esp32 firmware and controller [here](https://github.com/runeharlyk/SpotMicroESP32-Leika/new/master/docs/software_description.md).
