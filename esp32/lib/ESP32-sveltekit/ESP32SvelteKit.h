@@ -29,6 +29,7 @@
 #include <ServoController.h>
 #include <ESPFS.h>
 #include <ESPmDNS.h>
+#include <LEDService.h>
 #include <EventSocket.h>
 #include <FactoryResetService.h>
 #include <FeaturesService.h>
@@ -248,6 +249,9 @@ private:
 #endif
 #if FT_ENABLED(FT_SERVO)
     ServoController _servoController;
+#endif
+#if FT_ENABLED(FT_WS2812)
+    LEDService _ledService;
 #endif
 
     String _appName = APP_NAME;

@@ -66,6 +66,9 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
       _imuService(&_socket),
 #endif
+#if FT_ENABLED(FT_WS2812)
+        _ledService(&_taskManager),
+#endif
 #if FT_ENABLED(FT_SERVO)
       _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
@@ -215,6 +218,9 @@ void ESP32SvelteKit::startServices() {
     _servoController.begin();
     _servoController.configure();
 #endif
+#if FT_ENABLED(FT_WS2812)
+    _ledService.begin();
+#endif
 }
 
 void IRAM_ATTR ESP32SvelteKit::_loop() {
@@ -233,6 +239,9 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_SERVO)
     _servoController.loop();
 #endif
-        vTaskDelay(20 / portTICK_PERIOD_MS);
+#if FT_ENABLED(FT_WS2812)
+        _ledService.loop();
+#endif
+        delay(20);
     }
 }
