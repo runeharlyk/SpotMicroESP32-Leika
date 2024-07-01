@@ -76,9 +76,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
 #if FT_ENABLED(FT_WS2812)
         _ledService(&_taskManager),
 #endif
-#if FT_ENABLED(FT_SERVO)
-      _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
-#endif
       _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket)
 { }
 
