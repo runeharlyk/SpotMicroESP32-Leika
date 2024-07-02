@@ -7,7 +7,6 @@
     {#if !$socket}
         <div class="absolute left-0 flex flex-col w-screen h-screen justify-center items-center backdrop-blur-sm z-10">
             <Spinner/>
-            <h2>Waiting for connection</h2>
         </div>
     {/if}
     <Controls />

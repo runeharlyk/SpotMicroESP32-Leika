@@ -13,7 +13,7 @@
 <div>
     <h2 class="text-lg">{ servo.name }</h2>
     <div class="flex gap-2 items-center">
-        Is inverted <input type="checkbox" checked={servo.inverted} class="checkbox"/>
+        Is inverted <input type="checkbox" bind:checked={servo.inverted} class="toggle"/>
     </div>
     <div>
         Middle position <input type="number" bind:value={servo.center_angle} class="input input-bordered input-sm max-w-xs"/>

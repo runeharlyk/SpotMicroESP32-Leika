@@ -60,17 +60,21 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _factoryResetService(server, &ESPFS, &_securitySettingsService),
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
+#if FT_ENABLED(FT_SERVO)
+      _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
+#endif
 #if FT_ENABLED(FT_MOTION)
-      _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
+      _motionService(_server, &_socket, &_securitySettingsService, 
+      #if FT_ENABLED(FT_SERVO)
+      &_servoController,
+      #endif
+      &_taskManager),
 #endif
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
       _imuService(&_socket),
 #endif
 #if FT_ENABLED(FT_WS2812)
         _ledService(&_taskManager),
-#endif
-#if FT_ENABLED(FT_SERVO)
-      _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
       _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket)
 { }
@@ -216,7 +220,6 @@ void ESP32SvelteKit::startServices() {
 #endif
 #if FT_ENABLED(FT_SERVO)
     _servoController.begin();
-    _servoController.configure();
 #endif
 #if FT_ENABLED(FT_WS2812)
     _ledService.begin();
@@ -233,11 +236,8 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
         _imuService.loop();
 #endif
-#if FT_ENABLED(FT_MOTION)
-        _motionService.loop();
-#endif
 #if FT_ENABLED(FT_SERVO)
-    _servoController.loop();
+        _servoController.loop();
 #endif
 #if FT_ENABLED(FT_WS2812)
         _ledService.loop();
