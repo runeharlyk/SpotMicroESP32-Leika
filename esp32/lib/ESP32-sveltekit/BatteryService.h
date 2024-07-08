@@ -16,15 +16,27 @@
 
 #include <EventSocket.h>
 #include <JsonUtils.h>
+#include <Peripherals.h>
+
+#define ADC_VOLTAGE 0
+#define ADC_CURRENT 1
+#define ADC_BUTTON 2
 
 #define EVENT_BATTERY "battery"
 #define BATTERY_INTERVAL 10000
 #define BATTERY_CHECK_INTERVAL 1000
 
+// #define CURRENT_FACTOR 0.185 // 5A
+// #define CURRENT_FACTOR 0.100 // 20A
+#define CURRENT_FACTOR 0.066 // 30A
+
+#define VOLTAGE_THRESHOLD 6.4
+#define CURRENT_THRESHOLD 5
+
 class BatteryService
 {
 public:
-    BatteryService(EventSocket *socket);
+    BatteryService(Peripherals *peripherals, EventSocket *socket);
 
     void begin();
 
@@ -45,6 +57,9 @@ public:
 
     void updateBattery()
     {
+        _voltage = _peripherals->readADCVoltage(ADC_VOLTAGE);
+        float voltage = _peripherals->readADCVoltage(ADC_CURRENT);
+        _current = (voltage - 2.5) / CURRENT_FACTOR;
     }
 
     float getVoltage() {
@@ -58,6 +73,7 @@ public:
 private:
     void batteryEvent();
     EventSocket *_socket;
+    Peripherals *_peripherals;
 
     unsigned long _lastUpdate;
     unsigned long _lastEmit;

@@ -14,16 +14,12 @@
 
 #include <BatteryService.h>
 
-BatteryService::BatteryService(EventSocket *socket) : _socket(socket)
-{
-}
+BatteryService::BatteryService(Peripherals *peripherals, EventSocket *socket)
+    : _peripherals(peripherals), _socket(socket) {}
 
-void BatteryService::begin()
-{
-}
+void BatteryService::begin() {}
 
-void BatteryService::batteryEvent()
-{
+void BatteryService::batteryEvent() {
     JsonDocument doc;
     char message[64];
     doc["voltage"] = _voltage;

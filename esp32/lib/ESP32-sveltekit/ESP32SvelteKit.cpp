@@ -47,7 +47,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _sleepService(server, &_securitySettingsService),
 #endif
 #if FT_ENABLED(FT_BATTERY)
-      _batteryService(&_socket),
+      _batteryService(&_peripherals, &_socket),
 #endif
 #if FT_ENABLED(FT_ANALYTICS)
       _analyticsService(&_socket, &_taskManager),
@@ -63,16 +63,13 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
 #if FT_ENABLED(FT_MOTION)
       _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
 #endif
-#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-      _imuService(&_socket),
-#endif
 #if FT_ENABLED(FT_WS2812)
         _ledService(&_taskManager),
 #endif
 #if FT_ENABLED(FT_SERVO)
       _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
-      _deviceConfiguration(server, &ESPFS, &_securitySettingsService, &_socket)
+      _peripherals(server, &ESPFS, &_securitySettingsService, &_socket)
 { }
 
 void ESP32SvelteKit::begin() {
@@ -210,10 +207,7 @@ void ESP32SvelteKit::startServices() {
     _cameraService.begin();
     _cameraSettingsService.begin();
 #endif
-    _deviceConfiguration.begin();
-#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-        _imuService.begin();
-#endif
+    _peripherals.begin();
 #if FT_ENABLED(FT_SERVO)
     _servoController.begin();
     _servoController.configure();
@@ -230,18 +224,19 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_ANALYTICS)
         _analyticsService.loop();
 #endif
-#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-        _imuService.loop();
+#if FT_ENABLED(FT_BATTERY)
+        _batteryService.loop();
 #endif
 #if FT_ENABLED(FT_MOTION)
         _motionService.loop();
 #endif
 #if FT_ENABLED(FT_SERVO)
-    _servoController.loop();
+        _servoController.loop();
 #endif
 #if FT_ENABLED(FT_WS2812)
         _ledService.loop();
 #endif
+    _peripherals.loop();
         delay(20);
     }
 }
