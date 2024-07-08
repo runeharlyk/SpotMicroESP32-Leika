@@ -135,3 +135,9 @@ export type IMU = {
 	bmp_temp: number;
 	pressure: number;
 };
+
+export interface I2CDevice {
+    address: number;
+    part_number: string;
+    name: string;
+};
