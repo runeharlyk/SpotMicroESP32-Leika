@@ -25,7 +25,7 @@
 #include <BatteryService.h>
 #include <FileExplorerService.h>
 #include <DownloadFirmwareService.h>
-#include <DeviceConfigurationService.h>
+#include <Peripherals.h>
 #include <ServoController.h>
 #include <ESPFS.h>
 #include <ESPmDNS.h>
@@ -33,7 +33,6 @@
 #include <EventSocket.h>
 #include <FactoryResetService.h>
 #include <FeaturesService.h>
-#include <IMUService.h>
 #include <MotionService.h>
 #include <NTPSettingsService.h>
 #include <CameraService.h>
@@ -164,17 +163,10 @@ public:
     }
 #endif
 
-    DeviceConfigurationService *getDeviceConfigurationService()
+    Peripherals *getPeripherals()
     {
-        return &_deviceConfiguration;
+        return &_peripherals;
     }
-
-#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-    IMUService *getIMUService()
-    {
-        return &_imuService;
-    }
-#endif
 
 #if FT_ENABLED(FT_SERVO)
     ServoController *getServoController()
@@ -243,10 +235,7 @@ private:
     CameraService _cameraService;
     CameraSettingsService _cameraSettingsService;
 #endif
-    DeviceConfigurationService _deviceConfiguration;
-#if FT_ENABLED(FT_IMU) || FT_ENABLED(FT_MAG) || FT_ENABLED(FT_BMP)
-    IMUService _imuService;
-#endif
+    Peripherals _peripherals;
 #if FT_ENABLED(FT_SERVO)
     ServoController _servoController;
 #endif
