@@ -1,6 +1,7 @@
 <script lang="ts">
 	import logo from '$lib/assets/logo512.png';
 	import MdiGithub from '~icons/mdi/github';
+    import MdiConnection from '~icons/mdi/connection';
 	import Users from '~icons/mdi/users';
 	import Settings from '~icons/mdi/settings';
     import MdiController from '~icons/mdi/controller';
@@ -59,6 +60,12 @@
 			icon: Devices,
 			feature: true,
 			submenu: [
+                {
+					title: 'I2C',
+					icon: MdiConnection,
+					href: '/peripherals/i2c',
+					feature: true,
+				},
 				{
 					title: 'Camera',
 					icon: Camera,
