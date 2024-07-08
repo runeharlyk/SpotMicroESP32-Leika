@@ -13,7 +13,7 @@ Install the following software to ensure all functionalities:
 - [VSCode](https://code.visualstudio.com/) - Preferred IDE for development
 - [Node.js](https://nodejs.org) - Needed for app building
 - A package manager of your choice (npm, pnpm, yarn)
-- [Python](https://www.python.org/downloads/) - Used for firmware build scripts
+- [Python 3.8 or higher](https://www.python.org/downloads/) - Used for firmware build scripts
 
 <!-- ### Project Structure
 
