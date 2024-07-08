@@ -108,7 +108,6 @@ class MotionService
     }
 
     bool updateMotion() {
-        float new_angles[12] = {0,};
         switch (motionState) {
             case MOTION_STATE::IDLE:
                 return false;
@@ -160,6 +159,7 @@ class MotionService
     constexpr static int MotionInterval = 100;
 
     body_state_t body_state = {0,};
+    float new_angles[12] = {0,};
 
     float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
     float default_feet_positions[4][4] = {

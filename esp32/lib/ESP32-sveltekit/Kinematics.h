@@ -7,7 +7,7 @@
 #define RAD2DEG 57.295779513082321 // 180 / PI
 #define DEG2RAD 0.017453292519943
 
-typedef struct {
+struct body_state_t {
     float omega, phi, psi, xm, ym, zm;
     float feet[4][4];
 
@@ -18,17 +18,24 @@ typedef struct {
             }
         }
     }
-} body_state_t;
 
-class Kinematics
-{
-private:
+    bool isEqual(const body_state_t &other) const {
+        if (omega != other.omega || phi != other.phi || psi != other.psi ||
+            xm != other.xm || ym != other.ym || zm != other.zm) {
+            return false;
+        }
+        return memcmp(feet, other.feet, sizeof(feet)) == 0;
+    }
+};
+
+class Kinematics {
+   private:
     float Trb[4][4] = {0,};
     float Trf[4][4] = {0,};
     float Tlb[4][4] = {0,};
     float Tlf[4][4] = {0,};
 
-    const float Ix[4][4] = {{-1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+    const float Ix[4][4] = {{-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     float inv[4][4];
     float point[4];
     float Q1[4][4];
@@ -37,6 +44,8 @@ private:
     const float cHp = cos(PI / 2);
 
     float point_lf[4][4];
+
+    body_state_t currentState;
 
    public:
     float l1, l2, l3, l4;
@@ -53,10 +62,13 @@ private:
     }
     ~Kinematics() {}
 
-    esp_err_t calculate_inverse_kinematics(body_state_t body_state, float result[12]) {
+    esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 
+        if (currentState.isEqual(body_state)) return ESP_OK;
+                
         ret = bodyIK(body_state);
+        currentState = body_state;
 
         ret += inverse(Tlf, inv);
         dspm_mult_f32_ae32((float*) inv, (float*) body_state.feet[0], (float*) point, 4, 4, 1);
@@ -79,7 +91,7 @@ private:
         return ret;
     }
 
-    esp_err_t bodyIK(body_state_t p) {
+    esp_err_t bodyIK(const body_state_t p) {
         float cos_omega = cos(p.omega * DEG2RAD);
         float sin_omega = sin(p.omega * DEG2RAD);
         float cos_phi = cos(p.phi * DEG2RAD);
