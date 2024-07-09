@@ -25,17 +25,16 @@
 #define FS_CONFIG_DIRECTORY "/config"
 #define FACTORY_RESET_SERVICE_PATH "/api/factoryReset"
 
-class FactoryResetService
-{
+class FactoryResetService {
     FS *fs;
 
-public:
+  public:
     FactoryResetService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager);
 
     void begin();
     void factoryReset();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     esp_err_t handleRequest(PsychicRequest *request);
