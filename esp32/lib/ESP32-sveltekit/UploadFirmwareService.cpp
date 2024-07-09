@@ -22,43 +22,34 @@ static char md5[33] = "\0";
 
 static FileType fileType = ft_none;
 
-UploadFirmwareService::UploadFirmwareService(PsychicHttpServer *server,
-                                             SecurityManager *securityManager) : _server(server),
-                                                                                 _securityManager(securityManager)
-{
-}
+UploadFirmwareService::UploadFirmwareService(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void UploadFirmwareService::begin()
-{
+void UploadFirmwareService::begin() {
     _server->maxUploadSize = 2300000; // 2.3 MB
 
     PsychicUploadHandler *uploadHandler = new PsychicUploadHandler();
 
     uploadHandler->onUpload(std::bind(&UploadFirmwareService::handleUpload, this, _1, _2, _3, _4, _5, _6));
-    uploadHandler->onRequest(std::bind(&UploadFirmwareService::uploadComplete, this, _1));  // gets called after upload has been handled
-    uploadHandler->onClose(std::bind(&UploadFirmwareService::handleEarlyDisconnect, this)); // gets called if client disconnects
+    uploadHandler->onRequest(
+        std::bind(&UploadFirmwareService::uploadComplete, this, _1)); // gets called after upload has been handled
+    uploadHandler->onClose(
+        std::bind(&UploadFirmwareService::handleEarlyDisconnect, this)); // gets called if client disconnects
     _server->on(UPLOAD_FIRMWARE_PATH, HTTP_POST, uploadHandler);
 
     ESP_LOGV("UploadFirmwareService", "Registered POST endpoint: %s", UPLOAD_FIRMWARE_PATH);
 }
 
-esp_err_t UploadFirmwareService::handleUpload(PsychicRequest *request,
-                                              const String &filename,
-                                              uint64_t index,
-                                              uint8_t *data,
-                                              size_t len,
-                                              bool final)
-{
+esp_err_t UploadFirmwareService::handleUpload(PsychicRequest *request, const String &filename, uint64_t index,
+                                              uint8_t *data, size_t len, bool final) {
     // quit if not authorized
     Authentication authentication = _securityManager->authenticateRequest(request);
-    if (!AuthenticationPredicates::IS_ADMIN(authentication))
-    {
+    if (!AuthenticationPredicates::IS_ADMIN(authentication)) {
         return handleError(request, 403); // forbidden
     }
 
     // at init
-    if (!index)
-    {
+    if (!index) {
         // check details of the file, to see if its a valid bin or json file
         std::string fname(filename.c_str());
         auto position = fname.find_last_of(".");
@@ -66,77 +57,58 @@ esp_err_t UploadFirmwareService::handleUpload(PsychicRequest *request,
         size_t fsize = request->contentLength();
 
         fileType = ft_none;
-        if ((extension == "bin") && (fsize > 1000000))
-        {
+        if ((extension == "bin") && (fsize > 1000000)) {
             fileType = ft_firmware;
-        }
-        else if (extension == "md5")
-        {
+        } else if (extension == "md5") {
             fileType = ft_md5;
-            if (len == 32)
-            {
+            if (len == 32) {
                 memcpy(md5, data, 32);
                 md5[32] = '\0';
             }
             return ESP_OK;
-        }
-        else
-        {
+        } else {
             md5[0] = '\0';
             return handleError(request, 406); // Not Acceptable - unsupported file type
         }
 
-        if (fileType == ft_firmware)
-        {
+        if (fileType == ft_firmware) {
             // Check firmware header, 0xE9 magic offset 0 indicates esp bin, chip offset 12: esp32:0, S2:2, C3:5
 #if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
-            if (len > 12 && (data[0] != 0xE9 || data[12] != 0))
-            {
+            if (len > 12 && (data[0] != 0xE9 || data[12] != 0)) {
                 return handleError(request, 503); // service unavailable
             }
 #elif CONFIG_IDF_TARGET_ESP32S2
-            if (len > 12 && (data[0] != 0xE9 || data[12] != 2))
-            {
+            if (len > 12 && (data[0] != 0xE9 || data[12] != 2)) {
                 return handleError(request, 503); // service unavailable
             }
 #elif CONFIG_IDF_TARGET_ESP32C3
-            if (len > 12 && (data[0] != 0xE9 || data[12] != 5))
-            {
+            if (len > 12 && (data[0] != 0xE9 || data[12] != 5)) {
                 return handleError(request, 503); // service unavailable
             }
 #elif CONFIG_IDF_TARGET_ESP32S3
-            if (len > 12 && (data[0] != 0xE9 || data[12] != 9))
-            {
+            if (len > 12 && (data[0] != 0xE9 || data[12] != 9)) {
                 return handleError(request, 503); // service unavailable
             }
 #endif
             // it's firmware - initialize the ArduinoOTA updater
-            if (Update.begin(fsize - sizeof(esp_image_header_t)))
-            {
-                if (strlen(md5) == 32)
-                {
+            if (Update.begin(fsize - sizeof(esp_image_header_t))) {
+                if (strlen(md5) == 32) {
                     Update.setMD5(md5);
                     md5[0] = '\0';
                 }
-            }
-            else
-            {
+            } else {
                 return handleError(request, 507); // failed to begin, send an error response Insufficient Storage
             }
         }
     }
 
     // if we haven't delt with an error, continue with the firmware update
-    if (!request->_tempObject)
-    {
-        if (Update.write(data, len) != len)
-        {
+    if (!request->_tempObject) {
+        if (Update.write(data, len) != len) {
             handleError(request, 500);
         }
-        if (final)
-        {
-            if (!Update.end(true))
-            {
+        if (final) {
+            if (!Update.end(true)) {
                 handleError(request, 500);
             }
         }
@@ -145,13 +117,10 @@ esp_err_t UploadFirmwareService::handleUpload(PsychicRequest *request,
     return ESP_OK;
 }
 
-esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request)
-{
+esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request) {
     // if we completed uploading a md5 file create a JSON response
-    if (fileType == ft_md5)
-    {
-        if (strlen(md5) == 32)
-        {
+    if (fileType == ft_md5) {
+        if (strlen(md5) == 32) {
             PsychicJsonResponse response = PsychicJsonResponse(request, false);
             JsonObject root = response.getRoot();
             root["md5"] = md5;
@@ -161,16 +130,14 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request)
     }
 
     // if no error, send the success response
-    if (!request->_tempObject)
-    {
+    if (!request->_tempObject) {
         request->reply(200);
         RestartService::restartNow();
         return ESP_OK;
     }
 
     // if updated has an error send 500 response and log on Serial
-    if (Update.hasError())
-    {
+    if (Update.hasError()) {
         Update.printError(Serial);
         Update.abort();
         handleError(request, 500);
@@ -179,11 +146,9 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request)
     return ESP_OK;
 }
 
-esp_err_t UploadFirmwareService::handleError(PsychicRequest *request, int code)
-{
+esp_err_t UploadFirmwareService::handleError(PsychicRequest *request, int code) {
     // if we have had an error already, do nothing
-    if (request->_tempObject)
-    {
+    if (request->_tempObject) {
         return ESP_OK;
     }
 
@@ -192,11 +157,9 @@ esp_err_t UploadFirmwareService::handleError(PsychicRequest *request, int code)
     return request->reply(code);
 }
 
-esp_err_t UploadFirmwareService::handleEarlyDisconnect()
-{
+esp_err_t UploadFirmwareService::handleEarlyDisconnect() {
     // if updated has not ended on connection close, abort it
-    if (!Update.end(true))
-    {
+    if (!Update.end(true)) {
         Update.printError(Serial);
         Update.abort();
         return ESP_OK;
