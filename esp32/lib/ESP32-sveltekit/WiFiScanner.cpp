@@ -14,49 +14,38 @@
 
 #include <WiFiScanner.h>
 
-WiFiScanner::WiFiScanner(PsychicHttpServer *server,
-                         SecurityManager *securityManager) : _server(server),
-                                                             _securityManager(securityManager)
-{
-}
+WiFiScanner::WiFiScanner(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void WiFiScanner::begin()
-{
-    _server->on(SCAN_NETWORKS_SERVICE_PATH,
-                HTTP_GET,
+void WiFiScanner::begin() {
+    _server->on(SCAN_NETWORKS_SERVICE_PATH, HTTP_GET,
                 _securityManager->wrapRequest(std::bind(&WiFiScanner::scanNetworks, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_ADMIN));
 
     ESP_LOGV("WiFiScanner", "Registered GET endpoint: %s", SCAN_NETWORKS_SERVICE_PATH);
 
-    _server->on(LIST_NETWORKS_SERVICE_PATH,
-                HTTP_GET,
+    _server->on(LIST_NETWORKS_SERVICE_PATH, HTTP_GET,
                 _securityManager->wrapRequest(std::bind(&WiFiScanner::listNetworks, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_ADMIN));
 
     ESP_LOGV("WiFiScanner", "Registered GET endpoint: %s", LIST_NETWORKS_SERVICE_PATH);
 }
 
-esp_err_t WiFiScanner::scanNetworks(PsychicRequest *request)
-{
-    if (WiFi.scanComplete() != -1)
-    {
+esp_err_t WiFiScanner::scanNetworks(PsychicRequest *request) {
+    if (WiFi.scanComplete() != -1) {
         WiFi.scanDelete();
         WiFi.scanNetworks(true);
     }
     return request->reply(202);
 }
 
-esp_err_t WiFiScanner::listNetworks(PsychicRequest *request)
-{
+esp_err_t WiFiScanner::listNetworks(PsychicRequest *request) {
     int numNetworks = WiFi.scanComplete();
-    if (numNetworks > -1)
-    {
+    if (numNetworks > -1) {
         PsychicJsonResponse response = PsychicJsonResponse(request, false);
         JsonObject root = response.getRoot();
         JsonArray networks = root["networks"].to<JsonArray>();
-        for (int i = 0; i < numNetworks; i++)
-        {
+        for (int i = 0; i < numNetworks; i++) {
             JsonObject network = networks.add<JsonObject>();
             network["rssi"] = WiFi.RSSI(i);
             network["ssid"] = WiFi.SSID(i);
@@ -66,13 +55,9 @@ esp_err_t WiFiScanner::listNetworks(PsychicRequest *request)
         }
 
         return response.send();
-    }
-    else if (numNetworks == -1)
-    {
+    } else if (numNetworks == -1) {
         return request->reply(202);
-    }
-    else
-    {
+    } else {
         return scanNetworks(request);
     }
 }
