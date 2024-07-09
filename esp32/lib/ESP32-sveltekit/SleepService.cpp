@@ -16,36 +16,28 @@
 // Definition of static member variable
 void (*SleepService::_callbackSleep)() = nullptr;
 
-SleepService::SleepService(PsychicHttpServer *server,
-                           SecurityManager *securityManager) : _server(server),
-                                                               _securityManager(securityManager)
-{
-}
+SleepService::SleepService(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void SleepService::begin()
-{
-    _server->on(SLEEP_SERVICE_PATH,
-                HTTP_POST,
+void SleepService::begin() {
+    _server->on(SLEEP_SERVICE_PATH, HTTP_POST,
                 _securityManager->wrapRequest(std::bind(&SleepService::sleep, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_AUTHENTICATED));
 
     ESP_LOGV("SleepService", "Registered POST endpoint: %s", SLEEP_SERVICE_PATH);
 }
 
-esp_err_t SleepService::sleep(PsychicRequest *request)
-{
+esp_err_t SleepService::sleep(PsychicRequest *request) {
     request->reply(200);
     sleepNow();
 
     return ESP_OK;
 }
 
-void SleepService::sleepNow()
-{
+void SleepService::sleepNow() {
     ESP_LOGI("SleepService", "Going into deep sleep now");
     // Callback for main code sleep preparation
-    if (_callbackSleep != nullptr)
-    {
+    if (_callbackSleep != nullptr) {
         _callbackSleep();
     }
     delay(100);
