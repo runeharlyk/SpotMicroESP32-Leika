@@ -12,24 +12,15 @@
 #define POSITION_EVENT "position"
 #define MODE_EVENT "mode"
 
-enum class MOTION_STATE
-{
-    IDLE,
-    REST,
-    STAND,
-    WALK
-};
+enum class MOTION_STATE { IDLE, REST, STAND, WALK };
 
-class MotionService
-{
+class MotionService {
   public:
-    MotionService(PsychicHttpServer *server, EventSocket *socket, SecurityManager *securityManager, TaskManager *taskManager)
-        : _server(server), _socket(socket), _securityManager(securityManager), _taskManager(taskManager)
-    {
-    }
+    MotionService(PsychicHttpServer *server, EventSocket *socket, SecurityManager *securityManager,
+                  TaskManager *taskManager)
+        : _server(server), _socket(socket), _securityManager(securityManager), _taskManager(taskManager) {}
 
-    void begin()
-    {
+    void begin() {
         _socket->onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
 
         _socket->onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });
@@ -38,23 +29,21 @@ class MotionService
 
         _socket->onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
 
-        _socket->onSubscribe(ANGLES_EVENT, std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
+        _socket->onSubscribe(ANGLES_EVENT,
+                             std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(default_feet_positions);
     }
 
-    void anglesEvent(JsonObject &root, int originId)
-    {
+    void anglesEvent(JsonObject &root, int originId) {
         JsonArray array = root["data"].as<JsonArray>();
-        for (int i = 0; i < 12; i++)
-        {
+        for (int i = 0; i < 12; i++) {
             angles[i] = array[i];
         }
         syncAngles(String(originId));
     }
 
-    void positionEvent(JsonObject &root, int originId)
-    {
+    void positionEvent(JsonObject &root, int originId) {
         JsonArray array = root["data"].as<JsonArray>();
         body_state.omega = array[0];
         body_state.phi = array[1];
@@ -64,8 +53,7 @@ class MotionService
         body_state.zm = array[5];
     }
 
-    void handleInput(JsonObject &root, int originId)
-    {
+    void handleInput(JsonObject &root, int originId) {
         JsonArray array = root["data"].as<JsonArray>();
         float lx = array[1];
         float ly = array[2];
@@ -87,8 +75,7 @@ class MotionService
         }
     }
 
-    void handleMode(JsonObject &root, int originId)
-    {
+    void handleMode(JsonObject &root, int originId) {
         ESP_LOGV("MotionService", "Mode %d", root["data"].as<int>());
         motionState = (MOTION_STATE)root["data"].as<int>();
         char output[2];
@@ -98,32 +85,25 @@ class MotionService
 
     void syncAngles(const String &originId = "", bool sync = false) {
         char output[100];
-        sprintf(output, "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0], angles[1], angles[2], angles[3], angles[4],
-                angles[5], angles[6], angles[7], angles[8], angles[9], angles[10], angles[11]);
+        sprintf(output, "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0], angles[1],
+                angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9], angles[10],
+                angles[11]);
         _socket->emit(ANGLES_EVENT, output, originId.c_str());
     }
 
-    float lerp(float start, float end, float t) {
-        return (1 - t) * start + t * end;
-    }
+    float lerp(float start, float end, float t) { return (1 - t) * start + t * end; }
 
     bool updateMotion() {
         switch (motionState) {
-            case MOTION_STATE::IDLE:
-                return false;
-                break;
+            case MOTION_STATE::IDLE: return false; break;
 
-            case MOTION_STATE::REST:
-                update_angles(rest_angles, new_angles, false);
-                break;
+            case MOTION_STATE::REST: update_angles(rest_angles, new_angles, false); break;
 
             case MOTION_STATE::STAND: {
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
             }
-            case MOTION_STATE::WALK:
-                kinematics.calculate_inverse_kinematics(body_state, new_angles);
-                break;
+            case MOTION_STATE::WALK: kinematics.calculate_inverse_kinematics(body_state, new_angles); break;
         }
         return update_angles(new_angles, angles);
     }
@@ -158,18 +138,20 @@ class MotionService
     unsigned long _lastUpdate;
     constexpr static int MotionInterval = 100;
 
-    body_state_t body_state = {0,};
-    float new_angles[12] = {0,};
+    body_state_t body_state = {
+        0,
+    };
+    float new_angles[12] = {
+        0,
+    };
 
     float dir[12] = {-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1};
     float default_feet_positions[4][4] = {
-        { 100, -100,  100, 1},
-        { 100, -100, -100, 1},
-        {-100, -100,  100, 1},
-        {-100, -100, -100, 1}
-    };
+        {100, -100, 100, 1}, {100, -100, -100, 1}, {-100, -100, 100, 1}, {-100, -100, -100, 1}};
 
-    float angles[12] = {0,};
+    float angles[12] = {
+        0,
+    };
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };
 
