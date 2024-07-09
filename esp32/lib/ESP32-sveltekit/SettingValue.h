@@ -17,9 +17,8 @@
 
 #include <Arduino.h>
 
-namespace SettingValue
-{
-    String format(String value);
+namespace SettingValue {
+String format(String value);
 };
 
 #endif // end SettingValue
