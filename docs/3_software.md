@@ -15,13 +15,13 @@ Install the following software to ensure all functionalities:
 - A package manager of your choice (npm, pnpm, yarn)
 - [Python 3.8 or higher](https://www.python.org/downloads/) - Used for firmware build scripts
 
-<!-- ### Project Structure
+### Project Structure
 
 Understand the project organization through these key directories:
 
-- [docs/](https://github.com/runeharlyk/SpotMicroESP32-Leika/tree/master/docs)  - Contains all documentation
+- [docs/](https://github.com/runeharlyk/SpotMicroESP32-Leika/tree/master/docs)  - Documentation
 - [app/](https://github.com/runeharlyk/SpotMicroESP32-Leika/tree/master/app) - SvelteKit-based frontend
-- [esp32](https://github.com/runeharlyk/SpotMicroESP32-Leika/tree/master/esp32) - Firmware for the robot -->
+- [esp32](https://github.com/runeharlyk/SpotMicroESP32-Leika/tree/master/esp32) - Firmware for the robot
 
 ## Setting up PlatformIO
 
