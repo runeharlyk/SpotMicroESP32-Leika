@@ -20,8 +20,8 @@ struct body_state_t {
     }
 
     bool isEqual(const body_state_t &other) const {
-        if (omega != other.omega || phi != other.phi || psi != other.psi ||
-            xm != other.xm || ym != other.ym || zm != other.zm) {
+        if (omega != other.omega || phi != other.phi || psi != other.psi || xm != other.xm || ym != other.ym ||
+            zm != other.zm) {
             return false;
         }
         return memcmp(feet, other.feet, sizeof(feet)) == 0;
@@ -29,11 +29,19 @@ struct body_state_t {
 };
 
 class Kinematics {
-   private:
-    float Trb[4][4] = {0,};
-    float Trf[4][4] = {0,};
-    float Tlb[4][4] = {0,};
-    float Tlf[4][4] = {0,};
+  private:
+    float Trb[4][4] = {
+        0,
+    };
+    float Trf[4][4] = {
+        0,
+    };
+    float Tlb[4][4] = {
+        0,
+    };
+    float Tlf[4][4] = {
+        0,
+    };
 
     const float Ix[4][4] = {{-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     float inv[4][4];
@@ -47,7 +55,7 @@ class Kinematics {
 
     body_state_t currentState;
 
-   public:
+  public:
     float l1, l2, l3, l4;
     float L, W;
 
@@ -66,27 +74,27 @@ class Kinematics {
         esp_err_t ret = ESP_OK;
 
         if (currentState.isEqual(body_state)) return ESP_OK;
-                
+
         ret = bodyIK(body_state);
         currentState = body_state;
 
         ret += inverse(Tlf, inv);
-        dspm_mult_f32_ae32((float*) inv, (float*) body_state.feet[0], (float*) point, 4, 4, 1);
-        legIK((float*) point, result);
+        dspm_mult_f32_ae32((float *)inv, (float *)body_state.feet[0], (float *)point, 4, 4, 1);
+        legIK((float *)point, result);
 
         ret += inverse(Trf, inv);
-        dspm_mult_f32_ae32((float*) Ix, (float*) inv, (float*) Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Q1, (float*) body_state.feet[1], (float*) point, 4, 4, 1);
-        legIK((float*) point, result + 3);
+        dspm_mult_f32_ae32((float *)Ix, (float *)inv, (float *)Q1, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Q1, (float *)body_state.feet[1], (float *)point, 4, 4, 1);
+        legIK((float *)point, result + 3);
 
         ret += inverse(Tlb, inv);
-        dspm_mult_f32_ae32((float*) inv, (float*) body_state.feet[2], (float*) point, 4, 4, 1);
-        legIK((float*) point, result + 6);
+        dspm_mult_f32_ae32((float *)inv, (float *)body_state.feet[2], (float *)point, 4, 4, 1);
+        legIK((float *)point, result + 6);
 
         ret += inverse(Trb, inv);
-        dspm_mult_f32_ae32((float*) Ix, (float*) inv, (float*) Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float*) Q1, (float*) body_state.feet[3], (float*) point, 4, 4, 1);
-        legIK((float*) point, result + 9);
+        dspm_mult_f32_ae32((float *)Ix, (float *)inv, (float *)Q1, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Q1, (float *)body_state.feet[3], (float *)point, 4, 4, 1);
+        legIK((float *)point, result + 9);
 
         return ret;
     }
@@ -99,40 +107,25 @@ class Kinematics {
         float cos_psi = cos(p.psi * DEG2RAD);
         float sin_psi = sin(p.psi * DEG2RAD);
 
-        float Tm[4][4] = {
-            {cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm},
-            {sin_omega * sin_phi * cos_psi + sin_psi * cos_omega,
-             -sin_omega * sin_phi * sin_psi + cos_omega * cos_psi,
-             -sin_omega * cos_phi, p.ym},
-            {sin_omega * sin_psi - sin_phi * cos_omega * cos_psi,
-             sin_omega * cos_psi + sin_phi * sin_psi * cos_omega,
-             cos_omega * cos_phi, p.zm},
-            {0, 0, 0, 1}};
+        float Tm[4][4] = {{cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm},
+                          {sin_omega * sin_phi * cos_psi + sin_psi * cos_omega,
+                           -sin_omega * sin_phi * sin_psi + cos_omega * cos_psi, -sin_omega * cos_phi, p.ym},
+                          {sin_omega * sin_psi - sin_phi * cos_omega * cos_psi,
+                           sin_omega * cos_psi + sin_phi * sin_psi * cos_omega, cos_omega * cos_phi, p.zm},
+                          {0, 0, 0, 1}};
 
-        float point_lf[4][4] = {{cHp, 0, sHp, L / 2},
-                                {0, 1, 0, 0},
-                                {-sHp, 0, cHp, W / 2},
-                                {0, 0, 0, 1}};
+        float point_lf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
 
-        float point_rf[4][4] = {{cHp, 0, sHp, L / 2},
-                                {0, 1, 0, 0},
-                                {-sHp, 0, cHp, -W / 2},
-                                {0, 0, 0, 1}};
+        float point_rf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
 
-        float point_lb[4][4] = {{cHp, 0, sHp, -L / 2},
-                                {0, 1, 0, 0},
-                                {-sHp, 0, cHp, W / 2},
-                                {0, 0, 0, 1}};
+        float point_lb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
 
-        float point_rb[4][4] = {{cHp, 0, sHp, -L / 2},
-                                {0, 1, 0, 0},
-                                {-sHp, 0, cHp, -W / 2},
-                                {0, 0, 0, 1}};
+        float point_rb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
 
-        dspm_mult_f32_ae32((float*)Tm, (float*)point_lf, (float*)Tlf, 4, 4, 4);
-        dspm_mult_f32_ae32((float*)Tm, (float*)point_rf, (float*)Trf, 4, 4, 4);
-        dspm_mult_f32_ae32((float*)Tm, (float*)point_lb, (float*)Tlb, 4, 4, 4);
-        dspm_mult_f32_ae32((float*)Tm, (float*)point_rb, (float*)Trb, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Tm, (float *)point_lf, (float *)Tlf, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Tm, (float *)point_rf, (float *)Trf, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Tm, (float *)point_lb, (float *)Tlb, 4, 4, 4);
+        dspm_mult_f32_ae32((float *)Tm, (float *)point_rb, (float *)Trb, 4, 4, 4);
         return ESP_OK;
     }
 
@@ -154,20 +147,13 @@ class Kinematics {
     }
 
     esp_err_t inverse(float a[4][4], float b[4][4]) {
-        float s[] = {a[0][0] * a[1][1] - a[1][0] * a[0][1],
-                    a[0][0] * a[1][2] - a[1][0] * a[0][2],
-                    a[0][0] * a[1][3] - a[1][0] * a[0][3],
-                    a[0][1] * a[1][2] - a[1][1] * a[0][2],
-                    a[0][1] * a[1][3] - a[1][1] * a[0][3],
-                    a[0][2] * a[1][3] - a[1][2] * a[0][3]};
-        float c[] = {a[2][0] * a[3][1] - a[3][0] * a[2][1],
-                    a[2][0] * a[3][2] - a[3][0] * a[2][2],
-                    a[2][0] * a[3][3] - a[3][0] * a[2][3],
-                    a[2][1] * a[3][2] - a[3][1] * a[2][2],
-                    a[2][1] * a[3][3] - a[3][1] * a[2][3],
-                    a[2][2] * a[3][3] - a[3][2] * a[2][3]};
-        float det = s[0] * c[5] - s[1] * c[4] + s[2] * c[3] + s[3] * c[2] -
-                    s[4] * c[1] + s[5] * c[0];
+        float s[] = {a[0][0] * a[1][1] - a[1][0] * a[0][1], a[0][0] * a[1][2] - a[1][0] * a[0][2],
+                     a[0][0] * a[1][3] - a[1][0] * a[0][3], a[0][1] * a[1][2] - a[1][1] * a[0][2],
+                     a[0][1] * a[1][3] - a[1][1] * a[0][3], a[0][2] * a[1][3] - a[1][2] * a[0][3]};
+        float c[] = {a[2][0] * a[3][1] - a[3][0] * a[2][1], a[2][0] * a[3][2] - a[3][0] * a[2][2],
+                     a[2][0] * a[3][3] - a[3][0] * a[2][3], a[2][1] * a[3][2] - a[3][1] * a[2][2],
+                     a[2][1] * a[3][3] - a[3][1] * a[2][3], a[2][2] * a[3][3] - a[3][2] * a[2][3]};
+        float det = s[0] * c[5] - s[1] * c[4] + s[2] * c[3] + s[3] * c[2] - s[4] * c[1] + s[5] * c[0];
         if (det == 0.0) return ESP_FAIL;
         float invdet = 1.0 / det;
         b[0][0] = (a[1][1] * c[5] - a[1][2] * c[4] + a[1][3] * c[3]) * invdet;
