@@ -8,15 +8,13 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-class DisplayService
-{
-public:
+class DisplayService {
+  public:
     DisplayService() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1) {};
 
-    bool begin()
-    {
+    bool begin() {
         std::lock_guard<std::mutex> guard(displayMutex);
-        if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
             return false;
         }
         display.clearDisplay();
@@ -41,7 +39,7 @@ public:
         display.display();
     }
 
-private:
+  private:
     Adafruit_SSD1306 display;
     std::mutex displayMutex;
 };
