@@ -23,21 +23,16 @@
 #define EVENT_ANALYTICS "analytics"
 #define ANALYTICS_INTERVAL 2000
 
-class AnalyticsService
-{
+class AnalyticsService {
   public:
-    AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager){};
+    AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager) {};
 
-    void begin()
-    {
-    };
+    void begin() {};
 
-    void loop()
-    {
+    void loop() {
         unsigned long currentMillis = millis();
 
-        if (!_lastUpdate || (currentMillis - _lastUpdate) >= ANALYTICS_INTERVAL)
-        {
+        if (!_lastUpdate || (currentMillis - _lastUpdate) >= ANALYTICS_INTERVAL) {
             _lastUpdate = currentMillis;
             updateAnalytics();
         }
@@ -65,8 +60,7 @@ class AnalyticsService
         doc["cpu_usage"] = _taskManager->getCpuUsage();
         // Add _taskManager->getTaskNames() as a JSON array
         JsonArray tasks = doc["tasks"].as<JsonArray>();
-        for (auto const &task : _taskManager->getTasks())
-        {
+        for (auto const &task : _taskManager->getTasks()) {
             JsonObject nested = tasks.add<JsonObject>();
             nested["name"] = task.name;
             nested["stackSize"] = task.stackSize;
