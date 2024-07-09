@@ -16,16 +16,13 @@
 
 #if FT_ENABLED(FT_SECURITY)
 
-AuthenticationService::AuthenticationService(PsychicHttpServer *server, SecurityManager *securityManager) : _server(server),
-                                                                                                            _securityManager(securityManager)
-{
-}
+AuthenticationService::AuthenticationService(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void AuthenticationService::begin()
-{
-    // Signs in a user if the username and password match. Provides a JWT to be used in the Authorization header in subsequent requests
-    _server->on(SIGN_IN_PATH, HTTP_POST, [this](PsychicRequest *request, JsonVariant &json)
-                {
+void AuthenticationService::begin() {
+    // Signs in a user if the username and password match. Provides a JWT to be used in the Authorization header in
+    // subsequent requests
+    _server->on(SIGN_IN_PATH, HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         if (json.is<JsonObject>()) {
             String username = json["username"];
             String password = json["password"];
@@ -37,15 +34,16 @@ void AuthenticationService::begin()
                 return response.send();
             }
         }
-        return request->reply(401); });
+        return request->reply(401);
+    });
 
     ESP_LOGV("AuthenticationService", "Registered POST endpoint: %s", SIGN_IN_PATH);
 
     // Verifies that the request supplied a valid JWT
-    _server->on(VERIFY_AUTHORIZATION_PATH, HTTP_GET, [this](PsychicRequest *request)
-                {
+    _server->on(VERIFY_AUTHORIZATION_PATH, HTTP_GET, [this](PsychicRequest *request) {
         Authentication authentication = _securityManager->authenticateRequest(request);
-        return request->reply(authentication.authenticated ? 200 : 401); });
+        return request->reply(authentication.authenticated ? 200 : 401);
+    });
 
     ESP_LOGV("AuthenticationService", "Registered GET endpoint: %s", VERIFY_AUTHORIZATION_PATH);
 }

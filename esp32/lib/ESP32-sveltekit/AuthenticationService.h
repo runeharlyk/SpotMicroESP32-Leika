@@ -24,14 +24,13 @@
 
 #if FT_ENABLED(FT_SECURITY)
 
-class AuthenticationService
-{
-public:
+class AuthenticationService {
+  public:
     AuthenticationService(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
-private:
+  private:
     SecurityManager *_securityManager;
     PsychicHttpServer *_server;
 };
