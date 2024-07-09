@@ -1,0 +1,16 @@
+BasedOnStyle: Google
+TabWidth: 4
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 120
+PointerAlignment: Left
+SpaceBeforeParens: ControlStatements
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AllowShortLoopsOnASingleLine: true
+SpacesBeforeTrailingComments: 1
+SortIncludes: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+AccessModifierOffset: -2
