@@ -25,14 +25,13 @@
 
 #define NTP_STATUS_SERVICE_PATH "/api/ntpStatus"
 
-class NTPStatus
-{
-public:
+class NTPStatus {
+  public:
     NTPStatus(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     esp_err_t ntpStatus(PsychicRequest *request);
