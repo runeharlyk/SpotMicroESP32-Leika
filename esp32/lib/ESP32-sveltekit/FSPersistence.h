@@ -20,11 +20,9 @@
 
 template <class T>
 class FSPersistence {
-   public:
-    FSPersistence(JsonStateReader<T> stateReader,
-                  JsonStateUpdater<T> stateUpdater,
-                  StatefulService<T> *statefulService, FS *fs,
-                  const char *filePath)
+  public:
+    FSPersistence(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
+                  FS *fs, const char *filePath)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
@@ -39,13 +37,10 @@ class FSPersistence {
 
         if (settingsFile) {
             JsonDocument jsonDocument;
-            DeserializationError error =
-                deserializeJson(jsonDocument, settingsFile);
-            if (error == DeserializationError::Ok &&
-                jsonDocument.is<JsonObject>()) {
+            DeserializationError error = deserializeJson(jsonDocument, settingsFile);
+            if (error == DeserializationError::Ok && jsonDocument.is<JsonObject>()) {
                 JsonObject jsonObject = jsonDocument.as<JsonObject>();
-                _statefulService->updateWithoutPropagation(jsonObject,
-                                                           _stateUpdater);
+                _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
                 settingsFile.close();
                 return;
             }
@@ -93,12 +88,11 @@ class FSPersistence {
 
     void enableUpdateHandler() {
         if (!_updateHandlerId) {
-            _updateHandlerId = _statefulService->addUpdateHandler(
-                [&](const String &originId) { writeToFS(); });
+            _updateHandlerId = _statefulService->addUpdateHandler([&](const String &originId) { writeToFS(); });
         }
     }
 
-   private:
+  private:
     JsonStateReader<T> _stateReader;
     JsonStateUpdater<T> _stateUpdater;
     StatefulService<T> *_statefulService;
@@ -121,7 +115,7 @@ class FSPersistence {
         }
     }
 
-   protected:
+  protected:
     // We assume the updater supplies sensible defaults if an empty object
     // is supplied, this virtual function allows that to be changed.
     virtual void applyDefaults() {
@@ -131,4 +125,4 @@ class FSPersistence {
     }
 };
 
-#endif  // end FSPersistence
+#endif // end FSPersistence
