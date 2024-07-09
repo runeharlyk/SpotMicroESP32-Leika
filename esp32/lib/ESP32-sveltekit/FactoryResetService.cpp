@@ -14,25 +14,19 @@
 
 #include <FactoryResetService.h>
 
-FactoryResetService::FactoryResetService(PsychicHttpServer *server,
-                                         FS *fs,
-                                         SecurityManager *securityManager) : _server(server),
-                                                                             fs(fs),
-                                                                             _securityManager(securityManager)
-{
-}
+FactoryResetService::FactoryResetService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager)
+    : _server(server), fs(fs), _securityManager(securityManager) {}
 
-void FactoryResetService::begin()
-{
-    _server->on(FACTORY_RESET_SERVICE_PATH,
-                HTTP_POST,
-                _securityManager->wrapRequest(std::bind(&FactoryResetService::handleRequest, this, std::placeholders::_1), AuthenticationPredicates::IS_ADMIN));
+void FactoryResetService::begin() {
+    _server->on(
+        FACTORY_RESET_SERVICE_PATH, HTTP_POST,
+        _securityManager->wrapRequest(std::bind(&FactoryResetService::handleRequest, this, std::placeholders::_1),
+                                      AuthenticationPredicates::IS_ADMIN));
 
     ESP_LOGV("FactoryResetService", "Registered POST endpoint: %s", FACTORY_RESET_SERVICE_PATH);
 }
 
-esp_err_t FactoryResetService::handleRequest(PsychicRequest *request)
-{
+esp_err_t FactoryResetService::handleRequest(PsychicRequest *request) {
     request->reply(200);
     factoryReset();
 
@@ -42,12 +36,10 @@ esp_err_t FactoryResetService::handleRequest(PsychicRequest *request)
 /**
  * Delete function assumes that all files are stored flat, within the config directory.
  */
-void FactoryResetService::factoryReset()
-{
+void FactoryResetService::factoryReset() {
     File root = fs->open(FS_CONFIG_DIRECTORY);
     File file;
-    while (file = root.openNextFile())
-    {
+    while (file = root.openNextFile()) {
         String path = file.path();
         file.close();
         fs->remove(path);
