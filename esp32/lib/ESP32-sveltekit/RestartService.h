@@ -22,21 +22,19 @@
 
 #define RESTART_SERVICE_PATH "/api/restart"
 
-class RestartService
-{
-public:
+class RestartService {
+  public:
     RestartService(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
-    static void restartNow()
-    {
+    static void restartNow() {
         WiFi.disconnect(true);
         delay(500);
         ESP.restart();
     }
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     esp_err_t restart(PsychicRequest *request);
