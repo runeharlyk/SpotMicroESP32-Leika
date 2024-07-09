@@ -8,22 +8,19 @@
 #define FILE_EXPLORER_SERVICE_PATH "/api/files"
 #define FILE_EXPLORER_DELETE_SERVICE_PATH "/api/files/delete"
 
-class FileExplorer
-{
+class FileExplorer {
   public:
     FileExplorer(PsychicHttpServer *server, SecurityManager *securityManager)
-        : _server(server), _securityManager(securityManager)
-    {
-    }
+        : _server(server), _securityManager(securityManager) {}
 
-    void begin()
-    {
+    void begin() {
         _server->on(FILE_EXPLORER_SERVICE_PATH, HTTP_GET,
                     _securityManager->wrapRequest(std::bind(&FileExplorer::explore, this, std::placeholders::_1),
                                                   AuthenticationPredicates::IS_AUTHENTICATED));
         _server->on(FILE_EXPLORER_DELETE_SERVICE_PATH, HTTP_POST,
-                    _securityManager->wrapCallback(std::bind(&FileExplorer::deleteFile, this, std::placeholders::_1, std::placeholders::_2),
-                                                  AuthenticationPredicates::IS_AUTHENTICATED));
+                    _securityManager->wrapCallback(
+                        std::bind(&FileExplorer::deleteFile, this, std::placeholders::_1, std::placeholders::_2),
+                        AuthenticationPredicates::IS_AUTHENTICATED));
 
         ESP_LOGV("APStatus", "Registered GET endpoint: %s", FILE_EXPLORER_SERVICE_PATH);
     }
@@ -32,15 +29,12 @@ class FileExplorer
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
 
-    esp_err_t explore(PsychicRequest *request)
-    {
+    esp_err_t explore(PsychicRequest *request) {
         return request->reply(200, "application/json", listFiles("/").c_str());
     }
 
-    esp_err_t deleteFile(PsychicRequest *request, JsonVariant &json)
-    {
-        if (json.is<JsonObject>())
-        {
+    esp_err_t deleteFile(PsychicRequest *request, JsonVariant &json) {
+        if (json.is<JsonObject>()) {
             String filename = json["file"];
             ESP_LOGI("FileExplorer", "Deleting file: %s", filename.c_str());
             return ESPFS.remove(filename.c_str()) ? request->reply(200) : request->reply(500);
@@ -48,37 +42,29 @@ class FileExplorer
         return request->reply(400);
     }
 
-    String listFiles(const String &directory, bool isRoot = true)
-    {
+    String listFiles(const String &directory, bool isRoot = true) {
         File root = ESPFS.open(directory.startsWith("/") ? directory : "/" + directory);
-        if (!root.isDirectory())
-        {
+        if (!root.isDirectory()) {
             return "";
         }
 
         File file = root.openNextFile();
         String output = isRoot ? "{ \"root\": {" : "{";
 
-        while (file)
-        {
-            if (file.isDirectory())
-            {
+        while (file) {
+            if (file.isDirectory()) {
                 output += "\"" + String(file.name()) + "\": " + listFiles(file.name(), false) + ", ";
-            }
-            else
-            {
+            } else {
                 output += "\"" + String(file.name()) + "\": " + String(file.size()) + ", ";
             }
             file = root.openNextFile();
         }
 
-        if (output.endsWith(", "))
-        {
+        if (output.endsWith(", ")) {
             output.remove(output.length() - 2);
         }
         output += "}";
-        if (isRoot)
-        {
+        if (isRoot) {
             output += "}";
         }
         return output;
