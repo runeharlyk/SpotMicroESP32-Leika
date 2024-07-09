@@ -1,10 +1,8 @@
 #include <CameraService.h>
 
-static const char *_STREAM_CONTENT_TYPE =
-    "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static const char *_STREAM_PART =
-    "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 SemaphoreHandle_t cameraMutex = xSemaphoreCreateMutex();
 
@@ -27,24 +25,16 @@ sensor_t *safe_sensor_get() {
 
 void safe_sensor_return() { xSemaphoreGive(cameraMutex); }
 
-CameraService::CameraService(PsychicHttpServer *server,
-                             TaskManager *taskManager,
-                             SecurityManager *securityManager)
-    : _server(server),
-      _taskManager(taskManager),
-      _securityManager(securityManager) {}
+CameraService::CameraService(PsychicHttpServer *server, TaskManager *taskManager, SecurityManager *securityManager)
+    : _server(server), _taskManager(taskManager), _securityManager(securityManager) {}
 void CameraService::begin() {
     InitializeCamera();
-    _server->on(
-        STILL_SERVICE_PATH, HTTP_GET,
-        _securityManager->wrapRequest(
-            std::bind(&CameraService::cameraStill, this, std::placeholders::_1),
-            AuthenticationPredicates::IS_AUTHENTICATED));
+    _server->on(STILL_SERVICE_PATH, HTTP_GET,
+                _securityManager->wrapRequest(std::bind(&CameraService::cameraStill, this, std::placeholders::_1),
+                                              AuthenticationPredicates::IS_AUTHENTICATED));
     _server->on(STREAM_SERVICE_PATH, HTTP_GET,
-                _securityManager->wrapRequest(
-                    std::bind(&CameraService::cameraStream, this,
-                              std::placeholders::_1),
-                    AuthenticationPredicates::IS_AUTHENTICATED));
+                _securityManager->wrapRequest(std::bind(&CameraService::cameraStream, this, std::placeholders::_1),
+                                              AuthenticationPredicates::IS_AUTHENTICATED));
 
     ESP_LOGV("CameraService", "Registered GET endpoint: %s", STILL_SERVICE_PATH);
     ESP_LOGV("CameraService", "Registered GET endpoint: %s", STREAM_SERVICE_PATH);
@@ -89,8 +79,10 @@ esp_err_t CameraService::InitializeCamera() {
 
     log_i("Initializing camera");
     esp_err_t err = esp_camera_init(&camera_config);
-    if (err == ESP_OK) ESP_LOGI("CameraService", "Camera probe successful");
-    else ESP_LOGE("CameraService", "Camera probe failed with error 0x%x", err);
+    if (err == ESP_OK)
+        ESP_LOGI("CameraService", "Camera probe successful");
+    else
+        ESP_LOGE("CameraService", "Camera probe failed with error 0x%x", err);
 
     return err;
 }
@@ -102,8 +94,7 @@ esp_err_t CameraService::cameraStill(PsychicRequest *request) {
         request->reply(500, "text/plain", "Camera capture failed");
         return ESP_FAIL;
     }
-    PsychicStreamResponse response =
-        PsychicStreamResponse(request, "image/jpeg", "capture.jpg");
+    PsychicStreamResponse response = PsychicStreamResponse(request, "image/jpeg", "capture.jpg");
     response.beginSend();
     response.write(fb->buf, fb->len);
     esp_camera_fb_return(fb);
@@ -113,7 +104,7 @@ esp_err_t CameraService::cameraStill(PsychicRequest *request) {
 void streamTask(void *pv) {
     esp_err_t res = ESP_OK;
 
-    PsychicRequest *request = static_cast<PsychicRequest*>(pv);
+    PsychicRequest *request = static_cast<PsychicRequest *>(pv);
 
     httpd_req_t *copy = nullptr;
     res = httpd_req_async_handler_begin(request->request(), &copy);
@@ -139,9 +130,9 @@ void streamTask(void *pv) {
         if (!fb) {
             ESP_LOGE("Stream", "Camera capture failed");
             break;
-        } 
-        if(fb->format != PIXFORMAT_JPEG){
-            if(!frame2jpg(fb, 80, &buf, &buf_len)) break;
+        }
+        if (fb->format != PIXFORMAT_JPEG) {
+            if (!frame2jpg(fb, 80, &buf, &buf_len)) break;
         } else {
             buf_len = fb->len;
             buf = fb->buf;

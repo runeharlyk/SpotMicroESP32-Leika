@@ -11,7 +11,7 @@
 #include <Features.h>
 
 #if FT_ENABLED(FT_CAMERA)
-  #include <CameraPins.h>
+#include <CameraPins.h>
 #endif
 
 #define STREAM_SERVICE_PATH "/api/camera/stream"
@@ -20,11 +20,10 @@
 #define PART_BOUNDARY "frame"
 
 camera_fb_t *safe_camera_fb_get();
-sensor_t* safe_sensor_get();
+sensor_t *safe_sensor_get();
 void safe_sensor_return();
 
-class CameraService
-{
+class CameraService {
   public:
     CameraService(PsychicHttpServer *server, TaskManager *taskManager, SecurityManager *securityManager);
 

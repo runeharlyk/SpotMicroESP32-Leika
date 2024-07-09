@@ -17,29 +17,29 @@
 #define CAMERA_SETTINGS_PATH "/api/camera/settings"
 
 class CameraSettings {
-   public:
+  public:
     pixformat_t pixformat;
-    framesize_t framesize;  // 0 - 10
-    uint8_t quality;        // 0 - 63
-    int8_t brightness;      //-2 - 2
-    int8_t contrast;        //-2 - 2
-    int8_t saturation;      //-2 - 2
-    int8_t sharpness;       //-2 - 2
+    framesize_t framesize; // 0 - 10
+    uint8_t quality;       // 0 - 63
+    int8_t brightness;     //-2 - 2
+    int8_t contrast;       //-2 - 2
+    int8_t saturation;     //-2 - 2
+    int8_t sharpness;      //-2 - 2
     uint8_t denoise;
     gainceiling_t gainceiling;
     uint8_t whitebal;
-    uint8_t special_effect;  // 0 - 6
-    uint8_t wb_mode;         // 0 - 4
+    uint8_t special_effect; // 0 - 6
+    uint8_t wb_mode;        // 0 - 4
     uint8_t awb;
     uint8_t exposure_ctrl;
     uint8_t awb_gain;
     uint8_t gain_ctrl;
     uint8_t aec;
     uint8_t aec2;
-    int8_t ae_level;     //-2 - 2
-    uint16_t aec_value;  // 0 - 1200
+    int8_t ae_level;    //-2 - 2
+    uint16_t aec_value; // 0 - 1200
     uint8_t agc;
-    uint8_t agc_gain;  // 0 - 30
+    uint8_t agc_gain; // 0 - 30
     uint8_t bpc;
     uint8_t wpc;
     uint8_t raw_gma;
@@ -81,8 +81,7 @@ class CameraSettings {
         root["colorbar"] = settings.colorbar;
     }
 
-    static StateUpdateResult update(JsonObject &root,
-                                    CameraSettings &settings) {
+    static StateUpdateResult update(JsonObject &root, CameraSettings &settings) {
         settings.pixformat = root["pixformat"];
         settings.framesize = root["framesize"];
         settings.brightness = root["brightness"];
@@ -119,20 +118,15 @@ class CameraSettings {
 };
 
 class CameraSettingsService : public StatefulService<CameraSettings> {
-   public:
-    CameraSettingsService(PsychicHttpServer *server, FS *fs,
-                          SecurityManager *securityManager, EventSocket *socket)
+  public:
+    CameraSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, EventSocket *socket)
         : _server(server),
           _securityManager(securityManager),
-          _httpEndpoint(CameraSettings::read, CameraSettings::update, this,
-                        server, CAMERA_SETTINGS_PATH, securityManager,
-                        AuthenticationPredicates::IS_ADMIN),
-          _eventEndpoint(CameraSettings::read, CameraSettings::update, this,
-                         socket, EVENT_CAMERA_SETTINGS),
-          _fsPersistence(CameraSettings::read, CameraSettings::update, this, fs,
-                         CAMERA_SETTINGS_FILE) {
-        addUpdateHandler([&](const String &originId) { updateCamera(); },
-                         false);
+          _httpEndpoint(CameraSettings::read, CameraSettings::update, this, server, CAMERA_SETTINGS_PATH,
+                        securityManager, AuthenticationPredicates::IS_ADMIN),
+          _eventEndpoint(CameraSettings::read, CameraSettings::update, this, socket, EVENT_CAMERA_SETTINGS),
+          _fsPersistence(CameraSettings::read, CameraSettings::update, this, fs, CAMERA_SETTINGS_FILE) {
+        addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
     }
 
     void begin() {
@@ -201,7 +195,7 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
         safe_sensor_return();
     }
 
-   private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     HttpEndpoint<CameraSettings> _httpEndpoint;
@@ -209,4 +203,4 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
     FSPersistence<CameraSettings> _fsPersistence;
 };
 
-#endif  // end CameraSettingsService_h
+#endif // end CameraSettingsService_h
