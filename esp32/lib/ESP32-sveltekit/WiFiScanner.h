@@ -24,14 +24,13 @@
 #define SCAN_NETWORKS_SERVICE_PATH "/api/scanNetworks"
 #define LIST_NETWORKS_SERVICE_PATH "/api/listNetworks"
 
-class WiFiScanner
-{
-public:
+class WiFiScanner {
+  public:
     WiFiScanner(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
 
