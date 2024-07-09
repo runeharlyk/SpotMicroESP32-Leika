@@ -29,25 +29,21 @@
 #define WAKEUP_SIGNAL 0
 #endif
 
-class SleepService
-{
-public:
+class SleepService {
+  public:
     SleepService(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
     static void sleepNow();
 
-    void attachOnSleepCallback(void (*callbackSleep)())
-    {
-        _callbackSleep = callbackSleep;
-    }
+    void attachOnSleepCallback(void (*callbackSleep)()) { _callbackSleep = callbackSleep; }
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     esp_err_t sleep(PsychicRequest *request);
 
-protected:
+  protected:
     static void (*_callbackSleep)();
 };
