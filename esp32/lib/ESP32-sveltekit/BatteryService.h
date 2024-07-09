@@ -33,9 +33,8 @@
 #define VOLTAGE_THRESHOLD 6.4
 #define CURRENT_THRESHOLD 5
 
-class BatteryService
-{
-public:
+class BatteryService {
+  public:
     BatteryService(Peripherals *peripherals, EventSocket *socket);
 
     void begin();
@@ -43,34 +42,27 @@ public:
     void loop() {
         unsigned long currentMillis = millis();
 
-        if (!_lastUpdate || (currentMillis - _lastUpdate) >= BATTERY_CHECK_INTERVAL)
-        {
+        if (!_lastUpdate || (currentMillis - _lastUpdate) >= BATTERY_CHECK_INTERVAL) {
             _lastUpdate = currentMillis;
             updateBattery();
         }
-        if(!_lastEmit || (currentMillis - _lastEmit) >= BATTERY_INTERVAL)
-        {
+        if (!_lastEmit || (currentMillis - _lastEmit) >= BATTERY_INTERVAL) {
             _lastEmit = currentMillis;
             batteryEvent();
         }
     }
 
-    void updateBattery()
-    {
+    void updateBattery() {
         _voltage = _peripherals->readADCVoltage(ADC_VOLTAGE);
         float voltage = _peripherals->readADCVoltage(ADC_CURRENT);
         _current = (voltage - 2.5) / CURRENT_FACTOR;
     }
 
-    float getVoltage() {
-        return _voltage;
-    }
+    float getVoltage() { return _voltage; }
 
-    float getCurrent() {
-        return _current;
-    }
+    float getCurrent() { return _current; }
 
-private:
+  private:
     void batteryEvent();
     EventSocket *_socket;
     Peripherals *_peripherals;
