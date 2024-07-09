@@ -16,20 +16,18 @@
 
 WiFiSettingsService::WiFiSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager,
                                          EventSocket *socket)
-    : _server(server), _securityManager(securityManager),
+    : _server(server),
+      _securityManager(securityManager),
       _httpEndpoint(WiFiSettings::read, WiFiSettings::update, this, server, WIFI_SETTINGS_SERVICE_PATH, securityManager,
                     AuthenticationPredicates::IS_ADMIN),
       _eventEndpoint(WiFiSettings::read, WiFiSettings::update, this, socket, EVENT_WIFI_SETTINGS),
-      _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, fs, WIFI_SETTINGS_FILE), _lastConnectionAttempt(0),
-      _socket(socket)
-{
-    addUpdateHandler([&](const String &originId)
-                     { reconfigureWiFiConnection(); },
-                     false);
+      _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, fs, WIFI_SETTINGS_FILE),
+      _lastConnectionAttempt(0),
+      _socket(socket) {
+    addUpdateHandler([&](const String &originId) { reconfigureWiFiConnection(); }, false);
 }
 
-void WiFiSettingsService::initWiFi()
-{
+void WiFiSettingsService::initWiFi() {
     WiFi.mode(WIFI_MODE_STA); // this is the default.
 
     // Disable WiFi config persistance and auto reconnect
@@ -46,88 +44,68 @@ void WiFiSettingsService::initWiFi()
     reconfigureWiFiConnection();
 }
 
-void WiFiSettingsService::begin()
-{
+void WiFiSettingsService::begin() {
     _httpEndpoint.begin();
     _eventEndpoint.begin();
 }
 
-void WiFiSettingsService::reconfigureWiFiConnection()
-{
+void WiFiSettingsService::reconfigureWiFiConnection() {
     // reset last connection attempt to force loop to reconnect immediately
     _lastConnectionAttempt = 0;
 
     // disconnect and de-configure wifi
-    if (WiFi.disconnect(true))
-    {
+    if (WiFi.disconnect(true)) {
         _stopping = true;
     }
 }
 
-void WiFiSettingsService::loop()
-{
+void WiFiSettingsService::loop() {
     unsigned long currentMillis = millis();
-    if (!_lastConnectionAttempt || (unsigned long)(currentMillis - _lastConnectionAttempt) >= WIFI_RECONNECTION_DELAY)
-    {
+    if (!_lastConnectionAttempt || (unsigned long)(currentMillis - _lastConnectionAttempt) >= WIFI_RECONNECTION_DELAY) {
         _lastConnectionAttempt = currentMillis;
         manageSTA();
     }
 
-    if (!_lastRssiUpdate || (unsigned long)(currentMillis - _lastRssiUpdate) >= RSSI_EVENT_DELAY)
-    {
+    if (!_lastRssiUpdate || (unsigned long)(currentMillis - _lastRssiUpdate) >= RSSI_EVENT_DELAY) {
         _lastRssiUpdate = currentMillis;
         updateRSSI();
     }
 }
 
-String WiFiSettingsService::getHostname()
-{
-    return _state.hostname;
-}
+String WiFiSettingsService::getHostname() { return _state.hostname; }
 
-void WiFiSettingsService::manageSTA()
-{
+void WiFiSettingsService::manageSTA() {
     // Abort if already connected, or if we have no SSID
-    if (WiFi.isConnected() || _state.wifiSettings.empty())
-    {
+    if (WiFi.isConnected() || _state.wifiSettings.empty()) {
         return;
     }
 
     // Connect or reconnect as required
-    if ((WiFi.getMode() & WIFI_STA) == 0)
-    {
+    if ((WiFi.getMode() & WIFI_STA) == 0) {
         connectToWiFi();
     }
 }
 
-void WiFiSettingsService::connectToWiFi()
-{
+void WiFiSettingsService::connectToWiFi() {
     // reset availability flag for all stored networks
-    for (auto &network : _state.wifiSettings)
-    {
+    for (auto &network : _state.wifiSettings) {
         network.available = false;
     }
 
     // scanning for available networks
     int scanResult = WiFi.scanNetworks();
-    if (scanResult == WIFI_SCAN_FAILED)
-    {
+    if (scanResult == WIFI_SCAN_FAILED) {
         ESP_LOGE("WiFiSettingsService", "WiFi scan failed.");
-    }
-    else if (scanResult == 0)
-    {
+    } else if (scanResult == 0) {
         ESP_LOGI("WiFiSettingsService", "No networks found.");
-    }
-    else
-    {
+    } else {
         ESP_LOGI("WiFiSettingsService", "%d networks found.", scanResult);
 
         // find the best network to connect
         wifi_settings_t *bestNetwork = NULL;
         int bestNetworkDb = FACTORY_WIFI_RSSI_THRESHOLD;
 
-        for (int i = 0; i < scanResult; ++i)
-        {
+        for (int i = 0; i < scanResult; ++i) {
             String ssid_scan;
             int32_t rssi_scan;
             uint8_t sec_scan;
@@ -137,18 +115,13 @@ void WiFiSettingsService::connectToWiFi()
             WiFi.getNetworkInfo(i, ssid_scan, sec_scan, rssi_scan, BSSID_scan, chan_scan);
             ESP_LOGV("WiFiSettingsService", "SSID: %s, RSSI: %d dbm", ssid_scan.c_str(), rssi_scan);
 
-            for (auto &network : _state.wifiSettings)
-            {
-                if (ssid_scan == network.ssid)
-                { // SSID match
-                    if (rssi_scan > bestNetworkDb)
-                    { // best network
+            for (auto &network : _state.wifiSettings) {
+                if (ssid_scan == network.ssid) {     // SSID match
+                    if (rssi_scan > bestNetworkDb) { // best network
                         bestNetworkDb = rssi_scan;
                         bestNetwork = &network;
                         network.available = true;
-                    }
-                    else if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD)
-                    { // available network
+                    } else if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD) { // available network
                         network.available = true;
                     }
                 }
@@ -157,25 +130,19 @@ void WiFiSettingsService::connectToWiFi()
         }
 
         // if configured to prioritize signal strength, use the best network else use the first available network
-        if (_state.priorityBySignalStrength == false)
-        {
-            for (auto &network : _state.wifiSettings)
-            {
-                if (network.available == true)
-                {
+        if (_state.priorityBySignalStrength == false) {
+            for (auto &network : _state.wifiSettings) {
+                if (network.available == true) {
                     ESP_LOGI("WiFiSettingsService", "Connecting to first available network: %s", network.ssid.c_str());
                     configureNetwork(network);
                     break;
                 }
             }
-        }
-        else if (_state.priorityBySignalStrength == true && bestNetwork)
-        {
+        } else if (_state.priorityBySignalStrength == true && bestNetwork) {
             ESP_LOGI("WiFiSettingsService", "Connecting to strongest network: %s", bestNetwork->ssid.c_str());
             configureNetwork(*bestNetwork);
             WiFi.begin(bestNetwork->ssid.c_str(), bestNetwork->password.c_str());
-        }
-        else // no suitable network to connect
+        } else // no suitable network to connect
         {
             ESP_LOGI("WiFiSettingsService", "No known networks found.");
         }
@@ -185,15 +152,11 @@ void WiFiSettingsService::connectToWiFi()
     }
 }
 
-void WiFiSettingsService::configureNetwork(wifi_settings_t &network)
-{
-    if (network.staticIPConfig)
-    {
+void WiFiSettingsService::configureNetwork(wifi_settings_t &network) {
+    if (network.staticIPConfig) {
         // configure for static IP
         WiFi.config(network.localIP, network.gatewayIP, network.subnetMask, network.dnsIP1, network.dnsIP2);
-    }
-    else
-    {
+    } else {
         // configure for DHCP
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     }
@@ -207,21 +170,15 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network)
 #endif
 }
 
-void WiFiSettingsService::updateRSSI()
-{
+void WiFiSettingsService::updateRSSI() {
     char buffer[4];
     snprintf(buffer, sizeof(buffer), "%d", WiFi.RSSI());
     _socket->emit(EVENT_RSSI, buffer);
 }
 
-void WiFiSettingsService::onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
-{
-    WiFi.disconnect(true);
-}
-void WiFiSettingsService::onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info)
-{
-    if (_stopping)
-    {
+void WiFiSettingsService::onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) { WiFi.disconnect(true); }
+void WiFiSettingsService::onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (_stopping) {
         _lastConnectionAttempt = 0;
         _stopping = false;
     }
