@@ -7,15 +7,10 @@
 
 	export let showDBm = true;
 	export let rssi_dbm = 0;
-	export let ssid = '';
-
-	$: if (ssid === '') {
-		ssid = 'Unknown';
-	}
 </script>
 
 <div class="indicator">
-	<div class="tooltip tooltip-left" data-tip={ssid}>
+	<div class="tooltip tooltip-left" data-tip={rssi_dbm + " dBm"}>
 		{#if showDBm}
 			<span class="indicator-item indicator-start badge badge-accent badge-outline badge-xs">
 				{rssi_dbm} dBm
