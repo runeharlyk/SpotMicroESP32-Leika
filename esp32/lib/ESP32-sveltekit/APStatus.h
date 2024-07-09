@@ -25,14 +25,13 @@
 
 #define AP_STATUS_SERVICE_PATH "/api/apStatus"
 
-class APStatus
-{
-public:
+class APStatus {
+  public:
     APStatus(PsychicHttpServer *server, SecurityManager *securityManager, APSettingsService *apSettingsService);
 
     void begin();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     APSettingsService *_apSettingsService;
