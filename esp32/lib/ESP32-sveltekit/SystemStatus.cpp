@@ -14,78 +14,39 @@
 
 #include <SystemStatus.h>
 
-String verbosePrintResetReason(int reason)
-{
-    switch (reason)
-    {
-    case 1:
-        return ("Vbat power on reset");
-        break;
-    case 3:
-        return ("Software reset digital core");
-        break;
-    case 4:
-        return ("Legacy watch dog reset digital core");
-        break;
-    case 5:
-        return ("Deep Sleep reset digital core");
-        break;
-    case 6:
-        return ("Reset by SLC module, reset digital core");
-        break;
-    case 7:
-        return ("Timer Group0 Watch dog reset digital core");
-        break;
-    case 8:
-        return ("Timer Group1 Watch dog reset digital core");
-        break;
-    case 9:
-        return ("RTC Watch dog Reset digital core");
-        break;
-    case 10:
-        return ("Intrusion tested to reset CPU");
-        break;
-    case 11:
-        return ("Time Group reset CPU");
-        break;
-    case 12:
-        return ("Software reset CPU");
-        break;
-    case 13:
-        return ("RTC Watch dog Reset CPU");
-        break;
-    case 14:
-        return ("for APP CPU, reseted by PRO CPU");
-        break;
-    case 15:
-        return ("Reset when the vdd voltage is not stable");
-        break;
-    case 16:
-        return ("RTC Watch dog reset digital core and rtc module");
-        break;
-    default:
-        return ("NO_MEAN");
+String verbosePrintResetReason(int reason) {
+    switch (reason) {
+        case 1: return ("Vbat power on reset"); break;
+        case 3: return ("Software reset digital core"); break;
+        case 4: return ("Legacy watch dog reset digital core"); break;
+        case 5: return ("Deep Sleep reset digital core"); break;
+        case 6: return ("Reset by SLC module, reset digital core"); break;
+        case 7: return ("Timer Group0 Watch dog reset digital core"); break;
+        case 8: return ("Timer Group1 Watch dog reset digital core"); break;
+        case 9: return ("RTC Watch dog Reset digital core"); break;
+        case 10: return ("Intrusion tested to reset CPU"); break;
+        case 11: return ("Time Group reset CPU"); break;
+        case 12: return ("Software reset CPU"); break;
+        case 13: return ("RTC Watch dog Reset CPU"); break;
+        case 14: return ("for APP CPU, reseted by PRO CPU"); break;
+        case 15: return ("Reset when the vdd voltage is not stable"); break;
+        case 16: return ("RTC Watch dog reset digital core and rtc module"); break;
+        default: return ("NO_MEAN");
     }
 }
 
-SystemStatus::SystemStatus(PsychicHttpServer *server,
-                           SecurityManager *securityManager) : _server(server),
-                                                               _securityManager(securityManager)
-{
-}
+SystemStatus::SystemStatus(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void SystemStatus::begin()
-{
-    _server->on(SYSTEM_STATUS_SERVICE_PATH,
-                HTTP_GET,
+void SystemStatus::begin() {
+    _server->on(SYSTEM_STATUS_SERVICE_PATH, HTTP_GET,
                 _securityManager->wrapRequest(std::bind(&SystemStatus::systemStatus, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_AUTHENTICATED));
 
     ESP_LOGV("SystemStatus", "Registered GET endpoint: %s", SYSTEM_STATUS_SERVICE_PATH);
 }
 
-esp_err_t SystemStatus::systemStatus(PsychicRequest *request)
-{
+esp_err_t SystemStatus::systemStatus(PsychicRequest *request) {
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
