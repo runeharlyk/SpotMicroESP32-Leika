@@ -28,7 +28,6 @@
 #define MAX_ESP_IMU_SIZE 500
 #define EVENT_IMU "imu"
 
-
 /*
  * Servo Settings
  */
@@ -48,7 +47,7 @@
 #define SCREEN_RESET -1
 
 /*
- * I2C software connection 
+ * I2C software connection
  */
 #ifndef SDA_PIN
 #define SDA_PIN SDA
@@ -61,7 +60,7 @@
 #endif
 
 class PinConfig {
-public:
+  public:
     int pin;
     String mode;
     String type;
@@ -71,7 +70,7 @@ public:
 };
 
 class PeripheralsConfiguration {
-   public:
+  public:
     int sda = SDA_PIN;
     int scl = SCL_PIN;
     long frequency = I2C_FREQUENCY;
@@ -92,30 +91,25 @@ class PeripheralsConfiguration {
 };
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
-   public:
-    Peripherals(PsychicHttpServer *server, FS *fs,
-                               SecurityManager *securityManager,
-                               EventSocket *socket)
+  public:
+    Peripherals(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, EventSocket *socket)
         : _server(server),
           _socket(socket),
           _securityManager(securityManager),
-          _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update,
-                        this, server, CONFIGURATION_SETTINGS_PATH,
-                        securityManager, AuthenticationPredicates::IS_ADMIN),
-          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update,
-                         this, socket, EVENT_CONFIGURATION_SETTINGS),
-            #if FT_ENABLED(FT_MAG)
-                _mag(12345),
-            #endif
-            #if FT_ENABLED(FT_BMP)
-                _bmp(10085),
-            #endif
-          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update,
-                         this, fs, DEVICE_CONFIG_FILE)
-                         {
-                            addUpdateHandler([&](const String &originId) { updatePins(); },
-                         false);
-                         };
+          _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, server,
+                        CONFIGURATION_SETTINGS_PATH, securityManager, AuthenticationPredicates::IS_ADMIN),
+          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, socket,
+                         EVENT_CONFIGURATION_SETTINGS),
+#if FT_ENABLED(FT_MAG)
+          _mag(12345),
+#endif
+#if FT_ENABLED(FT_BMP)
+          _bmp(10085),
+#endif
+          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, fs,
+                         DEVICE_CONFIG_FILE) {
+        addUpdateHandler([&](const String &originId) { updatePins(); }, false);
+    };
 
     void begin() {
         _httpEndpoint.begin();
@@ -134,57 +128,56 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         updatePins();
 
-        #if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(FT_SERVO)
         _pca.begin();
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
-        #endif
+#endif
 
-        #if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU)
         _imu.initialize();
         imu_success = _imu.testConnection();
         devStatus = _imu.dmpInitialize();
-        if(!imu_success) {
+        if (!imu_success) {
             ESP_LOGE("IMUService", "MPU initialize failed");
         }
         _imu.setDMPEnabled(true);
         _imu.setI2CMasterModeEnabled(false);
         _imu.setI2CBypassEnabled(true);
         _imu.setSleepEnabled(false);
-        #endif
-        #if FT_ENABLED(FT_MAG)
+#endif
+#if FT_ENABLED(FT_MAG)
         mag_success = _mag.begin();
-        if(!mag_success) {
+        if (!mag_success) {
             ESP_LOGE("IMUService", "MAG initialize failed");
-                }
-        #endif
-        #if FT_ENABLED(FT_BMP)
+        }
+#endif
+#if FT_ENABLED(FT_BMP)
         bmp_success = _bmp.begin();
-        if(!bmp_success) {
+        if (!bmp_success) {
             ESP_LOGE("IMUService", "BMP initialize failed");
         }
-        #endif
+#endif
 
-        #if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
+#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
         if (!_ads.begin()) {
             ESP_LOGE("Peripherals", "ADS1015/ADS1115 not found");
         }
         _ads.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, /*continuous=*/false);
-        #endif
+#endif
     };
 
     void loop() {
         unsigned long currentMillis = millis();
 
-        if (currentMillis - _lastUpdate >= _updateInterval)
-        {
+        if (currentMillis - _lastUpdate >= _updateInterval) {
             _lastUpdate = currentMillis;
             readIMU();
         }
     }
 
     void updatePins() {
-        if (i2c_active){
+        if (i2c_active) {
             Wire.end();
         }
 
@@ -227,156 +220,154 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     /* SERVO FUNCTIONS*/
     void pcaWrite(int index, int value) {
-    #if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(FT_SERVO)
         _pca.setPWM(index, 0, value);
-    #endif
+#endif
     }
 
     void pcaAngle(int index, int value) {
-    #if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(FT_SERVO)
         // uint16_t pwm = SERVO_MIN + value * SERVO_ANGLE_PWM_RATIO;
         _pca.setPWM(index, 0, 125 + value * 2);
-    #endif
+#endif
     }
 
     /* ADC FUNCTIONS*/
     int16_t readADCVoltage(uint8_t channel) {
         int16_t voltage = -1;
-    #if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
+#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
         float adc0 = _ads.readADC_SingleEnded(channel);
         voltage = _ads.computeVolts(adc0);
-    #endif
+#endif
         return voltage;
     }
 
     /* IMU FUNCTIONS */
     bool readIMU() {
         bool updated = false;
-        #if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU)
         updated = imu_success && _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
         _imu.dmpGetQuaternion(&q, fifoBuffer);
         _imu.dmpGetGravity(&gravity, &q);
         _imu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        #endif
+#endif
         return updated;
     }
 
     float getTemp() {
         float temp = -1;
-        #if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU)
         temp = imu_success ? imu_temperature : -1;
-        #endif
+#endif
         return temp;
     }
 
     float getAngleX() {
         float angle = 0;
-        #if FT_ENABLED(FT_IMU)
-        angle = imu_success ? ypr[0] * 180/M_PI : 0;
-        #endif
+#if FT_ENABLED(FT_IMU)
+        angle = imu_success ? ypr[0] * 180 / M_PI : 0;
+#endif
         return angle;
     }
 
     float getAngleY() {
         float angle = 0;
-        #if FT_ENABLED(FT_IMU)
-        angle = imu_success ? ypr[1] * 180/M_PI : 0;
-        #endif
+#if FT_ENABLED(FT_IMU)
+        angle = imu_success ? ypr[1] * 180 / M_PI : 0;
+#endif
         return angle;
     }
 
     float getAngleZ() {
         float angle = 0;
-        #if FT_ENABLED(FT_IMU)
-        angle = imu_success ? ypr[2] * 180/M_PI : 0;
-        #endif
+#if FT_ENABLED(FT_IMU)
+        angle = imu_success ? ypr[2] * 180 / M_PI : 0;
+#endif
         return angle;
     }
 
     /* MAG FUNCTIONS */
     float getHeading() {
         float heading = 0;
-        #if FT_ENABLED(FT_MAG)
-        sensors_event_t event; 
+#if FT_ENABLED(FT_MAG)
+        sensors_event_t event;
         _mag.getEvent(&event);
         heading = atan2(event.magnetic.y, event.magnetic.x);
         float declinationAngle = 0.22;
         heading += declinationAngle;
-        if(heading < 0) heading += 2 * PI;
-        if(heading > 2 * PI) heading -= 2 * PI;
-        heading *= 180/M_PI;
-        #endif
+        if (heading < 0) heading += 2 * PI;
+        if (heading > 2 * PI) heading -= 2 * PI;
+        heading *= 180 / M_PI;
+#endif
         return heading;
     }
 
     /* BMP FUNCTIONS */
     float getAltitude() {
         float altitude = -1;
-        #if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(FT_MAG)
         sensors_event_t event;
         _bmp.getEvent(&event);
         float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
         altitude = bmp_success && event.pressure ? _bmp.pressureToAltitude(seaLevelPressure, event.pressure) : -1;
-        #endif
+#endif
         return altitude;
     }
 
     float getPressure() {
         float pressure = -1;
-        #if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(FT_BMP)
         sensors_event_t event;
         _bmp.getEvent(&event);
         pressure = bmp_success && event.pressure ? event.pressure : -1;
-        #endif
+#endif
         return pressure;
     }
 
     float getTemperature() {
         float temperature = 0;
-        #if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(FT_BMP)
         _bmp.getTemperature(&temperature);
         temperature = bmp_success ? temperature : -1;
-        #endif
+#endif
         return temperature;
     }
 
-    double round2(double value) {
-        return (int)(value * 100 + 0.5) / 100.0;
-    }
+    double round2(double value) { return (int)(value * 100 + 0.5) / 100.0; }
 
-protected:
+  protected:
     void updateImu() {
         doc.clear();
         bool newData = false;
-        #if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(FT_IMU)
         newData = imu_success && readIMU();
         if (imu_success) {
             doc["x"] = round2(getAngleX());
             doc["y"] = round2(getAngleY());
             doc["z"] = round2(getAngleZ());
         }
-        #endif
-        #if FT_ENABLED(FT_MAG)
+#endif
+#if FT_ENABLED(FT_MAG)
         newData = newData || mag_success;
         if (mag_success) {
             doc["heading"] = round2(getHeading());
         }
-        #endif
-        #if FT_ENABLED(FT_BMP)
+#endif
+#if FT_ENABLED(FT_BMP)
         newData = newData || bmp_success;
         if (bmp_success) {
             doc["pressure"] = round2(getPressure());
             doc["altitude"] = round2(getAltitude());
             doc["bmp_temp"] = round2(getTemperature());
         }
-        #endif
-        if(newData) {
+#endif
+        if (newData) {
             serializeJson(doc, message);
             _socket->emit(EVENT_IMU, message);
         }
     }
 
-   private:
+  private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
     SecurityManager *_securityManager;
@@ -405,7 +396,7 @@ protected:
     bool mag_success {false};
 #endif
 #if FT_ENABLED(FT_BMP)
-    Adafruit_BMP085_Unified _bmp; 
+    Adafruit_BMP085_Unified _bmp;
     bool bmp_success {false};
 #endif
 #if FT_ENABLED(FT_ADS1015)
