@@ -14,15 +14,11 @@
 
 #include <NTPStatus.h>
 
-NTPStatus::NTPStatus(PsychicHttpServer *server, SecurityManager *securityManager) : _server(server),
-                                                                                    _securityManager(securityManager)
-{
-}
+NTPStatus::NTPStatus(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void NTPStatus::begin()
-{
-    _server->on(NTP_STATUS_SERVICE_PATH,
-                HTTP_GET,
+void NTPStatus::begin() {
+    _server->on(NTP_STATUS_SERVICE_PATH, HTTP_GET,
                 _securityManager->wrapRequest(std::bind(&NTPStatus::ntpStatus, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_AUTHENTICATED));
 
@@ -34,25 +30,17 @@ void NTPStatus::begin()
  *
  * Uses a 25 byte buffer, large enough to fit an ISO time string with offset.
  */
-String formatTime(tm *time, const char *format)
-{
+String formatTime(tm *time, const char *format) {
     char time_string[25];
     strftime(time_string, 25, format, time);
     return String(time_string);
 }
 
-String toUTCTimeString(tm *time)
-{
-    return formatTime(time, "%FT%TZ");
-}
+String toUTCTimeString(tm *time) { return formatTime(time, "%FT%TZ"); }
 
-String toLocalTimeString(tm *time)
-{
-    return formatTime(time, "%FT%T");
-}
+String toLocalTimeString(tm *time) { return formatTime(time, "%FT%T"); }
 
-esp_err_t NTPStatus::ntpStatus(PsychicRequest *request)
-{
+esp_err_t NTPStatus::ntpStatus(PsychicRequest *request) {
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
 
