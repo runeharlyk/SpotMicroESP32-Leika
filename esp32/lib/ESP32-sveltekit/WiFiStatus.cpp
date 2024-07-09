@@ -14,16 +14,11 @@
 
 #include <WiFiStatus.h>
 
-WiFiStatus::WiFiStatus(PsychicHttpServer *server,
-                       SecurityManager *securityManager) : _server(server),
-                                                           _securityManager(securityManager)
-{
-}
+WiFiStatus::WiFiStatus(PsychicHttpServer *server, SecurityManager *securityManager)
+    : _server(server), _securityManager(securityManager) {}
 
-void WiFiStatus::begin()
-{
-    _server->on(WIFI_STATUS_SERVICE_PATH,
-                HTTP_GET,
+void WiFiStatus::begin() {
+    _server->on(WIFI_STATUS_SERVICE_PATH, HTTP_GET,
                 _securityManager->wrapRequest(std::bind(&WiFiStatus::wifiStatus, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_AUTHENTICATED));
 
@@ -34,29 +29,25 @@ void WiFiStatus::begin()
     WiFi.onEvent(onStationModeGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 }
 
-void WiFiStatus::onStationModeConnected(WiFiEvent_t event, WiFiEventInfo_t info)
-{
+void WiFiStatus::onStationModeConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI("WiFiStatus", "WiFi Connected.");
 }
 
-void WiFiStatus::onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
-{
+void WiFiStatus::onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI("WiFiStatus", "WiFi Disconnected. Reason code=%d", info.wifi_sta_disconnected.reason);
 }
 
-void WiFiStatus::onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
-{
-    ESP_LOGI("WiFiStatus", "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(), WiFi.getHostname());
+void WiFiStatus::onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info) {
+    ESP_LOGI("WiFiStatus", "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(),
+             WiFi.getHostname());
 }
 
-esp_err_t WiFiStatus::wifiStatus(PsychicRequest *request)
-{
+esp_err_t WiFiStatus::wifiStatus(PsychicRequest *request) {
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonObject root = response.getRoot();
     wl_status_t status = WiFi.status();
     root["status"] = (uint8_t)status;
-    if (status == WL_CONNECTED)
-    {
+    if (status == WL_CONNECTED) {
         root["local_ip"] = WiFi.localIP().toString();
         root["mac_address"] = WiFi.macAddress();
         root["rssi"] = WiFi.RSSI();
@@ -67,12 +58,10 @@ esp_err_t WiFiStatus::wifiStatus(PsychicRequest *request)
         root["gateway_ip"] = WiFi.gatewayIP().toString();
         IPAddress dnsIP1 = WiFi.dnsIP(0);
         IPAddress dnsIP2 = WiFi.dnsIP(1);
-        if (IPUtils::isSet(dnsIP1))
-        {
+        if (IPUtils::isSet(dnsIP1)) {
             root["dns_ip_1"] = dnsIP1.toString();
         }
-        if (IPUtils::isSet(dnsIP2))
-        {
+        if (IPUtils::isSet(dnsIP2)) {
             root["dns_ip_2"] = dnsIP2.toString();
         }
     }

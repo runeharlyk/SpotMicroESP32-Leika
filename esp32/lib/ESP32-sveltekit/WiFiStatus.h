@@ -24,14 +24,13 @@
 
 #define WIFI_STATUS_SERVICE_PATH "/api/wifiStatus"
 
-class WiFiStatus
-{
-public:
+class WiFiStatus {
+  public:
     WiFiStatus(PsychicHttpServer *server, SecurityManager *securityManager);
 
     void begin();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
 
