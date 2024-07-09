@@ -71,126 +71,64 @@
 #define ESP32SVELTEKIT_RUNNING_CORE -1
 #endif
 
-class ESP32SvelteKit
-{
-public:
+class ESP32SvelteKit {
+  public:
     ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints = 115);
 
     void begin();
 
-    FS *getFS()
-    {
-        return &ESPFS;
-    }
+    FS *getFS() { return &ESPFS; }
 
-    PsychicHttpServer *getServer()
-    {
-        return _server;
-    }
+    PsychicHttpServer *getServer() { return _server; }
 
-    SecurityManager *getSecurityManager()
-    {
-        return &_securitySettingsService;
-    }
+    SecurityManager *getSecurityManager() { return &_securitySettingsService; }
 
-    EventSocket *getSocket()
-    {
-        return &_socket;
-    }
+    EventSocket *getSocket() { return &_socket; }
 
-    StatefulService<WiFiSettings> *getWiFiSettingsService()
-    {
-        return &_wifiSettingsService;
-    }
+    StatefulService<WiFiSettings> *getWiFiSettingsService() { return &_wifiSettingsService; }
 
-    StatefulService<APSettings> *getAPSettingsService()
-    {
-        return &_apSettingsService;
-    }
+    StatefulService<APSettings> *getAPSettingsService() { return &_apSettingsService; }
 
 #if FT_ENABLED(FT_NTP)
-    StatefulService<NTPSettings> *getNTPSettingsService()
-    {
-        return &_ntpSettingsService;
-    }
+    StatefulService<NTPSettings> *getNTPSettingsService() { return &_ntpSettingsService; }
 #endif
 
 #if FT_ENABLED(FT_SLEEP)
-    SleepService *getSleepService()
-    {
-        return &_sleepService;
-    }
+    SleepService *getSleepService() { return &_sleepService; }
 #endif
 
 #if FT_ENABLED(FT_BATTERY)
-    BatteryService *getBatteryService()
-    {
-        return &_batteryService;
-    }
+    BatteryService *getBatteryService() { return &_batteryService; }
 #endif
 
-    FeaturesService *getFeatureService()
-    {
-        return &_featureService;
-    }
+    FeaturesService *getFeatureService() { return &_featureService; }
 
-    TaskManager *getTaskManager()
-    {
-        return &_taskManager;
-    }
+    TaskManager *getTaskManager() { return &_taskManager; }
 
-    FileExplorer *getFileExplorer()
-    {
-        return &_fileExplorer;
-    }
+    FileExplorer *getFileExplorer() { return &_fileExplorer; }
 
 #if FT_ENABLED(FT_MOTION)
-    MotionService *getMotionService()
-    {
-        return &_motionService;
-    }
+    MotionService *getMotionService() { return &_motionService; }
 #endif
 
 #if FT_ENABLED(FT_CAMERA)
-    CameraService *getCameraService()
-    {
-        return &_cameraService;
-    }
-
-    CameraSettingsService *getCameraSettingsService()
-    {
-        return &_cameraSettingsService;
-    }
+    CameraService *getCameraService() { return &_cameraService; }
+    CameraSettingsService *getCameraSettingsService() { return &_cameraSettingsService; }
 #endif
 
-    Peripherals *getPeripherals()
-    {
-        return &_peripherals;
-    }
+    Peripherals *getPeripherals() { return &_peripherals; }
 
 #if FT_ENABLED(FT_SERVO)
-    ServoController *getServoController()
-    {
-        return &_servoController;
-    }
+    ServoController *getServoController() { return &_servoController; }
 #endif
 
-    void factoryReset()
-    {
-        _factoryResetService.factoryReset();
-    }
+    void factoryReset() { _factoryResetService.factoryReset(); }
 
-    void setMDNSAppName(String name)
-    {
-        _appName = name;
-    }
+    void setMDNSAppName(String name) { _appName = name; }
 
-    void recoveryMode()
-    {
-        _apSettingsService.recoveryMode();
-    }
+    void recoveryMode() { _apSettingsService.recoveryMode(); }
 
-private:
+  private:
     PsychicHttpServer *_server;
     unsigned int _numberEndpoints;
     FeaturesService _featureService;
@@ -245,7 +183,7 @@ private:
 
     String _appName = APP_NAME;
 
-protected:
+  protected:
     static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->_loop(); }
     void _loop();
     void setupServer();

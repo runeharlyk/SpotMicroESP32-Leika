@@ -15,8 +15,7 @@
 
 #include <ESP32SvelteKit.h>
 
-ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
-                               unsigned int numberEndpoints)
+ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
     : _server(server),
       _numberEndpoints(numberEndpoints),
       _taskManager(),
@@ -27,8 +26,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _wifiStatus(server, &_securitySettingsService),
       _apSettingsService(server, &ESPFS, &_securitySettingsService),
       _apStatus(server, &_securitySettingsService, &_apSettingsService),
-      _socket(server, &_securitySettingsService,
-              AuthenticationPredicates::IS_AUTHENTICATED),
+      _socket(server, &_securitySettingsService, AuthenticationPredicates::IS_AUTHENTICATED),
 #if FT_ENABLED(FT_NTP)
       _ntpSettingsService(server, &ESPFS, &_securitySettingsService),
       _ntpStatus(server, &_securitySettingsService),
@@ -37,8 +35,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _uploadFirmwareService(server, &_securitySettingsService),
 #endif
 #if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_securitySettingsService, &_socket,
-                               &_taskManager),
+      _downloadFirmwareService(server, &_securitySettingsService, &_socket, &_taskManager),
 #endif
 #if FT_ENABLED(FT_SECURITY)
       _authenticationService(server, &_securitySettingsService),
@@ -61,16 +58,16 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server,
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
 #if FT_ENABLED(FT_MOTION)
-      _motionService(_server, &_socket, &_securitySettingsService,&_taskManager),
+      _motionService(_server, &_socket, &_securitySettingsService, &_taskManager),
 #endif
 #if FT_ENABLED(FT_WS2812)
-        _ledService(&_taskManager),
+      _ledService(&_taskManager),
 #endif
 #if FT_ENABLED(FT_SERVO)
       _servoController(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
-      _peripherals(server, &ESPFS, &_securitySettingsService, &_socket)
-{ }
+      _peripherals(server, &ESPFS, &_securitySettingsService, &_socket) {
+}
 
 void ESP32SvelteKit::begin() {
     ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");
@@ -86,8 +83,7 @@ void ESP32SvelteKit::begin() {
     startServices();
 
     ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this,
-                            (tskIDLE_PRIORITY + 1), NULL,
+    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, (tskIDLE_PRIORITY + 1), NULL,
                             ESP32SVELTEKIT_RUNNING_CORE);
 }
 
@@ -96,21 +92,17 @@ void ESP32SvelteKit::setupServer() {
     _server->listen(80);
 
 #ifdef EMBED_WWW
-    ESP_LOGV("ESP32SvelteKit",
-             "Registering routes from PROGMEM static resources");
-    WWWData::registerRoutes([&](const String &uri, const String &contentType,
-                                const uint8_t *content, size_t len) {
-        PsychicHttpRequestCallback requestHandler =
-            [contentType, content, len](PsychicRequest *request) {
-                PsychicResponse response(request);
-                response.setCode(200);
-                response.setContentType(contentType.c_str());
-                response.addHeader("Content-Encoding", "gzip");
-                response.addHeader("Cache-Control",
-                                   "public, immutable, max-age=31536000");
-                response.setContent(content, len);
-                return response.send();
-            };
+    ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
+    WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
+        PsychicHttpRequestCallback requestHandler = [contentType, content, len](PsychicRequest *request) {
+            PsychicResponse response(request);
+            response.setCode(200);
+            response.setContentType(contentType.c_str());
+            response.addHeader("Content-Encoding", "gzip");
+            response.addHeader("Cache-Control", "public, immutable, max-age=31536000");
+            response.setContent(content, len);
+            return response.send();
+        };
         PsychicWebHandler *handler = new PsychicWebHandler();
         handler->onRequest(requestHandler);
         _server->on(uri.c_str(), HTTP_GET, handler);
@@ -123,15 +115,13 @@ void ESP32SvelteKit::setupServer() {
     });
 #else
     // Serve static resources from /www/
-    ESP_LOGV("ESP32SvelteKit",
-             "Registering routes from FS /www/ static resources");
+    ESP_LOGV("ESP32SvelteKit", "Registering routes from FS /www/ static resources");
     _server->serveStatic("/_app/", ESPFS, "/www/_app/");
     _server->serveStatic("/favicon.png", ESPFS, "/www/favicon.png");
     //  Serving all other get requests with "/www/index.htm"
     _server->onNotFound([](PsychicRequest *request) {
         if (request->method() == HTTP_GET) {
-            PsychicFileResponse response(request, ESPFS, "/www/index.html",
-                                         "text/html");
+            PsychicFileResponse response(request, ESPFS, "/www/index.html", "text/html");
             return response.send();
             // String url = "http://" + request->host() + "/index.html";
             // request->redirect(url.c_str());
@@ -144,12 +134,9 @@ void ESP32SvelteKit::setupServer() {
 
 #if defined(ENABLE_CORS)
     ESP_LOGV("ESP32SvelteKit", "Enabling CORS headers");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin",
-                                         CORS_ORIGIN);
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers",
-                                         "Accept, Content-Type, Authorization");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials",
-                                         "true");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
 #endif
     DefaultHeaders::Instance().addHeader("Server", _appName);
 }
@@ -236,7 +223,7 @@ void IRAM_ATTR ESP32SvelteKit::_loop() {
 #if FT_ENABLED(FT_WS2812)
         _ledService.loop();
 #endif
-    _peripherals.loop();
+        _peripherals.loop();
         delay(20);
     }
 }
