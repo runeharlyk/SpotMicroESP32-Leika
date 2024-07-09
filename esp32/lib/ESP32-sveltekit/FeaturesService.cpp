@@ -45,8 +45,7 @@ void FeaturesService::begin() {
         return response.send();
     });
 
-    ESP_LOGV("FeaturesService", "Registered GET endpoint: %s",
-             FEATURES_SERVICE_PATH);
+    ESP_LOGV("FeaturesService", "Registered GET endpoint: %s", FEATURES_SERVICE_PATH);
 }
 
 void FeaturesService::addFeature(String feature, bool enabled) {

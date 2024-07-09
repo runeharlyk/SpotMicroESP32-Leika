@@ -24,22 +24,20 @@
 
 #define FEATURES_SERVICE_PATH "/api/features"
 
-typedef struct
-{
+typedef struct {
     String feature;
     bool enabled;
 } UserFeature;
 
-class FeaturesService
-{
-public:
+class FeaturesService {
+  public:
     FeaturesService(PsychicHttpServer *server);
 
     void begin();
 
     void addFeature(String feature, bool enabled);
 
-private:
+  private:
     PsychicHttpServer *_server;
     std::vector<UserFeature> userFeatures;
 };
