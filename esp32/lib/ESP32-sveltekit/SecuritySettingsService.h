@@ -48,21 +48,18 @@
 
 #if FT_ENABLED(FT_SECURITY)
 
-class SecuritySettings
-{
-public:
+class SecuritySettings {
+  public:
     String jwtSecret;
     std::list<User> users;
 
-    static void read(SecuritySettings &settings, JsonObject &root)
-    {
+    static void read(SecuritySettings &settings, JsonObject &root) {
         // secret
         root["jwt_secret"] = settings.jwtSecret;
 
         // users
         JsonArray users = root.to<JsonArray>();
-        for (User user : settings.users)
-        {
+        for (User user : settings.users) {
             JsonObject userRoot = users.add<JsonObject>();
             userRoot["username"] = user.username;
             userRoot["password"] = user.password;
@@ -70,22 +67,17 @@ public:
         }
     }
 
-    static StateUpdateResult update(JsonObject &root, SecuritySettings &settings)
-    {
+    static StateUpdateResult update(JsonObject &root, SecuritySettings &settings) {
         // secret
         settings.jwtSecret = root["jwt_secret"] | SettingValue::format(FACTORY_JWT_SECRET);
 
         // users
         settings.users.clear();
-        if (root["users"].is<JsonArray>())
-        {
-            for (JsonVariant user : root["users"].as<JsonArray>())
-            {
+        if (root["users"].is<JsonArray>()) {
+            for (JsonVariant user : root["users"].as<JsonArray>()) {
                 settings.users.push_back(User(user["username"], user["password"], user["admin"]));
             }
-        }
-        else
-        {
+        } else {
             settings.users.push_back(User(FACTORY_ADMIN_USERNAME, FACTORY_ADMIN_PASSWORD, true));
             settings.users.push_back(User(FACTORY_GUEST_USERNAME, FACTORY_GUEST_PASSWORD, false));
         }
@@ -93,9 +85,8 @@ public:
     }
 };
 
-class SecuritySettingsService : public StatefulService<SecuritySettings>, public SecurityManager
-{
-public:
+class SecuritySettingsService : public StatefulService<SecuritySettings>, public SecurityManager {
+  public:
     SecuritySettingsService(PsychicHttpServer *server, FS *fs);
 
     void begin();
@@ -109,7 +100,7 @@ public:
     PsychicHttpRequestCallback wrapRequest(PsychicHttpRequestCallback onRequest, AuthenticationPredicate predicate);
     PsychicJsonRequestCallback wrapCallback(PsychicJsonRequestCallback onRequest, AuthenticationPredicate predicate);
 
-private:
+  private:
     PsychicHttpServer *_server;
 
     HttpEndpoint<SecuritySettings> _httpEndpoint;
@@ -133,9 +124,8 @@ private:
 
 #else
 
-class SecuritySettingsService : public SecurityManager
-{
-public:
+class SecuritySettingsService : public SecurityManager {
+  public:
     SecuritySettingsService(PsychicHttpServer *server, FS *fs);
     ~SecuritySettingsService();
 
