@@ -242,7 +242,7 @@ void PsychicWebSocketHandler::sendAll(httpd_ws_frame_t *ws_pkt)
 {
   for (PsychicClient *client : _clients)
   {
-    ESP_LOGI(PH_TAG, "Active client (fd=%d) -> sending async message", client->socket());
+    ESP_LOGD(PH_TAG, "Active client (fd=%d) -> sending async message", client->socket());
 
     if (client->_friend == NULL)
     {
