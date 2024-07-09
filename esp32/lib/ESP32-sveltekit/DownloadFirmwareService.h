@@ -31,14 +31,14 @@
 #define EVENT_DOWNLOAD_OTA "otastatus"
 #define OTA_TASK_STACK_SIZE 9216
 
-class DownloadFirmwareService
-{
-public:
-    DownloadFirmwareService(PsychicHttpServer *server, SecurityManager *securityManager, EventSocket *socket, TaskManager *taskManager);
+class DownloadFirmwareService {
+  public:
+    DownloadFirmwareService(PsychicHttpServer *server, SecurityManager *securityManager, EventSocket *socket,
+                            TaskManager *taskManager);
 
     void begin();
 
-private:
+  private:
     SecurityManager *_securityManager;
     PsychicHttpServer *_server;
     EventSocket *_socket;
