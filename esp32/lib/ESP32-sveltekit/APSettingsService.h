@@ -70,16 +70,10 @@
 #define MANAGE_NETWORK_DELAY 10000
 #define DNS_PORT 53
 
-enum APNetworkStatus
-{
-    ACTIVE = 0,
-    INACTIVE,
-    LINGERING
-};
+enum APNetworkStatus { ACTIVE = 0, INACTIVE, LINGERING };
 
-class APSettings
-{
-public:
+class APSettings {
+  public:
     uint8_t provisionMode;
     String ssid;
     String password;
@@ -91,15 +85,13 @@ public:
     IPAddress gatewayIP;
     IPAddress subnetMask;
 
-    bool operator==(const APSettings &settings) const
-    {
+    bool operator==(const APSettings &settings) const {
         return provisionMode == settings.provisionMode && ssid == settings.ssid && password == settings.password &&
                channel == settings.channel && ssidHidden == settings.ssidHidden && maxClients == settings.maxClients &&
                localIP == settings.localIP && gatewayIP == settings.gatewayIP && subnetMask == settings.subnetMask;
     }
 
-    static void read(APSettings &settings, JsonObject &root)
-    {
+    static void read(APSettings &settings, JsonObject &root) {
         root["provision_mode"] = settings.provisionMode;
         root["ssid"] = settings.ssid;
         root["password"] = settings.password;
@@ -111,18 +103,14 @@ public:
         root["subnet_mask"] = settings.subnetMask.toString();
     }
 
-    static StateUpdateResult update(JsonObject &root, APSettings &settings)
-    {
+    static StateUpdateResult update(JsonObject &root, APSettings &settings) {
         APSettings newSettings = {};
         newSettings.provisionMode = root["provision_mode"] | FACTORY_AP_PROVISION_MODE;
-        switch (settings.provisionMode)
-        {
-        case AP_MODE_ALWAYS:
-        case AP_MODE_DISCONNECTED:
-        case AP_MODE_NEVER:
-            break;
-        default:
-            newSettings.provisionMode = AP_MODE_DISCONNECTED;
+        switch (settings.provisionMode) {
+            case AP_MODE_ALWAYS:
+            case AP_MODE_DISCONNECTED:
+            case AP_MODE_NEVER: break;
+            default: newSettings.provisionMode = AP_MODE_DISCONNECTED;
         }
         newSettings.ssid = root["ssid"] | SettingValue::format(FACTORY_AP_SSID);
         newSettings.password = root["password"] | FACTORY_AP_PASSWORD;
@@ -134,8 +122,7 @@ public:
         JsonUtils::readIP(root, "gateway_ip", newSettings.gatewayIP, FACTORY_AP_GATEWAY_IP);
         JsonUtils::readIP(root, "subnet_mask", newSettings.subnetMask, FACTORY_AP_SUBNET_MASK);
 
-        if (newSettings == settings)
-        {
+        if (newSettings == settings) {
             return StateUpdateResult::UNCHANGED;
         }
         settings = newSettings;
@@ -143,9 +130,8 @@ public:
     }
 };
 
-class APSettingsService : public StatefulService<APSettings>
-{
-public:
+class APSettingsService : public StatefulService<APSettings> {
+  public:
     APSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager);
 
     void begin();
@@ -153,7 +139,7 @@ public:
     APNetworkStatus getAPNetworkStatus();
     void recoveryMode();
 
-private:
+  private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     HttpEndpoint<APSettings> _httpEndpoint;
