@@ -14,6 +14,7 @@ Install the following software to ensure all functionalities:
 - [Node.js](https://nodejs.org) - Needed for app building
 - A package manager of your choice (npm, pnpm, yarn)
 - [Python 3.8 or higher](https://www.python.org/downloads/) - Used for firmware build scripts
+- [ClangFormat](https://releases.llvm.org/download.html) - Used for formatting
 
 <!-- ### Project Structure
 
