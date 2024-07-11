@@ -128,6 +128,8 @@ class ESP32SvelteKit {
 
     void recoveryMode() { _apSettingsService.recoveryMode(); }
 
+    void loop();
+
   private:
     PsychicHttpServer *_server;
     unsigned int _numberEndpoints;
@@ -184,8 +186,6 @@ class ESP32SvelteKit {
     String _appName = APP_NAME;
 
   protected:
-    static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->_loop(); }
-    void _loop();
     void setupServer();
     void setupMDNS();
     void startServices();

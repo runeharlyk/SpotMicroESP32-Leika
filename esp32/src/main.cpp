@@ -13,4 +13,4 @@ void setup() {
     spot.begin();
 }
 
-void loop() { vTaskDelete(NULL); }
+void loop() { spot.loop(); }
