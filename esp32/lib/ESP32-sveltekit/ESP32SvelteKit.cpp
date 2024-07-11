@@ -83,8 +83,6 @@ void ESP32SvelteKit::begin() {
     startServices();
 
     ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, (tskIDLE_PRIORITY + 1), NULL,
-                            ESP32SVELTEKIT_RUNNING_CORE);
 }
 
 void ESP32SvelteKit::setupServer() {
@@ -204,7 +202,7 @@ void ESP32SvelteKit::startServices() {
 #endif
 }
 
-void IRAM_ATTR ESP32SvelteKit::_loop() {
+void IRAM_ATTR ESP32SvelteKit::loop() {
     while (1) {
         _wifiSettingsService.loop();
         _apSettingsService.loop();
