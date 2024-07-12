@@ -6,6 +6,7 @@
 #include <HttpEndpoint.h>
 #include <SecurityManager.h>
 #include <StatefulService.h>
+#include <MathUtils.h>
 #include <list>
 
 #include <SPI.h>
@@ -332,8 +333,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
         return temperature;
     }
-
-    double round2(double value) { return (int)(value * 100 + 0.5) / 100.0; }
 
   protected:
     void updateImu() {
