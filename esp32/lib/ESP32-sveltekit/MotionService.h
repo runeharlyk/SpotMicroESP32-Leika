@@ -4,6 +4,7 @@
 #include <EventSocket.h>
 #include <TaskManager.h>
 #include <Kinematics.h>
+#include <MathUtils.h>
 
 #define DEFAULT_STATE false
 #define LIGHT_SETTINGS_ENDPOINT_PATH "/api/input"
@@ -90,8 +91,6 @@ class MotionService {
                 angles[11]);
         _socket->emit(ANGLES_EVENT, output, originId.c_str());
     }
-
-    float lerp(float start, float end, float t) { return (1 - t) * start + t * end; }
 
     bool updateMotion() {
         switch (motionState) {
