@@ -7,7 +7,7 @@
 
 #define SERVO_CONFIG_FILE "/config/servoConfig.json"
 #define SERVO_CONFIGURATION_SETTINGS_PATH "/api/servo/configuration"
-#define EVENT_CONFIGURATION_SETTINGS "servoConfiguration"
+#define SERVO_EVENT_CONFIGURATION_SETTINGS "servoConfiguration"
 
 #ifndef FACTORY_SERVO_NUM
 #define FACTORY_SERVO_NUM 12
@@ -139,7 +139,7 @@ class ServoController : public Adafruit_PWMServoDriver, public StatefulService<S
           _server(server),
           _securityManager(securityManager),
           _eventEndpoint(ServoConfiguration::read, ServoConfiguration::update, this, socket,
-                         EVENT_CONFIGURATION_SETTINGS),
+                         SERVO_EVENT_CONFIGURATION_SETTINGS),
           _fsPersistence(ServoConfiguration::read, ServoConfiguration::update, this, fs, SERVO_CONFIG_FILE) {
         addUpdateHandler([&](const String &originId) { updateServos(); }, false);
     }
