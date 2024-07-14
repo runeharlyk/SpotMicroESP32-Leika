@@ -61,8 +61,8 @@
 	{#if $page.data.features.battery}
 		<div class="flex-none">
 			<BatteryIndicator
-				charging={$telemetry.battery.charging}
-				soc={$telemetry.battery.soc}
+				voltage={$telemetry.battery.voltage}
+				current={$telemetry.battery.current}
 				class="h-7 w-7"
 			/>
 		</div>

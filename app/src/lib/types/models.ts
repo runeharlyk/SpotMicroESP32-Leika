@@ -70,8 +70,8 @@ export type RSSI = {
 };
 
 export type Battery = {
-	soc: number;
-	charging: boolean;
+	voltage: number;
+	current: boolean;
 };
 
 export type DownloadOTA = {
