@@ -1,30 +1,21 @@
 #ifndef Kinematics_h
 #define Kinematics_h
 
-#include <dspm_mult.h>
-#include <cmath>
+#include <MathUtils.h>
 
-#define RAD2DEG 57.295779513082321 // 180 / PI
-#define DEG2RAD 0.017453292519943
 
 struct body_state_t {
     float omega, phi, psi, xm, ym, zm;
     float feet[4][4];
 
-    void updateFeet(const float newFeet[4][4]) {
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                feet[i][j] = newFeet[i][j];
-            }
-        }
-    }
+    void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
 
     bool isEqual(const body_state_t &other) const {
         if (omega != other.omega || phi != other.phi || psi != other.psi || xm != other.xm || ym != other.ym ||
             zm != other.zm) {
             return false;
         }
-        return memcmp(feet, other.feet, sizeof(feet)) == 0;
+        return ARRAY_EQUAL(feet, other.feet);
     }
 };
 
@@ -48,8 +39,8 @@ class Kinematics {
     float point[4];
     float Q1[4][4];
 
-    const float sHp = sin(PI / 2);
-    const float cHp = cos(PI / 2);
+    const float sHp = sinf(PI_F / 2);
+    const float cHp = cosf(PI_F / 2);
 
     float point_lf[4][4];
 
@@ -79,33 +70,33 @@ class Kinematics {
         currentState = body_state;
 
         ret += inverse(Tlf, inv);
-        dspm_mult_f32_ae32((float *)inv, (float *)body_state.feet[0], (float *)point, 4, 4, 1);
+        MAT_MULT(inv, body_state.feet[0], point, 4, 4, 1);
         legIK((float *)point, result);
 
         ret += inverse(Trf, inv);
-        dspm_mult_f32_ae32((float *)Ix, (float *)inv, (float *)Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float *)Q1, (float *)body_state.feet[1], (float *)point, 4, 4, 1);
+        MAT_MULT(Ix, inv, Q1, 4, 4, 4);
+        MAT_MULT(Q1, body_state.feet[1], point, 4, 4, 1);
         legIK((float *)point, result + 3);
 
         ret += inverse(Tlb, inv);
-        dspm_mult_f32_ae32((float *)inv, (float *)body_state.feet[2], (float *)point, 4, 4, 1);
+        MAT_MULT(inv, body_state.feet[2], point, 4, 4, 1);
         legIK((float *)point, result + 6);
 
         ret += inverse(Trb, inv);
-        dspm_mult_f32_ae32((float *)Ix, (float *)inv, (float *)Q1, 4, 4, 4);
-        dspm_mult_f32_ae32((float *)Q1, (float *)body_state.feet[3], (float *)point, 4, 4, 1);
+        MAT_MULT(Ix, inv, Q1, 4, 4, 4);
+        MAT_MULT(Q1, body_state.feet[3], point, 4, 4, 1);
         legIK((float *)point, result + 9);
 
         return ret;
     }
 
     esp_err_t bodyIK(const body_state_t p) {
-        float cos_omega = cos(p.omega * DEG2RAD);
-        float sin_omega = sin(p.omega * DEG2RAD);
-        float cos_phi = cos(p.phi * DEG2RAD);
-        float sin_phi = sin(p.phi * DEG2RAD);
-        float cos_psi = cos(p.psi * DEG2RAD);
-        float sin_psi = sin(p.psi * DEG2RAD);
+        float cos_omega = COS_DEG_F(p.omega);
+        float sin_omega = SIN_DEG_F(p.omega);
+        float cos_phi = COS_DEG_F(p.phi);
+        float sin_phi = SIN_DEG_F(p.phi);
+        float cos_psi = COS_DEG_F(p.psi);
+        float sin_psi = SIN_DEG_F(p.psi);
 
         float Tm[4][4] = {{cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm},
                           {sin_omega * sin_phi * cos_psi + sin_psi * cos_omega,
@@ -122,28 +113,28 @@ class Kinematics {
 
         float point_rb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
 
-        dspm_mult_f32_ae32((float *)Tm, (float *)point_lf, (float *)Tlf, 4, 4, 4);
-        dspm_mult_f32_ae32((float *)Tm, (float *)point_rf, (float *)Trf, 4, 4, 4);
-        dspm_mult_f32_ae32((float *)Tm, (float *)point_lb, (float *)Tlb, 4, 4, 4);
-        dspm_mult_f32_ae32((float *)Tm, (float *)point_rb, (float *)Trb, 4, 4, 4);
+        MAT_MULT(Tm, point_lf, Tlf, 4, 4, 4);
+        MAT_MULT(Tm, point_rf, Trf, 4, 4, 4);
+        MAT_MULT(Tm, point_lb, Tlb, 4, 4, 4);
+        MAT_MULT(Tm, point_rb, Trb, 4, 4, 4);
         return ESP_OK;
     }
 
     void legIK(float point[4], float result[3]) {
         float x = point[0], y = point[1], z = point[2];
 
-        float F = sqrt(x * x + y * y - l1 * l1);
-        F = isnan(F) ? l1 : F;
+        float F = sqrtf(x * x + y * y - l1 * l1);
+        F = isnanf(F) ? l1 : F;
         float G = F - l2;
-        float H = sqrt(G * G + z * z);
+        float H = sqrtf(G * G + z * z);
 
-        float theta1 = -atan2(y, x) - atan2(F, -l1);
-        float theta3 = acos((H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4));
+        float theta1 = -atan2f(y, x) - atan2f(F, -l1);
+        float theta3 = acosf((H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4));
         if (isnan(theta3)) theta3 = 0;
-        float theta2 = atan2(z, G) - atan2(l4 * sin(theta3), l3 + l4 * cos(theta3));
-        result[0] = theta1 * RAD2DEG;
-        result[1] = theta2 * RAD2DEG;
-        result[2] = theta3 * RAD2DEG;
+        float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
+        result[0] = RAD_TO_DEG_F(theta1);
+        result[1] = RAD_TO_DEG_F(theta2);
+        result[2] = RAD_TO_DEG_F(theta3);
     }
 
     esp_err_t inverse(float a[4][4], float b[4][4]) {
