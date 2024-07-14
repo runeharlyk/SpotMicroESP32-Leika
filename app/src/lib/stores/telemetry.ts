@@ -6,8 +6,8 @@ let telemetry_data = {
 		rssi: 0
 	},
 	battery: {
-		soc: 100,
-		charging: false
+		voltage: 100,
+		current: false
 	},
 	download_ota: {
 		status: 'none',
@@ -30,7 +30,7 @@ function createTelemetry() {
 		setBattery: (data: Battery) => {
 			update((telemetry_data) => ({
 				...telemetry_data,
-				battery: { soc: data.soc, charging: data.charging }
+				battery: { voltage: data.voltage, current: data.current }
 			}));
 		},
 		setDownloadOTA: (data: DownloadOTA) => {

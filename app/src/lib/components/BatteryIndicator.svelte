@@ -6,20 +6,20 @@
 	import Battery100 from '~icons/tabler/battery-4';
 	import BatteryCharging from '~icons/tabler/battery-charging-2';
 
-	export let charging = false;
-	export let soc = 100;
+	export let current = 0;
+	export let voltage = 0;
 </script>
 
-<div class="tooltip tooltip-bottom" data-tip="{soc} %">
-	{#if charging}
+<div class="tooltip tooltip-left z-10" data-tip="{voltage}V {Math.floor(current*10)/10} mA">
+	{#if voltage == 0}
 		<BatteryCharging class="{$$props.class || ''} -rotate-90 animate-pulse" />
-	{:else if soc > 75}
+	{:else if voltage > 8.2}
 		<Battery100 class="{$$props.class || ''} -rotate-90" />
-	{:else if soc > 55}
+	{:else if voltage > 8}
 		<Battery75 class="{$$props.class || ''} -rotate-90" />
-	{:else if soc > 30}
+	{:else if voltage > 7.8}
 		<Battery50 class="{$$props.class || ''} -rotate-90" />
-	{:else if soc > 5}
+	{:else if voltage > 7.6}
 		<Battery25 class="{$$props.class || ''} -rotate-90" />
 	{:else}
 		<Battery0 class="{$$props.class || ''} text-error -rotate-90 animate-pulse" />
