@@ -17,6 +17,7 @@
 #include <EventSocket.h>
 #include <JsonUtils.h>
 #include <Peripherals.h>
+#include <Timing.h>
 
 #define ADC_VOLTAGE 0
 #define ADC_CURRENT 1
@@ -40,16 +41,8 @@ class BatteryService {
     void begin();
 
     void loop() {
-        unsigned long currentMillis = millis();
-
-        if (!_lastUpdate || (currentMillis - _lastUpdate) >= BATTERY_CHECK_INTERVAL) {
-            _lastUpdate = currentMillis;
-            updateBattery();
-        }
-        if (!_lastEmit || (currentMillis - _lastEmit) >= BATTERY_INTERVAL) {
-            _lastEmit = currentMillis;
-            batteryEvent();
-        }
+        EXECUTE_EVERY_N_MS(BATTERY_CHECK_INTERVAL, updateBattery());
+        EXECUTE_EVERY_N_MS(BATTERY_INTERVAL, batteryEvent());
     }
 
     void updateBattery() {
@@ -67,8 +60,6 @@ class BatteryService {
     EventSocket *_socket;
     Peripherals *_peripherals;
 
-    unsigned long _lastUpdate;
-    unsigned long _lastEmit;
     float _voltage = 0;
     float _current = 0;
 };

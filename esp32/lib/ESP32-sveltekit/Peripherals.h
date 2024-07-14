@@ -7,6 +7,7 @@
 #include <SecurityManager.h>
 #include <StatefulService.h>
 #include <MathUtils.h>
+#include <Timing.h>
 #include <list>
 
 #include <SPI.h>
@@ -169,12 +170,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     };
 
     void loop() {
-        unsigned long currentMillis = millis();
-
-        if (currentMillis - _lastUpdate >= _updateInterval) {
-            _lastUpdate = currentMillis;
-            readIMU();
-        }
+        EXECUTE_EVERY_N_MS(_updateInterval, updateImu());
     }
 
     void updatePins() {
@@ -407,7 +403,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     std::list<uint8_t> addressList;
     bool i2c_active = false;
-    unsigned long _lastUpdate {0};
     unsigned long _updateInterval {I2C_INTERVAL};
 };
 

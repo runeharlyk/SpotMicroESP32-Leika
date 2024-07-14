@@ -27,6 +27,7 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <vector>
+#include <Timing.h>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""
@@ -203,7 +204,6 @@ class WiFiSettingsService : public StatefulService<WiFiSettings> {
     FSPersistence<WiFiSettings> _fsPersistence;
     EventSocket *_socket;
     unsigned long _lastConnectionAttempt;
-    unsigned long _lastRssiUpdate;
 
     bool _stopping;
     void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
