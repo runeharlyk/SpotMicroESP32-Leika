@@ -60,16 +60,8 @@ void WiFiSettingsService::reconfigureWiFiConnection() {
 }
 
 void WiFiSettingsService::loop() {
-    unsigned long currentMillis = millis();
-    if (!_lastConnectionAttempt || (unsigned long)(currentMillis - _lastConnectionAttempt) >= WIFI_RECONNECTION_DELAY) {
-        _lastConnectionAttempt = currentMillis;
-        manageSTA();
-    }
-
-    if (!_lastRssiUpdate || (unsigned long)(currentMillis - _lastRssiUpdate) >= RSSI_EVENT_DELAY) {
-        _lastRssiUpdate = currentMillis;
-        updateRSSI();
-    }
+    EXECUTE_EVERY_N_MS(WIFI_RECONNECTION_DELAY, manageSTA());
+    EXECUTE_EVERY_N_MS(RSSI_EVENT_DELAY, updateRSSI());
 }
 
 String WiFiSettingsService::getHostname() { return _state.hostname; }

@@ -19,8 +19,6 @@ class LEDService {
   private:
     TaskManager *_taskManager;
 
-    unsigned long _lastUpdate = 0;
-
     CRGB leds[WS2812_NUM_LEDS];
     CRGBPalette16 currentPalette;
     TBlendType currentBlending;
@@ -39,13 +37,13 @@ class LEDService {
     void begin() {}
 
     void loop() {
-        if (millis() - _lastUpdate < 1000 / 60) return;
-        if (_brightness >= 200) direction = -5;
-        if (_brightness <= 50) direction = 5;
-        _brightness += direction;
-        fillFromPallette(0);
-        FastLED.show();
-        _lastUpdate = millis();
+        EXECUTE_EVERY_N_MS(1000 / 60, {
+            if (_brightness >= 200) direction = -5;
+            if (_brightness <= 50) direction = 5;
+            _brightness += direction;
+            fillFromPallette(0);
+            FastLED.show();
+        });
     }
 
     void fillFromPallette(uint8_t colorIndex) {

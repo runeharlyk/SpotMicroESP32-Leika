@@ -4,6 +4,7 @@
 #include <EventSocket.h>
 #include <TaskManager.h>
 #include <Kinematics.h>
+#include <Timing.h>
 #include <MathUtils.h>
 
 #define DEFAULT_STATE false
@@ -120,10 +121,9 @@ class MotionService {
     }
 
     void loop() {
-        if (int currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= MotionInterval) {
-            _lastUpdate = currentMillis;
+        EXECUTE_EVERY_N_MS(MotionInterval, {
             if (updateMotion()) syncAngles();
-        }
+        });
     }
 
   private:

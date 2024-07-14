@@ -210,10 +210,7 @@ class ServoController : public Adafruit_PWMServoDriver, public StatefulService<S
     }
 
     void loop() {
-        if (int currentMillis = millis(); !_lastUpdate || (currentMillis - _lastUpdate) >= ServoInterval) {
-            _lastUpdate = currentMillis;
-            updateServoState();
-        }
+        EXECUTE_EVERY_N_MS(ServoInterval, { updateServoState(); });
     }
 
   private:
@@ -223,6 +220,5 @@ class ServoController : public Adafruit_PWMServoDriver, public StatefulService<S
     FSPersistence<ServoConfiguration> _fsPersistence;
 
     bool is_active {true};
-    unsigned long _lastUpdate;
     constexpr static int ServoInterval = 2;
 };

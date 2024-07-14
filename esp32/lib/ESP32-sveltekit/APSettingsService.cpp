@@ -47,12 +47,7 @@ void APSettingsService::recoveryMode() {
 }
 
 void APSettingsService::loop() {
-    unsigned long currentMillis = millis();
-    unsigned long manageElapsed = (currentMillis - _lastManaged);
-    if (manageElapsed >= MANAGE_NETWORK_DELAY) {
-        _lastManaged = currentMillis;
-        manageAP();
-    }
+    EXECUTE_EVERY_N_MS(MANAGE_NETWORK_DELAY, manageAP());
     handleDNS();
 }
 

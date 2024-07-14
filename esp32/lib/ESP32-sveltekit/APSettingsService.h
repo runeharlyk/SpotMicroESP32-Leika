@@ -20,6 +20,7 @@
 #include <FSPersistence.h>
 #include <JsonUtils.h>
 #include <WiFi.h>
+#include <Timing.h>
 
 #include <DNSServer.h>
 #include <IPAddress.h>

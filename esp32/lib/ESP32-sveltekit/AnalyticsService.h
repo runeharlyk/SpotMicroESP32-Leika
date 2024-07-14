@@ -18,6 +18,7 @@
 #include <EventSocket.h>
 #include <TaskManager.h>
 #include <WiFi.h>
+#include <Timing.h>
 
 #define MAX_ESP_ANALYTICS_SIZE 2024
 #define EVENT_ANALYTICS "analytics"
@@ -29,21 +30,13 @@ class AnalyticsService {
 
     void begin() {};
 
-    void loop() {
-        unsigned long currentMillis = millis();
-
-        if (!_lastUpdate || (currentMillis - _lastUpdate) >= ANALYTICS_INTERVAL) {
-            _lastUpdate = currentMillis;
-            updateAnalytics();
-        }
-    };
+    void loop() { EXECUTE_EVERY_N_MS(ANALYTICS_INTERVAL, updateAnalytics()); };
     JsonDocument doc;
     char message[MAX_ESP_ANALYTICS_SIZE];
 
   private:
     EventSocket *_socket;
     TaskManager *_taskManager;
-    unsigned long _lastUpdate;
 
     void updateAnalytics() {
         doc.clear();
