@@ -62,6 +62,8 @@ You can find the current steps to get a fresh new doggo up and barking on [/docs
 #### Software
 You can find a description for the current esp32 firmware and controller [here](docs/software_description.md).
 
+<img src="images/controller.gif" alt="controller" width="500">
+
 ## Kinematics
 
 The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot). A C++ and TypeScript library was written to enable onboard calculation and fast development iteration using the robot mirroring. 
