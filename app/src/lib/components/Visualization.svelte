@@ -82,8 +82,8 @@
             switch (get(mode)) {
                 case ModesEnum.Stand:
                     settings.omega = 0
-                    settings.phi = data.rx / 4 
-                    settings.psi = data.ry / 4 
+                    settings.phi = data.rx / 8 
+                    settings.psi = data.ry / 8 
                     settings.xm = data.ly / 2 
                     settings.zm = data.lx / 2
                     break;
@@ -223,6 +223,7 @@
     const orient_robot = (robot: URDFRobot, toes:Vector3[]) => {
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
+
         robot.position.z = lerp(robot.position.z, -settings.xm / 100, 0.1);
         robot.position.x = lerp(robot.position.x, -settings.zm / 100, 0.1);
 
