@@ -36,7 +36,7 @@
 
     let kinematic = new Kinematic()
     let gaitPlanner = new GaitPlanner()
-    const dir = [-1, -1, -1, 1, -1, -1, -1, -1, -1, 1, -1, -1]
+    const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const Lp = [
         [100, -100, 100, 1],
         [100, -100, -100, 1],
@@ -54,9 +54,9 @@
         'omega': 0,
         'phi': 0,
         'psi': 0,
-        'x': 0,
-        'y': 70,
-        'z': 0
+        'xm': 0,
+        'ym': 70,
+        'zm': 0
     }
 
 	onMount(async () => {
@@ -77,15 +77,15 @@
                 s: buffer[6],
             };
 
-            settings.y = (data.h+128)*0.75
+            settings.ym = (data.h+128)*0.75
 
             switch (get(mode)) {
                 case ModesEnum.Stand:
                     settings.omega = 0
                     settings.phi = data.rx / 4 
                     settings.psi = data.ry / 4 
-                    settings.x = data.ly / 2 
-                    settings.z = data.lx / 2
+                    settings.xm = data.ly / 2 
+                    settings.zm = data.lx / 2
                     break;
             }
         })
@@ -116,9 +116,9 @@
         kinematic.add(settings, 'omega', -20, 20).onChange(updateKinematicPosition).listen();
         kinematic.add(settings, 'phi', -30, 30).onChange(updateKinematicPosition).listen();
         kinematic.add(settings, 'psi', -20, 15).onChange(updateKinematicPosition).listen();
-        kinematic.add(settings, 'x', -90, 90).onChange(updateKinematicPosition)
-        kinematic.add(settings, 'y', 0, 200).onChange(updateKinematicPosition)
-        kinematic.add(settings, 'z', -130, 130).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'xm', -90, 90).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'ym', 0, 200).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'zm', -130, 130).onChange(updateKinematicPosition)
  
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
@@ -130,9 +130,9 @@
                 settings.omega,
                 settings.phi,
                 settings.psi,
-                settings.x,
-                settings.y,
-                settings.z
+                settings.xm,
+                settings.ym,
+                settings.zm
         ])
     }
 
@@ -210,9 +210,9 @@
             omega: settings.omega,
             phi: settings.phi,
             psi: settings.psi,
-            xm: settings.x,
-            ym: settings.y,
-            zm: settings.z,
+            xm: settings.xm,
+            ym: settings.ym,
+            zm: settings.zm,
             feet: Lp
         }
 
@@ -223,10 +223,11 @@
     const orient_robot = (robot: URDFRobot, toes:Vector3[]) => {
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
-        robot.position.z = lerp(robot.position.z, -settings.x / 100, 0.1);
+        robot.position.z = lerp(robot.position.z, -settings.xm / 100, 0.1);
+        robot.position.x = lerp(robot.position.x, -settings.zm / 100, 0.1);
 
-        robot.rotation.z = lerp(robot.rotation.z, degToRad(settings.phi + $mpu.heading + 90), 0.1);
-        robot.rotation.y = lerp(robot.rotation.y, degToRad(settings.omega - settings.z / 2.5), 0.1);
+        robot.rotation.z = lerp(robot.rotation.z, degToRad(-settings.phi + $mpu.heading + 90), 0.1);
+        robot.rotation.y = lerp(robot.rotation.y, degToRad(settings.omega), 0.1);
         robot.rotation.x = lerp(robot.rotation.x, degToRad(settings.psi - 90), 0.1);
     }
 
@@ -235,15 +236,15 @@
         sceneManager.orbit.target = robot.position.clone()
     }
 
-    const update_gate = () => {
+    const update_gait = () => {
         if (get(mode) != ModesEnum.Walk) return
         const body_state = {
             omega: settings.omega,
             phi: settings.phi,
             psi: settings.psi,
-            xm: settings.x,
-            ym: settings.y,
-            zm: settings.z,
+            xm: settings.xm,
+            ym: settings.ym,
+            zm: settings.zm,
             feet: Lp
         }
         gaitPlanner.step(body_state, 0.1)
@@ -255,8 +256,8 @@
         settings.omega = radToDeg(robot.rotation.y)
         settings.phi = radToDeg(robot.rotation.z) + $mpu.heading -90
         settings.psi = radToDeg(robot.rotation.x) + 90
-        settings.x = robot.position.z * 100
-        settings.z = -robot.position.x * 100
+        settings.xm = robot.position.z * 100
+        settings.zm = -robot.position.x * 100
     }
 
     const updateTargetPosition = () => {
@@ -272,7 +273,7 @@
 
         renderTraceLines(toes)
         update_camera(robot)
-        update_gate()
+        update_gait()
         calculate_kinematics()
         update_robot_position(robot)
         
@@ -292,7 +293,6 @@
         orient_robot(robot, toes) 
         updateTargetPosition();
 	};
-
 
 </script>
 
