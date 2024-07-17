@@ -25,6 +25,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader';
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls';
+import { sunCalculator } from './utilities/position-utilities';
 
 export const addScene = () => new Scene();
 
@@ -54,13 +55,6 @@ interface arrowOptions {
 type directionalLight = position & light;
 
 type gridHelperOptions = gridOptions & position;
-
-function calculateCurrentSunElevation() {
-	let now = new Date();
-	let decimalTime = now.getHours() + now.getMinutes() / 60;
-	let normalizedTime = (decimalTime % 12) / 6 - 1;
-	return 10 * Math.sin(normalizedTime * Math.PI);
-}
 
 export default class SceneBuilder {
 	public scene: Scene;
@@ -107,7 +101,7 @@ export default class SceneBuilder {
 			rayleigh: 3,
 			mieCoefficient: 0.005,
 			mieDirectionalG: 0.7,
-			elevation: calculateCurrentSunElevation(),
+			elevation: sunCalculator.calculateSunElevation(),
 			azimuth: 180,
 			exposure: this.renderer.toneMappingExposure
 		};
