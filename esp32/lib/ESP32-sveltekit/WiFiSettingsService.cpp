@@ -163,7 +163,7 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network) {
 }
 
 void WiFiSettingsService::updateRSSI() {
-    char buffer[4];
+    char buffer[8];
     snprintf(buffer, sizeof(buffer), "%d", WiFi.RSSI());
     _socket->emit(EVENT_RSSI, buffer);
 }
