@@ -144,11 +144,13 @@ void streamTask(void *pv) {
         w += response.write((char *)_STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
         if (w == 62) break;
         esp_camera_fb_return(fb);
+        safe_sensor_return();
         buf = NULL;
         taskYIELD();
         int64_t delay = 30000ll - esp_timer_get_time() - fr_start;
         if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
     }
+    ESP_LOGI("Stream", "Stream ended");
     response.endSend();
     httpd_req_async_handler_complete(copy);
     vTaskDelete(NULL);
