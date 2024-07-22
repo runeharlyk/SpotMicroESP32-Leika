@@ -10,6 +10,7 @@ export const servoAngles: Writable<number[]> = writable([
 export const logs = writable([] as string[]);
 export const battery = writable({});
 export const mpu = writable({ heading: 0 });
+export const sonar = writable([0, 0]);
 export const distances = writable({});
 
 export interface socketDataCollection {
