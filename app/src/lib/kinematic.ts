@@ -24,6 +24,8 @@ export interface target_position {
 
 const { cos, sin, atan2, sqrt, acos } = Math;
 
+const DEG2RAD = 0.017453292519943;
+
 export default class Kinematic {
 	l1: number;
 	l2: number;
@@ -33,7 +35,7 @@ export default class Kinematic {
 	L: number;
 	W: number;
 
-	DEG2RAD = 0.017453292519943;
+	DEG2RAD = DEG2RAD;
 
 	sHp = sin(Math.PI / 2);
 	cHp = cos(Math.PI / 2);
@@ -50,13 +52,13 @@ export default class Kinematic {
 	Ix: number[][];
 
 	constructor() {
-		this.l1 = 60.5;
-		this.l2 = 10;
-		this.l3 = 100.7;
-		this.l4 = 118.5;
+		this.l1 = 60.5 / 100;
+		this.l2 = 10 / 100;
+		this.l3 = 100.7 / 100;
+		this.l4 = 118.5 / 100;
 
-		this.L = 207.5;
-		this.W = 78;
+		this.L = 207.5 / 100;
+		this.W = 78 / 100;
 
 		this.point_lf = [
 			[this.cHp, 0, this.sHp, this.L / 2],
@@ -145,7 +147,7 @@ export default class Kinematic {
 		this.Trb = this.matrixMultiply(Tm, this.point_rb);
 	}
 
-	private legIK(point: number[]): number[] {
+	public legIK(point: number[]): number[] {
 		const [x, y, z] = point;
 
 		let F = sqrt(x ** 2 + y ** 2 - this.l1 ** 2);
@@ -156,7 +158,7 @@ export default class Kinematic {
 
 		const theta1 = -atan2(y, x) - atan2(F, -this.l1);
 		const D = (H ** 2 - this.l3 ** 2 - this.l4 ** 2) / (2 * this.l3 * this.l4);
-		let theta3 = acos(D);
+		let theta3 = atan2(sqrt(1 - D ** 2), D);
 		if (isNaN(theta3)) theta3 = 0;
 
 		const theta2 = atan2(z, G) - atan2(this.l4 * sin(theta3), this.l3 + this.l4 * cos(theta3));
@@ -334,6 +336,156 @@ let rf_contact_phases = [1, 1, 1, 0];
 let lf_contact_phases = [1, 0, 1, 1];
 let lb_contact_phases = [1, 1, 1, 0];
 
+export class Command {
+	public x_vel_cmd_mps = 0;
+	public y_vel_cmd_mps = 0;
+	public yaw_rate_cmd_rps = 0;
+	public phi_cmd = 0;
+	public theta_cmd = 0;
+	public psi_cmd = 0;
+	public idle_cmd = false;
+	public walk_cmd = false;
+	public stand_cmd = false;
+	constructor() {}
+
+	resetCommands() {
+		this.x_vel_cmd_mps = 0;
+		this.y_vel_cmd_mps = 0;
+		this.yaw_rate_cmd_rps = 0;
+		this.phi_cmd = 0;
+		this.theta_cmd = 0;
+		this.psi_cmd = 0;
+		this.idle_cmd = false;
+		this.walk_cmd = false;
+		this.stand_cmd = false;
+	}
+
+	getXSpeedCmd() {
+		return this.x_vel_cmd_mps;
+	}
+	getYSpeedCmd() {
+		return this.y_vel_cmd_mps;
+	}
+	getYawRateCmd() {
+		return this.yaw_rate_cmd_rps;
+	}
+}
+
+const cmd = new Command();
+
+export class GaitState {
+	protected name: string;
+	protected static body_state: body_state_t;
+	constructor() {
+		this.name = 'GaitState';
+	}
+
+	begin() {
+		console.log('Starting', this.name);
+	}
+	end() {
+		console.log('Ending', this.name);
+	}
+	step(dt: number) {
+		console.log('Stepping', this.name);
+	}
+
+	getNeutralStance() {
+		return [
+			[100, -100, 100, 1],
+			[100, -100, -100, 1],
+			[-100, -100, 100, 1],
+			[-100, -100, -100, 1]
+		];
+	}
+
+	getDefaultStandHeight = () => 70;
+}
+
+export class IdleState extends GaitState {
+	constructor() {
+		super();
+		this.name = 'Idle';
+	}
+
+	begin() {
+		console.log('Starting', this.name);
+	}
+}
+
+export class StandState extends GaitState {
+	constructor() {
+		super();
+		this.name = 'Stand';
+	}
+}
+
+export class WalkState extends GaitState {
+	num_phases = 4;
+	ticks = 0;
+	constructor() {
+		super();
+		this.name = 'Walk';
+	}
+
+	begin() {
+		super.begin();
+		WalkState.body_state.feet = this.getNeutralStance();
+		WalkState.body_state.omega = 0;
+		WalkState.body_state.phi = 0;
+		WalkState.body_state.psi = 0;
+		WalkState.body_state.xm = 0;
+		WalkState.body_state.ym = this.getDefaultStandHeight();
+		WalkState.body_state.zm = 0;
+	}
+	end() {
+		super.end();
+	}
+	step(dt: number) {
+		super.end();
+		this.updatePhaseData();
+		WalkState.body_state.feet = this.stepGait();
+		if (this.num_phases == 8) {
+			const [omega, phi, psi] = this.stepBodyShift();
+			WalkState.body_state.omega = omega;
+			WalkState.body_state.phi = phi;
+			WalkState.body_state.psi = psi;
+		}
+		this.ticks++;
+	}
+
+	updatePhaseData() {}
+
+	stepGait() {
+		let contact_mode;
+		let swing_proportion;
+		let foot_pos;
+		let new_foot_pos;
+		let default_stance_feet_pos = this.getNeutralStance();
+	}
+
+	stepBodyShift() {
+		let omega = 0;
+		let phi = 0;
+		let psi = 0;
+		return [omega, phi, psi];
+	}
+}
+
+export class TrotState extends GaitState {
+	constructor() {
+		super();
+		this.name = 'Trot';
+	}
+}
+
+const smnc = {
+	alpha: 0.5,
+	beta: 0.5,
+	foot_height_time_constant: 0.02,
+	z_clearance: 0.05
+};
+
 export class GaitPlanner {
 	gaitCycleDuration = 10;
 	time = 0;
@@ -353,6 +505,12 @@ export class GaitPlanner {
 	private strideLength: number;
 	private height: number;
 	private cyclePeriod: number;
+	contact_feet_states: {
+		right_back_in_swing: boolean;
+		right_front_in_swing: boolean;
+		left_front_in_swing: boolean;
+		left_back_in_swing: boolean;
+	};
 
 	constructor() {
 		let l1 = 50;
@@ -374,26 +532,52 @@ export class GaitPlanner {
 		this.height = 50;
 		this.cyclePeriod = 10;
 		this.phase = 0;
+
+		this.contact_feet_states = {
+			right_back_in_swing: false,
+			right_front_in_swing: false,
+			left_front_in_swing: false,
+			left_back_in_swing: false
+		};
 	}
 
 	public step(bodyState: body_state_t, dt: number) {
 		this.updatePhase(dt);
 		this.updateFootPosition(bodyState);
-		this.UpdateBodyShift(bodyState);
+		// this.UpdateBodyShift(bodyState);
+		this.ticks_ += 1;
 	}
 
 	updatePhase(dt: number) {
-		this.time += dt;
+		const phase_time = this.ticks_ % phase_length;
+		let phase_sum = 0;
 
-		this.ticks_++;
-		let phase_time = this.ticks_ % phase_length;
+		for (let i = 0; i < num_phases; i++) {
+			phase_sum += phase_ticks[i];
+			if (phase_time < phase_sum) {
+				this.phase_index_ = i;
+				this.subphase_ticks_ = phase_time - phase_sum + phase_ticks[i];
+				break;
+			}
+		}
+
+		this.contact_feet_states.right_back_in_swing = rb_contact_phases[this.phase_index_] === 0;
+		this.contact_feet_states.right_front_in_swing = rf_contact_phases[this.phase_index_] === 0;
+		this.contact_feet_states.left_front_in_swing = lf_contact_phases[this.phase_index_] === 0;
+		this.contact_feet_states.left_back_in_swing = lb_contact_phases[this.phase_index_] === 0;
 	}
 
 	updateFootPosition(body_state: body_state_t) {
+		const contacts = [
+			this.contact_feet_states.right_back_in_swing,
+			this.contact_feet_states.right_front_in_swing,
+			this.contact_feet_states.left_front_in_swing,
+			this.contact_feet_states.left_back_in_swing
+		];
 		for (let i = 0; i < 4; i++) {
-			let contact_mode = this.contact_feet_states_[i];
+			let contact_mode = contacts[i];
 
-			body_state.feet[i] = contact_mode
+			contact_mode
 				? this.stanceController(body_state.feet[i])
 				: this.swingLegController(body_state.feet[i], this.default_stance_feet_pos[i]);
 		}
@@ -402,18 +586,203 @@ export class GaitPlanner {
 	UpdateBodyShift(bodyState: body_state_t) {}
 
 	stanceController(foot_pos: number[]) {
-		foot_pos[0] = -100;
-		foot_pos[1] = sin(radToDeg(this.ticks_) / 2 + Math.PI / 2) * 100;
-		return foot_pos;
+		const dt = 0.2;
+		const h_tau = 0.2;
+		const delta_pos = [-1 * dt, (1.0 / h_tau) * (0.0 - foot_pos[1]) * dt, -0 * dt];
+
+		const new_foot_pos = [
+			foot_pos[0] + delta_pos[0],
+			foot_pos[1] + delta_pos[1],
+			foot_pos[2] + delta_pos[2]
+		];
+
+		const yaw_angle = 0 * dt;
+		const cos_yaw = Math.cos(yaw_angle);
+		const sin_yaw = Math.sin(yaw_angle);
+
+		const rotated_x = cos_yaw * new_foot_pos[0] - sin_yaw * new_foot_pos[2];
+		const rotated_z = sin_yaw * new_foot_pos[0] + cos_yaw * new_foot_pos[2];
+
+		foot_pos[0] = rotated_x;
+		foot_pos[1] = new_foot_pos[1];
+		foot_pos[2] = rotated_z;
 	}
 
-	swingLegController(foot_pos: number[], default_stance_foot_pos: number[]) {
-		let swing_proportion = this.subphase_ticks_ / swing_ticks;
-		// foot_pos[0] = default_stance_foot_pos[0];
-		foot_pos[1] = default_stance_foot_pos[1] + 100;
-		// foot_pos[2] = default_stance_foot_pos[2];
-		// foot_pos[0] = cos(this.time / 2) * 50;
-		// foot_pos[1] = default_stance_foot_pos[1] - sin(this.time / 2 + Math.PI / 2) * 50;
-		return foot_pos;
+	swingLegController(foot_pos: number[], default_stance_foot_pos: number[]) {}
+}
+
+export class BezierGaitPlanner {
+	private _frame: number[][];
+	private _phi: number;
+	private _phi_stance: number;
+	private _last_time: number;
+	private _alpha: number;
+	private _s: boolean;
+	private _offset: number[];
+	private step_offset: number;
+
+	constructor(mode: string) {
+		this._frame = Array.from({ length: 4 }, () => Array(3).fill(0));
+		this._phi = 0;
+		this._phi_stance = 0;
+		this._last_time = 0;
+		this._alpha = 0;
+		this._s = false;
+		if (mode === 'walk') {
+			this._offset = [0, 0.5, 0.5, 0];
+			this.step_offset = 0.5;
+		} else {
+			this._offset = [0, 0, 0.8, 0.8];
+			this.step_offset = 0.5;
+		}
 	}
+
+	private static solve_bin_factor(n: number, k: number): number {
+		return Number(this.factorial(n) / (this.factorial(k) * this.factorial(n - k)));
+	}
+
+	private bezier_curve(t: number, k: number, point: number): number {
+		const n = 11;
+		return (
+			point * BezierGaitPlanner.solve_bin_factor(n, k) * Math.pow(t, k) * Math.pow(1 - t, n - k)
+		);
+	}
+
+	private static calculate_stance(phi_st: number, v: number, angle: number): number[] {
+		const c = Math.cos(angle * DEG2RAD);
+		const s = Math.sin(angle * DEG2RAD);
+		const A = 0.001;
+		const half_l = 0.05;
+		const p_stance = half_l * (1 - 2 * phi_st);
+		const stance_x = c * p_stance * Math.abs(v);
+		const stance_y = -s * p_stance * Math.abs(v);
+		const stance_z = -A * Math.cos((Math.PI / (2 * half_l)) * p_stance);
+		return [stance_x, stance_y, stance_z];
+	}
+
+	private calculate_bezier_swing(
+		phi_sw: number,
+		v: number,
+		angle: number,
+		direction: number
+	): number[] {
+		const c = Math.cos((angle * Math.PI) / 180);
+		const s = Math.sin((angle * Math.PI) / 180);
+		const X = [-0.04, -0.056, -0.06, -0.06, -0.06, 0, 0, 0, 0.06, 0.06, 0.056, 0.04].map(
+			(x) => Math.abs(v) * c * x * direction
+		);
+		const Y = X.map((x) => Math.abs(v) * s * -x);
+		const Z = [0, 0, 0.0405, 0.0405, 0.0405, 0.0405, 0.0405, 0.0495, 0.0495, 0.0495, 0, 0].map(
+			(x) => Math.abs(v) * x
+		);
+		let swing_x = 0,
+			swing_y = 0,
+			swing_z = 0;
+		for (let i = 0; i < 10; i++) {
+			swing_x += this.bezier_curve(phi_sw, i, X[i]);
+			swing_y += this.bezier_curve(phi_sw, i, Y[i]);
+			swing_z += this.bezier_curve(phi_sw, i, Z[i]);
+		}
+		return [swing_x, swing_y, swing_z];
+	}
+
+	step_trajectory(
+		phi: number,
+		v: number,
+		angle: number,
+		w_rot: number,
+		center_to_foot: number[],
+		direction: number
+	) {
+		if (phi >= 1) phi -= 1;
+		const r = Math.sqrt(center_to_foot[0] ** 2 + center_to_foot[1] ** 2);
+		const foot_angle = Math.atan2(center_to_foot[1], center_to_foot[0]);
+		let circle_trajectory;
+		if (w_rot >= 0) {
+			circle_trajectory = 90 - ((foot_angle - this._alpha) * 180) / Math.PI;
+		} else {
+			circle_trajectory = 270 - ((foot_angle - this._alpha) * 180) / Math.PI;
+		}
+
+		let stepX_long, stepY_long, stepZ_long, stepX_rot, stepY_rot, stepZ_rot;
+		if (phi <= this.step_offset) {
+			const phi_stance = phi / this.step_offset;
+			[stepX_long, stepY_long, stepZ_long] = BezierGaitPlanner.calculate_stance(
+				phi_stance,
+				v,
+				angle
+			);
+			[stepX_rot, stepY_rot, stepZ_rot] = BezierGaitPlanner.calculate_stance(
+				phi_stance,
+				w_rot,
+				circle_trajectory
+			);
+		} else {
+			const phiSwing = (phi - this.step_offset) / (1 - this.step_offset);
+			[stepX_long, stepY_long, stepZ_long] = this.calculate_bezier_swing(
+				phiSwing,
+				v,
+				angle,
+				direction
+			);
+			[stepX_rot, stepY_rot, stepZ_rot] = this.calculate_bezier_swing(
+				phiSwing,
+				w_rot,
+				circle_trajectory,
+				direction
+			);
+		}
+
+		if (center_to_foot[1] > 0) {
+			this._alpha =
+				stepX_rot < 0
+					? -Math.atan2(Math.sqrt(stepX_rot ** 2 + stepY_rot ** 2), r)
+					: Math.atan2(Math.sqrt(stepX_rot ** 2 + stepY_rot ** 2), r);
+		} else {
+			this._alpha =
+				stepX_rot < 0
+					? Math.atan2(Math.sqrt(stepX_rot ** 2 + stepY_rot ** 2), r)
+					: -Math.atan2(Math.sqrt(stepX_rot ** 2 + stepY_rot ** 2), r);
+		}
+
+		return [stepX_long + stepX_rot, stepY_long + stepY_rot, stepZ_long + stepZ_rot];
+	}
+
+	loop(v: number, angle: number, w_rot: number, t: number, direction: number, frames: number[][]) {
+		if (t <= 0.01) t = 0.01;
+		if (this._phi >= 0.99) this._last_time = Date.now() / 1000;
+		this._phi = (Date.now() / 1000 - this._last_time) / t;
+
+		for (let i = 0; i < 4; i++) {
+			const step_coord = this.step_trajectory(
+				this._phi + this._offset[i],
+				v,
+				angle,
+				w_rot,
+				frames[i],
+				direction
+			);
+			this._frame[i] = [
+				frames[i][0] + step_coord[0],
+				frames[i][1] + step_coord[1],
+				frames[i][2] + step_coord[2],
+				1
+			];
+		}
+
+		return this._frame;
+	}
+
+	private static factorial = (function () {
+		const cache = [1n, 1n];
+		let i = 2;
+
+		return function (n: number) {
+			if (cache[n] !== undefined) return cache[n];
+			for (; i <= n; i++) {
+				cache[i] = cache[i - 1] * BigInt(i);
+			}
+			return cache[n];
+		};
+	})();
 }
