@@ -7,6 +7,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <global.h>
 
 #define EVENT_SERVICE_PATH "/ws/events"
 

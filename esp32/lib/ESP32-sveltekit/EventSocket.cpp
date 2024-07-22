@@ -15,25 +15,21 @@ message_type_t char_to_message_type(char c) {
 }
 
 const char *getEventName(const char *msg) {
-    const char *start = strchr(msg, '/');
+    const char *start = FIRST_OCCURRENCE(msg, '/');
     if (!start) return nullptr;
     start++;
-    const char *end = strchr(start, '[');
+    const char *end = FIRST_OCCURRENCE(start, '[');
     if (!end) return start;
 
     static char eventName[32];
-    int len = end - start;
-    strncpy(eventName, start, len);
-    eventName[len] = '\0';
+    COPY_SUBSTRING(eventName, start, end);
     return eventName;
 }
 
 const char *getEventPayload(const char *msg) {
-    const char *start = strchr(msg + 2, '[');
-    const char *end = msg + strlen(msg) - 1;
-    if (*start == '[') {
-        start++;
-    }
+    const char *start = FIRST_OCCURRENCE(msg + 2, '[');
+    const char *end = END_OF_STRING(msg);
+    CHECK_AND_ADVANCE(start, '[');
     int len = end - start;
     if (len < 0) return nullptr;
     char *payload = new char[len + 1];
@@ -144,7 +140,7 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         }
     } else { // else send the message to all other clients
 
-        for (int subscription : client_subscriptions[event]) {
+        for (int subscription : subscriptions) {
             if (subscription == originSubscriptionId) continue;
             auto *client = _socket.getClient(subscription);
             if (!client) {
