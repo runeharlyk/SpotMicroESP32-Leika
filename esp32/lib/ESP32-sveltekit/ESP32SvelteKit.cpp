@@ -206,7 +206,7 @@ void IRAM_ATTR ESP32SvelteKit::loop() {
         _wifiSettingsService.loop();
         _apSettingsService.loop();
 #if FT_ENABLED(FT_ANALYTICS)
-        _analyticsService.loop();
+    _analyticsService.loop();
 #endif
 #if FT_ENABLED(FT_BATTERY)
         _batteryService.loop();
