@@ -9,7 +9,7 @@
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-	import Kinematic, { GaitPlanner, type body_state_t } from '$lib/kinematic';
+	import Kinematic, { BezierGaitPlanner, GaitPlanner, type body_state_t } from '$lib/kinematic';
 	import { radToDeg } from 'three/src/math/MathUtils.js';
 	import type { URDFRobot } from 'urdf-loader';
 	import { get } from 'svelte/store';
@@ -36,16 +36,27 @@
 
     let kinematic = new Kinematic()
     let gaitPlanner = new GaitPlanner()
+    let bezierGaitPlanner = new BezierGaitPlanner('walk')
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const Lp = [
-        [100, -100, 100, 1],
-        [100, -100, -100, 1],
-        [-100, -100, 100, 1],
-        [-100, -100, -100, 1],
+        [1, -1, 1, 1],
+        [1, -1, -1, 1],
+        [-1, -1, 1, 1],
+        [-1, -1, -1, 1],
     ];
 
+    const body_state = {
+            omega: 0,
+            phi: 0,
+            psi: 0,
+            xm: 0,
+            ym: 0.7,
+            zm: 0,
+            feet: Lp
+        }
+
     let settings = {
-        'Internal kinematic':false,
+        'Internal kinematic':true,
         'Robot transform controls':false,
         'Auto orient robot':true,
         'Trace feet':debug,
@@ -55,8 +66,9 @@
         'phi': 0,
         'psi': 0,
         'xm': 0,
-        'ym': 70,
-        'zm': 0
+        'ym': 0.7,
+        'zm': 0,
+        'Background': "black"
     }
 
 	onMount(async () => {
@@ -77,15 +89,15 @@
                 s: buffer[6],
             };
 
-            settings.ym = (data.h+128)*0.75
+            settings.ym = (data.h+128)*0.75 / 100
 
             switch (get(mode)) {
                 case ModesEnum.Stand:
                     settings.omega = 0
                     settings.phi = data.rx / 8 
                     settings.psi = data.ry / 8 
-                    settings.xm = data.ly / 2 
-                    settings.zm = data.lx / 2
+                    settings.xm = data.ly / 2 / 100
+                    settings.zm = data.lx / 2 / 100
                     break;
             }
         })
@@ -123,6 +135,7 @@
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
         visibility.add(settings, 'Trace points', 1, 1000, 1)
+        visibility.addColor(settings, 'Background')
     }
 
     const updateKinematicPosition = () => {
@@ -213,7 +226,7 @@
             xm: settings.xm,
             ym: settings.ym,
             zm: settings.zm,
-            feet: Lp
+            feet: body_state.feet
         }
 
         let new_angles = kinematic.calcIK(position).map((x, i) => radToDeg(x * dir[i]));
@@ -239,16 +252,13 @@
 
     const update_gait = () => {
         if (get(mode) != ModesEnum.Walk) return
-        const body_state = {
-            omega: settings.omega,
-            phi: settings.phi,
-            psi: settings.psi,
-            xm: settings.xm,
-            ym: settings.ym,
-            zm: settings.zm,
-            feet: Lp
-        }
-        gaitPlanner.step(body_state, 0.1)
+        //gaitPlanner.step(body_state, 0.1)
+        const stepLength = 0.4 // (-1) - 1
+        const stepAngle = 0
+        const stepRotation = 0
+        const stepPeriod = 0
+        const direction = 1
+        body_state.feet = bezierGaitPlanner.loop(stepLength, stepAngle, stepRotation, stepPeriod, direction, body_state.feet);
 
     }
 
