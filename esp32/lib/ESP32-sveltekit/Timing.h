@@ -15,4 +15,18 @@
         }                                                                     \
     } while (0)
 
+#define TIME_IT(code)                                                                       \
+    {                                                                                       \
+        uint32_t time_it_start = micros();                                                  \
+        code;                                                                               \
+        uint32_t time_it_elapsed = micros() - time_it_start;                                \
+        if (time_it_elapsed < 1000) {                                                       \
+            ESP_LOGI("Time It", "Time elapsed: %lu microseconds", time_it_elapsed);         \
+        } else if (time_it_elapsed < 1000000) {                                             \
+            ESP_LOGI("Time It", "Time elapsed: %lu milliseconds", time_it_elapsed / 1000);  \
+        } else {                                                                            \
+            ESP_LOGI("Time It", "Time elapsed: %.2f seconds", time_it_elapsed / 1000000.0); \
+        }                                                                                   \
+    }
+
 #endif
