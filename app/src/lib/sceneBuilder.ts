@@ -18,7 +18,8 @@ import {
 	EquirectangularReflectionMapping,
 	ACESFilmicToneMapping,
 	MathUtils,
-	MeshStandardMaterial
+	MeshStandardMaterial,
+	Group
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -72,6 +73,7 @@ export default class SceneBuilder {
 	highlightMaterial: any;
 	sky!: Sky;
 	transformControl: TransformControls;
+	public modelGroup!: Group;
 
 	constructor() {
 		this.scene = new Scene();
@@ -282,8 +284,10 @@ export default class SceneBuilder {
 	};
 
 	public addModel = (model: any) => {
+		this.modelGroup = new Group();
+		this.modelGroup.add(model);
 		this.model = model;
-		this.scene.add(model);
+		this.scene.add(this.modelGroup);
 		return this;
 	};
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
+	import { BufferGeometry, ConeGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
 	import uzip from 'uzip';
 	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut, servoAngles, mpu, jointNames } from '$lib/stores';
 	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
@@ -178,6 +178,17 @@
 			trace_lines.push(geometry);
 			sceneManager.scene.add(line);
 		}
+
+        for (let i = 0; i < 2; i++) {
+            const coneGeometry = new ConeGeometry(0.1, 20+0.01*i, 32); 
+            const coneMaterial = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.2 });
+            const cone = new Mesh(coneGeometry, coneMaterial); 
+            cone.rotation.x = Math.PI / 2
+            cone.position.y = 2
+            cone.position.x = -0.25 + 0.5*i
+            cone.position.z = -10
+            sceneManager.scene.add(cone);
+        }
 	};
 
     const renderTraceLines = (foot_positions: Vector3[]) => {
