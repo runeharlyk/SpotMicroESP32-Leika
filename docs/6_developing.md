@@ -25,7 +25,7 @@ server: {
 },
 ```
 
-Changes require a restart of the development server.
+> Changes require a restart of the development server.
 
 ### Start the Development Server
 
