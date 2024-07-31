@@ -49,10 +49,7 @@ NeuralNetwork::NeuralNetwork(const void *model_data, const int kArenaSize) : _kA
     output = interpreter->output(0);
 }
 
-void NeuralNetwork::setInput(float value) {
-    int8_t x_quantized = value / input->params.scale + input->params.zero_point;
-    input->data.int8[0] = x_quantized;
-}
+void NeuralNetwork::setInput(float value) { input->data.f[0] = value; }
 
 float NeuralNetwork::predict(float value) {
     setInput(value);
@@ -66,9 +63,5 @@ float NeuralNetwork::predict() {
         return -1;
     }
 
-    int8_t y_quantized = output->data.int8[0];
-
-    float y = (y_quantized - output->params.zero_point) * output->params.scale;
-
-    return y;
+    return output->data.f[0];
 }
