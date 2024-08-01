@@ -146,8 +146,7 @@ class MotionService {
     };
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-    float default_feet_positions[4][4] = {
-        {1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
+    float default_feet_positions[4][4] = {{1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
 
     float angles[12] = {
         0,
