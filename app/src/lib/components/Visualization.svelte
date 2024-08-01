@@ -9,7 +9,7 @@
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-	import Kinematic, { BezierGaitPlanner, GaitPlanner, type body_state_t } from '$lib/kinematic';
+	import Kinematic, { PhaseGaitPlanner, type body_state_t } from '$lib/kinematic';
 	import { radToDeg } from 'three/src/math/MathUtils.js';
 	import type { URDFRobot } from 'urdf-loader';
 	import { get } from 'svelte/store';
@@ -35,8 +35,7 @@
     let target_position = {x: 0, z: 0, yaw: 0}
 
     let kinematic = new Kinematic()
-    let gaitPlanner = new GaitPlanner()
-    let bezierGaitPlanner = new BezierGaitPlanner('walk')
+    let gaitPlanner = new PhaseGaitPlanner('walk')
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const Lp = [
         [1, -1, 1, 1],
@@ -150,12 +149,12 @@
 
     const updateKinematicPosition = () => {
         kinematicData.set([
-                settings.omega,
-                settings.phi,
-                settings.psi,
-                settings.xm,
-                settings.ym,
-                settings.zm
+            settings.omega,
+            settings.phi,
+            settings.psi,
+            settings.xm,
+            settings.ym,
+            settings.zm
         ])
     }
 
@@ -266,18 +265,12 @@
 
     const update_gait = () => {
         if (get(mode) != ModesEnum.Walk) return
-        //gaitPlanner.step(body_state, 0.1)
-        const stepLength = 0.4 // (-1) - 1
-        const stepAngle = 0
-        const stepRotation = 0
-        const stepPeriod = 0
-        const direction = 1
-
         const controlData = get(outControllerData)
         gait_state.step_x = Math.floor(fromInt8(controlData[2], -1, 1) * 10) / 10 * 2
         gait_state.step_z = Math.floor(fromInt8(controlData[1], -1, 1) * 10) / 10 * 2
+        gait_state.step_angle = Math.floor(fromInt8(controlData[3], -1, 1) * 10) / 10 * Math.PI
         gait_state.step_velocity = fromInt8(controlData[6], -1, 1)
-        body_state.feet = bezierGaitPlanner._loop(body_state, gait_state);
+        body_state.feet = gaitPlanner._loop(body_state, gait_state);
     }
 
     const update_robot_position = (robot:URDFRobot) => {

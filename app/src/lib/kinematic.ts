@@ -29,7 +29,7 @@ export interface target_position {
 	yaw: number;
 }
 
-const { cos, sin, atan2, sqrt, acos } = Math;
+const { cos, sin, atan2, sqrt } = Math;
 
 const DEG2RAD = 0.017453292519943;
 
@@ -326,23 +326,6 @@ export default class Kinematic {
 	}
 }
 
-const swing_time = 0.36;
-const overlap_time = 0.0;
-const dt = 0.02;
-const swing_ticks = Math.round(swing_time / dt);
-
-const num_phases = 4;
-const stance_ticks = 7 * swing_ticks;
-const overlap_ticks = Math.round(overlap_time / dt);
-
-const phase_ticks = new Array(4).fill(swing_ticks);
-const phase_length = num_phases * swing_ticks;
-
-let rb_contact_phases = [1, 0, 1, 1];
-let rf_contact_phases = [1, 1, 1, 0];
-let lf_contact_phases = [1, 0, 1, 1];
-let lb_contact_phases = [1, 1, 1, 0];
-
 export class Command {
 	public x_vel_cmd_mps = 0;
 	public y_vel_cmd_mps = 0;
@@ -486,145 +469,13 @@ export class TrotState extends GaitState {
 	}
 }
 
-const smnc = {
-	alpha: 0.5,
-	beta: 0.5,
-	foot_height_time_constant: 0.02,
-	z_clearance: 0.05
-};
-
-export class GaitPlanner {
-	gaitCycleDuration = 10;
-	time = 0;
-	stepHeight = 30;
-	stepLength = 75;
-	num_phases = 4;
-	gaitCycle = 10;
-	phaseOffset = Math.PI;
-
-	ticks_ = 0;
-	phase_index_ = 0;
-	subphase_ticks_ = 0;
-	contact_feet_states_ = [false, false, false, false];
-	default_stance_feet_pos: number[][];
-
-	private phase: number;
-	private strideLength: number;
-	private height: number;
-	private cyclePeriod: number;
-	contact_feet_states: {
-		right_back_in_swing: boolean;
-		right_front_in_swing: boolean;
-		left_front_in_swing: boolean;
-		left_back_in_swing: boolean;
-	};
-
-	constructor() {
-		let l1 = 50;
-		let l2 = 20;
-		let l3 = 120;
-		let l4 = 155;
-
-		let L = 140;
-		let W = 75;
-
-		this.default_stance_feet_pos = [
-			[100, -100, 100, 1],
-			[100, -100, -100, 1],
-			[-W, -100, 100, 1],
-			[-W, -100, -100, 1]
-		];
-
-		this.strideLength = 2;
-		this.height = 50;
-		this.cyclePeriod = 10;
-		this.phase = 0;
-
-		this.contact_feet_states = {
-			right_back_in_swing: false,
-			right_front_in_swing: false,
-			left_front_in_swing: false,
-			left_back_in_swing: false
-		};
-	}
-
-	public step(bodyState: body_state_t, dt: number) {
-		this.updatePhase(dt);
-		this.updateFootPosition(bodyState);
-		// this.UpdateBodyShift(bodyState);
-		this.ticks_ += 1;
-	}
-
-	updatePhase(dt: number) {
-		const phase_time = this.ticks_ % phase_length;
-		let phase_sum = 0;
-
-		for (let i = 0; i < num_phases; i++) {
-			phase_sum += phase_ticks[i];
-			if (phase_time < phase_sum) {
-				this.phase_index_ = i;
-				this.subphase_ticks_ = phase_time - phase_sum + phase_ticks[i];
-				break;
-			}
-		}
-
-		this.contact_feet_states.right_back_in_swing = rb_contact_phases[this.phase_index_] === 0;
-		this.contact_feet_states.right_front_in_swing = rf_contact_phases[this.phase_index_] === 0;
-		this.contact_feet_states.left_front_in_swing = lf_contact_phases[this.phase_index_] === 0;
-		this.contact_feet_states.left_back_in_swing = lb_contact_phases[this.phase_index_] === 0;
-	}
-
-	updateFootPosition(body_state: body_state_t) {
-		const contacts = [
-			this.contact_feet_states.right_back_in_swing,
-			this.contact_feet_states.right_front_in_swing,
-			this.contact_feet_states.left_front_in_swing,
-			this.contact_feet_states.left_back_in_swing
-		];
-		for (let i = 0; i < 4; i++) {
-			let contact_mode = contacts[i];
-
-			contact_mode
-				? this.stanceController(body_state.feet[i])
-				: this.swingLegController(body_state.feet[i], this.default_stance_feet_pos[i]);
-		}
-	}
-
-	UpdateBodyShift(bodyState: body_state_t) {}
-
-	stanceController(foot_pos: number[]) {
-		const dt = 0.2;
-		const h_tau = 0.2;
-		const delta_pos = [-1 * dt, (1.0 / h_tau) * (0.0 - foot_pos[1]) * dt, -0 * dt];
-
-		const new_foot_pos = [
-			foot_pos[0] + delta_pos[0],
-			foot_pos[1] + delta_pos[1],
-			foot_pos[2] + delta_pos[2]
-		];
-
-		const yaw_angle = 0 * dt;
-		const cos_yaw = Math.cos(yaw_angle);
-		const sin_yaw = Math.sin(yaw_angle);
-
-		const rotated_x = cos_yaw * new_foot_pos[0] - sin_yaw * new_foot_pos[2];
-		const rotated_z = sin_yaw * new_foot_pos[0] + cos_yaw * new_foot_pos[2];
-
-		foot_pos[0] = rotated_x;
-		foot_pos[1] = new_foot_pos[1];
-		foot_pos[2] = rotated_z;
-	}
-
-	swingLegController(foot_pos: number[], default_stance_foot_pos: number[]) {}
-}
-
-export class BezierGaitPlanner {
+export class PhaseGaitPlanner {
 	private tick = 0;
 	private phase = 0;
 	private phase_time = 0;
 	private total_phases_length = 60;
 	private num_phases = 4;
-	private phase_length = this.total_phases_length / num_phases;
+	private phase_length = this.total_phases_length / this.num_phases;
 	private sub_phase_tick = 0;
 
 	private _frame: number[][];
@@ -721,11 +572,13 @@ export class BezierGaitPlanner {
 		const delta_pos = [this.gait_state.step_x * this.dt, 0, this.gait_state.step_z * this.dt];
 
 		if (this.gait_state.step_x == 0) {
-			delta_pos[0] = (this.default_feet_pos[index][0] - this.body_state.feet[index][0]) * dt * 8;
+			delta_pos[0] =
+				(this.default_feet_pos[index][0] - this.body_state.feet[index][0]) * this.dt * 8;
 		}
 
 		if (this.gait_state.step_z == 0) {
-			delta_pos[2] = (this.default_feet_pos[index][2] - this.body_state.feet[index][2]) * dt * 8;
+			delta_pos[2] =
+				(this.default_feet_pos[index][2] - this.body_state.feet[index][2]) * this.dt * 8;
 		}
 
 		this.body_state.feet[index][0] = this.body_state.feet[index][0] + delta_pos[0];
@@ -735,6 +588,7 @@ export class BezierGaitPlanner {
 		this.body_state.feet[index][2] = this.body_state.feet[index][2] + delta_pos[2];
 		return this.body_state.feet[index];
 	}
+
 	private static solve_bin_factor(n: number, k: number): number {
 		return Number(this.factorial(n) / (this.factorial(k) * this.factorial(n - k)));
 	}
@@ -742,7 +596,7 @@ export class BezierGaitPlanner {
 	private bezier_curve(t: number, k: number, point: number): number {
 		const n = 11;
 		return (
-			point * BezierGaitPlanner.solve_bin_factor(n, k) * Math.pow(t, k) * Math.pow(1 - t, n - k)
+			point * PhaseGaitPlanner.solve_bin_factor(n, k) * Math.pow(t, k) * Math.pow(1 - t, n - k)
 		);
 	}
 
@@ -805,12 +659,12 @@ export class BezierGaitPlanner {
 		let stepX_long, stepY_long, stepZ_long, stepX_rot, stepY_rot, stepZ_rot;
 		if (phi <= this.step_offset) {
 			const phi_stance = phi / this.step_offset;
-			[stepX_long, stepY_long, stepZ_long] = BezierGaitPlanner.calculate_stance(
+			[stepX_long, stepY_long, stepZ_long] = PhaseGaitPlanner.calculate_stance(
 				phi_stance,
 				v,
 				angle
 			);
-			[stepX_rot, stepY_rot, stepZ_rot] = BezierGaitPlanner.calculate_stance(
+			[stepX_rot, stepY_rot, stepZ_rot] = PhaseGaitPlanner.calculate_stance(
 				phi_stance,
 				w_rot,
 				circle_trajectory

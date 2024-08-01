@@ -19,11 +19,11 @@ export enum ModesEnum {
 	Walk
 }
 
-export const mode: Writable<ModesEnum> = writable(ModesEnum.Idle);
+export const mode: Writable<ModesEnum> = writable(ModesEnum.Walk);
 
-export const outControllerData = writable([0, 0, 0, 0, 0, 70, 0]);
+export const outControllerData = writable([0, 0, 0, 0, 0, 1, 0]);
 
-export const kinematicData = writable([0, 0, 0, 0, 100, 0]);
+export const kinematicData = writable([0, 0, 0, 0, 1, 0]);
 
 export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },
