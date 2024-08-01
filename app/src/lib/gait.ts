@@ -36,7 +36,7 @@ export abstract class GaitState {
 		];
 	}
 
-	protected static get default_height() {
+	protected get default_height() {
 		return 0.5;
 	}
 
@@ -47,7 +47,7 @@ export abstract class GaitState {
 		console.log('Ending', this.name);
 	}
 	step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-		console.log('Stepping', this.name);
+		return body_state;
 	}
 
 	map_command(command: ControllerCommand): gait_state_t {
@@ -66,6 +66,21 @@ export class IdleState extends GaitState {
 	protected name = 'Idle';
 }
 
+export class RestState extends GaitState {
+	protected name = 'Rest';
+
+	step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+		body_state.omega = 0;
+		body_state.phi = 0;
+		body_state.psi = 0;
+		body_state.xm = 0;
+		body_state.ym = this.default_height / 2;
+		body_state.zm = 0;
+		body_state.feet = this.default_feet_pos;
+		return body_state;
+	}
+}
+
 export class StandState extends GaitState {
 	protected name = 'Stand';
 
@@ -75,7 +90,7 @@ export class StandState extends GaitState {
 		body_state.psi = command.ry / 8;
 		body_state.xm = command.ly / 2 / 100;
 		body_state.zm = command.lx / 2 / 100;
-		body_state.ym = ((command.h + 128) * 0.75) / 100;
+		body_state.feet = this.default_feet_pos;
 		return body_state;
 	}
 }
