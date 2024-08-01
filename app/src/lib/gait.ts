@@ -27,7 +27,7 @@ export abstract class GaitState {
 
 	protected static body_state: body_state_t;
 
-	protected get default_feet_pos() {
+	public get default_feet_pos() {
 		return [
 			[1, -1, 1, 1],
 			[1, -1, -1, 1],
@@ -54,7 +54,7 @@ export abstract class GaitState {
 		return {
 			step_height: 0.4,
 			step_x: (Math.floor(fromInt8(command.ly, -1, 1) * 10) / 10) * 3,
-			step_z: (Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10) * 3,
+			step_z: -(Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10) * 3,
 			step_velocity: 1,
 			step_angle: 0,
 			step_depth: 0.2
