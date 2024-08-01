@@ -2,10 +2,9 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
 	import uzip from 'uzip';
-	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut } from '$lib/stores';
-	import { footColor, fromInt8, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
+	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut, servoAngles, mpu, jointNames } from '$lib/stores';
+	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
-	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -36,6 +35,7 @@
     let target_position = {x: 0, z: 0, yaw: 0}
 
     let kinematic = new Kinematic()
+
     let planners = {
         [ModesEnum.Idle]: new IdleState(),
         [ModesEnum.Rest]: new RestState(),
@@ -44,25 +44,19 @@
         [ModesEnum.Walk]: new FourPhaseWalkState()
     }
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
-    const Lp = [
-        [1, -1, 1, 1],
-        [1, -1, -1, 1],
-        [-1, -1, 1, 1],
-        [-1, -1, -1, 1],
-    ];
 
     let body_state = {
-            omega: 0,
-            phi: 0,
-            psi: 0,
-            xm: 0,
-            ym: 0.5,
-            zm: 0,
-            feet: Lp
-        }
+        omega: 0,
+        phi: 0,
+        psi: 0,
+        xm: 0,
+        ym: 0.5,
+        zm: 0,
+        feet: planners[ModesEnum.Idle].default_feet_pos
+    }
 
     let settings = {
-        'Internal kinematic':true,
+        'Internal kinematic':false,
         'Robot transform controls':false,
         'Auto orient robot':true,
         'Trace feet':debug,
@@ -84,17 +78,17 @@
         if (!isEmbeddedApp && panel) createPanel();
         servoAngles.subscribe(updateAnglesFromStore)
 	});
+
+    onDestroy(() => {
+        canvas.remove()
+        gui_panel?.destroy()
+    });
     
     const updateAnglesFromStore = (angles: number[]) => {
         if (sceneManager.isDragging) return
         if (settings['Internal kinematic']) return
         modelTargetAngles = angles;
     }
-
-	onDestroy(() => {
-        canvas.remove()
-        gui_panel?.destroy()
-    });
 
     const createPanel = () => {
         gui_panel = new GUI({width: 310});
@@ -162,7 +156,7 @@
 			.addRenderCb(render)
 			.startRenderLoop();
             
-            if (ground) sceneManager
+        if (ground) sceneManager
 			.addGroundPlane()
             .addGridHelper({ size: 30, divisions: 25 })
         
@@ -170,6 +164,7 @@
         const geometry = new SphereGeometry(0.1, 32, 16 ); 
         const material = new MeshBasicMaterial( { color: 0xffff00 } ); 
         target = new Mesh(geometry, material); 
+
         if (debug) {
             sceneManager.scene.add(target);
             sceneManager.addDragControl(updateAngles)
@@ -241,16 +236,18 @@
         if (sceneManager.isDragging || !settings['Internal kinematic']) return
         const controlData = get(outControllerData)
         const data = {
-                stop: controlData[0],
-                lx: controlData[1],
-                ly: controlData[2],
-                rx: controlData[3],
-                ry: controlData[4],
-                h: controlData[5],
-                s: controlData[6],
-            };
-            body_state.ym = ((data.h + 128) * 0.75) / 100;
+            stop: controlData[0],
+            lx: controlData[1],
+            ly: controlData[2],
+            rx: controlData[3],
+            ry: controlData[4],
+            h: controlData[5],
+            s: controlData[6],
+        };
+        body_state.ym = ((data.h + 128) * 0.75) / 100;
+
         let planner = planners[get(mode)]
+        
         body_state = planner.step(body_state, data);
 
         settings.omega = body_state.omega
@@ -292,12 +289,8 @@
         sceneManager.transformControl.showZ = settings['Robot transform controls']
         
 		for (let i = 0; i < $jointNames.length; i++) {
-            currentModelAngles[i] = smooth(
-                (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
-				modelTargetAngles[i],
-				0.1
-                );
-                robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles[i]));
+            currentModelAngles[i] = smooth((robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI), modelTargetAngles[i], 0.1);
+            robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles[i]));
         }
 
         orient_robot(robot, toes) 
