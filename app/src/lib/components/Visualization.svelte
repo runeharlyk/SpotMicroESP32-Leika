@@ -3,7 +3,7 @@
 	import { BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
 	import uzip from 'uzip';
 	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut } from '$lib/stores';
-	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
+	import { footColor, fromInt8, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
 	import { fileService } from '$lib/services';
 	import { servoAngles, mpu, jointNames } from '$lib/stores';
 	import SceneBuilder from '$lib/sceneBuilder';
@@ -54,6 +54,14 @@
             zm: 0,
             feet: Lp
         }
+
+    const gait_state = {
+        step_height:0.2,
+        step_x:1,
+        step_z:1,
+        step_velocity:1,
+        step_angle:0
+    }
 
     let settings = {
         'Internal kinematic':true,
@@ -258,8 +266,12 @@
         const stepRotation = 0
         const stepPeriod = 0
         const direction = 1
-        body_state.feet = bezierGaitPlanner.loop(stepLength, stepAngle, stepRotation, stepPeriod, direction, body_state.feet);
 
+        const controlData = get(outControllerData)
+        gait_state.step_x = Math.floor(fromInt8(controlData[2], -1, 1) * 10) / 10 * 2
+        gait_state.step_z = Math.floor(fromInt8(controlData[1], -1, 1) * 10) / 10 * 2
+        gait_state.step_velocity = fromInt8(controlData[6], -1, 1)
+        body_state.feet = bezierGaitPlanner._loop(body_state, gait_state);
     }
 
     const update_robot_position = (robot:URDFRobot) => {
