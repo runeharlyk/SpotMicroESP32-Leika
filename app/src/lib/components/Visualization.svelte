@@ -10,7 +10,7 @@
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 	import Kinematic, { type body_state_t } from '$lib/kinematic';
-    import {EightPhaseWalkState, FourPhaseWalkState, StandState} from '$lib/gait'
+    import {EightPhaseWalkState, FourPhaseWalkState, IdleState, RestState, StandState} from '$lib/gait'
 	import { radToDeg } from 'three/src/math/MathUtils.js';
 	import type { URDFRobot } from 'urdf-loader';
 	import { get } from 'svelte/store';
@@ -36,8 +36,13 @@
     let target_position = {x: 0, z: 0, yaw: 0}
 
     let kinematic = new Kinematic()
-    let gaitPlanner = new FourPhaseWalkState()
-    let standState = new StandState()
+    let planners = {
+        [ModesEnum.Idle]: new IdleState(),
+        [ModesEnum.Rest]: new RestState(),
+        [ModesEnum.Stand]: new StandState(),
+        [ModesEnum.Crawl]: new EightPhaseWalkState(),
+        [ModesEnum.Walk]: new FourPhaseWalkState()
+    }
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const Lp = [
         [1, -1, 1, 1],
@@ -244,10 +249,15 @@
                 h: controlData[5],
                 s: controlData[6],
             };
-        let planner = get(mode) === ModesEnum.Walk ? gaitPlanner : standState
+            body_state.ym = ((data.h + 128) * 0.75) / 100;
+        let planner = planners[get(mode)]
         body_state = planner.step(body_state, data);
 
+        settings.omega = body_state.omega
+        settings.phi = body_state.phi
+        settings.psi = body_state.psi 
         settings.xm = body_state.xm
+        settings.ym = body_state.ym
         settings.zm = body_state.zm
     }
 
