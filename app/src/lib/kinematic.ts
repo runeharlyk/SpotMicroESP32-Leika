@@ -1,4 +1,3 @@
-import { radToDeg } from 'three/src/math/MathUtils.js';
 
 export interface body_state_t {
 	omega: number;
@@ -8,6 +7,14 @@ export interface body_state_t {
 	ym: number;
 	zm: number;
 	feet: number[][];
+}
+
+export interface gait_state_t {
+	step_height: number;
+	step_x: number;
+	step_z: number;
+	step_angle: number;
+	step_velocity: number;
 }
 
 export interface position {
@@ -615,7 +622,7 @@ export class BezierGaitPlanner {
 	private tick = 0;
 	private phase = 0;
 	private phase_time = 0;
-	private total_phases_length = 120;
+	private total_phases_length = 60;
 	private num_phases = 4;
 	private phase_length = this.total_phases_length / num_phases;
 	private sub_phase_tick = 0;
@@ -643,7 +650,9 @@ export class BezierGaitPlanner {
 		[-1, -1, -1, 1]
 	];
 
-	body_state!: body_state_t;
+	private body_state!: body_state_t;
+	private gait_state!: gait_state_t;
+	private dt: number = 0.02;
 
 	constructor(mode: string) {
 		this._frame = Array.from({ length: 4 }, () => Array(3).fill(0));
@@ -661,8 +670,10 @@ export class BezierGaitPlanner {
 		}
 	}
 
-	_loop(body_state: body_state_t) {
+	_loop(body_state: body_state_t, gait_state: gait_state_t, dt: number = 0.02) {
 		this.body_state = body_state;
+		this.gait_state = gait_state;
+		this.dt = dt;
 		this.update_phase();
 		this.update_body_position();
 		this.update_feet_positions();
@@ -694,14 +705,34 @@ export class BezierGaitPlanner {
 	}
 
 	stand(index: number): number[] {
-		this.body_state.feet[index][0] = this.default_feet_pos[index][0] - this.phase_time * 0.5;
-		this.body_state.feet[index][1] = -1;
+		const delta_pos = [
+			(-this.gait_state.step_x * this.dt) / 3,
+			0,
+			(-this.gait_state.step_z * this.dt) / 3
+		];
+
+		this.body_state.feet[index][0] = this.body_state.feet[index][0] + delta_pos[0];
+		this.body_state.feet[index][1] = this.default_feet_pos[index][1];
+		this.body_state.feet[index][2] = this.body_state.feet[index][2] + delta_pos[2];
 		return this.body_state.feet[index];
 	}
 
 	swing(index: number): number[] {
-		const swing_proportion = this.sub_phase_tick / swing_ticks;
-		this.body_state.feet[index][1] = -sin(this.phase_time * Math.PI);
+		const delta_pos = [this.gait_state.step_x * this.dt, 0, this.gait_state.step_z * this.dt];
+
+		if (this.gait_state.step_x == 0) {
+			delta_pos[0] = (this.default_feet_pos[index][0] - this.body_state.feet[index][0]) * dt * 8;
+		}
+
+		if (this.gait_state.step_z == 0) {
+			delta_pos[2] = (this.default_feet_pos[index][2] - this.body_state.feet[index][2]) * dt * 8;
+		}
+
+		this.body_state.feet[index][0] = this.body_state.feet[index][0] + delta_pos[0];
+		this.body_state.feet[index][1] =
+			this.default_feet_pos[index][1] +
+			sin(this.phase_time * Math.PI) * this.gait_state.step_height;
+		this.body_state.feet[index][2] = this.body_state.feet[index][2] + delta_pos[2];
 		return this.body_state.feet[index];
 	}
 	private static solve_bin_factor(n: number, k: number): number {
