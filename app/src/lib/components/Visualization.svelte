@@ -9,7 +9,8 @@
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-	import Kinematic, { PhaseGaitPlanner, type body_state_t } from '$lib/kinematic';
+	import Kinematic, { type body_state_t } from '$lib/kinematic';
+    import {EightPhaseWalkState, FourPhaseWalkState, StandState} from '$lib/gait'
 	import { radToDeg } from 'three/src/math/MathUtils.js';
 	import type { URDFRobot } from 'urdf-loader';
 	import { get } from 'svelte/store';
@@ -35,7 +36,8 @@
     let target_position = {x: 0, z: 0, yaw: 0}
 
     let kinematic = new Kinematic()
-    let gaitPlanner = new PhaseGaitPlanner('walk')
+    let gaitPlanner = new FourPhaseWalkState()
+    let standState = new StandState()
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const Lp = [
         [1, -1, 1, 1],
@@ -44,23 +46,15 @@
         [-1, -1, -1, 1],
     ];
 
-    const body_state = {
+    let body_state = {
             omega: 0,
             phi: 0,
             psi: 0,
             xm: 0,
-            ym: 0.7,
+            ym: 0.5,
             zm: 0,
             feet: Lp
         }
-
-    const gait_state = {
-        step_height:0.2,
-        step_x:1,
-        step_z:1,
-        step_velocity:1,
-        step_angle:0
-    }
 
     let settings = {
         'Internal kinematic':true,
@@ -84,31 +78,6 @@
         await createScene();
         if (!isEmbeddedApp && panel) createPanel();
         servoAngles.subscribe(updateAnglesFromStore)
-        outControllerData.subscribe((buffer) => {
-            if (!settings['Internal kinematic']) return
-
-            const data = {
-                stop: buffer[0],
-                lx: buffer[1],
-                ly: buffer[2],
-                rx: buffer[3],
-                ry: buffer[4],
-                h: buffer[5],
-                s: buffer[6],
-            };
-
-            settings.ym = (data.h+128)*0.75 / 100
-
-            switch (get(mode)) {
-                case ModesEnum.Stand:
-                    settings.omega = 0
-                    settings.phi = data.rx / 8 
-                    settings.psi = data.ry / 8 
-                    settings.xm = data.ly / 2 / 100
-                    settings.zm = data.lx / 2 / 100
-                    break;
-            }
-        })
 	});
     
     const updateAnglesFromStore = (angles: number[]) => {
@@ -136,9 +105,9 @@
         kinematic.add(settings, 'omega', -20, 20).onChange(updateKinematicPosition).listen();
         kinematic.add(settings, 'phi', -30, 30).onChange(updateKinematicPosition).listen();
         kinematic.add(settings, 'psi', -20, 15).onChange(updateKinematicPosition).listen();
-        kinematic.add(settings, 'xm', -90, 90).onChange(updateKinematicPosition)
-        kinematic.add(settings, 'ym', 0, 200).onChange(updateKinematicPosition)
-        kinematic.add(settings, 'zm', -130, 130).onChange(updateKinematicPosition)
+        kinematic.add(settings, 'xm', -1, 1).onChange(updateKinematicPosition).listen()
+        kinematic.add(settings, 'ym', 0, 1).onChange(updateKinematicPosition).listen()
+        kinematic.add(settings, 'zm', -1.3, 1.3).onChange(updateKinematicPosition).listen()
  
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
@@ -246,8 +215,8 @@
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 
-        robot.position.z = smooth(robot.position.z, -settings.xm / 100, 0.1);
-        robot.position.x = smooth(robot.position.x, -settings.zm / 100, 0.1);
+        robot.position.z = smooth(robot.position.z, -settings.xm, 0.1);
+        robot.position.x = smooth(robot.position.x, -settings.zm, 0.1);
 
         robot.rotation.z = smooth(robot.rotation.z, degToRad(-settings.phi + $mpu.heading + 90), 0.1);
         robot.rotation.y = smooth(robot.rotation.y, degToRad(settings.omega), 0.1);
@@ -264,13 +233,22 @@
     }
 
     const update_gait = () => {
-        if (get(mode) != ModesEnum.Walk) return
+        if (sceneManager.isDragging || !settings['Internal kinematic']) return
         const controlData = get(outControllerData)
-        gait_state.step_x = Math.floor(fromInt8(controlData[2], -1, 1) * 10) / 10 * 2
-        gait_state.step_z = Math.floor(fromInt8(controlData[1], -1, 1) * 10) / 10 * 2
-        gait_state.step_angle = Math.floor(fromInt8(controlData[3], -1, 1) * 10) / 10 * Math.PI
-        gait_state.step_velocity = fromInt8(controlData[6], -1, 1)
-        body_state.feet = gaitPlanner._loop(body_state, gait_state);
+        const data = {
+                stop: controlData[0],
+                lx: controlData[1],
+                ly: controlData[2],
+                rx: controlData[3],
+                ry: controlData[4],
+                h: controlData[5],
+                s: controlData[6],
+            };
+        let planner = get(mode) === ModesEnum.Walk ? gaitPlanner : standState
+        body_state = planner.step(body_state, data);
+
+        settings.xm = body_state.xm
+        settings.zm = body_state.zm
     }
 
     const update_robot_position = (robot:URDFRobot) => {
