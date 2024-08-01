@@ -612,6 +612,14 @@ export class GaitPlanner {
 }
 
 export class BezierGaitPlanner {
+	private tick = 0;
+	private phase = 0;
+	private phase_time = 0;
+	private total_phases_length = 120;
+	private num_phases = 4;
+	private phase_length = this.total_phases_length / num_phases;
+	private sub_phase_tick = 0;
+
 	private _frame: number[][];
 	private _phi: number;
 	private _phi_stance: number;
@@ -620,6 +628,22 @@ export class BezierGaitPlanner {
 	private _s: boolean;
 	private _offset: number[];
 	private step_offset: number;
+
+	private contact_phases = [
+		[1, 0, 1, 1],
+		[1, 1, 1, 0],
+		[1, 1, 1, 0],
+		[1, 0, 1, 1]
+	];
+
+	private default_feet_pos = [
+		[1, -1, 1, 1],
+		[1, -1, -1, 1],
+		[-1, -1, 1, 1],
+		[-1, -1, -1, 1]
+	];
+
+	body_state!: body_state_t;
 
 	constructor(mode: string) {
 		this._frame = Array.from({ length: 4 }, () => Array(3).fill(0));
@@ -637,6 +661,49 @@ export class BezierGaitPlanner {
 		}
 	}
 
+	_loop(body_state: body_state_t) {
+		this.body_state = body_state;
+		this.update_phase();
+		this.update_body_position();
+		this.update_feet_positions();
+		return body_state.feet;
+	}
+
+	update_phase() {
+		this.tick += 1;
+		this.phase_time = this.tick / this.phase_length;
+
+		if (this.tick % this.phase_length == 0) {
+			this.phase += 1;
+			if (this.phase == this.num_phases) this.phase = 0;
+			this.tick = 0;
+		}
+	}
+
+	update_body_position() {}
+
+	update_feet_positions() {
+		for (let i = 0; i < 4; i++) {
+			this.body_state.feet[i] = this.update_foot_position(i);
+		}
+	}
+
+	update_foot_position(index: number): number[] {
+		const contact = this.contact_phases[index][this.phase];
+		return contact ? this.stand(index) : this.swing(index);
+	}
+
+	stand(index: number): number[] {
+		this.body_state.feet[index][0] = this.default_feet_pos[index][0] - this.phase_time * 0.5;
+		this.body_state.feet[index][1] = -1;
+		return this.body_state.feet[index];
+	}
+
+	swing(index: number): number[] {
+		const swing_proportion = this.sub_phase_tick / swing_ticks;
+		this.body_state.feet[index][1] = -sin(this.phase_time * Math.PI);
+		return this.body_state.feet[index];
+	}
 	private static solve_bin_factor(n: number, k: number): number {
 		return Number(this.factorial(n) / (this.factorial(k) * this.factorial(n - k)));
 	}
