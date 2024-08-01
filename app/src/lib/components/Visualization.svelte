@@ -70,6 +70,7 @@
         'Trace feet':debug,
         'Trace points': 30,
         'Fix camera on robot': true,
+        'Smooth motion': true,
         'omega': 0,
         'phi': 0,
         'psi': 0,
@@ -143,6 +144,7 @@
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
         visibility.add(settings, 'Trace points', 1, 1000, 1)
+        visibility.add(settings, 'Smooth motion')
         visibility.addColor(settings, 'Background')
     }
 
@@ -245,17 +247,21 @@
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y));
 
-        robot.position.z = lerp(robot.position.z, -settings.xm / 100, 0.1);
-        robot.position.x = lerp(robot.position.x, -settings.zm / 100, 0.1);
+        robot.position.z = smooth(robot.position.z, -settings.xm / 100, 0.1);
+        robot.position.x = smooth(robot.position.x, -settings.zm / 100, 0.1);
 
-        robot.rotation.z = lerp(robot.rotation.z, degToRad(-settings.phi + $mpu.heading + 90), 0.1);
-        robot.rotation.y = lerp(robot.rotation.y, degToRad(settings.omega), 0.1);
-        robot.rotation.x = lerp(robot.rotation.x, degToRad(settings.psi - 90), 0.1);
+        robot.rotation.z = smooth(robot.rotation.z, degToRad(-settings.phi + $mpu.heading + 90), 0.1);
+        robot.rotation.y = smooth(robot.rotation.y, degToRad(settings.omega), 0.1);
+        robot.rotation.x = smooth(robot.rotation.x, degToRad(settings.psi - 90), 0.1);
     }
 
     const update_camera = (robot:URDFRobot) => {
         if (!settings['Fix camera on robot']) return
         sceneManager.orbit.target = robot.position.clone()
+    }
+
+    const smooth = (start:number, end:number, amount:number) => {
+        return settings['Smooth motion'] ? lerp(start, end, amount) : end
     }
 
     const update_gait = () => {
@@ -284,8 +290,8 @@
     }
 
     const updateTargetPosition = () => {
-        target.position.x = lerp(target.position.x, target_position.x, 0.5)
-        target.position.z = lerp(target.position.z, target_position.z, 0.5)
+        target.position.x = smooth(target.position.x, target_position.x, 0.5)
+        target.position.z = smooth(target.position.z, target_position.z, 0.5)
     }
 
 	const render = () => {
@@ -305,7 +311,7 @@
         sceneManager.transformControl.showZ = settings['Robot transform controls']
         
 		for (let i = 0; i < $jointNames.length; i++) {
-            currentModelAngles[i] = lerp(
+            currentModelAngles[i] = smooth(
                 (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
 				modelTargetAngles[i],
 				0.1
