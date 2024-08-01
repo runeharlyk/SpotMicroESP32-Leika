@@ -21,9 +21,9 @@ class GaitState {
   public:
     virtual float getDefaultHeight() const { return 0.5f; }
 
-    virtual void begin() { ESP_LOGI("Gait Planner", "Starting %s", name()) }
+    virtual void begin() { ESP_LOGI("Gait Planner", "Starting %s", name()); }
 
-    virtual void end() { ESP_LOGI("Gait Planner", "Ending %s", name()) }
+    virtual void end() { ESP_LOGI("Gait Planner", "Ending %s", name()); }
 
     virtual void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) {}
 };
