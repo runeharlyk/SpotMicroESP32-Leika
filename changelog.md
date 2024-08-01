@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Adds gait planners [#75](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/75)
 - Adds support for esp32-wroom-camera [#56](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/56)
 - Servo Controller [#52](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/52)
 - Embedded kinematic service [#50](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/50)
