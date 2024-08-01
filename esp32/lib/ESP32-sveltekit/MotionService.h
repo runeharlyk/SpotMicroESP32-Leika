@@ -4,6 +4,7 @@
 #include <EventSocket.h>
 #include <TaskManager.h>
 #include <Kinematics.h>
+#include <Gait/GaitState.h>
 #include <Timing.h>
 #include <MathUtils.h>
 
@@ -146,7 +147,7 @@ class MotionService {
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
     float default_feet_positions[4][4] = {
-        {100, -100, 100, 1}, {100, -100, -100, 1}, {-100, -100, 100, 1}, {-100, -100, -100, 1}};
+        {1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
 
     float angles[12] = {
         0,
