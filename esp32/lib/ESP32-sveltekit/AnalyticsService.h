@@ -39,6 +39,7 @@ class AnalyticsService {
     TaskManager *_taskManager;
 
     void updateAnalytics() {
+        if (!_socket->hasSubscribers(EVENT_ANALYTICS)) return;
         doc.clear();
         doc["uptime"] = millis() / 1000;
         doc["free_heap"] = ESP.getFreeHeap();
