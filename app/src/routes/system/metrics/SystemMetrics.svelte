@@ -314,11 +314,12 @@
 
 		heapChart.data.labels = $analytics.uptime;
 		heapChart.data.datasets[0].data = $analytics.used_heap;
-		heapChart.options.scales.y.max = Math.max($analytics.total_heap[0]);
+		heapChart.options.scales!.y!.max = Math.ceil($analytics.total_heap[0]);
 		heapChart.update('none');
 
 		filesystemChart.data.labels = $analytics.uptime;
 		filesystemChart.data.datasets[0].data = $analytics.fs_used;
+		heapChart.options.scales!.y!.max = Math.ceil($analytics.fs_total[0]);
 		filesystemChart.update('none');
 
 		temperatureChart.data.labels = $analytics.uptime;
