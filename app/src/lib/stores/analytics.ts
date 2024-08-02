@@ -5,6 +5,7 @@ let analytics_data = {
 	uptime: <number[]>[],
 	free_heap: <number[]>[],
 	total_heap: <number[]>[],
+	used_heap: <number[]>[],
 	min_free_heap: <number[]>[],
 	max_alloc_heap: <number[]>[],
 	fs_used: <number[]>[],
@@ -30,6 +31,10 @@ function createAnalytics() {
 				total_heap: [...analytics_data.total_heap, content.total_heap / 1000].slice(
 					-maxAnalyticsData
 				),
+				used_heap: [
+					...analytics_data.used_heap,
+					(content.total_heap - content.free_heap) / 1000
+				].slice(-maxAnalyticsData),
 				min_free_heap: [...analytics_data.min_free_heap, content.min_free_heap / 1000].slice(
 					-maxAnalyticsData
 				),

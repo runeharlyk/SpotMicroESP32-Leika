@@ -69,7 +69,7 @@
 				},
 				elements: {
 					point: {
-						radius: 1
+						radius: 0
 					}
 				},
 				scales: {
@@ -111,19 +111,12 @@
 				labels: $analytics.uptime,
 				datasets: [
 					{
-						label: 'Free Heap',
+						label: 'Used Heap',
 						borderColor: daisyColor('--p'),
 						backgroundColor: daisyColor('--p', 50),
 						borderWidth: 2,
-						data: $analytics.free_heap,
-						yAxisID: 'y'
-					},
-					{
-						label: 'Max Alloc Heap',
-						borderColor: daisyColor('--s'),
-						backgroundColor: daisyColor('--s', 50),
-						borderWidth: 2,
-						data: $analytics.max_alloc_heap,
+						data: $analytics.used_heap,
+                        fill:true,
 						yAxisID: 'y'
 					}
 				]
@@ -142,7 +135,7 @@
 				},
 				elements: {
 					point: {
-						radius: 1
+						radius: 0
 					}
 				},
 				scales: {
@@ -189,6 +182,7 @@
 						backgroundColor: daisyColor('--p', 50),
 						borderWidth: 2,
 						data: $analytics.fs_used,
+                        fill:true,
 						yAxisID: 'y'
 					}
 				]
@@ -207,7 +201,7 @@
 				},
 				elements: {
 					point: {
-						radius: 1
+						radius: 0
 					}
 				},
 				scales: {
@@ -272,7 +266,7 @@
 				},
 				elements: {
 					point: {
-						radius: 1
+						radius: 0
 					}
 				},
 				scales: {
@@ -308,9 +302,7 @@
 				}
 			}
 		});
-		setInterval(() => {
-			updateData(), 2000;
-		});
+		setInterval(updateData, 500);
 	});
 
 	function updateData() {
@@ -321,8 +313,8 @@
 		cpuChart.update('none');
 
 		heapChart.data.labels = $analytics.uptime;
-		heapChart.data.datasets[0].data = $analytics.free_heap;
-		heapChart.data.datasets[1].data = $analytics.max_alloc_heap;
+		heapChart.data.datasets[0].data = $analytics.used_heap;
+		heapChart.options.scales.y.max = Math.max($analytics.total_heap[0]);
 		heapChart.update('none');
 
 		filesystemChart.data.labels = $analytics.uptime;
