@@ -72,6 +72,11 @@
 #define FT_BMP 0
 #endif
 
+// ESP32 SONAR off by default
+#ifndef FT_USS
+#define FT_USS 0
+#endif
+
 // ESP32 GPS off by default
 #ifndef FT_GPS
 #define FT_GPS 0

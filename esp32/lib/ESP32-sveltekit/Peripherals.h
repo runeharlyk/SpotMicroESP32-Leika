@@ -19,6 +19,7 @@
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADS1X15.h>
+#include <NewPing.h>
 
 #define DEVICE_CONFIG_FILE "/config/peripheral.json"
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
@@ -47,6 +48,11 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define SCREEN_RESET -1
+
+/*
+ * Ultrasonic Sensor Settings
+ */
+#define MAX_DISTANCE 200
 
 /*
  * I2C software connection
@@ -167,10 +173,19 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
         _ads.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, /*continuous=*/false);
 #endif
+
+#if FT_ENABLED(FT_USS)
+        _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
+        _right_sonar = new NewPing(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
+#endif
     };
 
     void loop() {
-        EXECUTE_EVERY_N_MS(_updateInterval, updateImu());
+        EXECUTE_EVERY_N_MS(_updateInterval, {
+            updateImu();
+            readSonar();
+            emitSonar();
+        });
     }
 
     void updatePins() {
@@ -362,6 +377,26 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
     }
 
+    void readSonar() {
+#if FT_ENABLED(FT_USS)
+        _left_distance = _left_sonar->ping_cm();
+        delay(50);
+        _right_distance = _right_sonar->ping_cm();
+#endif
+    }
+
+    void emitSonar() {
+#if FT_ENABLED(FT_USS)
+
+        char output[16];
+        snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
+        _socket->emit("sonar", output);
+#endif
+    }
+
+    float leftDistance() { return _left_distance; }
+    float rightDistance() { return _right_distance; }
+
   private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
@@ -400,6 +435,12 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(FT_ADS1115)
     Adafruit_ADS1115 _ads;
 #endif
+#if FT_ENABLED(FT_USS)
+    NewPing *_left_sonar;
+    NewPing *_right_sonar;
+#endif
+    float _left_distance {MAX_DISTANCE};
+    float _right_distance {MAX_DISTANCE};
 
     std::list<uint8_t> addressList;
     bool i2c_active = false;
