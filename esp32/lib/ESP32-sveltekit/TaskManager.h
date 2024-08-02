@@ -84,6 +84,7 @@ class TaskManager {
     }
 
     std::vector<task_t> getTasks() {
+        update();
         std::vector<task_t> tasks;
         for (auto const &task : _tasks) tasks.push_back(task.second);
         return tasks;
@@ -94,9 +95,15 @@ class TaskManager {
     int getKernelTaskCount() const { return uxTaskGetNumberOfTasks(); }
 
     void update() {
-        for (auto const &task : _tasks) {
-            _tasks[task.first].priority = uxTaskPriorityGet(task.second.handle);
-            _tasks[task.first].coreId = xTaskGetAffinity(task.second.handle);
+        for (auto task = _tasks.begin(); task != _tasks.end();) {
+            eTaskState state = eTaskGetState(task->second.handle);
+            if (state == eDeleted) {
+                task = _tasks.erase(task);
+            } else {
+                _tasks[task->first].priority = uxTaskPriorityGet(task->second.handle);
+                _tasks[task->first].coreId = xTaskGetAffinity(task->second.handle);
+                ++task;
+            }
         }
     }
 

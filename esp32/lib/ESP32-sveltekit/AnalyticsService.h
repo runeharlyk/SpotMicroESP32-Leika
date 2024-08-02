@@ -52,8 +52,7 @@ class AnalyticsService {
         doc["cpu0_usage"] = _taskManager->getCpuUsage(0);
         doc["cpu1_usage"] = _taskManager->getCpuUsage(1);
         doc["cpu_usage"] = _taskManager->getCpuUsage();
-        // Add _taskManager->getTaskNames() as a JSON array
-        JsonArray tasks = doc["tasks"].as<JsonArray>();
+        JsonArray tasks = doc["tasks"].to<JsonArray>();
         for (auto const &task : _taskManager->getTasks()) {
             JsonObject nested = tasks.add<JsonObject>();
             nested["name"] = task.name;
