@@ -125,6 +125,8 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     return ESP_OK;
 }
 
+bool EventSocket::hasSubscribers(const char *event) { return !client_subscriptions[event].empty(); }
+
 void EventSocket::emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin) {
     int originSubscriptionId = originId[0] ? atoi(originId) : -1;
     xSemaphoreTake(clientSubscriptionsMutex, portMAX_DELAY);

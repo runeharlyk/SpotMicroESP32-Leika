@@ -22,6 +22,8 @@ class EventSocket {
 
     void begin();
 
+    bool hasSubscribers(const char *event);
+
     void onEvent(String event, EventCallback callback);
 
     void onSubscribe(String event, SubscribeCallback callback);
