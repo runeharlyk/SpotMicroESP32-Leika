@@ -83,6 +83,7 @@ void ESP32SvelteKit::begin() {
     startServices();
 
     ESP_LOGV("ESP32SvelteKit", "Starting loop task");
+    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, ESP32SVELTEKIT_RUNNING_CORE);
 }
 
 void ESP32SvelteKit::setupServer() {

@@ -186,6 +186,7 @@ class ESP32SvelteKit {
     String _appName = APP_NAME;
 
   protected:
+    static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->loop(); }
     void setupServer();
     void setupMDNS();
     void startServices();

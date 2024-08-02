@@ -73,10 +73,8 @@ class TaskManager {
     TaskManager() {}
 
     void begin() {
-        createTask(IdleTask::IdleTaskEntry, "Idle Core 0", IDLE_STACK_SIZE, &_taskIdle0, tskIDLE_PRIORITY + 1, &_hIdle0,
-                   0);
-        createTask(IdleTask::IdleTaskEntry, "Idle Core 1", IDLE_STACK_SIZE, &_taskIdle1, tskIDLE_PRIORITY + 1, &_hIdle1,
-                   1);
+        createTask(IdleTask::IdleTaskEntry, "Idle Core 0", IDLE_STACK_SIZE, &_taskIdle0, 1, &_hIdle0, 0);
+        createTask(IdleTask::IdleTaskEntry, "Idle Core 1", IDLE_STACK_SIZE, &_taskIdle1, 1, &_hIdle1, 1);
         esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(0));
         esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(1));
         esp_task_wdt_add(_hIdle0);
@@ -116,8 +114,10 @@ class TaskManager {
     }
 
     BaseType_t createTask(void (*taskFunction)(void *), const char *name, uint32_t stackSize = 2048,
-                          void *params = nullptr, UBaseType_t priority = tskIDLE_PRIORITY + 2,
-                          TaskHandle_t *handle = nullptr, BaseType_t coreId = -1) {
+                          void *params = nullptr, UBaseType_t priority = 2, TaskHandle_t *handle = nullptr,
+                          BaseType_t coreId = -1) {
+        TaskHandle_t localHandle;
+        if (handle == nullptr) handle = &localHandle;
         BaseType_t res = coreId == -1
                              ? xTaskCreate(taskFunction, name, stackSize, params, tskIDLE_PRIORITY + priority, handle)
                              : xTaskCreatePinnedToCore(taskFunction, name, stackSize, params,
