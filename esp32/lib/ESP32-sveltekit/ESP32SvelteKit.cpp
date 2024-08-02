@@ -203,25 +203,18 @@ void ESP32SvelteKit::startServices() {
 }
 
 void IRAM_ATTR ESP32SvelteKit::loop() {
-    while (1) {
-        _wifiSettingsService.loop();
-        _apSettingsService.loop();
+    _wifiSettingsService.loop();
+    _apSettingsService.loop();
 #if FT_ENABLED(FT_ANALYTICS)
-        _analyticsService.loop();
+    _analyticsService.loop();
 #endif
 #if FT_ENABLED(FT_BATTERY)
-        _batteryService.loop();
+    _batteryService.loop();
 #endif
-#if FT_ENABLED(FT_MOTION)
-        _motionService.loop();
-#endif
-#if FT_ENABLED(FT_SERVO)
-        _servoController.loop();
-#endif
+    _servoController.loop();
 #if FT_ENABLED(FT_WS2812)
-        _ledService.loop();
+    _ledService.loop();
 #endif
-        _peripherals.loop();
-        delay(20);
-    }
+    _peripherals.loop();
+    delay(20);
 }
