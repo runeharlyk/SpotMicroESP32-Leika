@@ -179,5 +179,4 @@ void EventSocket::onEvent(String event, EventCallback callback) { event_callback
 
 void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
     subscribe_callbacks[event].push_back(callback);
-    ESP_LOGD("EventSocket", "onSubscribe for event: %s", event.c_str());
 }
