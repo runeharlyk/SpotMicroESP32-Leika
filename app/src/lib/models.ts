@@ -5,6 +5,7 @@ export interface ControllerInput {
 	right: vector;
 	height: number;
 	speed: number;
+	s1: number;
 }
 
 export type GithubRelease = {

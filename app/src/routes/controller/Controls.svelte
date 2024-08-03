@@ -10,7 +10,7 @@
 	let right: nipplejs.JoystickManager;
 
 	let throttle_timing = 40;
-	let data = new Array(7);
+	let data = new Array(8);
 
 	onMount(() => {
 		left = nipplejs.create({
@@ -51,6 +51,7 @@
 		data[4] = toInt8($input.right.y, -1, 1);
 		data[5] = toInt8($input.height, 0, 100);
 		data[6] = toInt8($input.speed, 0, 100);
+		data[7] = toInt8($input.s1, 0, 100);
 
 		outControllerData.set(data);
 	};
@@ -67,7 +68,7 @@
 		throttle.throttle(updateData, throttle_timing);
 	};
 
-    const handleRange = (event:Event, key: 'speed' | 'height') => {
+    const handleRange = (event:Event, key: 'speed' | 'height' | 's1') => {
         const value:number = event.target?.value
         
         input.update((inputData) => {
@@ -107,7 +108,9 @@
             </button>
 		{/each}
         <div>
-            {#if $mode === ModesEnum.Walk}
+            {#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
+                <label for="s1">S1</label>
+                <input type="range" name="s1" min="0" max="100" on:input={(e) => handleRange(e, 's1')} class="range range-sm" />
                 <label for="speed">Speed</label>
                 <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm" />
             {/if}

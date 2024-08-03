@@ -32,5 +32,6 @@ export const input: Writable<ControllerInput> = writable({
 	left: { x: 0, y: 0 },
 	right: { x: 0, y: 0 },
 	height: 50,
-	speed: 50
+	speed: 50,
+	s1: 50
 });
