@@ -43,6 +43,8 @@
         [ModesEnum.Crawl]: new EightPhaseWalkState(),
         [ModesEnum.Walk]: new FourPhaseWalkState()
     }
+    let lastTick = performance.now()
+
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
 
     let body_state = {
@@ -244,11 +246,13 @@
             h: controlData[5],
             s: controlData[6],
         };
-        body_state.ym = ((data.h + 128) * 0.75) / 100;
+        body_state.ym = ((data.h + 127) * 0.75) / 100;
 
         let planner = planners[get(mode)]
+        const delta = performance.now() - lastTick
+        lastTick = performance.now()
         
-        body_state = planner.step(body_state, data);
+        body_state = planner.step(body_state, data, delta);
 
         settings.omega = body_state.omega
         settings.phi = body_state.phi
