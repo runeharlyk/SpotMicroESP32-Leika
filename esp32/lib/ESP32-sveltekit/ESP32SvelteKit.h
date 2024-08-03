@@ -176,9 +176,7 @@ class ESP32SvelteKit {
     CameraSettingsService _cameraSettingsService;
 #endif
     Peripherals _peripherals;
-#if FT_ENABLED(FT_SERVO)
     ServoController _servoController;
-#endif
 #if FT_ENABLED(FT_WS2812)
     LEDService _ledService;
 #endif
