@@ -8,8 +8,8 @@
 #include <StatefulService.h>
 #include <MathUtils.h>
 #include <Timing.h>
-#include <list>
 
+#include <list>
 #include <SPI.h>
 #include <Wire.h>
 
@@ -27,9 +27,10 @@
 
 #define EVENT_I2C_SCAN "i2cScan"
 
-#define I2C_INTERVAL 500
+#define I2C_INTERVAL 5000
 #define MAX_ESP_IMU_SIZE 500
 #define EVENT_IMU "imu"
+#define EVENT_SERVO_STATE "servoState"
 
 /*
  * Servo Settings
@@ -116,6 +117,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
           _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, fs,
                          DEVICE_CONFIG_FILE) {
+        _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
     };
 
@@ -140,6 +142,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _pca.begin();
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
+        _pca.sleep();
+        _socket->onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+            _pca_active = root["active"] | false;
+            _pca_active ? pcaActivate() : pcaDeactivate();
+        });
 #endif
 
 #if FT_ENABLED(FT_IMU)
@@ -182,9 +189,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void loop() {
         EXECUTE_EVERY_N_MS(_updateInterval, {
+            beginTransaction();
             updateImu();
             readSonar();
             emitSonar();
+            endTransaction();
         });
     }
 
@@ -231,16 +240,53 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     /* SERVO FUNCTIONS*/
-    void pcaWrite(int index, int value) {
+    void pcaLerpTo(int index, int value, float t) {
 #if FT_ENABLED(FT_SERVO)
-        _pca.setPWM(index, 0, value);
+        target_pwm[index] = lerp(pwm[index], value, t);
 #endif
     }
 
-    void pcaAngle(int index, int value) {
+    void pcaWrite(int index, int value) {
 #if FT_ENABLED(FT_SERVO)
-        // uint16_t pwm = SERVO_MIN + value * SERVO_ANGLE_PWM_RATIO;
-        _pca.setPWM(index, 0, 125 + value * 2);
+        if (value < 0 || value > 4096) {
+            ESP_LOGE("Peripherals", "Invalid PWM value %d for %d :: Valid range 0-4096", value, index);
+            return;
+        }
+        pwm[index] = value;
+        target_pwm[index] = value;
+        beginTransaction();
+        _pca.setPWM(index, 0, value);
+        endTransaction();
+#endif
+    }
+
+    void pcaWriteAngle(int index, int angle) {
+#if FT_ENABLED(FT_SERVO)
+        _pca.setPWM(index, 0, 125 + angle * 2);
+#endif
+    }
+
+    void pcaWriteAngles(float *angles, int numServos, int offset = 0) {
+#if FT_ENABLED(FT_SERVO)
+        for (int i = 0; i < numServos; i++) {
+            pcaWriteAngle(i + offset, angles[i]);
+        }
+#endif
+    }
+
+    void pcaActivate() {
+#if FT_ENABLED(FT_SERVO)
+        if (_pca_active) return;
+        _pca_active = true;
+        _pca.wakeup();
+#endif
+    }
+
+    void pcaDeactivate() {
+#if FT_ENABLED(FT_SERVO)
+        if (!_pca_active) return;
+        _pca_active = false;
+        _pca.sleep();
 #endif
     }
 
@@ -405,11 +451,19 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _fsPersistence;
 
+    SemaphoreHandle_t _accessMutex;
+    inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
+
+    inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
+
     JsonDocument doc;
     char message[MAX_ESP_IMU_SIZE];
 
 #if FT_ENABLED(FT_SERVO)
     Adafruit_PWMServoDriver _pca;
+    bool _pca_active {false};
+    uint16_t pwm[16] = {0};
+    uint16_t target_pwm[16] = {0};
 #endif
 #if FT_ENABLED(FT_IMU)
     MPU6050 _imu;
