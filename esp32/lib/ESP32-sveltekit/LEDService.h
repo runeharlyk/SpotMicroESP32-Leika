@@ -41,13 +41,17 @@ class LEDService {
             if (_brightness >= 200) direction = -5;
             if (_brightness <= 50) direction = 5;
             _brightness += direction;
-            fillFromPallette(0);
+            if (WiFi.isConnected()) {
+                fillFromPallette(OceanColors_p, 0);
+            } else {
+                fillFromPallette(ForestColors_p, 128);
+            }
             FastLED.show();
         });
     }
 
-    void fillFromPallette(uint8_t colorIndex) {
-        CRGB color = ColorFromPalette(currentPalette, colorIndex, _brightness, currentBlending);
+    void fillFromPallette(CRGBPalette16 colorPalette, uint8_t colorIndex) {
+        CRGB color = ColorFromPalette(colorPalette, colorIndex, _brightness, currentBlending);
         for (int i = 0; i < WS2812_NUM_LEDS; ++i) {
             leds[i] = color;
         }
