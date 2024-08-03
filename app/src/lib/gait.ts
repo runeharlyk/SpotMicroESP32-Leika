@@ -52,10 +52,10 @@ export abstract class GaitState {
 
 	map_command(command: ControllerCommand): gait_state_t {
 		return {
-			step_height: 0.4,
+			step_height: 0.4 + Math.abs(command.ry / 128),
 			step_x: (Math.floor(fromInt8(command.ly, -1, 1) * 10) / 10) * 3,
 			step_z: -(Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10) * 3,
-			step_velocity: 1,
+			step_velocity: command.s / 128 + 1,
 			step_angle: 0,
 			step_depth: 0.2
 		};
@@ -100,7 +100,7 @@ abstract class PhaseGaitState extends GaitState {
 	protected phase = 0;
 	protected phase_time = 0;
 	protected abstract num_phases: number;
-	protected abstract phase_length: number;
+	protected abstract phase_speed_factor: number;
 	protected abstract swing_stand_ratio: number;
 
 	protected contact_phases!: number[][];
@@ -113,7 +113,7 @@ abstract class PhaseGaitState extends GaitState {
 	step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
 		this.body_state = body_state;
 		this.gait_state = this.map_command(command);
-		this.dt = dt;
+		this.dt = dt / 1000;
 		this.update_phase();
 		this.update_body_position();
 		this.update_feet_positions();
@@ -121,13 +121,12 @@ abstract class PhaseGaitState extends GaitState {
 	}
 
 	update_phase() {
-		this.tick += 1;
-		this.phase_time = this.tick / this.phase_length;
+		this.phase_time += this.dt * this.phase_speed_factor * this.gait_state.step_velocity;
 
-		if (this.tick % this.phase_length == 0) {
+		if (this.phase_time >= 1) {
 			this.phase += 1;
 			if (this.phase == this.num_phases) this.phase = 0;
-			this.tick = 0;
+			this.phase_time = 0;
 		}
 	}
 
@@ -189,7 +188,7 @@ abstract class PhaseGaitState extends GaitState {
 export class FourPhaseWalkState extends PhaseGaitState {
 	protected name = 'Four phase walk';
 	protected num_phases = 4;
-	protected phase_length = 15;
+	protected phase_speed_factor = 2.5;
 	protected contact_phases = [
 		[1, 0, 1, 1],
 		[1, 1, 1, 0],
@@ -214,7 +213,7 @@ export class FourPhaseWalkState extends PhaseGaitState {
 export class EightPhaseWalkState extends PhaseGaitState {
 	protected name = 'Eight phase walk';
 	protected num_phases = 8;
-	protected phase_length = 20;
+	protected phase_speed_factor = 1.5;
 	protected contact_phases = [
 		[1, 0, 1, 1, 1, 1, 1, 1],
 		[1, 1, 1, 0, 1, 1, 1, 1],

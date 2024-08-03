@@ -16,7 +16,7 @@ struct ControllerCommand {
 class GaitState {
   protected:
     virtual const char *name() const = 0;
-    float default_feet_positions[4][4] = {{1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
+    float default_feet_positions[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
 
   public:
     virtual float getDefaultHeight() const { return 0.5f; }
@@ -64,11 +64,10 @@ class StandState : public GaitState {
 
 class PhaseGaitState : public GaitState {
   protected:
-    int tick = 0;
     int phase = 0;
     float phase_time = 0;
     virtual int num_phases() const = 0;
-    virtual int phase_length() const = 0;
+    virtual float phase_speed_factor() const = 0;
     virtual float swing_stand_ratio() const = 0;
 
     uint8_t contact_phases[4][8];
@@ -79,20 +78,18 @@ class PhaseGaitState : public GaitState {
 
     void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         this->gait_state = mapCommand(command);
-        this->dt = dt;
         updatePhase();
         updateBodyPosition(body_state);
         updateFeetPositions(body_state);
     }
 
     void updatePhase() {
-        tick += 1;
-        phase_time = static_cast<float>(tick) / phase_length();
+        phase_time += dt * phase_speed_factor() * gait_state.step_velocity;
 
-        if (tick % phase_length() == 0) {
+        if (phase_time >= 1.0f) {
             phase += 1;
             if (phase == num_phases()) phase = 0;
-            tick = 0;
+            phase_time = 0;
         }
     }
 
@@ -143,10 +140,10 @@ class PhaseGaitState : public GaitState {
 
     gait_state_t mapCommand(ControllerCommand command) {
         gait_state_t state;
-        state.step_height = 0.4f;
-        state.step_x = command.ly / 128 * 3;
-        state.step_z = -command.lx / 128 * 3;
-        state.step_velocity = 1;
+        state.step_height = 0.4f + std::fabs(command.ry / 128);
+        state.step_x = command.ly / 128;
+        state.step_z = -command.lx / 128;
+        state.step_velocity = command.s / 128 + 1;
         state.step_angle = 0;
         return state;
     }
@@ -158,7 +155,7 @@ class FourPhaseWalkState : public PhaseGaitState {
 
     int num_phases() const override { return 4; }
 
-    int phase_length() const override { return 15; }
+    float phase_speed_factor() const override { return 2.5; }
 
     float swing_stand_ratio() const override { return 1.0f / (num_phases() - 1); }
 
@@ -183,7 +180,7 @@ class EightPhaseWalkState : public PhaseGaitState {
 
     int num_phases() const override { return 8; }
 
-    int phase_length() const override { return 20; }
+    float phase_speed_factor() const override { return 1.5; }
 
     float swing_stand_ratio() const override { return 1.0f / (num_phases() - 1); }
 

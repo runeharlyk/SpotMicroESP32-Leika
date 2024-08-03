@@ -73,14 +73,15 @@ class MotionService {
         command.h = array[5];
         command.s = array[6];
 
-        body_state.ym = (command.h + 128.f) * 0.75f / 100;
+        body_state.ym = (command.h + 127.f) * 0.75f / 100;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
-                body_state.phi = command.rx / 4;
-                body_state.psi = command.ry / 4;
+                body_state.phi = command.rx / 8;
+                body_state.psi = command.ry / 8;
                 body_state.xm = command.ly / 2 / 100;
                 body_state.zm = command.lx / 2 / 100;
+                body_state.updateFeet(default_feet_positions);
                 break;
             }
         }
@@ -168,7 +169,7 @@ class MotionService {
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-    float default_feet_positions[4][4] = {{1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
+    float default_feet_positions[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
 
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
