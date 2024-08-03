@@ -6,8 +6,6 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define ARRAY_EQUAL(arr1, arr2) (memcmp((arr1), (arr2), sizeof(arr1)) == 0)
-
 #define COPY_2D_ARRAY_4x4(dest, src) \
     do {                             \
         (dest)[0][0] = (src)[0][0];  \
@@ -50,10 +48,25 @@
 
 #define SIN_DEG_F(deg) (sinf(DEG_TO_RAD_F(deg)))
 
+#define IS_EQUAL(a, b, epsilon) (std::fabs((a) - (b)) < (epsilon))
+
+#define IS_ALMOST_EQUAL(a, b) IS_EQUAL((a), (b), 0.001f)
+
 inline float lerp(float start, float end, float t) { return (1 - t) * start + t * end; }
 
 inline bool isEqual(float a, float b, float epsilon) { return std::fabs(a - b) < epsilon; }
 
 inline float round2(float value) { return (int)(value * 100 + 0.5) / 100.0; }
+
+inline bool arrayEqual(const float arr1[4][4], const float arr2[4][4], float epsilon = 1e-3) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (std::fabs(arr1[i][j] - arr2[i][j]) > epsilon) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 #endif

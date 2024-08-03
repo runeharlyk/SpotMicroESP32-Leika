@@ -3,7 +3,6 @@
 
 #include <MathUtils.h>
 
-
 struct body_state_t {
     float omega, phi, psi, xm, ym, zm;
     float feet[4][4];
@@ -11,11 +10,12 @@ struct body_state_t {
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
 
     bool isEqual(const body_state_t &other) const {
-        if (omega != other.omega || phi != other.phi || psi != other.psi || xm != other.xm || ym != other.ym ||
-            zm != other.zm) {
+        if (!IS_ALMOST_EQUAL(omega, other.omega) || !IS_ALMOST_EQUAL(phi, other.phi) ||
+            !IS_ALMOST_EQUAL(psi, other.psi) || !IS_ALMOST_EQUAL(xm, other.xm) || !IS_ALMOST_EQUAL(ym, other.ym) ||
+            !IS_ALMOST_EQUAL(zm, other.zm)) {
             return false;
         }
-        return ARRAY_EQUAL(feet, other.feet);
+        return arrayEqual(feet, other.feet, 0.1);
     }
 };
 
@@ -67,7 +67,13 @@ class Kinematics {
         if (currentState.isEqual(body_state)) return ESP_OK;
 
         ret = bodyIK(body_state);
-        currentState = body_state;
+        currentState.omega = body_state.omega;
+        currentState.phi = body_state.phi;
+        currentState.psi = body_state.psi;
+        currentState.xm = body_state.xm;
+        currentState.ym = body_state.ym;
+        currentState.zm = body_state.zm;
+        currentState.updateFeet(body_state.feet);
 
         ret += inverse(Tlf, inv);
         MAT_MULT(inv, body_state.feet[0], point, 4, 4, 1);

@@ -113,7 +113,7 @@ class MotionService {
         bool updated = false;
         for (int i = 0; i < 12; i++) {
             float new_angle = useLerp ? lerp(angles[i], new_angles[i] * dir[i], 0.3) : new_angles[i] * dir[i];
-            if (new_angle != angles[i]) {
+            if (!isEqual(new_angle, angles[i], 0.1)) {
                 angles[i] = new_angle;
                 updated = true;
             }
