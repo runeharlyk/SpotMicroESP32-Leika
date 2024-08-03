@@ -72,8 +72,9 @@ class MotionService {
         command.ry = array[4];
         command.h = array[5];
         command.s = array[6];
+        command.s1 = array[7];
 
-        body_state.ym = (command.h + 127.f) * 0.75f / 100;
+        body_state.ym = (command.h + 127.f) * 0.35f / 100;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
@@ -154,7 +155,7 @@ class MotionService {
     TaskManager *_taskManager;
     ServoController *_servoController;
     Kinematics kinematics;
-    ControllerCommand command = {0, 0, 0, 0, 0, 0, 0};
+    ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};
 
     friend class GaitState;
 

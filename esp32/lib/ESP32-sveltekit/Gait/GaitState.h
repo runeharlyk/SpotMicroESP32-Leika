@@ -10,7 +10,7 @@ struct gait_state_t {
 
 struct ControllerCommand {
     int stop;
-    float lx, ly, rx, ry, h, s;
+    float lx, ly, rx, ry, h, s, s1;
 };
 
 class GaitState {
@@ -140,9 +140,9 @@ class PhaseGaitState : public GaitState {
 
     gait_state_t mapCommand(ControllerCommand command) {
         gait_state_t state;
-        state.step_height = 0.4f + std::fabs(command.ry / 128);
-        state.step_x = command.ly / 128;
-        state.step_z = -command.lx / 128;
+        state.step_height = (command.s1 / 128 + 1) / 2;
+        state.step_x = command.ly / 128 * 2;
+        state.step_z = -command.lx / 128 * 2;
         state.step_velocity = command.s / 128 + 1;
         state.step_angle = 0;
         return state;
