@@ -51,13 +51,13 @@ class Kinematics {
     float L, W;
 
     Kinematics() {
-        l1 = 50;
-        l2 = 20;
-        l3 = 120;
-        l4 = 155;
+        l1 = 60.5 / 100;
+        l2 = 10 / 100;
+        l3 = 100.7 / 100;
+        l4 = 118.5 / 100;
 
-        L = 140;
-        W = 75;
+        L = 207.5 / 100;
+        W = 78 / 100;
     }
     ~Kinematics() {}
 
@@ -135,7 +135,8 @@ class Kinematics {
         float H = sqrtf(G * G + z * z);
 
         float theta1 = -atan2f(y, x) - atan2f(F, -l1);
-        float theta3 = acosf((H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4));
+        float D = (H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4);
+        float theta3 = atan2(sqrt(1 - D * D), D);
         if (isnan(theta3)) theta3 = 0;
         float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
         result[0] = RAD_TO_DEG_F(theta1);

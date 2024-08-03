@@ -59,7 +59,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _fileExplorer(server, &_securitySettingsService),
       _servoController(server, &ESPFS, &_securitySettingsService, &_peripherals, &_socket),
 #if FT_ENABLED(FT_MOTION)
-      _motionService(_server, &_socket, &_securitySettingsService, &_taskManager),
+      _motionService(_server, &_socket, &_securitySettingsService, &_servoController, &_taskManager),
 #endif
 #if FT_ENABLED(FT_WS2812)
       _ledService(&_taskManager),
@@ -207,9 +207,6 @@ void IRAM_ATTR ESP32SvelteKit::loop() {
 #endif
 #if FT_ENABLED(FT_BATTERY)
         _batteryService.loop();
-#endif
-#if FT_ENABLED(FT_MOTION)
-        _motionService.loop();
 #endif
 #if FT_ENABLED(FT_WS2812)
         _ledService.loop();

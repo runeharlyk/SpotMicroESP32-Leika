@@ -8,12 +8,14 @@ export const jointNames = persistentStore('joint_names', []);
 
 export const model = writable();
 
-export const modes = ['idle', 'rest', 'stand', 'Crawl', 'walk'] as const;
+export const modes = ['deactivated', 'idle', 'calibration', 'rest', 'stand', 'crawl', 'walk'] as const;
 
 export type Modes = (typeof modes)[number];
 
 export enum ModesEnum {
+	Deactivated,
 	Idle,
+	Calibration,
 	Rest,
 	Stand,
 	Crawl,
