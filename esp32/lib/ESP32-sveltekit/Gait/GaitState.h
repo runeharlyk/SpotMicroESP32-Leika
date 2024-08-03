@@ -15,7 +15,7 @@ struct ControllerCommand {
 
 class GaitState {
   protected:
-    virtual const char* name() const = 0;
+    virtual const char *name() const = 0;
     float default_feet_positions[4][4] = {{1, -1, 1, 1}, {1, -1, -1, 1}, {-1, -1, 1, 1}, {-1, -1, -1, 1}};
 
   public:
@@ -25,19 +25,19 @@ class GaitState {
 
     virtual void end() { ESP_LOGI("Gait Planner", "Ending %s", name()); }
 
-    virtual void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) {}
+    virtual void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) {}
 };
 
 class IdleState : public GaitState {
   protected:
-    const char* name() const override { return "Idle"; }
+    const char *name() const override { return "Idle"; }
 };
 
 class RestState : public GaitState {
   protected:
-    const char* name() const override { return "Rest"; }
+    const char *name() const override { return "Rest"; }
 
-    void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         body_state.omega = 0;
         body_state.phi = 0;
         body_state.psi = 0;
@@ -50,9 +50,9 @@ class RestState : public GaitState {
 
 class StandState : public GaitState {
   protected:
-    const char* name() const override { return "Stand"; }
+    const char *name() const override { return "Stand"; }
 
-    void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         body_state.omega = 0;
         body_state.phi = command.rx / 8;
         body_state.psi = command.ry / 8;
@@ -77,12 +77,12 @@ class PhaseGaitState : public GaitState {
     gait_state_t gait_state;
     float dt = 0.02f;
 
-    void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         this->gait_state = mapCommand(command);
         this->dt = dt;
         updatePhase();
         updateBodyPosition(body_state);
-        updateFeetPositions(body_state.feet);
+        updateFeetPositions(body_state);
     }
 
     void updatePhase() {
@@ -96,55 +96,56 @@ class PhaseGaitState : public GaitState {
         }
     }
 
-    void updateBodyPosition(body_state_t body_state) {
+    void updateBodyPosition(body_state_t &body_state) {
         if (num_phases() == 4) return;
 
-        const auto& shift = shifts[phase / 2];
+        const auto &shift = shifts[phase / 2];
         body_state.xm += (shift[0] - body_state.xm) * dt * 4;
         body_state.zm += (shift[2] - body_state.zm) * dt * 4;
     }
 
-    void updateFeetPositions(float feet[4][4]) {
+    void updateFeetPositions(body_state_t &body_state) {
         for (int i = 0; i < 4; ++i) {
-            updateFootPosition(feet[i], i);
+            updateFootPosition(body_state, i);
         }
     }
 
-    void updateFootPosition(float foot[4], int index) {
+    void updateFootPosition(body_state_t &body_state, int index) {
         bool contact = contact_phases[index][phase];
-        contact ? stand(foot, index) : swing(foot, index);
+        contact ? stand(body_state, index) : swing(body_state, index);
     }
 
-    void stand(float foot[4], int index) {
+    void stand(body_state_t &body_state, int index) {
         float delta_pos[3] = {-gait_state.step_x * dt * swing_stand_ratio(), 0,
                               -gait_state.step_z * dt * swing_stand_ratio()};
 
-        foot[0] += delta_pos[0];
-        foot[1] = default_feet_positions[index][1];
-        foot[2] += delta_pos[2];
+        body_state.feet[index][0] += delta_pos[0];
+        body_state.feet[index][1] = default_feet_positions[index][1];
+        body_state.feet[index][2] += delta_pos[2];
     }
 
-    void swing(float foot[4], int index) {
+    void swing(body_state_t &body_state, int index) {
         float delta_pos[3] = {gait_state.step_x * dt, 0, gait_state.step_z * dt};
 
-        if (gait_state.step_x == 0) {
-            delta_pos[0] = (default_feet_positions[index][0] - foot[0]) * dt * 8;
+        if (std::fabs(gait_state.step_x) < 0.01) {
+            delta_pos[0] = (default_feet_positions[index][0] - body_state.feet[index][0]) * dt * 8;
         }
 
-        if (gait_state.step_z == 0) {
-            delta_pos[2] = (default_feet_positions[index][2] - foot[2]) * dt * 8;
+        if (std::fabs(gait_state.step_z) < 0.01) {
+            delta_pos[2] = (default_feet_positions[index][2] - body_state.feet[index][2]) * dt * 8;
         }
 
-        foot[0] += delta_pos[0];
-        foot[1] = default_feet_positions[index][1] + std::sin(phase_time * M_PI) * gait_state.step_height;
-        foot[2] += delta_pos[2];
+        body_state.feet[index][0] += delta_pos[0];
+        body_state.feet[index][1] =
+            default_feet_positions[index][1] + std::sin(phase_time * M_PI) * gait_state.step_height;
+        body_state.feet[index][2] += delta_pos[2];
     }
 
     gait_state_t mapCommand(ControllerCommand command) {
         gait_state_t state;
         state.step_height = 0.4f;
-        state.step_x = std::round(command.ly * 10) / 10 * 3;
-        state.step_z = -std::round(command.lx * 10) / 10 * 3;
+        state.step_x = command.ly / 128 * 3;
+        state.step_z = -command.lx / 128 * 3;
         state.step_velocity = 1;
         state.step_angle = 0;
         return state;
@@ -153,7 +154,7 @@ class PhaseGaitState : public GaitState {
 
 class FourPhaseWalkState : public PhaseGaitState {
   protected:
-    const char* name() const override { return "Four phase walk"; }
+    const char *name() const override { return "Four phase walk"; }
 
     int num_phases() const override { return 4; }
 
@@ -171,14 +172,14 @@ class FourPhaseWalkState : public PhaseGaitState {
         }
     }
 
-    void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         return PhaseGaitState::step(body_state, command, dt);
     }
 };
 
 class EightPhaseWalkState : public PhaseGaitState {
   protected:
-    const char* name() const override { return "Eight phase walk"; }
+    const char *name() const override { return "Eight phase walk"; }
 
     int num_phases() const override { return 8; }
 
@@ -201,7 +202,7 @@ class EightPhaseWalkState : public PhaseGaitState {
         }
     }
 
-    void step(body_state_t body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         return PhaseGaitState::step(body_state, command, dt);
     }
 };
