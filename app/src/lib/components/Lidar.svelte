@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+    import { lidar, type LidarPoint } from '$lib/stores/lidar'
 
     function getIntersection(angle:number, size:number):number {
             const sinAngle = Math.sin(angle);
@@ -17,39 +18,39 @@
             return Math.sqrt(x**2 + y**2);
         }
 
-    export let points:[number, number][] = new Array(360)
-    .fill(5000) // 5m in mm as that allow us to use uint16 (2 bytes)
-    .map((distance, angle) => [angle, getIntersection(angle, distance)])
 
     let canvas:HTMLCanvasElement
     let ctx
 
+    const DEG2RAD = 0.017453292519943;
 
     onMount(() => {
         ctx = canvas.getContext("2d")
         resize()      
+        lidar.subscribe(lidar => {
+            draw(lidar.points)
+        })
     })
 
-    const draw = () => {
+    const draw = (points:LidarPoint[]) => {
+        if(!points) return
         const centerX = canvas.width / 2
         const centerY = canvas.height / 2
         
-        const scale = 0.05
-
-        const offsetDistance = 200;
-        const offset = offsetDistance * scale;
+        const scale = 0.01//Math.max(centerX, centerY) / Math.max(...points.map((point) => point.distance))
 
         if (!ctx) return
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (let i = 0; i < points.length; i++){
-            const [angle, distance] = points[i]
-            
-            const startX = centerX + offset * Math.cos(angle);
-            const startY = centerY + offset * Math.sin(angle);
-            const endX = centerX + (offset + distance * scale) * Math.cos(angle);
-            const endY = centerY + (offset + distance * scale) * Math.sin(angle);
+            const angle = points[i].angle
+            const distance = points[i].distance
+            const quality = points[i].quality
+
+            const endX = centerX + (distance * scale) * Math.cos(angle * DEG2RAD);
+            const endY = centerY - (distance * scale) * Math.sin(angle * DEG2RAD);
 
             ctx.beginPath();
-            ctx.moveTo(startX, startY);
+            ctx.moveTo(centerX, centerY);
             ctx.lineTo(endX, endY);
             ctx.strokeStyle = "grey"
             ctx.stroke();
@@ -67,7 +68,6 @@
 			canvas.width = parentElement.clientWidth
             canvas.height = parentElement.clientHeight
 		}
-        draw()
     }
 
 </script>

@@ -8,6 +8,7 @@
     import Devices from '~icons/mdi/devices'
     import Camera from '~icons/mdi/camera-outline';
     import Rotate3d from '~icons/mdi/rotate-3d';
+    import MdiLandslideOutline from '~icons/mdi/landslide-outline';
     import MotorOutline from '~icons/mdi/motor-outline';
 	import Health from '~icons/mdi/stethoscope';
 	import Folder from '~icons/mdi/folder-outline';
@@ -83,6 +84,12 @@
 					icon: Rotate3d,
 					href: '/peripherals/imu',
 					feature: $page.data.features.imu || $page.data.features.mag || $page.data.features.bmp,
+				},
+                {
+					title: 'Lidar',
+					icon: MdiLandslideOutline,
+					href: '/peripherals/lidar',
+					feature: true//$page.data.features.lidar,
 				}
 			]
 		},
