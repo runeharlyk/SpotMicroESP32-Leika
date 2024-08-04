@@ -1,7 +1,6 @@
 <script lang="ts">
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import MotorOutline from '~icons/mdi/motor-outline';
-	import Spinner from '$lib/components/Spinner.svelte';
 	import { socket } from '$lib/stores';
 	import { throttler as Throttler } from '$lib/utilities';
 	import { onMount } from 'svelte';
@@ -10,6 +9,9 @@
         servoIndex: number;
         conversion: number;
         centerPwm: number;
+        minPwm: number;
+        maxPwm: number,
+        minPwmTo180Deg: number
     };
 
     enum ServoCalibrationState { MinPwm=0, MinPwmTo180, MaxPwm, Save}
@@ -24,10 +26,10 @@
     };
 
     const StateDescription: Record<ServoCalibrationState, string> = {
-        [ServoCalibrationState.MinPwm]: "Write description",
-        [ServoCalibrationState.MinPwmTo180]: "Write description",
-        [ServoCalibrationState.MaxPwm]: "Write description",
-        [ServoCalibrationState.Save]: "Write description"
+        [ServoCalibrationState.MinPwm]: "Adjust the PWM to the minimum value where the servo starts moving.",
+        [ServoCalibrationState.MinPwmTo180]: "Note the current angle as 0 degrees, adjust the PWM value until the servo has moved 180 degrees",
+        [ServoCalibrationState.MaxPwm]: "Adjust the PWM to the maximum value where the servo still moves.",
+        [ServoCalibrationState.Save]: "Save the current servo configuration."
     };
 
     // Global servo config
@@ -67,14 +69,23 @@
             servoConfig[servoIndex] = {
                 servoIndex,
                 conversion,
-                centerPwm
+                centerPwm,
+                minPwm,
+                minPwmTo180Deg,
+                maxPwm
             };
             servoIndex += 1
             state = servoIndex == 12 ? ServoCalibrationState.Save : ServoCalibrationState.MinPwm
             } else if (state === ServoCalibrationState.Save) {
-                
                 calibrationState = CalibrationState.ServoFrameCalibration
         }
+    }
+
+    const copyPrev = () => {
+        servoConfig[servoIndex] = {...servoConfig[servoIndex - 1]}
+        servoConfig[servoIndex].servoIndex += 1
+        servoIndex += 1
+        state = state = servoIndex == 12 ? ServoCalibrationState.Save : ServoCalibrationState.MinPwm
     }
 
     onMount(() => {
@@ -118,7 +129,7 @@
     {#if calibrationState == CalibrationState.ServoCalibration}
         <ul class="steps steps-vertical lg:steps-horizontal">
             <li class="step" class:step-primary={state == ServoCalibrationState.MinPwm}>Set min pwm value</li>
-            <li class="step" class:step-primary={state == ServoCalibrationState.MinPwmTo180}>Set pwm value for 180</li>
+            <li class="step" class:step-primary={state == ServoCalibrationState.MinPwmTo180}>Set pwm value for 180 deg</li>
             <li class="step" class:step-primary={state == ServoCalibrationState.MaxPwm}>Set max pwm</li>
         </ul>
 
@@ -127,7 +138,12 @@
         <input type="range" min={minGlobalPWM} max={maxGlobalPWM} bind:value={pwm} on:input={updatePWM} class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
         <div>PWM value: {pwm}</div>
         <div class="flex justify-end">
-            <button class="btn btn-primary" on:click={next}>{StateTitle[state]}</button>
+            <div class="join">
+            {#if servoIndex !== 0 && servoIndex !== 12}
+                <button class="btn btn-secondary join-item" on:click={copyPrev}>Copy previous</button>
+            {/if}
+            <button class="btn btn-primary" class:join-item={servoIndex} on:click={next}>{StateTitle[state]}</button>
+            </div>
         </div>
 
         <div role="alert" class="alert">
@@ -148,6 +164,7 @@
         <div class="mt-4">
             <h3 class="text-md font-semibold">Current Calibration Values:</h3>
             <ul>
+                <li>Current PWM: {pwm }</li>
                 <li>Min PWM: {state === ServoCalibrationState.MinPwm ? pwm : minPwm}</li>
                 <li>Min PWM to 180°: {state === ServoCalibrationState.MinPwmTo180 ? pwm : minPwmTo180Deg}</li>
                 <li>Max PWM: {state === ServoCalibrationState.MaxPwm ? pwm : maxPwm}</li>
@@ -171,9 +188,9 @@
                 {#each servoConfig as config, index}
                     <tr class={index % 2 === 0 ? "bg-base-200" : ""}>
                         <th>{config.servoIndex}</th>
-                        <td>{minPwm}</td>
-                        <td>{minPwmTo180Deg}</td>
-                        <td>{maxPwm}</td>
+                        <td>{config.minPwm}</td>
+                        <td>{config.minPwmTo180Deg}</td>
+                        <td>{config.maxPwm}</td>
                         <td>{config.conversion.toFixed(2)}</td>
                         <td>{config.centerPwm.toFixed(2)}</td>
                     </tr>
