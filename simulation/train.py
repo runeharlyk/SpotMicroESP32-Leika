@@ -3,10 +3,11 @@ from training.trainer import Trainer
 
 import resources as resources
 
+render = True
 
 def main():
     env = QuadrupedEnv(resources.getDataPath() + "/spot.urdf")
-    trainer = Trainer(env)
+    trainer = Trainer(env, render)
     trainer.train()
 
 
