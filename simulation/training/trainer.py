@@ -1,3 +1,4 @@
+from time import sleep
 import torch
 import torch.optim as optim
 import pybullet as p
@@ -11,8 +12,10 @@ Experience = namedtuple("Experience", ["observation", "action", "reward", "log_p
 
 
 class Trainer:
-    def __init__(self, env):
+
+    def __init__(self, env, render):
         self.env = env
+        self.should_render = render
         self.model = SimpleNN(
             input_size=env.robot.get_observation().shape[0],
             output_size=p.getNumJoints(env.robot.robot_id),
@@ -30,6 +33,9 @@ class Trainer:
                 observation, reward, done = self.env.step(action)
                 total_reward += reward
 
+                if self.should_render:
+                    sleep(0.005)
+
                 # Train the neural network
                 # loss = self.compute_loss(observation, action, reward)
                 # self.optimizer.zero_grad()
@@ -42,9 +48,7 @@ class Trainer:
         with torch.no_grad():
             observation_tensor = torch.tensor(observation, dtype=torch.float32)
             action = self.model(observation_tensor)
-            return np.array(
-                [-0.4, -1.5, 6, 0.4, -1.5, 6, -0.4, -1.5, 6, 0.4, -1.5, 6]
-            )  # action.numpy()
+            return action.numpy()
 
     def compute_loss(self, observation, action, reward):
         # Define your loss function here
