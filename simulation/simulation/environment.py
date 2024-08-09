@@ -4,6 +4,8 @@ import numpy as np
 from simulation.robot import QuadrupedRobot
 
 
+roll_pitch_reward_weight = 0.1
+
 class QuadrupedEnv:
     def __init__(self, urdf_path):
         p.connect(p.GUI)
@@ -11,11 +13,15 @@ class QuadrupedEnv:
         p.setGravity(0, 0, -9.8)
         p.setTimeStep(1 / 240)
 
+        self.plane_id = p.loadURDF("plane.urdf")
+
         self.robot = QuadrupedRobot(urdf_path)
         self.reset()
 
     def reset(self):
         p.resetSimulation()
+        p.setGravity(0, 0, -9.8)
+        self.plane_id = p.loadURDF("plane.urdf")
         self.robot.load()
         return self.robot.get_observation()
 
@@ -28,8 +34,11 @@ class QuadrupedEnv:
         return obs, reward, done
 
     def calculate_reward(self, observation):
-        # Define your reward function here
-        return 0
+        reward = 0
+        reward += (
+            -(abs(observation[0]) + abs(observation[1])) * roll_pitch_reward_weight
+        )
+        return reward
 
     def is_done(self, observation):
         roll, pitch = observation[0:2]
