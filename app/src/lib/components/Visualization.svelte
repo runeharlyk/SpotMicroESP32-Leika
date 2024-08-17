@@ -62,6 +62,7 @@
         'Robot transform controls':false,
         'Auto orient robot':true,
         'Trace feet':debug,
+        'Target position':false,
         'Trace points': 30,
         'Fix camera on robot': true,
         'Smooth motion': true,
@@ -113,6 +114,7 @@
         const visibility = gui_panel.addFolder('Visualization');
         visibility.add(settings, 'Trace feet')
         visibility.add(settings, 'Trace points', 1, 1000, 1)
+        visibility.add(settings, 'Target position')
         visibility.add(settings, 'Smooth motion')
         visibility.addColor(settings, 'Background')
     }
@@ -163,10 +165,10 @@
         
         const geometry = new SphereGeometry(0.1, 32, 16 ); 
         const material = new MeshBasicMaterial( { color: 0xffff00 } ); 
-        target = new Mesh(geometry, material); 
-
+        target = new Mesh(geometry, material);
+        sceneManager.scene.add(target);
+            
         if (debug) {
-            sceneManager.scene.add(target);
             sceneManager.addDragControl(updateAngles)
         }
         if (sky) sceneManager.addSky()
@@ -270,6 +272,7 @@
     }
 
     const updateTargetPosition = () => {
+        target.visible = settings['Target position']
         target.position.x = smooth(target.position.x, target_position.x, 0.5)
         target.position.z = smooth(target.position.z, target_position.z, 0.5)
     }
