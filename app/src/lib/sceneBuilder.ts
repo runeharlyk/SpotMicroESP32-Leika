@@ -43,11 +43,6 @@ interface light {
 	intensity?: number;
 }
 
-interface gridOptions {
-	divisions?: number;
-	size?: number;
-}
-
 interface arrowOptions {
 	origin: position;
 	direction: position;
@@ -56,8 +51,6 @@ interface arrowOptions {
 }
 
 type directionalLight = position & light;
-
-type gridHelperOptions = gridOptions & position;
 
 export default class SceneBuilder {
 	public scene: Scene;
@@ -355,14 +348,20 @@ export default class SceneBuilder {
 		dragControls.onUnhover = (joint: URDFMimicJoint) =>
 			this.highlightLinkGeometry(joint, true, highlightMaterial);
 
-		this.renderer.domElement.addEventListener('touchstart', (data) =>
-			dragControls._mouseDown(data.touches[0])
+		this.renderer.domElement.addEventListener(
+			'touchstart',
+			(data) => dragControls._mouseDown(data.touches[0]),
+			{ passive: true }
 		);
-		this.renderer.domElement.addEventListener('touchmove', (data) =>
-			dragControls._mouseMove(data.touches[0])
+		this.renderer.domElement.addEventListener(
+			'touchmove',
+			(data) => dragControls._mouseMove(data.touches[0]),
+			{ passive: true }
 		);
-		this.renderer.domElement.addEventListener('touchend', (data) =>
-			dragControls._mouseUp(data.touches[0])
+		this.renderer.domElement.addEventListener(
+			'touchend',
+			(data) => dragControls._mouseUp(data.touches[0]),
+			{ passive: true }
 		);
 		return this;
 	};
@@ -373,12 +372,8 @@ export default class SceneBuilder {
 
 	private handleRobotShadow = () => {
 		if (this.isLoaded) return;
-		const intervalId = setInterval(() => {
-			this.model?.traverse((c) => (c.castShadow = true));
-		}, 10);
-		setTimeout(() => {
-			clearInterval(intervalId);
-		}, 1000);
+		const intervalId = setInterval(() => this.model?.traverse((c) => (c.castShadow = true)), 10);
+		setTimeout(() => clearInterval(intervalId), 1000);
 		this.isLoaded = true;
 	};
 }
