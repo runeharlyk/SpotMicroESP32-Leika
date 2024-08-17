@@ -13,7 +13,7 @@ export interface WidgetConfig {
 
 export interface WidgetContainerConfig {
 	id: string | number;
-	layout: 'row' | 'column';
+	layout: 'row' | 'column' | 'wrap';
 	header?: string;
 	size?: number;
 	widgets: Array<WidgetConfig | WidgetContainerConfig>;
@@ -28,6 +28,18 @@ export const WidgetComponents = {
 	Stream,
 	CpuUsageChart
 };
+
+export const phoneControllerLayout: Writable<WidgetContainerConfig> = persistentStore(
+	'phone_controller_layout',
+	{
+		id: 'root',
+		layout: 'wrap',
+		widgets: [
+			{ id: 2, component: 'Stream' },
+			{ id: 1, component: 'Visualization', props: { debug: true } }
+		]
+	} as WidgetContainerConfig
+);
 
 export const controllerLayout: Writable<WidgetContainerConfig> = persistentStore(
 	'controller_layout',
