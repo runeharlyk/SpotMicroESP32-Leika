@@ -13,7 +13,7 @@
     import MdiWeatherSunny from '~icons/mdi/weather-sunny';
     import MdiMoonAndStars from '~icons/mdi/moon-and-stars';
 	import { api } from '$lib/api';
-	import { mode, modes, socket } from '$lib/stores';
+	import { mode, modes } from '$lib/stores';
 
 	const postSleep = async () => await api.post('/api/sleep')
 
@@ -37,18 +37,13 @@
     }
 </script>
 
-<div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2">
+<div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2 pr-0">
 	<div class="flex-1">
 		<!-- Page Hamburger Icon here -->
 		<label for="main-menu" class="btn btn-ghost btn-circle btn-sm drawer-button"
 			><Hamburger class="h-6 w-auto" /></label
 		>
 		<h1 class="px-2 text-xl font-bold lg:text-2xl">{$page.data.title}</h1>
-	</div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="indicator flex-none" on:click={deactivate}>
-		<Power class="h-7 w-7"/>
 	</div>
 	<div class="indicator flex-none">
 		<UpdateIndicator />
@@ -85,4 +80,5 @@
 			</button>
 		</div>
 	{/if}
+    <button on:click={deactivate} class="bg-error text-white btn rounded-none">STOP</button>
 </div>
