@@ -106,7 +106,7 @@ export default class SceneBuilder {
 			mieCoefficient: 0.005,
 			mieDirectionalG: 0.7,
 			elevation: sunCalculator.calculateSunElevation(),
-			azimuth: 180,
+			azimuth: 200,
 			exposure: this.renderer.toneMappingExposure
 		};
 		const uniforms = this.sky.material.uniforms;
@@ -330,7 +330,7 @@ export default class SceneBuilder {
 			shininess: 10,
 			color: highlightColor,
 			emissive: highlightColor,
-			emissiveIntensity: 0.25
+			emissiveIntensity: 0.9
 		});
 
 		const dragControls = new PointerURDFDragControls(
