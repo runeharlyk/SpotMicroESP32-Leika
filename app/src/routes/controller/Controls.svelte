@@ -2,8 +2,16 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
-	import { input, outControllerData, mode, modes, type Modes, ModesEnum, socket } from '$lib/stores';
+	import {
+		input,
+		outControllerData,
+		mode,
+		modes,
+		type Modes,
+		ModesEnum
+	} from '$lib/stores';
 	import type { vector } from '$lib/models';
+	import VerticalSlider from '$lib/components/input/vertical-slider.svelte';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;
@@ -68,15 +76,15 @@
 		throttle.throttle(updateData, throttle_timing);
 	};
 
-    const handleRange = (event:Event, key: 'speed' | 'height' | 's1') => {
-        const value:number = event.target?.value
-        
-        input.update((inputData) => {
+	const handleRange = (event: Event, key: 'speed' | 'height' | 's1') => {
+		const value: number = event.target?.value;
+
+		input.update((inputData) => {
 			inputData[key] = value;
 			return inputData;
 		});
-        throttle.throttle(updateData, throttle_timing);
-    }
+		throttle.throttle(updateData, throttle_timing);
+	};
 
 	const changeMode = (modeValue: Modes) => {
 		mode.set(modes.indexOf(modeValue));
@@ -89,34 +97,55 @@
 		<div class="flex-1" />
 		<div id="right" class="flex w-60 items-center" />
 	</div>
-    <div class="absolute bottom-0 right-0 p-4 z-10 gap-2 flex-col hidden lg:flex">
-        <div class="flex justify-center w-full">
-            <kbd class="kbd">W</kbd>
-        </div>
-        <div class="flex justify-center gap-2 w-full">
-            <kbd class="kbd">A</kbd>
-            <kbd class="kbd">S</kbd>
-            <kbd class="kbd">D</kbd>
-        </div>
-        <div class="flex justify-center w-full">
-        </div>
-    </div>
-	<div class="absolute bottom-0 z-10 p-4 gap-4 flex items-end">
-		{#each modes as modeValue}
-            <button class="btn btn-outline" class:btn-active={$mode === modes.indexOf(modeValue)} on:click={() => changeMode(modeValue)}>
-                {capitalize(modeValue)}
-            </button>
-		{/each}
-        <div>
-            {#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
-                <label for="s1">S1</label>
-                <input type="range" name="s1" min="0" max="100" on:input={(e) => handleRange(e, 's1')} class="range range-sm" />
-                <label for="speed">Speed</label>
-                <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm" />
-            {/if}
-            <label for="height">Height</label>
-            <input type="range" name="height" min="0" max="100" on:input={(e) => handleRange(e, 'height')} class="range range-sm" />
-        </div>
+	<div class="absolute bottom-0 right-0 p-4 z-10 gap-2 flex-col hidden lg:flex">
+		<div class="flex justify-center w-full">
+			<kbd class="kbd">W</kbd>
+		</div>
+		<div class="flex justify-center gap-2 w-full">
+			<kbd class="kbd">A</kbd>
+			<kbd class="kbd">S</kbd>
+			<kbd class="kbd">D</kbd>
+		</div>
+		<div class="flex justify-center w-full"></div>
+	</div>
+	<div class="absolute bottom-0 z-10 flex items-end">
+		<div class="flex items-center flex-col bg-base-300 bg-opacity-50 p-4 pb-2 gap-2 rounded-tr-xl">
+			<VerticalSlider min={0} max={100} on:input={(e) => handleRange(e, 'height')} />
+			<label for="height">Ht</label>
+		</div>
+		<div class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl p-2">
+			<div class="join">
+				{#each modes as modeValue}
+					<button
+						class="btn join-item"
+						class:btn-primary={$mode === modes.indexOf(modeValue)}
+						on:click={() => changeMode(modeValue)}
+					>
+						{capitalize(modeValue)}
+					</button>
+				{/each}
+			</div>
+
+			<div class="flex gap-4">
+				{#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
+                <div>
+                    <label for="s1">S1</label>
+					<input
+                    type="range"
+                    name="s1"
+                    min="0"
+                    max="100"
+                    on:input={(e) => handleRange(e, 's1')}
+                    class="range range-sm range-primary"
+					/>
+                </div>
+                <div>
+                    <label for="speed">Speed</label>
+                    <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm range-primary" />
+                </div>
+				{/if}
+			</div>
+		</div>
 	</div>
 </div>
 
