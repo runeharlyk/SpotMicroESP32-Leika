@@ -12,6 +12,8 @@
 	import UpdateIndicator from '$lib/components/UpdateIndicator.svelte';
     import MdiWeatherSunny from '~icons/mdi/weather-sunny';
     import MdiMoonAndStars from '~icons/mdi/moon-and-stars';
+    import MdiFullscreen from '~icons/mdi/fullscreen';
+    import MdiFullscreenExit from '~icons/mdi/fullscreen-exit';
 	import { api } from '$lib/api';
 	import { mode, modes } from '$lib/stores';
 
@@ -35,6 +37,17 @@
     const deactivate = async () => {
         mode.set(modes.indexOf('deactivated'));
     }
+
+    let isFullscreen = false;
+
+    function toggleFullScreen() {
+        isFullscreen = !isFullscreen
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
 </script>
 
 <div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2 pr-0">
@@ -48,6 +61,12 @@
 	<div class="indicator flex-none">
 		<UpdateIndicator />
 	</div>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="flex-none" on:click={toggleFullScreen}>
+        <svelte:component this={isFullscreen ? MdiFullscreenExit : MdiFullscreen} class="h-7 w-7"/>
+    </div>
+
     <div class="flex-none">
         <label class="swap swap-rotate">
             <input type="checkbox" value="light" class="theme-controller"/>
