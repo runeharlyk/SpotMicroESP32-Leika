@@ -23,18 +23,18 @@
 	onMount(() => {
 		left = nipplejs.create({
 			zone: document.getElementById('left') as HTMLElement,
-			color: 'grey',
+			color: '#15191e80',
 			dynamicPage: true,
 			mode: 'static',
-			restOpacity: 0.3
+			restOpacity: 1
 		});
 
 		right = nipplejs.create({
 			zone: document.getElementById('right') as HTMLElement,
-			color: 'grey',
+			color: '#15191e80',
 			dynamicPage: true,
 			mode: 'static',
-			restOpacity: 0.3
+			restOpacity: 1
 		});
 
 		left.on('move', (_, data) => handleJoyMove('left', data.vector));
