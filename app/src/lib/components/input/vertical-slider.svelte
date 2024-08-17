@@ -7,7 +7,8 @@
   
 <input
     type="range"
-    orient="vertical"
+    style="writing-mode: vertical-lr; direction: rtl"
+    class="cursor-pointer"
     min={min}
     max={max}
     step={step}
@@ -17,25 +18,8 @@
 />
 
 <style>
-input[type=range][orient=vertical] {
-  -webkit-appearance: slider-vertical;
-  width: 1rem;
-  height: 100%;
-  border-radius: var(--rounded-box, 1rem);
-}
-
-input[type=range][orient=vertical]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  border: 5px solid #000000;
-  height: 24px;
-  width: 24px;
-  border-radius: 50%;
-  background: black;
-}
-
-input[type=range][orient=vertical]::-webkit-slider-runnable-track {
-  cursor: pointer;
+input[type=range]::-webkit-slider-runnable-track {
   background: oklch(var(--p)/1);
   border-radius: var(--rounded-box, 1rem);
-}
+} 
 </style>
