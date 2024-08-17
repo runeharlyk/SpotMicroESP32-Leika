@@ -160,8 +160,6 @@
             
         if (ground) sceneManager
 			.addGroundPlane()
-            .addGridHelper({ size: 30, divisions: 25 })
-        
         
         const geometry = new SphereGeometry(0.1, 32, 16 ); 
         const material = new MeshBasicMaterial( { color: 0xffff00 } ); 

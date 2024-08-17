@@ -18,12 +18,14 @@ import {
 	EquirectangularReflectionMapping,
 	ACESFilmicToneMapping,
 	MathUtils,
-	MeshStandardMaterial,
-	Group
+	Group,
+	MeshBasicMaterial,
+	RepeatWrapping
 } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader';
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls';
 import { sunCalculator } from './utilities/position-utilities';
@@ -130,13 +132,33 @@ export default class SceneBuilder {
 	};
 
 	public addGroundPlane = (options?: position) => {
-		var planeMaterial = new MeshStandardMaterial({ color: 0x808080, side: 2, opacity: 0.5 });
-		this.ground = new Mesh(new PlaneGeometry(), planeMaterial);
+		const checkerboardTexture = this.createCheckerboardTexture(1024, 2);
+		checkerboardTexture.wrapS = RepeatWrapping;
+		checkerboardTexture.wrapT = RepeatWrapping;
+		checkerboardTexture.repeat.set(100, 100);
+		const checkerboardMat = new MeshBasicMaterial({
+			map: checkerboardTexture,
+			opacity: 0.1,
+			transparent: true
+		});
+
+		const plane = new PlaneGeometry(400, 400);
+
+		this.ground = new Mesh(plane, checkerboardMat);
 		this.ground.rotation.x = -Math.PI / 2;
-		this.ground.scale.setScalar(30);
-		this.ground.position.set(options?.x ?? 0, options?.y ?? 0, options?.z ?? 0);
+		this.ground.position.set(options?.x ?? 0, options?.y ?? 0.01, options?.z ?? 0);
 		this.ground.receiveShadow = true;
 		this.scene.add(this.ground);
+
+		const mirror = new Reflector(plane, {
+			clipBias: 0.003,
+			textureWidth: window.innerWidth * window.devicePixelRatio,
+			textureHeight: window.innerHeight * window.devicePixelRatio,
+			color: 0x00bfff
+		});
+		mirror.rotateX(-Math.PI / 2);
+		this.scene.add(mirror);
+
 		return this;
 	};
 
@@ -169,14 +191,25 @@ export default class SceneBuilder {
 		return this;
 	};
 
-	public addGridHelper = (options: gridHelperOptions) => {
-		this.gridHelper = new GridHelper(options.size, options.divisions);
-		this.gridHelper.position.set(options.x ?? 0, options.y ?? 0, options.z ?? 0);
-		this.gridHelper.material.opacity = 0.2;
-		this.gridHelper.material.depthWrite = false;
-		this.gridHelper.material.transparent = true;
-		this.scene.add(this.gridHelper);
-		return this;
+	private createCheckerboardTexture = (size: number, squares: number) => {
+		const canvas = document.createElement('canvas');
+		canvas.width = size;
+		canvas.height = size;
+		const context = canvas.getContext('2d');
+
+		const squareSize = size / squares;
+
+		for (let y = 0; y < squares; y++) {
+			for (let x = 0; x < squares; x++) {
+				context!.fillStyle = (x + y) % 2 === 0 ? '#ffffff' : '#000000';
+				context!.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+			}
+		}
+
+		const texture = new CanvasTexture(canvas);
+		texture.wrapS = texture.wrapT = RepeatWrapping;
+		texture.anisotropy = 16;
+		return texture;
 	};
 
 	public addFogExp2 = (color: ColorRepresentation, density?: number) => {
