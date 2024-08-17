@@ -7,12 +7,20 @@ export default {
 	plugins: [require('daisyui')],
 	daisyui: {
 		themes: [
-			'light',
+			{
+				light: {
+					...require('daisyui/src/theming/themes')['light'],
+					primary: '#00bfff',
+					accent: '#3c00ff',
+					'base-content': 'oklch(0.3 0.012 256)'
+				}
+			},
 			{
 				dark: {
 					...require('daisyui/src/theming/themes')['dark'],
 					primary: '#00bfff',
-					accent: '#3c00ff'
+					accent: '#3c00ff',
+					'base-content': 'white'
 				}
 			}
 		],
