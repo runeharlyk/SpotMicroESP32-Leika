@@ -1,15 +1,13 @@
 <script lang="ts">
 	import Controls from './Controls.svelte';
-	import { socket } from '$lib/stores';
-	import Spinner from '$lib/components/Spinner.svelte';
+	import WidgetContainer from '$lib/components/layout/DynamicLayout.svelte';
+	import { controllerLayout} from '$lib/components/layout/LayoutManager';
 </script>
-<div class="select-none">
-    {#if !$socket}
-        <div class="absolute left-0 flex flex-col w-screen h-screen justify-center items-center backdrop-blur-sm z-10">
-            <Spinner/>
-            <h2>Waiting for connection</h2>
-        </div>
-    {/if}
-    <Controls />
-    <slot/>
+
+<div class="absolute top-0 select-none w-screen h-screen">
+	<Controls />
+	<!-- <button class="absolute z-20 btn" on:click={addWidget}>Add Widget</button> -->
+	<div class="absolute w-full h-screen top-0 overflow-hidden lg:pt-16 pt-12">
+		<WidgetContainer container={$controllerLayout} />
+	</div>
 </div>
