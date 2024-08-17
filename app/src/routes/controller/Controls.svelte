@@ -113,7 +113,7 @@
 			<VerticalSlider min={0} max={100} on:input={(e) => handleRange(e, 'height')} />
 			<label for="height">Ht</label>
 		</div>
-		<div class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl pl-0 p-3">
+		<div class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl pl-0 p-3 portrait:hidden">
 			<div class="join">
 				{#each modes as modeValue}
 					<button

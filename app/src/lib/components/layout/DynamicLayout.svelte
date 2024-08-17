@@ -5,10 +5,11 @@
 	export let container: WidgetContainerConfig;
 </script>
 
-<div class="w-full h-full flex flex-col">
+<div class="w-full h-full flex flex-col overflow-hidden">
 	{#if container.header}
-		<div class="bg-base-300">
-			<div class="bg-base-100 p-2 w-min">{container.header}</div>
+		<div role="tablist" class="tabs tabs-lifted w-min">
+			<a role="tab" class="tab">{container.header}</a>
+			<a role="tab" class="tab tab-active">{container.header}</a>
 		</div>
 	{/if}
 
@@ -16,6 +17,7 @@
 		class="flex w-full h-full"
 		class:flex-row={container.layout === 'column'}
 		class:flex-col={container.layout === 'row'}
+		class:flex-wrap={container.layout === 'wrap'}
 	>
 		{#each container.widgets as widget, index (widget.id + '-' + index)}
 			<Widget size={widget.size ?? 1}>
