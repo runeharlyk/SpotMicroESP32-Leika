@@ -109,11 +109,11 @@
 		<div class="flex justify-center w-full"></div>
 	</div>
 	<div class="absolute bottom-0 z-10 flex items-end">
-		<div class="flex items-center flex-col bg-base-300 bg-opacity-50 p-4 pb-2 gap-2 rounded-tr-xl">
+		<div class="flex items-center flex-col bg-base-300 bg-opacity-50 p-3 pb-2 gap-2 rounded-tr-xl">
 			<VerticalSlider min={0} max={100} on:input={(e) => handleRange(e, 'height')} />
 			<label for="height">Ht</label>
 		</div>
-		<div class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl p-2">
+		<div class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl pl-0 p-3">
 			<div class="join">
 				{#each modes as modeValue}
 					<button
@@ -126,8 +126,8 @@
 				{/each}
 			</div>
 
+            {#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
 			<div class="flex gap-4">
-				{#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
                 <div>
                     <label for="s1">S1</label>
 					<input
@@ -143,8 +143,8 @@
                     <label for="speed">Speed</label>
                     <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm range-primary" />
                 </div>
-				{/if}
 			</div>
+            {/if}
 		</div>
 	</div>
 </div>
