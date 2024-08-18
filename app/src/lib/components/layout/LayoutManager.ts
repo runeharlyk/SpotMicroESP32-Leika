@@ -4,10 +4,20 @@ import Stream from '$lib/components/Stream.svelte';
 import CpuUsageChart from '$lib/components/widget/CpuUsageChart.svelte';
 import type { Writable } from 'svelte/store';
 
+export type SizeUnit = 'px' | '%' | 'fr' | 'em';
+
+export enum SizeUnitEnum {
+	Em = 'em',
+	Fractional = 'fr',
+	Percent = '%',
+	Pixel = 'px'
+}
+
 export interface WidgetConfig {
 	id: string | number;
 	component: keyof typeof WidgetComponents;
 	size?: number;
+	sizeUnit?: SizeUnitEnum;
 	props?: Record<string, any>;
 }
 
@@ -16,6 +26,7 @@ export interface WidgetContainerConfig {
 	layout: 'row' | 'column' | 'wrap';
 	header?: string;
 	size?: number;
+	sizeUnit?: SizeUnitEnum;
 	widgets: Array<WidgetConfig | WidgetContainerConfig>;
 }
 
@@ -41,32 +52,29 @@ export const phoneControllerLayout: Writable<WidgetContainerConfig> = persistent
 	} as WidgetContainerConfig
 );
 
-export const controllerLayout: Writable<WidgetContainerConfig> = persistentStore(
-	'controller_layout',
-	{
-		id: 'root',
-		layout: 'column',
-		widgets: [
-			{
-				id: 'visualization',
-				layout: 'column',
-				header: 'Visualization',
-				size: 2,
-				widgets: [
-					{ id: 1, component: 'Visualization', size: 2, props: { debug: true } },
-					{ id: 2, component: 'Stream' }
-				]
-			},
-			{
-				id: 'charts',
-				layout: 'row',
-				header: 'Charts',
-				widgets: [
-					{ id: 3, component: 'CpuUsageChart' },
-					{ id: 4, component: 'CpuUsageChart' },
-					{ id: 5, component: 'CpuUsageChart' }
-				]
-			}
-		]
-	} as WidgetContainerConfig
-);
+export const controllerLayout: Writable<WidgetContainerConfig> = persistentStore('controller_layout', {
+	id: 'root',
+	layout: 'column',
+	widgets: [
+		{
+			id: 'visualization',
+			layout: 'column',
+			header: 'Visualization',
+			widgets: [
+				{ id: 1, component: 'Stream' },
+				{ id: 2, component: 'Visualization', props: { debug: true } }
+			]
+		},
+		{
+			id: 'charts',
+			layout: 'row',
+			size: 40,
+			header: 'Charts',
+			widgets: [
+				{ id: 3, component: 'CpuUsageChart' },
+				{ id: 4, component: 'CpuUsageChart' },
+				{ id: 5, component: 'CpuUsageChart' }
+			]
+		}
+	]
+} as WidgetContainerConfig);

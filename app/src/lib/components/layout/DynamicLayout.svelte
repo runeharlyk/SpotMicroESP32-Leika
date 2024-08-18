@@ -20,7 +20,7 @@
 		class:flex-wrap={container.layout === 'wrap'}
 	>
 		{#each container.widgets as widget, index (widget.id + '-' + index)}
-			<Widget size={widget.size ?? 1}>
+			<Widget size={widget.size} sizeUnit={widget.sizeUnit}>
 				{#if isWidgetConfig(widget)}
 					<svelte:component this={WidgetComponents[widget.component]} {...widget.props} />
 				{:else if widget.widgets}
