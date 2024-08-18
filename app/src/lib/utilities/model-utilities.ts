@@ -2,8 +2,34 @@ import { Color, LoaderUtils, Vector3 } from 'three';
 import URDFLoader, { type URDFRobot } from 'urdf-loader';
 import { XacroLoader } from 'xacro-parser';
 import { Result } from '$lib/utilities';
+import { jointNames, model } from '$lib/stores';
+import uzip from 'uzip';
+import { fileService } from '$lib/services';
 
 let model_xml: XMLDocument;
+
+export const populateModelCache = async () => {
+	await cacheModelFiles();
+	const modelRes = await loadModelAsync('/spot_micro.urdf.xacro');
+	if (modelRes.isOk()) {
+		const [urdf, JOINT_NAME] = modelRes.inner;
+		jointNames.set(JOINT_NAME);
+		model.set(urdf);
+	} else {
+		console.error(modelRes.inner, { exception: modelRes.exception });
+	}
+};
+
+export const cacheModelFiles = async () => {
+	let data = await fetch('/stl.zip');
+
+	var files = uzip.parse(await data.arrayBuffer());
+
+	for (const [path, data] of Object.entries(files) as [path: string, data: Uint8Array][]) {
+		const url = new URL(path, window.location.href);
+		fileService.saveFile(url.toString(), data);
+	}
+};
 
 export const loadModelAsync = async (
 	url: string

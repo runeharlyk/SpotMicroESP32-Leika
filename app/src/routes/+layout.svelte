@@ -1,9 +1,5 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { user } from '$lib/stores/user';
-	import { telemetry } from '$lib/stores/telemetry';
-	import { analytics } from '$lib/stores/analytics';
-	import type { userProfile } from '$lib/stores/user';
 	import { page } from '$app/stores';
 	import { Modals, closeModal } from 'svelte-modals';
 	import Toast from '$lib/components/toasts/Toast.svelte';
@@ -13,7 +9,19 @@
 	import Menu from './menu.svelte';
 	import Statusbar from './statusbar.svelte';
 	import Login from './login.svelte';
-	import { ModesEnum, kinematicData, mode, outControllerData, servoAngles, servoAnglesOut, socket } from '$lib/stores';
+	import {
+		telemetry,
+		analytics,
+		user,
+		type userProfile,
+		ModesEnum,
+		kinematicData,
+		mode,
+		outControllerData,
+		servoAngles,
+		servoAnglesOut,
+		socket
+	} from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 	import { api } from '$lib/api';
 
@@ -21,35 +29,37 @@
 		if ($user.bearer_token !== '') {
 			await validateUser($user);
 		}
-        const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
+		const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
 		socket.init(`ws://${window.location.host}/ws/events${ws_token}`);
 
 		addEventListeners();
 
-        outControllerData.subscribe((data) => socket.sendEvent("input", {data}));
-        mode.subscribe((data) => socket.sendEvent("mode", {data}));
-        servoAnglesOut.subscribe((data) => socket.sendEvent("angles", {data}));
-        kinematicData.subscribe((data) => socket.sendEvent("position", {data}));
+		outControllerData.subscribe((data) => socket.sendEvent('input', { data }));
+		mode.subscribe((data) => socket.sendEvent('mode', { data }));
+		servoAnglesOut.subscribe((data) => socket.sendEvent('angles', { data }));
+		kinematicData.subscribe((data) => socket.sendEvent('position', { data }));
 	});
 
-    onDestroy(() => {
-        removeEventListeners();
-    });
+	onDestroy(() => {
+		removeEventListeners();
+	});
 
-    const addEventListeners = () => {
+	const addEventListeners = () => {
 		socket.on('open', handleOpen);
 		socket.on('close', handleClose);
 		socket.on('error', handleError);
 		socket.on('rssi', handleNetworkStatus);
-		socket.on('mode', (data:ModesEnum) => mode.set(data));
-		socket.on('angles', (angles:number[]) => { if (angles.length) servoAngles.set(angles)});
+		socket.on('mode', (data: ModesEnum) => mode.set(data));
+		socket.on('angles', (angles: number[]) => {
+			if (angles.length) servoAngles.set(angles);
+		});
 		if ($page.data.features.analytics) socket.on('analytics', handleAnalytics);
 		if ($page.data.features.battery) socket.on('battery', handleBattery);
 		if ($page.data.features.download_firmware) socket.on('otastatus', handleOAT);
-        if ($page.data.features.sonar) socket.on('sonar', data => console.log(data))
+		if ($page.data.features.sonar) socket.on('sonar', (data) => console.log(data));
 	};
 
-    const removeEventListeners = () => {
+	const removeEventListeners = () => {
 		socket.off('analytics', handleAnalytics);
 		socket.off('open', handleOpen);
 		socket.off('close', handleClose);
@@ -58,12 +68,12 @@
 		socket.off('otastatus', handleOAT);
 	};
 
-    async function validateUser(userdata: userProfile) {
-        const result = await api.get('/api/verifyAuthorization')
-        if (result.isErr()){
-            user.invalidate();
-            console.error('Error:', result.inner);
-        }
+	async function validateUser(userdata: userProfile) {
+		const result = await api.get('/api/verifyAuthorization');
+		if (result.isErr()) {
+			user.invalidate();
+			console.error('Error:', result.inner);
+		}
 	}
 
 	const handleOpen = () => {
@@ -71,7 +81,7 @@
 	};
 
 	const handleClose = () => {
-		notifications.error('Connection to device lost', 5000);
+		// notifications.error('Connection to device lost', 5000);
 		telemetry.setRSSI(0);
 	};
 
@@ -86,7 +96,6 @@
 	const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data);
 
 	let menuOpen = false;
-
 </script>
 
 <svelte:head>
@@ -103,14 +112,12 @@
 			<Statusbar />
 
 			<!-- Main page content here -->
-            <slot />
+			<slot />
 		</div>
 		<!-- Side Navigation -->
 		<div class="drawer-side z-30 shadow-lg">
 			<label for="main-menu" class="drawer-overlay" />
-			<Menu
-				on:menuClicked={() => menuOpen = false}
-			/>
+			<Menu on:menuClicked={() => (menuOpen = false)} />
 		</div>
 	</div>
 {/if}

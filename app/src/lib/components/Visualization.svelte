@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
-	import uzip from 'uzip';
 	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut, servoAngles, mpu, jointNames } from '$lib/stores';
-	import { footColor, isEmbeddedApp, throttler, toeWorldPositions } from '$lib/utilities';
-	import { fileService } from '$lib/services';
+	import { footColor, isEmbeddedApp, populateModelCache, throttler, toeWorldPositions } from '$lib/utilities';
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -76,7 +74,7 @@
     }
 
 	onMount(async () => {
-        await cacheModelFiles()
+        await populateModelCache();
         await createScene();
         if (!isEmbeddedApp && panel) createPanel();
         servoAngles.subscribe(updateAnglesFromStore)
@@ -129,17 +127,6 @@
             settings.zm
         ])
     }
-
-	const cacheModelFiles = async () => {
-		let data = await fetch('/stl.zip').then((data) => data.arrayBuffer());
-
-		var files = uzip.parse(data);
-
-		for (const [path, data] of Object.entries(files) as [path: string, data: Uint8Array][]) {
-			const url = new URL(path, window.location.href);
-			fileService.saveFile(url.toString(), data);
-		}
-	};
 
 	const updateAngles = (name: string, angle: number) => {
 		modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI);
