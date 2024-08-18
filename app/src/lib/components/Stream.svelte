@@ -1,14 +1,11 @@
 <script lang="ts">
 	import { user } from '$lib/stores/user';
 	import { onDestroy } from 'svelte';
+	import { location } from '$lib/utilities';
 
-	const ws_token = `?access_token=${$user.bearer_token}`
+	let source = `//${location}/api/camera/stream?access_token=${$user.bearer_token}`;
 
-    let source = "/api/camera/stream"+ ws_token;
-
-	onDestroy(() => {
-		source = '#';
-	});
+	onDestroy(() => (source = '#'));
 </script>
 
 <div class="w-full h-full">
