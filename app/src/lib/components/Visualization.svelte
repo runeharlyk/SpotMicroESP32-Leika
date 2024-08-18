@@ -7,7 +7,7 @@
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 	import Kinematic, { type body_state_t } from '$lib/kinematic';
-    import {EightPhaseWalkState, FourPhaseWalkState, IdleState, RestState, StandState} from '$lib/gait'
+    import {CalibrationState, EightPhaseWalkState, FourPhaseWalkState, IdleState, RestState, StandState} from '$lib/gait'
 	import { radToDeg } from 'three/src/math/MathUtils.js';
 	import type { URDFRobot } from 'urdf-loader';
 	import { get } from 'svelte/store';
@@ -35,7 +35,9 @@
     let kinematic = new Kinematic()
 
     let planners = {
+        [ModesEnum.Deactivated]: new IdleState(),
         [ModesEnum.Idle]: new IdleState(),
+        [ModesEnum.Calibration]: new CalibrationState(),
         [ModesEnum.Rest]: new RestState(),
         [ModesEnum.Stand]: new StandState(),
         [ModesEnum.Crawl]: new EightPhaseWalkState(),

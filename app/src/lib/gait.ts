@@ -66,6 +66,21 @@ export class IdleState extends GaitState {
 	protected name = 'Idle';
 }
 
+export class CalibrationState extends GaitState {
+	protected name = 'Calibration';
+
+	step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+		body_state.omega = 0;
+		body_state.phi = 0;
+		body_state.psi = 0;
+		body_state.xm = 0;
+		body_state.ym = this.default_height * 10;
+		body_state.zm = 0;
+		body_state.feet = this.default_feet_pos;
+		return body_state;
+	}
+}
+
 export class RestState extends GaitState {
 	protected name = 'Rest';
 
