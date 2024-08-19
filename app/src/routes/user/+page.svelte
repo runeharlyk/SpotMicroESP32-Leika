@@ -5,7 +5,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { user } from '$lib/stores/user';
 	import { notifications } from '$lib/components/toasts/notifications';
-	import InputPassword from '$lib/components/input/InputPassword.svelte';
+	import { PasswordInput } from '$lib/components/input';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import EditUser from './EditUser.svelte';
@@ -181,7 +181,7 @@
 				<label class="label" for="secret">
 					<span class="label-text text-md">JWT Secret</span>
 				</label>
-				<InputPassword bind:value={securitySettings.jwt_secret} id="secret" />
+				<PasswordInput bind:value={securitySettings.jwt_secret} id="secret" />
 				<div class="mt-6 flex justify-end">
 					<button class="btn btn-primary" on:click={() => postSecuritySettings(securitySettings)}
 						>Apply Settings</button

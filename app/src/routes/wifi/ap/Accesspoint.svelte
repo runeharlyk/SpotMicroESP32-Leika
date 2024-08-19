@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import InputPassword from '$lib/components/input/InputPassword.svelte';
+	import { PasswordInput } from '$lib/components/input';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import { user } from '$lib/stores/user';
 	import { page } from '$app/stores';
@@ -283,7 +283,7 @@
 							<label class="label" for="pwd">
 								<span class="label-text text-md">Password</span>
 							</label>
-							<InputPassword bind:value={apSettings.password} id="pwd" />
+							<PasswordInput bind:value={apSettings.password} id="pwd" />
 						</div>
 						<div>
 							<label class="label" for="channel">

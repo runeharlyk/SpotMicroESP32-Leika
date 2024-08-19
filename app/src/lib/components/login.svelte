@@ -1,6 +1,6 @@
 <script lang="ts">
 	import logo from '$lib/assets/logo512.png';
-	import InputPassword from '$lib/components/input/InputPassword.svelte';
+	import { PasswordInput } from '$lib/components/input';
 	import { user } from '$lib/stores/user';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade, fly } from 'svelte/transition';
@@ -64,7 +64,7 @@
 				<label class="label" for="pwd">
 					<span class="label-text text-md">Password</span>
 				</label>
-				<InputPassword id="pwd" bind:value={password} />
+				<PasswordInput id="pwd" bind:value={password} />
 
 				<div class="card-actions mt-4 justify-end">
 					<button

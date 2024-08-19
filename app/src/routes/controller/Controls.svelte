@@ -2,16 +2,9 @@
 	import nipplejs from 'nipplejs';
 	import { onMount } from 'svelte';
 	import { capitalize, throttler, toInt8 } from '$lib/utilities';
-	import {
-		input,
-		outControllerData,
-		mode,
-		modes,
-		type Modes,
-		ModesEnum
-	} from '$lib/stores';
+	import { input, outControllerData, mode, modes, type Modes, ModesEnum } from '$lib/stores';
 	import type { vector } from '$lib/types/models';
-	import VerticalSlider from '$lib/components/input/vertical-slider.svelte';
+	import { VerticalSlider } from '$lib/components/input';
 
 	let throttle = new throttler();
 	let left: nipplejs.JoystickManager;

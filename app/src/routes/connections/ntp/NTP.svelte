@@ -5,13 +5,11 @@
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import Collapsible from '$lib/components/Collapsible.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import { user } from '$lib/stores/user';
-	import { page } from '$app/stores';
+	import { user, useFeatureFlags } from '$lib/stores';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { TIME_ZONES } from './timezones';
 	import type { NTPSettings, NTPStatus } from '$lib/types/models';
 	import { api } from '$lib/api';
-	import { useFeatureFlags } from '$lib/stores/featureFlags';
 	import { NTP, UTC, Stopwatch, Clock, Server } from '$lib/components/icons';
 
     const features = useFeatureFlags();

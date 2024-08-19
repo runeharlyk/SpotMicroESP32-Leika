@@ -10,7 +10,7 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import DragDropList, { VerticalDropZone, reorder, type DropEvent } from 'svelte-dnd-list';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import InputPassword from '$lib/components/input/InputPassword.svelte';
+	import { PasswordInput } from '$lib/components/input';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import ScanNetworks from './Scan.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -593,7 +593,7 @@
 									<label class="label" for="pwd">
 										<span class="label-text text-md">Password</span>
 									</label>
-									<InputPassword bind:value={networkEditable.password} id="pwd" />
+									<PasswordInput bind:value={networkEditable.password} id="pwd" />
 								</div>
 								<label
 									class="label inline-flex cursor-pointer content-end justify-start gap-4 mt-2 sm:mb-4"

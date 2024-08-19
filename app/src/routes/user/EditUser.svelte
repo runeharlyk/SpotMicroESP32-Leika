@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { closeModal } from 'svelte-modals';
 	import { fly } from 'svelte/transition';
-	import InputPassword from '$lib/components/input/InputPassword.svelte';
+	import { PasswordInput } from '$lib/components/input';
 	import { Cancel, Save } from '$lib/components/icons';
 
 	// provided by <Modals />
@@ -76,7 +76,7 @@
 				<label class="label" for="pwd">
 					<span class="label-text text-md">Password</span>
 				</label>
-				<InputPassword bind:value={user.password} id="pwd" />
+				<PasswordInput bind:value={user.password} id="pwd" />
 				<label class="label my-auto cursor-pointer justify-start gap-4">
 					<input type="checkbox" bind:checked={user.admin} class="checkbox checkbox-primary" />
 					<span class="">Is Admin?</span>
