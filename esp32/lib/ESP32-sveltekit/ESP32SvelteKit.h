@@ -111,9 +111,9 @@ class ESP32SvelteKit {
     MotionService *getMotionService() { return &_motionService; }
 #endif
 
-    CameraService *getCameraService() { return &_cameraService; }
-    CameraSettingsService *getCameraSettingsService() { return &_cameraSettingsService; }
 #if FT_ENABLED(USE_CAMERA)
+    Camera::CameraService *getCameraService() { return &_cameraService; }
+    Camera::CameraSettingsService *getCameraSettingsService() { return &_cameraSettingsService; }
 #endif
 
     Peripherals *getPeripherals() { return &_peripherals; }
@@ -171,9 +171,9 @@ class ESP32SvelteKit {
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
 #endif
-    CameraService _cameraService;
-    CameraSettingsService _cameraSettingsService;
 #if FT_ENABLED(USE_CAMERA)
+    Camera::CameraService _cameraService;
+    Camera::CameraSettingsService _cameraSettingsService;
 #endif
     Peripherals _peripherals;
     ServoController _servoController;

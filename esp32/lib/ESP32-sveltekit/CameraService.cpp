@@ -1,5 +1,9 @@
 #include <CameraService.h>
 
+namespace Camera {
+
+static const char *const TAG = "CameraService";
+
 static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
@@ -36,8 +40,8 @@ void CameraService::begin() {
                 _securityManager->wrapRequest(std::bind(&CameraService::cameraStream, this, std::placeholders::_1),
                                               AuthenticationPredicates::IS_AUTHENTICATED));
 
-    ESP_LOGV("CameraService", "Registered GET endpoint: %s", STILL_SERVICE_PATH);
-    ESP_LOGV("CameraService", "Registered GET endpoint: %s", STREAM_SERVICE_PATH);
+    ESP_LOGV(TAG, "Registered GET endpoint: %s", STILL_SERVICE_PATH);
+    ESP_LOGV(TAG, "Registered GET endpoint: %s", STREAM_SERVICE_PATH);
 }
 
 esp_err_t CameraService::InitializeCamera() {
@@ -80,9 +84,9 @@ esp_err_t CameraService::InitializeCamera() {
     log_i("Initializing camera");
     esp_err_t err = esp_camera_init(&camera_config);
     if (err == ESP_OK)
-        ESP_LOGI("CameraService", "Camera probe successful");
+        ESP_LOGI(TAG, "Camera probe successful");
     else
-        ESP_LOGE("CameraService", "Camera probe failed with error 0x%x", err);
+        ESP_LOGE(TAG, "Camera probe failed with error 0x%x", err);
 
     return err;
 }
@@ -90,7 +94,7 @@ esp_err_t CameraService::InitializeCamera() {
 esp_err_t CameraService::cameraStill(PsychicRequest *request) {
     camera_fb_t *fb = safe_camera_fb_get();
     if (!fb) {
-        ESP_LOGE("CameraService", "Camera capture failed");
+        ESP_LOGE(TAG, "Camera capture failed");
         request->reply(500, "text/plain", "Camera capture failed");
         return ESP_FAIL;
     }
@@ -161,3 +165,5 @@ esp_err_t CameraService::cameraStream(PsychicRequest *request) {
     vTaskDelay(pdMS_TO_TICKS(100));
     return ESP_OK;
 }
+
+} // namespace Camera

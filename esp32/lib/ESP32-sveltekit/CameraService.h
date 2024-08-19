@@ -6,9 +6,12 @@
 #include <SecurityManager.h>
 #include <TaskManager.h>
 #include <WiFi.h>
-#include <esp_camera.h>
 #include <async_worker.h>
 #include <Features.h>
+
+namespace Camera {
+
+#include <esp_camera.h>
 
 #if USE_CAMERA
 #include <CameraPins.h>
@@ -37,5 +40,6 @@ class CameraService {
     esp_err_t cameraStream(PsychicRequest *request);
     esp_err_t InitializeCamera();
 };
+} // namespace Camera
 
 #endif // end CameraService_h
