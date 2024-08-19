@@ -1,17 +1,20 @@
 import { api } from '$lib/api';
 import { notifications } from '$lib/components/toasts/notifications';
-import { onMount } from 'svelte';
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
+
+let featureFlagsStore: Writable<Record<string, boolean>>;
 
 export function useFeatureFlags() {
-	const featureFlags = writable<Record<string, boolean>>({});
-	onMount(async () => {
-		const result = await api.get<Record<string, boolean>>('/api/features');
-		if (result.isOk()) featureFlags.set(result.inner);
-		else {
-			notifications.error('Feature flag could not fetched', 2500);
-		}
-	});
+	if (!featureFlagsStore) {
+		featureFlagsStore = writable<Record<string, boolean>>({});
 
-	return featureFlags;
+		api.get<Record<string, boolean>>('/api/features').then((result) => {
+			if (result.isOk()) featureFlagsStore.set(result.inner);
+			else {
+				notifications.error('Feature flag could not be fetched', 2500);
+			}
+		});
+	}
+
+	return featureFlagsStore;
 }
