@@ -1,6 +1,6 @@
 <script lang="ts">
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import type { ServoConfiguration, Servo } from '$lib/models';
+	import type { ServoConfiguration, Servo } from '$lib/types/models';
 	import MotorOutline from '~icons/mdi/motor-outline';
 	import ServoController from './servo.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';

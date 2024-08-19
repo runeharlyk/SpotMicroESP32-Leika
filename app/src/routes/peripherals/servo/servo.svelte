@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Servo } from "$lib/models";
+    import type { Servo } from "$lib/types/models";
 	import { createEventDispatcher } from "svelte";
     export let servo: Servo;
 

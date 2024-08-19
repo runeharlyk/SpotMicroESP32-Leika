@@ -1,3 +1,26 @@
+export type vector = { x: number; y: number };
+
+export interface ControllerInput {
+	left: vector;
+	right: vector;
+	height: number;
+	speed: number;
+	s1: number;
+}
+
+export type GithubRelease = {
+	message: string;
+	tag_name: string;
+	assets: Array<{
+		name: string;
+		browser_download_url: string;
+	}>;
+};
+
+export type JWT = { access_token: string };
+
+export type angles = number[] | Int16Array;
+
 export type WifiStatus = {
 	status: number;
 	local_ip: string;
@@ -16,6 +39,10 @@ export type WifiSettings = {
 	hostname: string;
 	priority_RSSI: boolean;
 	wifi_networks: KnownNetworkItem[];
+};
+
+export type NetworkList = {
+	networks: NetworkItem[];
 };
 
 export type KnownNetworkItem = {
@@ -64,10 +91,6 @@ export type NTPStatus = {
 	uptime: number;
 };
 
-export type RSSI = {
-	rssi: number;
-	ssid: string;
-};
 
 export type Battery = {
 	voltage: number;
@@ -140,4 +163,39 @@ export interface I2CDevice {
     address: number;
     part_number: string;
     name: string;
+};
+
+export type CameraSettings = {
+	framesize: number;
+	quality: number;
+	brightness: number;
+	contrast: number;
+	saturation: number;
+	sharpness: number;
+	denoise: number;
+	special_effect: number;
+	wb_mode: number;
+	vflip: boolean;
+	hmirror: boolean;
+};
+
+export type File = number;
+
+export interface Directory {
+	[key: string]: File | Directory;
+}
+
+export type Servo = {
+	name: string;
+	channel: number;
+	inverted: boolean;
+	angle: number;
+	center_angle: number;
+};
+
+export type ServoConfiguration = {
+	is_active: boolean;
+	servo_pwm_frequency: number;
+	servo_oscillator_frequency: number;
+	servos: Servo[];
 };
