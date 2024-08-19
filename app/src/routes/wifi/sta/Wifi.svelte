@@ -10,7 +10,7 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import DragDropList, { VerticalDropZone, reorder, type DropEvent } from 'svelte-dnd-list';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import InputPassword from '$lib/components/InputPassword.svelte';
+	import InputPassword from '$lib/components/input/InputPassword.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import ScanNetworks from './Scan.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
