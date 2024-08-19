@@ -14,7 +14,7 @@
 
 #include <SecuritySettingsService.h>
 
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
 
 SecuritySettingsService::SecuritySettingsService(PsychicHttpServer *server, FS *fs)
     : _server(server),

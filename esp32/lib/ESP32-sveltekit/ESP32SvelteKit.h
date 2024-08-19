@@ -89,15 +89,15 @@ class ESP32SvelteKit {
 
     StatefulService<APSettings> *getAPSettingsService() { return &_apSettingsService; }
 
-#if FT_ENABLED(FT_NTP)
+#if FT_ENABLED(USE_NTP)
     StatefulService<NTPSettings> *getNTPSettingsService() { return &_ntpSettingsService; }
 #endif
 
-#if FT_ENABLED(FT_SLEEP)
+#if FT_ENABLED(USE_SLEEP)
     SleepService *getSleepService() { return &_sleepService; }
 #endif
 
-#if FT_ENABLED(FT_BATTERY)
+#if FT_ENABLED(USE_BATTERY)
     BatteryService *getBatteryService() { return &_batteryService; }
 #endif
 
@@ -107,18 +107,18 @@ class ESP32SvelteKit {
 
     FileExplorer *getFileExplorer() { return &_fileExplorer; }
 
-#if FT_ENABLED(FT_MOTION)
+#if FT_ENABLED(USE_MOTION)
     MotionService *getMotionService() { return &_motionService; }
 #endif
 
-#if FT_ENABLED(FT_CAMERA)
     CameraService *getCameraService() { return &_cameraService; }
     CameraSettingsService *getCameraSettingsService() { return &_cameraSettingsService; }
+#if FT_ENABLED(USE_CAMERA)
 #endif
 
     Peripherals *getPeripherals() { return &_peripherals; }
 
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
     ServoController *getServoController() { return &_servoController; }
 #endif
 
@@ -141,26 +141,26 @@ class ESP32SvelteKit {
     APSettingsService _apSettingsService;
     APStatus _apStatus;
     EventSocket _socket;
-#if FT_ENABLED(FT_NTP)
+#if FT_ENABLED(USE_NTP)
     NTPSettingsService _ntpSettingsService;
     NTPStatus _ntpStatus;
 #endif
-#if FT_ENABLED(FT_UPLOAD_FIRMWARE)
+#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     UploadFirmwareService _uploadFirmwareService;
 #endif
-#if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
+#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
 #endif
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
     AuthenticationService _authenticationService;
 #endif
-#if FT_ENABLED(FT_SLEEP)
+#if FT_ENABLED(USE_SLEEP)
     SleepService _sleepService;
 #endif
-#if FT_ENABLED(FT_BATTERY)
+#if FT_ENABLED(USE_BATTERY)
     BatteryService _batteryService;
 #endif
-#if FT_ENABLED(FT_ANALYTICS)
+#if FT_ENABLED(USE_ANALYTICS)
     AnalyticsService _analyticsService;
 #endif
     RestartService _restartService;
@@ -168,16 +168,16 @@ class ESP32SvelteKit {
     SystemStatus _systemStatus;
     TaskManager _taskManager;
     FileExplorer _fileExplorer;
-#if FT_ENABLED(FT_MOTION)
+#if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
 #endif
-#if FT_ENABLED(FT_CAMERA)
     CameraService _cameraService;
     CameraSettingsService _cameraSettingsService;
+#if FT_ENABLED(USE_CAMERA)
 #endif
     Peripherals _peripherals;
     ServoController _servoController;
-#if FT_ENABLED(FT_WS2812)
+#if FT_ENABLED(USE_WS2812)
     LEDService _ledService;
 #endif
 

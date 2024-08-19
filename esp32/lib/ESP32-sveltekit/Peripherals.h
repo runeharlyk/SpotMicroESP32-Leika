@@ -109,10 +109,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
                         CONFIGURATION_SETTINGS_PATH, securityManager, AuthenticationPredicates::IS_ADMIN),
           _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, socket,
                          EVENT_CONFIGURATION_SETTINGS),
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
           _mag(12345),
 #endif
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
           _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, fs,
@@ -138,7 +138,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         updatePins();
 
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         _pca.begin();
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
@@ -149,7 +149,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         });
 #endif
 
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         _imu.initialize();
         imu_success = _imu.testConnection();
         devStatus = _imu.dmpInitialize();
@@ -161,27 +161,27 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _imu.setI2CBypassEnabled(true);
         _imu.setSleepEnabled(false);
 #endif
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
         mag_success = _mag.begin();
         if (!mag_success) {
             ESP_LOGE("IMUService", "MAG initialize failed");
         }
 #endif
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
         bmp_success = _bmp.begin();
         if (!bmp_success) {
             ESP_LOGE("IMUService", "BMP initialize failed");
         }
 #endif
 
-#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
+#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(USE_ADS1115)
         if (!_ads.begin()) {
             ESP_LOGE("Peripherals", "ADS1015/ADS1115 not found");
         }
         _ads.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, /*continuous=*/false);
 #endif
 
-#if FT_ENABLED(FT_USS)
+#if FT_ENABLED(USE_USS)
         _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
         _right_sonar = new NewPing(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
 #endif
@@ -241,13 +241,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     /* SERVO FUNCTIONS*/
     void pcaLerpTo(int index, int value, float t) {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         target_pwm[index] = lerp(pwm[index], value, t);
 #endif
     }
 
     void pcaWrite(int index, int value) {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         if (value < 0 || value > 4096) {
             ESP_LOGE("Peripherals", "Invalid PWM value %d for %d :: Valid range 0-4096", value, index);
             return;
@@ -261,13 +261,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     void pcaWriteAngle(int index, int angle) {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         _pca.setPWM(index, 0, 125 + angle * 2);
 #endif
     }
 
     void pcaWriteAngles(float *angles, int numServos, int offset = 0) {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         for (int i = 0; i < numServos; i++) {
             pcaWriteAngle(i + offset, angles[i]);
         }
@@ -275,7 +275,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     void pcaActivate() {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         if (_pca_active) return;
         _pca_active = true;
         _pca.wakeup();
@@ -283,7 +283,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     void pcaDeactivate() {
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
         if (!_pca_active) return;
         _pca_active = false;
         _pca.sleep();
@@ -293,7 +293,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* ADC FUNCTIONS*/
     int16_t readADCVoltage(uint8_t channel) {
         int16_t voltage = -1;
-#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(FT_ADS1115)
+#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(USE_ADS1115)
         float adc0 = _ads.readADC_SingleEnded(channel);
         voltage = _ads.computeVolts(adc0);
 #endif
@@ -303,7 +303,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* IMU FUNCTIONS */
     bool readIMU() {
         bool updated = false;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         updated = imu_success && _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
         _imu.dmpGetQuaternion(&q, fifoBuffer);
         _imu.dmpGetGravity(&gravity, &q);
@@ -314,7 +314,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getTemp() {
         float temp = -1;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         temp = imu_success ? imu_temperature : -1;
 #endif
         return temp;
@@ -322,7 +322,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getAngleX() {
         float angle = 0;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         angle = imu_success ? ypr[0] * 180 / M_PI : 0;
 #endif
         return angle;
@@ -330,7 +330,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getAngleY() {
         float angle = 0;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         angle = imu_success ? ypr[1] * 180 / M_PI : 0;
 #endif
         return angle;
@@ -338,7 +338,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getAngleZ() {
         float angle = 0;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         angle = imu_success ? ypr[2] * 180 / M_PI : 0;
 #endif
         return angle;
@@ -347,7 +347,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* MAG FUNCTIONS */
     float getHeading() {
         float heading = 0;
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
         sensors_event_t event;
         _mag.getEvent(&event);
         heading = atan2(event.magnetic.y, event.magnetic.x);
@@ -363,7 +363,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* BMP FUNCTIONS */
     float getAltitude() {
         float altitude = -1;
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
         sensors_event_t event;
         _bmp.getEvent(&event);
         float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
@@ -374,7 +374,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getPressure() {
         float pressure = -1;
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
         sensors_event_t event;
         _bmp.getEvent(&event);
         pressure = bmp_success && event.pressure ? event.pressure : -1;
@@ -384,7 +384,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float getTemperature() {
         float temperature = 0;
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
         _bmp.getTemperature(&temperature);
         temperature = bmp_success ? temperature : -1;
 #endif
@@ -395,7 +395,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void updateImu() {
         doc.clear();
         bool newData = false;
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
         newData = imu_success && readIMU();
         if (imu_success) {
             doc["x"] = round2(getAngleX());
@@ -403,13 +403,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
             doc["z"] = round2(getAngleZ());
         }
 #endif
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
         newData = newData || mag_success;
         if (mag_success) {
             doc["heading"] = round2(getHeading());
         }
 #endif
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
         newData = newData || bmp_success;
         if (bmp_success) {
             doc["pressure"] = round2(getPressure());
@@ -424,7 +424,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     void readSonar() {
-#if FT_ENABLED(FT_USS)
+#if FT_ENABLED(USE_USS)
         _left_distance = _left_sonar->ping_cm();
         delay(50);
         _right_distance = _right_sonar->ping_cm();
@@ -432,7 +432,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     void emitSonar() {
-#if FT_ENABLED(FT_USS)
+#if FT_ENABLED(USE_USS)
 
         char output[16];
         snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
@@ -459,13 +459,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     JsonDocument doc;
     char message[MAX_ESP_IMU_SIZE];
 
-#if FT_ENABLED(FT_SERVO)
+#if FT_ENABLED(USE_SERVO)
     Adafruit_PWMServoDriver _pca;
     bool _pca_active {false};
     uint16_t pwm[16] = {0};
     uint16_t target_pwm[16] = {0};
 #endif
-#if FT_ENABLED(FT_IMU)
+#if FT_ENABLED(USE_IMU)
     MPU6050 _imu;
     bool imu_success {false};
     uint8_t devStatus {false};
@@ -475,21 +475,21 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float ypr[3];
     float imu_temperature {-1};
 #endif
-#if FT_ENABLED(FT_MAG)
+#if FT_ENABLED(USE_MAG)
     Adafruit_HMC5883_Unified _mag;
     bool mag_success {false};
 #endif
-#if FT_ENABLED(FT_BMP)
+#if FT_ENABLED(USE_BMP)
     Adafruit_BMP085_Unified _bmp;
     bool bmp_success {false};
 #endif
 #if FT_ENABLED(FT_ADS1015)
     Adafruit_ADS1015 _ads;
 #endif
-#if FT_ENABLED(FT_ADS1115)
+#if FT_ENABLED(USE_ADS1115)
     Adafruit_ADS1115 _ads;
 #endif
-#if FT_ENABLED(FT_USS)
+#if FT_ENABLED(USE_USS)
     NewPing *_left_sonar;
     NewPing *_right_sonar;
 #endif

@@ -62,7 +62,7 @@ class AuthenticationPredicates {
 
 class SecurityManager {
   public:
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
     /*
      * Authenticate, returning the user if found
      */

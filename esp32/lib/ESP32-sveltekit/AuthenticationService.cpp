@@ -14,7 +14,7 @@
 
 #include <AuthenticationService.h>
 
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
 
 AuthenticationService::AuthenticationService(PsychicHttpServer *server, SecurityManager *securityManager)
     : _server(server), _securityManager(securityManager) {}
@@ -48,4 +48,4 @@ void AuthenticationService::begin() {
     ESP_LOGV("AuthenticationService", "Registered GET endpoint: %s", VERIFY_AUTHORIZATION_PATH);
 }
 
-#endif // end FT_ENABLED(FT_SECURITY)
+#endif // end FT_ENABLED(USE_SECURITY)

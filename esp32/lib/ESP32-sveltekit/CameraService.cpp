@@ -44,7 +44,7 @@ esp_err_t CameraService::InitializeCamera() {
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;
-#if FT_ENABLED(FT_CAMERA)
+#if FT_ENABLED(USE_CAMERA)
     camera_config.pin_d0 = Y2_GPIO_NUM;
     camera_config.pin_d1 = Y3_GPIO_NUM;
     camera_config.pin_d2 = Y4_GPIO_NUM;
