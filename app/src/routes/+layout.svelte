@@ -6,7 +6,7 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade } from 'svelte/transition';
 	import '../app.css';
-	import Menu from '../lib/components/menu.svelte';
+	import Menu from '../lib/components/menu/Menu.svelte';
 	import Statusbar from '../lib/components/statusbar/statusbar.svelte';
 	import Login from '../lib/components/login.svelte';
 	import {
