@@ -40,18 +40,10 @@
 		href?: string;
 		feature: boolean;
 		active?: boolean;
-		submenu?: subMenuItem[];
+		submenu?: menuItem[];
 	};
 
-	type subMenuItem = {
-		title: string;
-		icon: ConstructorOfATypedSvelteComponent;
-		href: string;
-		feature: boolean;
-		active: boolean;
-	};
-
-	let menuItems = [
+	$: menuItems = [
         {
             title: 'Controller',
             icon: MdiController,
