@@ -46,7 +46,7 @@
 
 #define GENERATE_TOKEN_PATH "/api/generateToken"
 
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
 
 class SecuritySettings {
   public:
@@ -136,5 +136,5 @@ class SecuritySettingsService : public SecurityManager {
     PsychicJsonRequestCallback wrapCallback(PsychicJsonRequestCallback onRequest, AuthenticationPredicate predicate);
 };
 
-#endif // end FT_ENABLED(FT_SECURITY)
+#endif // end FT_ENABLED(USE_SECURITY)
 #endif // end SecuritySettingsService_h

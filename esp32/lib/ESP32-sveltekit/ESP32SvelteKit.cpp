@@ -27,29 +27,29 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _apSettingsService(server, &ESPFS, &_securitySettingsService),
       _apStatus(server, &_securitySettingsService, &_apSettingsService),
       _socket(server, &_securitySettingsService, AuthenticationPredicates::IS_AUTHENTICATED),
-#if FT_ENABLED(FT_NTP)
+#if FT_ENABLED(USE_NTP)
       _ntpSettingsService(server, &ESPFS, &_securitySettingsService),
       _ntpStatus(server, &_securitySettingsService),
 #endif
-#if FT_ENABLED(FT_UPLOAD_FIRMWARE)
+#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server, &_securitySettingsService),
 #endif
-#if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
+#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
       _downloadFirmwareService(server, &_securitySettingsService, &_socket, &_taskManager),
 #endif
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
       _authenticationService(server, &_securitySettingsService),
 #endif
-#if FT_ENABLED(FT_SLEEP)
+#if FT_ENABLED(USE_SLEEP)
       _sleepService(server, &_securitySettingsService),
 #endif
-#if FT_ENABLED(FT_BATTERY)
+#if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals, &_socket),
 #endif
-#if FT_ENABLED(FT_ANALYTICS)
+#if FT_ENABLED(USE_ANALYTICS)
       _analyticsService(&_socket, &_taskManager),
 #endif
-#if FT_ENABLED(FT_CAMERA)
+#if FT_ENABLED(USE_CAMERA)
       _cameraService(server, &_taskManager, &_securitySettingsService),
       _cameraSettingsService(server, &ESPFS, &_securitySettingsService, &_socket),
 #endif
@@ -58,10 +58,10 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _systemStatus(server, &_securitySettingsService),
       _fileExplorer(server, &_securitySettingsService),
       _servoController(server, &ESPFS, &_securitySettingsService, &_peripherals, &_socket),
-#if FT_ENABLED(FT_MOTION)
+#if FT_ENABLED(USE_MOTION)
       _motionService(_server, &_socket, &_securitySettingsService, &_servoController, &_taskManager),
 #endif
-#if FT_ENABLED(FT_WS2812)
+#if FT_ENABLED(USE_WS2812)
       _ledService(&_taskManager),
 #endif
       _peripherals(server, &ESPFS, &_securitySettingsService, &_socket) {
@@ -159,56 +159,56 @@ void ESP32SvelteKit::startServices() {
     _wifiScanner.begin();
     _wifiStatus.begin();
 
-#if FT_ENABLED(FT_UPLOAD_FIRMWARE)
+#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
 #endif
-#if FT_ENABLED(FT_DOWNLOAD_FIRMWARE)
+#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     _downloadFirmwareService.begin();
 #endif
-#if FT_ENABLED(FT_NTP)
+#if FT_ENABLED(USE_NTP)
     _ntpSettingsService.begin();
     _ntpStatus.begin();
 #endif
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
     _authenticationService.begin();
     _securitySettingsService.begin();
 #endif
-#if FT_ENABLED(FT_ANALYTICS)
+#if FT_ENABLED(USE_ANALYTICS)
     _analyticsService.begin();
 #endif
-#if FT_ENABLED(FT_SLEEP)
+#if FT_ENABLED(USE_SLEEP)
     _sleepService.begin();
 #endif
-#if FT_ENABLED(FT_BATTERY)
+#if FT_ENABLED(USE_BATTERY)
     _batteryService.begin();
 #endif
     _taskManager.begin();
     _fileExplorer.begin();
     _peripherals.begin();
     _servoController.begin();
-#if FT_ENABLED(FT_MOTION)
+#if FT_ENABLED(USE_MOTION)
     _motionService.begin();
 #endif
-#if FT_ENABLED(FT_CAMERA)
+#if FT_ENABLED(USE_CAMERA)
     _cameraService.begin();
     _cameraSettingsService.begin();
 #endif
-#if FT_ENABLED(FT_WS2812)
+#if FT_ENABLED(USE_WS2812)
     _ledService.begin();
 #endif
 }
 
 void IRAM_ATTR ESP32SvelteKit::loop() {
     while (1) {
-#if FT_ENABLED(FT_WS2812)
+#if FT_ENABLED(USE_WS2812)
         _ledService.loop();
 #endif
         _wifiSettingsService.loop();
         _apSettingsService.loop();
-#if FT_ENABLED(FT_ANALYTICS)
+#if FT_ENABLED(USE_ANALYTICS)
         _analyticsService.loop();
 #endif
-#if FT_ENABLED(FT_BATTERY)
+#if FT_ENABLED(USE_BATTERY)
         _batteryService.loop();
 #endif
         _peripherals.loop();

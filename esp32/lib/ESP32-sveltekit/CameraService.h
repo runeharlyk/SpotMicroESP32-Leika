@@ -10,7 +10,7 @@
 #include <async_worker.h>
 #include <Features.h>
 
-#if FT_ENABLED(FT_CAMERA)
+#if USE_CAMERA
 #include <CameraPins.h>
 #endif
 

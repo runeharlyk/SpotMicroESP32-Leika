@@ -22,7 +22,7 @@
 #define VERIFY_AUTHORIZATION_PATH "/api/verifyAuthorization"
 #define SIGN_IN_PATH "/api/signIn"
 
-#if FT_ENABLED(FT_SECURITY)
+#if FT_ENABLED(USE_SECURITY)
 
 class AuthenticationService {
   public:
@@ -35,5 +35,5 @@ class AuthenticationService {
     PsychicHttpServer *_server;
 };
 
-#endif // end FT_ENABLED(FT_SECURITY)
+#endif // end FT_ENABLED(USE_SECURITY)
 #endif // end SecurityManager_h
