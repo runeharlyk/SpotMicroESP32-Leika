@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import InputPassword from '$lib/components/InputPassword.svelte';
+	import InputPassword from '$lib/components/input/InputPassword.svelte';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import { user } from '$lib/stores/user';
 	import { page } from '$app/stores';

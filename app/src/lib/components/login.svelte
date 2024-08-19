@@ -1,6 +1,6 @@
 <script lang="ts">
 	import logo from '$lib/assets/logo512.png';
-	import InputPassword from '$lib/components/InputPassword.svelte';
+	import InputPassword from '$lib/components/input/InputPassword.svelte';
 	import { user } from '$lib/stores/user';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade, fly } from 'svelte/transition';

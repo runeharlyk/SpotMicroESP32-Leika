@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { closeModal } from 'svelte-modals';
 	import { fly } from 'svelte/transition';
-	import InputPassword from '$lib/components/InputPassword.svelte';
+	import InputPassword from '$lib/components/input/InputPassword.svelte';
 	import Cancel from '~icons/tabler/x';
 	import Save from '~icons/tabler/device-floppy';
 
