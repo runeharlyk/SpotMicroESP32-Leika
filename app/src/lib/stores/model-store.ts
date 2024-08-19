@@ -1,4 +1,4 @@
-import type { ControllerInput } from '$lib/models';
+import type { ControllerInput } from '$lib/types/models';
 import { persistentStore } from '$lib/utilities/svelte-utilities';
 import { writable, type Writable } from 'svelte/store';
 
@@ -8,7 +8,15 @@ export const jointNames = persistentStore('joint_names', []);
 
 export const model = writable();
 
-export const modes = ['deactivated', 'idle', 'calibration', 'rest', 'stand', 'crawl', 'walk'] as const;
+export const modes = [
+	'deactivated',
+	'idle',
+	'calibration',
+	'rest',
+	'stand',
+	'crawl',
+	'walk'
+] as const;
 
 export type Modes = (typeof modes)[number];
 

@@ -10,7 +10,7 @@
 	import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte';
 	import type { NetworkItem } from '$lib/types/models';
 	import { api } from '$lib/api';
-	import type { NetworkList } from '$lib/models';
+	import type { NetworkList } from '$lib/types/models';
 
 	// provided by <Modals />
 	export let isOpen: boolean;

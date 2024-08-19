@@ -6,7 +6,7 @@
 	import { fade, fly } from 'svelte/transition';
 	import Login from '~icons/tabler/login';
 	import { api } from '$lib/api';
-	import type { JWT } from '$lib/models';
+	import type { JWT } from '$lib/types/models';
 
 	type SignInData = {
 		password: string;

@@ -4,7 +4,7 @@
     import FolderIcon from '~icons/mdi/folder-outline';
 	import Folder from "./Folder.svelte";
 	import { api } from "$lib/api";
-	import type { Directory } from "$lib/models";
+	import type { Directory } from "$lib/types/models";
 
     let filename = '';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
-    import type { CameraSettings } from '$lib/models';
+    import type { CameraSettings } from '$lib/types/models';
     let settings:CameraSettings
 
     const getCameraSettings = async () => {

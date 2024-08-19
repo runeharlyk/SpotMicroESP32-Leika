@@ -11,7 +11,7 @@
 	import { compareVersions } from 'compare-versions';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
-	import type { GithubRelease } from '$lib/models';
+	import type { GithubRelease } from '$lib/types/models';
 	import { useFeatureFlags } from '$lib/stores/featureFlags';
 
 	const features = useFeatureFlags();
