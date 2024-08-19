@@ -6,8 +6,8 @@ let telemetry_data = {
 		rssi: 0
 	},
 	battery: {
-		voltage: 100,
-		current: false
+		voltage: 0,
+		current: 0
 	},
 	download_ota: {
 		status: 'none',
