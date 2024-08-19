@@ -56,10 +56,12 @@
 		socket.on('angles', (angles: number[]) => {
 			if (angles.length) servoAngles.set(angles);
 		});
-		if ($features.analytics) socket.on('analytics', handleAnalytics);
-		if ($features.battery) socket.on('battery', handleBattery);
-		if ($features.download_firmware) socket.on('otastatus', handleOAT);
-		if ($features.sonar) socket.on('sonar', (data) => console.log(data));
+        features.subscribe(data => {
+            if (data.analytics) socket.on('analytics', handleAnalytics);
+            if (data.battery) socket.on('battery', handleBattery);
+            if (data.download_firmware) socket.on('otastatus', handleOAT);
+            if (data.sonar) socket.on('sonar', (data) => console.log(data));
+        })
 	};
 
 	const removeEventListeners = () => {
