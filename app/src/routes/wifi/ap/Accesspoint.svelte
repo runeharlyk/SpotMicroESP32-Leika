@@ -8,13 +8,10 @@
 	import { page } from '$app/stores';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import AP from '~icons/tabler/access-point';
-	import MAC from '~icons/tabler/dna-2';
-	import Home from '~icons/tabler/home';
-	import Devices from '~icons/tabler/devices';
 	import type { ApSettings, ApStatus } from '$lib/types/models';
 	import { api } from '$lib/api';
 	import { useFeatureFlags } from '$lib/stores';
+	import { AP, Devices, Home, MAC } from '$lib/components/icons';
 
     const features = useFeatureFlags();
 

@@ -2,8 +2,7 @@
 	import { closeModal } from 'svelte-modals';
 	import { focusTrap } from 'svelte-focus-trap';
 	import { fly } from 'svelte/transition';
-	import Cancel from '~icons/tabler/x';
-	import Check from '~icons/tabler/check';
+	import { Cancel, Check } from '$lib/components/icons';
 
 	// provided by <Modals />
 	export let isOpen: boolean;

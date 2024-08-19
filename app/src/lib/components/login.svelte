@@ -4,9 +4,9 @@
 	import { user } from '$lib/stores/user';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade, fly } from 'svelte/transition';
-	import Login from '~icons/tabler/login';
 	import { api } from '$lib/api';
 	import type { JWT } from '$lib/types/models';
+	import { Login } from './icons';
 
 	type SignInData = {
 		password: string;
@@ -21,21 +21,21 @@
 	let token = { access_token: '' };
 
 	async function signInUser(data: SignInData) {
-        const result = await api.post<JWT>('/api/signIn', data)
-		if (result.isErr()){
-            username = '';
-            password = '';
-            notifications.error('Wrong Username or Password!', 5000);
-            loginFailed = true;
-            setTimeout(() => {
-                loginFailed = false;
-            }, 1500);
-            return
-        }
-        token = result.inner;
-        user.init(token.access_token);
-        username = $user.username;
-        notifications.success('User ' + username + ' signed in', 5000);
+		const result = await api.post<JWT>('/api/signIn', data);
+		if (result.isErr()) {
+			username = '';
+			password = '';
+			notifications.error('Wrong Username or Password!', 5000);
+			loginFailed = true;
+			setTimeout(() => {
+				loginFailed = false;
+			}, 1500);
+			return;
+		}
+		token = result.inner;
+		user.init(token.access_token);
+		username = $user.username;
+		notifications.success('User ' + username + ' signed in', 5000);
 	}
 </script>
 
@@ -69,10 +69,10 @@
 				<div class="card-actions mt-4 justify-end">
 					<button
 						class="btn btn-primary inline-flex items-center"
-						on:click={() => {
-							signInUser({ username, password });
-						}}><Login class="mr-2 h-5 w-5" /><span>Login</span></button
+						on:click={() => signInUser({ username, password })}
 					>
+						<Login class="mr-2 h-5 w-5" /><span>Login</span>
+					</button>
 				</div>
 			</form>
 		</div>

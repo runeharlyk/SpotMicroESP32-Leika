@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import Down from '~icons/tabler/chevron-down';
+	import { Down } from './icons';
 	export let open = true;
 	export let collapsible = true;
 </script>

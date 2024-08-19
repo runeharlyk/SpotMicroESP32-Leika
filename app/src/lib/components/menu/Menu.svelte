@@ -1,23 +1,5 @@
 <script lang="ts">
-	import MdiConnection from '~icons/mdi/connection';
-	import Users from '~icons/mdi/users';
-	import Settings from '~icons/mdi/settings';
-	import MdiController from '~icons/mdi/controller';
-	import Devices from '~icons/mdi/devices';
-	import Camera from '~icons/mdi/camera-outline';
-	import Rotate3d from '~icons/mdi/rotate-3d';
-	import MotorOutline from '~icons/mdi/motor-outline';
-	import Health from '~icons/mdi/stethoscope';
-	import Folder from '~icons/mdi/folder-outline';
-	import Update from '~icons/mdi/reload';
-	import WiFi from '~icons/mdi/wifi';
-	import Router from '~icons/mdi/router';
-	import AP from '~icons/mdi/access-point';
-	import Remote from '~icons/mdi/network';
-	import Copyright from '~icons/mdi/copyright';
-	import NTP from '~icons/mdi/clock-check';
-	import Metrics from '~icons/mdi/report-bar';
-	import { page } from '$app/stores';
+    import { page } from '$app/stores';
 	import { user } from '$lib/stores/user';
 	import { createEventDispatcher } from 'svelte';
 	import { useFeatureFlags } from '$lib/stores/featureFlags';
@@ -25,6 +7,26 @@
 	import GithubButton from '../menu/GithubButton.svelte';
 	import LogoButton from '../menu/LogoButton.svelte';
 	import MenuList from '../menu/MenuList.svelte';
+	import {
+		Connection,
+		Users,
+		Settings,
+		MdiController,
+		Devices,
+		Camera,
+		Rotate3d,
+		MotorOutline,
+		Health,
+		Folder,
+		Update,
+		WiFi,
+		Router,
+		AP,
+		Remote,
+		Copyright,
+		NTP,
+		Metrics
+	} from '$lib/components/icons';
 
 	const features = useFeatureFlags();
 
@@ -57,7 +59,7 @@
 			submenu: [
 				{
 					title: 'I2C',
-					icon: MdiConnection,
+					icon: Connection,
 					href: '/peripherals/i2c',
 					feature: true
 				},
@@ -169,15 +171,15 @@
 
 	$: setActiveMenuItem($page.data.title);
 
-    const updateMenu = (event:any) => {
-        setActiveMenuItem(event.details)
-    }
+	const updateMenu = (event: any) => {
+		setActiveMenuItem(event.details);
+	};
 </script>
 
 <div class="bg-base-200 text-base-content flex h-full w-80 flex-col p-4">
 	<LogoButton {appName} />
 
-    <MenuList {menuItems} on:select{updateMenu} class="flex-grow flex-nowrap overflow-y-auto"/>
+	<MenuList {menuItems} on:select{updateMenu} class="flex-grow flex-nowrap overflow-y-auto" />
 
 	<UserButton />
 

@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { useFeatureFlags } from '$lib/stores';
 	import type { Battery } from '$lib/types/models';
-	import Battery0 from '~icons/tabler/battery';
-	import Battery25 from '~icons/tabler/battery-1';
-	import Battery50 from '~icons/tabler/battery-2';
-	import Battery75 from '~icons/tabler/battery-3';
-	import Battery100 from '~icons/tabler/battery-4';
-	import BatteryCharging from '~icons/tabler/battery-charging-2';
+	import { BatteryCharging, Battery100, Battery75, Battery50, Battery25, Battery0 } from '../icons';
 
 	const features = useFeatureFlags();
 

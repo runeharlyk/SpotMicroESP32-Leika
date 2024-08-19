@@ -1,6 +1,5 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
-    import Rotate3d from '~icons/mdi/rotate-3d';
     import { imu } from '$lib/stores/imu';
     import { Chart, registerables } from 'chart.js';
 	import { cubicOut } from "svelte/easing";
@@ -10,6 +9,7 @@
 	import { socket } from "$lib/stores";
 	import type { IMU } from "$lib/types/models";
 	import { useFeatureFlags } from "$lib/stores/featureFlags";
+	import { Rotate3d } from "$lib/components/icons";
 
     const features = useFeatureFlags();
 

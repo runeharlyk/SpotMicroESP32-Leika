@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { telemetry } from '$lib/stores/telemetry';
-	import Hamburger from '~icons/tabler/menu-2';
 	
 	import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte';
 	import BatteryIndicator from '$lib/components/statusbar/BatteryIndicator.svelte';
@@ -11,6 +10,7 @@
 	import FullscreenButton from './FullscreenButton.svelte';
 	import StopButton from './StopButton.svelte';
 	import ViewSelector from './ViewSelector.svelte';
+	import { Hamburger } from '../icons';
 </script>
 
 <div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2 pr-0">

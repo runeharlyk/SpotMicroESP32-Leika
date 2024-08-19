@@ -5,9 +5,10 @@
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { Chart, registerables } from 'chart.js';
-	import Metrics from '~icons/tabler/report-analytics';
+	
 	import { daisyColor } from '$lib/utilities';
 	import { analytics } from '$lib/stores/analytics';
+	import { Metrics } from '$lib/components/icons';
 
 	Chart.register(...registerables);
 

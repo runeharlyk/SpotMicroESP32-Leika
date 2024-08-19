@@ -14,29 +14,31 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import ScanNetworks from './Scan.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import AP from '~icons/tabler/access-point';
-	import Router from '~icons/tabler/router';
-	import MAC from '~icons/tabler/dna-2';
-	import Home from '~icons/tabler/home';
-	import WiFi from '~icons/tabler/wifi';
-	import SSID from '~icons/tabler/router';
-	import Down from '~icons/tabler/chevron-down';
-	import DNS from '~icons/tabler/address-book';
-	import Gateway from '~icons/tabler/torii';
-	import Subnet from '~icons/tabler/grid-dots';
-	import Channel from '~icons/tabler/antenna';
-	import Scan from '~icons/tabler/radar-2';
-	import Add from '~icons/tabler/circle-plus';
-	import Edit from '~icons/tabler/pencil';
-	import Delete from '~icons/tabler/trash';
-	import Cancel from '~icons/tabler/x';
-	import Check from '~icons/tabler/check';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import type { KnownNetworkItem, WifiSettings, WifiStatus } from '$lib/types/models';
 	import { socket, useFeatureFlags } from '$lib/stores';
 	import { api } from '$lib/api';
+	import {
+		Cancel,
+		Delete,
+		Check,
+		Router,
+		AP,
+		SSID,
+		Home,
+		WiFi,
+		Down,
+		MAC,
+		Channel,
+		Gateway,
+		Subnet,
+		DNS,
+		Add,
+		Scan,
+		Edit
+	} from '$lib/components/icons';
 
-    const features = useFeatureFlags();
+	const features = useFeatureFlags();
 
 	let networkEditable: KnownNetworkItem = {
 		ssid: '',
@@ -49,7 +51,7 @@
 		dns_ip_2: undefined
 	};
 
-    let static_ip_config = false
+	let static_ip_config = false;
 
 	let newNetwork: boolean = true;
 	let showNetworkEditor: boolean = false;
@@ -75,44 +77,44 @@
 	let formErrorhostname = false;
 
 	async function getWifiStatus() {
-        const result = await api.get<WifiStatus>('/api/wifiStatus');
-            if (result.isErr()){
-                console.error(`Error occurred while fetching: `, result.inner);
-                return
-            }
-            wifiStatus = result.inner
+		const result = await api.get<WifiStatus>('/api/wifiStatus');
+		if (result.isErr()) {
+			console.error(`Error occurred while fetching: `, result.inner);
+			return;
+		}
+		wifiStatus = result.inner;
 		return wifiStatus;
 	}
 
 	async function getWifiSettings() {
-        const result = await api.get<WifiSettings>('/api/wifiSettings');
-        if (result.isErr()){
-            console.error(`Error occurred while fetching: `, result.inner);
-            return
-        }
-        wifiSettings = result.inner
-        dndNetworkList = wifiSettings.wifi_networks;
+		const result = await api.get<WifiSettings>('/api/wifiSettings');
+		if (result.isErr()) {
+			console.error(`Error occurred while fetching: `, result.inner);
+			return;
+		}
+		wifiSettings = result.inner;
+		dndNetworkList = wifiSettings.wifi_networks;
 		return wifiSettings;
 	}
 
 	onDestroy(() => socket.off('WiFiSettings'));
 
 	onMount(() => {
-        socket.on<WifiSettings>('WiFiSettings', (data) => {
-            wifiSettings = data
-            dndNetworkList = wifiSettings.wifi_networks
-        })
+		socket.on<WifiSettings>('WiFiSettings', (data) => {
+			wifiSettings = data;
+			dndNetworkList = wifiSettings.wifi_networks;
+		});
 	});
 
 	async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post<WifiSettings>('/api/wifiSettings', data);
-        if (result.isErr()){
-            console.error(`Error occurred while fetching: `, result.inner);
-            notifications.error('User not authorized.', 3000);
-            return
-        }
-        wifiSettings = result.inner
-        notifications.success('Wi-Fi settings updated.', 3000);
+		const result = await api.post<WifiSettings>('/api/wifiSettings', data);
+		if (result.isErr()) {
+			console.error(`Error occurred while fetching: `, result.inner);
+			notifications.error('User not authorized.', 3000);
+			return;
+		}
+		wifiSettings = result.inner;
+		notifications.success('Wi-Fi settings updated.', 3000);
 	}
 
 	function validateHostName() {
@@ -139,7 +141,7 @@
 			formErrors.ssid = false;
 		}
 
-        networkEditable.static_ip_config = static_ip_config;
+		networkEditable.static_ip_config = static_ip_config;
 
 		if (networkEditable.static_ip_config) {
 			// RegEx for IPv4

@@ -8,46 +8,49 @@
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import CPU from '~icons/tabler/cpu';
-	import CPP from '~icons/tabler/binary';
-	import Power from '~icons/tabler/reload';
-	import Sleep from '~icons/tabler/zzz';
-	import FactoryReset from '~icons/tabler/refresh-dot';
-	import Speed from '~icons/tabler/activity';
-	import Flash from '~icons/tabler/device-sd-card';
-	import Pyramid from '~icons/tabler/pyramid';
-	import Sketch from '~icons/tabler/chart-pie';
-	import Folder from '~icons/tabler/folder';
-	import Heap from '~icons/tabler/box-model';
-	import Cancel from '~icons/tabler/x';
-	import Temperature from '~icons/tabler/temperature';
-	import Health from '~icons/tabler/stethoscope';
-	import Stopwatch from '~icons/tabler/24-hours';
-	import SDK from '~icons/tabler/sdk';
+
 	import type { SystemInformation, Analytics } from '$lib/types/models';
 	import { socket } from '$lib/stores/socket';
 	import { api } from '$lib/api';
 	import { convertSeconds } from '$lib/utilities';
 
-    import { useFeatureFlags } from '$lib/stores/featureFlags';
-    
-    const features = useFeatureFlags()
+	import { useFeatureFlags } from '$lib/stores/featureFlags';
+	import {
+		Cancel,
+		Power,
+		FactoryReset,
+		Sleep,
+		Health,
+		CPU,
+		SDK,
+		CPP,
+		Speed,
+		Heap,
+		Pyramid,
+		Sketch,
+		Flash,
+		Folder,
+		Temperature,
+		Stopwatch
+	} from '$lib/components/icons';
+
+	const features = useFeatureFlags();
 
 	let systemInformation: SystemInformation;
 
 	async function getSystemStatus() {
-        const result = await api.get<SystemInformation>('/api/systemStatus');
-        if (result.isErr()){
-            console.error('Error:', result.inner);
-            return
-        }
-        systemInformation = result.inner
+		const result = await api.get<SystemInformation>('/api/systemStatus');
+		if (result.isErr()) {
+			console.error('Error:', result.inner);
+			return;
+		}
+		systemInformation = result.inner;
 		return systemInformation;
 	}
 
-    const postFactoryReset = async () => await api.post('/api/factoryReset')
-    
-    const postSleep = async () => await api.post('api/sleep')
+	const postFactoryReset = async () => await api.post('/api/factoryReset');
+
+	const postSleep = async () => await api.post('api/sleep');
 
 	onMount(() => socket.on('analytics', handleSystemData));
 

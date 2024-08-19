@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import Down from '~icons/tabler/chevron-down';
 	import { createEventDispatcher } from 'svelte';
+	import { Down } from './icons';
 
 	const dispatch = createEventDispatcher();
 

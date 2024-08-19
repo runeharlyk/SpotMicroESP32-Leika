@@ -9,14 +9,10 @@
 	import { page } from '$app/stores';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { TIME_ZONES } from './timezones';
-	import NTP from '~icons/tabler/clock-check';
-	import Server from '~icons/tabler/server';
-	import Clock from '~icons/tabler/clock';
-	import UTC from '~icons/tabler/clock-pin';
-	import Stopwatch from '~icons/tabler/24-hours';
 	import type { NTPSettings, NTPStatus } from '$lib/types/models';
 	import { api } from '$lib/api';
 	import { useFeatureFlags } from '$lib/stores/featureFlags';
+	import { NTP, UTC, Stopwatch, Clock, Server } from '$lib/components/icons';
 
     const features = useFeatureFlags();
 

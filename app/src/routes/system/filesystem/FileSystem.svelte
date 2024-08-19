@@ -1,10 +1,10 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
-    import FolderIcon from '~icons/mdi/folder-outline';
 	import Folder from "./Folder.svelte";
 	import { api } from "$lib/api";
 	import type { Directory } from "$lib/types/models";
+	import { FolderIcon } from "$lib/components/icons";
 
     let filename = '';
 

@@ -2,10 +2,9 @@
 	import { openModal, closeModal } from 'svelte-modals';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import OTA from '~icons/tabler/file-upload';
-	import Warning from '~icons/tabler/alert-triangle';
-	import Cancel from '~icons/tabler/x';
+
 	import { api } from '$lib/api';
+	import { Cancel, OTA, Warning } from '$lib/components/icons';
 
 	let files: FileList;
 

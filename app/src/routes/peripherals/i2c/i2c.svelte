@@ -1,9 +1,9 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
-    import MdiConnection from '~icons/mdi/connection';
 	import { onMount } from "svelte";
 	import { socket } from "$lib/stores";
     import type { I2CDevice } from "$lib/types/models";
+	import { Connection } from "$lib/components/icons";
 
     const i2cDevices = [
         {address:30,  part_number: "HMC5883", name: "3-Axis Digital Compass/Magnetometer IC"},
@@ -27,7 +27,7 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <MdiConnection slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+    <Connection slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     <span slot="title">I<sup>2</sup>C</span>
 
     <div class="grid">

@@ -1,8 +1,7 @@
 <script lang="ts">
 	import File from './File.svelte';
-    import FolderIcon from '~icons/mdi/folder-outline';
-    import FolderOpenOutline from '~icons/mdi/folder-open-outline';
 	import { createEventDispatcher } from 'svelte';
+	import { FolderIcon, FolderOpenOutline } from '$lib/components/icons';
 
 	export let expanded = false;
 	export let name;

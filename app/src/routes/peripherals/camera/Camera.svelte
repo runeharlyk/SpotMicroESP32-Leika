@@ -1,9 +1,8 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
-    import Camera from '~icons/mdi/camera-outline'
-    import Record from '~icons/mdi/radio-button-unchecked'
 	import CameraSetting from './CameraSetting.svelte';
 	import Stream from '$lib/components/Stream.svelte';
+	import { Camera } from "$lib/components/icons";
 </script>
 
 <SettingsCard collapsible={false}>

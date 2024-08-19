@@ -1,8 +1,7 @@
 <script lang="ts">
-    import Avatar from '~icons/mdi/user-circle';
-	import Logout from '~icons/mdi/logout';
 	import { user } from '$lib/stores';
 	import { useFeatureFlags } from "$lib/stores";
+	import { Avatar, Logout } from '../icons';
 
     const features = useFeatureFlags();
 </script>

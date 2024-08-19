@@ -1,6 +1,5 @@
 <script lang="ts">
-    import MdiEyeOutline from '~icons/mdi/eye-outline';
-    import MdiEyeOffOutline from '~icons/mdi/eye-off-outline';
+	import { MdiEyeOffOutline, MdiEyeOutline } from "../icons";
 
 	export let show = false;
 	export let value = '';

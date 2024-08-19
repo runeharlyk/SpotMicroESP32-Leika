@@ -1,5 +1,6 @@
 <script lang="ts">
-	import Loader from '~icons/tabler/loader-2';
+	import { Loader } from "./icons";
+
 </script>
 
 <div class="flex h-full w-full flex-col items-center justify-center p-6">

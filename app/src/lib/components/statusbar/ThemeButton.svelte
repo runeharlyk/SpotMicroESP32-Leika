@@ -1,6 +1,5 @@
 <script lang="ts">
-    import MdiWeatherSunny from '~icons/mdi/weather-sunny';
-	import MdiMoonAndStars from '~icons/mdi/moon-and-stars';
+	import { MdiWeatherSunny, MdiMoonAndStars } from "../icons";
 </script>
 
 <label class="swap swap-rotate">

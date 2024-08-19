@@ -2,9 +2,8 @@
 	import { useFeatureFlags } from '$lib/stores';
 	import { closeModal, openModal } from 'svelte-modals';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-    import Power from '~icons/tabler/power';
-	import Cancel from '~icons/tabler/x';
 	import { api } from '$lib/api';
+	import { Cancel, Power } from '../icons';
 
     const features = useFeatureFlags();
 

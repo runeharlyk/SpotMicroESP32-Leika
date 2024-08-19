@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { closeModal } from 'svelte-modals';
 	import { fly } from 'svelte/transition';
 	import InputPassword from '$lib/components/input/InputPassword.svelte';
-	import Cancel from '~icons/tabler/x';
-	import Save from '~icons/tabler/device-floppy';
+	import { Cancel, Save } from '$lib/components/icons';
 
 	// provided by <Modals />
 	export let isOpen: boolean;
@@ -93,8 +92,10 @@
 					>
 					<button
 						class="btn btn-primary text-primary-content inline-flex items-center"
-						type="submit"><Save class="mr-2 h-5 w-5" /><span>Save</span></button
-					>
+						type="submit"
+						><Save class="mr-2 h-5 w-5" />
+						Save
+					</button>
 				</div>
 			</form>
 		</div>

@@ -1,5 +1,5 @@
 <script>
-    import FileIcon from '~icons/mdi/file';
+	import { FileIcon } from '$lib/components/icons';
     import { createEventDispatcher } from 'svelte';
     
 	export let name;

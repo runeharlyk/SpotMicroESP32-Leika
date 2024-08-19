@@ -4,15 +4,14 @@
 	import { user } from '$lib/stores/user';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Firmware from '~icons/tabler/refresh-alert';
-	import Cancel from '~icons/tabler/x';
-	import CloudDown from '~icons/tabler/cloud-download';
+	
 	import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte';
 	import { compareVersions } from 'compare-versions';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import type { GithubRelease } from '$lib/types/models';
 	import { useFeatureFlags } from '$lib/stores/featureFlags';
+	import { Cancel, CloudDown, Firmware } from '../icons';
 
 	const features = useFeatureFlags();
 

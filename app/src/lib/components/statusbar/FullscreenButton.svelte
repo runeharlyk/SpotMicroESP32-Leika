@@ -1,7 +1,6 @@
 <script lang="ts">
     import { isFullscreen, toggleFullscreen } from '$lib/stores';
-    import MdiFullscreen from '~icons/mdi/fullscreen';
-	import MdiFullscreenExit from '~icons/mdi/fullscreen-exit';
+	import { MdiFullscreenExit, MdiFullscreen } from '../icons';
 </script>
 
 <button on:click={toggleFullscreen}>

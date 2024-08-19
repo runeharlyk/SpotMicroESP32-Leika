@@ -1,13 +1,13 @@
 <script lang="ts">
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import type { ServoConfiguration, Servo } from '$lib/types/models';
-	import MotorOutline from '~icons/mdi/motor-outline';
 	import ServoController from './servo.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	import { socket } from '$lib/stores';
 	import { onDestroy, onMount } from 'svelte';
 	import { throttler as Throttler } from '$lib/utilities';
+	import { MotorOutline } from '$lib/components/icons';
 
 	let isLoading = false;
 

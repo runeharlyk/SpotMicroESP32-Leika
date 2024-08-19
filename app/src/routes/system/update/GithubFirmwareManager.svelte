@@ -6,17 +6,13 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
-	import Github from '~icons/tabler/brand-github';
-	import CloudDown from '~icons/tabler/cloud-download';
-	import Cancel from '~icons/tabler/x';
-	import Prerelease from '~icons/tabler/test-pipe';
-	import Error from '~icons/tabler/circle-x';
+
 	import { compareVersions } from 'compare-versions';
 	import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
-	import Check from '~icons/tabler/check';
 	import { api } from '$lib/api';
 	import { useFeatureFlags } from '$lib/stores';
+	import { Cancel, Check, CloudDown, Github, Prerelease } from '$lib/components/icons';
 
     const features = useFeatureFlags();
 

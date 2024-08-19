@@ -4,23 +4,24 @@
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { user } from '$lib/stores/user';
-	import type { userProfile } from '$lib/stores/user';
-	import { page } from '$app/stores';
 	import { notifications } from '$lib/components/toasts/notifications';
 	import InputPassword from '$lib/components/input/InputPassword.svelte';
 	import SettingsCard from '$lib/components/SettingsCard.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import EditUser from './EditUser.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import Delete from '~icons/tabler/trash';
-	import AddUser from '~icons/tabler/user-plus';
-	import Edit from '~icons/tabler/pencil';
-	import Admin from '~icons/tabler/key';
-	import Users from '~icons/tabler/users';
-	import Warning from '~icons/tabler/alert-triangle';
-	import Cancel from '~icons/tabler/x';
-	import Check from '~icons/tabler/check';
+
 	import { api } from '$lib/api';
+	import {
+		Cancel,
+		Check,
+		Users,
+		AddUser,
+		Admin,
+		Edit,
+		Delete,
+		Warning
+	} from '$lib/components/icons';
 
 	type userSetting = {
 		username: string;
@@ -36,30 +37,30 @@
 	let securitySettings: SecuritySettings;
 
 	async function getSecuritySettings() {
-        const result = await api.get<SecuritySettings>('/api/securitySettings')
-        if (result.isErr()){
-            console.error('Error:', result.inner);
-            return
-        }
-        securitySettings = result.inner
+		const result = await api.get<SecuritySettings>('/api/securitySettings');
+		if (result.isErr()) {
+			console.error('Error:', result.inner);
+			return;
+		}
+		securitySettings = result.inner;
 	}
 
 	async function postSecuritySettings(data: SecuritySettings) {
-        const result = await api.post<SecuritySettings>('/api/securitySettings', data)
-        if (result.isErr()){
-            console.error('Error:', result.inner);
-            notifications.error('User not authorized.', 3000);
-            return
-        }
-        securitySettings = result.inner
-        if (await validateUser()) {
-            notifications.success('Security settings updated.', 3000);
-        }
+		const result = await api.post<SecuritySettings>('/api/securitySettings', data);
+		if (result.isErr()) {
+			console.error('Error:', result.inner);
+			notifications.error('User not authorized.', 3000);
+			return;
+		}
+		securitySettings = result.inner;
+		if (await validateUser()) {
+			notifications.success('Security settings updated.', 3000);
+		}
 	}
 
 	async function validateUser() {
-        const result = await api.get('/api/verifyAuthorization')
-        if (result.isErr()) user.invalidate();
+		const result = await api.get('/api/verifyAuthorization');
+		if (result.isErr()) user.invalidate();
 		return result.isOk();
 	}
 

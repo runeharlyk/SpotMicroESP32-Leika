@@ -2,15 +2,12 @@
 	import { closeModal } from 'svelte-modals';
 	import { focusTrap } from 'svelte-focus-trap';
 	import { fly } from 'svelte/transition';
-	import Network from '~icons/tabler/router';
-	import AP from '~icons/tabler/access-point';
-	import Cancel from '~icons/tabler/x';
-	import Reload from '~icons/tabler/reload';
+	
 	import { onMount, onDestroy } from 'svelte';
 	import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte';
-	import type { NetworkItem } from '$lib/types/models';
+	import type { NetworkItem, NetworkList } from '$lib/types/models';
 	import { api } from '$lib/api';
-	import type { NetworkList } from '$lib/types/models';
+	import { AP, Network, Reload, Cancel } from '$lib/components/icons';
 
 	// provided by <Modals />
 	export let isOpen: boolean;
@@ -115,8 +112,7 @@
 									<div class="flex-grow" />
 									<RssiIndicator
 										showDBm={true}
-										rssi_dbm={network.rssi}
-										class="text-base-content h-10 w-10"
+										rssi={network.rssi}
 									/>
 								</div>
 							</li>
