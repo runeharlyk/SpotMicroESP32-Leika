@@ -23,8 +23,10 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
+            ~/.pio
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio
 
       - uses: actions/setup-python@v4
         with:
