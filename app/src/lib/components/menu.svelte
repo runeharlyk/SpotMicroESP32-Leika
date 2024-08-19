@@ -24,6 +24,9 @@
 	import { page } from '$app/stores';
 	import { user } from '$lib/stores/user';
 	import { createEventDispatcher } from 'svelte';
+	import { useFeatureFlags } from '$lib/stores/featureFlags';
+
+    const features = useFeatureFlags();
 
 	const appName = $page.data.app_name;
 
@@ -70,7 +73,7 @@
 					title: 'Camera',
 					icon: Camera,
 					href: '/peripherals/camera',
-					feature: $page.data.features.camera,
+					feature: $features.camera,
 				},
                 {
 					title: 'Servo',
@@ -82,20 +85,20 @@
 					title: 'IMU',
 					icon: Rotate3d,
 					href: '/peripherals/imu',
-					feature: $page.data.features.imu || $page.data.features.mag || $page.data.features.bmp,
+					feature: $features.imu || $features.mag || $features.bmp,
 				}
 			]
 		},
 		{
 			title: 'Connections',
 			icon: Remote,
-			feature: $page.data.features.ntp,
+			feature: $features.ntp,
 			submenu: [
 				{
 					title: 'NTP',
 					icon: NTP,
 					href: '/connections/ntp',
-					feature: $page.data.features.ntp,
+					feature: $features.ntp,
 					
 				}
 			]
@@ -125,7 +128,7 @@
 			title: 'Users',
 			icon: Users,
 			href: '/user',
-			feature: $page.data.features.security && $user.admin,
+			feature: $features.security && $user.admin,
 			
 		},
 		{
@@ -151,7 +154,7 @@
 					title: 'System Metrics',
 					icon: Metrics,
 					href: '/system/metrics',
-					feature: $page.data.features.analytics,
+					feature: $features.analytics,
 					
 				},
 				{
@@ -159,10 +162,10 @@
 					icon: Update,
 					href: '/system/update',
 					feature:
-						($page.data.features.ota ||
-							$page.data.features.upload_firmware ||
-							$page.data.features.download_firmware) &&
-						(!$page.data.features.security || $user.admin),
+						($features.ota ||
+							$features.upload_firmware ||
+							$features.download_firmware) &&
+						(!$features.security || $user.admin),
 				}
 			]
 		}
@@ -245,7 +248,7 @@
 	<div class="flex-col" />
 	<div class="flex-grow" />
 
-	{#if $page.data.features.security}
+	{#if $features.security}
 		<div class="flex items-center">
 			<Avatar class="h-8 w-8" />
 			<span class="flex-grow px-4 text-xl font-bold">{$user.username}</span>

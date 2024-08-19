@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SettingsCard from "$lib/components/SettingsCard.svelte";
     import MdiConnection from '~icons/mdi/connection';
-	import { onDestroy, onMount } from "svelte";
+	import { onMount } from "svelte";
 	import { socket } from "$lib/stores";
     import type { I2CDevice } from "$lib/types/models";
 
@@ -18,10 +18,7 @@
     onMount(() => {
         socket.on('i2cScan', handleScan);
         socket.sendEvent('i2cScan', "");
-    })
-
-    onDestroy(() => {
-        socket.off('i2cScan', handleScan);
+        return () => socket.off('i2cScan', handleScan);
     })
 
     const handleScan = (data: any) => {

@@ -7,7 +7,7 @@
 	import Cancel from '~icons/tabler/x';
 	import Reload from '~icons/tabler/reload';
 	import { onMount, onDestroy } from 'svelte';
-	import RssiIndicator from '$lib/components/RSSIIndicator.svelte';
+	import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte';
 	import type { NetworkItem } from '$lib/types/models';
 	import { api } from '$lib/api';
 	import type { NetworkList } from '$lib/models';

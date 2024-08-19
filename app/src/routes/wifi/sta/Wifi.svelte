@@ -33,8 +33,10 @@
 	import Check from '~icons/tabler/check';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import type { KnownNetworkItem, WifiSettings, WifiStatus } from '$lib/types/models';
-	import { socket } from '$lib/stores';
+	import { socket, useFeatureFlags } from '$lib/stores';
 	import { api } from '$lib/api';
+
+    const features = useFeatureFlags();
 
 	let networkEditable: KnownNetworkItem = {
 		ssid: '',
@@ -435,7 +437,7 @@
 		{/await}
 	</div>
 
-	{#if !$page.data.features.security || $user.admin}
+	{#if !$features.security || $user.admin}
 		<div class="bg-base-200 relative grid w-full max-w-2xl self-center overflow-hidden">
 			<div
 				class="min-h-16 flex w-full items-center justify-between space-x-3 p-0 text-xl font-medium"
@@ -489,7 +491,7 @@
 								<div>
 									<div class="font-bold">{dndNetworkList[index].ssid}</div>
 								</div>
-								{#if !$page.data.features.security || $user.admin}
+								{#if !$features.security || $user.admin}
 									<div class="flex-grow" />
 									<div class="space-x-0 px-0 mx-0">
 										<button

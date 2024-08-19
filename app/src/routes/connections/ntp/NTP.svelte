@@ -16,6 +16,9 @@
 	import Stopwatch from '~icons/tabler/24-hours';
 	import type { NTPSettings, NTPStatus } from '$lib/types/models';
 	import { api } from '$lib/api';
+	import { useFeatureFlags } from '$lib/stores/featureFlags';
+
+    const features = useFeatureFlags();
 
 	let ntpSettings: NTPSettings;
 	let ntpStatus: NTPStatus;
@@ -45,7 +48,7 @@
 	onDestroy(() => clearInterval(interval));
 
 	onMount(() => {
-		if (!$page.data.features.security || $user.admin) {
+		if (!$features.security || $user.admin) {
 			getNTPSettings();
 		}
 	});
@@ -209,7 +212,7 @@
 		{/await}
 	</div>
 
-	{#if !$page.data.features.security || $user.admin}
+	{#if !$features.security || $user.admin}
 		<Collapsible open={false} on:closed={getNTPSettings}>
 			<span slot="title">Change NTP Settings</span>
 			<form

@@ -6,7 +6,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { Chart, registerables } from 'chart.js';
 	import Metrics from '~icons/tabler/report-analytics';
-	import { daisyColor } from '$lib/DaisyUiHelper';
+	import { daisyColor } from '$lib/utilities';
 	import { analytics } from '$lib/stores/analytics';
 
 	Chart.register(...registerables);

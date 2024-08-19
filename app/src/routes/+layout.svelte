@@ -6,14 +6,14 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import { fade } from 'svelte/transition';
 	import '../app.css';
-	import Menu from './menu.svelte';
-	import Statusbar from './statusbar.svelte';
-	import Login from './login.svelte';
+	import Menu from '../lib/components/menu.svelte';
+	import Statusbar from '../lib/components/statusbar/statusbar.svelte';
+	import Login from '../lib/components/login.svelte';
 	import {
 		telemetry,
 		analytics,
 		user,
-		type userProfile,
+		type UserProfile,
 		ModesEnum,
 		kinematicData,
 		mode,
@@ -24,12 +24,15 @@
 	} from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 	import { api } from '$lib/api';
+    import { useFeatureFlags } from '$lib/stores/featureFlags';
+
+    const features = useFeatureFlags();
 
 	onMount(async () => {
 		if ($user.bearer_token !== '') {
 			await validateUser($user);
 		}
-		const ws_token = $page.data.features.security ? '?access_token=' + $user.bearer_token : '';
+		const ws_token = $features.security ? '?access_token=' + $user.bearer_token : '';
 		socket.init(`ws://${window.location.host}/ws/events${ws_token}`);
 
 		addEventListeners();
@@ -53,10 +56,10 @@
 		socket.on('angles', (angles: number[]) => {
 			if (angles.length) servoAngles.set(angles);
 		});
-		if ($page.data.features.analytics) socket.on('analytics', handleAnalytics);
-		if ($page.data.features.battery) socket.on('battery', handleBattery);
-		if ($page.data.features.download_firmware) socket.on('otastatus', handleOAT);
-		if ($page.data.features.sonar) socket.on('sonar', (data) => console.log(data));
+		if ($features.analytics) socket.on('analytics', handleAnalytics);
+		if ($features.battery) socket.on('battery', handleBattery);
+		if ($features.download_firmware) socket.on('otastatus', handleOAT);
+		if ($features.sonar) socket.on('sonar', (data) => console.log(data));
 	};
 
 	const removeEventListeners = () => {
@@ -68,7 +71,7 @@
 		socket.off('otastatus', handleOAT);
 	};
 
-	async function validateUser(userdata: userProfile) {
+	async function validateUser(userdata: UserProfile) {
 		const result = await api.get('/api/verifyAuthorization');
 		if (result.isErr()) {
 			user.invalidate();
@@ -81,7 +84,7 @@
 	};
 
 	const handleClose = () => {
-		// notifications.error('Connection to device lost', 5000);
+		notifications.error('Connection to device lost', 5000);
 		telemetry.setRSSI(0);
 	};
 
@@ -102,7 +105,7 @@
 	<title>{$page.data.title}</title>
 </svelte:head>
 
-{#if $page.data.features.security && $user.bearer_token === ''}
+{#if $features.security && $user.bearer_token === ''}
 	<Login />
 {:else}
 	<div class="drawer">

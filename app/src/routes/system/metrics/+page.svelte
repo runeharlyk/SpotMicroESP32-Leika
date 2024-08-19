@@ -1,9 +1,11 @@
 <script lang="ts">
 	import SystemMetrics from './SystemMetrics.svelte';
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { useFeatureFlags } from '$lib/stores/featureFlags';
 
-	if (!$page.data.features.analytics) {
+    const features = useFeatureFlags();
+
+	if (!$features.analytics) {
 		goto('/');
 	}
 </script>
