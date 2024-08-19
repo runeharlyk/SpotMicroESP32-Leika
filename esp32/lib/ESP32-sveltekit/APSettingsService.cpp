@@ -66,7 +66,7 @@ void APSettingsService::manageAP() {
 }
 
 void APSettingsService::startAP() {
-    ESP_LOGI(TAG, "Starting software access point");
+    ESP_LOGI(TAG, "Starting software access point: %s", _state.ssid.c_str());
     WiFi.softAPConfig(_state.localIP, _state.gatewayIP, _state.subnetMask);
     WiFi.softAP(_state.ssid.c_str(), _state.password.c_str(), _state.channel, _state.ssidHidden, _state.maxClients);
 #if CONFIG_IDF_TARGET_ESP32C3
