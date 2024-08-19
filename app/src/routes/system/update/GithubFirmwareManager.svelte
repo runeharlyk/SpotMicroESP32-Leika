@@ -16,6 +16,9 @@
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import Check from '~icons/tabler/check';
 	import { api } from '$lib/api';
+	import { useFeatureFlags } from '$lib/stores';
+
+    const features = useFeatureFlags();
 
 	async function getGithubAPI() {
         const headers = {
@@ -45,7 +48,7 @@
 			// check if the asset is of type *.bin
 			if (
 				assets[i].name.includes('.bin') &&
-				assets[i].name.includes($page.data.features.firmware_built_target)
+				assets[i].name.includes($features.firmware_built_target)
 			) {
 				url = assets[i].browser_download_url;
 			}
@@ -99,7 +102,7 @@
 					<tbody>
 						{#each githubReleases as release}
 							<tr
-								class={compareVersions($page.data.features.firmware_version, release.tag_name) === 0
+								class={compareVersions($features.firmware_version, release.tag_name) === 0
 									? 'bg-primary text-primary-content'
 									: 'bg-base-100 h-14'}
 							>
@@ -124,7 +127,7 @@
 									{/if}
 								</td>
 								<td align="center">
-									{#if compareVersions($page.data.features.firmware_version, release.tag_name) != 0}
+									{#if compareVersions($features.firmware_version, release.tag_name) != 0}
 										<button
 											class="btn btn-ghost btn-circle btn-sm"
 											on:click={() => {

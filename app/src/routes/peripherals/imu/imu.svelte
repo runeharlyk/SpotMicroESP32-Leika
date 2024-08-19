@@ -6,10 +6,12 @@
 	import { cubicOut } from "svelte/easing";
 	import { slide } from "svelte/transition";
 	import { onDestroy, onMount } from "svelte";
-	import { daisyColor } from "$lib/DaisyUiHelper";
+	import { daisyColor } from "$lib/utilities";
 	import { socket } from "$lib/stores";
 	import type { IMU } from "$lib/types/models";
-	import { page } from "$app/stores";
+	import { useFeatureFlags } from "$lib/stores/featureFlags";
+
+    const features = useFeatureFlags();
 
     Chart.register(...registerables);
 
@@ -242,7 +244,7 @@
     })
 
     const updateData = () => {
-        if ($page.data.features.imu) {
+        if ($features.imu) {
             angleChart.data.labels = $imu.x;
             angleChart.data.datasets[0].data = $imu.x;
             angleChart.data.datasets[1].data = $imu.y;
@@ -252,7 +254,7 @@
             angleChart.update('none');
         }
 
-        if ($page.data.features.bmp) {
+        if ($features.bmp) {
             tempChart.data.labels = $imu.bmp_temp;
             tempChart.data.datasets[0].data = $imu.bmp_temp;
             tempChart.options.scales!.y!.min = Math.min(...$imu.bmp_temp) - 1;
@@ -272,7 +274,7 @@
 <SettingsCard collapsible={false}>
     <Rotate3d slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     <span slot="title">IMU</span>
-    {#if $page.data.features.imu} 
+    {#if $features.imu} 
         <div class="w-full overflow-x-auto">
             <div
             class="flex w-full flex-col space-y-1 h-60"
@@ -282,7 +284,7 @@
             </div>
         </div>
     {/if}
-    {#if $page.data.features.bmp} 
+    {#if $features.bmp} 
         <div class="w-full overflow-x-auto">
             <div
                 class="flex w-full flex-col space-y-1 h-60"

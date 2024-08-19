@@ -14,6 +14,9 @@
 	import Devices from '~icons/tabler/devices';
 	import type { ApSettings, ApStatus } from '$lib/types/models';
 	import { api } from '$lib/api';
+	import { useFeatureFlags } from '$lib/stores';
+
+    const features = useFeatureFlags();
 
 	let apSettings: ApSettings;
 	let apStatus: ApStatus;
@@ -47,7 +50,7 @@
 	onDestroy(() => clearInterval(interval));
 
 	onMount(() => {
-		if (!$page.data.features.security || $user.admin) {
+		if (!$features.security || $user.admin) {
 			getAPSettings();
 		}
 	});
@@ -221,7 +224,7 @@
 		{/await}
 	</div>
 
-	{#if !$page.data.features.security || $user.admin}
+	{#if !$features.security || $user.admin}
 		<div class="bg-base-200 relative grid w-full max-w-2xl self-center overflow-hidden">
 			<div
 				class="min-h-16 flex w-full items-center justify-between space-x-3 p-0 text-xl font-medium"

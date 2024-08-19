@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { daisyColor } from "$lib/DaisyUiHelper";
+	import { daisyColor } from "$lib/utilities";
 	import { Chart, registerables } from "chart.js";
 	import { onMount } from "svelte";
 	import { cubicOut } from "svelte/easing";

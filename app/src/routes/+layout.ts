@@ -13,10 +13,7 @@ const registerFetchIntercept = async () => {
 
 export const load = async () => {
 	await registerFetchIntercept();
-	const result = await fetch('/api/features');
-	const features = await result.json();
 	return {
-		features,
 		title: 'Spot micro controller',
 		github: 'runeharlyk/SpotMicroESP32-Leika',
 		app_name: 'Spot Micro Controller',

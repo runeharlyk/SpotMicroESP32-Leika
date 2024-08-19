@@ -1,55 +1,40 @@
-import { writable } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { jwtDecode } from 'jwt-decode';
+import { persistentStore } from '$lib/utilities';
 
-export type userProfile = {
+export type UserProfile = {
 	username: string;
 	admin: boolean;
 	bearer_token: string;
 };
 
-type decodedJWT = {
-	username: string;
-	admin: boolean;
-};
+type DecodedJWT = Omit<UserProfile, 'bearer_token'>;
 
-let empty = {
+const emptyUser: UserProfile = {
 	username: '',
 	admin: false,
 	bearer_token: ''
 };
 
-function createStore() {
-	const { subscribe, set } = writable(empty);
-
-	// retrieve store from sessionStorage / localStorage if available
-	const userdata = localStorage.getItem('user');
-	if (userdata) {
-		set(JSON.parse(userdata));
-	}
+function createUserStore() {
+	const store = persistentStore<UserProfile>('user', emptyUser);
 
 	return {
-		subscribe,
+		subscribe: store.subscribe,
 		init: (access_token: string) => {
-			const decoded: decodedJWT = jwtDecode(access_token);
-			const userdata = {
+			const decoded: DecodedJWT = jwtDecode(access_token);
+			const userProfile: UserProfile = {
 				bearer_token: access_token,
 				username: decoded.username,
 				admin: decoded.admin
 			};
-			set(userdata);
-			// persist store in sessionStorage / localStorage
-			localStorage.setItem('user', JSON.stringify(userdata));
+			store.set(userProfile);
 		},
 		invalidate: () => {
-			console.log('Log out user');
-			set(empty);
-			// remove localStorage "user"
-			localStorage.removeItem('user');
-			// redirect to login page
+			store.set(emptyUser);
 			goto('/');
 		}
 	};
 }
 
-export const user = createStore();
+export const user = createUserStore();

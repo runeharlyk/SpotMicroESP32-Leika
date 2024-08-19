@@ -29,6 +29,10 @@
 	import { api } from '$lib/api';
 	import { convertSeconds } from '$lib/utilities';
 
+    import { useFeatureFlags } from '$lib/stores/featureFlags';
+    
+    const features = useFeatureFlags()
+
 	let systemInformation: SystemInformation;
 
 	async function getSystemStatus() {
@@ -295,12 +299,12 @@
 	</div>
 
 	<div class="mt-4 flex flex-wrap justify-end gap-2">
-		{#if $page.data.features.sleep}
+		{#if $features.sleep}
 			<button class="btn btn-primary inline-flex items-center" on:click={confirmSleep}
 				><Sleep class="mr-2 h-5 w-5" /><span>Sleep</span></button
 			>
 		{/if}
-		{#if !$page.data.features.security || $user.admin}
+		{#if !$features.security || $user.admin}
 			<button class="btn btn-primary inline-flex items-center" on:click={confirmRestart}
 				><Power class="mr-2 h-5 w-5" /><span>Restart</span></button
 			>
