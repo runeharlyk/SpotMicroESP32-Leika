@@ -1,6 +1,8 @@
 #ifndef CameraSettingsService_h
 #define CameraSettingsService_h
 
+namespace Camera {
+
 #include <CameraService.h>
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
@@ -202,5 +204,7 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
     EventEndpoint<CameraSettings> _eventEndpoint;
     FSPersistence<CameraSettings> _fsPersistence;
 };
+
+} // namespace Camera
 
 #endif // end CameraSettingsService_h
