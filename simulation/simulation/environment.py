@@ -2,6 +2,7 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 from simulation.robot import QuadrupedRobot
+from simulation.gui import GUI
 
 
 roll_pitch_reward_weight = 0.1
@@ -16,6 +17,7 @@ class QuadrupedEnv:
         self.urdf_path = urdf_path
 
         self.setupWorld()
+        self.gui = GUI(self.robot.robot_id)
 
         self.envStartState = p.saveState()
 
@@ -32,6 +34,7 @@ class QuadrupedEnv:
         return self.robot.get_observation()
 
     def step(self, action):
+        self.gui.update()
         self.robot.apply_action(action)
         p.stepSimulation()
         obs = self.robot.get_observation()
