@@ -5,7 +5,7 @@ import numpy as np
 class QuadrupedRobot:
     def __init__(self, urdf_path):
         self.urdf_path = urdf_path
-        self.robot_id = None
+        self.load()
 
     def load(self):
         position = [0, 0, 0.3]
