@@ -7,3 +7,4 @@ export * from './telemetry';
 export * from './analytics';
 export * from './user';
 export * from './featureFlags';
+export * from './location-store';
