@@ -15,6 +15,7 @@ class QuadrupedEnv:
         p.setGravity(0, 0, -9.8)
         p.setTimeStep(1 / 240)
         self.urdf_path = urdf_path
+        self.numSolverIterations = 50
 
         self.setupWorld()
         self.gui = GUI(self.robot.robot_id)
@@ -23,6 +24,7 @@ class QuadrupedEnv:
 
     def setupWorld(self):
         p.resetSimulation()
+        p.setPhysicsEngineParameter(numSolverIterations=self.numSolverIterations)
         p.setGravity(0, 0, -9.8)
 
         self.plane_id = p.loadURDF("plane.urdf")
