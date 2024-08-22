@@ -32,7 +32,6 @@ class QuadrupedRobot:
         )
 
     def apply_action(self, action):
-        print(action)
         for i, position in enumerate(action):
             p.setJointMotorControl2(
                 bodyIndex=self.robot_id,
