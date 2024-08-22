@@ -50,6 +50,8 @@ class GUI:
         self.updateCamera()
         self.handleInput()
 
+    def getInput(self):
+        self.update()
         position = np.array(
             [
                 pb.readUserDebugParameter(self.xId),
