@@ -47,6 +47,12 @@
 
 	$: menuItems = [
 		{
+			title: 'Connection',
+			icon: WiFi,
+			href: '/connection',
+			feature: true
+		},
+		{
 			title: 'Controller',
 			icon: MdiController,
 			href: '/controller',
@@ -159,9 +165,9 @@
 	const dispatch = createEventDispatcher();
 
 	function setActiveMenuItem(targetTitle: string) {
-		menuItems.forEach((item) => {
+		menuItems.forEach(item => {
 			item.active = item.title === targetTitle;
-			item.submenu?.forEach((subItem) => {
+			item.submenu?.forEach(subItem => {
 				subItem.active = subItem.title === targetTitle;
 			});
 		});
