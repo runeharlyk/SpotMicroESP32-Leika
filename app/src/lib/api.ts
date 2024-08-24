@@ -1,6 +1,7 @@
 import { user } from '$lib/stores/user';
 import { get } from 'svelte/store';
 import { Err, Ok, type Result } from './utilities';
+import { location } from './stores';
 
 export namespace api {
 	export function get<TResponse>(endpoint: string, params?: RequestInit) {
@@ -26,6 +27,7 @@ async function sendRequest<TResponse>(
 	data?: unknown,
 	params?: RequestInit
 ): Promise<Result<TResponse, Error>> {
+	endpoint = resolveUrl(endpoint);
 	const user_token = get(user).bearer_token;
 	const body = data !== null && typeof data !== 'undefined' ? JSON.stringify(data) : undefined;
 
@@ -64,6 +66,12 @@ async function sendRequest<TResponse>(
 		// Handle empty object as response
 		return Ok.new(null as TResponse);
 	}
+}
+
+function resolveUrl(url: string): string {
+	if (url.startsWith('http') || !get(location)) return url;
+	const protocol = window.location.protocol;
+	return `${protocol}//${get(location)}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 export class ApiError extends Error {
