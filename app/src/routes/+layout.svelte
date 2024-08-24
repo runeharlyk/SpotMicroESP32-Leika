@@ -20,7 +20,8 @@
 		outControllerData,
 		servoAngles,
 		servoAnglesOut,
-		socket
+		socket,
+		location
 	} from '$lib/stores';
 	import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
 	import { api } from '$lib/api';
@@ -33,7 +34,7 @@
 			await validateUser($user);
 		}
 		const ws_token = $features.security ? '?access_token=' + $user.bearer_token : '';
-		socket.init(`ws://${window.location.host}/ws/events${ws_token}`);
+		socket.init(`ws://${$location}/ws/events${ws_token}`);
 
 		addEventListeners();
 
