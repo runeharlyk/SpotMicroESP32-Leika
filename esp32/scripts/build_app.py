@@ -79,7 +79,7 @@ def build_webapp():
         print(f"Building interface with {package_manager}")
         os.chdir(interface_dir)
         env.Execute(f"{package_manager} install")
-        env.Execute(f"{package_manager} run build")
+        env.Execute(f"{package_manager} run build:embedded")
         os.chdir("..")
     else:
         raise Exception(
