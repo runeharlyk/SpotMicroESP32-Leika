@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { user } from '$lib/stores/user';
 	import { onDestroy } from 'svelte';
-	import { location } from '$lib/utilities';
+	import { user, location } from '$lib/stores';
 
-	let source = `//${location}/api/camera/stream?access_token=${$user.bearer_token}`;
+	let source = `${$location}/api/camera/stream?access_token=${$user.bearer_token}`;
 
 	onDestroy(() => (source = '#'));
 </script>
