@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { page } from '$app/stores';
+	import { page } from '$app/stores';
 	import { user } from '$lib/stores/user';
 	import { createEventDispatcher } from 'svelte';
 	import { useFeatureFlags } from '$lib/stores/featureFlags';
@@ -27,6 +27,7 @@
 		NTP,
 		Metrics
 	} from '$lib/components/icons';
+	import appEnv from 'app-env';
 
 	const features = useFeatureFlags();
 
@@ -50,7 +51,7 @@
 			title: 'Connection',
 			icon: WiFi,
 			href: '/connection',
-			feature: true
+			feature: !appEnv.VITE_USE_HOST_NAME
 		},
 		{
 			title: 'Controller',
