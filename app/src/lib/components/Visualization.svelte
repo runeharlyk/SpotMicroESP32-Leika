@@ -2,7 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3, type NormalBufferAttributes, type Object3DEventMap } from 'three';
 	import { ModesEnum, kinematicData, mode, model, outControllerData, servoAnglesOut, servoAngles, mpu, jointNames } from '$lib/stores';
-	import { footColor, isEmbeddedApp, populateModelCache, throttler, toeWorldPositions } from '$lib/utilities';
+	import { footColor, populateModelCache, throttler, toeWorldPositions } from '$lib/utilities';
 	import SceneBuilder from '$lib/sceneBuilder';
 	import { lerp, degToRad } from 'three/src/math/MathUtils';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -78,8 +78,8 @@
 	onMount(async () => {
         await populateModelCache();
         await createScene();
-        if (!isEmbeddedApp && panel) createPanel();
         servoAngles.subscribe(updateAnglesFromStore)
+		if (!panel) createPanel();
 	});
 
     onDestroy(() => {
