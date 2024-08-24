@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@niku/vite-env-caster':
+        specifier: ^1.0.2
+        version: 1.0.2
       chart.js:
         specifier: ^4.4.2
         version: 4.4.2
@@ -357,6 +360,9 @@ packages:
 
   '@kurkle/color@0.3.2':
     resolution: {integrity: sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==}
+
+  '@niku/vite-env-caster@1.0.2':
+    resolution: {integrity: sha512-1K3lp+k8rzyKaEkOaozbl1leEODI2QNVxSrdLqNOOsblXVAipu90fs+4YdemAXI8chwi9hqF/zZ2mxRzUymQYg==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -2284,6 +2290,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.4.15
 
   '@kurkle/color@0.3.2': {}
+
+  '@niku/vite-env-caster@1.0.2': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
