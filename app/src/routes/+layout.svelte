@@ -34,7 +34,8 @@
 			await validateUser($user);
 		}
 		const ws_token = $features.security ? '?access_token=' + $user.bearer_token : '';
-		socket.init(`ws://${$location}/ws/events${ws_token}`);
+		const ws = $location ? $location : window.location.host;
+		socket.init(`ws://${ws}/ws/events${ws_token}`);
 
 		addEventListeners();
 
