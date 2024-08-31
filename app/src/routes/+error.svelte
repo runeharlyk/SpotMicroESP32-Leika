@@ -2,11 +2,7 @@
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
 
-    onMount(() => {
-        setTimeout(() => {
-            goto('/');
-        }, 3000);
-    });
+    onMount(() => setTimeout(() => goto('/'), 3000));
 </script>
 
 <div class="flex justify-center items-center w-full h-full">
