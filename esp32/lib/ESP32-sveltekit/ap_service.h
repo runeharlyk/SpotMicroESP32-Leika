@@ -2,7 +2,7 @@
 #include <stateful_service_endpoint.h>
 #include <FSPersistence.h>
 #include <ap_settings.h>
-#include <timing.h>
+#include <Timing.h>
 #include <WiFi.h>
 
 class APService : public StatefulService<APSettings> {
