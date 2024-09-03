@@ -21,6 +21,7 @@
 #include <JsonUtils.h>
 #include <WiFi.h>
 #include <Timing.h>
+#include <ESPFS.h>
 
 #include <DNSServer.h>
 #include <IPAddress.h>
@@ -61,7 +62,6 @@
 #define FACTORY_AP_MAX_CLIENTS 4
 #endif
 
-#define AP_SETTINGS_FILE "/config/apSettings.json"
 #define AP_SETTINGS_SERVICE_PATH "/api/apSettings"
 
 #define AP_MODE_ALWAYS 0

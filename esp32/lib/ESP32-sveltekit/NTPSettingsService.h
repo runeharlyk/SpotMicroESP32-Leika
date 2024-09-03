@@ -18,6 +18,7 @@
 #include <HttpEndpoint.h>
 #include <FSPersistence.h>
 #include <WiFi.h>
+#include <ESPFS.h>
 
 #include <time.h>
 #include <lwip/apps/sntp.h>
@@ -38,7 +39,6 @@
 #define FACTORY_NTP_SERVER "time.google.com"
 #endif
 
-#define NTP_SETTINGS_FILE "/config/ntpSettings.json"
 #define NTP_SETTINGS_SERVICE_PATH "/api/ntpSettings"
 
 #define TIME_PATH "/api/time"

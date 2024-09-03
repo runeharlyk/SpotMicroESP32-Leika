@@ -13,8 +13,8 @@ namespace Camera {
 #include <SettingValue.h>
 #include <StatefulService.h>
 #include <esp_camera.h>
+#include <ESPFS.h>
 
-#define CAMERA_SETTINGS_FILE "/config/cameraSettings.json"
 #define EVENT_CAMERA_SETTINGS "CameraSettings"
 #define CAMERA_SETTINGS_PATH "/api/camera/settings"
 

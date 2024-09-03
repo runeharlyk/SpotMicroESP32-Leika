@@ -8,6 +8,7 @@
 #include <StatefulService.h>
 #include <MathUtils.h>
 #include <Timing.h>
+#include <ESPFS.h>
 
 #include <list>
 #include <SPI.h>
@@ -21,7 +22,6 @@
 #include <Adafruit_ADS1X15.h>
 #include <NewPing.h>
 
-#define DEVICE_CONFIG_FILE "/config/peripheral.json"
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 #define CONFIGURATION_SETTINGS_PATH "/api/peripheral/settings"
 
