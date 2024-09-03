@@ -21,9 +21,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _taskManager(),
       _featureService(server),
       _securitySettingsService(server, &ESPFS),
-      _wifiSettingsService(server, &ESPFS, &_securitySettingsService, &_socket),
-      _wifiScanner(server, &_securitySettingsService),
-      _wifiStatus(server, &_securitySettingsService),
       _apSettingsService(server, &ESPFS, &_securitySettingsService),
       _apStatus(server, &_securitySettingsService, &_apSettingsService),
       _socket(server, &_securitySettingsService, AuthenticationPredicates::IS_AUTHENTICATED),
@@ -72,13 +69,11 @@ void ESP32SvelteKit::begin() {
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
 
-    _wifiSettingsService.initWiFi();
+    startServices();
 
     setupServer();
 
     setupMDNS();
-
-    startServices();
 
     ESP_LOGV("ESP32SvelteKit", "Starting loop task");
     _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, ESP32SVELTEKIT_RUNNING_CORE);
@@ -87,6 +82,17 @@ void ESP32SvelteKit::begin() {
 void ESP32SvelteKit::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
     _server->listen(80);
+
+    _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
+    _server->on("/api/wifi/networks", HTTP_GET,
+                [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
+    _server->on("/api/wifi/sta/status", HTTP_GET,
+                [this](PsychicRequest *request) { return _wifiService.getNetworkStatus(request); });
+    _server->on("/api/wifi/sta/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _wifiService.endpoint.getState(request); });
+    _server->on("/api/wifi/sta/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _wifiService.endpoint.handleStateUpdate(request, json);
+    });
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
@@ -140,7 +146,7 @@ void ESP32SvelteKit::setupServer() {
 
 void ESP32SvelteKit::setupMDNS() {
     ESP_LOGV("ESP32SvelteKit", "Starting MDNS");
-    MDNS.begin(_wifiSettingsService.getHostname().c_str());
+    MDNS.begin(_wifiService.getHostname());
     MDNS.setInstanceName(_appName);
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 80);
@@ -148,6 +154,7 @@ void ESP32SvelteKit::setupMDNS() {
 }
 
 void ESP32SvelteKit::startServices() {
+    _wifiService.begin();
     _apStatus.begin();
     _socket.begin();
     _apSettingsService.begin();
@@ -155,9 +162,6 @@ void ESP32SvelteKit::startServices() {
     _featureService.begin();
     _restartService.begin();
     _systemStatus.begin();
-    _wifiSettingsService.begin();
-    _wifiScanner.begin();
-    _wifiStatus.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
@@ -203,7 +207,7 @@ void IRAM_ATTR ESP32SvelteKit::loop() {
 #if FT_ENABLED(USE_WS2812)
         _ledService.loop();
 #endif
-        _wifiSettingsService.loop();
+        _wifiService.loop();
         _apSettingsService.loop();
 #if FT_ENABLED(USE_ANALYTICS)
         _analyticsService.loop();

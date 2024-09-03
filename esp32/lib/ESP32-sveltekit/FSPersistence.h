@@ -10,6 +10,7 @@
  *
  *   Copyright (C) 2018 - 2023 rjwats
  *   Copyright (C) 2023 theelims
+ *   Copyright (C) 2024 runeharlyk
  *
  *   All Rights Reserved. This software may be modified and distributed under
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
@@ -17,6 +18,7 @@
 
 #include <FS.h>
 #include <StatefulService.h>
+#include <ESPFS.h>
 
 template <class T>
 class FSPersistence {

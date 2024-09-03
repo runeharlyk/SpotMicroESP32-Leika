@@ -1,60 +1,17 @@
-#ifndef WiFiSettingsService_h
-#define WiFiSettingsService_h
+#pragma once
 
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
-
-#include <EventEndpoint.h>
-#include <EventSocket.h>
-#include <FSPersistence.h>
-#include <HttpEndpoint.h>
-#include <JsonUtils.h>
-#include <PsychicHttp.h>
-#include <SecurityManager.h>
-#include <SettingValue.h>
-#include <StatefulService.h>
 #include <WiFi.h>
-#include <WiFiMulti.h>
-#include <vector>
-#include <Timing.h>
-#include <ESPFS.h>
-
-#ifndef FACTORY_WIFI_SSID
-#define FACTORY_WIFI_SSID ""
-#endif
-
-#ifndef FACTORY_WIFI_PASSWORD
-#define FACTORY_WIFI_PASSWORD ""
-#endif
-
-#ifndef FACTORY_WIFI_HOSTNAME
-#define FACTORY_WIFI_HOSTNAME "#{platform}-#{unique_id}"
-#endif
+#include <IPAddress.h>
+#include <ArduinoJson.h>
+#include <JsonUtils.h>
+#include <IPUtils.h>
+#include <SettingValue.h>
+#include <state_result.h>
 
 #ifndef FACTORY_WIFI_RSSI_THRESHOLD
 #define FACTORY_WIFI_RSSI_THRESHOLD -80
 #endif
 
-#define WIFI_SETTINGS_SERVICE_PATH "/api/wifiSettings"
-
-#define WIFI_RECONNECTION_DELAY 1000 * 30
-#define RSSI_EVENT_DELAY 500
-
-#define EVENT_RSSI "rssi"
-#define EVENT_WIFI_SETTINGS "WiFiSettings"
-
-// Struct defining the wifi settings
 typedef struct {
     String ssid;
     String password;
@@ -69,7 +26,6 @@ typedef struct {
 
 class WiFiSettings {
   public:
-    // core wifi configuration
     String hostname;
     bool priorityBySignalStrength;
     std::vector<wifi_settings_t> wifiSettings;
@@ -186,34 +142,3 @@ class WiFiSettings {
         return StateUpdateResult::CHANGED;
     };
 };
-
-class WiFiSettingsService : public StatefulService<WiFiSettings> {
-  public:
-    WiFiSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, EventSocket *socket);
-
-    void initWiFi();
-    void begin();
-    void loop();
-    String getHostname();
-
-  private:
-    PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
-    HttpEndpoint<WiFiSettings> _httpEndpoint;
-    EventEndpoint<WiFiSettings> _eventEndpoint;
-    FSPersistence<WiFiSettings> _fsPersistence;
-    EventSocket *_socket;
-    unsigned long _lastConnectionAttempt;
-
-    bool _stopping;
-    void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
-    void onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info);
-
-    void reconfigureWiFiConnection();
-    void manageSTA();
-    void connectToWiFi();
-    void configureNetwork(wifi_settings_t &network);
-    void updateRSSI();
-};
-
-#endif // end WiFiSettingsService_h

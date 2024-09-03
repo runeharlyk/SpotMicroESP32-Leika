@@ -46,9 +46,7 @@
 #include <TaskManager.h>
 #include <UploadFirmwareService.h>
 #include <WiFi.h>
-#include <WiFiScanner.h>
-#include <WiFiSettingsService.h>
-#include <WiFiStatus.h>
+#include <wifi_service.h>
 #include <Wire.h>
 
 #ifdef EMBED_WWW
@@ -84,8 +82,6 @@ class ESP32SvelteKit {
     SecurityManager *getSecurityManager() { return &_securitySettingsService; }
 
     EventSocket *getSocket() { return &_socket; }
-
-    StatefulService<WiFiSettings> *getWiFiSettingsService() { return &_wifiSettingsService; }
 
     StatefulService<APSettings> *getAPSettingsService() { return &_apSettingsService; }
 
@@ -135,9 +131,10 @@ class ESP32SvelteKit {
     unsigned int _numberEndpoints;
     FeaturesService _featureService;
     SecuritySettingsService _securitySettingsService;
-    WiFiSettingsService _wifiSettingsService;
-    WiFiScanner _wifiScanner;
-    WiFiStatus _wifiStatus;
+    WiFiService _wifiService;
+    // WiFiSettingsService _wifiSettingsService;
+    // WiFiScanner _wifiScanner;
+    // WiFiStatus _wifiStatus;
     APSettingsService _apSettingsService;
     APStatus _apStatus;
     EventSocket _socket;
