@@ -20,6 +20,7 @@
 #include <SecurityManager.h>
 #include <HttpEndpoint.h>
 #include <FSPersistence.h>
+#include <ESPFS.h>
 
 #ifndef FACTORY_JWT_SECRET
 #define FACTORY_JWT_SECRET "#{random}-#{random}"
@@ -41,7 +42,6 @@
 #define FACTORY_GUEST_PASSWORD "guest"
 #endif
 
-#define SECURITY_SETTINGS_FILE "/config/securitySettings.json"
 #define SECURITY_SETTINGS_PATH "/api/securitySettings"
 
 #define GENERATE_TOKEN_PATH "/api/generateToken"

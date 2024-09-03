@@ -28,6 +28,7 @@
 #include <WiFiMulti.h>
 #include <vector>
 #include <Timing.h>
+#include <ESPFS.h>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""
@@ -45,7 +46,6 @@
 #define FACTORY_WIFI_RSSI_THRESHOLD -80
 #endif
 
-#define WIFI_SETTINGS_FILE "/config/wifiSettings.json"
 #define WIFI_SETTINGS_SERVICE_PATH "/api/wifiSettings"
 
 #define WIFI_RECONNECTION_DELAY 1000 * 30

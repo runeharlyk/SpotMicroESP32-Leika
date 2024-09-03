@@ -21,8 +21,8 @@
 #include <SecurityManager.h>
 #include <RestartService.h>
 #include <FS.h>
+#include <ESPFS.h>
 
-#define FS_CONFIG_DIRECTORY "/config"
 #define FACTORY_RESET_SERVICE_PATH "/api/factoryReset"
 
 class FactoryResetService {

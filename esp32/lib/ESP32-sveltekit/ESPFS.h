@@ -1,21 +1,13 @@
-#ifndef ESPFS_H_
-#define ESPFS_H_
-
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#pragma once
 
 #include <LittleFS.h>
+
 #define ESPFS LittleFS
 
-#endif
+#define AP_SETTINGS_FILE "/config/apSettings.json"
+#define CAMERA_SETTINGS_FILE "/config/cameraSettings.json"
+#define FS_CONFIG_DIRECTORY "/config"
+#define NTP_SETTINGS_FILE "/config/ntpSettings.json"
+#define DEVICE_CONFIG_FILE "/config/peripheral.json"
+#define SECURITY_SETTINGS_FILE "/config/securitySettings.json"
+#define WIFI_SETTINGS_FILE "/config/wifiSettings.json"
