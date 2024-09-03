@@ -21,8 +21,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _taskManager(),
       _featureService(server),
       _securitySettingsService(server, &ESPFS),
-      _apSettingsService(server, &ESPFS, &_securitySettingsService),
-      _apStatus(server, &_securitySettingsService, &_apSettingsService),
       _socket(server, &_securitySettingsService, AuthenticationPredicates::IS_AUTHENTICATED),
 #if FT_ENABLED(USE_NTP)
       _ntpSettingsService(server, &ESPFS, &_securitySettingsService),
@@ -83,6 +81,7 @@ void ESP32SvelteKit::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
     _server->listen(80);
 
+    // wifi
     _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
     _server->on("/api/wifi/networks", HTTP_GET,
                 [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
@@ -92,6 +91,15 @@ void ESP32SvelteKit::setupServer() {
                 [this](PsychicRequest *request) { return _wifiService.endpoint.getState(request); });
     _server->on("/api/wifi/sta/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _wifiService.endpoint.handleStateUpdate(request, json);
+    });
+
+    // ap
+    _server->on("/api/wifi/ap/status", HTTP_GET,
+                [this](PsychicRequest *request) { return _apService.getStatus(request); });
+    _server->on("/api/wifi/ap/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _apService.endpoint.getState(request); });
+    _server->on("/api/wifi/ap/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _apService.endpoint.handleStateUpdate(request, json);
     });
 
 #ifdef EMBED_WWW
@@ -155,9 +163,8 @@ void ESP32SvelteKit::setupMDNS() {
 
 void ESP32SvelteKit::startServices() {
     _wifiService.begin();
-    _apStatus.begin();
+    _apService.begin();
     _socket.begin();
-    _apSettingsService.begin();
     _factoryResetService.begin();
     _featureService.begin();
     _restartService.begin();
@@ -208,7 +215,7 @@ void IRAM_ATTR ESP32SvelteKit::loop() {
         _ledService.loop();
 #endif
         _wifiService.loop();
-        _apSettingsService.loop();
+        _apService.loop();
 #if FT_ENABLED(USE_ANALYTICS)
         _analyticsService.loop();
 #endif
