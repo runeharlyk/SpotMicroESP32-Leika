@@ -10,6 +10,7 @@
  *
  *   Copyright (C) 2018 - 2023 rjwats
  *   Copyright (C) 2023 theelims
+ *   Copyright (C) 2024 runeharlyk
  *
  *   All Rights Reserved. This software may be modified and distributed under
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
@@ -23,11 +24,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-enum class StateUpdateResult {
-    CHANGED = 0, // The update changed the state and propagation should take place if required
-    UNCHANGED,   // The state was unchanged, propagation should not take place
-    ERROR        // There was a problem updating the state, propagation should not take place
-};
+#include <state_result.h>
 
 template <typename T>
 using JsonStateUpdater = std::function<StateUpdateResult(JsonObject &root, T &settings)>;
@@ -41,7 +38,7 @@ typedef std::function<void(const String &originId)> StateUpdateCallback;
 typedef std::function<void(const String &originId, StateUpdateResult &result)> StateHookCallback;
 
 typedef struct StateUpdateHandlerInfo {
-    static update_handler_id_t currentUpdatedHandlerId;
+    static inline update_handler_id_t currentUpdatedHandlerId = 0;
     update_handler_id_t _id;
     StateUpdateCallback _cb;
     bool _allowRemove;
@@ -50,7 +47,7 @@ typedef struct StateUpdateHandlerInfo {
 } StateUpdateHandlerInfo_t;
 
 typedef struct StateHookHandlerInfo {
-    static hook_handler_id_t currentHookHandlerId;
+    static inline hook_handler_id_t currentHookHandlerId = 0;
     hook_handler_id_t _id;
     StateHookCallback _cb;
     bool _allowRemove;
