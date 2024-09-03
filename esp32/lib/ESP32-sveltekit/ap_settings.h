@@ -4,7 +4,7 @@
 #include <IPAddress.h>
 #include <ArduinoJson.h>
 #include <JsonUtils.h>
-#include <SettingValue.h>
+#include <string_utilities.h>
 #include <IPUtils.h>
 #include <state_result.h>
 
@@ -98,7 +98,7 @@ class APSettings {
             case AP_MODE_NEVER: break;
             default: newSettings.provisionMode = AP_MODE_DISCONNECTED;
         }
-        newSettings.ssid = root["ssid"] | SettingValue::format(FACTORY_AP_SSID);
+        newSettings.ssid = root["ssid"] | format(FACTORY_AP_SSID);
         newSettings.password = root["password"] | FACTORY_AP_PASSWORD;
         newSettings.channel = root["channel"] | FACTORY_AP_CHANNEL;
         newSettings.ssidHidden = root["ssid_hidden"] | FACTORY_AP_SSID_HIDDEN;

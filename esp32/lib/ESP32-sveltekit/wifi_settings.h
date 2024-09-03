@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include <JsonUtils.h>
 #include <IPUtils.h>
-#include <SettingValue.h>
+#include <string_utilities.h>
 #include <state_result.h>
 
 #ifndef FACTORY_WIFI_RSSI_THRESHOLD
@@ -59,7 +59,7 @@ class WiFiSettings {
     }
 
     static StateUpdateResult update(JsonObject &root, WiFiSettings &settings) {
-        settings.hostname = root["hostname"] | SettingValue::format(FACTORY_WIFI_HOSTNAME);
+        settings.hostname = root["hostname"] | format(FACTORY_WIFI_HOSTNAME);
         settings.priorityBySignalStrength = root["priority_RSSI"] | true;
 
         settings.wifiSettings.clear();
