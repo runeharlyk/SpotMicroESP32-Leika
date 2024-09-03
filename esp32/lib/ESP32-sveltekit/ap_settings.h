@@ -1,27 +1,12 @@
-#ifndef APSettingsConfig_h
-#define APSettingsConfig_h
+#pragma once
 
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
-
-#include <SettingValue.h>
-#include <HttpEndpoint.h>
-#include <FSPersistence.h>
-#include <JsonUtils.h>
 #include <WiFi.h>
-#include <Timing.h>
-#include <ESPFS.h>
+#include <IPAddress.h>
+#include <ArduinoJson.h>
+#include <JsonUtils.h>
+#include <SettingValue.h>
+#include <IPUtils.h>
+#include <state_result.h>
 
 #include <DNSServer.h>
 #include <IPAddress.h>
@@ -130,35 +115,3 @@ class APSettings {
         return StateUpdateResult::CHANGED;
     }
 };
-
-class APSettingsService : public StatefulService<APSettings> {
-  public:
-    APSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager);
-
-    void begin();
-    void loop();
-    APNetworkStatus getAPNetworkStatus();
-    void recoveryMode();
-
-  private:
-    PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
-    HttpEndpoint<APSettings> _httpEndpoint;
-    FSPersistence<APSettings> _fsPersistence;
-
-    // for the captive portal
-    DNSServer *_dnsServer;
-
-    // for the mangement delay loop
-    volatile unsigned long _lastManaged;
-    volatile boolean _reconfigureAp;
-    volatile boolean _recoveryMode = false;
-
-    void reconfigureAP();
-    void manageAP();
-    void startAP();
-    void stopAP();
-    void handleDNS();
-};
-
-#endif // end APSettingsConfig_h

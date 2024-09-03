@@ -18,8 +18,6 @@
 
 #include <Arduino.h>
 
-#include <APSettingsService.h>
-#include <APStatus.h>
 #include <AnalyticsService.h>
 #include <AuthenticationService.h>
 #include <BatteryService.h>
@@ -47,6 +45,7 @@
 #include <UploadFirmwareService.h>
 #include <WiFi.h>
 #include <wifi_service.h>
+#include <ap_service.h>
 #include <Wire.h>
 
 #ifdef EMBED_WWW
@@ -82,8 +81,6 @@ class ESP32SvelteKit {
     SecurityManager *getSecurityManager() { return &_securitySettingsService; }
 
     EventSocket *getSocket() { return &_socket; }
-
-    StatefulService<APSettings> *getAPSettingsService() { return &_apSettingsService; }
 
 #if FT_ENABLED(USE_NTP)
     StatefulService<NTPSettings> *getNTPSettingsService() { return &_ntpSettingsService; }
@@ -122,7 +119,7 @@ class ESP32SvelteKit {
 
     void setMDNSAppName(String name) { _appName = name; }
 
-    void recoveryMode() { _apSettingsService.recoveryMode(); }
+    void recoveryMode() { _apService.recoveryMode(); }
 
     void loop();
 
@@ -132,11 +129,7 @@ class ESP32SvelteKit {
     FeaturesService _featureService;
     SecuritySettingsService _securitySettingsService;
     WiFiService _wifiService;
-    // WiFiSettingsService _wifiSettingsService;
-    // WiFiScanner _wifiScanner;
-    // WiFiStatus _wifiStatus;
-    APSettingsService _apSettingsService;
-    APStatus _apStatus;
+    APService _apService;
     EventSocket _socket;
 #if FT_ENABLED(USE_NTP)
     NTPSettingsService _ntpSettingsService;
