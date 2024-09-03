@@ -50,6 +50,7 @@
 		"@niku/vite-env-caster": "^1.0.2",
 		"chart.js": "^4.4.2",
 		"compare-versions": "^6.1.0",
+		"cross-env": "^7.0.3",
 		"daisyui": "^4.10.2",
 		"jwt-decode": "^4.0.0",
 		"nipplejs": "^0.10.1",
