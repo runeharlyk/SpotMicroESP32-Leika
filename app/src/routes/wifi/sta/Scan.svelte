@@ -33,7 +33,6 @@
 
 	async function scanNetworks() {
 		scanActive = true;
-        await api.get('/api/scanNetworks');
 		if ((await pollingResults()) == false) {
 			pollingId = setInterval(() => pollingResults(), 1000);
 		}
@@ -41,8 +40,9 @@
 	}
 
 	async function pollingResults() {
-        const result = await api.get<NetworkList>('/api/listNetworks');
         if (result.isErr()){
+        await api.get('/api/wifi/scan');
+        const result = await api.get<NetworkList>('/api/wifi/networks');
             console.error(`Error occurred while fetching: `, result.inner);
             return false
         }
