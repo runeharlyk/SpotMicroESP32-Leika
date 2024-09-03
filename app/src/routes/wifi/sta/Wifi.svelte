@@ -77,7 +77,6 @@
 	let formErrorhostname = false;
 
 	async function getWifiStatus() {
-		const result = await api.get<WifiStatus>('/api/wifiStatus');
 		if (result.isErr()) {
 			console.error(`Error occurred while fetching: `, result.inner);
 			return;
@@ -87,7 +86,6 @@
 	}
 
 	async function getWifiSettings() {
-		const result = await api.get<WifiSettings>('/api/wifiSettings');
 		if (result.isErr()) {
 			console.error(`Error occurred while fetching: `, result.inner);
 			return;
@@ -107,7 +105,6 @@
 	});
 
 	async function postWiFiSettings(data: WifiSettings) {
-		const result = await api.post<WifiSettings>('/api/wifiSettings', data);
 		if (result.isErr()) {
 			console.error(`Error occurred while fetching: `, result.inner);
 			notifications.error('User not authorized.', 3000);
@@ -285,6 +282,9 @@
 		dndNetworkList = reorder(dndNetworkList, from.index, to.index);
 		console.log(dndNetworkList);
 	}
+        const result = await api.get<WifiStatus>('/api/wifi/status');
+        const result = await api.get<WifiSettings>('/api/wifi/settings');
+        const result = await api.post<WifiSettings>('/api/wifi/settings', data);
 </script>
 
 <SettingsCard collapsible={false}>
