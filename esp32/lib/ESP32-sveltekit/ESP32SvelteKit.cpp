@@ -67,9 +67,14 @@ void ESP32SvelteKit::begin() {
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
 
-    startServices();
+    _wifiService.begin();
+
+    _server->config.max_uri_handlers = _numberEndpoints;
+    _server->listen(80);
 
     setupServer();
+
+    startServices();
 
     setupMDNS();
 
@@ -78,9 +83,6 @@ void ESP32SvelteKit::begin() {
 }
 
 void ESP32SvelteKit::setupServer() {
-    _server->config.max_uri_handlers = _numberEndpoints;
-    _server->listen(80);
-
     // wifi
     _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
     _server->on("/api/wifi/networks", HTTP_GET,
@@ -162,7 +164,6 @@ void ESP32SvelteKit::setupMDNS() {
 }
 
 void ESP32SvelteKit::startServices() {
-    _wifiService.begin();
     _apService.begin();
     _socket.begin();
     _factoryResetService.begin();
