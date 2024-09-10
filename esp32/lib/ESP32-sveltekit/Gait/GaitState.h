@@ -155,7 +155,7 @@ class FourPhaseWalkState : public PhaseGaitState {
 
     int num_phases() const override { return 4; }
 
-    float phase_speed_factor() const override { return 2.5; }
+    float phase_speed_factor() const override { return 6; }
 
     float swing_stand_ratio() const override { return 1.0f / (num_phases() - 1); }
 
@@ -180,15 +180,15 @@ class EightPhaseWalkState : public PhaseGaitState {
 
     int num_phases() const override { return 8; }
 
-    float phase_speed_factor() const override { return 1.5; }
+    float phase_speed_factor() const override { return 4; }
 
     float swing_stand_ratio() const override { return 1.0f / (num_phases() - 1); }
 
   public:
     EightPhaseWalkState() {
         uint8_t contact[4][8] = {
-            {1, 0, 1, 1, 1, 1, 1, 1}, {1, 1, 1, 0, 1, 1, 1, 1}, {1, 1, 1, 1, 1, 0, 1, 1}, {1, 1, 1, 1, 1, 1, 1, 0}};
-        float shift_values[4][3] = {{-0.3f, 0, -0.2f}, {-0.3f, 0, 0.2f}, {0.3f, 0, -0.2f}, {0.3f, 0, 0.2f}};
+            {1, 0, 1, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 1, 0, 1, 1}, {1, 1, 1, 1, 1, 1, 1, 0}, {1, 1, 1, 0, 1, 1, 1, 1}};
+        float shift_values[4][3] = {{-0.05f, 0, -0.2f}, {0.25f, 0, -0.2f}, {-0.05f, 0, 0.2f}, {0.25f, 0, 0.2f}};
         for (uint8_t i = 0; i < 4; ++i) {
             for (uint8_t j = 0; j < 8; ++j) {
                 contact_phases[i][j] = contact[i][j];
