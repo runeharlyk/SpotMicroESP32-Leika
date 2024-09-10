@@ -7,17 +7,78 @@
 #include <HttpEndpoint.h>
 #include <SecurityManager.h>
 #include <StatefulService.h>
+#include <stateful_service_endpoint.h>
 #include <MathUtils.h>
 #include <Timing.h>
 
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
 #define EVENT_SERVO_STATE "servoState"
 
-class ServoController {
+typedef struct {
+    float centerPwm;
+    float direction;
+    float centerAngle;
+    float conversion;
+    const char *name;
+    // bool enable;
+} servo_settings_t;
+
+class ServoSettings {
+  public:
+    servo_settings_t servos[12] = {
+        {306, -1, 0, 2.2, "Servo1"}, {306, 1, -45, 2.1055555, "Servo2"},  {306, 1, 90, 1.96923, "Servo3"},
+        {306, -1, 0, 2.2, "Servo4"}, {306, -1, 45, 2.1055555, "Servo5"},  {306, -1, -90, 1.96923, "Servo6"},
+        {306, 1, 0, 2.2, "Servo7"},  {306, 1, -45, 2.1055555, "Servo8"},  {306, 1, 90, 1.96923, "Servo9"},
+        {306, 1, 0, 2.2, "Servo10"}, {306, -1, 45, 2.1055555, "Servo11"}, {306, -1, -90, 1.96923, "Servo12"}};
+
+    static void read(ServoSettings &settings, JsonObject &root) {
+        JsonArray servos = root["servos"].to<JsonArray>();
+
+        for (auto &servo : settings.servos) {
+            JsonObject newServo = servos.add<JsonObject>();
+
+            newServo["center_pwm"] = servo.centerPwm;
+            newServo["direction"] = servo.direction;
+            newServo["center_angle"] = servo.centerAngle;
+            newServo["conversion"] = servo.conversion;
+        }
+    }
+
+    static StateUpdateResult update(JsonObject &root, ServoSettings &settings) {
+        if (root["servos"].is<JsonArray>()) {
+            JsonArray servosJson = root["servos"];
+            int i = 0;
+            for (auto servo : servosJson) {
+                JsonObject servoObject = servo.as<JsonObject>();
+
+                uint8_t servoId = i; // servoObject["id"].as<uint8_t>();
+
+                settings.servos[servoId].centerPwm = servoObject["center_pwm"].as<float>();
+                settings.servos[servoId].centerAngle = servoObject["center_angle"].as<float>();
+                settings.servos[servoId].direction = servoObject["direction"].as<float>();
+                settings.servos[servoId].conversion = servoObject["conversion"].as<float>();
+
+                i++;
+            }
+        }
+        ESP_LOGI("ServoController", "Updating servo data");
+
+        return StateUpdateResult::CHANGED;
+    };
+};
+
+class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, Peripherals *peripherals,
                     EventSocket *socket)
-        : _server(server), _securityManager(securityManager), _peripherals(peripherals), _socket(socket) {}
+        : _server(server),
+          _securityManager(securityManager),
+          _peripherals(peripherals),
+          _socket(socket),
+          endpoint(ServoSettings::read, ServoSettings::update, this),
+          _fsPersistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {
+        _fsPersistence.readFromFS();
+    }
 
     void begin() {
         _socket->onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
@@ -61,8 +122,9 @@ class ServoController {
     void updateServoState() {
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.2);
-            float angle = dir[i] * angles[i] + center_angle_deg[i];
-            uint16_t pwm = angle * servo_conversion[i] + center[i];
+            auto &servo = _state.servos[i];
+            float angle = servo.direction * angles[i] + servo.centerAngle;
+            uint16_t pwm = angle * servo.conversion + servo.centerPwm;
             if (pwm < 125 || pwm > 600) {
                 ESP_LOGE("ServoController", "Servo %d, Invalid PWM value %d", i, pwm);
                 continue;
@@ -75,11 +137,14 @@ class ServoController {
         EXECUTE_EVERY_N_MS(ServoInterval, { updateServoState(); });
     }
 
+    StatefulHttpEndpoint<ServoSettings> endpoint;
+
   private:
     PsychicHttpServer *_server;
     SecurityManager *_securityManager;
     Peripherals *_peripherals;
     EventSocket *_socket;
+    FSPersistence<ServoSettings> _fsPersistence;
 
     bool is_active {true};
     constexpr static int ServoInterval = 2;

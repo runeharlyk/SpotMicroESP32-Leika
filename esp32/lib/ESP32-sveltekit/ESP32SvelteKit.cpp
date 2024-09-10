@@ -104,6 +104,13 @@ void ESP32SvelteKit::setupServer() {
         return _apService.endpoint.handleStateUpdate(request, json);
     });
 
+    // servo
+    _server->on("/api/servo/config", HTTP_GET,
+                [this](PsychicRequest *request) { return _servoController.endpoint.getState(request); });
+    _server->on("/api/servo/config", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _servoController.endpoint.handleStateUpdate(request, json);
+    });
+
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
     WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
