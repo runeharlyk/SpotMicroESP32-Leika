@@ -11,3 +11,4 @@
 #define DEVICE_CONFIG_FILE "/config/peripheral.json"
 #define SECURITY_SETTINGS_FILE "/config/securitySettings.json"
 #define WIFI_SETTINGS_FILE "/config/wifiSettings.json"
+#define SERVO_SETTINGS_FILE "/config/servoSettings.json"
