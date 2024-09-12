@@ -76,14 +76,13 @@ class ServoController : public StatefulService<ServoSettings> {
           _peripherals(peripherals),
           _socket(socket),
           endpoint(ServoSettings::read, ServoSettings::update, this),
-          _fsPersistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {
-        _fsPersistence.readFromFS();
-    }
+          _fsPersistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {}
 
     void begin() {
         _socket->onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
                          [&](JsonObject &root, int originId) { servoEvent(root, originId); });
         _socket->onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
+        _fsPersistence.readFromFS();
     }
 
     void stateUpdate(JsonObject &root, int originId) {
@@ -95,7 +94,6 @@ class ServoController : public StatefulService<ServoSettings> {
     void servoEvent(JsonObject &root, int originId) {
         uint8_t servo_id = root["servo_id"];
         uint16_t pwm = root["pwm"];
-        center[servo_id] = pwm;
         ESP_LOGI("SERVO_CONTROLLER", "Setting servo %d to %d", servo_id, pwm);
     }
 
@@ -149,14 +147,8 @@ class ServoController : public StatefulService<ServoSettings> {
     bool is_active {true};
     constexpr static int ServoInterval = 2;
 
-    float center[12] = {306, 306, 306, 306, 306, 306, 306, 306, 306, 306, 306, 306};
-    float dir[12] = {-1, 1, 1, -1, -1, -1, 1, 1, 1, 1, -1, -1};
-    float center_angle_deg[12] = {0, -45, 90, 0, 45, -90, 0, -45, 90, 0, 45, -90};
-
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
-    const float servo_conversion[12] {2.2, 2.1055555, 1.96923, 2.2, 2.1055555, 1.96923,
-                                      2.2, 2.1055555, 1.96923, 2.2, 2.1055555, 1.96923};
 };
 
 #endif
