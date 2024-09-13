@@ -6,8 +6,8 @@
     <material name="black">
         <color rgba="0.1 0.1 0.1 1" />
     </material>
-    <material name="grey">
-        <color rgba="0.6 0.6 0.6 1" />
+    <material name="foot_color">
+        <color rgba="0 0.75 1 1" />
     </material>
     <!-- Params -->
     <!-- Macros -->
@@ -157,7 +157,7 @@
                 <mesh filename="stl/foot.stl" scale="0.001 0.001 0.001" />
             </geometry>
             <origin rpy="0 -0.40010 0" xyz="0 -0.01 0" />
-            <material name="grey" />
+            <material name="foot_color" />
         </visual>
         <collision>
             <geometry>
@@ -282,7 +282,7 @@
                 <mesh filename="stl/foot.stl" scale="0.001 0.001 0.001" />
             </geometry>
             <origin rpy="0 -0.40010 0" xyz="0 -0.01 0" />
-            <material name="grey" />
+            <material name="foot_color" />
         </visual>
         <collision>
             <geometry>
@@ -407,7 +407,7 @@
                 <mesh filename="stl/foot.stl" scale="0.001 0.001 0.001" />
             </geometry>
             <origin rpy="0 -0.40010 0" xyz="0 -0.01 0" />
-            <material name="grey" />
+            <material name="foot_color" />
         </visual>
         <collision>
             <geometry>
@@ -532,7 +532,7 @@
                 <mesh filename="stl/foot.stl" scale="0.001 0.001 0.001" />
             </geometry>
             <origin rpy="0 -0.40010 0" xyz="0 -0.01 0" />
-            <material name="grey" />
+            <material name="foot_color" />
         </visual>
         <collision>
             <geometry>
