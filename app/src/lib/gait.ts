@@ -237,9 +237,9 @@ export class EightPhaseWalkState extends PhaseGaitState {
     ];
     protected shifts = [
         [-0.05, 0, -0.2],
-        [0.3, 0, -0.2],
+        [0.3, 0, 0.2],
         [-0.05, 0, 0.2],
-        [0.3, 0, 0.2]
+        [0.3, 0, -0.2]
     ];
     protected swing_stand_ratio = 1 / (this.num_phases - 1);
 
