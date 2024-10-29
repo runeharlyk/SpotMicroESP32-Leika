@@ -12,7 +12,7 @@
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import { api } from '$lib/api';
 	import { useFeatureFlags } from '$lib/stores';
-	import { Cancel, Check, CloudDown, Github, Prerelease } from '$lib/components/icons';
+	import { Error, Cancel, Check, CloudDown, Github, Prerelease } from '$lib/components/icons';
 
     const features = useFeatureFlags();
 
