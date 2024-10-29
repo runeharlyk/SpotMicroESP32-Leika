@@ -17,7 +17,6 @@
 
 #include <EventSocket.h>
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 #include <StatefulService.h>
 
 template <class T>

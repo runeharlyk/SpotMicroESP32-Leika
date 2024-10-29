@@ -14,14 +14,11 @@
 
 #include <FactoryResetService.h>
 
-FactoryResetService::FactoryResetService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager)
-    : _server(server), fs(fs), _securityManager(securityManager) {}
+FactoryResetService::FactoryResetService(PsychicHttpServer *server, FS *fs) : _server(server), fs(fs) {}
 
 void FactoryResetService::begin() {
-    _server->on(
-        FACTORY_RESET_SERVICE_PATH, HTTP_POST,
-        _securityManager->wrapRequest(std::bind(&FactoryResetService::handleRequest, this, std::placeholders::_1),
-                                      AuthenticationPredicates::IS_ADMIN));
+    _server->on(FACTORY_RESET_SERVICE_PATH, HTTP_POST,
+                [this](PsychicRequest *request) { return handleRequest(request); });
 
     ESP_LOGV("FactoryResetService", "Registered POST endpoint: %s", FACTORY_RESET_SERVICE_PATH);
 }

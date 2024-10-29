@@ -29,16 +29,12 @@ sensor_t *safe_sensor_get() {
 
 void safe_sensor_return() { xSemaphoreGive(cameraMutex); }
 
-CameraService::CameraService(PsychicHttpServer *server, TaskManager *taskManager, SecurityManager *securityManager)
-    : _server(server), _taskManager(taskManager), _securityManager(securityManager) {}
+CameraService::CameraService(PsychicHttpServer *server, TaskManager *taskManager)
+    : _server(server), _taskManager(taskManager) {}
 void CameraService::begin() {
     InitializeCamera();
-    _server->on(STILL_SERVICE_PATH, HTTP_GET,
-                _securityManager->wrapRequest(std::bind(&CameraService::cameraStill, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_AUTHENTICATED));
-    _server->on(STREAM_SERVICE_PATH, HTTP_GET,
-                _securityManager->wrapRequest(std::bind(&CameraService::cameraStream, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_AUTHENTICATED));
+    _server->on(STILL_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return cameraStill(request); });
+    _server->on(STREAM_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return cameraStream(request); });
 
     ESP_LOGV(TAG, "Registered GET endpoint: %s", STILL_SERVICE_PATH);
     ESP_LOGV(TAG, "Registered GET endpoint: %s", STREAM_SERVICE_PATH);

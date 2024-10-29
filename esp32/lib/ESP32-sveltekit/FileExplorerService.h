@@ -3,31 +3,24 @@
 
 #include <ESPFS.h>
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 
 #define FILE_EXPLORER_SERVICE_PATH "/api/files"
 #define FILE_EXPLORER_DELETE_SERVICE_PATH "/api/files/delete"
 
 class FileExplorer {
   public:
-    FileExplorer(PsychicHttpServer *server, SecurityManager *securityManager)
-        : _server(server), _securityManager(securityManager) {}
+    FileExplorer(PsychicHttpServer *server) : _server(server) {}
 
     void begin() {
-        _server->on(FILE_EXPLORER_SERVICE_PATH, HTTP_GET,
-                    _securityManager->wrapRequest(std::bind(&FileExplorer::explore, this, std::placeholders::_1),
-                                                  AuthenticationPredicates::IS_AUTHENTICATED));
+        _server->on(FILE_EXPLORER_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return explore(request); });
         _server->on(FILE_EXPLORER_DELETE_SERVICE_PATH, HTTP_POST,
-                    _securityManager->wrapCallback(
-                        std::bind(&FileExplorer::deleteFile, this, std::placeholders::_1, std::placeholders::_2),
-                        AuthenticationPredicates::IS_AUTHENTICATED));
+                    [this](PsychicRequest *request, JsonVariant &json) { return deleteFile(request, json); });
 
         ESP_LOGV("APStatus", "Registered GET endpoint: %s", FILE_EXPLORER_SERVICE_PATH);
     }
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
 
     esp_err_t explore(PsychicRequest *request) {
         return request->reply(200, "application/json", listFiles("/").c_str());

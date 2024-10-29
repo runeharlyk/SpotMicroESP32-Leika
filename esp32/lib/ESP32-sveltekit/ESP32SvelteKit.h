@@ -19,7 +19,6 @@
 #include <Arduino.h>
 
 #include <AnalyticsService.h>
-#include <AuthenticationService.h>
 #include <BatteryService.h>
 #include <FileExplorerService.h>
 #include <DownloadFirmwareService.h>
@@ -38,7 +37,6 @@
 #include <NTPStatus.h>
 #include <PsychicHttp.h>
 #include <RestartService.h>
-#include <SecuritySettingsService.h>
 #include <SleepService.h>
 #include <SystemStatus.h>
 #include <TaskManager.h>
@@ -77,8 +75,6 @@ class ESP32SvelteKit {
     FS *getFS() { return &ESPFS; }
 
     PsychicHttpServer *getServer() { return _server; }
-
-    SecurityManager *getSecurityManager() { return &_securitySettingsService; }
 
     EventSocket *getSocket() { return &_socket; }
 
@@ -127,7 +123,6 @@ class ESP32SvelteKit {
     PsychicHttpServer *_server;
     unsigned int _numberEndpoints;
     FeaturesService _featureService;
-    SecuritySettingsService _securitySettingsService;
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
@@ -140,9 +135,6 @@ class ESP32SvelteKit {
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
-#endif
-#if FT_ENABLED(USE_SECURITY)
-    AuthenticationService _authenticationService;
 #endif
 #if FT_ENABLED(USE_SLEEP)
     SleepService _sleepService;

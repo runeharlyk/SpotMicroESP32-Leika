@@ -9,7 +9,6 @@ namespace Camera {
 #include <HttpEndpoint.h>
 #include <JsonUtils.h>
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 #include <SettingValue.h>
 #include <StatefulService.h>
 #include <esp_camera.h>
@@ -121,11 +120,9 @@ class CameraSettings {
 
 class CameraSettingsService : public StatefulService<CameraSettings> {
   public:
-    CameraSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, EventSocket *socket)
+    CameraSettingsService(PsychicHttpServer *server, FS *fs, EventSocket *socket)
         : _server(server),
-          _securityManager(securityManager),
-          _httpEndpoint(CameraSettings::read, CameraSettings::update, this, server, CAMERA_SETTINGS_PATH,
-                        securityManager, AuthenticationPredicates::IS_ADMIN),
+          _httpEndpoint(CameraSettings::read, CameraSettings::update, this, server, CAMERA_SETTINGS_PATH),
           _eventEndpoint(CameraSettings::read, CameraSettings::update, this, socket, EVENT_CAMERA_SETTINGS),
           _fsPersistence(CameraSettings::read, CameraSettings::update, this, fs, CAMERA_SETTINGS_FILE) {
         addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
@@ -199,7 +196,6 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     HttpEndpoint<CameraSettings> _httpEndpoint;
     EventEndpoint<CameraSettings> _eventEndpoint;
     FSPersistence<CameraSettings> _fsPersistence;

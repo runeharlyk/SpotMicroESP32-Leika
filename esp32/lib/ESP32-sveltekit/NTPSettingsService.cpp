@@ -14,10 +14,9 @@
 
 #include <NTPSettingsService.h>
 
-NTPSettingsService::NTPSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager)
+NTPSettingsService::NTPSettingsService(PsychicHttpServer *server, FS *fs)
     : _server(server),
-      _securityManager(securityManager),
-      _httpEndpoint(NTPSettings::read, NTPSettings::update, this, server, NTP_SETTINGS_SERVICE_PATH, securityManager),
+      _httpEndpoint(NTPSettings::read, NTPSettings::update, this, server, NTP_SETTINGS_SERVICE_PATH),
       _fsPersistence(NTPSettings::read, NTPSettings::update, this, fs, NTP_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { configureNTP(); }, false);
 }
@@ -31,9 +30,7 @@ void NTPSettingsService::begin() {
 
     _httpEndpoint.begin();
     _server->on(TIME_PATH, HTTP_POST,
-                _securityManager->wrapCallback(
-                    std::bind(&NTPSettingsService::configureTime, this, std::placeholders::_1, std::placeholders::_2),
-                    AuthenticationPredicates::IS_ADMIN));
+                [this](PsychicRequest *request, JsonVariant &json) { return configureTime(request, json); });
 
     ESP_LOGV("NTPSettingsService", "Registered POST endpoint: %s", TIME_PATH);
 

@@ -16,13 +16,10 @@
 // Definition of static member variable
 void (*SleepService::_callbackSleep)() = nullptr;
 
-SleepService::SleepService(PsychicHttpServer *server, SecurityManager *securityManager)
-    : _server(server), _securityManager(securityManager) {}
+SleepService::SleepService(PsychicHttpServer *server) : _server(server) {}
 
 void SleepService::begin() {
-    _server->on(SLEEP_SERVICE_PATH, HTTP_POST,
-                _securityManager->wrapRequest(std::bind(&SleepService::sleep, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_AUTHENTICATED));
+    _server->on(SLEEP_SERVICE_PATH, HTTP_POST, [this](PsychicRequest *request) { return sleep(request); });
 
     ESP_LOGV("SleepService", "Registered POST endpoint: %s", SLEEP_SERVICE_PATH);
 }

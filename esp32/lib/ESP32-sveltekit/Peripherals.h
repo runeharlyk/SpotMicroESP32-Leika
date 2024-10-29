@@ -4,11 +4,11 @@
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
-#include <SecurityManager.h>
 #include <StatefulService.h>
 #include <MathUtils.h>
 #include <Timing.h>
 #include <ESPFS.h>
+#include <Features.h>
 
 #include <list>
 #include <SPI.h>
@@ -101,12 +101,11 @@ class PeripheralsConfiguration {
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
-    Peripherals(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, EventSocket *socket)
+    Peripherals(PsychicHttpServer *server, FS *fs, EventSocket *socket)
         : _server(server),
           _socket(socket),
-          _securityManager(securityManager),
           _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, server,
-                        CONFIGURATION_SETTINGS_PATH, securityManager, AuthenticationPredicates::IS_ADMIN),
+                        CONFIGURATION_SETTINGS_PATH),
           _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, socket,
                          EVENT_CONFIGURATION_SETTINGS),
 #if FT_ENABLED(USE_MAG)
@@ -446,7 +445,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
   private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
-    SecurityManager *_securityManager;
     HttpEndpoint<PeripheralsConfiguration> _httpEndpoint;
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _fsPersistence;

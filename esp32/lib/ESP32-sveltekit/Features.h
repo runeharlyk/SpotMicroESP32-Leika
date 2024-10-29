@@ -17,11 +17,6 @@
 
 #define FT_ENABLED(feature) feature
 
-// security feature on by default
-#ifndef USE_SECURITY
-#define USE_SECURITY 1
-#endif
-
 // ntp feature on by default
 #ifndef USE_NTP
 #define USE_NTP 1

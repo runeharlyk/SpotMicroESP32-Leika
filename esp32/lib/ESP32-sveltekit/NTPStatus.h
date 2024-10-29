@@ -21,19 +21,17 @@
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 
 #define NTP_STATUS_SERVICE_PATH "/api/ntpStatus"
 
 class NTPStatus {
   public:
-    NTPStatus(PsychicHttpServer *server, SecurityManager *securityManager);
+    NTPStatus(PsychicHttpServer *server);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     esp_err_t ntpStatus(PsychicRequest *request);
 };
 

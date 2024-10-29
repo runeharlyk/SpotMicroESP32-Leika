@@ -22,7 +22,6 @@ void FeaturesService::begin() {
         PsychicJsonResponse response = PsychicJsonResponse(request, false);
         JsonObject root = response.getRoot();
 
-        root["security"] = USE_SECURITY;
         root["ntp"] = USE_NTP;
         root["upload_firmware"] = USE_UPLOAD_FIRMWARE;
         root["download_firmware"] = USE_DOWNLOAD_FIRMWARE;
