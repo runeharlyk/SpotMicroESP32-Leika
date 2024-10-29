@@ -8,12 +8,9 @@
     import '../app.css';
     import Menu from '../lib/components/menu/Menu.svelte';
     import Statusbar from '../lib/components/statusbar/statusbar.svelte';
-    import Login from '../lib/components/login.svelte';
     import {
         telemetry,
         analytics,
-        user,
-        type UserProfile,
         ModesEnum,
         kinematicData,
         mode,
@@ -21,21 +18,16 @@
         servoAngles,
         servoAnglesOut,
         socket,
-        location
+        location,
+        useFeatureFlags
     } from '$lib/stores';
     import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
-    import { api } from '$lib/api';
-    import { useFeatureFlags } from '$lib/stores/featureFlags';
 
     const features = useFeatureFlags();
 
     onMount(async () => {
-        if ($user.bearer_token !== '') {
-            await validateUser($user);
-        }
-        const ws_token = $features.security ? '?access_token=' + $user.bearer_token : '';
         const ws = $location ? $location : window.location.host;
-        socket.init(`ws://${ws}/ws/events${ws_token}`);
+        socket.init(`ws://${ws}/ws/events`);
 
         addEventListeners();
 
@@ -75,14 +67,6 @@
         socket.off('otastatus', handleOAT);
     };
 
-    async function validateUser(userdata: UserProfile) {
-        const result = await api.get('/api/verifyAuthorization');
-        if (result.isErr()) {
-            user.invalidate();
-            console.error('Error:', result.inner);
-        }
-    }
-
     const handleOpen = () => {
         notifications.success('Connection to device established', 5000);
     };
@@ -109,25 +93,21 @@
     <title>{$page.data.title}</title>
 </svelte:head>
 
-{#if $features?.security && $user.bearer_token === ''}
-    <Login />
-{:else}
-    <div class="drawer">
-        <input id="main-menu" type="checkbox" class="drawer-toggle" bind:checked={menuOpen} />
-        <div class="drawer-content flex flex-col">
-            <!-- Status bar content here -->
-            <Statusbar />
+<div class="drawer">
+    <input id="main-menu" type="checkbox" class="drawer-toggle" bind:checked={menuOpen} />
+    <div class="drawer-content flex flex-col">
+        <!-- Status bar content here -->
+        <Statusbar />
 
-            <!-- Main page content here -->
-            <slot />
-        </div>
-        <!-- Side Navigation -->
-        <div class="drawer-side z-30 shadow-lg">
-            <label for="main-menu" class="drawer-overlay" />
-            <Menu on:menuClicked={() => (menuOpen = false)} />
-        </div>
+        <!-- Main page content here -->
+        <slot />
     </div>
-{/if}
+    <!-- Side Navigation -->
+    <div class="drawer-side z-30 shadow-lg">
+        <label for="main-menu" class="drawer-overlay" />
+        <Menu on:menuClicked={() => (menuOpen = false)} />
+    </div>
+</div>
 
 <Modals>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
