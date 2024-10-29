@@ -35,13 +35,11 @@ String verbosePrintResetReason(int reason) {
     }
 }
 
-SystemStatus::SystemStatus(PsychicHttpServer *server, SecurityManager *securityManager)
-    : _server(server), _securityManager(securityManager) {}
+SystemStatus::SystemStatus(PsychicHttpServer *server) : _server(server) {}
 
 void SystemStatus::begin() {
     _server->on(SYSTEM_STATUS_SERVICE_PATH, HTTP_GET,
-                _securityManager->wrapRequest(std::bind(&SystemStatus::systemStatus, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_AUTHENTICATED));
+                [this](PsychicRequest *request) { return SystemStatus::systemStatus(request); });
 
     ESP_LOGV("SystemStatus", "Registered GET endpoint: %s", SYSTEM_STATUS_SERVICE_PATH);
 }

@@ -19,7 +19,6 @@
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 #include <ESPFS.h>
 #include <esp32-hal.h>
 
@@ -60,13 +59,12 @@
 
 class SystemStatus {
   public:
-    SystemStatus(PsychicHttpServer *server, SecurityManager *securityManager);
+    SystemStatus(PsychicHttpServer *server);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     esp_err_t systemStatus(PsychicRequest *request);
 };
 

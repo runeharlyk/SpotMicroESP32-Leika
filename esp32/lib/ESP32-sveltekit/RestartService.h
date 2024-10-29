@@ -18,13 +18,12 @@
 #include <WiFi.h>
 
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 
 #define RESTART_SERVICE_PATH "/api/restart"
 
 class RestartService {
   public:
-    RestartService(PsychicHttpServer *server, SecurityManager *securityManager);
+    RestartService(PsychicHttpServer *server);
 
     void begin();
 
@@ -36,7 +35,6 @@ class RestartService {
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     esp_err_t restart(PsychicRequest *request);
 };
 

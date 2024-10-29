@@ -14,13 +14,10 @@
 
 #include <RestartService.h>
 
-RestartService::RestartService(PsychicHttpServer *server, SecurityManager *securityManager)
-    : _server(server), _securityManager(securityManager) {}
+RestartService::RestartService(PsychicHttpServer *server) : _server(server) {}
 
 void RestartService::begin() {
-    _server->on(RESTART_SERVICE_PATH, HTTP_POST,
-                _securityManager->wrapRequest(std::bind(&RestartService::restart, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_ADMIN));
+    _server->on(RESTART_SERVICE_PATH, HTTP_POST, [this](PsychicRequest *request) { return restart(request); });
 
     ESP_LOGV("RestartService", "Registered POST endpoint: %s", RESTART_SERVICE_PATH);
 }

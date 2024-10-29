@@ -68,13 +68,12 @@ class NTPSettings {
 
 class NTPSettingsService : public StatefulService<NTPSettings> {
   public:
-    NTPSettingsService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager);
+    NTPSettingsService(PsychicHttpServer *server, FS *fs);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     HttpEndpoint<NTPSettings> _httpEndpoint;
     FSPersistence<NTPSettings> _fsPersistence;
 

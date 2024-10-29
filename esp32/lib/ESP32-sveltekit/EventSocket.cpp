@@ -42,12 +42,9 @@ const char *getEventPayload(const char *msg) {
     return payload;
 }
 
-EventSocket::EventSocket(PsychicHttpServer *server, SecurityManager *securityManager,
-                         AuthenticationPredicate authenticationPredicate)
-    : _server(server), _securityManager(securityManager), _authenticationPredicate(authenticationPredicate) {}
+EventSocket::EventSocket(PsychicHttpServer *server) : _server(server) {}
 
 void EventSocket::begin() {
-    _socket.setFilter(_securityManager->filterRequest(_authenticationPredicate));
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));

@@ -18,7 +18,6 @@
 #include <WiFi.h>
 
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 #include <RestartService.h>
 #include <FS.h>
 #include <ESPFS.h>
@@ -29,14 +28,13 @@ class FactoryResetService {
     FS *fs;
 
   public:
-    FactoryResetService(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager);
+    FactoryResetService(PsychicHttpServer *server, FS *fs);
 
     void begin();
     void factoryReset();
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     esp_err_t handleRequest(PsychicRequest *request);
 };
 

@@ -20,23 +20,19 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _numberEndpoints(numberEndpoints),
       _taskManager(),
       _featureService(server),
-      _securitySettingsService(server, &ESPFS),
-      _socket(server, &_securitySettingsService, AuthenticationPredicates::IS_AUTHENTICATED),
+      _socket(server),
 #if FT_ENABLED(USE_NTP)
-      _ntpSettingsService(server, &ESPFS, &_securitySettingsService),
-      _ntpStatus(server, &_securitySettingsService),
+      _ntpSettingsService(server, &ESPFS),
+      _ntpStatus(server),
 #endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-      _uploadFirmwareService(server, &_securitySettingsService),
+      _uploadFirmwareService(server),
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_securitySettingsService, &_socket, &_taskManager),
-#endif
-#if FT_ENABLED(USE_SECURITY)
-      _authenticationService(server, &_securitySettingsService),
+      _downloadFirmwareService(server, &_socket, &_taskManager),
 #endif
 #if FT_ENABLED(USE_SLEEP)
-      _sleepService(server, &_securitySettingsService),
+      _sleepService(server),
 #endif
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals, &_socket),
@@ -45,21 +41,21 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _analyticsService(&_socket, &_taskManager),
 #endif
 #if FT_ENABLED(USE_CAMERA)
-      _cameraService(server, &_taskManager, &_securitySettingsService),
-      _cameraSettingsService(server, &ESPFS, &_securitySettingsService, &_socket),
+      _cameraService(server, &_taskManager),
+      _cameraSettingsService(server, &ESPFS, &_socket),
 #endif
-      _restartService(server, &_securitySettingsService),
-      _factoryResetService(server, &ESPFS, &_securitySettingsService),
-      _systemStatus(server, &_securitySettingsService),
-      _fileExplorer(server, &_securitySettingsService),
-      _servoController(server, &ESPFS, &_securitySettingsService, &_peripherals, &_socket),
+      _restartService(server),
+      _factoryResetService(server, &ESPFS),
+      _systemStatus(server),
+      _fileExplorer(server),
+      _servoController(server, &ESPFS, &_peripherals, &_socket),
 #if FT_ENABLED(USE_MOTION)
-      _motionService(_server, &_socket, &_securitySettingsService, &_servoController, &_taskManager),
+      _motionService(_server, &_socket, &_servoController, &_taskManager),
 #endif
 #if FT_ENABLED(USE_WS2812)
       _ledService(&_taskManager),
 #endif
-      _peripherals(server, &ESPFS, &_securitySettingsService, &_socket) {
+      _peripherals(server, &ESPFS, &_socket) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -187,10 +183,6 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(USE_NTP)
     _ntpSettingsService.begin();
     _ntpStatus.begin();
-#endif
-#if FT_ENABLED(USE_SECURITY)
-    _authenticationService.begin();
-    _securitySettingsService.begin();
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     _analyticsService.begin();
