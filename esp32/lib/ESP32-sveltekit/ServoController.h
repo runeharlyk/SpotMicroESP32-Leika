@@ -5,7 +5,6 @@
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
-#include <SecurityManager.h>
 #include <StatefulService.h>
 #include <stateful_service_endpoint.h>
 #include <MathUtils.h>
@@ -69,10 +68,8 @@ class ServoSettings {
 
 class ServoController : public StatefulService<ServoSettings> {
   public:
-    ServoController(PsychicHttpServer *server, FS *fs, SecurityManager *securityManager, Peripherals *peripherals,
-                    EventSocket *socket)
+    ServoController(PsychicHttpServer *server, FS *fs, Peripherals *peripherals, EventSocket *socket)
         : _server(server),
-          _securityManager(securityManager),
           _peripherals(peripherals),
           _socket(socket),
           endpoint(ServoSettings::read, ServoSettings::update, this),
@@ -139,7 +136,6 @@ class ServoController : public StatefulService<ServoSettings> {
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     Peripherals *_peripherals;
     EventSocket *_socket;
     FSPersistence<ServoSettings> _fsPersistence;

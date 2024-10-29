@@ -90,15 +90,13 @@ void updateTask(void *param) {
     vTaskDelete(NULL);
 }
 
-DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server, SecurityManager *securityManager,
-                                                 EventSocket *socket, TaskManager *taskManager)
-    : _server(server), _securityManager(securityManager), _socket(socket), _taskManager(taskManager) {}
+DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server, EventSocket *socket,
+                                                 TaskManager *taskManager)
+    : _server(server), _socket(socket), _taskManager(taskManager) {}
 
 void DownloadFirmwareService::begin() {
     _server->on(GITHUB_FIRMWARE_PATH, HTTP_POST,
-                _securityManager->wrapCallback(std::bind(&DownloadFirmwareService::downloadUpdate, this,
-                                                         std::placeholders::_1, std::placeholders::_2),
-                                               AuthenticationPredicates::IS_ADMIN));
+                [this](PsychicRequest *request, JsonVariant &json) { return downloadUpdate(request, json); });
 
     ESP_LOGV("DownloadFirmwareService", "Registered POST endpoint: %s", GITHUB_FIRMWARE_PATH);
 }

@@ -20,13 +20,9 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WA
 
 class MotionService {
   public:
-    MotionService(PsychicHttpServer *server, EventSocket *socket, SecurityManager *securityManager,
-                  ServoController *servoController, TaskManager *taskManager)
-        : _server(server),
-          _socket(socket),
-          _securityManager(securityManager),
-          _servoController(servoController),
-          _taskManager(taskManager) {}
+    MotionService(PsychicHttpServer *server, EventSocket *socket, ServoController *servoController,
+                  TaskManager *taskManager)
+        : _server(server), _socket(socket), _servoController(servoController), _taskManager(taskManager) {}
 
     void begin() {
         _socket->onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
@@ -151,7 +147,6 @@ class MotionService {
   private:
     PsychicHttpServer *_server;
     EventSocket *_socket;
-    SecurityManager *_securityManager;
     TaskManager *_taskManager;
     ServoController *_servoController;
     Kinematics kinematics;

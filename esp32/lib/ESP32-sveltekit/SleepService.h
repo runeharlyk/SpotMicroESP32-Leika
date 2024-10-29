@@ -17,7 +17,6 @@
 #include <ESPmDNS.h>
 
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 
 #define SLEEP_SERVICE_PATH "/api/sleep"
 
@@ -31,7 +30,7 @@
 
 class SleepService {
   public:
-    SleepService(PsychicHttpServer *server, SecurityManager *securityManager);
+    SleepService(PsychicHttpServer *server);
 
     void begin();
 
@@ -41,7 +40,6 @@ class SleepService {
 
   private:
     PsychicHttpServer *_server;
-    SecurityManager *_securityManager;
     esp_err_t sleep(PsychicRequest *request);
 
   protected:

@@ -2,7 +2,6 @@
 #define Socket_h
 
 #include <PsychicHttp.h>
-#include <SecurityManager.h>
 #include <StatefulService.h>
 #include <list>
 #include <map>
@@ -17,8 +16,7 @@ typedef std::function<void(const String &originId, bool sync)> SubscribeCallback
 
 class EventSocket {
   public:
-    EventSocket(PsychicHttpServer *server, SecurityManager *_securityManager,
-                AuthenticationPredicate authenticationPredicate = AuthenticationPredicates::IS_AUTHENTICATED);
+    EventSocket(PsychicHttpServer *server);
 
     void begin();
 
@@ -35,8 +33,6 @@ class EventSocket {
   private:
     PsychicHttpServer *_server;
     PsychicWebSocketHandler _socket;
-    SecurityManager *_securityManager;
-    AuthenticationPredicate _authenticationPredicate;
 
     std::map<String, std::list<int>> client_subscriptions;
     std::map<String, std::list<EventCallback>> event_callbacks;

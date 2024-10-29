@@ -14,13 +14,10 @@
 
 #include <NTPStatus.h>
 
-NTPStatus::NTPStatus(PsychicHttpServer *server, SecurityManager *securityManager)
-    : _server(server), _securityManager(securityManager) {}
+NTPStatus::NTPStatus(PsychicHttpServer *server) : _server(server) {}
 
 void NTPStatus::begin() {
-    _server->on(NTP_STATUS_SERVICE_PATH, HTTP_GET,
-                _securityManager->wrapRequest(std::bind(&NTPStatus::ntpStatus, this, std::placeholders::_1),
-                                              AuthenticationPredicates::IS_AUTHENTICATED));
+    _server->on(NTP_STATUS_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return ntpStatus(request); });
 
     ESP_LOGV("NTPStatus", "Registered GET endpoint: %s", NTP_STATUS_SERVICE_PATH);
 }
