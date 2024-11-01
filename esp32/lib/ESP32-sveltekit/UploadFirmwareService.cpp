@@ -125,7 +125,7 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request) {
     // if no error, send the success response
     if (!request->_tempObject) {
         request->reply(200);
-        RestartService::restartNow();
+        system_service::restart();
         return ESP_OK;
     }
 
