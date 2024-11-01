@@ -47,8 +47,6 @@
 #define FACTORY_AP_MAX_CLIENTS 4
 #endif
 
-#define AP_SETTINGS_SERVICE_PATH "/api/apSettings"
-
 #define AP_MODE_ALWAYS 0
 #define AP_MODE_DISCONNECTED 1
 #define AP_MODE_NEVER 2
