@@ -1,6 +1,6 @@
-#include <ESP32SvelteKit.h>
+#include <Spot.h>
 
-ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
+Spot::Spot(PsychicHttpServer *server)
     : _server(server),
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals),
@@ -11,8 +11,8 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
       _servoController(&_peripherals) {
 }
 
-void ESP32SvelteKit::begin() {
-    ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");
+void Spot::begin() {
+    ESP_LOGV("Spot", "Loading settings from files system");
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
 
@@ -24,10 +24,10 @@ void ESP32SvelteKit::begin() {
 
     setupServer();
 
-    taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, ESP32SVELTEKIT_RUNNING_CORE);
+    taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, APPLICATION_CORE);
 }
 
-void ESP32SvelteKit::setupServer() {
+void Spot::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
     _server->maxUploadSize = _maxFileUpload;
     _server->listen(_port);
@@ -118,7 +118,7 @@ void ESP32SvelteKit::setupServer() {
 #endif
 
 #ifdef EMBED_WWW
-    ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
+    ESP_LOGV("Spot", "Registering routes from PROGMEM static resources");
     WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
         PsychicHttpRequestCallback requestHandler = [contentType, content, len](PsychicRequest *request) {
             PsychicResponse response(request);
@@ -141,7 +141,7 @@ void ESP32SvelteKit::setupServer() {
     });
 #else
     // Serve static resources from /www/
-    ESP_LOGV("ESP32SvelteKit", "Registering routes from FS /www/ static resources");
+    ESP_LOGV("Spot", "Registering routes from FS /www/ static resources");
     _server->serveStatic("/_app/", ESPFS, "/www/_app/");
     _server->serveStatic("/favicon.png", ESPFS, "/www/favicon.png");
     //  Serving all other get requests with "/www/index.htm"
@@ -159,7 +159,7 @@ void ESP32SvelteKit::setupServer() {
 #endif
 
 #if defined(ENABLE_CORS)
-    ESP_LOGV("ESP32SvelteKit", "Enabling CORS headers");
+    ESP_LOGV("Spot", "Enabling CORS headers");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
@@ -167,8 +167,8 @@ void ESP32SvelteKit::setupServer() {
     DefaultHeaders::Instance().addHeader("Server", _appName);
 }
 
-void ESP32SvelteKit::setupMDNS() {
-    ESP_LOGV("ESP32SvelteKit", "Starting MDNS");
+void Spot::setupMDNS() {
+    ESP_LOGV("Spot", "Starting MDNS");
     MDNS.begin(_wifiService.getHostname());
     MDNS.setInstanceName(_appName);
     MDNS.addService("http", "tcp", 80);
@@ -176,7 +176,7 @@ void ESP32SvelteKit::setupMDNS() {
     MDNS.addServiceTxt("http", "tcp", "Firmware Version", APP_VERSION);
 }
 
-void ESP32SvelteKit::startServices() {
+void Spot::startServices() {
     _apService.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
@@ -187,9 +187,6 @@ void ESP32SvelteKit::startServices() {
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     _analyticsService.begin();
-#endif
-#if FT_ENABLED(USE_SLEEP)
-    _sleepService.begin();
 #endif
 #if FT_ENABLED(USE_BATTERY)
     _batteryService.begin();
@@ -209,7 +206,7 @@ void ESP32SvelteKit::startServices() {
 #endif
 }
 
-void IRAM_ATTR ESP32SvelteKit::loop() {
+void IRAM_ATTR Spot::loop() {
     while (1) {
 #if FT_ENABLED(USE_WS2812)
         _ledService.loop();

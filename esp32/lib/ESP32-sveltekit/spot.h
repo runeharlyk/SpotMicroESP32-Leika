@@ -1,5 +1,5 @@
-#ifndef ESP32SvelteKit_h
-#define ESP32SvelteKit_h
+#ifndef Spot_h
+#define Spot_h
 
 #include <Arduino.h>
 
@@ -42,13 +42,13 @@
 #define APP_NAME "SpotMicro"
 #endif
 
-#ifndef ESP32SVELTEKIT_RUNNING_CORE
-#define ESP32SVELTEKIT_RUNNING_CORE -1
+#ifndef APPLICATION_CORE
+#define APPLICATION_CORE -1
 #endif
 
-class ESP32SvelteKit {
+class Spot {
   public:
-    ESP32SvelteKit(PsychicHttpServer *server);
+    Spot(PsychicHttpServer *server);
 
     void begin();
 
@@ -127,7 +127,7 @@ class ESP32SvelteKit {
     const uint16_t _port = 80;
 
   protected:
-    static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->loop(); }
+    static void _loopImpl(void *_this) { static_cast<Spot *>(_this)->loop(); }
     void setupServer();
     void setupMDNS();
     void startServices();

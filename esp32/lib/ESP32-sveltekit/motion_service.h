@@ -3,9 +3,9 @@
 
 #include <event_socket.h>
 #include <task_manager.h>
-#include <Kinematics.h>
+#include <kinematics.h>
 #include <servo_controller.h>
-#include <Gait/GaitState.h>
+#include <gait/phase_state.h>
 #include <timing.h>
 #include <utilities/math_utilities.h>
 
