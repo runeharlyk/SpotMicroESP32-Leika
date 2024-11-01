@@ -1,7 +1,7 @@
 #ifndef Kinematics_h
 #define Kinematics_h
 
-#include <MathUtils.h>
+#include <utilities/math_utilities.h>
 
 struct body_state_t {
     float omega, phi, psi, xm, ym, zm;

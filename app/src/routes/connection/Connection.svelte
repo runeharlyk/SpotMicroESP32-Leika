@@ -7,7 +7,7 @@
 
     const update = () => {
         const ws = $location ? $location : window.location.host;
-        socket.init(`ws://${ws}/ws/events`);
+        socket.init(`ws://${ws}/api/ws/events`);
     };
 </script>
 

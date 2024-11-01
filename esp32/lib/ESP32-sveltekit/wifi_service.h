@@ -4,13 +4,12 @@
 #include <IPAddress.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-
-#include <ESPFS.h>
-#include <Timing.h>
-#include <StatefulService.h>
-#include <FSPersistence.h>
-#include <stateful_service_endpoint.h>
-#include <wifi_settings.h>
+#include <filesystem.h>
+#include <timing.h>
+#include <stateful_base.h>
+#include <stateful_persistence.h>
+#include <stateful_endpoint.h>
+#include <domain/wifi_settings.h>
 
 class WiFiService : public StatefulService<WiFiSettings> {
   private:
@@ -47,5 +46,5 @@ class WiFiService : public StatefulService<WiFiSettings> {
     static esp_err_t getNetworks(PsychicRequest *request);
     static esp_err_t getNetworkStatus(PsychicRequest *request);
 
-    StatefulHttpEndpoint<WiFiSettings> endpoint;
+    HttpEndpoint<WiFiSettings> endpoint;
 };

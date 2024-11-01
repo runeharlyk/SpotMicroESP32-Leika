@@ -1,42 +1,26 @@
 #ifndef ESP32SvelteKit_h
 #define ESP32SvelteKit_h
 
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *   Copyright (C) 2024 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
-
 #include <Arduino.h>
 
-#include <AnalyticsService.h>
-#include <BatteryService.h>
-#include <FileExplorerService.h>
-#include <DownloadFirmwareService.h>
-#include <Peripherals.h>
-#include <ServoController.h>
-#include <ESPFS.h>
+#include <analytics.h>
+#include <battery_service.h>
+#include <filesystem.h>
+#include <firmware_download_service.h>
+#include <firmware_upload_service.h>
+#include <peripherals.h>
+#include <servo_controller.h>
+#include <filesystem.h>
 #include <ESPmDNS.h>
-#include <LEDService.h>
-#include <EventSocket.h>
-#include <FeaturesService.h>
-#include <MotionService.h>
-#include <NTPSettingsService.h>
-#include <CameraService.h>
-#include <CameraSettingsService.h>
-#include <NTPStatus.h>
+#include <led_service.h>
+#include <event_socket.h>
+#include <features.h>
+#include <motion_service.h>
+#include <ntp_service.h>
+#include <camera_service.h>
+#include <camera_settings_service.h>
 #include <PsychicHttp.h>
-#include <TaskManager.h>
-#include <UploadFirmwareService.h>
+#include <task_manager.h>
 #include <WiFi.h>
 #include <wifi_service.h>
 #include <ap_service.h>
@@ -64,7 +48,7 @@
 
 class ESP32SvelteKit {
   public:
-    ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints = 115);
+    ESP32SvelteKit(PsychicHttpServer *server);
 
     void begin();
 
@@ -81,12 +65,6 @@ class ESP32SvelteKit {
 #if FT_ENABLED(USE_BATTERY)
     BatteryService *getBatteryService() { return &_batteryService; }
 #endif
-
-    FeaturesService *getFeatureService() { return &_featureService; }
-
-    TaskManager *getTaskManager() { return &_taskManager; }
-
-    FileExplorer *getFileExplorer() { return &_fileExplorer; }
 
 #if FT_ENABLED(USE_MOTION)
     MotionService *getMotionService() { return &_motionService; }
@@ -111,14 +89,11 @@ class ESP32SvelteKit {
 
   private:
     PsychicHttpServer *_server;
-    unsigned int _numberEndpoints;
-    FeaturesService _featureService;
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
 #if FT_ENABLED(USE_NTP)
     NTPSettingsService _ntpSettingsService;
-    NTPStatus _ntpStatus;
 #endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     UploadFirmwareService _uploadFirmwareService;
@@ -132,8 +107,6 @@ class ESP32SvelteKit {
 #if FT_ENABLED(USE_ANALYTICS)
     AnalyticsService _analyticsService;
 #endif
-    TaskManager _taskManager;
-    FileExplorer _fileExplorer;
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
 #endif
@@ -148,6 +121,10 @@ class ESP32SvelteKit {
 #endif
 
     String _appName = APP_NAME;
+
+    const u_int16_t _numberEndpoints = 115;
+    const u_int32_t _maxFileUpload = 2300000; // 2.3 MB
+    const uint16_t _port = 80;
 
   protected:
     static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->loop(); }

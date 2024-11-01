@@ -1,16 +1,16 @@
 #include <ESP32SvelteKit.h>
 #include <PsychicHttpServer.h>
 
-#define SERIAL_BAUD_RATE 115200
-
 DRAM_ATTR PsychicHttpServer server;
 
-DRAM_ATTR ESP32SvelteKit spot(&server, 130);
+std::unique_ptr<ESP32SvelteKit> spot;
 
 void setup() {
-    Serial.begin(SERIAL_BAUD_RATE);
+    Serial.begin(115200);
+    ESPFS.begin(true);
 
-    spot.begin();
+    spot = std::make_unique<ESP32SvelteKit>(&server);
+    spot->begin();
 }
 
 void loop() { vTaskDelete(NULL); }

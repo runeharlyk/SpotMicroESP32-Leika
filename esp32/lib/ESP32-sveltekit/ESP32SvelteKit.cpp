@@ -1,58 +1,14 @@
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2024 theelims
- *   Copyright (C) 2024 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
-
 #include <ESP32SvelteKit.h>
 
-ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
+ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
     : _server(server),
-      _numberEndpoints(numberEndpoints),
-      _taskManager(),
-      _featureService(server),
-      _socket(server),
-#if FT_ENABLED(USE_NTP)
-      _ntpSettingsService(server, &ESPFS),
-      _ntpStatus(server),
-#endif
-#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-      _uploadFirmwareService(server),
-#endif
-#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_socket, &_taskManager),
-#endif
-#if FT_ENABLED(USE_SLEEP)
-      _sleepService(server),
-#endif
 #if FT_ENABLED(USE_BATTERY)
-      _batteryService(&_peripherals, &_socket),
+      _batteryService(&_peripherals),
 #endif
-#if FT_ENABLED(USE_ANALYTICS)
-      _analyticsService(&_socket, &_taskManager),
-#endif
-#if FT_ENABLED(USE_CAMERA)
-      _cameraService(server, &_taskManager),
-      _cameraSettingsService(server, &ESPFS, &_socket),
-#endif
-      _fileExplorer(server),
-      _servoController(server, &ESPFS, &_peripherals, &_socket),
 #if FT_ENABLED(USE_MOTION)
-      _motionService(_server, &_socket, &_servoController, &_taskManager),
+      _motionService(&_servoController),
 #endif
-#if FT_ENABLED(USE_WS2812)
-      _ledService(&_taskManager),
-#endif
-      _peripherals(server, &ESPFS, &_socket) {
+      _servoController(&_peripherals) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -62,21 +18,21 @@ void ESP32SvelteKit::begin() {
 
     _wifiService.begin();
 
-    _server->config.max_uri_handlers = _numberEndpoints;
-    _server->listen(80);
-
-    setupServer();
+    setupMDNS();
 
     startServices();
 
-    setupMDNS();
+    setupServer();
 
-    ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, ESP32SVELTEKIT_RUNNING_CORE);
+    taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, ESP32SVELTEKIT_RUNNING_CORE);
 }
 
 void ESP32SvelteKit::setupServer() {
-    // wifi
+    _server->config.max_uri_handlers = _numberEndpoints;
+    _server->maxUploadSize = _maxFileUpload;
+    _server->listen(_port);
+
+    // WIFI
     _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
     _server->on("/api/wifi/networks", HTTP_GET,
                 [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
@@ -88,7 +44,7 @@ void ESP32SvelteKit::setupServer() {
         return _wifiService.endpoint.handleStateUpdate(request, json);
     });
 
-    // ap
+    // AP
     _server->on("/api/wifi/ap/status", HTTP_GET,
                 [this](PsychicRequest *request) { return _apService.getStatus(request); });
     _server->on("/api/wifi/ap/settings", HTTP_GET,
@@ -104,12 +60,62 @@ void ESP32SvelteKit::setupServer() {
     _server->on("/api/system/status", HTTP_GET, system_service::getStatus);
     _server->on("/api/system/metrics", HTTP_GET, system_service::getMetrics);
 
-    // servo
+    // NTP
+#if FT_ENABLED(USE_NTP)
+    _server->on("/api/ntp/status", HTTP_GET, [this](PsychicRequest *r) { return _ntpSettingsService.getStatus(r); });
+    _server->on("/api/ntp/time", HTTP_POST,
+                [this](PsychicRequest *r, JsonVariant &json) { return _ntpSettingsService.handleTime(r, json); });
+    _server->on("/api/ntp/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _ntpSettingsService.endpoint.getState(request); });
+    _server->on("/api/ntp/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _ntpSettingsService.endpoint.handleStateUpdate(request, json);
+    });
+#endif
+
+    // SERVO
     _server->on("/api/servo/config", HTTP_GET,
                 [this](PsychicRequest *request) { return _servoController.endpoint.getState(request); });
     _server->on("/api/servo/config", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _servoController.endpoint.handleStateUpdate(request, json);
     });
+
+    // CAMERA
+    _server->on("/api/camera/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraSettingsService.endpoint.getState(request); });
+    _server->on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _cameraSettingsService.endpoint.handleStateUpdate(request, json);
+    });
+    _server->on("/api/camera/still", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
+    _server->on("/api/camera/stream", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraService.cameraStream(request); });
+
+    // Peripherals
+    _server->on("/api/peripheral/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _peripherals.endpoint.getState(request); });
+    _server->on("/api/peripheral/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _peripherals.endpoint.handleStateUpdate(request, json);
+    });
+
+    // FILESYSTEM
+    _server->on("/api/files", HTTP_GET, FileSystem::getFiles);
+    _server->on("/api/files/delete", HTTP_POST, FileSystem::handleDelete);
+    _server->on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
+    _server->on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
+
+    // MISC
+    _server->on("/api/features", HTTP_GET, feature_service::getFeatures);
+    _server->on("/api/ws/events", socket.getHandler());
+
+#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
+    _server->on("/api/firmware", HTTP_POST, _uploadFirmwareService.getHandler());
+#endif
+
+#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
+    _server->on("/api/v1/firmware/download", HTTP_POST, [this](PsychicRequest *r, JsonVariant &json) {
+        return _downloadFirmwareService.handleDownloadUpdate(r, json);
+    });
+#endif
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
@@ -172,18 +178,12 @@ void ESP32SvelteKit::setupMDNS() {
 
 void ESP32SvelteKit::startServices() {
     _apService.begin();
-    _socket.begin();
-    _featureService.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     _downloadFirmwareService.begin();
-#endif
-#if FT_ENABLED(USE_NTP)
-    _ntpSettingsService.begin();
-    _ntpStatus.begin();
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     _analyticsService.begin();
@@ -194,8 +194,7 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(USE_BATTERY)
     _batteryService.begin();
 #endif
-    _taskManager.begin();
-    _fileExplorer.begin();
+    taskManager.begin();
     _peripherals.begin();
     _servoController.begin();
 #if FT_ENABLED(USE_MOTION)

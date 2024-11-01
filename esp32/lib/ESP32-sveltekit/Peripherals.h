@@ -1,14 +1,14 @@
 #ifndef Peripherals_h
 #define Peripherals_h
 
-#include <EventEndpoint.h>
-#include <FSPersistence.h>
-#include <HttpEndpoint.h>
-#include <StatefulService.h>
-#include <MathUtils.h>
-#include <Timing.h>
-#include <ESPFS.h>
-#include <Features.h>
+#include <stateful_socket.h>
+#include <stateful_persistence.h>
+#include <stateful_endpoint.h>
+#include <stateful_base.h>
+#include <utilities/math_utilities.h>
+#include <timing.h>
+#include <filesystem.h>
+#include <features.h>
 
 #include <list>
 #include <SPI.h>
@@ -22,9 +22,9 @@
 #include <Adafruit_ADS1X15.h>
 #include <NewPing.h>
 
-#define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
-#define CONFIGURATION_SETTINGS_PATH "/api/peripheral/settings"
+#include <domain/peripherals_settings.h>
 
+#define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 #define EVENT_I2C_SCAN "i2cScan"
 
 #define I2C_INTERVAL 5000
@@ -55,58 +55,11 @@
  */
 #define MAX_DISTANCE 200
 
-/*
- * I2C software connection
- */
-#ifndef SDA_PIN
-#define SDA_PIN SDA
-#endif
-#ifndef SCL_PIN
-#define SCL_PIN SCL
-#endif
-#ifndef I2C_FREQUENCY
-#define I2C_FREQUENCY 100000UL
-#endif
-
-class PinConfig {
-  public:
-    int pin;
-    String mode;
-    String type;
-    String role;
-
-    PinConfig(int p, String m, String t, String r) : pin(p), mode(m), type(t), role(r) {}
-};
-
-class PeripheralsConfiguration {
-  public:
-    int sda = SDA_PIN;
-    int scl = SCL_PIN;
-    long frequency = I2C_FREQUENCY;
-    std::vector<PinConfig> pins;
-
-    static void read(PeripheralsConfiguration &settings, JsonObject &root) {
-        root["sda"] = settings.sda;
-        root["scl"] = settings.scl;
-        root["frequency"] = settings.frequency;
-    }
-
-    static StateUpdateResult update(JsonObject &root, PeripheralsConfiguration &settings) {
-        settings.sda = root["sda"] | SDA_PIN;
-        settings.scl = root["scl"] | SCL_PIN;
-        settings.frequency = root["frequency"] | I2C_FREQUENCY;
-        return StateUpdateResult::CHANGED;
-    };
-};
-
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
-    Peripherals(PsychicHttpServer *server, FS *fs, EventSocket *socket)
-        : _server(server),
-          _socket(socket),
-          _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, server,
-                        CONFIGURATION_SETTINGS_PATH),
-          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, socket,
+    Peripherals()
+        : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
+          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
                          EVENT_CONFIGURATION_SETTINGS),
 #if FT_ENABLED(USE_MAG)
           _mag(12345),
@@ -114,23 +67,21 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
-          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, fs,
-                         DEVICE_CONFIG_FILE) {
+          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
         _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
     };
 
     void begin() {
-        _httpEndpoint.begin();
         _eventEndpoint.begin();
         _fsPersistence.readFromFS();
 
-        _socket->onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
             scanI2C();
             emitI2C();
         });
 
-        _socket->onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
+        socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
             scanI2C();
             emitI2C(originId, sync);
         });
@@ -142,7 +93,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
         _pca.sleep();
-        _socket->onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
             _pca_active = root["active"] | false;
             _pca_active ? pcaActivate() : pcaDeactivate();
         });
@@ -219,7 +170,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
         serializeJson(root, output);
         ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
-        _socket->emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
+        socket.emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
     }
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
@@ -390,6 +341,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return temperature;
     }
 
+    HttpEndpoint<PeripheralsConfiguration> endpoint;
+
   protected:
     void updateImu() {
         doc.clear();
@@ -418,7 +371,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
         if (newData) {
             serializeJson(doc, message);
-            _socket->emit(EVENT_IMU, message);
+            socket.emit(EVENT_IMU, message);
         }
     }
 
@@ -435,7 +388,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         char output[16];
         snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
-        _socket->emit("sonar", output);
+        socket.emit("sonar", output);
 #endif
     }
 
@@ -443,9 +396,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float rightDistance() { return _right_distance; }
 
   private:
-    PsychicHttpServer *_server;
-    EventSocket *_socket;
-    HttpEndpoint<PeripheralsConfiguration> _httpEndpoint;
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _fsPersistence;
 
