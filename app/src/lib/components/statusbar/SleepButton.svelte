@@ -7,7 +7,7 @@
 
     const features = useFeatureFlags();
 
-    const postSleep = async () => await api.post('/api/sleep');
+    const postSleep = async () => await api.post('/api/system/sleep');
 
     const confirmSleep = () => {
 		openModal(ConfirmDialog, {

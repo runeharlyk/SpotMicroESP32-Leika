@@ -21,7 +21,7 @@
 #include <WiFi.h>
 
 #include <PsychicHttp.h>
-#include <RestartService.h>
+#include <system_service.h>
 
 #define UPLOAD_FIRMWARE_PATH "/api/uploadFirmware"
 

@@ -44,9 +44,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _cameraService(server, &_taskManager),
       _cameraSettingsService(server, &ESPFS, &_socket),
 #endif
-      _restartService(server),
-      _factoryResetService(server, &ESPFS),
-      _systemStatus(server),
       _fileExplorer(server),
       _servoController(server, &ESPFS, &_peripherals, &_socket),
 #if FT_ENABLED(USE_MOTION)
@@ -99,6 +96,13 @@ void ESP32SvelteKit::setupServer() {
     _server->on("/api/wifi/ap/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _apService.endpoint.handleStateUpdate(request, json);
     });
+
+    // SYSTEM
+    _server->on("/api/system/reset", HTTP_POST, system_service::handleReset);
+    _server->on("/api/system/restart", HTTP_POST, system_service::handleRestart);
+    _server->on("/api/system/sleep", HTTP_POST, system_service::handleSleep);
+    _server->on("/api/system/status", HTTP_GET, system_service::getStatus);
+    _server->on("/api/system/metrics", HTTP_GET, system_service::getMetrics);
 
     // servo
     _server->on("/api/servo/config", HTTP_GET,
@@ -169,10 +173,7 @@ void ESP32SvelteKit::setupMDNS() {
 void ESP32SvelteKit::startServices() {
     _apService.begin();
     _socket.begin();
-    _factoryResetService.begin();
     _featureService.begin();
-    _restartService.begin();
-    _systemStatus.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();

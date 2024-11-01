@@ -28,7 +28,6 @@
 #include <ESPmDNS.h>
 #include <LEDService.h>
 #include <EventSocket.h>
-#include <FactoryResetService.h>
 #include <FeaturesService.h>
 #include <MotionService.h>
 #include <NTPSettingsService.h>
@@ -36,9 +35,6 @@
 #include <CameraSettingsService.h>
 #include <NTPStatus.h>
 #include <PsychicHttp.h>
-#include <RestartService.h>
-#include <SleepService.h>
-#include <SystemStatus.h>
 #include <TaskManager.h>
 #include <UploadFirmwareService.h>
 #include <WiFi.h>
@@ -82,10 +78,6 @@ class ESP32SvelteKit {
     StatefulService<NTPSettings> *getNTPSettingsService() { return &_ntpSettingsService; }
 #endif
 
-#if FT_ENABLED(USE_SLEEP)
-    SleepService *getSleepService() { return &_sleepService; }
-#endif
-
 #if FT_ENABLED(USE_BATTERY)
     BatteryService *getBatteryService() { return &_batteryService; }
 #endif
@@ -111,8 +103,6 @@ class ESP32SvelteKit {
     ServoController *getServoController() { return &_servoController; }
 #endif
 
-    void factoryReset() { _factoryResetService.factoryReset(); }
-
     void setMDNSAppName(String name) { _appName = name; }
 
     void recoveryMode() { _apService.recoveryMode(); }
@@ -136,18 +126,12 @@ class ESP32SvelteKit {
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
 #endif
-#if FT_ENABLED(USE_SLEEP)
-    SleepService _sleepService;
-#endif
 #if FT_ENABLED(USE_BATTERY)
     BatteryService _batteryService;
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     AnalyticsService _analyticsService;
 #endif
-    RestartService _restartService;
-    FactoryResetService _factoryResetService;
-    SystemStatus _systemStatus;
     TaskManager _taskManager;
     FileExplorer _fileExplorer;
 #if FT_ENABLED(USE_MOTION)
