@@ -19,7 +19,7 @@
     let formField: any;
 
     async function getAPStatus() {
-        const result = await api.get<ApStatus>('/api/apStatus');
+        const result = await api.get<ApStatus>('/api/wifi/ap/status');
         if (result.isErr()) {
             console.error('Error:', result.inner);
             return;
@@ -29,7 +29,7 @@
     }
 
     async function getAPSettings() {
-        const result = await api.get<ApSettings>('/api/apSetting');
+        const result = await api.get<ApSettings>('/api/wifi/ap/settings');
         if (result.isErr()) {
             console.error('Error:', result.inner);
             return;
@@ -77,7 +77,7 @@
     };
 
     async function postAPSettings(data: ApSettings) {
-        const result = await api.post<ApSettings>('/api/apSettings', data);
+        const result = await api.post<ApSettings>('/api/wifi/ap/settings', data);
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000);
             console.error('Error:', result.inner);
