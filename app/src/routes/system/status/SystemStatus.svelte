@@ -37,7 +37,7 @@
     let systemInformation: SystemInformation;
 
     async function getSystemStatus() {
-        const result = await api.get<SystemInformation>('/api/systemStatus');
+        const result = await api.get<SystemInformation>('/api/system/status');
         if (result.isErr()) {
             console.error('Error:', result.inner);
             return;
@@ -46,7 +46,7 @@
         return systemInformation;
     }
 
-    const postFactoryReset = async () => await api.post('/api/factoryReset');
+    const postFactoryReset = async () => await api.post('/api/system/reset');
 
     const postSleep = async () => await api.post('api/sleep');
 
@@ -57,7 +57,7 @@
     const handleSystemData = (data: Analytics) =>
         (systemInformation = { ...systemInformation, ...data });
 
-    const postRestart = async () => await api.post('/api/restart');
+    const postRestart = async () => await api.post('/api/system/restart');
 
     function confirmRestart() {
         openModal(ConfirmDialog, {
