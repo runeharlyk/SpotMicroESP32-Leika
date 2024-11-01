@@ -75,7 +75,7 @@
     let formErrorhostname = false;
 
     async function getWifiStatus() {
-        const result = await api.get<WifiStatus>('/api/wifi/status');
+        const result = await api.get<WifiStatus>('/api/wifi/sta/status');
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner);
             return;
@@ -85,7 +85,7 @@
     }
 
     async function getWifiSettings() {
-        const result = await api.get<WifiSettings>('/api/wifi/settings');
+        const result = await api.get<WifiSettings>('/api/wifi/sta/settings');
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner);
             return;
@@ -105,7 +105,7 @@
     });
 
     async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post<WifiSettings>('/api/wifi/settings', data);
+        const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data);
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner);
             notifications.error('User not authorized.', 3000);
