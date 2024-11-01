@@ -15,16 +15,15 @@
 
 class ServoController : public StatefulService<ServoSettings> {
   public:
-    ServoController(Peripherals *peripherals)
-        : _peripherals(peripherals),
-          endpoint(ServoSettings::read, ServoSettings::update, this),
-          _fsPersistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
+    ServoController()
+        : endpoint(ServoSettings::read, ServoSettings::update, this),
+          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
         socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
                        [&](JsonObject &root, int originId) { servoEvent(root, originId); });
         socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
-        _fsPersistence.readFromFS();
+        _persistence.readFromFS();
     }
 
     void stateUpdate(JsonObject &root, int originId) {
@@ -81,7 +80,7 @@ class ServoController : public StatefulService<ServoSettings> {
 
   private:
     Peripherals *_peripherals;
-    FSPersistence<ServoSettings> _fsPersistence;
+    FSPersistence<ServoSettings> _persistence;
 
     bool is_active {true};
     constexpr static int ServoInterval = 2;

@@ -21,7 +21,7 @@ class NTPSettingsService : public StatefulService<NTPSettings> {
     HttpEndpoint<NTPSettings> endpoint;
 
   private:
-    FSPersistence<NTPSettings> _fsPersistence;
+    FSPersistence<NTPSettings> _persistence;
 
     void onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info);
     void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);

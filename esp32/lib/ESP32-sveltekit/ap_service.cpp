@@ -4,7 +4,7 @@ static const char *TAG = "APService";
 
 APService::APService()
     : endpoint(APSettings::read, APSettings::update, this),
-      _fsPersistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE),
+      _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE),
       _dnsServer(nullptr),
       _lastManaged(0),
       _reconfigureAp(false) {

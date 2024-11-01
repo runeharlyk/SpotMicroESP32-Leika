@@ -4,7 +4,7 @@ static const char *TAG = "NPT Service";
 
 NTPSettingsService::NTPSettingsService()
     : endpoint(NTPSettings::read, NTPSettings::update, this),
-      _fsPersistence(NTPSettings::read, NTPSettings::update, this, NTP_SETTINGS_FILE) {
+      _persistence(NTPSettings::read, NTPSettings::update, this, NTP_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { configureNTP(); }, false);
 }
 
