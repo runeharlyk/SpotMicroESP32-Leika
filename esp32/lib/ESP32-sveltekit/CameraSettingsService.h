@@ -120,10 +120,10 @@ class CameraSettings {
 
 class CameraSettingsService : public StatefulService<CameraSettings> {
   public:
-    CameraSettingsService(PsychicHttpServer *server, FS *fs, EventSocket *socket)
+    CameraSettingsService(PsychicHttpServer *server, FS *fs)
         : _server(server),
           _httpEndpoint(CameraSettings::read, CameraSettings::update, this, server, CAMERA_SETTINGS_PATH),
-          _eventEndpoint(CameraSettings::read, CameraSettings::update, this, socket, EVENT_CAMERA_SETTINGS),
+          _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
           _fsPersistence(CameraSettings::read, CameraSettings::update, this, fs, CAMERA_SETTINGS_FILE) {
         addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
     }
@@ -131,6 +131,7 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
     void begin() {
         _httpEndpoint.begin();
         _eventEndpoint.begin();
+        _fsPersistence.readFromFS();
         sensor_t *s = safe_sensor_get();
         _state.pixformat = s->pixformat;
         _state.framesize = s->status.framesize;

@@ -26,7 +26,7 @@
 #include <ServoController.h>
 #include <ESPmDNS.h>
 #include <LEDService.h>
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <FeaturesService.h>
 #include <MotionService.h>
 #include <ntp_service.h>

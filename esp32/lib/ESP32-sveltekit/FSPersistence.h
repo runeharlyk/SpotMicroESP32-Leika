@@ -32,7 +32,6 @@ class FSPersistence {
           _filePath(filePath),
           _updateHandlerId(0) {
         enableUpdateHandler();
-        readFromFS();
     }
 
     void readFromFS() {

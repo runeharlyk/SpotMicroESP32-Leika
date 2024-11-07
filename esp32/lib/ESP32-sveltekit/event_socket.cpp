@@ -1,4 +1,4 @@
-#include <EventSocket.h>
+#include <event_socket.h>
 
 SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 
@@ -42,15 +42,10 @@ const char *getEventPayload(const char *msg) {
     return payload;
 }
 
-EventSocket::EventSocket(PsychicHttpServer *server) : _server(server) {}
-
-void EventSocket::begin() {
+EventSocket::EventSocket() {
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
-    _server->on(EVENT_SERVICE_PATH, &_socket);
-
-    ESP_LOGV("EventSocket", "Registered event socket endpoint: %s", EVENT_SERVICE_PATH);
 }
 
 void EventSocket::onWSOpen(PsychicWebSocketClient *client) {
@@ -177,3 +172,5 @@ void EventSocket::onEvent(String event, EventCallback callback) { event_callback
 void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
     subscribe_callbacks[event].push_back(callback);
 }
+
+EventSocket socket;

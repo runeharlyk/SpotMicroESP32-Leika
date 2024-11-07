@@ -15,7 +15,7 @@
 
 #include <ArduinoJson.h>
 #include <filesystem.h>
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <TaskManager.h>
 #include <WiFi.h>
 #include <Timing.h>
@@ -26,7 +26,7 @@
 
 class AnalyticsService {
   public:
-    AnalyticsService(EventSocket *socket, TaskManager *taskManager) : _socket(socket), _taskManager(taskManager) {};
+    AnalyticsService(TaskManager *taskManager) : _taskManager(taskManager) {};
 
     void begin() {};
 
@@ -35,11 +35,10 @@ class AnalyticsService {
     char message[MAX_ESP_ANALYTICS_SIZE];
 
   private:
-    EventSocket *_socket;
     TaskManager *_taskManager;
 
     void updateAnalytics() {
-        if (!_socket->hasSubscribers(EVENT_ANALYTICS)) return;
+        if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
         doc.clear();
         doc["uptime"] = millis() / 1000;
         doc["free_heap"] = ESP.getFreeHeap();
@@ -62,6 +61,6 @@ class AnalyticsService {
         }
 
         serializeJson(doc, message);
-        _socket->emit(EVENT_ANALYTICS, message);
+        socket.emit(EVENT_ANALYTICS, message);
     }
 };

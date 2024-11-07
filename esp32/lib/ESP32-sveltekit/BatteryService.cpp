@@ -14,8 +14,7 @@
 
 #include <BatteryService.h>
 
-BatteryService::BatteryService(Peripherals *peripherals, EventSocket *socket)
-    : _peripherals(peripherals), _socket(socket) {}
+BatteryService::BatteryService(Peripherals *peripherals) : _peripherals(peripherals) {}
 
 void BatteryService::begin() {}
 
@@ -25,5 +24,5 @@ void BatteryService::batteryEvent() {
     doc["voltage"] = _voltage;
     doc["current"] = _current;
     serializeJson(doc, message);
-    _socket->emit(EVENT_BATTERY, message);
+    socket.emit(EVENT_BATTERY, message);
 }

@@ -3,6 +3,7 @@
 
 #include <Adafruit_PWMServoDriver.h>
 #include <EventEndpoint.h>
+#include <event_socket.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
 #include <StatefulService.h>
@@ -68,17 +69,16 @@ class ServoSettings {
 
 class ServoController : public StatefulService<ServoSettings> {
   public:
-    ServoController(PsychicHttpServer *server, FS *fs, Peripherals *peripherals, EventSocket *socket)
+    ServoController(PsychicHttpServer *server, FS *fs, Peripherals *peripherals)
         : _server(server),
           _peripherals(peripherals),
-          _socket(socket),
           endpoint(ServoSettings::read, ServoSettings::update, this),
           _fsPersistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {}
 
     void begin() {
-        _socket->onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-                         [&](JsonObject &root, int originId) { servoEvent(root, originId); });
-        _socket->onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
+        socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
+                       [&](JsonObject &root, int originId) { servoEvent(root, originId); });
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
         _fsPersistence.readFromFS();
     }
 
@@ -99,7 +99,7 @@ class ServoController : public StatefulService<ServoSettings> {
         snprintf(output, sizeof(output), "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0],
                  angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9],
                  angles[10], angles[11]);
-        _socket->emit("angles", output, String(originId).c_str());
+        socket.emit("angles", output, String(originId).c_str());
     }
 
     void deactivate() { _peripherals->pcaDeactivate(); }
@@ -137,7 +137,6 @@ class ServoController : public StatefulService<ServoSettings> {
   private:
     PsychicHttpServer *_server;
     Peripherals *_peripherals;
-    EventSocket *_socket;
     FSPersistence<ServoSettings> _fsPersistence;
 
     bool is_active {true};

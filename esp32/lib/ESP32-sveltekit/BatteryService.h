@@ -14,7 +14,7 @@
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
  **/
 
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <JsonUtils.h>
 #include <Peripherals.h>
 #include <Timing.h>
@@ -36,7 +36,7 @@
 
 class BatteryService {
   public:
-    BatteryService(Peripherals *peripherals, EventSocket *socket);
+    BatteryService(Peripherals *peripherals);
 
     void begin();
 
@@ -57,7 +57,6 @@ class BatteryService {
 
   private:
     void batteryEvent();
-    EventSocket *_socket;
     Peripherals *_peripherals;
 
     float _voltage = 0;

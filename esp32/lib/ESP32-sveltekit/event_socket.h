@@ -7,8 +7,6 @@
 #include <map>
 #include <vector>
 
-#define EVENT_SERVICE_PATH "/ws/events"
-
 enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4, BINARY_EVENT = 5 };
 
 typedef std::function<void(JsonObject &root, int originId)> EventCallback;
@@ -16,9 +14,9 @@ typedef std::function<void(const String &originId, bool sync)> SubscribeCallback
 
 class EventSocket {
   public:
-    EventSocket(PsychicHttpServer *server);
+    EventSocket();
 
-    void begin();
+    PsychicWebSocketHandler *getHandler() { return &_socket; }
 
     bool hasSubscribers(const char *event);
 
@@ -31,7 +29,6 @@ class EventSocket {
     // all clients except the originId
 
   private:
-    PsychicHttpServer *_server;
     PsychicWebSocketHandler _socket;
 
     std::map<String, std::list<int>> client_subscriptions;
@@ -44,5 +41,7 @@ class EventSocket {
     void onWSClose(PsychicWebSocketClient *client);
     esp_err_t onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame);
 };
+
+extern EventSocket socket;
 
 #endif
