@@ -18,7 +18,7 @@
     let ntpStatus: NTPStatus;
 
     async function getNTPStatus() {
-        const result = await api.get<NTPStatus>('/api/ntpStatus');
+        const result = await api.get<NTPStatus>('/api/ntp/status');
         if (result.isErr()) {
             console.error('Error:', result.inner);
             return;
@@ -27,7 +27,7 @@
     }
 
     async function getNTPSettings() {
-        const result = await api.get<NTPSettings>('/api/ntpSettings');
+        const result = await api.get<NTPSettings>('/api/ntp/settings');
         if (result.isErr()) {
             console.error('Error:', result.inner);
             return;
@@ -48,7 +48,7 @@
     };
 
     async function postNTPSettings(data: NTPSettings) {
-        const result = await api.post<NTPSettings>('/api/ntpSettings', data);
+        const result = await api.post<NTPSettings>('/api/ntp/settings', data);
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000);
             console.error('Error:', result.inner);

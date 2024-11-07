@@ -21,10 +21,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _taskManager(),
       _featureService(server),
       _socket(server),
-#if FT_ENABLED(USE_NTP)
-      _ntpSettingsService(server, &ESPFS),
-      _ntpStatus(server),
-#endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server),
 #endif
@@ -96,6 +92,18 @@ void ESP32SvelteKit::setupServer() {
     _server->on("/api/wifi/ap/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _apService.endpoint.handleStateUpdate(request, json);
     });
+
+    // NTP
+#if FT_ENABLED(USE_NTP)
+    _server->on("/api/ntp/status", HTTP_GET, [this](PsychicRequest *r) { return _ntpService.getStatus(r); });
+    _server->on("/api/ntp/time", HTTP_POST,
+                [this](PsychicRequest *r, JsonVariant &json) { return _ntpService.handleTime(r, json); });
+    _server->on("/api/ntp/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _ntpService.endpoint.getState(request); });
+    _server->on("/api/ntp/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _ntpService.endpoint.handleStateUpdate(request, json);
+    });
+#endif
 
     // SYSTEM
     _server->on("/api/system/reset", HTTP_POST, system_service::handleReset);
@@ -182,8 +190,7 @@ void ESP32SvelteKit::startServices() {
     _downloadFirmwareService.begin();
 #endif
 #if FT_ENABLED(USE_NTP)
-    _ntpSettingsService.begin();
-    _ntpStatus.begin();
+    _ntpService.begin();
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     _analyticsService.begin();
