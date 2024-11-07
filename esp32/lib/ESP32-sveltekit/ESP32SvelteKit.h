@@ -30,10 +30,9 @@
 #include <EventSocket.h>
 #include <FeaturesService.h>
 #include <MotionService.h>
-#include <NTPSettingsService.h>
+#include <ntp_service.h>
 #include <CameraService.h>
 #include <CameraSettingsService.h>
-#include <NTPStatus.h>
 #include <PsychicHttp.h>
 #include <TaskManager.h>
 #include <UploadFirmwareService.h>
@@ -74,10 +73,6 @@ class ESP32SvelteKit {
 
     EventSocket *getSocket() { return &_socket; }
 
-#if FT_ENABLED(USE_NTP)
-    StatefulService<NTPSettings> *getNTPSettingsService() { return &_ntpSettingsService; }
-#endif
-
 #if FT_ENABLED(USE_BATTERY)
     BatteryService *getBatteryService() { return &_batteryService; }
 #endif
@@ -117,8 +112,7 @@ class ESP32SvelteKit {
     APService _apService;
     EventSocket _socket;
 #if FT_ENABLED(USE_NTP)
-    NTPSettingsService _ntpSettingsService;
-    NTPStatus _ntpStatus;
+    NTPService _ntpService;
 #endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     UploadFirmwareService _uploadFirmwareService;
