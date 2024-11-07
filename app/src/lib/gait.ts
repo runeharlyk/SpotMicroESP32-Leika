@@ -25,7 +25,16 @@ export interface ControllerCommand {
 export abstract class GaitState {
     protected abstract name: string;
 
-    protected static body_state: body_state_t;
+    protected dt = 0.02;
+    protected body_state!: body_state_t;
+    protected gait_state: gait_state_t = {
+        step_height: 0.4,
+        step_x: 0,
+        step_z: 0,
+        step_angle: 0,
+        step_velocity: 1,
+        step_depth: 0.002
+    };
 
     public get default_feet_pos() {
         return [
@@ -47,18 +56,23 @@ export abstract class GaitState {
         console.log('Ending', this.name);
     }
     step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+        this.map_command(command);
+        this.body_state = body_state;
+        this.dt = dt / 1000;
         return body_state;
     }
 
-    map_command(command: ControllerCommand): gait_state_t {
-        return {
-            step_height: 0.4 + Math.abs(command.ry / 128),
-            step_x: (Math.floor(fromInt8(command.ly, -1, 1) * 10) / 10) * 3,
-            step_z: -(Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10) * 3,
+    map_command(command: ControllerCommand) {
+        const newCommand = {
+            step_height: 0.4,
+            step_x: Math.floor(fromInt8(command.ly, -1, 1) * 10) / 10,
+            step_z: -(Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10),
             step_velocity: command.s / 128 + 1,
-            step_angle: 0,
-            step_depth: 0.2
+            step_angle: command.rx / 128,
+            step_depth: 0.002
         };
+
+        this.gait_state = newCommand;
     }
 }
 
@@ -121,14 +135,8 @@ abstract class PhaseGaitState extends GaitState {
     protected contact_phases!: number[][];
     protected shifts!: number[][];
 
-    protected body_state!: body_state_t;
-    protected gait_state!: gait_state_t;
-    protected dt = 0.02;
-
     step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-        this.body_state = body_state;
-        this.gait_state = this.map_command(command);
-        this.dt = dt / 1000;
+        super.step(body_state, command, dt);
         this.update_phase();
         this.update_body_position();
         this.update_feet_positions();
@@ -260,7 +268,6 @@ export class BezierState extends GaitState {
     protected name = 'Bezier';
     protected phase = 0;
     protected phase_num = 0;
-    protected dt = 0.02;
     protected contact_phases = [
         [1, 0],
         [0, 1],
@@ -268,8 +275,6 @@ export class BezierState extends GaitState {
         [1, 0]
     ];
     protected step_length: number = 0;
-    protected body_state!: body_state_t;
-    protected gait_state!: gait_state_t;
 
     begin() {
         super.begin();
@@ -280,9 +285,7 @@ export class BezierState extends GaitState {
     }
 
     step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-        this.body_state = body_state;
-        this.gait_state = this.map_command(command);
-        this.dt = dt / 1000;
+        super.step(body_state, command, dt);
         this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2);
         if (this.gait_state.step_x < 0) {
             this.step_length = -this.step_length;
@@ -313,107 +316,136 @@ export class BezierState extends GaitState {
         this.body_state.feet[index][0] = this.default_feet_pos[index][0];
         this.body_state.feet[index][1] = this.default_feet_pos[index][1];
         this.body_state.feet[index][2] = this.default_feet_pos[index][2];
-        return contact ? this.swing(index) : this.stance(index);
+        return contact ? this.swing_controller(index) : this.stand_controller(index);
     }
 
-    swing(index: number): number[] {
-        const control_points = this.get_control_points();
-        const t = this.phase;
-        const n = control_points.length - 1;
-
-        const point = [0, 0, 0];
-        for (let i = 0; i <= n; i++) {
-            const bernstein_poly = this.comb(n, i) * Math.pow(t, i) * Math.pow(1 - t, n - i);
-            point[0] += bernstein_poly * control_points[i][0];
-            point[2] += bernstein_poly * control_points[i][1];
-            point[1] += bernstein_poly * control_points[i][2];
-        }
-        this.body_state.feet[index][0] += point[0];
-        if (point[0] !== 0 || point[2] !== 0) {
-            this.body_state.feet[index][1] += point[1];
-        }
-        this.body_state.feet[index][2] += point[2];
-        return this.body_state.feet[index];
+    stand_controller(index: number) {
+        let depth = this.gait_state.step_depth;
+        return this.controller(index, stance_curve, depth);
     }
 
-    stance(index: number): number[] {
-        const t = this.phase;
-        const L = this.step_length / 2;
+    swing_controller(index: number) {
+        let height = this.gait_state.step_height;
+        return this.controller(index, bezier_curve, height);
+    }
 
-        const X_POLAR = Math.cos((this.gait_state.step_z * Math.PI) / 2);
-        const Y_POLAR = Math.sin((this.gait_state.step_z * Math.PI) / 2);
+    controller(
+        index: number,
+        controller: (length: number, angle: number, ...args: number[]) => number[],
+        ...args: number[]
+    ) {
+        let length = this.step_length / 2;
+        let angle = (this.gait_state.step_z * Math.PI) / 2;
+        const delta_pos = controller(length, angle, ...args, this.phase);
 
-        const step = L * (1 - 2 * t);
-        const X = step * X_POLAR;
-        const Y = step * Y_POLAR;
-        let Z = 0;
+        length = this.gait_state.step_angle * 2;
+        angle = yawArc(this.default_feet_pos[index], this.body_state.feet[index]);
 
-        if (L !== 0) {
-            Z = -this.gait_state.step_depth * Math.cos((Math.PI * (X + Y)) / (2 * L));
-        }
+        const delta_rot = controller(length, angle, ...args, this.phase);
 
-        this.body_state.feet[index][0] += X;
-        this.body_state.feet[index][2] += Y;
-        this.body_state.feet[index][1] += Z;
+        this.body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2;
+        this.body_state.feet[index][2] += delta_pos[2] + delta_rot[2] * 0.2;
+        if (this.gait_state.step_x || this.gait_state.step_z || this.gait_state.step_angle)
+            this.body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2;
 
         return this.body_state.feet[index];
-    }
-
-    comb(n: number, k: number): number {
-        if (k < 0 || k > n) {
-            return 0;
-        }
-        if (k === 0 || k === n) {
-            return 1;
-        }
-        k = Math.min(k, n - k);
-        let c = 1;
-        for (let i = 0; i < k; i++) {
-            c = (c * (n - i)) / (i + 1);
-        }
-        return c;
-    }
-
-    get_control_points(): number[][] {
-        const L = this.step_length / 2;
-        const CH = this.gait_state.step_height;
-
-        const STEP = [
-            -L,
-            -L * 1.4,
-            -L * 1.5,
-            -L * 1.5,
-            -L * 1.5,
-            0.0,
-            0.0,
-            0.0,
-            L * 1.5,
-            L * 1.5,
-            L * 1.4,
-            L
-        ];
-
-        const X_POLAR = Math.cos((this.gait_state.step_z * Math.PI) / 2);
-        const Y_POLAR = Math.sin((this.gait_state.step_z * Math.PI) / 2);
-
-        const control_points: number[][] = [];
-
-        for (let i = 0; i < STEP.length; i++) {
-            const X = STEP[i] * X_POLAR;
-            const Y = STEP[i] * Y_POLAR;
-            let Z = 0.0;
-
-            if (i === 0 || i === 1 || i === 10 || i === 11) {
-                Z = 0.0;
-            } else if (i >= 2 && i <= 6) {
-                Z = CH * 0.9;
-            } else if (i >= 7 && i <= 9) {
-                Z = CH * 1.1;
-            }
-
-            control_points.push([X, Y, Z]);
-        }
-
-        return control_points;
     }
 }
+
+const stance_curve = (length: number, angle: number, depth: number, phase: number): number[] => {
+    const X_POLAR = Math.cos(angle);
+    const Y_POLAR = Math.sin(angle);
+
+    const step = length * (1 - 2 * phase);
+    const X = step * X_POLAR;
+    const Y = step * Y_POLAR;
+    let Z = 0;
+
+    if (length !== 0) {
+        Z = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length));
+    }
+    return [X, Z, Y];
+};
+
+const yawArc = (default_foot_pos: number[], current_foot_pos: number[]): number => {
+    const foot_mag = Math.sqrt(default_foot_pos[0] ** 2 + default_foot_pos[2] ** 2);
+    const foot_dir = Math.atan2(default_foot_pos[2], default_foot_pos[0]);
+    const offsets = [
+        current_foot_pos[0] - default_foot_pos[0],
+        current_foot_pos[2] - default_foot_pos[2],
+        current_foot_pos[1] - default_foot_pos[1]
+    ];
+    const offset_mag = Math.sqrt(offsets[0] ** 2 + offsets[2] ** 2);
+    const offset_mod = Math.atan2(offset_mag, foot_mag);
+
+    return Math.PI / 2.0 + foot_dir + offset_mod;
+};
+
+const bezier_curve = (length: number, angle: number, height: number, phase: number): number[] => {
+    const control_points = get_control_points(length, angle, height);
+    const n = control_points.length - 1;
+
+    const point = [0, 0, 0];
+    for (let i = 0; i <= n; i++) {
+        const bernstein_poly = comb(n, i) * Math.pow(phase, i) * Math.pow(1 - phase, n - i);
+        point[0] += bernstein_poly * control_points[i][0];
+        point[1] += bernstein_poly * control_points[i][1];
+        point[2] += bernstein_poly * control_points[i][2];
+    }
+    return point;
+};
+const get_control_points = (length: number, angle: number, height: number): number[][] => {
+    const X_POLAR = Math.cos(angle);
+    const Z_POLAR = Math.sin(angle);
+
+    const STEP = [
+        -length,
+        -length * 1.4,
+        -length * 1.5,
+        -length * 1.5,
+        -length * 1.5,
+        0.0,
+        0.0,
+        0.0,
+        length * 1.5,
+        length * 1.5,
+        length * 1.4,
+        length
+    ];
+
+    const Y = [
+        0.0,
+        0.0,
+        height * 0.9,
+        height * 0.9,
+        height * 0.9,
+        height * 0.9,
+        height * 0.9,
+        height * 1.1,
+        height * 1.1,
+        height * 1.1,
+        0.0,
+        0.0
+    ];
+
+    const control_points: number[][] = [];
+
+    for (let i = 0; i < STEP.length; i++) {
+        const X = STEP[i] * X_POLAR;
+        const Z = STEP[i] * Z_POLAR;
+        control_points.push([X, Y[i], Z]);
+    }
+
+    return control_points;
+};
+
+const comb = (n: number, k: number): number => {
+    if (k < 0 || k > n) return 0;
+    if (k === 0 || k === n) return 1;
+    k = Math.min(k, n - k);
+    let c = 1;
+    for (let i = 0; i < k; i++) {
+        c = (c * (n - i)) / (i + 1);
+    }
+    return c;
+};
