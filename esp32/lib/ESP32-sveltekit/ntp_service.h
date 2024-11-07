@@ -1,7 +1,7 @@
 #ifndef NTPService_h
 #define NTPService_h
 
-#include <ESPFS.h>
+#include <filesystem.h>
 #include <FSPersistence.h>
 #include <WiFi.h>
 #include <stateful_service_endpoint.h>

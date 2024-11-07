@@ -18,7 +18,7 @@
 
 #include <FS.h>
 #include <StatefulService.h>
-#include <ESPFS.h>
+#include <filesystem.h>
 
 template <class T>
 class FSPersistence {
@@ -32,6 +32,7 @@ class FSPersistence {
           _filePath(filePath),
           _updateHandlerId(0) {
         enableUpdateHandler();
+        readFromFS();
     }
 
     void readFromFS() {
