@@ -12,7 +12,7 @@ namespace Camera {
 #include <SettingValue.h>
 #include <StatefulService.h>
 #include <esp_camera.h>
-#include <ESPFS.h>
+#include <filesystem.h>
 
 #define EVENT_CAMERA_SETTINGS "CameraSettings"
 #define CAMERA_SETTINGS_PATH "/api/camera/settings"

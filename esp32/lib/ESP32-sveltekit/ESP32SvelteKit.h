@@ -20,11 +20,10 @@
 
 #include <AnalyticsService.h>
 #include <BatteryService.h>
-#include <FileExplorerService.h>
+#include <filesystem.h>
 #include <DownloadFirmwareService.h>
 #include <Peripherals.h>
 #include <ServoController.h>
-#include <ESPFS.h>
 #include <ESPmDNS.h>
 #include <LEDService.h>
 #include <EventSocket.h>
@@ -81,8 +80,6 @@ class ESP32SvelteKit {
 
     TaskManager *getTaskManager() { return &_taskManager; }
 
-    FileExplorer *getFileExplorer() { return &_fileExplorer; }
-
 #if FT_ENABLED(USE_MOTION)
     MotionService *getMotionService() { return &_motionService; }
 #endif
@@ -127,7 +124,6 @@ class ESP32SvelteKit {
     AnalyticsService _analyticsService;
 #endif
     TaskManager _taskManager;
-    FileExplorer _fileExplorer;
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
 #endif

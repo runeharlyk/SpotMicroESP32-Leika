@@ -40,7 +40,6 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _cameraService(server, &_taskManager),
       _cameraSettingsService(server, &ESPFS, &_socket),
 #endif
-      _fileExplorer(server),
       _servoController(server, &ESPFS, &_peripherals, &_socket),
 #if FT_ENABLED(USE_MOTION)
       _motionService(_server, &_socket, &_servoController, &_taskManager),
@@ -111,6 +110,12 @@ void ESP32SvelteKit::setupServer() {
     _server->on("/api/system/sleep", HTTP_POST, system_service::handleSleep);
     _server->on("/api/system/status", HTTP_GET, system_service::getStatus);
     _server->on("/api/system/metrics", HTTP_GET, system_service::getMetrics);
+
+    // FILESYSTEM
+    _server->on("/api/files", HTTP_GET, FileSystem::getFiles);
+    _server->on("/api/files/delete", HTTP_POST, FileSystem::handleDelete);
+    _server->on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
+    _server->on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
 
     // servo
     _server->on("/api/servo/config", HTTP_GET,
@@ -202,7 +207,6 @@ void ESP32SvelteKit::startServices() {
     _batteryService.begin();
 #endif
     _taskManager.begin();
-    _fileExplorer.begin();
     _peripherals.begin();
     _servoController.begin();
 #if FT_ENABLED(USE_MOTION)

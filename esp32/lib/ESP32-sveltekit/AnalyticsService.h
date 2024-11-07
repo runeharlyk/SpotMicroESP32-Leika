@@ -14,7 +14,7 @@
  **/
 
 #include <ArduinoJson.h>
-#include <ESPFS.h>
+#include <filesystem.h>
 #include <EventSocket.h>
 #include <TaskManager.h>
 #include <WiFi.h>
