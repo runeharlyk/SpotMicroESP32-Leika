@@ -255,3 +255,165 @@ export class EightPhaseWalkState extends PhaseGaitState {
         return super.step(body_state, command, dt);
     }
 }
+
+export class BezierState extends GaitState {
+    protected name = 'Bezier';
+    protected phase = 0;
+    protected phase_num = 0;
+    protected dt = 0.02;
+    protected contact_phases = [
+        [1, 0],
+        [0, 1],
+        [0, 1],
+        [1, 0]
+    ];
+    protected step_length: number = 0;
+    protected body_state!: body_state_t;
+    protected gait_state!: gait_state_t;
+
+    begin() {
+        super.begin();
+    }
+
+    end() {
+        super.end();
+    }
+
+    step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+        this.body_state = body_state;
+        this.gait_state = this.map_command(command);
+        this.dt = dt / 1000;
+        this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2);
+        if (this.gait_state.step_x < 0) {
+            this.step_length = -this.step_length;
+            this.gait_state.step_z = -this.gait_state.step_z;
+        }
+        this.update_phase();
+        this.update_feet_positions();
+        return this.body_state;
+    }
+
+    update_phase() {
+        this.phase += this.dt * this.gait_state.step_velocity * 2;
+        if (this.phase >= 1) {
+            this.phase_num += 1;
+            this.phase_num %= 2;
+            this.phase = 0;
+        }
+    }
+
+    update_feet_positions() {
+        for (let i = 0; i < 4; i++) {
+            this.body_state.feet[i] = this.update_foot_position(i);
+        }
+    }
+
+    update_foot_position(index: number): number[] {
+        const contact = this.contact_phases[index][this.phase_num];
+        this.body_state.feet[index][0] = this.default_feet_pos[index][0];
+        this.body_state.feet[index][1] = this.default_feet_pos[index][1];
+        this.body_state.feet[index][2] = this.default_feet_pos[index][2];
+        return contact ? this.swing(index) : this.stance(index);
+    }
+
+    swing(index: number): number[] {
+        const control_points = this.get_control_points();
+        const t = this.phase;
+        const n = control_points.length - 1;
+
+        const point = [0, 0, 0];
+        for (let i = 0; i <= n; i++) {
+            const bernstein_poly = this.comb(n, i) * Math.pow(t, i) * Math.pow(1 - t, n - i);
+            point[0] += bernstein_poly * control_points[i][0];
+            point[2] += bernstein_poly * control_points[i][1];
+            point[1] += bernstein_poly * control_points[i][2];
+        }
+        this.body_state.feet[index][0] += point[0];
+        if (point[0] !== 0 || point[2] !== 0) {
+            this.body_state.feet[index][1] += point[1];
+        }
+        this.body_state.feet[index][2] += point[2];
+        return this.body_state.feet[index];
+    }
+
+    stance(index: number): number[] {
+        const t = this.phase;
+        const L = this.step_length / 2;
+
+        const X_POLAR = Math.cos((this.gait_state.step_z * Math.PI) / 2);
+        const Y_POLAR = Math.sin((this.gait_state.step_z * Math.PI) / 2);
+
+        const step = L * (1 - 2 * t);
+        const X = step * X_POLAR;
+        const Y = step * Y_POLAR;
+        let Z = 0;
+
+        if (L !== 0) {
+            Z = -this.gait_state.step_depth * Math.cos((Math.PI * (X + Y)) / (2 * L));
+        }
+
+        this.body_state.feet[index][0] += X;
+        this.body_state.feet[index][2] += Y;
+        this.body_state.feet[index][1] += Z;
+
+        return this.body_state.feet[index];
+    }
+
+    comb(n: number, k: number): number {
+        if (k < 0 || k > n) {
+            return 0;
+        }
+        if (k === 0 || k === n) {
+            return 1;
+        }
+        k = Math.min(k, n - k);
+        let c = 1;
+        for (let i = 0; i < k; i++) {
+            c = (c * (n - i)) / (i + 1);
+        }
+        return c;
+    }
+
+    get_control_points(): number[][] {
+        const L = this.step_length / 2;
+        const CH = this.gait_state.step_height;
+
+        const STEP = [
+            -L,
+            -L * 1.4,
+            -L * 1.5,
+            -L * 1.5,
+            -L * 1.5,
+            0.0,
+            0.0,
+            0.0,
+            L * 1.5,
+            L * 1.5,
+            L * 1.4,
+            L
+        ];
+
+        const X_POLAR = Math.cos((this.gait_state.step_z * Math.PI) / 2);
+        const Y_POLAR = Math.sin((this.gait_state.step_z * Math.PI) / 2);
+
+        const control_points: number[][] = [];
+
+        for (let i = 0; i < STEP.length; i++) {
+            const X = STEP[i] * X_POLAR;
+            const Y = STEP[i] * Y_POLAR;
+            let Z = 0.0;
+
+            if (i === 0 || i === 1 || i === 10 || i === 11) {
+                Z = 0.0;
+            } else if (i >= 2 && i <= 6) {
+                Z = CH * 0.9;
+            } else if (i >= 7 && i <= 9) {
+                Z = CH * 1.1;
+            }
+
+            control_points.push([X, Y, Z]);
+        }
+
+        return control_points;
+    }
+}
