@@ -15,7 +15,7 @@
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
  **/
 
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <PsychicHttp.h>
 #include <StatefulService.h>
 
@@ -23,27 +23,22 @@ template <class T>
 class EventEndpoint {
   public:
     EventEndpoint(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
-                  EventSocket *socket, const char *event)
-        : _stateReader(stateReader),
-          _stateUpdater(stateUpdater),
-          _statefulService(statefulService),
-          _socket(socket),
-          _event(event) {
+                  const char *event)
+        : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService), _event(event) {
         _statefulService->addUpdateHandler([&](const String &originId) { syncState(originId); }, false);
     }
 
     void begin() {
-        _socket->onEvent(_event,
-                         std::bind(&EventEndpoint::updateState, this, std::placeholders::_1, std::placeholders::_2));
-        _socket->onSubscribe(_event,
-                             std::bind(&EventEndpoint::syncState, this, std::placeholders::_1, std::placeholders::_2));
+        socket.onEvent(_event,
+                       std::bind(&EventEndpoint::updateState, this, std::placeholders::_1, std::placeholders::_2));
+        socket.onSubscribe(_event,
+                           std::bind(&EventEndpoint::syncState, this, std::placeholders::_1, std::placeholders::_2));
     }
 
   private:
     JsonStateReader<T> _stateReader;
     JsonStateUpdater<T> _stateUpdater;
     StatefulService<T> *_statefulService;
-    EventSocket *_socket;
     const char *_event;
 
     void updateState(JsonObject &root, int originId) {
@@ -57,7 +52,7 @@ class EventEndpoint {
         _statefulService->read(root, _stateReader);
         serializeJson(root, output);
         ESP_LOGV("EventEndpoint", "Syncing state: %s", output.c_str());
-        _socket->emit(_event, output.c_str(), originId.c_str(), sync);
+        socket.emit(_event, output.c_str(), originId.c_str(), sync);
     }
 };
 

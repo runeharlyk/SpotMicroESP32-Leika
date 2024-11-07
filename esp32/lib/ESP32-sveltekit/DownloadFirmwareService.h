@@ -18,7 +18,7 @@
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <PsychicHttp.h>
 
 #include <HTTPClient.h>
@@ -32,13 +32,12 @@
 
 class DownloadFirmwareService {
   public:
-    DownloadFirmwareService(PsychicHttpServer *server, EventSocket *socket, TaskManager *taskManager);
+    DownloadFirmwareService(PsychicHttpServer *server, TaskManager *taskManager);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    EventSocket *_socket;
     TaskManager *_taskManager;
     esp_err_t downloadUpdate(PsychicRequest *request, JsonVariant &json);
 };

@@ -101,12 +101,11 @@ class PeripheralsConfiguration {
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
-    Peripherals(PsychicHttpServer *server, FS *fs, EventSocket *socket)
+    Peripherals(PsychicHttpServer *server, FS *fs)
         : _server(server),
-          _socket(socket),
           _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, server,
                         CONFIGURATION_SETTINGS_PATH),
-          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, socket,
+          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
                          EVENT_CONFIGURATION_SETTINGS),
 #if FT_ENABLED(USE_MAG)
           _mag(12345),
@@ -125,12 +124,12 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _eventEndpoint.begin();
         _fsPersistence.readFromFS();
 
-        _socket->onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
             scanI2C();
             emitI2C();
         });
 
-        _socket->onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
+        socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
             scanI2C();
             emitI2C(originId, sync);
         });
@@ -142,7 +141,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
         _pca.sleep();
-        _socket->onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
             _pca_active = root["active"] | false;
             _pca_active ? pcaActivate() : pcaDeactivate();
         });
@@ -219,7 +218,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
         serializeJson(root, output);
         ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
-        _socket->emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
+        socket.emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
     }
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
@@ -418,7 +417,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
         if (newData) {
             serializeJson(doc, message);
-            _socket->emit(EVENT_IMU, message);
+            socket.emit(EVENT_IMU, message);
         }
     }
 
@@ -435,7 +434,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         char output[16];
         snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
-        _socket->emit("sonar", output);
+        socket.emit("sonar", output);
 #endif
     }
 
@@ -444,7 +443,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
   private:
     PsychicHttpServer *_server;
-    EventSocket *_socket;
     HttpEndpoint<PeripheralsConfiguration> _httpEndpoint;
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _fsPersistence;

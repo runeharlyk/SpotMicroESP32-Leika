@@ -15,7 +15,6 @@
 
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_src_certs_x509_crt_bundle_bin_start");
 
-static EventSocket *_socket = nullptr;
 static int previousProgress = 0;
 JsonDocument doc;
 
@@ -23,7 +22,7 @@ void update_started() {
     String output;
     doc["status"] = "preparing";
     serializeJson(doc, output);
-    _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 }
 
 void update_progress(int currentBytes, int totalBytes) {
@@ -32,7 +31,7 @@ void update_progress(int currentBytes, int totalBytes) {
     int progress = ((currentBytes * 100) / totalBytes);
     if (progress > previousProgress) {
         doc["progress"] = progress;
-        _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+        socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
         ESP_LOGV("Download OTA", "HTTP update process at %d of %d bytes... (%d %%)", currentBytes, totalBytes,
                  progress);
     }
@@ -43,7 +42,7 @@ void update_finished() {
     String output;
     doc["status"] = "finished";
     serializeJson(doc, output);
-    _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
     // delay to allow the event to be sent out
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -71,7 +70,7 @@ void updateTask(void *param) {
             doc["status"] = "error";
             doc["error"] = httpUpdate.getLastErrorString().c_str();
             serializeJson(doc, output);
-            _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
             ESP_LOGE("Download OTA", "HTTP Update failed with error (%d): %s", httpUpdate.getLastError(),
                      httpUpdate.getLastErrorString().c_str());
@@ -81,7 +80,7 @@ void updateTask(void *param) {
             doc["status"] = "error";
             doc["error"] = "Update failed, has same firmware version";
             serializeJson(doc, output);
-            _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
             ESP_LOGE("Download OTA", "HTTP Update failed, has same firmware version");
             break;
@@ -90,9 +89,8 @@ void updateTask(void *param) {
     vTaskDelete(NULL);
 }
 
-DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server, EventSocket *socket,
-                                                 TaskManager *taskManager)
-    : _server(server), _socket(socket), _taskManager(taskManager) {}
+DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server, TaskManager *taskManager)
+    : _server(server), _taskManager(taskManager) {}
 
 void DownloadFirmwareService::begin() {
     _server->on(GITHUB_FIRMWARE_PATH, HTTP_POST,
@@ -116,7 +114,7 @@ esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonV
     String output;
     serializeJson(doc, output);
 
-    _socket->emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
     if (_taskManager->createTask(&updateTask,                // Function that should be called
                                  "Firmware download",        // Name of the task (for debugging)

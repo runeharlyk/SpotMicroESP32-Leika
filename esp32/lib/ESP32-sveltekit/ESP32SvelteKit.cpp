@@ -20,34 +20,33 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
       _numberEndpoints(numberEndpoints),
       _taskManager(),
       _featureService(server),
-      _socket(server),
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server),
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_socket, &_taskManager),
+      _downloadFirmwareService(server, &_taskManager),
 #endif
 #if FT_ENABLED(USE_SLEEP)
       _sleepService(server),
 #endif
 #if FT_ENABLED(USE_BATTERY)
-      _batteryService(&_peripherals, &_socket),
+      _batteryService(&_peripherals),
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
-      _analyticsService(&_socket, &_taskManager),
+      _analyticsService(&_taskManager),
 #endif
 #if FT_ENABLED(USE_CAMERA)
       _cameraService(server, &_taskManager),
-      _cameraSettingsService(server, &ESPFS, &_socket),
+      _cameraSettingsService(server, &ESPFS),
 #endif
-      _servoController(server, &ESPFS, &_peripherals, &_socket),
+      _servoController(server, &ESPFS, &_peripherals),
 #if FT_ENABLED(USE_MOTION)
-      _motionService(_server, &_socket, &_servoController, &_taskManager),
+      _motionService(_server, &_servoController, &_taskManager),
 #endif
 #if FT_ENABLED(USE_WS2812)
       _ledService(&_taskManager),
 #endif
-      _peripherals(server, &ESPFS, &_socket) {
+      _peripherals(server, &ESPFS) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -124,6 +123,9 @@ void ESP32SvelteKit::setupServer() {
         return _servoController.endpoint.handleStateUpdate(request, json);
     });
 
+    // MISC
+    _server->on("/api/ws/events", socket.getHandler());
+
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
     WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
@@ -185,7 +187,6 @@ void ESP32SvelteKit::setupMDNS() {
 
 void ESP32SvelteKit::startServices() {
     _apService.begin();
-    _socket.begin();
     _featureService.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)

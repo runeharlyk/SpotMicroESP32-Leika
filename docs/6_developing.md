@@ -1,6 +1,6 @@
 # Developing
 
-> *Prerequsition*: You have successfully build, flashed and configured your robot.
+> _Prerequsition_: You have successfully build, flashed and configured your robot.
 
 ## Setting up SvelteKit
 
@@ -13,11 +13,6 @@ server: {
     proxy: {
         '/api': {
             target: 'http://spot-micro.local', // Here
-            changeOrigin: true,
-            ws: true
-        },
-        '/ws': {
-            target: 'ws://spot-micro.local', // Here
             changeOrigin: true,
             ws: true
         }

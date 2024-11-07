@@ -1,7 +1,7 @@
 #ifndef MotionService_h
 #define MotionService_h
 
-#include <EventSocket.h>
+#include <event_socket.h>
 #include <TaskManager.h>
 #include <Kinematics.h>
 #include <ServoController.h>
@@ -20,21 +20,20 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WA
 
 class MotionService {
   public:
-    MotionService(PsychicHttpServer *server, EventSocket *socket, ServoController *servoController,
-                  TaskManager *taskManager)
-        : _server(server), _socket(socket), _servoController(servoController), _taskManager(taskManager) {}
+    MotionService(PsychicHttpServer *server, ServoController *servoController, TaskManager *taskManager)
+        : _server(server), _servoController(servoController), _taskManager(taskManager) {}
 
     void begin() {
-        _socket->onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
+        socket.onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
 
-        _socket->onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });
+        socket.onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });
 
-        _socket->onEvent(ANGLES_EVENT, [&](JsonObject &root, int originId) { anglesEvent(root, originId); });
+        socket.onEvent(ANGLES_EVENT, [&](JsonObject &root, int originId) { anglesEvent(root, originId); });
 
-        _socket->onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
+        socket.onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
 
-        _socket->onSubscribe(ANGLES_EVENT,
-                             std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
+        socket.onSubscribe(ANGLES_EVENT,
+                           std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(default_feet_positions);
 
@@ -90,7 +89,7 @@ class MotionService {
         char output[2];
         itoa((int)motionState, output, 10);
         motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
-        _socket->emit(MODE_EVENT, output, String(originId).c_str());
+        socket.emit(MODE_EVENT, output, String(originId).c_str());
     }
 
     void syncAngles(const String &originId = "", bool sync = false) {
@@ -98,7 +97,7 @@ class MotionService {
         snprintf(output, sizeof(output), "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0],
                  angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9],
                  angles[10], angles[11]);
-        _socket->emit(ANGLES_EVENT, output, originId.c_str());
+        socket.emit(ANGLES_EVENT, output, originId.c_str());
         _servoController->setAngles(angles);
     }
 
@@ -146,7 +145,6 @@ class MotionService {
 
   private:
     PsychicHttpServer *_server;
-    EventSocket *_socket;
     TaskManager *_taskManager;
     ServoController *_servoController;
     Kinematics kinematics;

@@ -13,7 +13,7 @@ void NTPService::begin() {
                  WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     WiFi.onEvent(std::bind(&NTPService::onStationModeGotIP, this, std::placeholders::_1, std::placeholders::_2),
                  WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-
+    _persistence.readFromFS();
     configureNTP();
 }
 
