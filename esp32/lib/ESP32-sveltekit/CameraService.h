@@ -3,7 +3,7 @@
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
-#include <TaskManager.h>
+#include <task_manager.h>
 #include <WiFi.h>
 #include <async_worker.h>
 #include <Features.h>
@@ -27,13 +27,12 @@ void safe_sensor_return();
 
 class CameraService {
   public:
-    CameraService(PsychicHttpServer *server, TaskManager *taskManager);
+    CameraService(PsychicHttpServer *server);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    TaskManager *_taskManager;
     esp_err_t cameraStill(PsychicRequest *request);
     esp_err_t cameraStream(PsychicRequest *request);
     esp_err_t InitializeCamera();

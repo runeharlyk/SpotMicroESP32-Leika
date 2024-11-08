@@ -29,8 +29,7 @@ sensor_t *safe_sensor_get() {
 
 void safe_sensor_return() { xSemaphoreGive(cameraMutex); }
 
-CameraService::CameraService(PsychicHttpServer *server, TaskManager *taskManager)
-    : _server(server), _taskManager(taskManager) {}
+CameraService::CameraService(PsychicHttpServer *server) : _server(server) {}
 void CameraService::begin() {
     InitializeCamera();
     _server->on(STILL_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return cameraStill(request); });
@@ -157,7 +156,7 @@ void streamTask(void *pv) {
 }
 
 esp_err_t CameraService::cameraStream(PsychicRequest *request) {
-    _taskManager->createTask(streamTask, "Stream client task", 4096, request, 4);
+    g_taskManager.createTask(streamTask, "Stream client task", 4096, request, 4);
     vTaskDelay(pdMS_TO_TICKS(100));
     return ESP_OK;
 }
