@@ -6,7 +6,7 @@
 #include <Kinematics.h>
 #include <ServoController.h>
 #include <Gait/GaitState.h>
-#include <Timing.h>
+#include <timing.h>
 #include <MathUtils.h>
 
 #define DEFAULT_STATE false

@@ -5,7 +5,7 @@
 #include <event_socket.h>
 #include <task_manager.h>
 #include <WiFi.h>
-#include <Timing.h>
+#include <timing.h>
 
 #define MAX_ESP_ANALYTICS_SIZE 2024
 #define EVENT_ANALYTICS "analytics"

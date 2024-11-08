@@ -9,7 +9,7 @@
 #include <StatefulService.h>
 #include <stateful_service_endpoint.h>
 #include <MathUtils.h>
-#include <Timing.h>
+#include <timing.h>
 #include <settings/servo_settings.h>
 
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"

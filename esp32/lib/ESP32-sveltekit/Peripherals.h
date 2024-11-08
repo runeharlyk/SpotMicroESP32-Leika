@@ -6,7 +6,7 @@
 #include <HttpEndpoint.h>
 #include <StatefulService.h>
 #include <MathUtils.h>
-#include <Timing.h>
+#include <timing.h>
 #include <filesystem.h>
 #include <features.h>
 #include <settings/peripherals_settings.h>
