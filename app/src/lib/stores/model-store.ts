@@ -4,7 +4,7 @@ import { writable, type Writable } from 'svelte/store';
 
 export const emulateModel = writable(true);
 
-export const jointNames = persistentStore('joint_names', []);
+export const jointNames = persistentStore('joint_names', <string[]>[]);
 
 export const model = writable();
 
