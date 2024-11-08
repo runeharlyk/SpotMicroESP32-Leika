@@ -2,7 +2,7 @@
 #define LEDService_h
 
 #include <FastLED.h>
-#include <TaskManager.h>
+#include <task_manager.h>
 
 #ifndef WS2812_PIN
 #define WS2812_PIN 12
@@ -17,8 +17,6 @@
 
 class LEDService {
   private:
-    TaskManager *_taskManager;
-
     CRGB leds[WS2812_NUM_LEDS];
     CRGBPalette16 currentPalette;
     TBlendType currentBlending;
@@ -27,14 +25,12 @@ class LEDService {
     int direction = 1;
 
   public:
-    LEDService(TaskManager *taskManager) : _taskManager(taskManager) {
+    LEDService() {
         FastLED.addLeds<CHIPSET, WS2812_PIN, COLOR_ORDER>(leds, WS2812_NUM_LEDS).setCorrection(TypicalLEDStrip);
         currentPalette = OceanColors_p;
         currentBlending = LINEARBLEND;
     }
     ~LEDService() {}
-
-    void begin() {}
 
     void loop() {
         EXECUTE_EVERY_N_MS(1000 / 60, {

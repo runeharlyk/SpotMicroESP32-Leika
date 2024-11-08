@@ -18,13 +18,12 @@
 ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
     : _server(server),
       _numberEndpoints(numberEndpoints),
-      _taskManager(),
       _featureService(server),
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server),
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server, &_taskManager),
+      _downloadFirmwareService(server),
 #endif
 #if FT_ENABLED(USE_SLEEP)
       _sleepService(server),
@@ -32,19 +31,13 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals),
 #endif
-#if FT_ENABLED(USE_ANALYTICS)
-      _analyticsService(&_taskManager),
-#endif
 #if FT_ENABLED(USE_CAMERA)
-      _cameraService(server, &_taskManager),
+      _cameraService(server),
       _cameraSettingsService(server, &ESPFS),
 #endif
       _servoController(server, &ESPFS, &_peripherals),
 #if FT_ENABLED(USE_MOTION)
-      _motionService(_server, &_servoController, &_taskManager),
-#endif
-#if FT_ENABLED(USE_WS2812)
-      _ledService(&_taskManager),
+      _motionService(_server, &_servoController),
 #endif
       _peripherals(server, &ESPFS) {
 }
@@ -53,7 +46,7 @@ void ESP32SvelteKit::begin() {
     ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
-
+    g_taskManager.begin();
     _wifiService.begin();
 
     _server->config.max_uri_handlers = _numberEndpoints;
@@ -66,7 +59,7 @@ void ESP32SvelteKit::begin() {
     setupMDNS();
 
     ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-    _taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, APPLICATION_CORE);
+    g_taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, APPLICATION_CORE);
 }
 
 void ESP32SvelteKit::setupServer() {
@@ -198,16 +191,12 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(USE_NTP)
     _ntpService.begin();
 #endif
-#if FT_ENABLED(USE_ANALYTICS)
-    _analyticsService.begin();
-#endif
 #if FT_ENABLED(USE_SLEEP)
     _sleepService.begin();
 #endif
 #if FT_ENABLED(USE_BATTERY)
     _batteryService.begin();
 #endif
-    _taskManager.begin();
     _peripherals.begin();
     _servoController.begin();
 #if FT_ENABLED(USE_MOTION)
@@ -216,9 +205,6 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(USE_CAMERA)
     _cameraService.begin();
     _cameraSettingsService.begin();
-#endif
-#if FT_ENABLED(USE_WS2812)
-    _ledService.begin();
 #endif
 }
 

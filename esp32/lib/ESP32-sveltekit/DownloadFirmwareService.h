@@ -23,7 +23,7 @@
 
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
-#include <TaskManager.h>
+#include <task_manager.h>
 // #include <SSLCertBundle.h>
 
 #define GITHUB_FIRMWARE_PATH "/api/downloadUpdate"
@@ -32,12 +32,11 @@
 
 class DownloadFirmwareService {
   public:
-    DownloadFirmwareService(PsychicHttpServer *server, TaskManager *taskManager);
+    DownloadFirmwareService(PsychicHttpServer *server);
 
     void begin();
 
   private:
     PsychicHttpServer *_server;
-    TaskManager *_taskManager;
     esp_err_t downloadUpdate(PsychicRequest *request, JsonVariant &json);
 };

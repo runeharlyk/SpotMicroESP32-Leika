@@ -2,7 +2,7 @@
 #define MotionService_h
 
 #include <event_socket.h>
-#include <TaskManager.h>
+#include <task_manager.h>
 #include <Kinematics.h>
 #include <ServoController.h>
 #include <Gait/GaitState.h>
@@ -20,8 +20,8 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WA
 
 class MotionService {
   public:
-    MotionService(PsychicHttpServer *server, ServoController *servoController, TaskManager *taskManager)
-        : _server(server), _servoController(servoController), _taskManager(taskManager) {}
+    MotionService(PsychicHttpServer *server, ServoController *servoController)
+        : _server(server), _servoController(servoController) {}
 
     void begin() {
         socket.onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
@@ -37,7 +37,7 @@ class MotionService {
 
         body_state.updateFeet(default_feet_positions);
 
-        _taskManager->createTask(this->_loopImpl, "MotionService", 4096, this, 3);
+        g_taskManager.createTask(this->_loopImpl, "MotionService", 4096, this, 3);
     }
 
     void anglesEvent(JsonObject &root, int originId) {
@@ -145,7 +145,6 @@ class MotionService {
 
   private:
     PsychicHttpServer *_server;
-    TaskManager *_taskManager;
     ServoController *_servoController;
     Kinematics kinematics;
     ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};

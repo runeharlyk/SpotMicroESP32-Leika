@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <Arduino.h>
 
 #define IDLE_STACK_SIZE 2048
 #define DEFAULT_STACK_SIZE 2048 + 512
@@ -179,3 +180,5 @@ class CPUBurnerTask {
 
     void StartTask() { xTaskCreate(CPUBurnerTaskEntry, "CPUBurnerTask", 2048, this, tskIDLE_PRIORITY + 2, nullptr); }
 };
+
+extern TaskManager g_taskManager;

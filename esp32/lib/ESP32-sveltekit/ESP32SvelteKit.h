@@ -18,7 +18,7 @@
 
 #include <Arduino.h>
 
-#include <AnalyticsService.h>
+#include <analytics_service.h>
 #include <BatteryService.h>
 #include <filesystem.h>
 #include <DownloadFirmwareService.h>
@@ -33,7 +33,7 @@
 #include <CameraService.h>
 #include <CameraSettingsService.h>
 #include <PsychicHttp.h>
-#include <TaskManager.h>
+#include <task_manager.h>
 #include <UploadFirmwareService.h>
 #include <WiFi.h>
 #include <wifi_service.h>
@@ -78,8 +78,6 @@ class ESP32SvelteKit {
 
     FeaturesService *getFeatureService() { return &_featureService; }
 
-    TaskManager *getTaskManager() { return &_taskManager; }
-
 #if FT_ENABLED(USE_MOTION)
     MotionService *getMotionService() { return &_motionService; }
 #endif
@@ -123,7 +121,6 @@ class ESP32SvelteKit {
 #if FT_ENABLED(USE_ANALYTICS)
     AnalyticsService _analyticsService;
 #endif
-    TaskManager _taskManager;
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
 #endif

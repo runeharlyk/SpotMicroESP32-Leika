@@ -89,8 +89,7 @@ void updateTask(void *param) {
     vTaskDelete(NULL);
 }
 
-DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server, TaskManager *taskManager)
-    : _server(server), _taskManager(taskManager) {}
+DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server) : _server(server) {}
 
 void DownloadFirmwareService::begin() {
     _server->on(GITHUB_FIRMWARE_PATH, HTTP_POST,
@@ -116,14 +115,8 @@ esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonV
 
     socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
-    if (_taskManager->createTask(&updateTask,                // Function that should be called
-                                 "Firmware download",        // Name of the task (for debugging)
-                                 OTA_TASK_STACK_SIZE,        // Stack size (bytes)
-                                 &downloadURL,               // Pass reference to this class instance
-                                 (configMAX_PRIORITIES - 1), // Pretty high task priority
-                                 NULL,                       // Task handle
-                                 1                           // Have it on application core
-                                 ) != pdPASS) {
+    if (g_taskManager.createTask(&updateTask, "Firmware download", OTA_TASK_STACK_SIZE, &downloadURL,
+                                 (configMAX_PRIORITIES - 1), NULL, 1) != pdPASS) {
         ESP_LOGE("Download OTA", "Couldn't create download OTA task");
         return request->reply(500);
     }
