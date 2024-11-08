@@ -13,11 +13,8 @@ namespace Camera {
 #include <esp_camera.h>
 
 #if USE_CAMERA
-#include <CameraPins.h>
+#include <camera_pins.h>
 #endif
-
-#define STREAM_SERVICE_PATH "/api/camera/stream"
-#define STILL_SERVICE_PATH "/api/camera/still"
 
 #define PART_BOUNDARY "frame"
 
@@ -27,15 +24,15 @@ void safe_sensor_return();
 
 class CameraService {
   public:
-    CameraService(PsychicHttpServer *server);
+    CameraService();
 
-    void begin();
+    esp_err_t begin();
+
+    esp_err_t cameraStill(PsychicRequest *request);
+    esp_err_t cameraStream(PsychicRequest *request);
 
   private:
     PsychicHttpServer *_server;
-    esp_err_t cameraStill(PsychicRequest *request);
-    esp_err_t cameraStream(PsychicRequest *request);
-    esp_err_t InitializeCamera();
 };
 } // namespace Camera
 

@@ -1,4 +1,4 @@
-#include <CameraService.h>
+#include <camera_service.h>
 
 namespace Camera {
 
@@ -29,17 +29,9 @@ sensor_t *safe_sensor_get() {
 
 void safe_sensor_return() { xSemaphoreGive(cameraMutex); }
 
-CameraService::CameraService(PsychicHttpServer *server) : _server(server) {}
-void CameraService::begin() {
-    InitializeCamera();
-    _server->on(STILL_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return cameraStill(request); });
-    _server->on(STREAM_SERVICE_PATH, HTTP_GET, [this](PsychicRequest *request) { return cameraStream(request); });
+CameraService::CameraService() {}
 
-    ESP_LOGV(TAG, "Registered GET endpoint: %s", STILL_SERVICE_PATH);
-    ESP_LOGV(TAG, "Registered GET endpoint: %s", STREAM_SERVICE_PATH);
-}
-
-esp_err_t CameraService::InitializeCamera() {
+esp_err_t CameraService::begin() {
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;

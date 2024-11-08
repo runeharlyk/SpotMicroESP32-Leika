@@ -18,7 +18,6 @@
 ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
     : _server(server),
       _numberEndpoints(numberEndpoints),
-      _featureService(server),
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server),
 #endif
@@ -31,15 +30,11 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals),
 #endif
-#if FT_ENABLED(USE_CAMERA)
-      _cameraService(server),
-      _cameraSettingsService(server, &ESPFS),
-#endif
       _servoController(server, &ESPFS, &_peripherals),
 #if FT_ENABLED(USE_MOTION)
       _motionService(_server, &_servoController),
 #endif
-      _peripherals(server, &ESPFS) {
+      _featureService(server) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -96,6 +91,17 @@ void ESP32SvelteKit::setupServer() {
     });
 #endif
 
+    // Camera
+    _server->on("/api/camera/still", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
+    _server->on("/api/camera/stream", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraService.cameraStream(request); });
+    _server->on("/api/camera/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _cameraSettingsService.endpoint.getState(request); });
+    _server->on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _cameraSettingsService.endpoint.handleStateUpdate(request, json);
+    });
+
     // SYSTEM
     _server->on("/api/system/reset", HTTP_POST, system_service::handleReset);
     _server->on("/api/system/restart", HTTP_POST, system_service::handleRestart);
@@ -109,11 +115,18 @@ void ESP32SvelteKit::setupServer() {
     _server->on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
     _server->on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
 
-    // servo
+    // SERVO
     _server->on("/api/servo/config", HTTP_GET,
                 [this](PsychicRequest *request) { return _servoController.endpoint.getState(request); });
     _server->on("/api/servo/config", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _servoController.endpoint.handleStateUpdate(request, json);
+    });
+
+    // PERIPHERALS
+    _server->on("/api/peripheral/settings", HTTP_GET,
+                [this](PsychicRequest *request) { return _peripherals.endpoint.getState(request); });
+    _server->on("/api/peripheral/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+        return _peripherals.endpoint.handleStateUpdate(request, json);
     });
 
     // MISC

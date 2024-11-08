@@ -5,10 +5,11 @@
 
 namespace Camera {
 
-#include <CameraService.h>
+#include <camera_service.h>
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
 #include <HttpEndpoint.h>
+#include <stateful_service_endpoint.h>
 #include <JsonUtils.h>
 #include <PsychicHttp.h>
 #include <SettingValue.h>
@@ -17,20 +18,17 @@ namespace Camera {
 #include <filesystem.h>
 
 #define EVENT_CAMERA_SETTINGS "CameraSettings"
-#define CAMERA_SETTINGS_PATH "/api/camera/settings"
 
 class CameraSettingsService : public StatefulService<CameraSettings> {
   public:
-    CameraSettingsService(PsychicHttpServer *server, FS *fs)
-        : _server(server),
-          _httpEndpoint(CameraSettings::read, CameraSettings::update, this, server, CAMERA_SETTINGS_PATH),
+    CameraSettingsService()
+        : endpoint(CameraSettings::read, CameraSettings::update, this),
           _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
-          _fsPersistence(CameraSettings::read, CameraSettings::update, this, fs, CAMERA_SETTINGS_FILE) {
+          _fsPersistence(CameraSettings::read, CameraSettings::update, this, &ESPFS, CAMERA_SETTINGS_FILE) {
         addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
     }
 
     void begin() {
-        _httpEndpoint.begin();
         _eventEndpoint.begin();
         _fsPersistence.readFromFS();
         sensor_t *s = safe_sensor_get();
@@ -96,9 +94,9 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
         safe_sensor_return();
     }
 
+    StatefulHttpEndpoint<CameraSettings> endpoint;
+
   private:
-    PsychicHttpServer *_server;
-    HttpEndpoint<CameraSettings> _httpEndpoint;
     EventEndpoint<CameraSettings> _eventEndpoint;
     FSPersistence<CameraSettings> _fsPersistence;
 };

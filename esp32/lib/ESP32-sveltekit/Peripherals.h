@@ -10,6 +10,7 @@
 #include <filesystem.h>
 #include <Features.h>
 #include <settings/peripherals_settings.h>
+#include <stateful_service_endpoint.h>
 
 #include <list>
 #include <SPI.h>
@@ -24,7 +25,6 @@
 #include <NewPing.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
-#define CONFIGURATION_SETTINGS_PATH "/api/peripheral/settings"
 
 #define EVENT_I2C_SCAN "i2cScan"
 
@@ -58,10 +58,8 @@
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
-    Peripherals(PsychicHttpServer *server, FS *fs)
-        : _server(server),
-          _httpEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, server,
-                        CONFIGURATION_SETTINGS_PATH),
+    Peripherals()
+        : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
           _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
                          EVENT_CONFIGURATION_SETTINGS),
 #if FT_ENABLED(USE_MAG)
@@ -70,14 +68,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
-          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, fs,
+          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, &ESPFS,
                          DEVICE_CONFIG_FILE) {
         _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
     };
 
     void begin() {
-        _httpEndpoint.begin();
         _eventEndpoint.begin();
         _fsPersistence.readFromFS();
 
@@ -346,6 +343,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return temperature;
     }
 
+    StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
+
   protected:
     void updateImu() {
         doc.clear();
@@ -399,8 +398,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float rightDistance() { return _right_distance; }
 
   private:
-    PsychicHttpServer *_server;
-    HttpEndpoint<PeripheralsConfiguration> _httpEndpoint;
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _fsPersistence;
 

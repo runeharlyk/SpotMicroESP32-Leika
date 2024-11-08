@@ -30,7 +30,7 @@
 #include <FeaturesService.h>
 #include <MotionService.h>
 #include <ntp_service.h>
-#include <CameraService.h>
+#include <camera_service.h>
 #include <CameraSettingsService.h>
 #include <PsychicHttp.h>
 #include <task_manager.h>
