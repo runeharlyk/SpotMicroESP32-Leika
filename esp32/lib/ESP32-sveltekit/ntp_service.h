@@ -5,7 +5,7 @@
 #include <FSPersistence.h>
 #include <WiFi.h>
 #include <stateful_service_endpoint.h>
-#include <domain/ntp_settings.h>
+#include <settings/ntp_settings.h>
 
 #include <lwip/apps/sntp.h>
 #include <time.h>

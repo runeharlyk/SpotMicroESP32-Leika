@@ -10,7 +10,7 @@
 #include <StatefulService.h>
 #include <FSPersistence.h>
 #include <stateful_service_endpoint.h>
-#include <wifi_settings.h>
+#include <settings/wifi_settings.h>
 
 class WiFiService : public StatefulService<WiFiSettings> {
   private:
