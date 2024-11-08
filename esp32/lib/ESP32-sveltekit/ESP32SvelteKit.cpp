@@ -16,8 +16,7 @@
 #include <ESP32SvelteKit.h>
 
 ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
-    : _server(server),
-      _numberEndpoints(numberEndpoints),
+    : _numberEndpoints(numberEndpoints),
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
       _uploadFirmwareService(server),
 #endif
@@ -34,7 +33,7 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEnd
 #if FT_ENABLED(USE_MOTION)
       _motionService(_server, &_servoController),
 #endif
-      _featureService(server) {
+      _server(server) {
 }
 
 void ESP32SvelteKit::begin() {
@@ -131,6 +130,7 @@ void ESP32SvelteKit::setupServer() {
 
     // MISC
     _server->on("/api/ws/events", socket.getHandler());
+    _server->on("/api/features", feature_service::getFeatures);
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
@@ -193,7 +193,6 @@ void ESP32SvelteKit::setupMDNS() {
 
 void ESP32SvelteKit::startServices() {
     _apService.begin();
-    _featureService.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();

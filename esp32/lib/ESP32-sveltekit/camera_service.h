@@ -6,7 +6,7 @@
 #include <task_manager.h>
 #include <WiFi.h>
 #include <async_worker.h>
-#include <Features.h>
+#include <features.h>
 
 namespace Camera {
 

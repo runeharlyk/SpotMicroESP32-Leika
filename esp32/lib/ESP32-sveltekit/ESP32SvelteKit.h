@@ -27,7 +27,7 @@
 #include <ESPmDNS.h>
 #include <LEDService.h>
 #include <event_socket.h>
-#include <FeaturesService.h>
+#include <features.h>
 #include <MotionService.h>
 #include <ntp_service.h>
 #include <camera_service.h>
@@ -76,8 +76,6 @@ class ESP32SvelteKit {
     BatteryService *getBatteryService() { return &_batteryService; }
 #endif
 
-    FeaturesService *getFeatureService() { return &_featureService; }
-
 #if FT_ENABLED(USE_MOTION)
     MotionService *getMotionService() { return &_motionService; }
 #endif
@@ -102,7 +100,6 @@ class ESP32SvelteKit {
   private:
     PsychicHttpServer *_server;
     unsigned int _numberEndpoints;
-    FeaturesService _featureService;
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;

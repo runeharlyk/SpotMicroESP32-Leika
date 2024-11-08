@@ -8,7 +8,7 @@
 #include <MathUtils.h>
 #include <Timing.h>
 #include <filesystem.h>
-#include <Features.h>
+#include <features.h>
 #include <settings/peripherals_settings.h>
 #include <stateful_service_endpoint.h>
 
