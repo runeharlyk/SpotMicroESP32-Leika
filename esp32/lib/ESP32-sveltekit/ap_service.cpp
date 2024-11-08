@@ -4,13 +4,13 @@ static const char *TAG = "APService";
 
 APService::APService()
     : endpoint(APSettings::read, APSettings::update, this),
-      _fsPersistence(APSettings::read, APSettings::update, this, &ESPFS, NTP_SETTINGS_FILE) {
+      _persistence(APSettings::read, APSettings::update, this, &ESPFS, NTP_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { reconfigureAP(); }, false);
 }
 
 APService::~APService() {}
 
-void APService::begin() { _fsPersistence.readFromFS(); }
+void APService::begin() { _persistence.readFromFS(); }
 
 esp_err_t APService::getStatus(PsychicRequest *request) {
     PsychicJsonResponse response = PsychicJsonResponse(request, false);

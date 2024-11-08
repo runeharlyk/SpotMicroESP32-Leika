@@ -68,15 +68,15 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
-          _fsPersistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, &ESPFS,
-                         DEVICE_CONFIG_FILE) {
+          _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, &ESPFS,
+                       DEVICE_CONFIG_FILE) {
         _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
     };
 
     void begin() {
         _eventEndpoint.begin();
-        _fsPersistence.readFromFS();
+        _persistence.readFromFS();
 
         socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
             scanI2C();
@@ -399,7 +399,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
   private:
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
-    FSPersistence<PeripheralsConfiguration> _fsPersistence;
+    FSPersistence<PeripheralsConfiguration> _persistence;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

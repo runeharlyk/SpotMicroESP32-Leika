@@ -24,13 +24,13 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
     CameraSettingsService()
         : endpoint(CameraSettings::read, CameraSettings::update, this),
           _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
-          _fsPersistence(CameraSettings::read, CameraSettings::update, this, &ESPFS, CAMERA_SETTINGS_FILE) {
+          _persistence(CameraSettings::read, CameraSettings::update, this, &ESPFS, CAMERA_SETTINGS_FILE) {
         addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
     }
 
     void begin() {
         _eventEndpoint.begin();
-        _fsPersistence.readFromFS();
+        _persistence.readFromFS();
         sensor_t *s = safe_sensor_get();
         _state.pixformat = s->pixformat;
         _state.framesize = s->status.framesize;
@@ -98,7 +98,7 @@ class CameraSettingsService : public StatefulService<CameraSettings> {
 
   private:
     EventEndpoint<CameraSettings> _eventEndpoint;
-    FSPersistence<CameraSettings> _fsPersistence;
+    FSPersistence<CameraSettings> _persistence;
 };
 
 } // namespace Camera

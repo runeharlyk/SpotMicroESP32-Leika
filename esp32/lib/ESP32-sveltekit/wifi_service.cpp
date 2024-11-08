@@ -2,7 +2,7 @@
 
 WiFiService::WiFiService()
     : endpoint(WiFiSettings::read, WiFiSettings::update, this),
-      _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, &ESPFS, WIFI_SETTINGS_FILE) {
+      _persistence(WiFiSettings::read, WiFiSettings::update, this, &ESPFS, WIFI_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { reconfigureWiFiConnection(); }, false);
 }
 
@@ -21,7 +21,7 @@ void WiFiService::begin() {
 
     WiFi.onEvent(onStationModeGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-    _fsPersistence.readFromFS();
+    _persistence.readFromFS();
     reconfigureWiFiConnection();
 }
 

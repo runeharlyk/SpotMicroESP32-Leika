@@ -20,7 +20,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info);
     static void onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info);
 
-    FSPersistence<WiFiSettings> _fsPersistence;
+    FSPersistence<WiFiSettings> _persistence;
 
     void reconfigureWiFiConnection();
     void manageSTA();

@@ -22,7 +22,7 @@ class APService : public StatefulService<APSettings> {
 
   private:
     PsychicHttpServer *_server;
-    FSPersistence<APSettings> _fsPersistence;
+    FSPersistence<APSettings> _persistence;
 
     DNSServer *_dnsServer;
 

@@ -205,9 +205,6 @@ void ESP32SvelteKit::startServices() {
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
 #endif
-#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-    _downloadFirmwareService.begin();
-#endif
 #if FT_ENABLED(USE_NTP)
     _ntpService.begin();
 #endif
