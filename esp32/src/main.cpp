@@ -5,7 +5,7 @@
 
 DRAM_ATTR PsychicHttpServer server;
 
-DRAM_ATTR ESP32SvelteKit spot(&server, 130);
+DRAM_ATTR ESP32SvelteKit spot(&server);
 
 void setup() {
     Serial.begin(SERIAL_BAUD_RATE);

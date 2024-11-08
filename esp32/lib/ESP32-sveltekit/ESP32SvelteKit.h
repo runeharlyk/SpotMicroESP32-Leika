@@ -21,7 +21,8 @@
 #include <analytics_service.h>
 #include <BatteryService.h>
 #include <filesystem.h>
-#include <DownloadFirmwareService.h>
+#include <firmware_download_service.h>
+#include <firmware_upload_service.h>
 #include <Peripherals.h>
 #include <ServoController.h>
 #include <ESPmDNS.h>
@@ -34,7 +35,6 @@
 #include <CameraSettingsService.h>
 #include <PsychicHttp.h>
 #include <task_manager.h>
-#include <UploadFirmwareService.h>
 #include <WiFi.h>
 #include <wifi_service.h>
 #include <ap_service.h>
@@ -62,7 +62,7 @@
 
 class ESP32SvelteKit {
   public:
-    ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints = 115);
+    ESP32SvelteKit(PsychicHttpServer *server);
 
     void begin();
 
@@ -99,7 +99,6 @@ class ESP32SvelteKit {
 
   private:
     PsychicHttpServer *_server;
-    unsigned int _numberEndpoints;
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
@@ -107,7 +106,7 @@ class ESP32SvelteKit {
     NTPService _ntpService;
 #endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-    UploadFirmwareService _uploadFirmwareService;
+    FirmwareUploadService _uploadFirmwareService;
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
@@ -132,6 +131,10 @@ class ESP32SvelteKit {
 #endif
 
     String _appName = APP_NAME;
+
+    const u_int16_t _numberEndpoints = 115;
+    const u_int32_t _maxFileUpload = 2300000; // 2.3 MB
+    const uint16_t _port = 80;
 
   protected:
     static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->loop(); }

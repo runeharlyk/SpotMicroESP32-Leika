@@ -15,11 +15,8 @@
 
 #include <ESP32SvelteKit.h>
 
-ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server, unsigned int numberEndpoints)
-    : _numberEndpoints(numberEndpoints),
-#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-      _uploadFirmwareService(server),
-#endif
+ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
+    :
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
       _downloadFirmwareService(server),
 #endif
@@ -43,9 +40,6 @@ void ESP32SvelteKit::begin() {
     g_taskManager.begin();
     _wifiService.begin();
 
-    _server->config.max_uri_handlers = _numberEndpoints;
-    _server->listen(80);
-
     setupServer();
 
     startServices();
@@ -57,6 +51,10 @@ void ESP32SvelteKit::begin() {
 }
 
 void ESP32SvelteKit::setupServer() {
+    _server->config.max_uri_handlers = _numberEndpoints;
+    _server->maxUploadSize = _maxFileUpload;
+    _server->listen(_port);
+
     // wifi
     _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
     _server->on("/api/wifi/networks", HTTP_GET,
@@ -131,6 +129,16 @@ void ESP32SvelteKit::setupServer() {
     // MISC
     _server->on("/api/ws/events", socket.getHandler());
     _server->on("/api/features", feature_service::getFeatures);
+
+#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
+    _server->on("/api/firmware", HTTP_POST, _uploadFirmwareService.getHandler());
+#endif
+
+#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
+    _server->on("/api/firmware/download", HTTP_POST, [this](PsychicRequest *r, JsonVariant &json) {
+        return _downloadFirmwareService.handleDownloadUpdate(r, json);
+    });
+#endif
 
 #ifdef EMBED_WWW
     ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");

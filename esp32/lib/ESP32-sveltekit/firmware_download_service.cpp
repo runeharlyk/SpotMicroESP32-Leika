@@ -11,7 +11,7 @@
  *   the terms of the LGPL v3 license. See the LICENSE file for details.
  **/
 
-#include <DownloadFirmwareService.h>
+#include <firmware_download_service.h>
 
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_src_certs_x509_crt_bundle_bin_start");
 
@@ -89,14 +89,7 @@ void updateTask(void *param) {
     vTaskDelete(NULL);
 }
 
-DownloadFirmwareService::DownloadFirmwareService(PsychicHttpServer *server) : _server(server) {}
-
-void DownloadFirmwareService::begin() {
-    _server->on(GITHUB_FIRMWARE_PATH, HTTP_POST,
-                [this](PsychicRequest *request, JsonVariant &json) { return downloadUpdate(request, json); });
-
-    ESP_LOGV("DownloadFirmwareService", "Registered POST endpoint: %s", GITHUB_FIRMWARE_PATH);
-}
+DownloadFirmwareService::DownloadFirmwareService() {}
 
 esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonVariant &json) {
     if (!json.is<JsonObject>()) {
