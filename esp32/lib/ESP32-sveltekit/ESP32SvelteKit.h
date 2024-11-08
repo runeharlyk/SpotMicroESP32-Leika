@@ -56,8 +56,8 @@
 #define APP_NAME "SpotMicro"
 #endif
 
-#ifndef ESP32SVELTEKIT_RUNNING_CORE
-#define ESP32SVELTEKIT_RUNNING_CORE -1
+#ifndef APPLICATION_CORE
+#define APPLICATION_CORE -1
 #endif
 
 class ESP32SvelteKit {
