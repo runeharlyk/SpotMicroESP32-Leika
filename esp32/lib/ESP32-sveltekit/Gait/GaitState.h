@@ -259,18 +259,20 @@ class BezierState : public GaitState {
 
     void controller(const int index, body_state_t &body_state,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
+        float delta_pos[3] = {0, 0, 0};
+        float delta_rot[3] = {0, 0, 0};
+
         float length = step_length / 2.0f;
         float angle = std::atan2(gait_state.step_z, step_length) * 2;
-        float point[3] = {0, 0, 0};
-        curve(length, angle, arg, phase_time, point);
+        curve(length, angle, arg, phase_time, delta_pos);
 
-        body_state.feet[index][0] += point[0];
-        body_state.feet[index][1] += point[1];
-        body_state.feet[index][2] += point[2];
+        length = gait_state.step_angle * 2.0f;
+        angle = yawArc(default_feet_pos[index], body_state.feet[index]);
+        curve(length, angle, arg, phase_time, delta_rot);
 
-        // length = gait_state.step_angle * 2.0f;
-        // angle = yawArc(default_feet_pos[index], body_state.feet[index]);
-        // curve(length, angle, arg, phase_time, body_state.feet[index]);
+        body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2;
+        if (step_length || gait_state.step_angle) body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2;
+        body_state.feet[index][2] += delta_pos[2] + delta_rot[2] * 0.2;
     }
 
     static void stanceCurve(const float length, const float angle, const float *depth, const float phase,
