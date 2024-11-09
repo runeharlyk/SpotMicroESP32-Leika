@@ -69,4 +69,16 @@ inline bool arrayEqual(const float arr1[4][4], const float arr2[4][4], float eps
     return true;
 }
 
+static constexpr float combinatorial_constexpr(const int n, int k) {
+    if (k < 0 || k > n) return 0.0f;
+    if (k == 0 || k == n) return 1.0f;
+    k = (k < (n - k)) ? k : (n - k);
+    float result = 1.0f;
+    for (int i = 0; i < k; ++i) {
+        result *= (n - i);
+        result /= (i + 1);
+    }
+    return result;
+}
+
 #endif

@@ -1,4 +1,5 @@
 #include <Kinematics.h>
+#include <MathUtils.h>
 
 struct gait_state_t {
     float step_height;
@@ -209,8 +210,23 @@ class BezierState : public GaitState {
   private:
     float phase_time = 0.0f;
     uint8_t phase = 0;
-    uint8_t contact_phases[4][2] = {{1, 0}, {0, 1}, {0, 1}, {1, 0}};
+    static constexpr uint8_t contact_phases[4][2] = {{1, 0}, {0, 1}, {0, 1}, {1, 0}};
+    static constexpr uint8_t BEZIER_POINTS = 12;
     float step_length = 0.0f;
+    static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
+        combinatorial_constexpr(11, 0),  // 1
+        combinatorial_constexpr(11, 1),  // 11
+        combinatorial_constexpr(11, 2),  // 55
+        combinatorial_constexpr(11, 3),  // 165
+        combinatorial_constexpr(11, 4),  // 330
+        combinatorial_constexpr(11, 5),  // 462
+        combinatorial_constexpr(11, 6),  // 462
+        combinatorial_constexpr(11, 7),  // 330
+        combinatorial_constexpr(11, 8),  // 165
+        combinatorial_constexpr(11, 9),  // 55
+        combinatorial_constexpr(11, 10), // 11
+        combinatorial_constexpr(11, 11)  // 1
+    };
 
   protected:
     const char *name() const override { return "Bezier"; }
@@ -300,7 +316,7 @@ class BezierState : public GaitState {
                      0.9f * *height, 1.1f * *height, 1.1f * *height, 1.1f * *height, 0.0f,           0.0f};
 
         for (int i = 0; i < 12; i++) {
-            float b = combinatorial(11, i) * std::pow(phase, i) * std::pow(1.0f - phase, 11 - i);
+            float b = COMBINATORIAL_VALUES[i] * std::pow(phase, i) * std::pow(1.0f - phase, 11 - i);
             point[0] += b * STEP[i] * X_POLAR;
             point[1] += b * Y[i];
             point[2] += b * STEP[i] * Z_POLAR;
@@ -315,16 +331,5 @@ class BezierState : public GaitState {
         float offset_mod = std::atan2(offset_mag, foot_mag);
 
         return M_PI_2 + foot_dir + offset_mod;
-    }
-
-    static float combinatorial(const int n, int k) {
-        if (k < 0 || k > n) return 0.0f;
-        if (k == 0 || k == n) return 1.0f;
-        k = std::min(k, n - k);
-        float c = 1.0f;
-        for (int i = 0; i < k; i++) {
-            c = (c * (n - i)) / (i + 1);
-        }
-        return c;
     }
 };
