@@ -228,6 +228,12 @@ class BezierState : public GaitState {
         combinatorial_constexpr(11, 11)  // 1
     };
 
+    alignas(32) static constexpr float BEZIER_STEPS[12] = {-1.0f, -1.4f, -1.5f, -1.5f, -1.5f, 0.0f,
+                                                           0.0f,  0.0f,  1.5f,  1.5f,  1.4f,  1.0f};
+
+    alignas(32) static constexpr float BEZIER_HEIGHTS[12] = {0.0f, 0.0f, 0.9f, 0.9f, 0.9f, 0.9f,
+                                                             0.9f, 1.1f, 1.1f, 1.1f, 0.0f, 0.0f};
+
   protected:
     const char *name() const override { return "Bezier"; }
 
@@ -245,8 +251,7 @@ class BezierState : public GaitState {
         phase_time += dt * gait_state.step_velocity * 2;
 
         if (phase_time >= 1.0f) {
-            phase += 1;
-            phase %= 2;
+            phase ^= 1;
             phase_time = 0;
         }
     }
@@ -310,20 +315,15 @@ class BezierState : public GaitState {
         float X_POLAR = std::cos(angle);
         float Z_POLAR = std::sin(angle);
 
-        float STEP[] = {-length, -length * 1.4f, -length * 1.5f, -length * 1.5f, -length * 1.5f, 0.0f,
-                        0.0f,    0.0f,           length * 1.5f,  length * 1.5f,  length * 1.4f,  length};
-        float Y[] = {0.0f,           0.0f,           0.9f * *height, 0.9f * *height, 0.9f * *height, 0.9f * *height,
-                     0.9f * *height, 1.1f * *height, 1.1f * *height, 1.1f * *height, 0.0f,           0.0f};
-
         float phase_power = 1.0f;
         float inv_phase_power = std::pow(1.0f - phase, 11);
         float one_minus_phase = 1.0f - phase;
 
         for (int i = 0; i < 12; i++) {
             float b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power;
-            point[0] += b * STEP[i] * X_POLAR;
-            point[1] += b * Y[i];
-            point[2] += b * STEP[i] * Z_POLAR;
+            point[0] += b * BEZIER_STEPS[i] * length * X_POLAR;
+            point[1] += b * BEZIER_HEIGHTS[i] * *height;
+            point[2] += b * BEZIER_STEPS[i] * length * Z_POLAR;
 
             phase_power *= phase;
             inv_phase_power /= one_minus_phase;
