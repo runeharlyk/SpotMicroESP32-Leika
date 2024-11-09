@@ -220,7 +220,6 @@ class BezierState : public GaitState {
         step_length = std::sqrt(gait_state.step_x * gait_state.step_x + gait_state.step_z * gait_state.step_z);
         if (gait_state.step_x < 0.0f) {
             step_length = -step_length;
-            gait_state.step_z = -gait_state.step_z;
         }
         updatePhase(dt);
         updateFeetPositions(body_state);
@@ -261,7 +260,7 @@ class BezierState : public GaitState {
     void controller(const int index, body_state_t &body_state,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
         float length = step_length / 2.0f;
-        float angle = gait_state.step_z * M_PI_2;
+        float angle = std::atan2(gait_state.step_z, step_length) * 2;
         float point[3] = {0, 0, 0};
         curve(length, angle, arg, phase_time, point);
 

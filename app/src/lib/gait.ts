@@ -289,7 +289,6 @@ export class BezierState extends GaitState {
         this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2);
         if (this.gait_state.step_x < 0) {
             this.step_length = -this.step_length;
-            this.gait_state.step_z = -this.gait_state.step_z;
         }
         this.update_phase();
         this.update_feet_positions();
@@ -335,7 +334,7 @@ export class BezierState extends GaitState {
         ...args: number[]
     ) {
         let length = this.step_length / 2;
-        let angle = (this.gait_state.step_z * Math.PI) / 2;
+        let angle = Math.atan2(this.gait_state.step_z, this.step_length) * 2;
         const delta_pos = controller(length, angle, ...args, this.phase);
 
         length = this.gait_state.step_angle * 2;
@@ -358,13 +357,13 @@ const stance_curve = (length: number, angle: number, depth: number, phase: numbe
 
     const step = length * (1 - 2 * phase);
     const X = step * X_POLAR;
-    const Y = step * Y_POLAR;
-    let Z = 0;
+    const Z = step * Y_POLAR;
+    let Y = 0;
 
     if (length !== 0) {
-        Z = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length));
+        Y = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length));
     }
-    return [X, Z, Y];
+    return [X, Y, Z];
 };
 
 const yawArc = (default_foot_pos: number[], current_foot_pos: number[]): number => {
