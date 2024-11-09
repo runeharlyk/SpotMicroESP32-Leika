@@ -315,11 +315,18 @@ class BezierState : public GaitState {
         float Y[] = {0.0f,           0.0f,           0.9f * *height, 0.9f * *height, 0.9f * *height, 0.9f * *height,
                      0.9f * *height, 1.1f * *height, 1.1f * *height, 1.1f * *height, 0.0f,           0.0f};
 
+        float phase_power = 1.0f;
+        float inv_phase_power = std::pow(1.0f - phase, 11);
+        float one_minus_phase = 1.0f - phase;
+
         for (int i = 0; i < 12; i++) {
-            float b = COMBINATORIAL_VALUES[i] * std::pow(phase, i) * std::pow(1.0f - phase, 11 - i);
+            float b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power;
             point[0] += b * STEP[i] * X_POLAR;
             point[1] += b * Y[i];
             point[2] += b * STEP[i] * Z_POLAR;
+
+            phase_power *= phase;
+            inv_phase_power /= one_minus_phase;
         }
     }
 
