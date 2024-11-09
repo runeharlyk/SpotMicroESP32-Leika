@@ -6,6 +6,7 @@ struct gait_state_t {
     float step_z;
     float step_angle;
     float step_velocity;
+    float step_depth;
 };
 
 struct ControllerCommand {
@@ -16,7 +17,17 @@ struct ControllerCommand {
 class GaitState {
   protected:
     virtual const char *name() const = 0;
-    float default_feet_positions[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
+    float default_feet_pos[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
+    gait_state_t gait_state = {0.4, 0, 0, 0, 1, 0.002};
+
+    void mapCommand(ControllerCommand command) {
+        this->gait_state.step_height = 0.4 + (command.s1 / 128 + 1) / 2;
+        this->gait_state.step_x = command.ly / 128;
+        this->gait_state.step_z = -command.lx / 128;
+        this->gait_state.step_velocity = command.s / 128 + 1;
+        this->gait_state.step_angle = command.rx / 128;
+        this->gait_state.step_depth = 0.002;
+    }
 
   public:
     virtual float getDefaultHeight() const { return 0.5f; }
@@ -25,7 +36,9 @@ class GaitState {
 
     virtual void end() { ESP_LOGI("Gait Planner", "Ending %s", name()); }
 
-    virtual void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) {}
+    virtual void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) {
+        this->mapCommand(command);
+    }
 };
 
 class IdleState : public GaitState {
@@ -44,7 +57,7 @@ class RestState : public GaitState {
         body_state.xm = 0;
         body_state.ym = getDefaultHeight() / 2;
         body_state.zm = 0;
-        body_state.updateFeet(default_feet_positions);
+        body_state.updateFeet(default_feet_pos);
     }
 };
 
@@ -58,7 +71,7 @@ class StandState : public GaitState {
         body_state.psi = command.ry / 8;
         body_state.xm = command.ly / 2 / 100;
         body_state.zm = command.lx / 2 / 100;
-        body_state.updateFeet(default_feet_positions);
+        body_state.updateFeet(default_feet_pos);
     }
 };
 
@@ -69,15 +82,14 @@ class PhaseGaitState : public GaitState {
     virtual int num_phases() const = 0;
     virtual float phase_speed_factor() const = 0;
     virtual float swing_stand_ratio() const = 0;
+    float dt = 0.02f;
 
     uint8_t contact_phases[4][8];
     float shifts[4][3];
 
-    gait_state_t gait_state;
-    float dt = 0.02f;
-
     void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
-        this->gait_state = mapCommand(command);
+        mapCommand(command);
+        this->dt = dt;
         updatePhase();
         updateBodyPosition(body_state);
         updateFeetPositions(body_state);
@@ -117,7 +129,7 @@ class PhaseGaitState : public GaitState {
                               -gait_state.step_z * dt * swing_stand_ratio()};
 
         body_state.feet[index][0] += delta_pos[0];
-        body_state.feet[index][1] = default_feet_positions[index][1];
+        body_state.feet[index][1] = default_feet_pos[index][1];
         body_state.feet[index][2] += delta_pos[2];
     }
 
@@ -125,27 +137,16 @@ class PhaseGaitState : public GaitState {
         float delta_pos[3] = {gait_state.step_x * dt, 0, gait_state.step_z * dt};
 
         if (std::fabs(gait_state.step_x) < 0.01) {
-            delta_pos[0] = (default_feet_positions[index][0] - body_state.feet[index][0]) * dt * 8;
+            delta_pos[0] = (default_feet_pos[index][0] - body_state.feet[index][0]) * dt * 8;
         }
 
         if (std::fabs(gait_state.step_z) < 0.01) {
-            delta_pos[2] = (default_feet_positions[index][2] - body_state.feet[index][2]) * dt * 8;
+            delta_pos[2] = (default_feet_pos[index][2] - body_state.feet[index][2]) * dt * 8;
         }
 
         body_state.feet[index][0] += delta_pos[0];
-        body_state.feet[index][1] =
-            default_feet_positions[index][1] + std::sin(phase_time * M_PI) * gait_state.step_height;
+        body_state.feet[index][1] = default_feet_pos[index][1] + std::sin(phase_time * M_PI) * gait_state.step_height;
         body_state.feet[index][2] += delta_pos[2];
-    }
-
-    gait_state_t mapCommand(ControllerCommand command) {
-        gait_state_t state;
-        state.step_height = (command.s1 / 128 + 1) / 2;
-        state.step_x = command.ly / 128 * 2;
-        state.step_z = -command.lx / 128 * 2;
-        state.step_velocity = command.s / 128 + 1;
-        state.step_angle = 0;
-        return state;
     }
 };
 
@@ -201,5 +202,128 @@ class EightPhaseWalkState : public PhaseGaitState {
 
     void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         return PhaseGaitState::step(body_state, command, dt);
+    }
+};
+
+class BezierState : public GaitState {
+  private:
+    float phase_time = 0.0f;
+    uint8_t phase = 0;
+    uint8_t contact_phases[4][2] = {{1, 0}, {0, 1}, {0, 1}, {1, 0}};
+    float step_length = 0.0f;
+
+  protected:
+    const char *name() const override { return "Bezier"; }
+
+    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
+        this->mapCommand(command);
+        step_length = std::sqrt(gait_state.step_x * gait_state.step_x + gait_state.step_z * gait_state.step_z);
+        if (gait_state.step_x < 0.0f) {
+            step_length = -step_length;
+            gait_state.step_z = -gait_state.step_z;
+        }
+        updatePhase(dt);
+        updateFeetPositions(body_state);
+    }
+
+    void updatePhase(float dt) {
+        phase_time += dt * gait_state.step_velocity * 2;
+
+        if (phase_time >= 1.0f) {
+            phase += 1;
+            phase %= 2;
+            phase_time = 0;
+        }
+    }
+
+    void updateFeetPositions(body_state_t &body_state) {
+        for (int i = 0; i < 4; ++i) {
+            updateFootPosition(body_state, i);
+        }
+    }
+
+    void updateFootPosition(body_state_t &body_state, const int index) {
+        bool contact = contact_phases[index][phase] == 1;
+        body_state.feet[index][0] = this->default_feet_pos[index][0];
+        body_state.feet[index][1] = this->default_feet_pos[index][1];
+        body_state.feet[index][2] = this->default_feet_pos[index][2];
+        contact ? standController(body_state, index) : swingController(body_state, index);
+    }
+
+    void standController(body_state_t &body_state, const int index) {
+        controller(index, body_state, stanceCurve, &gait_state.step_depth);
+    }
+
+    void swingController(body_state_t &body_state, const int index) {
+        controller(index, body_state, bezierCurve, &gait_state.step_height);
+    }
+
+    void controller(const int index, body_state_t &body_state,
+                    std::function<void(float, float, float *, float, float *)> curve, float *arg) {
+        float length = step_length / 2.0f;
+        float angle = gait_state.step_z * M_PI_2;
+        float point[3] = {0, 0, 0};
+        curve(length, angle, arg, phase_time, point);
+
+        body_state.feet[index][0] += point[0];
+        body_state.feet[index][1] += point[1];
+        body_state.feet[index][2] += point[2];
+
+        // length = gait_state.step_angle * 2.0f;
+        // angle = yawArc(default_feet_pos[index], body_state.feet[index]);
+        // curve(length, angle, arg, phase_time, body_state.feet[index]);
+    }
+
+    static void stanceCurve(const float length, const float angle, const float *depth, const float phase,
+                            float *point) {
+        float X_POLAR = std::cos(angle);
+        float Z_POLAR = std::sin(angle);
+
+        float step = length * (1.0f - 2.0f * phase);
+        point[0] += step * X_POLAR;
+        point[2] += step * Z_POLAR;
+
+        if (length != 0.0f) {
+            point[1] = -*depth * std::cos((M_PI * (point[0] + point[2])) / (2.f * length));
+        }
+    }
+
+    static void bezierCurve(const float length, const float angle, const float *height, const float phase,
+                            float *point) {
+        float X_POLAR = std::cos(angle);
+        float Z_POLAR = std::sin(angle);
+
+        float STEP[] = {-length, -length * 1.4f, -length * 1.5f, -length * 1.5f, -length * 1.5f, 0.0f,
+                        0.0f,    0.0f,           length * 1.5f,  length * 1.5f,  length * 1.4f,  length};
+        float Y[] = {0.0f,           0.0f,           0.9f * *height, 0.9f * *height, 0.9f * *height, 0.9f * *height,
+                     0.9f * *height, 1.1f * *height, 1.1f * *height, 1.1f * *height, 0.0f,           0.0f};
+
+        for (int i = 0; i < 12; i++) {
+            float b = combinatorial(11, i) * std::pow(phase, i) * std::pow(1.0f - phase, 11 - i);
+            point[0] += b * STEP[i] * X_POLAR;
+            point[1] += b * Y[i];
+            point[2] += b * STEP[i] * Z_POLAR;
+        }
+    }
+
+    static float yawArc(const float feet_pos[4], const float *current_pos) {
+        float foot_mag = std::sqrt(feet_pos[0] * feet_pos[0] + feet_pos[2] * feet_pos[2]);
+        float foot_dir = std::atan2(feet_pos[2], feet_pos[0]);
+        float offsets[] = {current_pos[0] - feet_pos[0], current_pos[1] - feet_pos[1], current_pos[2] - feet_pos[2]};
+        float offset_mag = std::sqrt(offsets[0] * offsets[0] + offsets[2] * offsets[2]);
+        float offset_mod = std::atan2(offset_mag, foot_mag);
+
+        return M_PI_2 + foot_dir + offset_mod;
+    }
+
+    static float combinatorial(const int n, int k) {
+        if (k < 0 || k > n) return 0.0f;
+        if (k == 0 || k == n) return 1.0f;
+        k = std::min(k, n - k);
+        float c = 1.0f;
+        for (int i = 0; i < k; i++) {
+            c = (c * (n - i)) / (i + 1);
+        }
+        return c;
     }
 };

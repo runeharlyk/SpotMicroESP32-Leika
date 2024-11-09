@@ -152,7 +152,7 @@ class MotionService {
     friend class GaitState;
 
     std::unique_ptr<GaitState> crawlGait = std::make_unique<EightPhaseWalkState>();
-    std::unique_ptr<GaitState> walkGait = std::make_unique<FourPhaseWalkState>();
+    std::unique_ptr<GaitState> walkGait = std::make_unique<BezierState>();
 
     MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
