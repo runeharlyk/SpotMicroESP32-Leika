@@ -209,8 +209,8 @@ class EightPhaseWalkState : public PhaseGaitState {
 class BezierState : public GaitState {
   private:
     float phase_time = 0.0f;
-    uint8_t phase = 0;
-    static constexpr uint8_t contact_phases[4][2] = {{1, 0}, {0, 1}, {0, 1}, {1, 0}};
+    static constexpr float offset[4] = {0.f, 0.5f, 0.5f, 0.f};
+    static constexpr float standOffset = 0.75f;
     static constexpr uint8_t BEZIER_POINTS = 12;
     float step_length = 0.0f;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
@@ -249,9 +249,7 @@ class BezierState : public GaitState {
 
     void updatePhase(float dt) {
         phase_time += dt * gait_state.step_velocity * 2;
-
         if (phase_time >= 1.0f) {
-            phase ^= 1;
             phase_time = 0;
         }
     }
@@ -263,33 +261,38 @@ class BezierState : public GaitState {
     }
 
     void updateFootPosition(body_state_t &body_state, const int index) {
-        bool contact = contact_phases[index][phase] == 1;
         body_state.feet[index][0] = this->default_feet_pos[index][0];
         body_state.feet[index][1] = this->default_feet_pos[index][1];
         body_state.feet[index][2] = this->default_feet_pos[index][2];
-        contact ? standController(body_state, index) : swingController(body_state, index);
+        float leg_phase = phase_time + offset[index];
+        if (leg_phase >= 1) {
+            leg_phase -= 1;
+        }
+        const bool contact = leg_phase <= standOffset;
+        contact ? standController(body_state, index, leg_phase / 0.75)
+                : swingController(body_state, index, (leg_phase - 0.75) / (1 - 0.75));
     }
 
-    void standController(body_state_t &body_state, const int index) {
-        controller(index, body_state, stanceCurve, &gait_state.step_depth);
+    void standController(body_state_t &body_state, const int index, const float phase) {
+        controller(index, body_state, phase, stanceCurve, &gait_state.step_depth);
     }
 
-    void swingController(body_state_t &body_state, const int index) {
-        controller(index, body_state, bezierCurve, &gait_state.step_height);
+    void swingController(body_state_t &body_state, const int index, const float phase) {
+        controller(index, body_state, phase, bezierCurve, &gait_state.step_height);
     }
 
-    void controller(const int index, body_state_t &body_state,
+    void controller(const int index, body_state_t &body_state, const float phase,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
         float delta_pos[3] = {0, 0, 0};
         float delta_rot[3] = {0, 0, 0};
 
         float length = step_length / 2.0f;
         float angle = std::atan2(gait_state.step_z, step_length) * 2;
-        curve(length, angle, arg, phase_time, delta_pos);
+        curve(length, angle, arg, phase, delta_pos);
 
         length = gait_state.step_angle * 2.0f;
         angle = yawArc(default_feet_pos[index], body_state.feet[index]);
-        curve(length, angle, arg, phase_time, delta_rot);
+        curve(length, angle, arg, phase, delta_rot);
 
         body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2;
         if (step_length || gait_state.step_angle) body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2;

@@ -20,6 +20,7 @@ export interface ControllerCommand {
     ry: number;
     h: number;
     s: number;
+    s1: number;
 }
 
 export abstract class GaitState {
@@ -64,7 +65,7 @@ export abstract class GaitState {
 
     map_command(command: ControllerCommand) {
         const newCommand = {
-            step_height: 0.4,
+            step_height: 0.4 + (command.s1 / 128 + 1) / 2,
             step_x: Math.floor(fromInt8(command.ly, -1, 1) * 10) / 10,
             step_z: -(Math.floor(fromInt8(command.lx, -1, 1) * 10) / 10),
             step_velocity: command.s / 128 + 1,
@@ -268,13 +269,8 @@ export class BezierState extends GaitState {
     protected name = 'Bezier';
     protected phase = 0;
     protected phase_num = 0;
-    protected contact_phases = [
-        [1, 0],
-        [0, 1],
-        [0, 1],
-        [1, 0]
-    ];
     protected step_length: number = 0;
+    offset = [0, 0.5, 0.5, 0];
 
     begin() {
         super.begin();
@@ -311,36 +307,42 @@ export class BezierState extends GaitState {
     }
 
     update_foot_position(index: number): number[] {
-        const contact = this.contact_phases[index][this.phase_num];
+        let phase = this.phase + this.offset[index];
+        if (phase >= 1) {
+            phase -= 1;
+        }
         this.body_state.feet[index][0] = this.default_feet_pos[index][0];
         this.body_state.feet[index][1] = this.default_feet_pos[index][1];
         this.body_state.feet[index][2] = this.default_feet_pos[index][2];
-        return contact ? this.swing_controller(index) : this.stand_controller(index);
+        return phase <= 0.75 ?
+                this.stand_controller(index, phase / 0.75)
+            :   this.swing_controller(index, (phase - 0.75) / (1 - 0.75));
     }
 
-    stand_controller(index: number) {
+    stand_controller(index: number, phase: number) {
         let depth = this.gait_state.step_depth;
-        return this.controller(index, stance_curve, depth);
+        return this.controller(index, phase, stance_curve, depth);
     }
 
-    swing_controller(index: number) {
+    swing_controller(index: number, phase: number) {
         let height = this.gait_state.step_height;
-        return this.controller(index, bezier_curve, height);
+        return this.controller(index, phase, bezier_curve, height);
     }
 
     controller(
         index: number,
+        phase: number,
         controller: (length: number, angle: number, ...args: number[]) => number[],
         ...args: number[]
     ) {
         let length = this.step_length / 2;
         let angle = Math.atan2(this.gait_state.step_z, this.step_length) * 2;
-        const delta_pos = controller(length, angle, ...args, this.phase);
+        const delta_pos = controller(length, angle, ...args, phase);
 
         length = this.gait_state.step_angle * 2;
         angle = yawArc(this.default_feet_pos[index], this.body_state.feet[index]);
 
-        const delta_rot = controller(length, angle, ...args, this.phase);
+        const delta_rot = controller(length, angle, ...args, phase);
 
         this.body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2;
         this.body_state.feet[index][2] += delta_pos[2] + delta_rot[2] * 0.2;
