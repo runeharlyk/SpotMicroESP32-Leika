@@ -268,7 +268,8 @@
             rx: controlData[3],
             ry: controlData[4],
             h: controlData[5],
-            s: controlData[6]
+            s: controlData[6],
+            s1: controlData[7]
         };
         body_state.ym = ((data.h + 127) * 0.75) / 100;
 
