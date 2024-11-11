@@ -209,8 +209,8 @@ class EightPhaseWalkState : public PhaseGaitState {
 class BezierState : public GaitState {
   private:
     float phase_time = 0.0f;
-    static constexpr float offset[4] = {0.f, 0.5f, 0.5f, 0.f};
-    static constexpr float standOffset = 0.75f;
+    static constexpr float PHASE_OFFSET[4] = {0.f, 0.5f, 0.5f, 0.f};
+    static constexpr float STAND_OFFSET = 0.75f;
     static constexpr uint8_t BEZIER_POINTS = 12;
     float step_length = 0.0f;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
@@ -234,12 +234,12 @@ class BezierState : public GaitState {
     alignas(32) static constexpr float BEZIER_HEIGHTS[12] = {0.0f, 0.0f, 0.9f, 0.9f, 0.9f, 0.9f,
                                                              0.9f, 1.1f, 1.1f, 1.1f, 0.0f, 0.0f};
 
-  protected:
+  public:
     const char *name() const override { return "Bezier"; }
 
     void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
         this->mapCommand(command);
-        step_length = std::sqrt(gait_state.step_x * gait_state.step_x + gait_state.step_z * gait_state.step_z);
+        step_length = std::hypot(gait_state.step_x, gait_state.step_z);
         if (gait_state.step_x < 0.0f) {
             step_length = -step_length;
         }
@@ -247,12 +247,8 @@ class BezierState : public GaitState {
         updateFeetPositions(body_state);
     }
 
-    void updatePhase(float dt) {
-        phase_time += dt * gait_state.step_velocity * 2;
-        if (phase_time >= 1.0f) {
-            phase_time = 0;
-        }
-    }
+  protected:
+    void updatePhase(float dt) { phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * 2, 1.0f); }
 
     void updateFeetPositions(body_state_t &body_state) {
         for (int i = 0; i < 4; ++i) {
@@ -264,11 +260,8 @@ class BezierState : public GaitState {
         body_state.feet[index][0] = this->default_feet_pos[index][0];
         body_state.feet[index][1] = this->default_feet_pos[index][1];
         body_state.feet[index][2] = this->default_feet_pos[index][2];
-        float leg_phase = phase_time + offset[index];
-        if (leg_phase >= 1) {
-            leg_phase -= 1;
-        }
-        const bool contact = leg_phase <= standOffset;
+        const float leg_phase = std::fmod(phase_time + PHASE_OFFSET[index], 1.0f);
+        const bool contact = leg_phase <= STAND_OFFSET;
         contact ? standController(body_state, index, leg_phase / 0.75)
                 : swingController(body_state, index, (leg_phase - 0.75) / (1 - 0.75));
     }
@@ -283,8 +276,8 @@ class BezierState : public GaitState {
 
     void controller(const int index, body_state_t &body_state, const float phase,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
-        float delta_pos[3] = {0, 0, 0};
-        float delta_rot[3] = {0, 0, 0};
+        float delta_pos[3] = {0};
+        float delta_rot[3] = {0};
 
         float length = step_length / 2.0f;
         float angle = std::atan2(gait_state.step_z, step_length) * 2;
@@ -301,12 +294,9 @@ class BezierState : public GaitState {
 
     static void stanceCurve(const float length, const float angle, const float *depth, const float phase,
                             float *point) {
-        float X_POLAR = std::cos(angle);
-        float Z_POLAR = std::sin(angle);
-
         float step = length * (1.0f - 2.0f * phase);
-        point[0] += step * X_POLAR;
-        point[2] += step * Z_POLAR;
+        point[0] += step * std::cos(angle);
+        point[2] += step * std::sin(angle);
 
         if (length != 0.0f) {
             point[1] = -*depth * std::cos((M_PI * (point[0] + point[2])) / (2.f * length));
@@ -315,12 +305,12 @@ class BezierState : public GaitState {
 
     static void bezierCurve(const float length, const float angle, const float *height, const float phase,
                             float *point) {
-        float X_POLAR = std::cos(angle);
-        float Z_POLAR = std::sin(angle);
+        const float X_POLAR = std::cos(angle);
+        const float Z_POLAR = std::sin(angle);
 
         float phase_power = 1.0f;
         float inv_phase_power = std::pow(1.0f - phase, 11);
-        float one_minus_phase = 1.0f - phase;
+        const float one_minus_phase = 1.0f - phase;
 
         for (int i = 0; i < 12; i++) {
             float b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power;
@@ -334,11 +324,12 @@ class BezierState : public GaitState {
     }
 
     static float yawArc(const float feet_pos[4], const float *current_pos) {
-        float foot_mag = std::sqrt(feet_pos[0] * feet_pos[0] + feet_pos[2] * feet_pos[2]);
-        float foot_dir = std::atan2(feet_pos[2], feet_pos[0]);
-        float offsets[] = {current_pos[0] - feet_pos[0], current_pos[1] - feet_pos[1], current_pos[2] - feet_pos[2]};
-        float offset_mag = std::sqrt(offsets[0] * offsets[0] + offsets[2] * offsets[2]);
-        float offset_mod = std::atan2(offset_mag, foot_mag);
+        const float foot_mag = std::hypot(feet_pos[0], feet_pos[2]);
+        const float foot_dir = std::atan2(feet_pos[2], feet_pos[0]);
+        const float offsets[] = {current_pos[0] - feet_pos[0], current_pos[1] - feet_pos[1],
+                                 current_pos[2] - feet_pos[2]};
+        const float offset_mag = std::hypot(offsets[0], offsets[2]);
+        const float offset_mod = std::atan2(offset_mag, foot_mag);
 
         return M_PI_2 + foot_dir + offset_mod;
     }
