@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <unity.h>
-#include "Gait/GaitState.h"
+#include "gait/state.h"
+#include "gait/bezier_state.h"
 
 void test_gaitPlanner_calculateStep_time() {
     BezierState gaitPlanner;
