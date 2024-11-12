@@ -5,7 +5,6 @@
 #include <EventEndpoint.h>
 #include <event_socket.h>
 #include <FSPersistence.h>
-#include <HttpEndpoint.h>
 #include <StatefulService.h>
 #include <stateful_service_endpoint.h>
 #include <MathUtils.h>

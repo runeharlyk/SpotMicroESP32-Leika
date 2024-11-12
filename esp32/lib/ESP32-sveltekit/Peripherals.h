@@ -3,7 +3,6 @@
 
 #include <EventEndpoint.h>
 #include <FSPersistence.h>
-#include <HttpEndpoint.h>
 #include <StatefulService.h>
 #include <MathUtils.h>
 #include <timing.h>
