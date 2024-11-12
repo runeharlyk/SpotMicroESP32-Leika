@@ -41,7 +41,155 @@ By focusing on practicality and simplicity in both hardware and software, it off
 
 ### 🎮 Controller
 
+The controller is a svelte app, which get embedded in the firmware of the robot.
+
+The controller includes full control over robot settings like network and calibration, and a visualization.
 <img src="images/controller.gif" alt="controller" width="500">
+
+## 📐 Robot specifications
+
+Robot control flow
+
+The robots is implemented using a sense, plan, act control flow.
+
+![control flow](images/control_flow.png)
+
+## 🦾 Kinematics
+
+To enable complex movements, it's beneficial to be able to describe the robot state using a world reference frame, instead of using raw joint angles.
+
+The robot's body pose in the world reference frame is represented as
+
+$$T_{body}=\left[x_b,y_b,z_b,\phi, \theta,\psi\right]$$
+
+Where
+
+- $x_b, y_b, z_b$ are cartesian coordinates of the robot's body center.
+- $\phi, \theta,\psi$ are the roll, pitch and yaw angles, describing the body orientation.
+
+The feet positions in the world reference frame are:
+
+$$P_{feet}=\left\{(x_{f_i},y_{f_i},z_{f_i})|i=1,2,3,4\right\}$$
+
+where $x_{f_i}, y_{f_i}, z_{f_i}$ are cartesian coordinates for each foot $i$.
+
+Solving the inverse kinematics yields target angles for the actuators.
+
+<!-- Write about the calculation, rotation matrix and trig -->
+
+<!-- L1, L2, L3, L4, L, W -->
+
+<!-- $$
+R_{body} =
+\begin{bmatrix}
+\cos\psi\cos\theta & \cos\psi\sin\theta\sin\phi - \sin\psi\cos\phi & \cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi \\
+\sin\psi\cos\theta & \sin\psi\sin\theta\sin\phi + \cos\psi\cos\phi & \sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi \\
+-\sin\theta & \cos\theta\sin\phi & \cos\theta\cos\phi
+\end{bmatrix}
+$$ -->
+
+## 🏁 Motion state controller
+
+The motion controller is a finite state machine with state allowing for static and dynamic posing, 8-phase crawl and bezier bases trot gait, and choreographed animation.
+
+### Controller Input Mapping
+
+The controller input is interpret different between the modes. For the walking it it looks like this:
+
+| Controller Input | Mapped to Gait Step | Range   |
+| ---------------- | ------------------- | ------- |
+| Left x joystick  | Step x              | -1 to 1 |
+| Left y joystick  | Step z              | -1 to 1 |
+| Right x joystick | Step angle          | -1 to 1 |
+| Right y joystick | Body pitch angle    | -1 to 1 |
+| Height slider    | Body height         | 0 to 1  |
+| Speed slider     | Step velocity       | 0 to 1  |
+| S1 slider        | Step height         | 0 to 1  |
+| Stop button      | E stop command      | 0 or 1  |
+
+<!-- ### Static and dynamic posing -->
+
+### Walking gait
+
+General about walking gait
+
+Time step
+
+Phase condition
+
+Stance and swing controller
+
+### 8-phase crawl gait
+
+The 8-phase crawl gait works by lifting one leg at a time while shifting its body weight away from the leg.
+
+As the name implies, the gait consist of 8 discrete phases, which represents which feet should be contact the ground or be in swing.
+
+At each time step the phase time $t\in [0,1]$ is updated. When $t\geq 1$ the phase index is updated and phase time is reset.
+
+Is derived from [mike4192 spotMicro](https://github.com/mike4192/spotMicro)
+
+### Trot gait (12 point bezier curve)
+
+The trot gait implements a phase time $t\in[0,1]$, but instead of using contact phases we define a swing/stance ratio of phase time offset for each leg.
+
+The stance controller implements a sin curve to control the depth of steps.
+
+The swing controller implements a bezier curve using 12 control points centered around the robot leg.
+
+Rotation is calulated using the same curve
+
+## 🪛 Hardware
+
+3D print
+
+The minimum amount of hardware
+
+Electronics
+
+Base electronics
+
+- ESP 32
+- PCA9685
+- 12x servo motors
+- LM2596 - DC-DC Stepdown Module
+- Battery (7.4-8.6V)
+
+But it can be expanded and upgraded with much more like
+
+- ESP32-S3 with camera
+- MPU6065 - for gyro and acceleration data
+- HMC5883L - for magnetometer
+- GY-521 - in favor of (MPU6065 + HMC5883L)
+- 2x HC-SR04 - Ultrasonic Distance Sensor
+- WS2812 ring - For displaying robot state.
+- 0.96" SD1306 - OLED diplay
+- ACS712 - Current sensor
+- ADS1115 - 16 bit analog to digital converter
+- Power button w/ led
+
+### Recommendation
+
+I recommend getting a ESP32-S3 with a camera, allowing for more computation and imaging capabilities.
+
+It means a more responsive robot as its faster doing sensor fusion, calculating kinematic and gait planning, and networking.
+
+## IO
+
+As mentioned in electronics, the robots allows for a lot expansion from the base.
+
+## Project structure
+
+Robot firmware
+
+- Services
+- Facade - sense, plan, act
+- State machine - Motion
+- Observe pattern - Eventsocket, stateful service
+
+Controller
+
+Simulator
 
 ### 🛠️ Documentation
 
