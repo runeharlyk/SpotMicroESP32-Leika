@@ -5,9 +5,12 @@
 #include <task_manager.h>
 #include <Kinematics.h>
 #include <ServoController.h>
-#include <Gait/GaitState.h>
 #include <timing.h>
 #include <MathUtils.h>
+
+#include <gait/state.h>
+#include <gait/crawl_state.h>
+#include <gait/bezier_state.h>
 
 #define DEFAULT_STATE false
 #define ANGLES_EVENT "angles"
