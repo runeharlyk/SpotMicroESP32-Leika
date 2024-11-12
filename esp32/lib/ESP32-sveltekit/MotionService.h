@@ -10,7 +10,6 @@
 #include <MathUtils.h>
 
 #define DEFAULT_STATE false
-#define LIGHT_SETTINGS_ENDPOINT_PATH "/api/input"
 #define ANGLES_EVENT "angles"
 #define INPUT_EVENT "input"
 #define POSITION_EVENT "position"
@@ -20,8 +19,7 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WA
 
 class MotionService {
   public:
-    MotionService(PsychicHttpServer *server, ServoController *servoController)
-        : _server(server), _servoController(servoController) {}
+    MotionService(ServoController *servoController) : _servoController(servoController) {}
 
     void begin() {
         socket.onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
@@ -144,7 +142,6 @@ class MotionService {
     static void _loopImpl(void *_this) { static_cast<MotionService *>(_this)->_loop(); }
 
   private:
-    PsychicHttpServer *_server;
     ServoController *_servoController;
     Kinematics kinematics;
     ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};

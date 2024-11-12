@@ -17,9 +17,8 @@
 
 class ServoController : public StatefulService<ServoSettings> {
   public:
-    ServoController(PsychicHttpServer *server, FS *fs, Peripherals *peripherals)
-        : _server(server),
-          _peripherals(peripherals),
+    ServoController(Peripherals *peripherals)
+        : _peripherals(peripherals),
           endpoint(ServoSettings::read, ServoSettings::update, this),
           _persistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {}
 
@@ -83,7 +82,6 @@ class ServoController : public StatefulService<ServoSettings> {
     StatefulHttpEndpoint<ServoSettings> endpoint;
 
   private:
-    PsychicHttpServer *_server;
     Peripherals *_peripherals;
     FSPersistence<ServoSettings> _persistence;
 

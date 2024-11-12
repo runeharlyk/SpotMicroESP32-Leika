@@ -17,18 +17,12 @@
 
 ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
     :
-#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-      _downloadFirmwareService(server),
-#endif
-#if FT_ENABLED(USE_SLEEP)
-      _sleepService(server),
-#endif
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals),
 #endif
-      _servoController(server, &ESPFS, &_peripherals),
+      _servoController(&_peripherals),
 #if FT_ENABLED(USE_MOTION)
-      _motionService(_server, &_servoController),
+      _motionService(&_servoController),
 #endif
       _server(server) {
 }
@@ -208,9 +202,6 @@ void ESP32SvelteKit::startServices() {
 #endif
 #if FT_ENABLED(USE_NTP)
     _ntpService.begin();
-#endif
-#if FT_ENABLED(USE_SLEEP)
-    _sleepService.begin();
 #endif
 #if FT_ENABLED(USE_BATTERY)
     _batteryService.begin();
