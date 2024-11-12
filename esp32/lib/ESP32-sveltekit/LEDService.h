@@ -2,7 +2,6 @@
 #define LEDService_h
 
 #include <FastLED.h>
-#include <task_manager.h>
 
 #ifndef WS2812_PIN
 #define WS2812_PIN 12

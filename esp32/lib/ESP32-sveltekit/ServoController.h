@@ -20,7 +20,7 @@ class ServoController : public StatefulService<ServoSettings> {
     ServoController(Peripherals *peripherals)
         : _peripherals(peripherals),
           endpoint(ServoSettings::read, ServoSettings::update, this),
-          _persistence(ServoSettings::read, ServoSettings::update, this, &ESPFS, SERVO_SETTINGS_FILE) {}
+          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
         socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,

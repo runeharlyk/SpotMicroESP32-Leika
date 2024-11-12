@@ -68,8 +68,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
-          _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, &ESPFS,
-                       DEVICE_CONFIG_FILE) {
+          _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
         _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
     };

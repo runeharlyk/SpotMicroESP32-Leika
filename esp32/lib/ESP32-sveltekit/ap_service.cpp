@@ -4,7 +4,7 @@ static const char *TAG = "APService";
 
 APService::APService()
     : endpoint(APSettings::read, APSettings::update, this),
-      _persistence(APSettings::read, APSettings::update, this, &ESPFS, NTP_SETTINGS_FILE) {
+      _persistence(APSettings::read, APSettings::update, this, NTP_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { reconfigureAP(); }, false);
 }
 

@@ -24,11 +24,10 @@ template <class T>
 class FSPersistence {
   public:
     FSPersistence(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
-                  FS *fs, const char *filePath)
+                  const char *filePath)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
-          _fs(fs),
           _filePath(filePath),
           _updateHandlerId(0) {
         enableUpdateHandler();
@@ -98,7 +97,7 @@ class FSPersistence {
     JsonStateReader<T> _stateReader;
     JsonStateUpdater<T> _stateUpdater;
     StatefulService<T> *_statefulService;
-    FS *_fs;
+    FS *_fs {&ESPFS};
     const char *_filePath;
     size_t _bufferSize;
     update_handler_id_t _updateHandlerId;
