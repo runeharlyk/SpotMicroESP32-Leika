@@ -38,6 +38,7 @@ void ESP32SvelteKit::begin() {
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
     g_taskManager.begin();
+    _ledService.loop();
     _wifiService.begin();
 
     setupServer();
