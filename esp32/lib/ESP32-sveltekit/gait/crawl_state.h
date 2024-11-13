@@ -16,7 +16,7 @@ class EightPhaseWalkState : public PhaseGaitState {
     EightPhaseWalkState() {
         uint8_t contact[4][8] = {
             {1, 0, 1, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 1, 0, 1, 1}, {1, 1, 1, 1, 1, 1, 1, 0}, {1, 1, 1, 0, 1, 1, 1, 1}};
-        float shift_values[4][3] = {{-0.05f, 0, -0.2f}, {0.35f, 0, 0.2f}, {-0.05f, 0, 0.2f}, {0.35f, 0, -0.2f}};
+        float shift_values[4][3] = {{-0.05f, 0, -0.2f}, {0.25f, 0, 0.2f}, {-0.05f, 0, 0.2f}, {0.25f, 0, -0.2f}};
         for (uint8_t i = 0; i < 4; ++i) {
             for (uint8_t j = 0; j < 8; ++j) {
                 contact_phases[i][j] = contact[i][j];
