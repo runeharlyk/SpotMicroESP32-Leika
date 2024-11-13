@@ -32,7 +32,9 @@ void ESP32SvelteKit::begin() {
     ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
     g_taskManager.begin();
+#if FT_ENABLED(USE_WS2812)
     _ledService.loop();
+#endif
     _wifiService.begin();
 
     setupServer();
