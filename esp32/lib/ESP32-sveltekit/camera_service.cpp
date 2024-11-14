@@ -12,26 +12,33 @@ SemaphoreHandle_t cameraMutex = xSemaphoreCreateMutex();
 
 camera_fb_t *safe_camera_fb_get() {
     camera_fb_t *fb = NULL;
-    if (xSemaphoreTake(cameraMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTakeRecursive(cameraMutex, portMAX_DELAY) == pdTRUE) {
         fb = esp_camera_fb_get();
-        xSemaphoreGive(cameraMutex);
+        xSemaphoreGiveRecursive(cameraMutex);
     }
     return fb;
 }
 
 sensor_t *safe_sensor_get() {
     sensor_t *s = NULL;
-    if (xSemaphoreTake(cameraMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTakeRecursive(cameraMutex, portMAX_DELAY) == pdTRUE) {
         s = esp_camera_sensor_get();
     }
     return s;
 }
 
-void safe_sensor_return() { xSemaphoreGive(cameraMutex); }
+void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
-CameraService::CameraService() {}
+CameraService::CameraService()
+    : endpoint(CameraSettings::read, CameraSettings::update, this),
+      _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
+      _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE) {
+    addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
+}
 
 esp_err_t CameraService::begin() {
+    _eventEndpoint.begin();
+    _persistence.readFromFS();
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;
@@ -151,6 +158,41 @@ esp_err_t CameraService::cameraStream(PsychicRequest *request) {
     g_taskManager.createTask(streamTask, "Stream client task", 4096, request, 4);
     vTaskDelay(pdMS_TO_TICKS(100));
     return ESP_OK;
+}
+
+void CameraService::updateCamera() {
+    ESP_LOGI("CameraSettings", "Updating camera settings");
+    sensor_t *s = safe_sensor_get();
+    if (!s) {
+        ESP_LOGE("CameraSettings", "Failed to update camera settings");
+        safe_sensor_return();
+        return;
+    }
+    s->set_pixformat(s, _state.pixformat);
+    s->set_framesize(s, _state.framesize);
+    s->set_brightness(s, _state.brightness);
+    s->set_contrast(s, _state.contrast);
+    s->set_saturation(s, _state.saturation);
+    s->set_sharpness(s, _state.sharpness);
+    s->set_denoise(s, _state.denoise);
+    s->set_gainceiling(s, _state.gainceiling);
+    s->set_quality(s, _state.quality);
+    s->set_colorbar(s, _state.colorbar);
+    s->set_awb_gain(s, _state.awb_gain);
+    s->set_wb_mode(s, _state.wb_mode);
+    s->set_aec2(s, _state.aec2);
+    s->set_ae_level(s, _state.ae_level);
+    s->set_aec_value(s, _state.aec_value);
+    s->set_agc_gain(s, _state.agc_gain);
+    s->set_bpc(s, _state.bpc);
+    s->set_wpc(s, _state.wpc);
+    s->set_special_effect(s, _state.special_effect);
+    s->set_raw_gma(s, _state.raw_gma);
+    s->set_lenc(s, _state.lenc);
+    s->set_hmirror(s, _state.hmirror);
+    s->set_vflip(s, _state.vflip);
+    s->set_dcw(s, _state.dcw);
+    safe_sensor_return();
 }
 
 } // namespace Camera

@@ -77,9 +77,9 @@ void Spot::setupServer() {
     _server->on("/api/camera/stream", HTTP_GET,
                 [this](PsychicRequest *request) { return _cameraService.cameraStream(request); });
     _server->on("/api/camera/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _cameraSettingsService.endpoint.getState(request); });
+                [this](PsychicRequest *request) { return _cameraService.endpoint.getState(request); });
     _server->on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
-        return _cameraSettingsService.endpoint.handleStateUpdate(request, json);
+        return _cameraService.endpoint.handleStateUpdate(request, json);
     });
 
     // SYSTEM
@@ -198,7 +198,6 @@ void Spot::startServices() {
 #endif
 #if FT_ENABLED(USE_CAMERA)
     _cameraService.begin();
-    _cameraSettingsService.begin();
 #endif
 }
 
