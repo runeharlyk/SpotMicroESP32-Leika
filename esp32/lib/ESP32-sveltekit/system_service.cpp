@@ -4,6 +4,9 @@ namespace system_service {
 
 static const char *TAG = "SystemService";
 
+static JsonDocument analyticsDoc;
+static char analyticsMessage[MAX_ESP_ANALYTICS_SIZE];
+
 esp_err_t handleReset(PsychicRequest *request) {
     reset();
     return request->reply(200);
@@ -130,6 +133,15 @@ void metrics(JsonObject &root) {
         nested["priority"] = task.priority;
         nested["coreId"] = task.coreId;
     }
+}
+
+void emitMetrics() {
+    if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
+    analyticsDoc.clear();
+    JsonObject root = analyticsDoc.to<JsonObject>();
+    system_service::metrics(root);
+    serializeJson(analyticsDoc, analyticsMessage);
+    socket.emit(EVENT_ANALYTICS, analyticsMessage);
 }
 
 const char *resetReason(int reason) {

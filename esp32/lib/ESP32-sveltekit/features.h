@@ -32,11 +32,6 @@
 #define USE_BATTERY 0
 #endif
 
-// ESP32 analytics on by default
-#ifndef USE_ANALYTICS
-#define USE_ANALYTICS 1
-#endif
-
 // ESP32 camera off by default
 #ifndef USE_CAMERA
 #define USE_CAMERA 0

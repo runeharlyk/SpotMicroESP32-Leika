@@ -8,7 +8,6 @@ void features(JsonObject &root) {
     root["download_firmware"] = USE_DOWNLOAD_FIRMWARE;
     root["sleep"] = USE_SLEEP;
     root["battery"] = USE_BATTERY;
-    root["analytics"] = USE_ANALYTICS;
     root["camera"] = USE_CAMERA;
     root["imu"] = USE_IMU;
     root["mag"] = USE_MAG;

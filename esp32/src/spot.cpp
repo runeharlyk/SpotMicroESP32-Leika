@@ -184,7 +184,6 @@ void Spot::setupMDNS() {
 
 void Spot::startServices() {
     _apService.begin();
-
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
 #endif
@@ -209,9 +208,7 @@ void IRAM_ATTR Spot::loop() {
     while (1) {
         _wifiService.loop();
         _apService.loop();
-#if FT_ENABLED(USE_ANALYTICS)
-        _analyticsService.loop();
-#endif
+        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics());
         delay(20);
     }
 }

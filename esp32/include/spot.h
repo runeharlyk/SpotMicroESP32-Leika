@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-#include <analytics_service.h>
 #include <BatteryService.h>
 #include <filesystem.h>
 #include <firmware_download_service.h>
@@ -92,9 +91,6 @@ class Spot {
 #endif
 #if FT_ENABLED(USE_BATTERY)
     BatteryService _batteryService;
-#endif
-#if FT_ENABLED(USE_ANALYTICS)
-    AnalyticsService _analyticsService;
 #endif
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
