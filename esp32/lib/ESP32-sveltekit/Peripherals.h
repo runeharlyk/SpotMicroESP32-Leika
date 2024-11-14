@@ -19,7 +19,6 @@
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_ADS1X15.h>
 #include <NewPing.h>
 #include <peripherals/imu.h>
 
@@ -113,13 +112,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         if (!bmp_success) {
             ESP_LOGE("IMUService", "BMP initialize failed");
         }
-#endif
-
-#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(USE_ADS1115)
-        if (!_ads.begin()) {
-            ESP_LOGE("Peripherals", "ADS1015/ADS1115 not found");
-        }
-        _ads.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, /*continuous=*/false);
 #endif
 
 #if FT_ENABLED(USE_USS)
@@ -229,16 +221,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _pca_active = false;
         _pca.sleep();
 #endif
-    }
-
-    /* ADC FUNCTIONS*/
-    int16_t readADCVoltage(uint8_t channel) {
-        int16_t voltage = -1;
-#if FT_ENABLED(FT_ADS1015) || FT_ENABLED(USE_ADS1115)
-        float adc0 = _ads.readADC_SingleEnded(channel);
-        voltage = _ads.computeVolts(adc0);
-#endif
-        return voltage;
     }
 
     /* IMU FUNCTIONS */
@@ -371,12 +353,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP)
     Adafruit_BMP085_Unified _bmp;
     bool bmp_success {false};
-#endif
-#if FT_ENABLED(FT_ADS1015)
-    Adafruit_ADS1015 _ads;
-#endif
-#if FT_ENABLED(USE_ADS1115)
-    Adafruit_ADS1115 _ads;
 #endif
 #if FT_ENABLED(USE_USS)
     NewPing *_left_sonar;
