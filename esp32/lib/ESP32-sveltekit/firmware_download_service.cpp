@@ -91,7 +91,7 @@ void updateTask(void *param) {
 
 DownloadFirmwareService::DownloadFirmwareService() {}
 
-esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonVariant &json) {
+esp_err_t DownloadFirmwareService::handleDownloadUpdate(PsychicRequest *request, JsonVariant &json) {
     if (!json.is<JsonObject>()) {
         return request->reply(400);
     }
@@ -108,8 +108,9 @@ esp_err_t DownloadFirmwareService::downloadUpdate(PsychicRequest *request, JsonV
 
     socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
-    if (g_taskManager.createTask(&updateTask, "Firmware download", OTA_TASK_STACK_SIZE, &downloadURL,
-                                 (configMAX_PRIORITIES - 1), NULL, 1) != pdPASS) {
+    const BaseType_t taskResult = g_taskManager.createTask(&updateTask, "Firmware download", OTA_TASK_STACK_SIZE,
+                                                           &downloadURL, (configMAX_PRIORITIES - 1), NULL, 1);
+    if (taskResult != pdPASS) {
         ESP_LOGE("Download OTA", "Couldn't create download OTA task");
         return request->reply(500);
     }

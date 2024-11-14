@@ -18,7 +18,7 @@ class DownloadFirmwareService {
   public:
     DownloadFirmwareService();
 
-    esp_err_t downloadUpdate(PsychicRequest *request, JsonVariant &json);
+    esp_err_t handleDownloadUpdate(PsychicRequest *request, JsonVariant &json);
 
   private:
 };
