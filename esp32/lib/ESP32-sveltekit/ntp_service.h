@@ -2,9 +2,9 @@
 #define NTPService_h
 
 #include <filesystem.h>
-#include <stateful_persistence.h>
+#include <template/stateful_persistence.h>
 #include <WiFi.h>
-#include <stateful_service_endpoint.h>
+#include <template/stateful_endpoint.h>
 #include <settings/ntp_settings.h>
 
 #include <lwip/apps/sntp.h>

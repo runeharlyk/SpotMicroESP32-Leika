@@ -3,7 +3,7 @@
 namespace Camera {
 
 #include <ArduinoJson.h>
-#include <state_result.h>
+#include <template/state_result.h>
 #include <esp_camera.h>
 
 class CameraSettings {

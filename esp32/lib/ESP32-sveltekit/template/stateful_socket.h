@@ -3,7 +3,7 @@
 #include <PsychicHttp.h>
 
 #include <event_socket.h>
-#include <stateful_service.h>
+#include <template/stateful_service.h>
 
 template <class T>
 class EventEndpoint {

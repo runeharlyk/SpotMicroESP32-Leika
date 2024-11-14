@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <ArduinoJson.h>
-#include <state_result.h>
+#include <template/state_result.h>
 
 /*
  * I2C software connection

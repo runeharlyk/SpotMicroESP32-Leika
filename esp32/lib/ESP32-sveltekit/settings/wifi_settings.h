@@ -6,7 +6,7 @@
 #include <utils/json_utils.h>
 #include <utils/ip_utils.h>
 #include <utils/string_utils.h>
-#include <state_result.h>
+#include <template/state_result.h>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""

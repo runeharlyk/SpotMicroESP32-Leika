@@ -24,7 +24,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-#include <state_result.h>
+#include <template/state_result.h>
 
 template <typename T>
 using JsonStateUpdater = std::function<StateUpdateResult(JsonObject &root, T &settings)>;

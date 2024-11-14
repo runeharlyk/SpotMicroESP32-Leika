@@ -2,7 +2,7 @@
 #define Socket_h
 
 #include <PsychicHttp.h>
-#include <stateful_service.h>
+#include <template/stateful_service.h>
 #include <list>
 #include <map>
 #include <vector>

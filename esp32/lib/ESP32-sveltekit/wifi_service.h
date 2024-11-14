@@ -7,9 +7,9 @@
 
 #include <filesystem.h>
 #include <utils/timing.h>
-#include <stateful_service.h>
-#include <stateful_persistence.h>
-#include <stateful_service_endpoint.h>
+#include <template/stateful_service.h>
+#include <template/stateful_persistence.h>
+#include <template/stateful_endpoint.h>
 #include <settings/wifi_settings.h>
 
 class WiFiService : public StatefulService<WiFiSettings> {

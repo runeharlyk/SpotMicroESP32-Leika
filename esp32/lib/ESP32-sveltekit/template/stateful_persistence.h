@@ -17,7 +17,7 @@
  **/
 
 #include <FS.h>
-#include <stateful_service.h>
+#include <template/stateful_service.h>
 #include <filesystem.h>
 
 template <class T>

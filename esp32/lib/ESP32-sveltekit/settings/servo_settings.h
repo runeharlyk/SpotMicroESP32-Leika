@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <state_result.h>
+#include <template/state_result.h>
 
 typedef struct {
     float centerPwm;

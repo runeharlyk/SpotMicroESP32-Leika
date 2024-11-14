@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <state_result.h>
+#include <template/state_result.h>
 #include <ArduinoJson.h>
 
 #ifndef FACTORY_NTP_ENABLED

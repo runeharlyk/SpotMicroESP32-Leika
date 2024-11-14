@@ -1,15 +1,15 @@
 #ifndef Peripherals_h
 #define Peripherals_h
 
-#include <stateful_socket.h>
-#include <stateful_persistence.h>
-#include <stateful_service.h>
+#include <template/stateful_socket.h>
+#include <template/stateful_persistence.h>
+#include <template/stateful_service.h>
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
 #include <features.h>
 #include <settings/peripherals_settings.h>
-#include <stateful_service_endpoint.h>
+#include <template/stateful_endpoint.h>
 
 #include <list>
 #include <SPI.h>
