@@ -3,10 +3,16 @@
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
-#include <task_manager.h>
 #include <WiFi.h>
 #include <async_worker.h>
+
 #include <features.h>
+#include <task_manager.h>
+#include <EventEndpoint.h>
+#include <stateful_persistence.h>
+#include <stateful_service_endpoint.h>
+
+#include <settings/camera_settings.h>
 
 namespace Camera {
 
@@ -18,11 +24,13 @@ namespace Camera {
 
 #define PART_BOUNDARY "frame"
 
+#define EVENT_CAMERA_SETTINGS "CameraSettings"
+
 camera_fb_t *safe_camera_fb_get();
 sensor_t *safe_sensor_get();
 void safe_sensor_return();
 
-class CameraService {
+class CameraService : public StatefulService<CameraSettings> {
   public:
     CameraService();
 
@@ -31,8 +39,12 @@ class CameraService {
     esp_err_t cameraStill(PsychicRequest *request);
     esp_err_t cameraStream(PsychicRequest *request);
 
+    StatefulHttpEndpoint<CameraSettings> endpoint;
+
   private:
-    PsychicHttpServer *_server;
+    EventEndpoint<CameraSettings> _eventEndpoint;
+    FSPersistence<CameraSettings> _persistence;
+    void updateCamera();
 };
 } // namespace Camera
 

@@ -16,7 +16,6 @@
 #include <MotionService.h>
 #include <ntp_service.h>
 #include <camera_service.h>
-#include <CameraSettingsService.h>
 #include <PsychicHttp.h>
 #include <task_manager.h>
 #include <WiFi.h>
@@ -97,7 +96,6 @@ class Spot {
 #endif
 #if FT_ENABLED(USE_CAMERA)
     Camera::CameraService _cameraService;
-    Camera::CameraSettingsService _cameraSettingsService;
 #endif
     Peripherals _peripherals;
     ServoController _servoController;
