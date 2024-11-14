@@ -15,11 +15,10 @@
 #include <SPI.h>
 #include <Wire.h>
 
-#include <Adafruit_BMP085_U.h>
-#include <Adafruit_Sensor.h>
 #include <NewPing.h>
 #include <peripherals/imu.h>
 #include <peripherals/magnetometer.h>
+#include <peripherals/barometer.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 
@@ -47,9 +46,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
           _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
                          EVENT_CONFIGURATION_SETTINGS),
-#if FT_ENABLED(USE_BMP)
-          _bmp(10085),
-#endif
           _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
         _accessMutex = xSemaphoreCreateMutex();
         addUpdateHandler([&](const String &originId) { updatePins(); }, false);
@@ -78,12 +74,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
 #if FT_ENABLED(USE_BMP)
-        bmp_success = _bmp.begin();
-        if (!bmp_success) {
-            ESP_LOGE("IMUService", "BMP initialize failed");
-        }
+        if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
 #endif
-
 #if FT_ENABLED(USE_USS)
         _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
         _right_sonar = new NewPing(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
@@ -163,35 +155,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return updated;
     }
 
-    /* BMP FUNCTIONS */
-    float getAltitude() {
-        float altitude = -1;
-#if FT_ENABLED(USE_MAG)
-        sensors_event_t event;
-        _bmp.getEvent(&event);
-        float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
-        altitude = bmp_success && event.pressure ? _bmp.pressureToAltitude(seaLevelPressure, event.pressure) : -1;
-#endif
-        return altitude;
-    }
-
-    float getPressure() {
-        float pressure = -1;
+    bool readBMP() {
+        bool updated = false;
 #if FT_ENABLED(USE_BMP)
-        sensors_event_t event;
-        _bmp.getEvent(&event);
-        pressure = bmp_success && event.pressure ? event.pressure : -1;
+        beginTransaction();
+        updated = _bmp.readBarometer();
+        endTransaction();
 #endif
-        return pressure;
-    }
-
-    float getTemperature() {
-        float temperature = 0;
-#if FT_ENABLED(USE_BMP)
-        _bmp.getTemperature(&temperature);
-        temperature = bmp_success ? temperature : -1;
-#endif
-        return temperature;
+        return updated;
     }
 
     void readSonar() {
@@ -217,11 +188,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _mag.readMagnetometer(root);
 #endif
 #if FT_ENABLED(USE_BMP)
-        if (bmp_success) {
-            doc["pressure"] = round2(getPressure());
-            doc["altitude"] = round2(getAltitude());
-            doc["bmp_temp"] = round2(getTemperature());
-        }
+        _bmp.readBarometer(root);
 #endif
         serializeJson(doc, message);
         socket.emit(EVENT_IMU, message);
@@ -254,8 +221,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Magnetometer _mag;
 #endif
 #if FT_ENABLED(USE_BMP)
-    Adafruit_BMP085_Unified _bmp;
-    bool bmp_success {false};
+    Barometer _bmp;
 #endif
 #if FT_ENABLED(USE_USS)
     NewPing *_left_sonar;

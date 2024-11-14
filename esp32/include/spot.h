@@ -51,6 +51,7 @@ class Spot {
     void readSensors() {
         _peripherals.readIMU();
         _peripherals.readMag();
+        _peripherals.readBMP();
     }
 
     // plan
