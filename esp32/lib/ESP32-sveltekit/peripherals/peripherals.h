@@ -16,10 +16,10 @@
 #include <Wire.h>
 
 #include <Adafruit_BMP085_U.h>
-#include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
 #include <NewPing.h>
 #include <peripherals/imu.h>
+#include <peripherals/magnetometer.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 
@@ -47,9 +47,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
           _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
                          EVENT_CONFIGURATION_SETTINGS),
-#if FT_ENABLED(USE_MAG)
-          _mag(12345),
-#endif
 #if FT_ENABLED(USE_BMP)
           _bmp(10085),
 #endif
@@ -78,10 +75,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
 #if FT_ENABLED(USE_MAG)
-        mag_success = _mag.begin();
-        if (!mag_success) {
-            ESP_LOGE("IMUService", "MAG initialize failed");
-        }
+        if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
 #if FT_ENABLED(USE_BMP)
         bmp_success = _bmp.begin();
@@ -159,20 +153,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return updated;
     }
 
-    /* MAG FUNCTIONS */
-    float getHeading() {
-        float heading = 0;
+    bool readMag() {
+        bool updated = false;
 #if FT_ENABLED(USE_MAG)
-        sensors_event_t event;
-        _mag.getEvent(&event);
-        heading = atan2(event.magnetic.y, event.magnetic.x);
-        float declinationAngle = 0.22;
-        heading += declinationAngle;
-        if (heading < 0) heading += 2 * PI;
-        if (heading > 2 * PI) heading -= 2 * PI;
-        heading *= 180 / M_PI;
+        beginTransaction();
+        updated = _mag.readMagnetometer();
+        endTransaction();
 #endif
-        return heading;
+        return updated;
     }
 
     /* BMP FUNCTIONS */
@@ -226,9 +214,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _imu.readIMU(root);
 #endif
 #if FT_ENABLED(USE_MAG)
-        if (mag_success) {
-            doc["heading"] = round2(getHeading());
-        }
+        _mag.readMagnetometer(root);
 #endif
 #if FT_ENABLED(USE_BMP)
         if (bmp_success) {
@@ -265,8 +251,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     IMU _imu;
 #endif
 #if FT_ENABLED(USE_MAG)
-    Adafruit_HMC5883_Unified _mag;
-    bool mag_success {false};
+    Magnetometer _mag;
 #endif
 #if FT_ENABLED(USE_BMP)
     Adafruit_BMP085_Unified _bmp;

@@ -1,5 +1,4 @@
-#ifndef IMU_h
-#define IMU_h
+#pragma once
 
 #include <list>
 #include <SPI.h>
@@ -62,5 +61,3 @@ class IMU {
     float ypr[3];
     float imu_temperature {-1};
 };
-
-#endif

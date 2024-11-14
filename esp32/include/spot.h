@@ -48,7 +48,10 @@ class Spot {
     void initialize();
 
     // sense
-    void readSensors() { _peripherals.readIMU(); }
+    void readSensors() {
+        _peripherals.readIMU();
+        _peripherals.readMag();
+    }
 
     // plan
     void planMotion() { updatedMotion = _motionService.updateMotion(); }
@@ -66,7 +69,6 @@ class Spot {
     // communicate
     void emitTelemetry() {
         if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.emitAngles(); });
-        // _peripherals.loop();
         EXECUTE_EVERY_N_MS(1000, { _peripherals.emitIMU(); });
         // _peripherals.emitSonar();
     }
