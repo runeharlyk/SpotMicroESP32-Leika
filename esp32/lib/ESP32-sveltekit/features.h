@@ -27,11 +27,6 @@
 #define USE_SLEEP 0
 #endif
 
-// ESP32 battery state off by default
-#ifndef USE_BATTERY
-#define USE_BATTERY 0
-#endif
-
 // ESP32 camera off by default
 #ifndef USE_CAMERA
 #define USE_CAMERA 0

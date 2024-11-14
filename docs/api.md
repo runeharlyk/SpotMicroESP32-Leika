@@ -27,7 +27,6 @@ The back end exposes a number of API endpoints which are referenced in the table
 
 <!-- | HTTP Method | Endpoint       | Description                | Parameters                |
 |-------------|----------------|----------------------------|---------------------------|
-| GET         | /api/sensor/battery       | Retrieve the battery state |                       |
 | GET         | /api/sensor/mpu       | Retrieve the mpu state |                       |
 | GET         | /api/sensor/magnetometer       | Retrieve the magnetometer state |                       |
 | GET         | /api/sensor/distances       | Retrieve the distances state |                      |

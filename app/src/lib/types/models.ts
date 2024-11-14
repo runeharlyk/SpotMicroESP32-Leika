@@ -89,11 +89,6 @@ export type NTPStatus = {
     uptime: number;
 };
 
-export type Battery = {
-    voltage: number;
-    current: number;
-};
-
 export type DownloadOTA = {
     status: string;
     progress: number;
