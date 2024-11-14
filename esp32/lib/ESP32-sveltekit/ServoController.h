@@ -2,10 +2,9 @@
 #define ServoController_h
 
 #include <Adafruit_PWMServoDriver.h>
-#include <EventEndpoint.h>
 #include <event_socket.h>
-#include <FSPersistence.h>
-#include <StatefulService.h>
+#include <stateful_persistence.h>
+#include <stateful_service.h>
 #include <stateful_service_endpoint.h>
 #include <MathUtils.h>
 #include <timing.h>

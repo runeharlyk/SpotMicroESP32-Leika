@@ -7,12 +7,12 @@ namespace Camera {
 
 #include <camera_service.h>
 #include <EventEndpoint.h>
-#include <FSPersistence.h>
+#include <stateful_persistence.h>
 #include <stateful_service_endpoint.h>
 #include <JsonUtils.h>
 #include <PsychicHttp.h>
 #include <SettingValue.h>
-#include <StatefulService.h>
+#include <stateful_service.h>
 #include <esp_camera.h>
 #include <filesystem.h>
 

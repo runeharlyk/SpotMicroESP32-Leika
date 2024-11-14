@@ -7,8 +7,8 @@
 
 #include <filesystem.h>
 #include <timing.h>
-#include <StatefulService.h>
-#include <FSPersistence.h>
+#include <stateful_service.h>
+#include <stateful_persistence.h>
 #include <stateful_service_endpoint.h>
 #include <settings/wifi_settings.h>
 

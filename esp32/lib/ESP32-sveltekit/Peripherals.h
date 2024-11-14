@@ -2,8 +2,8 @@
 #define Peripherals_h
 
 #include <EventEndpoint.h>
-#include <FSPersistence.h>
-#include <StatefulService.h>
+#include <stateful_persistence.h>
+#include <stateful_service.h>
 #include <MathUtils.h>
 #include <timing.h>
 #include <filesystem.h>
