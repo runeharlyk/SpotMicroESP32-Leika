@@ -177,8 +177,8 @@ void Spot::setupMDNS() {
     ESP_LOGV(TAG, "Starting MDNS");
     MDNS.begin(_wifiService.getHostname());
     MDNS.setInstanceName(_appName);
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("ws", "tcp", 80);
+    MDNS.addService("http", "tcp", _port);
+    MDNS.addService("ws", "tcp", _port);
     MDNS.addServiceTxt("http", "tcp", "Firmware Version", APP_VERSION);
 }
 
