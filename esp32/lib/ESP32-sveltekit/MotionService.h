@@ -5,7 +5,7 @@
 #include <Kinematics.h>
 #include <peripherals/servo_controller.h>
 #include <utils/timing.h>
-#include <MathUtils.h>
+#include <utils/math_utils.h>
 
 #include <gait/state.h>
 #include <gait/crawl_state.h>

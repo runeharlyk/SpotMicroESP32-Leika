@@ -5,7 +5,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
-#include <MathUtils.h>
+#include <utils/math_utils.h>
 
 #include <MPU6050_6Axis_MotionApps612.h>
 

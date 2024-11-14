@@ -1,7 +1,7 @@
 #pragma once
 
 #include <gait/state.h>
-#include <MathUtils.h>
+#include <utils/math_utils.h>
 #include <array>
 #include <functional>
 

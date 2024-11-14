@@ -4,7 +4,7 @@
 #include <EventEndpoint.h>
 #include <stateful_persistence.h>
 #include <stateful_service.h>
-#include <MathUtils.h>
+#include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
 #include <features.h>

@@ -6,7 +6,7 @@
 #include <stateful_persistence.h>
 #include <stateful_service.h>
 #include <stateful_service_endpoint.h>
-#include <MathUtils.h>
+#include <utils/math_utils.h>
 #include <settings/servo_settings.h>
 
 /*
