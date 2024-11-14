@@ -68,7 +68,7 @@ class Spot {
 
     // communicate
     void emitTelemetry() {
-        if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.syncAngles(); });
+        if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.emitAngles(); });
         // _peripherals.loop();
         EXECUTE_EVERY_N_MS(1000, { _peripherals.emitIMU(); });
         // _peripherals.emitSonar();
