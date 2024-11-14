@@ -38,7 +38,7 @@ void Spot::setupServer() {
     _server->maxUploadSize = _maxFileUpload;
     _server->listen(_port);
 
-    // wifi
+    // WIFI
     _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
     _server->on("/api/wifi/networks", HTTP_GET,
                 [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
@@ -50,7 +50,7 @@ void Spot::setupServer() {
         return _wifiService.endpoint.handleStateUpdate(request, json);
     });
 
-    // ap
+    // AP
     _server->on("/api/wifi/ap/status", HTTP_GET,
                 [this](PsychicRequest *request) { return _apService.getStatus(request); });
     _server->on("/api/wifi/ap/settings", HTTP_GET,
@@ -71,7 +71,7 @@ void Spot::setupServer() {
     });
 #endif
 
-    // Camera
+    // CAMERA
     _server->on("/api/camera/still", HTTP_GET,
                 [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
     _server->on("/api/camera/stream", HTTP_GET,
@@ -112,11 +112,9 @@ void Spot::setupServer() {
     // MISC
     _server->on("/api/ws/events", socket.getHandler());
     _server->on("/api/features", feature_service::getFeatures);
-
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _server->on("/api/firmware", HTTP_POST, _uploadFirmwareService.getHandler());
 #endif
-
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     _server->on("/api/firmware/download", HTTP_POST, [this](PsychicRequest *r, JsonVariant &json) {
         return _downloadFirmwareService.handleDownloadUpdate(r, json);
