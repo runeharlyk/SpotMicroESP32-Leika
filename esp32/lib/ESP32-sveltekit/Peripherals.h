@@ -15,19 +15,19 @@
 #include <SPI.h>
 #include <Wire.h>
 
-#include <MPU6050_6Axis_MotionApps612.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADS1X15.h>
 #include <NewPing.h>
+#include <peripherals/imu.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 
 #define EVENT_I2C_SCAN "i2cScan"
 
-#define I2C_INTERVAL 5000
+#define I2C_INTERVAL 250
 #define MAX_ESP_IMU_SIZE 500
 #define EVENT_IMU "imu"
 #define EVENT_SERVO_STATE "servoState"
@@ -100,16 +100,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 
 #if FT_ENABLED(USE_IMU)
-        _imu.initialize();
-        imu_success = _imu.testConnection();
-        devStatus = _imu.dmpInitialize();
-        if (!imu_success) {
-            ESP_LOGE("IMUService", "MPU initialize failed");
-        }
-        _imu.setDMPEnabled(true);
-        _imu.setI2CMasterModeEnabled(false);
-        _imu.setI2CBypassEnabled(true);
-        _imu.setSleepEnabled(false);
+        if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
 #if FT_ENABLED(USE_MAG)
         mag_success = _mag.begin();
@@ -140,7 +131,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void loop() {
         EXECUTE_EVERY_N_MS(_updateInterval, {
             beginTransaction();
-            updateImu();
+            emitIMU();
             readSonar();
             emitSonar();
             endTransaction();
@@ -254,44 +245,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     bool readIMU() {
         bool updated = false;
 #if FT_ENABLED(USE_IMU)
-        updated = imu_success && _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
-        _imu.dmpGetQuaternion(&q, fifoBuffer);
-        _imu.dmpGetGravity(&gravity, &q);
-        _imu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        beginTransaction();
+        updated = _imu.readIMU();
+        endTransaction();
 #endif
         return updated;
-    }
-
-    float getTemp() {
-        float temp = -1;
-#if FT_ENABLED(USE_IMU)
-        temp = imu_success ? imu_temperature : -1;
-#endif
-        return temp;
-    }
-
-    float getAngleX() {
-        float angle = 0;
-#if FT_ENABLED(USE_IMU)
-        angle = imu_success ? ypr[0] * 180 / M_PI : 0;
-#endif
-        return angle;
-    }
-
-    float getAngleY() {
-        float angle = 0;
-#if FT_ENABLED(USE_IMU)
-        angle = imu_success ? ypr[1] * 180 / M_PI : 0;
-#endif
-        return angle;
-    }
-
-    float getAngleZ() {
-        float angle = 0;
-#if FT_ENABLED(USE_IMU)
-        angle = imu_success ? ypr[2] * 180 / M_PI : 0;
-#endif
-        return angle;
     }
 
     /* MAG FUNCTIONS */
@@ -341,46 +299,39 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return temperature;
     }
 
-    StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
-
-  protected:
-    void updateImu() {
-        doc.clear();
-        bool newData = false;
-#if FT_ENABLED(USE_IMU)
-        newData = imu_success && readIMU();
-        if (imu_success) {
-            doc["x"] = round2(getAngleX());
-            doc["y"] = round2(getAngleY());
-            doc["z"] = round2(getAngleZ());
-        }
-#endif
-#if FT_ENABLED(USE_MAG)
-        newData = newData || mag_success;
-        if (mag_success) {
-            doc["heading"] = round2(getHeading());
-        }
-#endif
-#if FT_ENABLED(USE_BMP)
-        newData = newData || bmp_success;
-        if (bmp_success) {
-            doc["pressure"] = round2(getPressure());
-            doc["altitude"] = round2(getAltitude());
-            doc["bmp_temp"] = round2(getTemperature());
-        }
-#endif
-        if (newData) {
-            serializeJson(doc, message);
-            socket.emit(EVENT_IMU, message);
-        }
-    }
-
     void readSonar() {
 #if FT_ENABLED(USE_USS)
         _left_distance = _left_sonar->ping_cm();
         delay(50);
         _right_distance = _right_sonar->ping_cm();
 #endif
+    }
+
+    float leftDistance() { return _left_distance; }
+    float rightDistance() { return _right_distance; }
+
+    StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
+
+    void emitIMU() {
+        doc.clear();
+        JsonObject root = doc.to<JsonObject>();
+#if FT_ENABLED(USE_IMU)
+        _imu.readIMU(root);
+#endif
+#if FT_ENABLED(USE_MAG)
+        if (mag_success) {
+            doc["heading"] = round2(getHeading());
+        }
+#endif
+#if FT_ENABLED(USE_BMP)
+        if (bmp_success) {
+            doc["pressure"] = round2(getPressure());
+            doc["altitude"] = round2(getAltitude());
+            doc["bmp_temp"] = round2(getTemperature());
+        }
+#endif
+        serializeJson(doc, message);
+        socket.emit(EVENT_IMU, message);
     }
 
     void emitSonar() {
@@ -391,9 +342,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         socket.emit("sonar", output);
 #endif
     }
-
-    float leftDistance() { return _left_distance; }
-    float rightDistance() { return _right_distance; }
 
   private:
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
@@ -414,14 +362,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     uint16_t target_pwm[16] = {0};
 #endif
 #if FT_ENABLED(USE_IMU)
-    MPU6050 _imu;
-    bool imu_success {false};
-    uint8_t devStatus {false};
-    Quaternion q;
-    uint8_t fifoBuffer[64];
-    VectorFloat gravity;
-    float ypr[3];
-    float imu_temperature {-1};
+    IMU _imu;
 #endif
 #if FT_ENABLED(USE_MAG)
     Adafruit_HMC5883_Unified _mag;
