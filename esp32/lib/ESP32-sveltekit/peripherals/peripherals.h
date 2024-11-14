@@ -1,7 +1,7 @@
 #ifndef Peripherals_h
 #define Peripherals_h
 
-#include <EventEndpoint.h>
+#include <stateful_socket.h>
 #include <stateful_persistence.h>
 #include <stateful_service.h>
 #include <utils/math_utils.h>

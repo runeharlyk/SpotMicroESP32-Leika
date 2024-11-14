@@ -1,22 +1,8 @@
-#ifndef EventEndpoint_h
-#define EventEndpoint_h
+#pragma once
 
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#include <PsychicHttp.h>
 
 #include <event_socket.h>
-#include <PsychicHttp.h>
 #include <stateful_service.h>
 
 template <class T>
@@ -55,5 +41,3 @@ class EventEndpoint {
         socket.emit(_event, output.c_str(), originId.c_str(), sync);
     }
 };
-
-#endif

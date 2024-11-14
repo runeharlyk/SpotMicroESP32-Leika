@@ -8,7 +8,7 @@
 
 #include <features.h>
 #include <task_manager.h>
-#include <EventEndpoint.h>
+#include <stateful_socket.h>
 #include <stateful_persistence.h>
 #include <stateful_service_endpoint.h>
 
