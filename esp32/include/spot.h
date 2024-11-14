@@ -6,10 +6,10 @@
 #include <filesystem.h>
 #include <firmware_download_service.h>
 #include <firmware_upload_service.h>
-#include <Peripherals.h>
-#include <ServoController.h>
+#include <peripherals/peripherals.h>
+#include <peripherals/servo_controller.h>
+#include <peripherals/led_service.h>
 #include <ESPmDNS.h>
-#include <LEDService.h>
 #include <event_socket.h>
 #include <features.h>
 #include <MotionService.h>

@@ -3,7 +3,7 @@
 
 #include <event_socket.h>
 #include <Kinematics.h>
-#include <ServoController.h>
+#include <peripherals/servo_controller.h>
 #include <utils/timing.h>
 #include <MathUtils.h>
 
