@@ -3,7 +3,7 @@
 static const char *TAG = "Spot";
 
 Spot::Spot(PsychicHttpServer *server)
-    : _servoController(&_peripherals),
+    :
 #if FT_ENABLED(USE_MOTION)
       _motionService(&_servoController),
 #endif

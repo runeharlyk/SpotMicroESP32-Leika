@@ -15,7 +15,6 @@
 #include <SPI.h>
 #include <Wire.h>
 
-#include <Adafruit_PWMServoDriver.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
@@ -29,18 +28,6 @@
 #define I2C_INTERVAL 250
 #define MAX_ESP_IMU_SIZE 500
 #define EVENT_IMU "imu"
-#define EVENT_SERVO_STATE "servoState"
-
-/*
- * Servo Settings
- */
-#ifndef FACTORY_SERVO_PWM_FREQUENCY
-#define FACTORY_SERVO_PWM_FREQUENCY 50
-#endif
-
-#ifndef FACTORY_SERVO_OSCILLATOR_FREQUENCY
-#define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
-#endif
 
 /*
  * OLED Settings
@@ -86,17 +73,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         });
 
         updatePins();
-
-#if FT_ENABLED(USE_SERVO)
-        _pca.begin();
-        _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
-        _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
-        _pca.sleep();
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
-            _pca_active = root["active"] | false;
-            _pca_active ? pcaActivate() : pcaDeactivate();
-        });
-#endif
 
 #if FT_ENABLED(USE_IMU)
         if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
@@ -170,57 +146,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
             ESP_LOGI("Peripherals", "No I2C devices found");
         else
             ESP_LOGI("Peripherals", "Scan complete - Found %d devices", nDevices);
-    }
-
-    /* SERVO FUNCTIONS*/
-    void pcaLerpTo(int index, int value, float t) {
-#if FT_ENABLED(USE_SERVO)
-        target_pwm[index] = lerp(pwm[index], value, t);
-#endif
-    }
-
-    void pcaWrite(int index, int value) {
-#if FT_ENABLED(USE_SERVO)
-        if (value < 0 || value > 4096) {
-            ESP_LOGE("Peripherals", "Invalid PWM value %d for %d :: Valid range 0-4096", value, index);
-            return;
-        }
-        pwm[index] = value;
-        target_pwm[index] = value;
-        beginTransaction();
-        _pca.setPWM(index, 0, value);
-        endTransaction();
-#endif
-    }
-
-    void pcaWriteAngle(int index, int angle) {
-#if FT_ENABLED(USE_SERVO)
-        _pca.setPWM(index, 0, 125 + angle * 2);
-#endif
-    }
-
-    void pcaWriteAngles(float *angles, int numServos, int offset = 0) {
-#if FT_ENABLED(USE_SERVO)
-        for (int i = 0; i < numServos; i++) {
-            pcaWriteAngle(i + offset, angles[i]);
-        }
-#endif
-    }
-
-    void pcaActivate() {
-#if FT_ENABLED(USE_SERVO)
-        if (_pca_active) return;
-        _pca_active = true;
-        _pca.wakeup();
-#endif
-    }
-
-    void pcaDeactivate() {
-#if FT_ENABLED(USE_SERVO)
-        if (!_pca_active) return;
-        _pca_active = false;
-        _pca.sleep();
-#endif
     }
 
     /* IMU FUNCTIONS */
@@ -336,13 +261,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     JsonDocument doc;
     char message[MAX_ESP_IMU_SIZE];
-
-#if FT_ENABLED(USE_SERVO)
-    Adafruit_PWMServoDriver _pca;
-    bool _pca_active {false};
-    uint16_t pwm[16] = {0};
-    uint16_t target_pwm[16] = {0};
-#endif
 #if FT_ENABLED(USE_IMU)
     IMU _imu;
 #endif

@@ -9,14 +9,24 @@
 #include <MathUtils.h>
 #include <settings/servo_settings.h>
 
+/*
+ * Servo Settings
+ */
+#ifndef FACTORY_SERVO_PWM_FREQUENCY
+#define FACTORY_SERVO_PWM_FREQUENCY 50
+#endif
+
+#ifndef FACTORY_SERVO_OSCILLATOR_FREQUENCY
+#define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
+#endif
+
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
 #define EVENT_SERVO_STATE "servoState"
 
 class ServoController : public StatefulService<ServoSettings> {
   public:
-    ServoController(Peripherals *peripherals)
-        : _peripherals(peripherals),
-          endpoint(ServoSettings::read, ServoSettings::update, this),
+    ServoController()
+        : endpoint(ServoSettings::read, ServoSettings::update, this),
           _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
@@ -24,6 +34,35 @@ class ServoController : public StatefulService<ServoSettings> {
                        [&](JsonObject &root, int originId) { servoEvent(root, originId); });
         socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
         _persistence.readFromFS();
+
+        _pca.begin();
+        _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
+        _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
+        _pca.sleep();
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+            is_active = root["active"] | false;
+            is_active ? activate() : deactivate();
+        });
+    }
+
+    void pcaWrite(int index, int value) {
+        if (value < 0 || value > 4096) {
+            ESP_LOGE("Peripherals", "Invalid PWM value %d for %d :: Valid range 0-4096", value, index);
+            return;
+        }
+        _pca.setPWM(index, 0, value);
+    }
+
+    void activate() {
+        if (is_active) return;
+        is_active = true;
+        _pca.wakeup();
+    }
+
+    void deactivate() {
+        if (!is_active) return;
+        is_active = false;
+        _pca.sleep();
     }
 
     void stateUpdate(JsonObject &root, int originId) {
@@ -46,10 +85,6 @@ class ServoController : public StatefulService<ServoSettings> {
         socket.emit("angles", output, String(originId).c_str());
     }
 
-    void deactivate() { _peripherals->pcaDeactivate(); }
-
-    void activate() { _peripherals->pcaActivate(); }
-
     void updateActiveState() { is_active ? activate() : deactivate(); }
 
     void setAngles(float new_angles[12]) {
@@ -68,17 +103,19 @@ class ServoController : public StatefulService<ServoSettings> {
                 ESP_LOGE("ServoController", "Servo %d, Invalid PWM value %d", i, pwm);
                 continue;
             }
-            _peripherals->pcaWrite(i, pwm);
+            pcaWrite(i, pwm);
         }
     }
 
     StatefulHttpEndpoint<ServoSettings> endpoint;
 
   private:
-    Peripherals *_peripherals;
     FSPersistence<ServoSettings> _persistence;
 
-    bool is_active {true};
+    Adafruit_PWMServoDriver _pca;
+    uint16_t pwm[16] = {0};
+
+    bool is_active {false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };
