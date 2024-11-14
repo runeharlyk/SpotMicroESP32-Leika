@@ -81,25 +81,10 @@ export type ApSettings = {
     subnet_mask: string;
 };
 
-export type NTPStatus = {
-    status: number;
-    utc_time: string;
-    local_time: string;
-    server: string;
-    uptime: number;
-};
-
 export type DownloadOTA = {
     status: string;
     progress: number;
     error: string;
-};
-
-export type NTPSettings = {
-    enabled: boolean;
-    server: string;
-    tz_label: string;
-    tz_format: string;
 };
 
 export type Analytics = {

@@ -55,18 +55,6 @@ void Spot::setupServer() {
         return _apService.endpoint.handleStateUpdate(request, json);
     });
 
-    // NTP
-#if FT_ENABLED(USE_NTP)
-    _server->on("/api/ntp/status", HTTP_GET, [this](PsychicRequest *r) { return _ntpService.getStatus(r); });
-    _server->on("/api/ntp/time", HTTP_POST,
-                [this](PsychicRequest *r, JsonVariant &json) { return _ntpService.handleTime(r, json); });
-    _server->on("/api/ntp/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _ntpService.endpoint.getState(request); });
-    _server->on("/api/ntp/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
-        return _ntpService.endpoint.handleStateUpdate(request, json);
-    });
-#endif
-
     // CAMERA
     _server->on("/api/camera/still", HTTP_GET,
                 [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
@@ -180,9 +168,6 @@ void Spot::startServices() {
     _apService.begin();
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     _uploadFirmwareService.begin();
-#endif
-#if FT_ENABLED(USE_NTP)
-    _ntpService.begin();
 #endif
     _peripherals.begin();
     _servoController.begin();

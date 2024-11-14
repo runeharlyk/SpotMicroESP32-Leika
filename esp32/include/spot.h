@@ -14,7 +14,6 @@
 #include <event_socket.h>
 #include <features.h>
 #include <MotionService.h>
-#include <ntp_service.h>
 #include <PsychicHttp.h>
 #include <task_manager.h>
 #include <WiFi.h>
@@ -77,9 +76,6 @@ class Spot {
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
-#if FT_ENABLED(USE_NTP)
-    NTPService _ntpService;
-#endif
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     FirmwareUploadService _uploadFirmwareService;
 #endif

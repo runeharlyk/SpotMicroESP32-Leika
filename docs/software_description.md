@@ -33,8 +33,6 @@ The software utilizes a couple of FreeRTos task
 To dis-/enable the major feature defines are used. Define them in either features.ini or in platformio.ini's build_flags.
 | Feature | Description | Default
 | --- | --- | ---
-| FT_BATTERY | Whether or not to use battery | 0
-| FT_NTP | Whether or not to use time server | 1
 | FT_SLEEP | Whether or not include sleep management | 0
 | FT_UPLOAD_FIRMWARE | Whether or not to use OAT | 0
 | FT_DOWNLOAD_FIRMWARE | Whether or not to use github for firmware updates | 0
