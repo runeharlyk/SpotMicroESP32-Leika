@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Kinematics.h>
+#include <kinematics.h>
 
 struct gait_state_t {
     float step_height;
