@@ -2,7 +2,7 @@
 #define MotionService_h
 
 #include <event_socket.h>
-#include <Kinematics.h>
+#include <kinematics.h>
 #include <peripherals/servo_controller.h>
 #include <utils/timing.h>
 #include <utils/math_utils.h>

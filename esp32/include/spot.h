@@ -2,6 +2,10 @@
 #define Spot_h
 
 #include <Arduino.h>
+#include <PsychicHttp.h>
+#include <ESPmDNS.h>
+#include <WiFi.h>
+#include <Wire.h>
 
 #include <filesystem.h>
 #include <firmware_download_service.h>
@@ -10,16 +14,12 @@
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
 #include <peripherals/camera_service.h>
-#include <ESPmDNS.h>
 #include <event_socket.h>
 #include <features.h>
-#include <MotionService.h>
-#include <PsychicHttp.h>
+#include <motion.h>
 #include <task_manager.h>
-#include <WiFi.h>
 #include <wifi_service.h>
 #include <ap_service.h>
-#include <Wire.h>
 
 #ifdef EMBED_WWW
 #include <WWWData.h>
