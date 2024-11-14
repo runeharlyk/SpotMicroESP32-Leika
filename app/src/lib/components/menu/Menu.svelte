@@ -21,7 +21,6 @@
         AP,
         Remote,
         Copyright,
-        NTP,
         Metrics
     } from '$lib/components/icons';
     import appEnv from 'app-env';
@@ -84,19 +83,6 @@
                     icon: Rotate3d,
                     href: '/peripherals/imu',
                     feature: $features.imu || $features.mag || $features.bmp
-                }
-            ]
-        },
-        {
-            title: 'Connections',
-            icon: Remote,
-            feature: $features.ntp,
-            submenu: [
-                {
-                    title: 'NTP',
-                    icon: NTP,
-                    href: '/connections/ntp',
-                    feature: $features.ntp
                 }
             ]
         },

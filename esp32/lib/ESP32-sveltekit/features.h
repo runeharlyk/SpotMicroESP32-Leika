@@ -7,11 +7,6 @@
 
 #define FT_ENABLED(feature) feature
 
-// ntp feature on by default
-#ifndef USE_NTP
-#define USE_NTP 1
-#endif
-
 // upload firmware feature off by default
 #ifndef USE_UPLOAD_FIRMWARE
 #define USE_UPLOAD_FIRMWARE 0

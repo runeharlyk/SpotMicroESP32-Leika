@@ -3,7 +3,6 @@
 namespace feature_service {
 
 void features(JsonObject &root) {
-    root["ntp"] = USE_NTP;
     root["upload_firmware"] = USE_UPLOAD_FIRMWARE;
     root["download_firmware"] = USE_DOWNLOAD_FIRMWARE;
     root["sleep"] = USE_SLEEP;
