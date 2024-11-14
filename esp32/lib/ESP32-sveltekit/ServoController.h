@@ -7,7 +7,6 @@
 #include <stateful_service.h>
 #include <stateful_service_endpoint.h>
 #include <MathUtils.h>
-#include <timing.h>
 #include <settings/servo_settings.h>
 
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
@@ -73,10 +72,6 @@ class ServoController : public StatefulService<ServoSettings> {
         }
     }
 
-    void loop() {
-        EXECUTE_EVERY_N_MS(ServoInterval, { updateServoState(); });
-    }
-
     StatefulHttpEndpoint<ServoSettings> endpoint;
 
   private:
@@ -84,8 +79,6 @@ class ServoController : public StatefulService<ServoSettings> {
     FSPersistence<ServoSettings> _persistence;
 
     bool is_active {true};
-    constexpr static int ServoInterval = 2;
-
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };
