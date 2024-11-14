@@ -5,7 +5,7 @@
 #include <stateful_persistence.h>
 #include <stateful_service.h>
 #include <MathUtils.h>
-#include <timing.h>
+#include <utils/timing.h>
 #include <filesystem.h>
 #include <features.h>
 #include <settings/peripherals_settings.h>

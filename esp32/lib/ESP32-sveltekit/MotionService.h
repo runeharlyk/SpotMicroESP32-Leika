@@ -4,7 +4,7 @@
 #include <event_socket.h>
 #include <Kinematics.h>
 #include <ServoController.h>
-#include <timing.h>
+#include <utils/timing.h>
 #include <MathUtils.h>
 
 #include <gait/state.h>

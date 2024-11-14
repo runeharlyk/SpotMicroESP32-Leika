@@ -3,9 +3,9 @@
 #include <WiFi.h>
 #include <IPAddress.h>
 #include <ArduinoJson.h>
-#include <JsonUtils.h>
-#include <IPUtils.h>
-#include <string_utilities.h>
+#include <utils/json_utils.h>
+#include <utils/ip_utils.h>
+#include <utils/string_utils.h>
 #include <state_result.h>
 
 #ifndef FACTORY_WIFI_SSID

@@ -2,7 +2,7 @@
 #define JsonUtils_h
 
 #include <Arduino.h>
-#include <IPUtils.h>
+#include <utils/ip_utils.h>
 #include <ArduinoJson.h>
 
 class JsonUtils {

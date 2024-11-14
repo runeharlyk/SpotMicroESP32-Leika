@@ -29,4 +29,14 @@
         }                                                                                   \
     }
 
+#define CALLS_PER_SECOND(name)                                            \
+    static unsigned long name##_count = 0;                                \
+    static unsigned long last_time = 0;                                   \
+    name##_count++;                                                       \
+    if (millis() - last_time >= 1000) {                                   \
+        Serial.printf("%s: %lu calls per second\n", #name, name##_count); \
+        name##_count = 0;                                                 \
+        last_time = millis();                                             \
+    }
+
 #endif

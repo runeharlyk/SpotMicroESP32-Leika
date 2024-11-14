@@ -15,9 +15,9 @@
  **/
 
 #include <event_socket.h>
-#include <JsonUtils.h>
+#include <utils/json_utils.h>
 #include <Peripherals.h>
-#include <timing.h>
+#include <utils/timing.h>
 
 #define ADC_VOLTAGE 0
 #define ADC_CURRENT 1
