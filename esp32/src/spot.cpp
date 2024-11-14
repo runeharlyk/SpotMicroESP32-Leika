@@ -1,21 +1,8 @@
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2024 theelims
- *   Copyright (C) 2024 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#include <spot.h>
 
-#include <ESP32SvelteKit.h>
+static const char *TAG = "Spot";
 
-ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
+Spot::Spot(PsychicHttpServer *server)
     :
 #if FT_ENABLED(USE_BATTERY)
       _batteryService(&_peripherals),
@@ -27,9 +14,8 @@ ESP32SvelteKit::ESP32SvelteKit(PsychicHttpServer *server)
       _server(server) {
 }
 
-void ESP32SvelteKit::begin() {
-    ESP_LOGV("ESP32SvelteKit", "Loading settings from files system");
-    ESP_LOGI("Running Firmware Version: %s", APP_VERSION);
+void Spot::initialize() {
+    ESP_LOGI(TAG, "Running Firmware Version: %s", APP_VERSION);
     ESPFS.begin(true);
     g_taskManager.begin();
 #if FT_ENABLED(USE_WS2812)
@@ -43,11 +29,11 @@ void ESP32SvelteKit::begin() {
 
     setupMDNS();
 
-    ESP_LOGV("ESP32SvelteKit", "Starting loop task");
-    g_taskManager.createTask(this->_loopImpl, "Spot main", 4096, this, 2, NULL, APPLICATION_CORE);
+    ESP_LOGV(TAG, "Starting misc loop task");
+    g_taskManager.createTask(this->_loopImpl, "Spot misc", 4096, this, 2, NULL, APPLICATION_CORE);
 }
 
-void ESP32SvelteKit::setupServer() {
+void Spot::setupServer() {
     _server->config.max_uri_handlers = _numberEndpoints;
     _server->maxUploadSize = _maxFileUpload;
     _server->listen(_port);
@@ -138,7 +124,7 @@ void ESP32SvelteKit::setupServer() {
 #endif
 
 #ifdef EMBED_WWW
-    ESP_LOGV("ESP32SvelteKit", "Registering routes from PROGMEM static resources");
+    ESP_LOGV(TAG, "Registering routes from PROGMEM static resources");
     WWWData::registerRoutes([&](const String &uri, const String &contentType, const uint8_t *content, size_t len) {
         PsychicHttpRequestCallback requestHandler = [contentType, content, len](PsychicRequest *request) {
             PsychicResponse response(request);
@@ -161,7 +147,7 @@ void ESP32SvelteKit::setupServer() {
     });
 #else
     // Serve static resources from /www/
-    ESP_LOGV("ESP32SvelteKit", "Registering routes from FS /www/ static resources");
+    ESP_LOGV(TAG, "Registering routes from FS /www/ static resources");
     _server->serveStatic("/_app/", ESPFS, "/www/_app/");
     _server->serveStatic("/favicon.png", ESPFS, "/www/favicon.png");
     //  Serving all other get requests with "/www/index.htm"
@@ -179,7 +165,7 @@ void ESP32SvelteKit::setupServer() {
 #endif
 
 #if defined(ENABLE_CORS)
-    ESP_LOGV("ESP32SvelteKit", "Enabling CORS headers");
+    ESP_LOGV(TAG, "Enabling CORS headers");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
@@ -187,8 +173,8 @@ void ESP32SvelteKit::setupServer() {
     DefaultHeaders::Instance().addHeader("Server", _appName);
 }
 
-void ESP32SvelteKit::setupMDNS() {
-    ESP_LOGV("ESP32SvelteKit", "Starting MDNS");
+void Spot::setupMDNS() {
+    ESP_LOGV(TAG, "Starting MDNS");
     MDNS.begin(_wifiService.getHostname());
     MDNS.setInstanceName(_appName);
     MDNS.addService("http", "tcp", 80);
@@ -196,7 +182,7 @@ void ESP32SvelteKit::setupMDNS() {
     MDNS.addServiceTxt("http", "tcp", "Firmware Version", APP_VERSION);
 }
 
-void ESP32SvelteKit::startServices() {
+void Spot::startServices() {
     _apService.begin();
 
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
@@ -219,20 +205,13 @@ void ESP32SvelteKit::startServices() {
 #endif
 }
 
-void IRAM_ATTR ESP32SvelteKit::loop() {
+void IRAM_ATTR Spot::loop() {
     while (1) {
-#if FT_ENABLED(USE_WS2812)
-        _ledService.loop();
-#endif
         _wifiService.loop();
         _apService.loop();
 #if FT_ENABLED(USE_ANALYTICS)
         _analyticsService.loop();
 #endif
-#if FT_ENABLED(USE_BATTERY)
-        _batteryService.loop();
-#endif
-        _peripherals.loop();
         delay(20);
     }
 }

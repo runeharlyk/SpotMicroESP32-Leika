@@ -2,7 +2,6 @@
 #define MotionService_h
 
 #include <event_socket.h>
-#include <task_manager.h>
 #include <Kinematics.h>
 #include <ServoController.h>
 #include <timing.h>
@@ -37,8 +36,6 @@ class MotionService {
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(default_feet_positions);
-
-        g_taskManager.createTask(this->_loopImpl, "MotionService", 4096, this, 3);
     }
 
     void anglesEvent(JsonObject &root, int originId) {
@@ -133,16 +130,7 @@ class MotionService {
         return updated;
     }
 
-    void _loop() {
-        TickType_t xLastWakeTime = xTaskGetTickCount();
-        for (;;) {
-            if (updateMotion()) syncAngles();
-            _servoController->loop();
-            vTaskDelayUntil(&xLastWakeTime, MotionInterval / portTICK_PERIOD_MS);
-        }
-    }
-
-    static void _loopImpl(void *_this) { static_cast<MotionService *>(_this)->_loop(); }
+    float *getAngles() { return angles; }
 
   private:
     ServoController *_servoController;
@@ -156,15 +144,14 @@ class MotionService {
 
     MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
-    constexpr static int MotionInterval = 15;
 
     body_state_t body_state = {0, 0, 0, 0, 0, 0};
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
     float default_feet_positions[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
 
-    float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float calibration_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 };

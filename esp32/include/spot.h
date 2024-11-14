@@ -1,20 +1,5 @@
-#ifndef ESP32SvelteKit_h
-#define ESP32SvelteKit_h
-
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *   Copyright (C) 2024 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#ifndef Spot_h
+#define Spot_h
 
 #include <Arduino.h>
 
@@ -60,42 +45,36 @@
 #define APPLICATION_CORE -1
 #endif
 
-class ESP32SvelteKit {
+class Spot {
   public:
-    ESP32SvelteKit(PsychicHttpServer *server);
+    Spot(PsychicHttpServer *server);
 
-    void begin();
+    void initialize();
 
-    FS *getFS() { return &ESPFS; }
+    // sense
+    void readSensors() { _peripherals.readIMU(); }
 
-    PsychicHttpServer *getServer() { return _server; }
+    // plan
+    void planMotion() { updatedMotion = _motionService.updateMotion(); }
 
-    EventSocket *getSocket() { return &_socket; }
+    // act
+    void updateActuators() {
+        if (updatedMotion) _servoController.setAngles(_motionService.getAngles());
 
-#if FT_ENABLED(USE_BATTERY)
-    BatteryService *getBatteryService() { return &_batteryService; }
+        _servoController.updateServoState();
+#if FT_ENABLED(USE_WS2812)
+        _ledService.loop();
 #endif
+    }
 
-#if FT_ENABLED(USE_MOTION)
-    MotionService *getMotionService() { return &_motionService; }
-#endif
-
-#if FT_ENABLED(USE_CAMERA)
-    Camera::CameraService *getCameraService() { return &_cameraService; }
-    Camera::CameraSettingsService *getCameraSettingsService() { return &_cameraSettingsService; }
-#endif
-
-    Peripherals *getPeripherals() { return &_peripherals; }
-
-#if FT_ENABLED(USE_SERVO)
-    ServoController *getServoController() { return &_servoController; }
-#endif
-
-    void setMDNSAppName(String name) { _appName = name; }
-
-    void recoveryMode() { _apService.recoveryMode(); }
-
-    void loop();
+    // communicate
+    void emitTelemetry() {
+        if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.syncAngles(); });
+        // _peripherals.loop();
+        EXECUTE_EVERY_N_MS(1000, { _peripherals.emitIMU(); });
+        // _peripherals.emitSonar();
+        // _peripherals.emitBattery();
+    }
 
   private:
     PsychicHttpServer *_server;
@@ -130,14 +109,16 @@ class ESP32SvelteKit {
     LEDService _ledService;
 #endif
 
-    String _appName = APP_NAME;
+    bool updatedMotion = false;
 
+    String _appName = APP_NAME;
     const u_int16_t _numberEndpoints = 115;
     const u_int32_t _maxFileUpload = 2300000; // 2.3 MB
     const uint16_t _port = 80;
 
   protected:
-    static void _loopImpl(void *_this) { static_cast<ESP32SvelteKit *>(_this)->loop(); }
+    void loop();
+    static void _loopImpl(void *_this) { static_cast<Spot *>(_this)->loop(); }
     void setupServer();
     void setupMDNS();
     void startServices();
