@@ -12,7 +12,11 @@
 class Magnetometer {
   public:
     Magnetometer() : _mag(12345) {}
-    bool initialize() { return _mag.begin(); }
+
+    bool initialize() {
+        mag_success = _mag.begin();
+        return mag_success;
+    }
 
     bool readMagnetometer() {
         if (!mag_success) return false;
