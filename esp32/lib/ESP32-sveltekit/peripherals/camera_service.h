@@ -19,7 +19,7 @@ namespace Camera {
 #include <esp_camera.h>
 
 #if USE_CAMERA
-#include <camera_pins.h>
+#include <peripherals/camera_pins.h>
 #endif
 
 #define PART_BOUNDARY "frame"

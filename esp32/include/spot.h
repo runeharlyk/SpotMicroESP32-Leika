@@ -9,12 +9,12 @@
 #include <peripherals/peripherals.h>
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
+#include <peripherals/camera_service.h>
 #include <ESPmDNS.h>
 #include <event_socket.h>
 #include <features.h>
 #include <MotionService.h>
 #include <ntp_service.h>
-#include <camera_service.h>
 #include <PsychicHttp.h>
 #include <task_manager.h>
 #include <WiFi.h>

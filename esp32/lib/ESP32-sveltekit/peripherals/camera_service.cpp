@@ -1,4 +1,4 @@
-#include <camera_service.h>
+#include <peripherals/camera_service.h>
 
 namespace Camera {
 
