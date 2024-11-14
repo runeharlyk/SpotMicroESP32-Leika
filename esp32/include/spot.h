@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-#include <BatteryService.h>
 #include <filesystem.h>
 #include <firmware_download_service.h>
 #include <firmware_upload_service.h>
@@ -71,7 +70,6 @@ class Spot {
         // _peripherals.loop();
         EXECUTE_EVERY_N_MS(1000, { _peripherals.emitIMU(); });
         // _peripherals.emitSonar();
-        // _peripherals.emitBattery();
     }
 
   private:
@@ -87,9 +85,6 @@ class Spot {
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
     DownloadFirmwareService _downloadFirmwareService;
-#endif
-#if FT_ENABLED(USE_BATTERY)
-    BatteryService _batteryService;
 #endif
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;

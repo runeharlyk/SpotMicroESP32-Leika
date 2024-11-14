@@ -21,7 +21,7 @@
         location,
         useFeatureFlags
     } from '$lib/stores';
-    import type { Analytics, Battery, DownloadOTA } from '$lib/types/models';
+    import type { Analytics, DownloadOTA } from '$lib/types/models';
 
     const features = useFeatureFlags();
 
@@ -52,7 +52,6 @@
             if (angles.length) servoAngles.set(angles);
         });
         features.subscribe(data => {
-            if (data?.battery) socket.on('battery', handleBattery);
             if (data?.download_firmware) socket.on('otastatus', handleOAT);
             if (data?.sonar) socket.on('sonar', data => console.log(data));
         });
@@ -63,7 +62,6 @@
         socket.off('open', handleOpen);
         socket.off('close', handleClose);
         socket.off('rssi', handleNetworkStatus);
-        socket.off('battery', handleBattery);
         socket.off('otastatus', handleOAT);
     };
 
@@ -81,8 +79,6 @@
     const handleAnalytics = (data: Analytics) => analytics.addData(data);
 
     const handleNetworkStatus = (data: number) => telemetry.setRSSI(data);
-
-    const handleBattery = (data: Battery) => telemetry.setBattery(data);
 
     const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data);
 

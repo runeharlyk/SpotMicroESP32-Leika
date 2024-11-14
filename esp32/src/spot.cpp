@@ -3,11 +3,7 @@
 static const char *TAG = "Spot";
 
 Spot::Spot(PsychicHttpServer *server)
-    :
-#if FT_ENABLED(USE_BATTERY)
-      _batteryService(&_peripherals),
-#endif
-      _servoController(&_peripherals),
+    : _servoController(&_peripherals),
 #if FT_ENABLED(USE_MOTION)
       _motionService(&_servoController),
 #endif
@@ -187,9 +183,6 @@ void Spot::startServices() {
 #endif
 #if FT_ENABLED(USE_NTP)
     _ntpService.begin();
-#endif
-#if FT_ENABLED(USE_BATTERY)
-    _batteryService.begin();
 #endif
     _peripherals.begin();
     _servoController.begin();
