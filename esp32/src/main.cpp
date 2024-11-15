@@ -1,9 +1,6 @@
 #include <spot.h>
-#include <PsychicHttpServer.h>
 
-DRAM_ATTR PsychicHttpServer server;
-
-DRAM_ATTR Spot spot(&server);
+DRAM_ATTR Spot spot;
 
 void IRAM_ATTR SpotControlLoopEntry(void*) {
     TickType_t xLastWakeTime = xTaskGetTickCount();

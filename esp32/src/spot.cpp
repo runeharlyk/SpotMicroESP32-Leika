@@ -2,12 +2,12 @@
 
 static const char *TAG = "Spot";
 
-Spot::Spot(PsychicHttpServer *server)
+Spot::Spot()
     :
 #if FT_ENABLED(USE_MOTION)
-      _motionService(&_servoController),
+      _motionService(&_servoController)
 #endif
-      _server(server) {
+{
 }
 
 void Spot::initialize() {
@@ -30,77 +30,77 @@ void Spot::initialize() {
 }
 
 void Spot::setupServer() {
-    _server->config.max_uri_handlers = _numberEndpoints;
-    _server->maxUploadSize = _maxFileUpload;
-    _server->listen(_port);
+    _server.config.max_uri_handlers = _numberEndpoints;
+    _server.maxUploadSize = _maxFileUpload;
+    _server.listen(_port);
 
     // WIFI
-    _server->on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
-    _server->on("/api/wifi/networks", HTTP_GET,
-                [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
-    _server->on("/api/wifi/sta/status", HTTP_GET,
-                [this](PsychicRequest *request) { return _wifiService.getNetworkStatus(request); });
-    _server->on("/api/wifi/sta/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _wifiService.endpoint.getState(request); });
-    _server->on("/api/wifi/sta/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+    _server.on("/api/wifi/scan", HTTP_GET, _wifiService.handleScan);
+    _server.on("/api/wifi/networks", HTTP_GET,
+               [this](PsychicRequest *request) { return _wifiService.getNetworks(request); });
+    _server.on("/api/wifi/sta/status", HTTP_GET,
+               [this](PsychicRequest *request) { return _wifiService.getNetworkStatus(request); });
+    _server.on("/api/wifi/sta/settings", HTTP_GET,
+               [this](PsychicRequest *request) { return _wifiService.endpoint.getState(request); });
+    _server.on("/api/wifi/sta/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _wifiService.endpoint.handleStateUpdate(request, json);
     });
 
     // AP
-    _server->on("/api/wifi/ap/status", HTTP_GET,
-                [this](PsychicRequest *request) { return _apService.getStatus(request); });
-    _server->on("/api/wifi/ap/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _apService.endpoint.getState(request); });
-    _server->on("/api/wifi/ap/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+    _server.on("/api/wifi/ap/status", HTTP_GET,
+               [this](PsychicRequest *request) { return _apService.getStatus(request); });
+    _server.on("/api/wifi/ap/settings", HTTP_GET,
+               [this](PsychicRequest *request) { return _apService.endpoint.getState(request); });
+    _server.on("/api/wifi/ap/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _apService.endpoint.handleStateUpdate(request, json);
     });
 
     // CAMERA
-    _server->on("/api/camera/still", HTTP_GET,
-                [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
-    _server->on("/api/camera/stream", HTTP_GET,
-                [this](PsychicRequest *request) { return _cameraService.cameraStream(request); });
-    _server->on("/api/camera/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _cameraService.endpoint.getState(request); });
-    _server->on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+    _server.on("/api/camera/still", HTTP_GET,
+               [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
+    _server.on("/api/camera/stream", HTTP_GET,
+               [this](PsychicRequest *request) { return _cameraService.cameraStream(request); });
+    _server.on("/api/camera/settings", HTTP_GET,
+               [this](PsychicRequest *request) { return _cameraService.endpoint.getState(request); });
+    _server.on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _cameraService.endpoint.handleStateUpdate(request, json);
     });
 
     // SYSTEM
-    _server->on("/api/system/reset", HTTP_POST, system_service::handleReset);
-    _server->on("/api/system/restart", HTTP_POST, system_service::handleRestart);
-    _server->on("/api/system/sleep", HTTP_POST, system_service::handleSleep);
-    _server->on("/api/system/status", HTTP_GET, system_service::getStatus);
-    _server->on("/api/system/metrics", HTTP_GET, system_service::getMetrics);
+    _server.on("/api/system/reset", HTTP_POST, system_service::handleReset);
+    _server.on("/api/system/restart", HTTP_POST, system_service::handleRestart);
+    _server.on("/api/system/sleep", HTTP_POST, system_service::handleSleep);
+    _server.on("/api/system/status", HTTP_GET, system_service::getStatus);
+    _server.on("/api/system/metrics", HTTP_GET, system_service::getMetrics);
 
     // FILESYSTEM
-    _server->on("/api/files", HTTP_GET, FileSystem::getFiles);
-    _server->on("/api/files/delete", HTTP_POST, FileSystem::handleDelete);
-    _server->on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
-    _server->on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
+    _server.on("/api/files", HTTP_GET, FileSystem::getFiles);
+    _server.on("/api/files/delete", HTTP_POST, FileSystem::handleDelete);
+    _server.on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
+    _server.on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
 
     // SERVO
-    _server->on("/api/servo/config", HTTP_GET,
-                [this](PsychicRequest *request) { return _servoController.endpoint.getState(request); });
-    _server->on("/api/servo/config", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+    _server.on("/api/servo/config", HTTP_GET,
+               [this](PsychicRequest *request) { return _servoController.endpoint.getState(request); });
+    _server.on("/api/servo/config", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _servoController.endpoint.handleStateUpdate(request, json);
     });
 
     // PERIPHERALS
-    _server->on("/api/peripheral/settings", HTTP_GET,
-                [this](PsychicRequest *request) { return _peripherals.endpoint.getState(request); });
-    _server->on("/api/peripheral/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
+    _server.on("/api/peripheral/settings", HTTP_GET,
+               [this](PsychicRequest *request) { return _peripherals.endpoint.getState(request); });
+    _server.on("/api/peripheral/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _peripherals.endpoint.handleStateUpdate(request, json);
     });
 
     // MISC
-    _server->on("/api/ws/events", socket.getHandler());
-    _server->on("/api/features", feature_service::getFeatures);
+    _server.on("/api/ws/events", socket.getHandler());
+    _server.on("/api/features", feature_service::getFeatures);
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-    _server->on("/api/firmware", HTTP_POST, _uploadFirmwareService.getHandler());
+    _server.on("/api/firmware", HTTP_POST, _uploadFirmwareService.getHandler());
 #endif
 #if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-    _server->on("/api/firmware/download", HTTP_POST, [this](PsychicRequest *r, JsonVariant &json) {
+    _server.on("/api/firmware/download", HTTP_POST, [this](PsychicRequest *r, JsonVariant &json) {
         return _downloadFirmwareService.handleDownloadUpdate(r, json);
     });
 #endif
@@ -119,21 +119,21 @@ void Spot::setupServer() {
         };
         PsychicWebHandler *handler = new PsychicWebHandler();
         handler->onRequest(requestHandler);
-        _server->on(uri.c_str(), HTTP_GET, handler);
+        _server.on(uri.c_str(), HTTP_GET, handler);
 
         // Set default end-point for all non matching requests
         // this is easier than using webServer.onNotFound()
         if (uri.equals("/index.html")) {
-            _server->defaultEndpoint->setHandler(handler);
+            _server.defaultEndpoint->setHandler(handler);
         }
     });
 #else
     // Serve static resources from /www/
     ESP_LOGV(TAG, "Registering routes from FS /www/ static resources");
-    _server->serveStatic("/_app/", ESPFS, "/www/_app/");
-    _server->serveStatic("/favicon.png", ESPFS, "/www/favicon.png");
+    _server.serveStatic("/_app/", ESPFS, "/www/_app/");
+    _server.serveStatic("/favicon.png", ESPFS, "/www/favicon.png");
     //  Serving all other get requests with "/www/index.htm"
-    _server->onNotFound([](PsychicRequest *request) {
+    _server.onNotFound([](PsychicRequest *request) {
         if (request->method() == HTTP_GET) {
             PsychicFileResponse response(request, ESPFS, "/www/index.html", "text/html");
             return response.send();
@@ -143,7 +143,7 @@ void Spot::setupServer() {
     });
 #endif
 #ifdef SERVE_CONFIG_FILES
-    _server->serveStatic("/api/config/", ESPFS, "/config/");
+    _server.serveStatic("/api/config/", ESPFS, "/config/");
 #endif
 
 #if defined(ENABLE_CORS)

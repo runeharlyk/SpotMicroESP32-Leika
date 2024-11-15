@@ -43,7 +43,7 @@
 
 class Spot {
   public:
-    Spot(PsychicHttpServer *server);
+    Spot();
 
     void initialize();
 
@@ -75,7 +75,7 @@ class Spot {
     }
 
   private:
-    PsychicHttpServer *_server;
+    PsychicHttpServer _server;
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
