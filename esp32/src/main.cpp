@@ -4,12 +4,13 @@ DRAM_ATTR Spot spot;
 
 void IRAM_ATTR SpotControlLoopEntry(void*) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = 10 / portTICK_PERIOD_MS;
     for (;;) {
         spot.readSensors();
         spot.planMotion();
         spot.updateActuators();
         spot.emitTelemetry();
-        vTaskDelayUntil(&xLastWakeTime, 10 / portTICK_PERIOD_MS);
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
 
