@@ -127,6 +127,7 @@ class WiFiSettings {
                 }
             }
         } else if (String(FACTORY_WIFI_SSID).length() > 0) {
+            ESP_LOGI("WiFiSettings", "No WiFi config found - using factory settings");
             settings.wifiSettings.push_back(createDefaultWiFiSettings());
         }
         ESP_LOGV("WiFiSettings", "WiFi Settings updated");
