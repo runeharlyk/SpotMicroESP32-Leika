@@ -97,8 +97,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
             Wire.end();
         }
 
-        if (_state.sda != -1 && _state.scl != -1) {
-            Wire.begin(_state.sda, _state.scl, _state.frequency);
+        if (state().sda != -1 && state().scl != -1) {
+            Wire.begin(state().sda, state().scl, state().frequency);
             i2c_active = true;
         }
     }
@@ -107,8 +107,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         char output[150];
         JsonDocument doc;
         JsonObject root = doc.to<JsonObject>();
-        root["sda"] = _state.sda;
-        root["scl"] = _state.scl;
+        root["sda"] = state().sda;
+        root["scl"] = state().scl;
         JsonArray addresses = root["addresses"].to<JsonArray>();
         for (auto &address : addressList) {
             addresses.add(address);

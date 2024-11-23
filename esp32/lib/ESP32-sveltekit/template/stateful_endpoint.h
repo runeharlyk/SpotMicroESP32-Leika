@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PsychicHttp.h>
-#include <template/stateful_endpoint.h>
+#include <template/stateful_service.h>
 
 #include <functional>
 

@@ -160,14 +160,14 @@ class StatefulService {
         }
     }
 
-  protected:
+    T &state() { return _state; }
+
+  private:
     T _state;
 
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
-
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
-  private:
     SemaphoreHandle_t _accessMutex;
     std::list<StateUpdateHandlerInfo_t> _updateHandlers;
     std::list<StateHookHandlerInfo_t> _hookHandlers;

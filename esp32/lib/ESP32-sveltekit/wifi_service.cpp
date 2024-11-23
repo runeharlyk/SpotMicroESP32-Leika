@@ -55,7 +55,7 @@ esp_err_t WiFiService::getNetworks(PsychicRequest *request) {
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
-    MDNS.begin(_state.hostname.c_str());
+    MDNS.begin(state().hostname.c_str());
     MDNS.setInstanceName(hostname);
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 80);
@@ -106,13 +106,13 @@ void WiFiService::getNetworkStatus(JsonObject &root) {
 }
 
 void WiFiService::manageSTA() {
-    if (WiFi.isConnected() || _state.wifiSettings.empty()) return;
+    if (WiFi.isConnected() || state().wifiSettings.empty()) return;
     if ((WiFi.getMode() & WIFI_STA) == 0) connectToWiFi();
 }
 
 void WiFiService::connectToWiFi() {
     // reset availability flag for all stored networks
-    for (auto &network : _state.wifiSettings) {
+    for (auto &network : state().wifiSettings) {
         network.available = false;
     }
 
@@ -138,7 +138,7 @@ void WiFiService::connectToWiFi() {
 
             WiFi.getNetworkInfo(i, ssid_scan, sec_scan, rssi_scan, BSSID_scan, chan_scan);
 
-            for (auto &network : _state.wifiSettings) {
+            for (auto &network : state().wifiSettings) {
                 if (ssid_scan == network.ssid) {
                     if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD) {
                         network.available = true;
@@ -151,15 +151,15 @@ void WiFiService::connectToWiFi() {
             }
         }
 
-        if (!_state.priorityBySignalStrength) {
-            for (auto &network : _state.wifiSettings) {
+        if (!state().priorityBySignalStrength) {
+            for (auto &network : state().wifiSettings) {
                 if (network.available == true) {
                     ESP_LOGI("WiFiSettingsService", "Connecting to first available network: %s", network.ssid.c_str());
                     configureNetwork(network);
                     break;
                 }
             }
-        } else if (_state.priorityBySignalStrength && bestNetwork) {
+        } else if (state().priorityBySignalStrength && bestNetwork) {
             ESP_LOGI("WiFiSettingsService", "Connecting to strongest network: %s", bestNetwork->ssid.c_str());
             configureNetwork(*bestNetwork);
             WiFi.begin(bestNetwork->ssid.c_str(), bestNetwork->password.c_str());
@@ -179,7 +179,7 @@ void WiFiService::configureNetwork(wifi_settings_t &network) {
         // configure for DHCP
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     }
-    WiFi.setHostname(_state.hostname.c_str());
+    WiFi.setHostname(state().hostname.c_str());
 
     // attempt to connect to the network
     WiFi.begin(network.ssid.c_str(), network.password.c_str());

@@ -96,7 +96,7 @@ class ServoController : public StatefulService<ServoSettings> {
     void updateServoState() {
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.2);
-            auto &servo = _state.servos[i];
+            auto &servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
             if (pwm < 125 || pwm > 600) {

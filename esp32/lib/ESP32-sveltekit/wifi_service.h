@@ -41,7 +41,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     void setupMDNS(const char *hostname);
 
-    const char *getHostname() { return _state.hostname.c_str(); }
+    const char *getHostname() { return state().hostname.c_str(); }
 
     static esp_err_t handleScan(PsychicRequest *request);
     static esp_err_t getNetworks(PsychicRequest *request);
