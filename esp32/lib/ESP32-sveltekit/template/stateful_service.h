@@ -40,19 +40,19 @@ typedef std::function<void(const String &originId, StateUpdateResult &result)> S
 typedef struct StateUpdateHandlerInfo {
     static inline update_handler_id_t currentUpdatedHandlerId = 0;
     update_handler_id_t _id;
-    StateUpdateCallback _cb;
+    StateUpdateCallback _callback;
     bool _allowRemove;
-    StateUpdateHandlerInfo(StateUpdateCallback cb, bool allowRemove)
-        : _id(++currentUpdatedHandlerId), _cb(cb), _allowRemove(allowRemove) {};
+    StateUpdateHandlerInfo(StateUpdateCallback callback, bool allowRemove)
+        : _id(++currentUpdatedHandlerId), _callback(callback), _allowRemove(allowRemove) {};
 } StateUpdateHandlerInfo_t;
 
 typedef struct StateHookHandlerInfo {
     static inline hook_handler_id_t currentHookHandlerId = 0;
     hook_handler_id_t _id;
-    StateHookCallback _cb;
+    StateHookCallback _callback;
     bool _allowRemove;
-    StateHookHandlerInfo(StateHookCallback cb, bool allowRemove)
-        : _id(++currentHookHandlerId), _cb(cb), _allowRemove(allowRemove) {};
+    StateHookHandlerInfo(StateHookCallback callback, bool allowRemove)
+        : _id(++currentHookHandlerId), _callback(callback), _allowRemove(allowRemove) {};
 } StateHookHandlerInfo_t;
 
 template <class T>
@@ -62,11 +62,10 @@ class StatefulService {
     StatefulService(Args &&...args)
         : _state(std::forward<Args>(args)...), _accessMutex(xSemaphoreCreateRecursiveMutex()) {}
 
-    update_handler_id_t addUpdateHandler(StateUpdateCallback cb, bool allowRemove = true) {
-        if (!cb) {
-            return 0;
-        }
-        StateUpdateHandlerInfo_t updateHandler(cb, allowRemove);
+    update_handler_id_t addUpdateHandler(StateUpdateCallback callback, bool allowRemove = true) {
+        if (!callback) return 0;
+
+        StateUpdateHandlerInfo_t updateHandler(callback, allowRemove);
         _updateHandlers.push_back(updateHandler);
         return updateHandler._id;
     }
@@ -81,11 +80,10 @@ class StatefulService {
         }
     }
 
-    hook_handler_id_t addHookHandler(StateHookCallback cb, bool allowRemove = true) {
-        if (!cb) {
-            return 0;
-        }
-        StateHookHandlerInfo_t hookHandler(cb, allowRemove);
+    hook_handler_id_t addHookHandler(StateHookCallback callback, bool allowRemove = true) {
+        if (!callback) return 0;
+
+        StateHookHandlerInfo_t hookHandler(callback, allowRemove);
         _hookHandlers.push_back(hookHandler);
         return hookHandler._id;
     }
@@ -144,13 +142,13 @@ class StatefulService {
 
     void callUpdateHandlers(const String &originId) {
         for (const StateUpdateHandlerInfo_t &updateHandler : _updateHandlers) {
-            updateHandler._cb(originId);
+            updateHandler._callback(originId);
         }
     }
 
     void callHookHandlers(const String &originId, StateUpdateResult &result) {
         for (const StateHookHandlerInfo_t &hookHandler : _hookHandlers) {
-            hookHandler._cb(originId, result);
+            hookHandler._callback(originId, result);
         }
     }
 
