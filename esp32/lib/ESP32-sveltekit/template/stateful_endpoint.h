@@ -21,16 +21,14 @@ class StatefulHttpEndpoint {
         : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService) {}
 
     esp_err_t handleStateUpdate(PsychicRequest *request, JsonVariant &json) {
-        if (!json.is<JsonObject>()) {
-            return request->reply(400);
-        }
+        if (!json.is<JsonObject>()) return request->reply(400);
 
         JsonObject jsonObject = json.as<JsonObject>();
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
 
-        if (outcome == StateUpdateResult::ERROR) {
+        if (outcome == StateUpdateResult::ERROR)
             return request->reply(400);
-        } else if ((outcome == StateUpdateResult::CHANGED)) {
+        else if ((outcome == StateUpdateResult::CHANGED)) {
             // persist the changes to the FS
             _statefulService->callUpdateHandlers(HTTP_ENDPOINT_ORIGIN_ID);
         }

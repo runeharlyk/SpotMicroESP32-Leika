@@ -1,20 +1,4 @@
-#ifndef StatefulService_h
-#define StatefulService_h
-
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *   Copyright (C) 2024 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#pragma once
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -32,28 +16,42 @@ using JsonStateUpdater = std::function<StateUpdateResult(JsonObject &root, T &se
 template <typename T>
 using JsonStateReader = std::function<void(T &settings, JsonObject &root)>;
 
-typedef size_t update_handler_id_t;
-typedef size_t hook_handler_id_t;
-typedef std::function<void(const String &originId)> StateUpdateCallback;
-typedef std::function<void(const String &originId, StateUpdateResult &result)> StateHookCallback;
+using HandlerId = size_t;
+using StateUpdateCallback = std::function<void(const String &originId)>;
+using StateHookCallback = std::function<void(const String &originId, StateUpdateResult &result)>;
 
-typedef struct StateUpdateHandlerInfo {
-    static inline update_handler_id_t currentUpdatedHandlerId = 0;
-    update_handler_id_t _id;
-    StateUpdateCallback _callback;
-    bool _allowRemove;
-    StateUpdateHandlerInfo(StateUpdateCallback callback, bool allowRemove)
-        : _id(++currentUpdatedHandlerId), _callback(callback), _allowRemove(allowRemove) {};
-} StateUpdateHandlerInfo_t;
+class HandlerBase {
+  protected:
+    static inline HandlerId nextId_ = 1; // Start from 1, 0 is invalid
+    HandlerId id_;
+    bool allowRemove_;
 
-typedef struct StateHookHandlerInfo {
-    static inline hook_handler_id_t currentHookHandlerId = 0;
-    hook_handler_id_t _id;
-    StateHookCallback _callback;
-    bool _allowRemove;
-    StateHookHandlerInfo(StateHookCallback callback, bool allowRemove)
-        : _id(++currentHookHandlerId), _callback(callback), _allowRemove(allowRemove) {};
-} StateHookHandlerInfo_t;
+    HandlerBase(bool allowRemove) : id_(nextId_++), allowRemove_(allowRemove) {}
+
+  public:
+    HandlerId getId() const { return id_; }
+    bool isRemovable() const { return allowRemove_; }
+};
+
+class UpdateHandler : public HandlerBase {
+    StateUpdateCallback callback_;
+
+  public:
+    UpdateHandler(StateUpdateCallback callback, bool allowRemove)
+        : HandlerBase(allowRemove), callback_(std::move(callback)) {}
+
+    void invoke(const String &originId) const { callback_(originId); }
+};
+
+class HookHandler : public HandlerBase {
+    StateHookCallback callback_;
+
+  public:
+    HookHandler(StateHookCallback callback, bool allowRemove)
+        : HandlerBase(allowRemove), callback_(std::move(callback)) {}
+
+    void invoke(const String &originId, StateUpdateResult &result) const { callback_(originId, result); }
+};
 
 template <class T>
 class StatefulService {
@@ -61,93 +59,81 @@ class StatefulService {
     template <typename... Args>
     StatefulService(Args &&...args) : state_(std::forward<Args>(args)...), mutex_(xSemaphoreCreateRecursiveMutex()) {}
 
-    update_handler_id_t addUpdateHandler(StateUpdateCallback callback, bool allowRemove = true) {
+    HandlerId addUpdateHandler(StateUpdateCallback callback, bool allowRemove = true) {
         if (!callback) return 0;
 
-        StateUpdateHandlerInfo_t updateHandler(callback, allowRemove);
-        updateHandlers_.push_back(updateHandler);
-        return updateHandler._id;
+        updateHandlers_.emplace_back(std::move(callback), allowRemove);
+        return updateHandlers_.back().getId();
     }
 
-    void removeUpdateHandler(update_handler_id_t id) {
-        for (auto i = updateHandlers_.begin(); i != updateHandlers_.end();) {
-            if ((*i)._allowRemove && (*i)._id == id) {
-                i = updateHandlers_.erase(i);
-            } else {
-                ++i;
-            }
-        }
+    void removeUpdateHandler(HandlerId id) {
+        updateHandlers_.remove_if(
+            [id](const UpdateHandler &handler) { return handler.isRemovable() && handler.getId() == id; });
     }
 
-    hook_handler_id_t addHookHandler(StateHookCallback callback, bool allowRemove = true) {
+    HandlerId addHookHandler(StateHookCallback callback, bool allowRemove = true) {
         if (!callback) return 0;
 
-        StateHookHandlerInfo_t hookHandler(callback, allowRemove);
-        hookHandlers_.push_back(hookHandler);
-        return hookHandler._id;
+        hookHandlers_.emplace_back(std::move(callback), allowRemove);
+        return hookHandlers_.back().getId();
     }
 
-    void removeHookHandler(hook_handler_id_t id) {
-        for (auto i = hookHandlers_.begin(); i != hookHandlers_.end();) {
-            if ((*i)._allowRemove && (*i)._id == id) {
-                i = hookHandlers_.erase(i);
-            } else {
-                ++i;
-            }
-        }
+    void removeHookHandler(HandlerId id) {
+        hookHandlers_.remove_if(
+            [id](const HookHandler &handler) { return handler.isRemovable() && handler.getId() == id; });
     }
 
     StateUpdateResult update(std::function<StateUpdateResult(T &)> stateUpdater, const String &originId) {
-        beginTransaction();
+        lock();
         StateUpdateResult result = stateUpdater(state_);
-        endTransaction();
+        unlock();
         notifyStateChange(originId, result);
         return result;
     }
 
     StateUpdateResult updateWithoutPropagation(std::function<StateUpdateResult(T &)> stateUpdater) {
-        beginTransaction();
+        lock();
         StateUpdateResult result = stateUpdater(state_);
-        endTransaction();
+        unlock();
         return result;
     }
 
     StateUpdateResult update(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater, const String &originId) {
-        beginTransaction();
+        lock();
         StateUpdateResult result = stateUpdater(jsonObject, state_);
-        endTransaction();
+        unlock();
         notifyStateChange(originId, result);
         return result;
     }
 
     StateUpdateResult updateWithoutPropagation(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater) {
-        beginTransaction();
+        lock();
         StateUpdateResult result = stateUpdater(jsonObject, state_);
-        endTransaction();
+        unlock();
         return result;
     }
 
     void read(std::function<void(T &)> stateReader) {
-        beginTransaction();
+        lock();
         stateReader(state_);
-        endTransaction();
+        unlock();
     }
 
     void read(JsonObject &jsonObject, JsonStateReader<T> stateReader) {
-        beginTransaction();
+        lock();
         stateReader(state_, jsonObject);
-        endTransaction();
+        unlock();
     }
 
     void callUpdateHandlers(const String &originId) {
-        for (const StateUpdateHandlerInfo_t &updateHandler : updateHandlers_) {
-            updateHandler._callback(originId);
+        for (const UpdateHandler &updateHandler : updateHandlers_) {
+            updateHandler.invoke(originId);
         }
     }
 
     void callHookHandlers(const String &originId, StateUpdateResult &result) {
-        for (const StateHookHandlerInfo_t &hookHandler : hookHandlers_) {
-            hookHandler._callback(originId, result);
+        for (const HookHandler &hookHandler : hookHandlers_) {
+            hookHandler.invoke(originId, result);
         }
     }
 
@@ -156,8 +142,8 @@ class StatefulService {
   private:
     T state_;
 
-    inline void beginTransaction() { xSemaphoreTakeRecursive(mutex_, portMAX_DELAY); }
-    inline void endTransaction() { xSemaphoreGiveRecursive(mutex_); }
+    inline void lock() { xSemaphoreTakeRecursive(mutex_, portMAX_DELAY); }
+    inline void unlock() { xSemaphoreGiveRecursive(mutex_); }
 
     void notifyStateChange(const String &originId, StateUpdateResult &result) {
         callHookHandlers(originId, result);
@@ -167,8 +153,6 @@ class StatefulService {
     }
 
     SemaphoreHandle_t mutex_;
-    std::list<StateUpdateHandlerInfo_t> updateHandlers_;
-    std::list<StateHookHandlerInfo_t> hookHandlers_;
+    std::list<UpdateHandler> updateHandlers_;
+    std::list<HookHandler> hookHandlers_;
 };
-
-#endif // end StatefulService_h

@@ -58,25 +58,18 @@ class FSPersistence {
     }
 
     bool writeToFS() {
-        // create and populate a new json object
         JsonDocument jsonDocument;
         JsonObject jsonObject = jsonDocument.to<JsonObject>();
         _statefulService->read(jsonObject, _stateReader);
 
-        // make directories if required
         mkdirs();
 
-        // serialize it to filesystem
-        File settingsFile = _fs->open(_filePath, "w");
+        File file = _fs->open(_filePath, "w");
 
-        // failed to open file, return false
-        if (!settingsFile) {
-            return false;
-        }
+        if (!file) return false;
 
-        // serialize the data to the file
-        serializeJson(jsonDocument, settingsFile);
-        settingsFile.close();
+        serializeJson(jsonDocument, file);
+        file.close();
         return true;
     }
 
@@ -100,7 +93,7 @@ class FSPersistence {
     FS *_fs {&ESPFS};
     const char *_filePath;
     size_t _bufferSize;
-    update_handler_id_t _updateHandlerId;
+    HandlerId _updateHandlerId;
 
     // We assume we have a _filePath with format
     // "/directory1/directory2/filename" We create a directory for each missing
@@ -110,9 +103,7 @@ class FSPersistence {
         int index = 0;
         while ((index = path.indexOf('/', index + 1)) != -1) {
             String segment = path.substring(0, index);
-            if (!_fs->exists(segment)) {
-                _fs->mkdir(segment);
-            }
+            if (!_fs->exists(segment)) _fs->mkdir(segment);
         }
     }
 
