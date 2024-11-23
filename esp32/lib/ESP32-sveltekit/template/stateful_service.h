@@ -104,10 +104,7 @@ class StatefulService {
         beginTransaction();
         StateUpdateResult result = stateUpdater(_state);
         endTransaction();
-        callHookHandlers(originId, result);
-        if (result == StateUpdateResult::CHANGED) {
-            callUpdateHandlers(originId);
-        }
+        notifyStateChange(originId, result);
         return result;
     }
 
@@ -122,10 +119,7 @@ class StatefulService {
         beginTransaction();
         StateUpdateResult result = stateUpdater(jsonObject, _state);
         endTransaction();
-        callHookHandlers(originId, result);
-        if (result == StateUpdateResult::CHANGED) {
-            callUpdateHandlers(originId);
-        }
+        notifyStateChange(originId, result);
         return result;
     }
 
@@ -167,6 +161,13 @@ class StatefulService {
 
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
+
+    void notifyStateChange(const String &originId, StateUpdateResult &result) {
+        callHookHandlers(originId, result);
+        if (result == StateUpdateResult::CHANGED) {
+            callUpdateHandlers(originId);
+        }
+    }
 
     SemaphoreHandle_t _accessMutex;
     std::list<StateUpdateHandlerInfo_t> _updateHandlers;
