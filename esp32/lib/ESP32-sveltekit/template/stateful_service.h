@@ -59,21 +59,20 @@ template <class T>
 class StatefulService {
   public:
     template <typename... Args>
-    StatefulService(Args &&...args)
-        : _state(std::forward<Args>(args)...), _accessMutex(xSemaphoreCreateRecursiveMutex()) {}
+    StatefulService(Args &&...args) : state_(std::forward<Args>(args)...), mutex_(xSemaphoreCreateRecursiveMutex()) {}
 
     update_handler_id_t addUpdateHandler(StateUpdateCallback callback, bool allowRemove = true) {
         if (!callback) return 0;
 
         StateUpdateHandlerInfo_t updateHandler(callback, allowRemove);
-        _updateHandlers.push_back(updateHandler);
+        updateHandlers_.push_back(updateHandler);
         return updateHandler._id;
     }
 
     void removeUpdateHandler(update_handler_id_t id) {
-        for (auto i = _updateHandlers.begin(); i != _updateHandlers.end();) {
+        for (auto i = updateHandlers_.begin(); i != updateHandlers_.end();) {
             if ((*i)._allowRemove && (*i)._id == id) {
-                i = _updateHandlers.erase(i);
+                i = updateHandlers_.erase(i);
             } else {
                 ++i;
             }
@@ -84,14 +83,14 @@ class StatefulService {
         if (!callback) return 0;
 
         StateHookHandlerInfo_t hookHandler(callback, allowRemove);
-        _hookHandlers.push_back(hookHandler);
+        hookHandlers_.push_back(hookHandler);
         return hookHandler._id;
     }
 
     void removeHookHandler(hook_handler_id_t id) {
-        for (auto i = _hookHandlers.begin(); i != _hookHandlers.end();) {
+        for (auto i = hookHandlers_.begin(); i != hookHandlers_.end();) {
             if ((*i)._allowRemove && (*i)._id == id) {
-                i = _hookHandlers.erase(i);
+                i = hookHandlers_.erase(i);
             } else {
                 ++i;
             }
@@ -100,7 +99,7 @@ class StatefulService {
 
     StateUpdateResult update(std::function<StateUpdateResult(T &)> stateUpdater, const String &originId) {
         beginTransaction();
-        StateUpdateResult result = stateUpdater(_state);
+        StateUpdateResult result = stateUpdater(state_);
         endTransaction();
         notifyStateChange(originId, result);
         return result;
@@ -108,14 +107,14 @@ class StatefulService {
 
     StateUpdateResult updateWithoutPropagation(std::function<StateUpdateResult(T &)> stateUpdater) {
         beginTransaction();
-        StateUpdateResult result = stateUpdater(_state);
+        StateUpdateResult result = stateUpdater(state_);
         endTransaction();
         return result;
     }
 
     StateUpdateResult update(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater, const String &originId) {
         beginTransaction();
-        StateUpdateResult result = stateUpdater(jsonObject, _state);
+        StateUpdateResult result = stateUpdater(jsonObject, state_);
         endTransaction();
         notifyStateChange(originId, result);
         return result;
@@ -123,42 +122,42 @@ class StatefulService {
 
     StateUpdateResult updateWithoutPropagation(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater) {
         beginTransaction();
-        StateUpdateResult result = stateUpdater(jsonObject, _state);
+        StateUpdateResult result = stateUpdater(jsonObject, state_);
         endTransaction();
         return result;
     }
 
     void read(std::function<void(T &)> stateReader) {
         beginTransaction();
-        stateReader(_state);
+        stateReader(state_);
         endTransaction();
     }
 
     void read(JsonObject &jsonObject, JsonStateReader<T> stateReader) {
         beginTransaction();
-        stateReader(_state, jsonObject);
+        stateReader(state_, jsonObject);
         endTransaction();
     }
 
     void callUpdateHandlers(const String &originId) {
-        for (const StateUpdateHandlerInfo_t &updateHandler : _updateHandlers) {
+        for (const StateUpdateHandlerInfo_t &updateHandler : updateHandlers_) {
             updateHandler._callback(originId);
         }
     }
 
     void callHookHandlers(const String &originId, StateUpdateResult &result) {
-        for (const StateHookHandlerInfo_t &hookHandler : _hookHandlers) {
+        for (const StateHookHandlerInfo_t &hookHandler : hookHandlers_) {
             hookHandler._callback(originId, result);
         }
     }
 
-    T &state() { return _state; }
+    T &state() { return state_; }
 
   private:
-    T _state;
+    T state_;
 
-    inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
-    inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
+    inline void beginTransaction() { xSemaphoreTakeRecursive(mutex_, portMAX_DELAY); }
+    inline void endTransaction() { xSemaphoreGiveRecursive(mutex_); }
 
     void notifyStateChange(const String &originId, StateUpdateResult &result) {
         callHookHandlers(originId, result);
@@ -167,9 +166,9 @@ class StatefulService {
         }
     }
 
-    SemaphoreHandle_t _accessMutex;
-    std::list<StateUpdateHandlerInfo_t> _updateHandlers;
-    std::list<StateHookHandlerInfo_t> _hookHandlers;
+    SemaphoreHandle_t mutex_;
+    std::list<StateUpdateHandlerInfo_t> updateHandlers_;
+    std::list<StateHookHandlerInfo_t> hookHandlers_;
 };
 
 #endif // end StatefulService_h
