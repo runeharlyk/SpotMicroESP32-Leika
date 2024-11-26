@@ -41,10 +41,11 @@
 <SettingsCard collapsible={false}>
     <MotorOutline slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     <span slot="title">Servo</span>
+    {pwm}
     <input
         type="range"
-        min="200"
-        max="400"
+        min="120"
+        max="600"
         bind:value={pwm}
         on:input={updatePWM}
         class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
@@ -56,7 +57,8 @@
         <div class="flex flex-col">
             <h2 class="text-lg">General servo configuration</h2>
             <span class="flex items-center gap-2">
-                <label for="servoId">Servo active{servoId}</label>
+                <label for="servoId">Servo active {servoId}</label>
+                <input type="range" min="0" max="11" step="1" bind:value={servoId} />
                 <input
                     type="checkbox"
                     class="toggle"
