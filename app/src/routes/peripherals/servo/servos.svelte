@@ -63,7 +63,7 @@
                     type="checkbox"
                     class="toggle"
                     bind:checked={active}
-                    on:change={active ? deactivateServo : activateServo}
+                    on:change={active ? activateServo : deactivateServo}
                 />
             </span>
         </div>
