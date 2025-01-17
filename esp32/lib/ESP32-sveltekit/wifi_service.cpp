@@ -23,6 +23,11 @@ void WiFiService::begin() {
 
     _persistence.readFromFS();
     reconfigureWiFiConnection();
+
+    if (state().wifiSettings.size() == 1) {
+        configureNetwork(state().wifiSettings[0]);
+        delay(500);
+    }
 }
 
 void WiFiService::reconfigureWiFiConnection() {
