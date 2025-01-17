@@ -44,7 +44,7 @@
     {pwm}
     <input
         type="range"
-        min="120"
+        min="80"
         max="600"
         bind:value={pwm}
         on:input={updatePWM}
