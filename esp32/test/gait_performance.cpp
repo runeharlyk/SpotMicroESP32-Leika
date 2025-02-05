@@ -20,7 +20,8 @@ void test_gaitPlanner_calculateStep_time() {
     unsigned long max_duration = num_steps / 2; // Minimum 0.5 ms per step
 
     char message[50];
-    snprintf(message, sizeof(message), "The step calculation took: %lu ms", duration);
+    snprintf(message, sizeof(message), "The step calculation took: %lu ms (%lu ms per iter)", duration, duration / num_steps);
+    ESP_LOGI("Test planner", message);
     TEST_ASSERT_MESSAGE(duration <= max_duration, message);
 }
 
