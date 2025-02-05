@@ -66,12 +66,12 @@ def flag_exists(flag):
 
 
 def get_package_manager():
-    if exists(os.path.join(interface_dir, "pnpm-lock.yaml")):
-        return "pnpm"
-    if exists(os.path.join(interface_dir, "yarn.lock")):
-        return "yarn"
     if exists(os.path.join(interface_dir, "package-lock.json")):
         return "npm"
+    if exists(os.path.join(interface_dir, "yarn.lock")):
+        return "yarn"
+    if exists(os.path.join(interface_dir, "pnpm-lock.yaml")):
+        return "pnpm"
 
 
 def build_webapp():
