@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { MdiEyeOffOutline, MdiEyeOutline } from "../icons";
 
-	export let show = false;
-	export let value = '';
-	export let id = '';
+    interface Props {
+        show?: boolean;
+        value?: string;
+        id?: string;
+    }
+
+    let { show = $bindable(false), value = $bindable(''), id = '' }: Props = $props();
     
-	$: type = show ? 'text' : 'password';
+	let type = $derived(show ? 'text' : 'password');
 
 	const handleInput = (e: any) => value = e.target.value
 
@@ -13,9 +17,9 @@
 </script>
 
 <label class="input input-bordered flex items-center gap-2">
-    <input {type} class="grow" {value} on:input={handleInput} {id} />
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div on:click={togglePassword} role="button" tabindex="0">
+    <input {type} class="grow" {value} oninput={handleInput} {id} />
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div onclick={togglePassword} role="button" tabindex="0">
         <MdiEyeOffOutline class="text-base-content/50 h-6 {show ? 'block' : 'hidden'}" />
         <MdiEyeOutline class="text-base-content/50 h-6 {show ? 'hidden' : 'block'}" />
     </div>

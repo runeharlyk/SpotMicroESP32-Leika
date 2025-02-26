@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { page } from '$app/stores';
     import { createEventDispatcher } from 'svelte';
     import { useFeatureFlags } from '$lib/stores/featureFlags';
@@ -42,102 +44,105 @@
         submenu?: menuItem[];
     };
 
-    $: menuItems = [
-        {
-            title: 'Connection',
-            icon: WiFi,
-            href: '/connection',
-            feature: !appEnv.VITE_USE_HOST_NAME
-        },
-        {
-            title: 'Controller',
-            icon: MdiController,
-            href: '/controller',
-            feature: true
-        },
-        {
-            title: 'Peripherals',
-            icon: Devices,
-            feature: true,
-            submenu: [
-                {
-                    title: 'I2C',
-                    icon: Connection,
-                    href: '/peripherals/i2c',
-                    feature: true
-                },
-                {
-                    title: 'Camera',
-                    icon: Camera,
-                    href: '/peripherals/camera',
-                    feature: $features.camera
-                },
-                {
-                    title: 'Servo',
-                    icon: MotorOutline,
-                    href: '/peripherals/servo',
-                    feature: true
-                },
-                {
-                    title: 'IMU',
-                    icon: Rotate3d,
-                    href: '/peripherals/imu',
-                    feature: $features.imu || $features.mag || $features.bmp
-                }
-            ]
-        },
-        {
-            title: 'WiFi',
-            icon: WiFi,
-            feature: true,
-            submenu: [
-                {
-                    title: 'WiFi Station',
-                    icon: Router,
-                    href: '/wifi/sta',
-                    feature: true
-                },
-                {
-                    title: 'Access Point',
-                    icon: AP,
-                    href: '/wifi/ap',
-                    feature: true
-                }
-            ]
-        },
-        {
-            title: 'System',
-            icon: Settings,
-            feature: true,
-            submenu: [
-                {
-                    title: 'System Status',
-                    icon: Health,
-                    href: '/system/status',
-                    feature: true
-                },
-                {
-                    title: 'File System',
-                    icon: Folder,
-                    href: '/system/filesystem',
-                    feature: true
-                },
-                {
-                    title: 'System Metrics',
-                    icon: Metrics,
-                    href: '/system/metrics',
-                    feature: $features.analytics
-                },
-                {
-                    title: 'Firmware Update',
-                    icon: Update,
-                    href: '/system/update',
-                    feature:
-                        $features.ota || $features.upload_firmware || $features.download_firmware
-                }
-            ]
-        }
-    ] as menuItem[];
+    let menuItems = $state();
+    run(() => {
+        menuItems = [
+            {
+                title: 'Connection',
+                icon: WiFi,
+                href: '/connection',
+                feature: !appEnv.VITE_USE_HOST_NAME
+            },
+            {
+                title: 'Controller',
+                icon: MdiController,
+                href: '/controller',
+                feature: true
+            },
+            {
+                title: 'Peripherals',
+                icon: Devices,
+                feature: true,
+                submenu: [
+                    {
+                        title: 'I2C',
+                        icon: Connection,
+                        href: '/peripherals/i2c',
+                        feature: true
+                    },
+                    {
+                        title: 'Camera',
+                        icon: Camera,
+                        href: '/peripherals/camera',
+                        feature: $features.camera
+                    },
+                    {
+                        title: 'Servo',
+                        icon: MotorOutline,
+                        href: '/peripherals/servo',
+                        feature: true
+                    },
+                    {
+                        title: 'IMU',
+                        icon: Rotate3d,
+                        href: '/peripherals/imu',
+                        feature: $features.imu || $features.mag || $features.bmp
+                    }
+                ]
+            },
+            {
+                title: 'WiFi',
+                icon: WiFi,
+                feature: true,
+                submenu: [
+                    {
+                        title: 'WiFi Station',
+                        icon: Router,
+                        href: '/wifi/sta',
+                        feature: true
+                    },
+                    {
+                        title: 'Access Point',
+                        icon: AP,
+                        href: '/wifi/ap',
+                        feature: true
+                    }
+                ]
+            },
+            {
+                title: 'System',
+                icon: Settings,
+                feature: true,
+                submenu: [
+                    {
+                        title: 'System Status',
+                        icon: Health,
+                        href: '/system/status',
+                        feature: true
+                    },
+                    {
+                        title: 'File System',
+                        icon: Folder,
+                        href: '/system/filesystem',
+                        feature: true
+                    },
+                    {
+                        title: 'System Metrics',
+                        icon: Metrics,
+                        href: '/system/metrics',
+                        feature: $features.analytics
+                    },
+                    {
+                        title: 'Firmware Update',
+                        icon: Update,
+                        href: '/system/update',
+                        feature:
+                            $features.ota || $features.upload_firmware || $features.download_firmware
+                    }
+                ]
+            }
+        ] as menuItem[];
+    });
 
     const dispatch = createEventDispatcher();
 
@@ -152,7 +157,9 @@
         dispatch('menuClicked');
     }
 
-    $: setActiveMenuItem($page.data.title);
+    run(() => {
+        setActiveMenuItem($page.data.title);
+    });
 
     const updateMenu = (event: any) => {
         setActiveMenuItem(event.details);
@@ -164,7 +171,7 @@
 
     <MenuList {menuItems} on:select{updateMenu} class="flex-grow flex-nowrap overflow-y-auto" />
 
-    <div class="divider my-0" />
+    <div class="divider my-0"></div>
 
     <div class="flex items-center justify-between">
         <GithubButton {github} />

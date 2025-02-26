@@ -2,7 +2,8 @@
 	import { FileIcon } from '$lib/components/icons';
     import { createEventDispatcher } from 'svelte';
     
-	export let name;
+    /** @type {{name: any}} */
+    let { name } = $props();
     
     const dispatch = createEventDispatcher();
 
@@ -11,8 +12,8 @@
     }
 </script>
 
-<!-- svelte-ignore a11y-interactive-supports-focus -->
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<span role="button" class="flex pl-4 gap-2 items-center" on:click={updateSelected}>
+<!-- svelte-ignore a11y_interactive_supports_focus -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<span role="button" class="flex pl-4 gap-2 items-center" onclick={updateSelected}>
     <FileIcon/>{name}
 </span>

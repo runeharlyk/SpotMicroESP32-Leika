@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { WiFi, WiFi0, WiFi1, WiFi2, WifiOff } from "../icons";
 
-	export let showDBm = false;
-	export let rssi = 0;
+	interface Props {
+		showDBm?: boolean;
+		rssi?: number;
+	}
+
+	let { showDBm = false, rssi = 0 }: Props = $props();
 
 	const getWiFiIcon = () => {
 		if (rssi === 0) return WifiOff;
@@ -11,6 +15,8 @@
 		if (rssi >= -85) return WiFi1;
 		return WiFi0;
 	};
+
+	const SvelteComponent = $derived(getWiFiIcon());
 </script>
 
 <div class="indicator">
@@ -21,7 +27,7 @@
 			</span>
 		{/if}
 		<div class="h-7 w-7">
-			<svelte:component this={getWiFiIcon()} class="absolute inset-0 h-full w-full" />
+			<SvelteComponent class="absolute inset-0 h-full w-full" />
 		</div>
 	</div>
 </div>

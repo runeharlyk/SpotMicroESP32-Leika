@@ -6,7 +6,7 @@
 	import type { Directory } from "$lib/types/models";
 	import { FolderIcon } from "$lib/components/icons";
 
-    let filename = '';
+    let filename = $state('');
 
     const getFiles = async () => {
         const result = await api.get<Directory>('/api/files')
@@ -38,8 +38,12 @@
     }
 </script>
 <SettingsCard collapsible={false}>
-    <FolderIcon slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-	<span slot="title">File System</span>
+    {#snippet icon()}
+        <FolderIcon  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+    {/snippet}
+	{#snippet title()}
+        <span >File System</span>
+    {/snippet}
     <div class="w-full overflow-x-auto">
 		{#await getFiles()}
 			<Spinner />

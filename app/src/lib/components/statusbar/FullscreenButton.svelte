@@ -1,8 +1,10 @@
 <script lang="ts">
     import { isFullscreen, toggleFullscreen } from '$lib/stores';
 	import { MdiFullscreenExit, MdiFullscreen } from '../icons';
+
+    const SvelteComponent = $derived($isFullscreen ? MdiFullscreenExit : MdiFullscreen);
 </script>
 
-<button on:click={toggleFullscreen}>
-    <svelte:component this={$isFullscreen ? MdiFullscreenExit : MdiFullscreen} class="h-7 w-7" />
+<button onclick={toggleFullscreen}>
+    <SvelteComponent class="h-7 w-7" />
 </button>

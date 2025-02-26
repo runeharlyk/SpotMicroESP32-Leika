@@ -27,7 +27,7 @@
 
 {#if $features.sleep}
     <div class="flex-none">
-        <button class="btn btn-square btn-ghost h-9 w-10" on:click={confirmSleep}>
+        <button class="btn btn-square btn-ghost h-9 w-10" onclick={confirmSleep}>
             <Power class="text-error h-9 w-9" />
         </button>
     </div>

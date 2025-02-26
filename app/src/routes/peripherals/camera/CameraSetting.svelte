@@ -2,7 +2,7 @@
 	import { api } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
     import type { CameraSettings } from '$lib/types/models';
-    let settings:CameraSettings
+    let settings:CameraSettings = $state()
 
     const getCameraSettings = async () => {
         const result = await api.get<CameraSettings>('/api/camera/settings')
@@ -27,7 +27,7 @@
     <Spinner />
 {:then _} 
     <div class="flex flex-col gap-1">
-        <button class="btn btn-primary" type="button" on:click={updateCameraSettings}>Update camera settings</button>
+        <button class="btn btn-primary" type="button" onclick={updateCameraSettings}>Update camera settings</button>
 
         <label for="brightness">
             Brightness {settings.brightness}

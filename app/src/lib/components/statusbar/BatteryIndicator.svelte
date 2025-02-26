@@ -5,7 +5,11 @@
 
 	const features = useFeatureFlags();
 
-	export let battery:Battery;
+	interface Props {
+		battery: Battery;
+	}
+
+	let { battery }: Props = $props();
 
 	const getBatteryIcon = () => {
 		if (battery.voltage === 0) return BatteryCharging;
@@ -18,9 +22,9 @@
 </script>
 
 {#if $features.battery}
+	{@const SvelteComponent = getBatteryIcon()}
 	<div class="tooltip tooltip-left z-10" data-tip="{battery.voltage}V {Math.floor(battery.current*10)/10} mA">
-		<svelte:component 
-			this={getBatteryIcon()} 
+		<SvelteComponent 
 			class="h-7 w-7 -rotate-90 {battery.voltage === 0 || battery.voltage <= 7.6 ? 'animate-pulse' : ''} {battery.voltage <= 7.6 ? 'text-error' : ''}" 
 		/>
 	</div>

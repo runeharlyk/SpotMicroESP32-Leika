@@ -1,7 +1,8 @@
 <script>
 	import logo from '$lib/assets/logo512.png';
 
-	export let appName;
+	/** @type {{appName: any}} */
+	let { appName } = $props();
 </script>
 
 <a

@@ -41,14 +41,24 @@
     import type { URDFRobot } from 'urdf-loader';
     import { get } from 'svelte/store';
 
-    export let sky = true;
-    export let orbit = false;
-    export let panel = true;
-    export let debug = false;
-    export let ground = true;
+    interface Props {
+        sky?: boolean;
+        orbit?: boolean;
+        panel?: boolean;
+        debug?: boolean;
+        ground?: boolean;
+    }
 
-    let sceneManager = new SceneBuilder();
-    let canvas: HTMLCanvasElement;
+    let {
+        sky = true,
+        orbit = false,
+        panel = true,
+        debug = false,
+        ground = true
+    }: Props = $props();
+
+    let sceneManager = $state(new SceneBuilder());
+    let canvas: HTMLCanvasElement = $state();
 
     let currentModelAngles: number[] = new Array(12).fill(0);
     let modelTargetAngles: number[] = new Array(12).fill(0);
@@ -332,6 +342,6 @@
     };
 </script>
 
-<svelte:window on:resize={sceneManager.fillParent} />
+<svelte:window onresize={sceneManager.fillParent} />
 
 <canvas bind:this={canvas}></canvas>

@@ -1,9 +1,13 @@
 <script lang="ts">
     import { api } from '$lib/api';
     import { onMount } from 'svelte';
-    export let data = {
+    interface Props {
+        data?: any;
+    }
+
+    let { data = $bindable({
         servos: []
-    };
+    }) }: Props = $props();
 
     const updateValue = (event, index, key) => {
         data.servos[index][key] = event.target.innerText;
@@ -36,29 +40,29 @@
                 <tr>
                     <td
                         contenteditable="true"
-                        on:blur={syncConfig}
-                        on:input={event => updateValue(event, index, 'center_pwm')}
+                        onblur={syncConfig}
+                        oninput={event => updateValue(event, index, 'center_pwm')}
                     >
                         {servo.center_pwm}
                     </td>
                     <td
                         contenteditable="true"
-                        on:blur={syncConfig}
-                        on:input={event => updateValue(event, index, 'center_angle')}
+                        onblur={syncConfig}
+                        oninput={event => updateValue(event, index, 'center_angle')}
                     >
                         {servo.center_angle}
                     </td>
                     <td
                         contenteditable="true"
-                        on:blur={syncConfig}
-                        on:input={event => updateValue(event, index, 'direction')}
+                        onblur={syncConfig}
+                        oninput={event => updateValue(event, index, 'direction')}
                     >
                         {servo.direction}
                     </td>
                     <td
                         contenteditable="true"
-                        on:blur={syncConfig}
-                        on:input={event => updateValue(event, index, 'conversion')}
+                        onblur={syncConfig}
+                        oninput={event => updateValue(event, index, 'conversion')}
                     >
                         {servo.conversion}
                     </td>

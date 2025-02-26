@@ -1,38 +1,33 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-
-    const dispatch = createEventDispatcher();
-
-    type menuItem = {
+    import MenuList from './MenuList.svelte';
+    type MenuItem = {
         title: string;
         icon: ConstructorOfATypedSvelteComponent;
         href?: string;
         feature: boolean;
         active?: boolean;
-        submenu?: menuItem[];
+        submenu?: MenuItem[];
     };
 
-    export let menuItems: menuItem[];
-
-    export let level = 0;
+    let { level, menuItems, select, class: klass } = $props();
 
     const selectMenuItem = (title: string) => {
-        dispatch('select', title);
+        select(title);
     };
 </script>
 
-<ul class={$$props.class + ' menu'}>
-    {#each menuItems as menuItem, i (menuItem.title)}
+<ul class={klass + ' menu'}>
+    {#each menuItems as MenuItem[] as menuItem, i (menuItem.title)}
         {#if menuItem.feature}
             <li>
                 {#if menuItem.submenu}
                     <details open={menuItem.submenu.some(subItem => subItem.active)}>
                         <summary class="text-lg font-bold">
-                            <svelte:component this={menuItem.icon} class="h-6 w-6" />
+                            <menuItem.icon class="h-6 w-6" />
                             {menuItem.title}
                         </summary>
                         <div class="pl-4">
-                            <svelte:self menuItems={menuItem.submenu} level={level + 1} />
+                            <MenuList menuItems={menuItem.submenu} level={level + 1} />
                         </div>
                     </details>
                 {:else}
@@ -42,9 +37,9 @@
                         class:bg-base-100={menuItem.active}
                         class:text-lg={level === 0}
                         class:text-md={level === 1}
-                        on:click={() => selectMenuItem(menuItem.title)}
+                        onclick={() => selectMenuItem(menuItem.title)}
                     >
-                        <svelte:component this={menuItem.icon} class="h-6 w-6" />
+                        <menuItem.icon class="h-6 w-6" />
                         {menuItem.title}
                     </a>
                 {/if}

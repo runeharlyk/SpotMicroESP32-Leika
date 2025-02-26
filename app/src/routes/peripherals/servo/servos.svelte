@@ -10,9 +10,9 @@
 
     let isLoading = false;
 
-    let active = false;
+    let active = $state(false);
 
-    let servoId = 0;
+    let servoId = $state(0);
 
     const throttler = new Throttler();
 
@@ -29,7 +29,7 @@
         socket.sendEvent('servoState', { active: 0 });
     };
 
-    let pwm = 306;
+    let pwm = $state(306);
 
     const updatePWM = () => {
         throttler.throttle(() => {
@@ -39,15 +39,19 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <MotorOutline slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-    <span slot="title">Servo</span>
+    {#snippet icon()}
+        <MotorOutline  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+    {/snippet}
+    {#snippet title()}
+        <span >Servo</span>
+    {/snippet}
     {pwm}
     <input
         type="range"
         min="80"
         max="600"
         bind:value={pwm}
-        on:input={updatePWM}
+        oninput={updatePWM}
         class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
     />
 
@@ -63,7 +67,7 @@
                     type="checkbox"
                     class="toggle"
                     bind:checked={active}
-                    on:change={active ? activateServo : deactivateServo}
+                    onchange={active ? activateServo : deactivateServo}
                 />
             </span>
         </div>

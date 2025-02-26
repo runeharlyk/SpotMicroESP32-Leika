@@ -7,4 +7,4 @@
 </script>
 
 
-<button on:click={deactivate} class="bg-error text-white btn rounded-none">STOP</button>
+<button onclick={deactivate} class="bg-error text-white btn rounded-none">STOP</button>
