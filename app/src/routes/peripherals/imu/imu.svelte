@@ -15,13 +15,13 @@
 
     Chart.register(...registerables);
 
-    let angleChartElement: HTMLCanvasElement;
+    let angleChartElement: HTMLCanvasElement = $state();
 	let angleChart: Chart;
 
-    let tempChartElement: HTMLCanvasElement;
+    let tempChartElement: HTMLCanvasElement = $state();
 	let tempChart: Chart;
 
-    let altitudeChartElement: HTMLCanvasElement;
+    let altitudeChartElement: HTMLCanvasElement = $state();
 	let altitudeChart: Chart;
 
     const handleImu = (data: IMU) => {
@@ -272,15 +272,19 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <Rotate3d slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-    <span slot="title">IMU</span>
+    {#snippet icon()}
+		<Rotate3d  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+	{/snippet}
+    {#snippet title()}
+		<span >IMU</span>
+	{/snippet}
     {#if $features.imu} 
         <div class="w-full overflow-x-auto">
             <div
             class="flex w-full flex-col space-y-1 h-60"
             transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-                <canvas bind:this={angleChartElement} />
+                <canvas bind:this={angleChartElement}></canvas>
             </div>
         </div>
     {/if}
@@ -290,7 +294,7 @@
                 class="flex w-full flex-col space-y-1 h-60"
                 transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-                <canvas bind:this={tempChartElement} />
+                <canvas bind:this={tempChartElement}></canvas>
             </div>
         </div>
         <div class="w-full overflow-x-auto">
@@ -298,7 +302,7 @@
             class="flex w-full flex-col space-y-1 h-60"
             transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-            <canvas bind:this={altitudeChartElement} />
+            <canvas bind:this={altitudeChartElement}></canvas>
         </div>
     </div>
     {/if}

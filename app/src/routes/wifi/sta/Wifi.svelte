@@ -1,5 +1,3 @@
-<svelte:options immutable={true} />
-
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import { openModal, closeModal } from 'svelte-modals';
@@ -38,7 +36,7 @@
 
     const features = useFeatureFlags();
 
-    let networkEditable: KnownNetworkItem = {
+    let networkEditable: KnownNetworkItem = $state({
         ssid: '',
         password: '',
         static_ip_config: false,
@@ -47,32 +45,32 @@
         gateway_ip: undefined,
         dns_ip_1: undefined,
         dns_ip_2: undefined
-    };
+    });
 
-    let static_ip_config = false;
+    let static_ip_config = $state(false);
 
-    let newNetwork: boolean = true;
-    let showNetworkEditor: boolean = false;
+    let newNetwork: boolean = $state(true);
+    let showNetworkEditor: boolean = $state(false);
 
-    let wifiStatus: WifiStatus;
-    let wifiSettings: WifiSettings;
+    let wifiStatus: WifiStatus = $state();
+    let wifiSettings: WifiSettings = $state();
 
-    let dndNetworkList: KnownNetworkItem[] = [];
+    let dndNetworkList: KnownNetworkItem[] = $state([]);
 
-    let showWifiDetails = false;
+    let showWifiDetails = $state(false);
 
-    let formField: any;
+    let formField: any = $state();
 
-    let formErrors = {
+    let formErrors = $state({
         ssid: false,
         local_ip: false,
         gateway_ip: false,
         subnet_mask: false,
         dns_1: false,
         dns_2: false
-    };
+    });
 
-    let formErrorhostname = false;
+    let formErrorhostname = $state(false);
 
     async function getWifiStatus() {
         const result = await api.get<WifiStatus>('/api/wifi/sta/status');
@@ -128,7 +126,8 @@
         }
     }
 
-    function validateWiFiForm() {
+    function validateWiFiForm(event: SubmitEvent) {
+        event.preventDefault();
         let valid = true;
 
         // Validate SSID
@@ -286,8 +285,12 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <Router slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-    <span slot="title">WiFi Connection</span>
+    {#snippet icon()}
+        <Router class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+    {/snippet}
+    {#snippet title()}
+        <span>WiFi Connection</span>
+    {/snippet}
     <div class="w-full overflow-x-auto">
         {#await getWifiStatus()}
             <Spinner />
@@ -350,10 +353,10 @@
                                 {wifiStatus.rssi} dBm
                             </div>
                         </div>
-                        <div class="grow" />
+                        <div class="grow"></div>
                         <button
                             class="btn btn-circle btn-ghost btn-sm modal-button"
-                            on:click={() => {
+                            onclick={() => {
                                 showWifiDetails = !showWifiDetails;
                             }}
                         >
@@ -451,7 +454,7 @@
             <div class="relative w-full overflow-visible">
                 <button
                     class="btn btn-primary text-primary-content btn-md absolute -top-14 right-16"
-                    on:click={() => {
+                    onclick={() => {
                         if (checkNetworkList()) {
                             addNetwork();
                             showNetworkEditor = true;
@@ -462,7 +465,7 @@
                 >
                 <button
                     class="btn btn-primary text-primary-content btn-md absolute -top-14 right-0"
-                    on:click={() => {
+                    onclick={() => {
                         if (checkNetworkList()) {
                             scanForNetworks();
                             showNetworkEditor = true;
@@ -482,51 +485,49 @@
                         itemSize={60}
                         itemCount={dndNetworkList.length}
                         on:drop={onDrop}
-                        let:index
                     >
-                        <!-- svelte-ignore a11y-click-events-have-key-events -->
-                        <div class="rounded-box bg-base-100 flex items-center space-x-3 px-4 py-2">
-                            <div class="mask mask-hexagon bg-primary h-auto w-10 shrink-0">
-                                <Router class="text-primary-content h-auto w-full scale-75" />
+                        {#snippet children({ index })}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <div
+                                class="rounded-box bg-base-100 flex items-center space-x-3 px-4 py-2"
+                            >
+                                <div class="mask mask-hexagon bg-primary h-auto w-10 shrink-0">
+                                    <Router class="text-primary-content h-auto w-full scale-75" />
+                                </div>
+                                <div>
+                                    <div class="font-bold">{dndNetworkList[index].ssid}</div>
+                                </div>
+                                <div class="flex-grow"></div>
+                                <div class="space-x-0 px-0 mx-0">
+                                    <button
+                                        class="btn btn-ghost btn-sm"
+                                        onclick={() => {
+                                            handleEdit(index);
+                                        }}
+                                    >
+                                        <Edit class="h-6 w-6" /></button
+                                    >
+                                    <button
+                                        class="btn btn-ghost btn-sm"
+                                        onclick={() => {
+                                            confirmDelete(index);
+                                        }}
+                                    >
+                                        <Delete class="text-error h-6 w-6" />
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <div class="font-bold">{dndNetworkList[index].ssid}</div>
-                            </div>
-                            <div class="flex-grow" />
-                            <div class="space-x-0 px-0 mx-0">
-                                <button
-                                    class="btn btn-ghost btn-sm"
-                                    on:click={() => {
-                                        handleEdit(index);
-                                    }}
-                                >
-                                    <Edit class="h-6 w-6" /></button
-                                >
-                                <button
-                                    class="btn btn-ghost btn-sm"
-                                    on:click={() => {
-                                        confirmDelete(index);
-                                    }}
-                                >
-                                    <Delete class="text-error h-6 w-6" />
-                                </button>
-                            </div>
-                        </div>
+                        {/snippet}
                     </DragDropList>
                 </div>
             </div>
 
-            <div class="divider mb-0" />
+            <div class="divider mb-0"></div>
             <div
                 class="flex flex-col gap-2 p-0"
                 transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-                <form
-                    class=""
-                    on:submit|preventDefault={validateWiFiForm}
-                    novalidate
-                    bind:this={formField}
-                >
+                <form class="" onsubmit={validateWiFiForm} novalidate bind:this={formField}>
                     <div class="grid w-full grid-cols-1 content-center gap-x-4 px-4 sm:grid-cols-2">
                         <div>
                             <label class="label" for="channel">
@@ -566,7 +567,7 @@
                     </div>
 
                     {#if showNetworkEditor}
-                        <div class="divider my-0" />
+                        <div class="divider my-0"></div>
                         <div
                             class="grid w-full grid-cols-1 content-center gap-x-4 px-4 sm:grid-cols-2"
                             transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -747,12 +748,12 @@
                         {/if}
                     {/if}
 
-                    <div class="divider mb-2 mt-0" />
+                    <div class="divider mb-2 mt-0"></div>
                     <div class="mx-4 flex flex-wrap justify-end gap-2">
                         <button class="btn btn-primary" type="submit" disabled={!showNetworkEditor}>
                             {newNetwork ? 'Add Network' : 'Update Network'}
                         </button>
-                        <button class="btn btn-primary" type="button" on:click={validateHostName}>
+                        <button class="btn btn-primary" type="button" onclick={validateHostName}>
                             Apply Settings
                         </button>
                     </div>

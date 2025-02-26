@@ -17,7 +17,7 @@
         { address: 119, part_number: 'BMP085', name: 'Temp/Barometric' }
     ];
 
-    let active_devices: I2CDevice[] = [];
+    let active_devices: I2CDevice[] = $state([]);
 
     onMount(() => {
         socket.on('i2cScan', handleScan);
@@ -38,8 +38,12 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <Connection slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-    <span slot="title">I<sup>2</sup>C</span>
+    {#snippet icon()}
+        <Connection  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+    {/snippet}
+    {#snippet title()}
+        <span >I<sup>2</sup>C</span>
+    {/snippet}
 
     <div class="grid">
         {#if active_devices.length === 0}

@@ -7,7 +7,7 @@
     import { imu } from '$lib/stores/imu';
     import type { IMU } from '$lib/types/models';
 
-    $: layout = $views.find(v => v.name === $selectedView)!;
+    let layout = $derived($views.find(v => v.name === $selectedView)!);
 
     onMount(() => {
         socket.on('imu', (data: IMU) => {

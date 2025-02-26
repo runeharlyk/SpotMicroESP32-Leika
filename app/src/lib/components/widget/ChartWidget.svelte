@@ -5,12 +5,16 @@
 	import { cubicOut } from "svelte/easing";
 	import { slide } from "svelte/transition";
 
-    let chartElement: HTMLCanvasElement;
+    let chartElement: HTMLCanvasElement = $state();
 	let chart: Chart;
 
-    export let label
-    export let data:number[]
-    export let title
+	interface Props {
+		label: any;
+		data: number[];
+		title: any;
+	}
+
+	let { label, data, title }: Props = $props();
 
     Chart.register(...registerables);
 
@@ -94,6 +98,6 @@
         class="flex w-full flex-col space-y-1 h-60"
         transition:slide|local={{ duration: 300, easing: cubicOut }}
     >
-        <canvas bind:this={chartElement} />
+        <canvas bind:this={chartElement}></canvas>
     </div>
 </div>

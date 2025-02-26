@@ -22,6 +22,11 @@
         useFeatureFlags
     } from '$lib/stores';
     import type { Analytics, DownloadOTA } from '$lib/types/models';
+    interface Props {
+        children?: import('svelte').Snippet;
+    }
+
+    let { children }: Props = $props();
 
     const features = useFeatureFlags();
 
@@ -82,7 +87,7 @@
 
     const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data);
 
-    let menuOpen = false;
+    let menuOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -96,24 +101,25 @@
         <Statusbar />
 
         <!-- Main page content here -->
-        <slot />
+        {@render children?.()}
     </div>
     <!-- Side Navigation -->
     <div class="drawer-side z-30 shadow-lg">
-        <label for="main-menu" class="drawer-overlay" />
+        <label for="main-menu" class="drawer-overlay"></label>
         <Menu on:menuClicked={() => (menuOpen = false)} />
     </div>
 </div>
 
 <Modals>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div
-        slot="backdrop"
-        class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur"
-        transition:fade
-        on:click={closeModal}
-    />
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    {#snippet backdrop()}
+        <div
+            class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur"
+            transition:fade
+            onclick={closeModal}
+        ></div>
+    {/snippet}
 </Modals>
 
 <Toast />

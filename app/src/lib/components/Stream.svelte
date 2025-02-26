@@ -2,7 +2,7 @@
     import { onDestroy } from 'svelte';
     import { location } from '$lib/stores';
 
-    let source = `${$location}/api/camera/stream`;
+    let source = $state(`${$location}/api/camera/stream`);
 
     onDestroy(() => (source = '#'));
 </script>

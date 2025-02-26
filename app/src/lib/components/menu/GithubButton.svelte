@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { Github } from "../icons";
 
-	export let github;
+	interface Props {
+		github: any;
+	}
+
+	let { github }: Props = $props();
 </script>
 
 {#if github.active}

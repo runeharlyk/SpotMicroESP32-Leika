@@ -86,9 +86,9 @@
 
 <div class="absolute top-0 left-0 w-screen h-screen">
 	<div class="absolute top-0 left-0 h-full w-full flex portrait:hidden">
-		<div id="left" class="flex w-60 items-center justify-end" />
-		<div class="flex-1" />
-		<div id="right" class="flex w-60 items-center" />
+		<div id="left" class="flex w-60 items-center justify-end"></div>
+		<div class="flex-1"></div>
+		<div id="right" class="flex w-60 items-center"></div>
 	</div>
 	<div class="absolute bottom-0 right-0 p-4 z-10 gap-2 flex-col hidden lg:flex">
 		<div class="flex justify-center w-full">
@@ -112,7 +112,7 @@
 					<button
 						class="btn join-item"
 						class:btn-primary={$mode === modes.indexOf(modeValue)}
-						on:click={() => changeMode(modeValue)}
+						onclick={() => changeMode(modeValue)}
 					>
 						{capitalize(modeValue)}
 					</button>
@@ -128,13 +128,13 @@
                     name="s1"
                     min="0"
                     max="100"
-                    on:input={(e) => handleRange(e, 's1')}
+                    oninput={(e) => handleRange(e, 's1')}
                     class="range range-sm range-primary"
 					/>
                 </div>
                 <div>
                     <label for="speed">Speed</label>
-                    <input type="range" name="speed" min="0" max="100" on:input={(e) => handleRange(e, 'speed')} class="range range-sm range-primary" />
+                    <input type="range" name="speed" min="0" max="100" oninput={(e) => handleRange(e, 'speed')} class="range range-sm range-primary" />
                 </div>
 			</div>
             {/if}
@@ -142,4 +142,4 @@
 	</div>
 </div>
 
-<svelte:window on:keyup={handleKeyup} on:keydown={handleKeyup} />
+<svelte:window onkeyup={handleKeyup} onkeydown={handleKeyup} />

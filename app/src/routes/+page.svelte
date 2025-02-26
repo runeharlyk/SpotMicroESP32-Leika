@@ -3,7 +3,11 @@
 	import { notifications } from '$lib/components/toasts/notifications';
 	import Visualization from '$lib/components/Visualization.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <div class="hero bg-base-100 h-screen">
@@ -17,7 +21,7 @@
 			<a
 				class="btn btn-primary"
 				href="/controller"
-				on:click={() => notifications.success('You did it!', 1000)}>Begin</a
+				onclick={() => notifications.success('You did it!', 1000)}>Begin</a
 			>
 		</div>
 	</div>

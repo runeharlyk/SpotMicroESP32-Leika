@@ -6,8 +6,12 @@
 </script>
 
 <SettingsCard collapsible={false}>
-    <Camera slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-    <span slot="title">Camera</span>
+    {#snippet icon()}
+		<Camera  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+	{/snippet}
+    {#snippet title()}
+		<span >Camera</span>
+	{/snippet}
     <Stream />
     <CameraSetting />
 </SettingsCard>

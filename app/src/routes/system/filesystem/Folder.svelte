@@ -1,11 +1,16 @@
 <script lang="ts">
+	import Folder from './Folder.svelte';
 	import File from './File.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import { FolderIcon, FolderOpenOutline } from '$lib/components/icons';
 
-	export let expanded = false;
-	export let name;
-	export let files;
+	interface Props {
+		expanded?: boolean;
+		name: any;
+		files: any;
+	}
+
+	let { expanded = $bindable(false), name, files }: Props = $props();
 
 	function toggle() {
 		expanded = !expanded;
@@ -18,7 +23,7 @@
     }
 </script>
 
-<button class="flex pl-2" on:click={toggle}>
+<button class="flex pl-2" onclick={toggle}>
     {#if expanded}
         <FolderOpenOutline class="w-6 h-6" />
     {:else}
@@ -32,7 +37,7 @@
         {#each Object.entries(files) as [name, content]}
             <li class="p-1">
                 {#if typeof content == 'object'}
-					<svelte:self {name} files={content} on:selected={updateSelected} />
+					<Folder {name} files={content} on:selected={updateSelected} />
 				{:else}
 					<File {name} on:selected={updateSelected}/>
 				{/if}

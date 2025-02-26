@@ -1,8 +1,13 @@
 <script lang="ts">
+	import WidgetContainer from './WidgetContainer.svelte';
 	import { WidgetComponents, type WidgetContainerConfig, isWidgetConfig } from '$lib/stores/application';
 	import Widget from './Widget.svelte';
 
-	export let container: WidgetContainerConfig;
+	interface Props {
+		container: WidgetContainerConfig;
+	}
+
+	let { container }: Props = $props();
 </script>
 
 <div class="w-full h-full flex flex-col overflow-hidden">
@@ -15,9 +20,10 @@
 		{#each container.widgets as widget, index (widget.id + '-' + index)}
 			<Widget>
 				{#if isWidgetConfig(widget)}
-					<svelte:component this={WidgetComponents[widget.component]} {...widget.props} />
+					{@const SvelteComponent = WidgetComponents[widget.component]}
+					<SvelteComponent {...widget.props} />
 				{:else if widget.widgets}
-					<svelte:self container={widget} />
+					<WidgetContainer container={widget} />
 				{/if}
 			</Widget>
 			{#if index !== container.widgets.length - 1}

@@ -1,8 +1,20 @@
 <script lang="ts">
-    export let min = 0;
-    export let max = 100;
-    export let step = 1;
-    export let value = (max - min) / 2;
+  import { createBubbler } from 'svelte/legacy';
+
+  const bubble = createBubbler();
+  interface Props {
+    min?: number;
+    max?: number;
+    step?: number;
+    value?: any;
+  }
+
+  let {
+    min = 0,
+    max = 100,
+    step = 1,
+    value = $bindable((max - min) / 2)
+  }: Props = $props();
 </script>
   
 <input
@@ -13,8 +25,8 @@
     max={max}
     step={step}
     bind:value
-    on:input
-    on:change
+    oninput={bubble('input')}
+    onchange={bubble('change')}
 />
 
 <style>
