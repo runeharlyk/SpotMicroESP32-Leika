@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '$app/stores';
-    import { openModal, closeModal, closeAllModals } from 'svelte-modals';
+    import { openModal, closeModal, closeAllModals } from 'svelte-modals/legacy';
     import { slide } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -82,10 +82,10 @@
 
 <SettingsCard collapsible={false}>
     {#snippet icon()}
-        <Github  class="lex-shrink-0 mr-2 h-6 w-6 self-end rounded-full" />
+        <Github class="lex-shrink-0 mr-2 h-6 w-6 self-end rounded-full" />
     {/snippet}
     {#snippet title()}
-        <span >Github Firmware Manager</span>
+        <span>Github Firmware Manager</span>
     {/snippet}
     {#await getGithubAPI()}
         <Spinner />

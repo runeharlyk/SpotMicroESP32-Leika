@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import { openModal, closeModal } from 'svelte-modals';
+    import { openModal, closeModal } from 'svelte-modals/legacy';
     import { slide } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import { notifications } from '$lib/components/toasts/notifications';

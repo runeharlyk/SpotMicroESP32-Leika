@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '$app/stores';
-    import { openModal, closeAllModals } from 'svelte-modals';
+    import { openModal, closeAllModals } from 'svelte-modals/legacy';
     import { notifications } from '$lib/components/toasts/notifications';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 

@@ -1,16 +1,12 @@
 <script lang="ts">
-    import { createBubbler } from 'svelte/legacy';
-
-    const bubble = createBubbler();
-    import { closeModal } from 'svelte-modals';
     import { focusTrap } from 'svelte-focus-trap';
     import { fly } from 'svelte/transition';
-
     import { onMount, onDestroy } from 'svelte';
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte';
     import type { NetworkItem, NetworkList } from '$lib/types/models';
     import { api } from '$lib/api';
     import { AP, Network, Reload, Cancel } from '$lib/components/icons';
+    import { modals, exitBeforeEnter } from 'svelte-modals';
 
     // provided by <Modals />
     interface Props {
@@ -80,8 +76,7 @@
         role="dialog"
         class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
         transition:fly={{ y: 50 }}
-        onintrostart={bubble('introstart')}
-        onoutroend={bubble('outroend')}
+        use:exitBeforeEnter
         use:focusTrap
     >
         <div
@@ -135,14 +130,17 @@
                     class="btn btn-primary inline-flex flex-none items-center"
                     disabled={scanActive}
                     onclick={scanNetworks}
-                    ><Reload class="mr-2 h-5 w-5" /><span>Scan again</span></button
                 >
+                    <Reload class="mr-2 h-5 w-5" /><span>Scan again</span>
+                </button>
 
                 <div class="flex-grow"></div>
                 <button
                     class="btn btn-warning text-warning-content inline-flex flex-none items-center"
-                    onclick={closeModal}><Cancel class="mr-2 h-5 w-5" /><span>Cancel</span></button
+                    onclick={() => modals.close()}
                 >
+                    <Cancel class="mr-2 h-5 w-5" /><span>Cancel</span>
+                </button>
             </div>
         </div>
     </div>

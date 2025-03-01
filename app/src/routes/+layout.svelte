@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
     import { page } from '$app/stores';
-    import { Modals, closeModal } from 'svelte-modals';
+    import { Modals, closeModal } from 'svelte-modals/legacy';
     import Toast from '$lib/components/toasts/Toast.svelte';
     import { notifications } from '$lib/components/toasts/notifications';
     import { fade } from 'svelte/transition';
