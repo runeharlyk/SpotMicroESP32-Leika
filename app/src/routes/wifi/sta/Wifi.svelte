@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import { openModal, closeModal } from 'svelte-modals/legacy';
+    import { modals } from 'svelte-modals';
     import { slide } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import { notifications } from '$lib/components/toasts/notifications';
@@ -205,12 +205,12 @@
     }
 
     function scanForNetworks() {
-        openModal(ScanNetworks, {
+        modals.open(ScanNetworks, {
             storeNetwork: (network: string) => {
                 addNetwork();
                 networkEditable.ssid = network;
                 showNetworkEditor = true;
-                closeModal();
+                modals.close();
             }
         });
     }
@@ -236,7 +236,7 @@
     }
 
     function confirmDelete(index: number) {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Delete Network',
             message: 'Are you sure you want to delete this network?',
             labels: {
@@ -252,21 +252,19 @@
                 dndNetworkList.splice(index, 1);
                 dndNetworkList = [...dndNetworkList]; //Trigger reactivity
                 showNetworkEditor = false;
-                closeModal();
+                modals.close();
             }
         });
     }
 
     function checkNetworkList() {
         if (dndNetworkList.length >= 5) {
-            openModal(InfoDialog, {
+            modals.open(InfoDialog, {
                 title: 'Reached Maximum Networks',
                 message:
                     'You have reached the maximum number of networks. Please delete one to add another.',
                 dismiss: { label: 'OK', icon: Check },
-                onDismiss: () => {
-                    closeModal();
-                }
+                onDismiss: () => modals.close()
             });
             return false;
         } else {

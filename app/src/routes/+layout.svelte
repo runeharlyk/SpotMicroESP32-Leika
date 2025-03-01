@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import { page } from '$app/stores';
-    import { Modals, closeModal } from 'svelte-modals/legacy';
+    import { page } from '$app/state';
+    import { Modals, modals } from 'svelte-modals';
     import Toast from '$lib/components/toasts/Toast.svelte';
     import { notifications } from '$lib/components/toasts/notifications';
     import { fade } from 'svelte/transition';
@@ -91,7 +91,7 @@
 </script>
 
 <svelte:head>
-    <title>{$page.data.title}</title>
+    <title>{page.data.title}</title>
 </svelte:head>
 
 <div class="drawer">
@@ -106,7 +106,7 @@
     <!-- Side Navigation -->
     <div class="drawer-side z-30 shadow-lg">
         <label for="main-menu" class="drawer-overlay"></label>
-        <Menu on:menuClicked={() => (menuOpen = false)} />
+        <Menu menuClicked={() => (menuOpen = false)} />
     </div>
 </div>
 
@@ -117,7 +117,7 @@
         <div
             class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur"
             transition:fade
-            onclick={closeModal}
+            onclick={modals.closeAll}
         ></div>
     {/snippet}
 </Modals>

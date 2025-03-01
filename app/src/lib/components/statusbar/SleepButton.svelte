@@ -1,6 +1,6 @@
 <script lang="ts">
     import { useFeatureFlags } from '$lib/stores';
-    import { closeModal, openModal } from 'svelte-modals/legacy';
+    import { modals } from 'svelte-modals';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
     import { api } from '$lib/api';
     import { Cancel, Power } from '../icons';
@@ -10,7 +10,7 @@
     const postSleep = async () => await api.post('/api/system/sleep');
 
     const confirmSleep = () => {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm Power Down',
             message: 'Are you sure you want to switch off the device?',
             labels: {
@@ -18,7 +18,7 @@
                 confirm: { label: 'Switch Off', icon: Power }
             },
             onConfirm: () => {
-                closeModal();
+                modals.close();
                 postSleep();
             }
         });
