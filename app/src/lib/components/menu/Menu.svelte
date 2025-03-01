@@ -1,8 +1,5 @@
 <script lang="ts">
-    import { run } from 'svelte/legacy';
-
-    import { page } from '$app/stores';
-    import { createEventDispatcher } from 'svelte';
+    import { page } from '$app/state';
     import { useFeatureFlags } from '$lib/stores/featureFlags';
     import GithubButton from '../menu/GithubButton.svelte';
     import LogoButton from '../menu/LogoButton.svelte';
@@ -29,11 +26,11 @@
 
     const features = useFeatureFlags();
 
-    const appName = $page.data.app_name;
+    const appName = page.data.app_name;
 
-    const copyright = $page.data.copyright;
+    const copyright = page.data.copyright;
 
-    const github = { href: 'https://github.com/' + $page.data.github, active: true };
+    const github = { href: 'https://github.com/' + page.data.github, active: true };
 
     type menuItem = {
         title: string;
@@ -44,8 +41,9 @@
         submenu?: menuItem[];
     };
 
-    let menuItems = $state();
-    run(() => {
+    let menuItems = $state<menuItem[]>([]);
+
+    $effect(() => {
         menuItems = [
             {
                 title: 'Connection',
@@ -137,14 +135,16 @@
                         icon: Update,
                         href: '/system/update',
                         feature:
-                            $features.ota || $features.upload_firmware || $features.download_firmware
+                            $features.ota ||
+                            $features.upload_firmware ||
+                            $features.download_firmware
                     }
                 ]
             }
         ] as menuItem[];
     });
 
-    const dispatch = createEventDispatcher();
+    const { menuClicked } = $props();
 
     function setActiveMenuItem(targetTitle: string) {
         menuItems.forEach(item => {
@@ -154,11 +154,11 @@
             });
         });
         menuItems = menuItems;
-        dispatch('menuClicked');
+        menuClicked();
     }
 
-    run(() => {
-        setActiveMenuItem($page.data.title);
+    $effect(() => {
+        setActiveMenuItem(page.data.title);
     });
 
     const updateMenu = (event: any) => {
@@ -169,7 +169,7 @@
 <div class="bg-base-200 text-base-content flex h-full w-80 flex-col p-4">
     <LogoButton {appName} />
 
-    <MenuList {menuItems} on:select{updateMenu} class="flex-grow flex-nowrap overflow-y-auto" />
+    <MenuList {menuItems} select={updateMenu} class="flex-grow flex-nowrap overflow-y-auto" />
 
     <div class="divider my-0"></div>
 
