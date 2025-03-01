@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { openModal, closeModal, closeAllModals } from 'svelte-modals/legacy';
+    import { page } from '$app/state';
+    import { modals } from 'svelte-modals';
     import { slide } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -21,7 +21,7 @@
             accept: 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
         };
-        const result = await api.get(`https://api.github.com/repos/${$page.data.github}/releases`, {
+        const result = await api.get(`https://api.github.com/repos/${page.data.github}/releases`, {
             headers
         });
         if (result.isErr()) {
@@ -53,17 +53,17 @@
         }
         if (url === '') {
             // if no asset was found, use the first one
-            openModal(InfoDialog, {
+            modals.open(InfoDialog, {
                 title: 'No matching firmware found',
                 message:
                     'No matching firmware was found for the current device. Upload the firmware manually or build from sources.',
                 dismiss: { label: 'OK', icon: Check },
-                onDismiss: () => closeModal()
+                onDismiss: () => modals.close()
             });
             return;
         }
 
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm flashing new firmware to the device',
             message: 'Are you sure you want to overwrite the existing firmware with a new one?',
             labels: {
@@ -72,8 +72,8 @@
             },
             onConfirm: () => {
                 postGithubDownload(url);
-                openModal(GithubUpdateDialog, {
-                    onConfirm: () => closeAllModals()
+                modals.open(GithubUpdateDialog, {
+                    onConfirm: () => modals.closeAll()
                 });
             }
         });

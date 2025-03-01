@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import { openModal, closeModal } from 'svelte-modals/legacy';
+    import { modals } from 'svelte-modals';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
     import SettingsCard from '$lib/components/SettingsCard.svelte';
     import Spinner from '$lib/components/Spinner.svelte';
@@ -60,7 +60,7 @@
     const postRestart = async () => await api.post('/api/system/restart');
 
     function confirmRestart() {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm Restart',
             message: 'Are you sure you want to restart the device?',
             labels: {
@@ -68,14 +68,14 @@
                 confirm: { label: 'Restart', icon: Power }
             },
             onConfirm: () => {
-                closeModal();
+                modals.close();
                 postRestart();
             }
         });
     }
 
     function confirmReset() {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm Factory Reset',
             message: 'Are you sure you want to reset the device to its factory defaults?',
             labels: {
@@ -83,14 +83,14 @@
                 confirm: { label: 'Factory Reset', icon: FactoryReset }
             },
             onConfirm: () => {
-                closeModal();
+                modals.close();
                 postFactoryReset();
             }
         });
     }
 
     function confirmSleep() {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm Going to Sleep',
             message: 'Are you sure you want to put the device into sleep?',
             labels: {
@@ -98,7 +98,7 @@
                 confirm: { label: 'Sleep', icon: Sleep }
             },
             onConfirm: () => {
-                closeModal();
+                modals.close();
                 postSleep();
             }
         });

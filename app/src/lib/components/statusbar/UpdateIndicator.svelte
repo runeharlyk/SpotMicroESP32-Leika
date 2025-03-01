@@ -1,9 +1,8 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { openModal, closeAllModals } from 'svelte-modals/legacy';
+    import { page } from '$app/state';
+    import { modals } from 'svelte-modals';
     import { notifications } from '$lib/components/toasts/notifications';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-
     import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte';
     import { compareVersions } from 'compare-versions';
     import { onMount } from 'svelte';
@@ -20,8 +19,8 @@
 
     let { update = $bindable(false) }: Props = $props();
 
-    let firmwareVersion: string = $state();
-    let firmwareDownloadLink: string = $state();
+    let firmwareVersion: string = $state('');
+    let firmwareDownloadLink: string = $state('');
 
     async function getGithubAPI() {
         const headers = {
@@ -29,7 +28,7 @@
             'X-GitHub-Api-Version': '2022-11-28'
         };
         const result = await api.get<GithubRelease>(
-            `https://api.github.com/repos/${$page.data.github}/releases/latest`,
+            `https://api.github.com/repos/${page.data.github}/releases/latest`,
             { headers }
         );
         if (result.inner.message === '404' || result.inner.message == 'Not Found') {
@@ -73,17 +72,12 @@
     onMount(async () => {
         if ($features.download_firmware) {
             await getGithubAPI();
-            const interval = setInterval(
-                async () => {
-                    await getGithubAPI();
-                },
-                60 * 60 * 1000
-            ); // once per hour
+            setInterval(async () => await getGithubAPI(), 60 * 60 * 1000); // once per hour
         }
     });
 
     function confirmGithubUpdate(url: string) {
-        openModal(ConfirmDialog, {
+        modals.open(ConfirmDialog, {
             title: 'Confirm flashing new firmware to the device',
             message: 'Are you sure you want to overwrite the existing firmware with a new one?',
             labels: {
@@ -92,8 +86,8 @@
             },
             onConfirm: () => {
                 postGithubDownload(url);
-                openModal(GithubUpdateDialog, {
-                    onConfirm: () => closeAllModals()
+                modals.open(GithubUpdateDialog, {
+                    onConfirm: () => modals.closeAll()
                 });
             }
         });
@@ -108,8 +102,9 @@
         >
             <span
                 class="indicator-item indicator-top indicator-center badge badge-info badge-xs top-2 scale-75 lg:top-1"
-                >{firmwareVersion}</span
             >
+                {firmwareVersion}
+            </span>
             <Firmware class="h-7 w-7" />
         </button>
     </div>
