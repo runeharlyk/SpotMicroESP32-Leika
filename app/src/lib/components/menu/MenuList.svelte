@@ -27,7 +27,12 @@
                             {menuItem.title}
                         </summary>
                         <div class="pl-4">
-                            <MenuList menuItems={menuItem.submenu} level={level + 1} />
+                            <MenuList
+                                menuItems={menuItem.submenu}
+                                level={level + 1}
+                                {select}
+                                class={klass}
+                            />
                         </div>
                     </details>
                 {:else}
