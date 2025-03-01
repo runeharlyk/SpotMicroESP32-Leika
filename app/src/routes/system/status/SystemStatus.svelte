@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import { openModal, closeModal } from 'svelte-modals';
+    import { openModal, closeModal } from 'svelte-modals/legacy';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
     import SettingsCard from '$lib/components/SettingsCard.svelte';
     import Spinner from '$lib/components/Spinner.svelte';
@@ -107,10 +107,10 @@
 
 <SettingsCard collapsible={false}>
     {#snippet icon()}
-        <Health  class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+        <Health class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
     {/snippet}
     {#snippet title()}
-        <span >System Status</span>
+        <span>System Status</span>
     {/snippet}
 
     <div class="w-full overflow-x-auto">

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { openModal, closeModal } from 'svelte-modals';
+    import { openModal, closeModal } from 'svelte-modals/legacy';
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
     import SettingsCard from '$lib/components/SettingsCard.svelte';
 
@@ -33,10 +33,10 @@
 
 <SettingsCard collapsible={false}>
     {#snippet icon()}
-        <OTA  class="lex-shrink-0 mr-2 h-6 w-6 self-end rounded-full" />
+        <OTA class="lex-shrink-0 mr-2 h-6 w-6 self-end rounded-full" />
     {/snippet}
     {#snippet title()}
-        <span >Upload Firmware</span>
+        <span>Upload Firmware</span>
     {/snippet}
     <div class="alert alert-warning shadow-lg">
         <Warning class="h-6 w-6 flex-shrink-0" />

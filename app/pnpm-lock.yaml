@@ -33,8 +33,8 @@ importers:
         specifier: ^0.1.8
         version: 0.1.8
       svelte-modals:
-        specifier: ^1.3.0
-        version: 1.3.0(svelte@5.20.4)
+        specifier: ^2.0.0
+        version: 2.0.0(svelte@5.20.4)
       three:
         specifier: ^0.162.0
         version: 0.162.0
@@ -1813,10 +1813,10 @@ packages:
   svelte-focus-trap@1.2.0:
     resolution: {integrity: sha512-/hIUHgKcFlewsQreq8v7DYNBkQe7rR0c94PNBOCsmeUwoIYAy6iXJ1pH0k3rWpjwZHKtUxeXbX1iRFlFhipbeg==}
 
-  svelte-modals@1.3.0:
-    resolution: {integrity: sha512-b1Ylnyv9O6b7VYeWGJVToaVU2lw7GtErVwiEdojyfnOuZcrhNlQ5eDqbTrL3xyKz8j2VTy/QiGUl1lm/6SnQ2A==}
+  svelte-modals@2.0.0:
+    resolution: {integrity: sha512-wBClXmScNStF/rG75ZP7hEiKXRJ5H+DhA2dkMPQd+FX2Hc1XTj1n5cZGC7uTYCYOVmQwrsDOlL5a2V5E6q3f+A==}
     peerDependencies:
-      svelte: ^3.0.0 || ^4.0.0
+      svelte: '>=5'
 
   svelte@5.20.4:
     resolution: {integrity: sha512-2Mo/AfObaw9zuD0u1JJ7sOVzRCGcpETEyDkLbtkcctWpCMCIyT0iz83xD8JT29SR7O4SgswuPRIDYReYF/607A==}
@@ -3740,7 +3740,7 @@ snapshots:
     dependencies:
       mousetrap: 1.6.5
 
-  svelte-modals@1.3.0(svelte@5.20.4):
+  svelte-modals@2.0.0(svelte@5.20.4):
     dependencies:
       svelte: 5.20.4
 

@@ -55,7 +55,7 @@
         "jwt-decode": "^4.0.0",
         "nipplejs": "^0.10.1",
         "svelte-dnd-list": "^0.1.8",
-        "svelte-modals": "^1.3.0",
+        "svelte-modals": "^2.0.0",
         "three": "^0.162.0",
         "urdf-loader": "^0.12.1",
         "uzip": "^0.20201231.0",
