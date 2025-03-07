@@ -495,7 +495,7 @@
                                 <div>
                                     <div class="font-bold">{dndNetworkList[index].ssid}</div>
                                 </div>
-                                <div class="flex-grow"></div>
+                                <div class="grow"></div>
                                 <div class="space-x-0 px-0 mx-0">
                                     <button
                                         class="btn btn-ghost btn-sm"
