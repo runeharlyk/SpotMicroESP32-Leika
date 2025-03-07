@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { telemetry } from '$lib/stores/telemetry'
 
   import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
@@ -17,10 +17,10 @@
     <label for="main-menu" class="btn btn-ghost btn-circle btn-sm drawer-button">
       <Hamburger class="h-6 w-auto" />
     </label>
-    {#if $page.data.title === 'Controller'}
+    {#if page.data.title === 'Controller'}
       <ViewSelector />
     {:else}
-      <h1 class="px-2 text-xl font-bold lg:text-2xl">{$page.data.title}</h1>
+      <h1 class="px-2 text-xl font-bold lg:text-2xl">{page.data.title}</h1>
     {/if}
   </div>
 
