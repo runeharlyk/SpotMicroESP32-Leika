@@ -1,7 +1,7 @@
 <script lang="ts">
-	import FileSystem from './FileSystem.svelte';
+  import FileSystem from './FileSystem.svelte'
 </script>
 
 <div class="mx-0 my-1 flex flex-col space-y-4 sm:mx-8 sm:my-8">
-	<FileSystem />
+  <FileSystem />
 </div>
