@@ -1,28 +1,29 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import { notifications } from '$lib/components/toasts/notifications';
-	import Visualization from '$lib/components/Visualization.svelte';
+  import { goto } from '$app/navigation'
+  import Visualization from '$lib/components/Visualization.svelte'
+  import { socket } from '$lib/stores'
+  import { onMount } from 'svelte'
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+  onMount(() => {
+    socket.subscribe(isConnected => {
+      if (isConnected) {
+        goto('/controller')
+      }
+    })
+  })
 </script>
 
-<div class="hero bg-base-100 h-screen">
-	<div class="card md:card-side bg-base-200 shadow-2xl flex justify-center items-center">
-        <div class="w-64 h-64">
-            <Visualization sky={false} orbit panel={false} ground={false}/>
-        </div>
-		<div class="card-body w-80">
-			<h2 class="card-title text-center text-2xl">Welcome to {data.app_name}</h2>
-			<p class="py-6 text-center"></p>
-			<a
-				class="btn btn-primary"
-				href="/controller"
-				onclick={() => notifications.success('You did it!', 1000)}>Begin</a
-			>
-		</div>
-	</div>
+<div class="w-full h-full flex justify-center items-center">
+  <div class="h-full flex flex-col">
+    <div class="grow-3 w-80 relative">
+      <Visualization sky={false} orbit panel={false} ground={false} zoom={8} />
+      <div class="absolute bottom-0 w-full h-40 bg-gradient-to-t from-base-100 to-transparent">
+      </div>
+    </div>
+    <div class="grow-3 flex justify-center">
+      <a class="btn btn-primary rounded-full" href={$socket ? '/controller' : '/connection'}>
+        Add Robot Dog
+      </a>
+    </div>
+  </div>
 </div>
