@@ -115,7 +115,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     {#snippet backdrop()}
         <div
-            class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur"
+            class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur-sm"
             transition:fade
             onclick={modals.closeAll}
         ></div>

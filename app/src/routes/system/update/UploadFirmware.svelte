@@ -39,7 +39,7 @@
         <span>Upload Firmware</span>
     {/snippet}
     <div class="alert alert-warning shadow-lg">
-        <Warning class="h-6 w-6 flex-shrink-0" />
+        <Warning class="h-6 w-6 shrink-0" />
         <span
             >Uploading a new firmware (.bin) file will replace the existing firmware. You may upload
             a (.md5) file first to verify the uploaded firmware.

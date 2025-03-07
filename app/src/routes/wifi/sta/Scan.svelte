@@ -116,7 +116,7 @@
                                             Channel: {network.channel}
                                         </div>
                                     </div>
-                                    <div class="flex-grow"></div>
+                                    <div class="grow"></div>
                                     <RssiIndicator showDBm={true} rssi={network.rssi} />
                                 </div>
                             </li>
@@ -134,7 +134,7 @@
                     <Reload class="mr-2 h-5 w-5" /><span>Scan again</span>
                 </button>
 
-                <div class="flex-grow"></div>
+                <div class="grow"></div>
                 <button
                     class="btn btn-warning text-warning-content inline-flex flex-none items-center"
                     onclick={() => modals.close()}
