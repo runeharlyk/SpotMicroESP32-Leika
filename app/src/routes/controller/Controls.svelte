@@ -60,10 +60,10 @@
   const handleKeyup = (event: KeyboardEvent) => {
     const down = event.type === 'keydown'
     input.update(data => {
-      if (event.key === 'w') data.left.y = down ? -1 : 0
-      if (event.key === 'a') data.left.x = down ? -1 : 0
-      if (event.key === 's') data.left.y = down ? 1 : 0
-      if (event.key === 'd') data.left.x = down ? 1 : 0
+      if (event.key === 'w') data.left.y = down ? 1 : 0
+      if (event.key === 'a') data.left.x = down ? 1 : 0
+      if (event.key === 's') data.left.y = down ? -1 : 0
+      if (event.key === 'd') data.left.x = down ? -1 : 0
       return data
     })
     throttle.throttle(updateData, throttle_timing)
