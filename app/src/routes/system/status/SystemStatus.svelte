@@ -6,12 +6,10 @@
   import Spinner from '$lib/components/Spinner.svelte'
   import { slide } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-
   import type { SystemInformation, Analytics } from '$lib/types/models'
   import { socket } from '$lib/stores/socket'
   import { api } from '$lib/api'
   import { convertSeconds } from '$lib/utilities'
-
   import { useFeatureFlags } from '$lib/stores/featureFlags'
   import {
     Cancel,
@@ -31,7 +29,7 @@
     Temperature,
     Stopwatch
   } from '$lib/components/icons'
-  import StatusItem from './StatusItem.svelte'
+  import StatusItem from '$lib/components/StatusItem.svelte'
   import ActionButton from './ActionButton.svelte'
 
   const features = useFeatureFlags()
