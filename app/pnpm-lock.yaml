@@ -11,6 +11,9 @@ importers:
       '@niku/vite-env-caster':
         specifier: ^1.0.2
         version: 1.1.2
+      '@sveltejs/adapter-auto':
+        specifier: ^4.0.0
+        version: 4.0.0(@sveltejs/kit@2.17.3(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))
       '@tailwindcss/vite':
         specifier: ^4.0.12
         version: 4.0.12(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2))
@@ -626,6 +629,11 @@ packages:
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
+
+  '@sveltejs/adapter-auto@4.0.0':
+    resolution: {integrity: sha512-kmuYSQdD2AwThymQF0haQhM8rE5rhutQXG4LNbnbShwhMO4qQGnKaaTy+88DuNSuoQDi58+thpq8XpHc1+oEKQ==}
+    peerDependencies:
+      '@sveltejs/kit': ^2.0.0
 
   '@sveltejs/adapter-static@3.0.1':
     resolution: {integrity: sha512-6lMvf7xYEJ+oGeR5L8DFJJrowkefTK6ZgA4JiMqoClMkKq0s6yvsd3FZfCFvX1fQ0tpCD7fkuRVHsnUVgsHyNg==}
@@ -2604,6 +2612,11 @@ snapshots:
     optional: true
 
   '@sinclair/typebox@0.27.8': {}
+
+  '@sveltejs/adapter-auto@4.0.0(@sveltejs/kit@2.17.3(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))':
+    dependencies:
+      '@sveltejs/kit': 2.17.3(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2))
+      import-meta-resolve: 4.1.0
 
   '@sveltejs/adapter-static@3.0.1(@sveltejs/kit@2.17.3(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))(svelte@5.20.4)(vite@6.2.1(jiti@2.4.2)(lightningcss@1.29.2)(yaml@2.4.2)))':
     dependencies:

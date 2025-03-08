@@ -46,6 +46,7 @@
   "type": "module",
   "dependencies": {
     "@niku/vite-env-caster": "^1.0.2",
+    "@sveltejs/adapter-auto": "^4.0.0",
     "@tailwindcss/vite": "^4.0.12",
     "chart.js": "^4.4.2",
     "compare-versions": "^6.1.0",
