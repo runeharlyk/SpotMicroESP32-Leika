@@ -48,3 +48,18 @@ All the legs should be pointing down. If they are not, you have two options. 1. 
 ## Circuit diagram
 
 ![Electronics diagram](media/circuitschematic.png "Title")
+
+PCA9685 Servo PWM numbers to joint:
+| PWM_0  | Front Left Shoulder          |
+|--------|------------------------------|
+| PWM_1  | Front Left Upper-Limb        |
+| PWM_2  | Front Left Leg (Lower-Limb)  |
+| PWM_3  | Front Right Shoulder         |
+| PWM_4  | Front Right Upper-Limb       |
+| PWM_5  | Front Right Leg (Lower-Limb) |
+| PWM_6  | Rear Left Shoulder           |
+| PWM_7  | Rear Left Upper-Limb         |
+| PWM_8  | Rear Left Leg (Lower-Limb)   |
+| PWM_9  | Rear Right Shoulder          |
+| PWM_10 | Rear Right Upper-Limb        |
+| PWM_11 | Rear Right Leg (Lower-limb)  |
