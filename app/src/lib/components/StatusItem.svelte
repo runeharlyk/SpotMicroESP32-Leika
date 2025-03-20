@@ -9,7 +9,7 @@
     class: klass = '',
     children = null
   } = $props<{
-    icon: any
+    icon?: any
     title: string
     description?: string | number
     variant?: Variant
@@ -32,9 +32,11 @@
 </script>
 
 <div class="rounded-box bg-base-100 flex items-center space-x-3 px-4 py-2 {klass}">
-  <div class="mask mask-hexagon {bgColor} h-auto w-10 flex-none">
-    <Icon class="{textColor} h-auto w-full scale-75" />
-  </div>
+  {#if icon}
+    <div class="mask mask-hexagon {bgColor} h-auto w-10 flex-none">
+      <Icon class="{textColor} h-auto w-full scale-75" />
+    </div>
+  {/if}
   <div class="grow">
     <div class="font-bold">{title}</div>
     <div class="text-sm opacity-75 grow">{description}</div>
