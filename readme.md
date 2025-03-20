@@ -6,7 +6,7 @@
     <br />  
     Spot Micro - Leika 🐕
   </h1>
-  <h4>A small quadruped robot, inspired by boston dynamic <a href="https://bostondynamics.com/products/spot/" target="_blank">Spot</a>.</h4>
+  <h4>A small quadruped robot, inspired by Boston Dynamics <a href="https://bostondynamics.com/products/spot/" target="_blank">Spot</a>.</h4>
 
   <p>
    <a href="docs/readme.md"><strong>Explore the docs »</strong></a>
@@ -25,7 +25,7 @@
 ## 📜 Overview
 
 Leika is a smaller quadruped robot for the Spot-Micro community.
-Built on an ESP32 and powered by FreeRTOS, she can handle multiple tasks seamlessly - Like video and data streaming, solving kinematic and gait planning, controlling IO and much more.
+Built on an ESP32 and powered by FreeRTOS, she can handle multiple tasks seamlessly—like video and data streaming, solving kinematic and gait planning, controlling I/O, and much more.
 By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
 
 ## 🎯 Features
@@ -83,8 +83,8 @@ $$ -->
 
 ### 🎮 Controller
 
-The controller is a svelte app, which get embedded in the firmware of the robot.
-Which mean that new releases and OTA updates includes the latest controller.
+The controller is a Svelte app, which get embedded in the firmware of the robot.
+Which means that new releases and OTA updates include the latest controller.
 
 The controller includes full control over robot settings like network and calibration, and a visualization.
 
@@ -113,11 +113,11 @@ The kinematic for the robot is from this [kinematics paper](https://www.research
 
 ## 🏁 Motion state controller
 
-The motion controller is a finite state machine with state allowing for static and dynamic posing, 8-phase crawl and bezier based trot gait, and choreographed animation.
+The motion controller is a finite state machine with states allowing for static and dynamic posing, an 8-phase crawl, Bezier-based trot gait, and choreographed animation.
 
 ### Controller Input Mapping
 
-The controller input is interpret different between the modes. For the walking it it looks like this:
+The controller input is interpreted differently between the modes.
 
 | Controller Input | Mapped to Gait Step | Range   |
 | ---------------- | ------------------- | ------- |
@@ -175,7 +175,7 @@ Rotation is calulated using the same curve
 
 ## 🚀 Future
 
-See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for full list of proposed and active features (and known issues).
+See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed and active features (and known issues).
 
 ## 🙌 Credits
 
@@ -191,7 +191,7 @@ This project takes great inspiration from the following resources:
 
 ## ☕ Support
 
-If you like the project and want to follow it evolving concidering ✨-ing the project
+If you like the project and want to follow its evolution, consider ✨-ing the project
 
 <a href="https://bmc.link/runeharlyk" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/purple_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 

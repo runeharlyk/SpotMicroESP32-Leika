@@ -1,6 +1,6 @@
 # Software
 
-The robots firmware is built using platform io using the arduino framework over ESP-IDF.
+The robot's firmware is built using PlatformIO with the Arduino framework over ESP-IDF.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ To prepare the frontend code for the ESP32, a specific build chain is required. 
 
 ### Required Software
 
-Install the following software to ensure all functionalities:
+Install the following software to ensure all functionality:
 
 - [VSCode](https://code.visualstudio.com/) - Preferred IDE for development
 - [Node.js](https://nodejs.org) - Needed for app building
@@ -45,9 +45,9 @@ For additional boards, refer to the [official board list](https://docs.platformi
 
 ### Factory settings
 
-Update the `esp32/factory_setting.ini` with new wifi settings, app name and other device information.
+Update the `esp32/factory_setting.ini` with new Wi-Fi settings, app name and other device information.
 
 ### Build & Upload Process
 
-Update the `platformio.ini` file for your board, then navigate to the PlatformIO tab, select your environment, click `Upload Filesystem Image` and after uploading finish, click `Upload and Monitor`. The filesystem image only has to be uploaded the first time and will override config files on the microcontroller.
-When uploading new firmware the app is evaluated and if necessary will be rebuild.
+Update the `platformio.ini` file for your board, then navigate to the PlatformIO tab, select your environment, click `Upload Filesystem Image` and after uploading finishes, click `Upload and Monitor`. The filesystem image only needs to be uploaded the first time. It will override config files on the microcontroller.
+When uploading new firmware, the app is evaluated, and if necessary, will be rebuilt.

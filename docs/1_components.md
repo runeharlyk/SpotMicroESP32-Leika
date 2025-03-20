@@ -1,17 +1,17 @@
 # Components
 
-Spot is comprised of a 3D printed body, some hardware and list of electronic components.
+Spot is comprised of a 3D-printed body, some hardware, and a list of electronic components.
 
 ## Hardware
 
-Spot is 3D printed and is a combination of different Spot Micro designs, with some minor modification on top.
-The original design is developed by KDY0523.
+Spot is 3D-printed and is a combination of different Spot Micro designs, with some minor modifications.
+The original design was developed by KDY0523.
 
 - [robjk reinforced shoulder remix](https://www.thingiverse.com/thing:4937631)
 - [Kooba SpotMicroESP32 remix](https://www.thingiverse.com/thing:4559827)
 - [KDY0532 original design](https://www.thingiverse.com/thing:3445283)
 
-The 3D prints is assembled with some additional component:
+The 3D prints are assembled with some additional non-printable components:
 
 - 84x M2x8 screws + M2 nuts
 - 92x M3x8 screws + M3 nuts
@@ -20,7 +20,7 @@ The 3D prints is assembled with some additional component:
 
 ## Electronics
 
-These are the electronics i used for mine and can easily be switched up to suit your Spot's needs.
+These are the electronics I used for mine, and they can easily be swapped to suit your Spot's needs.
 
 | Component                 | Specification                 | Required | Recommendation                                                                                          |
 | ------------------------- | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
@@ -39,6 +39,6 @@ These are the electronics i used for mine and can easily be switched up to suit 
 | 7.6-8.4V Battery          | Battery                       | No       | Im using 4x 18650 in 2s2p configuration, but other people have 2s LiPos.                                |
 | 4x Servo extension cables | Servo extension cables        | Yes      | You can either buy them or make them with a couple or headers and some cable.                           |
 
-I recommend getting a ESP32-S3 with a camera, allowing for more computation and imaging capabilities.
+I recommend getting an ESP32-S3 with a camera, allowing for more computation and imaging capabilities.
 
-It means a more responsive robot as its faster doing sensor fusion, calculating kinematic and gait planning, and networking.
+It means a more responsive robot as it's faster at doing sensor fusion, calculating kinematics and gait planning, and networking.
