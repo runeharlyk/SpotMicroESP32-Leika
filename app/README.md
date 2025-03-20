@@ -8,30 +8,21 @@ If you're seeing this, you've probably already done this step. Congrats!
 
 ```bash
 # create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+npx sv create
 ```
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've created your project, follow these steps:
 
-```bash
-npm run dev
+1: Delete package-lock.json
+2: Check `git status`. If you see any changes other than package-lock.json or favicon.ico, run the command `git restore ./` (See below)
+3: Run `npm install` or `pnpm install` or `yarn` to install the dependencies
+4: Run `npm run build` to build the project
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+Running `git status` should show:
 
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
+[![example.png](https://i.postimg.cc/yddM3hH3/example.png)](https://postimg.cc/7CFsp2bq)
 
 You can preview the production build with `npm run preview`.
 

@@ -1,10 +1,10 @@
 # 🏁 Motion state controller
 
-The motion controller is a finite state machine with state allowing for static and dynamic posing, 8-phase crawl and bezier bases trot gait, and choreographed animation.
+The motion controller is a finite state machine that allows for static and dynamic posing, 8-phase crawl, bezier-based trot gait, and choreographed animation.
 
 ## Controller Input Mapping
 
-The controller input is interpret different between the modes. For the walking it it looks like this:
+The controller input is interpreted differently between the modes. For walking, it looks like this:
 
 | Controller Input | Mapped to Gait Step | Range   |
 | ---------------- | ------------------- | ------- |
@@ -21,7 +21,7 @@ The controller input is interpret different between the modes. For the walking i
 
 ## Walking gait
 
-General about walking gait
+General description of walking gait.
 
 Time step
 
@@ -31,9 +31,9 @@ Stance and swing controller
 
 ## 8-phase crawl gait
 
-The 8-phase crawl gait works by lifting one leg at a time while shifting its body weight away from the leg.
+The 8-phase crawl gait works by lifting one leg at a time while shifting the body weight away from that leg.
 
-As the name implies, the gait consist of 8 discrete phases, which represents which feet should be contact the ground or be in swing.
+As the name implies, the gait consists of 8 discrete phases, which represent which feet should be in contact with the ground or in swing.
 
 At each time step the phase time $t\in [0,1]$ is updated. When $t\geq 1$ the phase index is updated and phase time is reset.
 

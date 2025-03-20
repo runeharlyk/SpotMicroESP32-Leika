@@ -1,6 +1,6 @@
 # Assembly and calibration
 
-There exist a number of great resources for the assembly of the spot micro. For this reason I refer to these, as the steps are the same for this version:
+There are a number of great resources for the assembly of the Spot Micro. For this reason, I refer to these, as the steps are the same for this version:
 
 - [Michael Kubina SpotMicroESP32 assembly](https://github.com/michaelkubina/SpotMicroESP32/tree/master/assembly)
 - [Spot Micro AI assembly](https://spotmicroai.readthedocs.io/en/latest/assembly/)
@@ -9,7 +9,7 @@ There exist a number of great resources for the assembly of the spot micro. For 
 
 Discussion about [Calibration](https://github.com/runeharlyk/SpotMicroESP32-Leika/discussions/118)
 
-Assuming the servos are connected to the PCA9685 and is powered on:
+Assuming the servos are connected to the PCA9685 and are powered on:
 
 ### Calibrate in servo frame
 
@@ -38,13 +38,13 @@ You now have the values for the servos.
 
 ### Calibration in body frame
 
-They now has to calibrated to the body frame. It assumed they have the center pwm pointing straight down.
+They now have to be calibrated to the body frame. It is assumed they have the center PWM pointing straight down.
 
 1. Navigate to `/controller` and click on "Calibrate". This will set the servo to the center pwm value.
 2. Navigate to `peripherals/servo` - Here you can set the servo angle offset.
 
-All the legs should be pointing down. If they are not you have to options. 1; Physically move the servos to the correct position by un screwing the servo horns. 2; Update the servo offset in the servo table.
+All the legs should be pointing down. If they are not, you have two options. 1. Physically move the servos to the correct position by unscrewing the servo horns. 2. Update the servo offset in the servo table.
 
 ## Circuit diagram
 
-![Electronics diagram](media/circuit.png "Title")
+![Electronics diagram](media/circuitschematic.png "Title")
