@@ -16,13 +16,13 @@
   }
 </script>
 
-<ul class={klass + ' menu'}>
+<ul class={klass + ' menu w-full'}>
   {#each menuItems as MenuItem[] as menuItem, i (menuItem.title)}
     {#if menuItem.feature}
       <li>
         {#if menuItem.submenu}
           <details open={menuItem.submenu.some(subItem => subItem.active)}>
-            <summary class="text-lg font-bold">
+            <summary class="font-bold">
               <menuItem.icon class="h-6 w-6" />
               {menuItem.title}
             </summary>
