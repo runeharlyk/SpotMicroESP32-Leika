@@ -167,10 +167,12 @@ void EventSocket::handleSubscribeCallbacks(String event, const String &originId)
     }
 }
 
-void EventSocket::onEvent(String event, EventCallback callback) { event_callbacks[event].push_back(callback); }
+void EventSocket::onEvent(String event, EventCallback callback) {
+    event_callbacks[event].push_back(std::move(callback));
+}
 
 void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
-    subscribe_callbacks[event].push_back(callback);
+    subscribe_callbacks[event].push_back(std::move(callback));
 }
 
 EventSocket socket;
