@@ -127,7 +127,7 @@
             title: 'System Metrics',
             icon: Metrics,
             href: '/system/metrics',
-            feature: $features.analytics
+            feature: true
           },
           {
             title: 'Firmware Update',
