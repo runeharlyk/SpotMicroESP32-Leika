@@ -7,8 +7,10 @@
   import StatusItem from '$lib/components/StatusItem.svelte'
   import { cubicOut } from 'svelte/easing'
   import { slide } from 'svelte/transition'
+  import type { MDNSStatus, MDNSServiceItem, MDNSServiceQuery } from '$lib/types/models'
+  import { compareIp } from '$lib/utilities'
 
-  let mdnsStatus: MDNSStatus = $state()
+  let mdnsStatus: MDNSStatus | undefined = $state()
   let services: MDNSServiceItem[] = $state([])
   let isLoading = $state(false)
 
@@ -31,43 +33,14 @@
       console.error('Error:', result.inner)
       return
     }
-    services = result.inner.services.sort((a, b) => b.name.localeCompare(a.name))
+    services = result.inner.services.sort((a, b) => compareIp(a.ip, b.ip))
     isLoading = false
   }
 
-  onMount(() => {
-    getMDNSStatus()
-    queryMDNSServices()
+  onMount(async () => {
+    await getMDNSStatus()
+    await queryMDNSServices()
   })
-
-  interface MDNSServiceQuery {
-    services: MDNSServiceItem[]
-  }
-
-  interface MDNSServiceItem {
-    ip: string
-    port: number
-    name: string
-  }
-
-  interface MDNSService {
-    service: string
-    protocol: string
-    port: number
-  }
-
-  interface MDNSTxtRecord {
-    key: string
-    value: string
-  }
-
-  interface MDNSStatus {
-    started: boolean
-    hostname: string
-    instance: string
-    services: MDNSService[]
-    global_txt_records: MDNSTxtRecord[]
-  }
 
   const triggerScan = async () => {
     await queryMDNSServices()
@@ -91,9 +64,7 @@
     </button>
   {/snippet}
   <div class="w-full overflow-x-auto">
-    {#await getMDNSStatus()}
-      <Spinner />
-    {:then nothing}
+    {#if mdnsStatus}
       <div
         class="flex w-full flex-col space-y-1"
         transition:slide|local={{ duration: 300, easing: cubicOut }}>
@@ -120,11 +91,10 @@
                 <td>{service.ip}</td>
                 <td>{service.port}</td>
               </tr>
-              <!-- <StatusItem icon={Devices} title={service.name} description={service.port} /> -->
             {/each}
           </tbody>
         </table>
       </div>
-    {/await}
+    {/if}
   </div>
 </SettingsCard>

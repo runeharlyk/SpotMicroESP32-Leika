@@ -190,3 +190,32 @@ export type ServoConfiguration = {
   servo_oscillator_frequency: number
   servos: Servo[]
 }
+
+export interface MDNSServiceQuery {
+  services: MDNSServiceItem[]
+}
+
+export interface MDNSServiceItem {
+  ip: string
+  port: number
+  name: string
+}
+
+export interface MDNSService {
+  service: string
+  protocol: string
+  port: number
+}
+
+export interface MDNSTxtRecord {
+  key: string
+  value: string
+}
+
+export interface MDNSStatus {
+  started: boolean
+  hostname: string
+  instance: string
+  services: MDNSService[]
+  global_txt_records: MDNSTxtRecord[]
+}
