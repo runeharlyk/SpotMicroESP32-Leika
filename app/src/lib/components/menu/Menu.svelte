@@ -19,7 +19,8 @@
     Router,
     AP,
     Copyright,
-    Metrics
+    Metrics,
+    DNS
   } from '$lib/components/icons'
   import appEnv from 'app-env'
 
@@ -102,6 +103,12 @@
             title: 'Access Point',
             icon: AP,
             href: '/wifi/ap',
+            feature: true
+          },
+          {
+            title: 'mDNS',
+            icon: DNS,
+            href: '/wifi/mdns',
             feature: true
           }
         ]
