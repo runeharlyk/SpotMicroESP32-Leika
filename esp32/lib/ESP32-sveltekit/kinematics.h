@@ -9,7 +9,7 @@ struct body_state_t {
 
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
 
-    bool isEqual(const body_state_t &other) const {
+    bool operator==(const body_state_t &other) const {
         if (!IS_ALMOST_EQUAL(omega, other.omega) || !IS_ALMOST_EQUAL(phi, other.phi) ||
             !IS_ALMOST_EQUAL(psi, other.psi) || !IS_ALMOST_EQUAL(xm, other.xm) || !IS_ALMOST_EQUAL(ym, other.ym) ||
             !IS_ALMOST_EQUAL(zm, other.zm)) {
@@ -21,50 +21,35 @@ struct body_state_t {
 
 class Kinematics {
   private:
-    float Trb[4][4] = {
-        0,
-    };
-    float Trf[4][4] = {
-        0,
-    };
-    float Tlb[4][4] = {
-        0,
-    };
-    float Tlf[4][4] = {
-        0,
-    };
+    static constexpr float l1 = 60.5f / 100.0f;
+    static constexpr float l2 = 10.0f / 100.0f;
+    static constexpr float l3 = 111.1f / 100.0f;
+    static constexpr float l4 = 118.5f / 100.0f;
 
-    const float Ix[4][4] = {{-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-    float inv[4][4];
-    float point[4];
-    float Q1[4][4];
+    static constexpr float L = 207.5f / 100.0f;
+    static constexpr float W = 78.0f / 100.0f;
 
     const float sHp = sinf(PI_F / 2);
     const float cHp = cosf(PI_F / 2);
 
-    float point_lf[4][4];
+    static constexpr float Ix[4][4] = {{-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+
+    float Trb[4][4] = {0};
+    float Trf[4][4] = {0};
+    float Tlb[4][4] = {0};
+    float Tlf[4][4] = {0};
+
+    float inv[4][4];
+    float point[4];
+    float Q1[4][4];
 
     body_state_t currentState;
 
   public:
-    float l1, l2, l3, l4;
-    float L, W;
-
-    Kinematics() {
-        l1 = 60.5 / 100;
-        l2 = 10 / 100;
-        l3 = 111.1 / 100;
-        l4 = 118.5 / 100;
-
-        L = 207.5 / 100;
-        W = 78 / 100;
-    }
-    ~Kinematics() {}
-
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 
-        if (currentState.isEqual(body_state)) return ESP_OK;
+        if (currentState == body_state) return ESP_OK;
 
         ret = bodyIK(body_state);
         currentState.omega = body_state.omega;
@@ -112,11 +97,8 @@ class Kinematics {
                           {0, 0, 0, 1}};
 
         float point_lf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
-
         float point_rf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
-
         float point_lb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
-
         float point_rb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
 
         MAT_MULT(Tm, point_lf, Tlf, 4, 4, 4);
