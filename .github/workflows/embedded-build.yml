@@ -2,20 +2,19 @@ name: PlatformIO CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
     paths:
-        - 'esp32/**'  
+      - "esp32/**"
+      - "platformio.ini"
   pull_request:
-    branches: [ master ]
+    branches: [master]
     paths:
-        - 'esp32/**'  
+      - "esp32/**"
+      - "platformio.ini"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./esp32
 
     steps:
       - uses: actions/checkout@v3
@@ -28,8 +27,8 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
-      - run: pip install -r ./scripts/requirements.txt
+          python-version: "3.x"
+      - run: pip install -r esp32/scripts/requirements.txt
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
