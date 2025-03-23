@@ -2,12 +2,8 @@
   import SettingsCard from '$lib/components/SettingsCard.svelte'
   import { onMount } from 'svelte'
   import { socket } from '$lib/stores'
-  import type { I2CDevice, PeripheralsConfiguration } from '$lib/types/models'
-  import { Cancel, Connection, Edit, Power, Router } from '$lib/components/icons'
-  import { modals } from 'svelte-modals'
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
-  import Spinner from '$lib/components/Spinner.svelte'
-  import StatusItem from '$lib/components/StatusItem.svelte'
+  import type { I2CDevice } from '$lib/types/models'
+  import { Connection } from '$lib/components/icons'
   import I2CSetting from './i2cSetting.svelte'
 
   const i2cDevices = [
