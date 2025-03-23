@@ -67,7 +67,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         updatePins();
 
-#if FT_ENABLED(USE_IMU)
+#if FT_ENABLED(USE_MPU6050)
         if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
 #if FT_ENABLED(USE_MAG)
@@ -137,7 +137,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* IMU FUNCTIONS */
     bool readIMU() {
         bool updated = false;
-#if FT_ENABLED(USE_IMU)
+#if FT_ENABLED(USE_MPU6050)
         beginTransaction();
         updated = _imu.readIMU();
         endTransaction();
@@ -181,7 +181,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void emitIMU() {
         doc.clear();
         JsonObject root = doc.to<JsonObject>();
-#if FT_ENABLED(USE_IMU)
+#if FT_ENABLED(USE_MPU6050)
         _imu.readIMU(root);
 #endif
 #if FT_ENABLED(USE_MAG)
@@ -214,7 +214,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     JsonDocument doc;
     char message[MAX_ESP_IMU_SIZE];
-#if FT_ENABLED(USE_IMU)
+#if FT_ENABLED(USE_MPU6050)
     IMU _imu;
 #endif
 #if FT_ENABLED(USE_MAG)

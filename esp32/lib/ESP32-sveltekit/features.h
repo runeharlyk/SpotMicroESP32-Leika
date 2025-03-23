@@ -28,8 +28,8 @@
 #endif
 
 // ESP32 IMU on by default
-#ifndef USE_IMU
-#define USE_IMU 1
+#ifndef USE_MPU6050
+#define USE_MPU6050 1
 #endif
 
 // ESP32 magnetometer on by default
@@ -52,7 +52,14 @@
 #define USE_GPS 0
 #endif
 
+// ESP32 MDNS on by default
+#ifndef USE_MDNS
+#define USE_MDNS 1
+#endif
+
 namespace feature_service {
+
+void printFeatureConfiguration();
 
 void features(JsonObject &root);
 

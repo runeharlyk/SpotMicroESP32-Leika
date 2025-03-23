@@ -12,6 +12,7 @@ class IMU {
   public:
     IMU() {}
     bool initialize() {
+#if FT_ENABLED(USE_MPU6050)
         _imu.initialize();
         imu_success = _imu.testConnection();
         devStatus = _imu.dmpInitialize();
@@ -20,16 +21,19 @@ class IMU {
         _imu.setI2CMasterModeEnabled(false);
         _imu.setI2CBypassEnabled(true);
         _imu.setSleepEnabled(false);
+#endif
         return true;
     }
 
     bool readIMU() {
         if (!imu_success) return false;
+#if FT_ENABLED(USE_MPU6050)
         bool updated = _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
         _imu.dmpGetQuaternion(&q, fifoBuffer);
         _imu.dmpGetGravity(&gravity, &q);
         _imu.dmpGetYawPitchRoll(ypr, &q, &gravity);
         return updated;
+#endif
     }
 
     float getTemperature() { return imu_success ? imu_temperature : -1; }
@@ -39,8 +43,6 @@ class IMU {
     float getAngleY() { return imu_success ? ypr[1] * 180 / M_PI : 0; }
 
     float getAngleZ() { return imu_success ? ypr[2] * 180 / M_PI : 0; }
-
-    Quaternion* getQuaternion() { return &q; }
 
     void readIMU(JsonObject& root) {
         if (!imu_success) return;
@@ -52,12 +54,14 @@ class IMU {
     bool active() { return imu_success; }
 
   private:
+#if FT_ENABLED(USE_MPU6050)
     MPU6050 _imu;
-    bool imu_success {false};
     uint8_t devStatus {false};
     Quaternion q;
     uint8_t fifoBuffer[64];
     VectorFloat gravity;
+#endif
+    bool imu_success {false};
     float ypr[3];
     float imu_temperature {-1};
 };

@@ -12,6 +12,9 @@ Spot::Spot()
 
 void Spot::initialize() {
     ESP_LOGI(TAG, "Running Firmware Version: %s", APP_VERSION);
+
+    feature_service::printFeatureConfiguration();
+
     ESPFS.begin(true);
     g_taskManager.begin();
 #if FT_ENABLED(USE_WS2812)
