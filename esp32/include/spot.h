@@ -20,6 +20,7 @@
 #include <task_manager.h>
 #include <wifi_service.h>
 #include <ap_service.h>
+#include <mdns_service.h>
 
 #ifdef EMBED_WWW
 #include <WWWData.h>
@@ -79,6 +80,7 @@ class Spot {
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
+    MDNSService _mdnsService;
 #if FT_ENABLED(USE_UPLOAD_FIRMWARE)
     FirmwareUploadService _uploadFirmwareService;
 #endif
