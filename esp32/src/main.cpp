@@ -5,7 +5,7 @@ DRAM_ATTR Spot spot;
 void IRAM_ATTR SpotControlLoopEntry(void*) {
     ESP_LOGI("main", "Setup complete now runing tsk");
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = 10 / portTICK_PERIOD_MS;
+    const TickType_t xFrequency = 5 / portTICK_PERIOD_MS;
     for (;;) {
         spot.readSensors();
         spot.planMotion();
