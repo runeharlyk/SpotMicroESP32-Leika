@@ -8,6 +8,7 @@
 #include <template/stateful_endpoint.h>
 #include <utils/math_utils.h>
 #include <settings/servo_settings.h>
+#include <Wire.h>
 
 /*
  * Servo Settings
@@ -50,6 +51,18 @@ class ServoController : public StatefulService<ServoSettings> {
             return;
         }
         _pca.setPWM(index, 0, value);
+    }
+
+    void writeMany(uint8_t count, uint16_t *values) {
+        Wire.beginTransmission(PCA9685_I2C_ADDRESS);
+        Wire.write(0x06);
+        for (int i = 0; i < count; i++) {
+            Wire.write(0);
+            Wire.write(0);
+            Wire.write(values[i] & 0xFF);
+            Wire.write(values[i] >> 8);
+        }
+        Wire.endTransmission();
     }
 
     void activate() {
@@ -98,17 +111,19 @@ class ServoController : public StatefulService<ServoSettings> {
     }
 
     void calculatePWM() {
+        uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
-            angles[i] = lerp(angles[i], target_angles[i], 0.2);
+            angles[i] = lerp(angles[i], target_angles[i], 0.1);
             auto &servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
-            if (pwm < 105 || pwm > 600) {
+            if (pwm < 125 || pwm > 600) {
                 ESP_LOGE("ServoController", "Servo %d, Invalid PWM value %d", i, pwm);
                 continue;
             }
-            pcaWrite(i, pwm);
+            pwms[i] = pwm;
         }
+        writeMany(12, pwms);
     }
 
     void updateServoState() {
