@@ -20,7 +20,7 @@ void setup() {
 
     spot.initialize();
 
-    g_taskManager.createTask(SpotControlLoopEntry, "Spot control task", 4096, nullptr, 3);
+    g_taskManager.createTask(SpotControlLoopEntry, "Spot control task", 4096, nullptr, 5);
 }
 
 void loop() { vTaskDelete(NULL); }
