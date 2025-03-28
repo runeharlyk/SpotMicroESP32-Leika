@@ -14,7 +14,7 @@
 #define SCL_PIN SCL
 #endif
 #ifndef I2C_FREQUENCY
-#define I2C_FREQUENCY 100000UL
+#define I2C_FREQUENCY 1000000UL
 #endif
 
 class PinConfig {
