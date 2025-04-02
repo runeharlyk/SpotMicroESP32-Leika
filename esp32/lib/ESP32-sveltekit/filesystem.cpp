@@ -98,4 +98,10 @@ bool editFile(const char *filename, const char *content) {
     return true;
 }
 
+esp_err_t mkdir(PsychicRequest *request, JsonVariant &json) {
+    const char *path = json["path"].as<const char *>();
+    ESP_LOGI(TAG, "Creating directory: %s", path);
+    return ESPFS.mkdir(path) ? request->reply(200) : request->reply(500);
+}
+
 } // namespace FileSystem
