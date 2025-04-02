@@ -13,11 +13,15 @@
  * Servo Settings
  */
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
-#define FACTORY_SERVO_PWM_FREQUENCY 50
+#define FACTORY_SERVO_PWM_FREQUENCY 60
 #endif
 
 #ifndef FACTORY_SERVO_OSCILLATOR_FREQUENCY
 #define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
+#endif
+
+#ifndef FACTORY_SERVO_SMOOTHING_FACTOR
+#define FACTORY_SERVO_SMOOTHING_FACTOR 0.05
 #endif
 
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
@@ -57,6 +61,9 @@ class ServoController : public StatefulService<ServoSettings> {
         control_state = SERVO_CONTROL_STATE::ANGLE;
         is_active = true;
         _pca.wakeup();
+        for (int i = 0; i < 12; i++) {
+            angles[i] = target_angles[i] + 1.0;
+        }
     }
 
     void deactivate() {
@@ -93,24 +100,37 @@ class ServoController : public StatefulService<ServoSettings> {
     void setAngles(float new_angles[12]) {
         control_state = SERVO_CONTROL_STATE::ANGLE;
         for (int i = 0; i < 12; i++) {
-            target_angles[i] = new_angles[i];
+            if (abs(target_angles[i] - new_angles[i]) > 0.01) {
+                target_angles[i] = new_angles[i];
+            }
         }
     }
 
     void calculatePWM() {
-        uint16_t pwms[12];
+        bool any_changes = false;
+        unsigned long current_time = millis();
+
         for (int i = 0; i < 12; i++) {
-            angles[i] = lerp(angles[i], target_angles[i], 0.05);
+            if (abs(angles[i] - target_angles[i]) <= 0.01) continue;
+
+            angles[i] = lerp(angles[i], target_angles[i], FACTORY_SERVO_SMOOTHING_FACTOR);
             auto &servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
+
             if (pwm < 125 || pwm > 600) {
                 ESP_LOGE("ServoController", "Servo %d, Invalid PWM value %d", i, pwm);
                 continue;
             }
-            pwms[i] = pwm;
+
+            _current_pwm[i] = pwm;
+            any_changes = true;
         }
-        _pca.setMultiplePWM(pwms, 12);
+
+        if (any_changes || (current_time - _last_resend_time >= RESEND_INTERVAL)) {
+            _pca.setMultiplePWM(_current_pwm, 12);
+            _last_resend_time = current_time;
+        }
     }
 
     void updateServoState() {
@@ -135,6 +155,9 @@ class ServoController : public StatefulService<ServoSettings> {
     bool is_active {false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    uint16_t _current_pwm[12];
+    unsigned long _last_resend_time = 0;
+    const unsigned long RESEND_INTERVAL = 1000;
 };
 
 #endif
