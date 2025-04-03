@@ -172,7 +172,11 @@
 <div class="flex h-full w-80 flex-col p-4 bg-base-200 text-base-content">
   <LogoButton {appName} />
 
-  <MenuList {menuItems} select={updateMenu} class="grow flex-nowrap overflow-y-auto" level="0" />
+  <MenuList
+    {menuItems}
+    select={updateMenu}
+    class="grow flex-nowrap overflow-y-auto overflow-x-hidden"
+    level="0" />
 
   <div class="divider my-0"></div>
 
