@@ -79,6 +79,7 @@ void Spot::setupServer() {
     _server.on("/api/files/delete", HTTP_POST, FileSystem::handleDelete);
     _server.on("/api/files/upload/*", HTTP_POST, FileSystem::uploadHandler);
     _server.on("/api/files/edit", HTTP_POST, FileSystem::handleEdit);
+    _server.on("/api/files/mkdir", HTTP_POST, FileSystem::mkdir);
 
     // SERVO
     _server.on("/api/servo/config", HTTP_GET,

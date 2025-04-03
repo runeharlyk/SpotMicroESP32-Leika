@@ -44,7 +44,7 @@ bool deleteFile(const char *filename) { return ESPFS.remove(filename); }
 
 String listFiles(const String &directory, bool isRoot) {
     File root = ESPFS.open(directory.startsWith("/") ? directory : "/" + directory);
-    if (!root.isDirectory()) return "";
+    if (!root.isDirectory()) return "{}";
 
     File file = root.openNextFile();
     String output = isRoot ? "{ \"root\": {" : "{";
@@ -61,6 +61,7 @@ String listFiles(const String &directory, bool isRoot) {
     if (output.endsWith(", ")) {
         output.remove(output.length() - 2);
     }
+
     output += "}";
     if (isRoot) output += "}";
 
