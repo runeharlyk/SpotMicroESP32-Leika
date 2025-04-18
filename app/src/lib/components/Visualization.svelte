@@ -29,6 +29,7 @@
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
     import Kinematic, { type body_state_t } from '$lib/kinematic';
     import {
+        Animater,
         BezierState,
         CalibrationState,
         EightPhaseWalkState,
@@ -80,7 +81,8 @@
         [ModesEnum.Rest]: new RestState(),
         [ModesEnum.Stand]: new StandState(),
         [ModesEnum.Crawl]: new EightPhaseWalkState(),
-        [ModesEnum.Walk]: new BezierState()
+        [ModesEnum.Walk]: new BezierState(),
+        [ModesEnum.Animate]: new Animater()
     };
     let lastTick = performance.now();
 
