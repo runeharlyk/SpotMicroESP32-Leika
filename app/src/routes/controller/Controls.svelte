@@ -5,6 +5,8 @@
   import { input, outControllerData, mode, modes, type Modes, ModesEnum } from '$lib/stores'
   import type { vector } from '$lib/types/models'
   import { VerticalSlider } from '$lib/components/input'
+  import { gamepadAxes, gamepadButtons, hasGamepad } from '$lib/stores/gamepad'
+  import { notifications } from '$lib/components/toasts/notifications'
 
   let throttle = new throttler()
   let left: nipplejs.JoystickManager
@@ -12,6 +14,23 @@
 
   let throttle_timing = 40
   let data = new Array(8)
+
+  $effect(() => {
+    if ($hasGamepad) {
+      notifications.success('🎮 Gamepad connected', 3000)
+    }
+  })
+
+  $effect(() => {
+    handleJoyMove('left', { x: $gamepadAxes[0], y: -$gamepadAxes[1] })
+    handleJoyMove('right', { x: $gamepadAxes[2], y: $gamepadAxes[3] })
+  })
+
+  // TODO React to button press
+  //   $effect(() => {
+  //     if ($gamepadButtons.length === 0) return
+  //
+  //   })
 
   onMount(() => {
     left = nipplejs.create({
@@ -70,7 +89,7 @@
   }
 
   const handleRange = (event: Event, key: 'speed' | 'height' | 's1') => {
-    const value: number = event.target?.value
+    const value: number = Number((event.target as HTMLInputElement).value)
 
     input.update(inputData => {
       inputData[key] = value
@@ -127,7 +146,7 @@
               type="range"
               name="s1"
               min="0"
-              max="100"
+              max="25"
               oninput={e => handleRange(e, 's1')}
               class="range range-sm range-primary" />
           </div>
@@ -137,7 +156,7 @@
               type="range"
               name="speed"
               min="0"
-              max="100"
+              max="25"
               oninput={e => handleRange(e, 'speed')}
               class="range range-sm range-primary" />
           </div>
