@@ -3,7 +3,7 @@
 
 #include <utils/math_utils.h>
 
-struct body_state_t {
+struct alignas(16) body_state_t {
     float omega, phi, psi, xm, ym, zm;
     float feet[4][4];
 
@@ -15,7 +15,7 @@ struct body_state_t {
             !IS_ALMOST_EQUAL(zm, other.zm)) {
             return false;
         }
-        return arrayEqual(feet, other.feet, 0.1);
+        return arrayEqual(feet, other.feet, 0.1f);
     }
 };
 
@@ -23,25 +23,20 @@ class Kinematics {
   private:
     static constexpr float l1 = 60.5f / 100.0f;
     static constexpr float l2 = 10.0f / 100.0f;
-    static constexpr float l3 = 111.1f / 100.0f;
+    static constexpr float l3 = 111.2f / 100.0f;
     static constexpr float l4 = 118.5f / 100.0f;
 
     static constexpr float L = 207.5f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
 
-    const float sHp = sinf(PI_F / 2);
-    const float cHp = cosf(PI_F / 2);
+    static constexpr float mountOffsets[4][3] = {
+        {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
 
-    static constexpr float Ix[4][4] = {{-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    static constexpr float invMountRot[3][3] = {{0, 0, -1}, {0, 1, 0}, {1, 0, 0}};
 
-    float Trb[4][4] = {0};
-    float Trf[4][4] = {0};
-    float Tlb[4][4] = {0};
-    float Tlf[4][4] = {0};
-
-    float inv[4][4];
-    float point[4];
-    float Q1[4][4];
+    alignas(16) float rot[3][3] = {0};
+    alignas(16) float inv_rot[3][3] = {0};
+    alignas(16) float inv_trans[3] = {0};
 
     body_state_t currentState;
 
@@ -51,7 +46,6 @@ class Kinematics {
 
         if (currentState == body_state) return ESP_OK;
 
-        ret = bodyIK(body_state);
         currentState.omega = body_state.omega;
         currentState.phi = body_state.phi;
         currentState.psi = body_state.psi;
@@ -60,99 +54,90 @@ class Kinematics {
         currentState.zm = body_state.zm;
         currentState.updateFeet(body_state.feet);
 
-        ret += inverse(Tlf, inv);
-        MAT_MULT(inv, body_state.feet[0], point, 4, 4, 1);
-        legIK((float *)point, result);
+        float roll = body_state.omega * DEG2RAD_F;
+        float pitch = body_state.phi * DEG2RAD_F;
+        float yaw = body_state.psi * DEG2RAD_F;
+        euler2R(roll, pitch, yaw, rot);
+        inverse(rot, inv_rot);
 
-        ret += inverse(Trf, inv);
-        MAT_MULT(Ix, inv, Q1, 4, 4, 4);
-        MAT_MULT(Q1, body_state.feet[1], point, 4, 4, 1);
-        legIK((float *)point, result + 3);
+        inv_trans[0] =
+            -inv_rot[0][0] * currentState.xm - inv_rot[0][1] * currentState.ym - inv_rot[0][2] * currentState.zm;
+        inv_trans[1] =
+            -inv_rot[1][0] * currentState.xm - inv_rot[1][1] * currentState.ym - inv_rot[1][2] * currentState.zm;
+        inv_trans[2] =
+            -inv_rot[2][0] * currentState.xm - inv_rot[2][1] * currentState.ym - inv_rot[2][2] * currentState.zm;
 
-        ret += inverse(Tlb, inv);
-        MAT_MULT(inv, body_state.feet[2], point, 4, 4, 1);
-        legIK((float *)point, result + 6);
+        for (int i = 0; i < 4; i++) {
+            float wx = currentState.feet[i][0];
+            float wy = currentState.feet[i][1];
+            float wz = currentState.feet[i][2];
 
-        ret += inverse(Trb, inv);
-        MAT_MULT(Ix, inv, Q1, 4, 4, 4);
-        MAT_MULT(Q1, body_state.feet[3], point, 4, 4, 1);
-        legIK((float *)point, result + 9);
+            float bx = inv_rot[0][0] * wx + inv_rot[0][1] * wy + inv_rot[0][2] * wz + inv_trans[0];
+            float by = inv_rot[1][0] * wx + inv_rot[1][1] * wy + inv_rot[1][2] * wz + inv_trans[1];
+            float bz = inv_rot[2][0] * wx + inv_rot[2][1] * wy + inv_rot[2][2] * wz + inv_trans[2];
+
+            float mx = mountOffsets[i][0];
+            float my = mountOffsets[i][1];
+            float mz = mountOffsets[i][2];
+
+            float px = bx - mx;
+            float py = by - my;
+            float pz = bz - mz;
+
+            float lx = invMountRot[0][0] * px + invMountRot[0][1] * py + invMountRot[0][2] * pz;
+            float ly = invMountRot[1][0] * px + invMountRot[1][1] * py + invMountRot[1][2] * pz;
+            float lz = invMountRot[2][0] * px + invMountRot[2][1] * py + invMountRot[2][2] * pz;
+
+            float xLocal = (i % 2 == 1) ? -lx : lx;
+            legIK(xLocal, ly, lz, result + i * 3);
+        }
 
         return ret;
     }
 
-    esp_err_t bodyIK(const body_state_t p) {
-        float cos_omega = COS_DEG_F(p.omega);
-        float sin_omega = SIN_DEG_F(p.omega);
-        float cos_phi = COS_DEG_F(p.phi);
-        float sin_phi = SIN_DEG_F(p.phi);
-        float cos_psi = COS_DEG_F(p.psi);
-        float sin_psi = SIN_DEG_F(p.psi);
+    inline void euler2R(float roll, float pitch, float yaw, float rot[3][3]) {
+        float cos_roll = std::cos(roll);
+        float sin_roll = std::sin(roll);
+        float cos_pitch = std::cos(pitch);
+        float sin_pitch = std::sin(pitch);
+        float cos_yaw = std::cos(yaw);
+        float sin_yaw = std::sin(yaw);
 
-        float Tm[4][4] = {{cos_phi * cos_psi, -sin_psi * cos_phi, sin_phi, p.xm},
-                          {sin_omega * sin_phi * cos_psi + sin_psi * cos_omega,
-                           -sin_omega * sin_phi * sin_psi + cos_omega * cos_psi, -sin_omega * cos_phi, p.ym},
-                          {sin_omega * sin_psi - sin_phi * cos_omega * cos_psi,
-                           sin_omega * cos_psi + sin_phi * sin_psi * cos_omega, cos_omega * cos_phi, p.zm},
-                          {0, 0, 0, 1}};
-
-        float point_lf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
-        float point_rf[4][4] = {{cHp, 0, sHp, L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
-        float point_lb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, W / 2}, {0, 0, 0, 1}};
-        float point_rb[4][4] = {{cHp, 0, sHp, -L / 2}, {0, 1, 0, 0}, {-sHp, 0, cHp, -W / 2}, {0, 0, 0, 1}};
-
-        MAT_MULT(Tm, point_lf, Tlf, 4, 4, 4);
-        MAT_MULT(Tm, point_rf, Trf, 4, 4, 4);
-        MAT_MULT(Tm, point_lb, Tlb, 4, 4, 4);
-        MAT_MULT(Tm, point_rb, Trb, 4, 4, 4);
-        return ESP_OK;
+        rot[0][0] = cos_pitch * cos_yaw;
+        rot[0][1] = -sin_yaw * cos_pitch;
+        rot[0][2] = sin_pitch;
+        rot[1][0] = sin_roll * sin_pitch * cos_yaw + sin_yaw * cos_roll;
+        rot[1][1] = -sin_roll * sin_pitch * sin_yaw + cos_roll * cos_yaw;
+        rot[1][2] = -sin_roll * cos_pitch;
+        rot[2][0] = sin_roll * sin_yaw - sin_pitch * cos_roll * cos_yaw;
+        rot[2][1] = sin_roll * cos_yaw + sin_pitch * sin_yaw * cos_roll;
+        rot[2][2] = cos_roll * cos_pitch;
     }
 
-    void legIK(float point[4], float result[3]) {
-        float x = point[0], y = point[1], z = point[2];
+    inline void inverse(float rot[3][3], float inv_rot[3][3]) {
+        inv_rot[0][0] = rot[0][0];
+        inv_rot[0][1] = rot[1][0];
+        inv_rot[0][2] = rot[2][0];
+        inv_rot[1][0] = rot[0][1];
+        inv_rot[1][1] = rot[1][1];
+        inv_rot[1][2] = rot[2][1];
+        inv_rot[2][0] = rot[0][2];
+        inv_rot[2][1] = rot[1][2];
+        inv_rot[2][2] = rot[2][2];
+    }
 
-        float F = sqrtf(x * x + y * y - l1 * l1);
-        F = isnanf(F) ? l1 : F;
+    inline void legIK(float x, float y, float z, float result[3]) {
+        float F = sqrt(max(0.0f, x * x + y * y - l1 * l1));
         float G = F - l2;
-        float H = sqrtf(G * G + z * z);
+        float H = sqrt(G * G + z * z);
 
         float theta1 = -atan2f(y, x) - atan2f(F, -l1);
         float D = (H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4);
-        float theta3 = atan2(sqrt(1 - D * D), D);
-        if (isnan(theta3)) theta3 = 0;
+        float theta3 = acosf(max(-1.0f, min(1.0f, D)));
         float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
         result[0] = RAD_TO_DEG_F(theta1);
         result[1] = RAD_TO_DEG_F(theta2);
         result[2] = RAD_TO_DEG_F(theta3);
-    }
-
-    esp_err_t inverse(float a[4][4], float b[4][4]) {
-        float s[] = {a[0][0] * a[1][1] - a[1][0] * a[0][1], a[0][0] * a[1][2] - a[1][0] * a[0][2],
-                     a[0][0] * a[1][3] - a[1][0] * a[0][3], a[0][1] * a[1][2] - a[1][1] * a[0][2],
-                     a[0][1] * a[1][3] - a[1][1] * a[0][3], a[0][2] * a[1][3] - a[1][2] * a[0][3]};
-        float c[] = {a[2][0] * a[3][1] - a[3][0] * a[2][1], a[2][0] * a[3][2] - a[3][0] * a[2][2],
-                     a[2][0] * a[3][3] - a[3][0] * a[2][3], a[2][1] * a[3][2] - a[3][1] * a[2][2],
-                     a[2][1] * a[3][3] - a[3][1] * a[2][3], a[2][2] * a[3][3] - a[3][2] * a[2][3]};
-        float det = s[0] * c[5] - s[1] * c[4] + s[2] * c[3] + s[3] * c[2] - s[4] * c[1] + s[5] * c[0];
-        if (det == 0.0) return ESP_FAIL;
-        float invdet = 1.0 / det;
-        b[0][0] = (a[1][1] * c[5] - a[1][2] * c[4] + a[1][3] * c[3]) * invdet;
-        b[0][1] = (-a[0][1] * c[5] + a[0][2] * c[4] - a[0][3] * c[3]) * invdet;
-        b[0][2] = (a[3][1] * s[5] - a[3][2] * s[4] + a[3][3] * s[3]) * invdet;
-        b[0][3] = (-a[2][1] * s[5] + a[2][2] * s[4] - a[2][3] * s[3]) * invdet;
-        b[1][0] = (-a[1][0] * c[5] + a[1][2] * c[2] - a[1][3] * c[1]) * invdet;
-        b[1][1] = (a[0][0] * c[5] - a[0][2] * c[2] + a[0][3] * c[1]) * invdet;
-        b[1][2] = (-a[3][0] * s[5] + a[3][2] * s[2] - a[3][3] * s[1]) * invdet;
-        b[1][3] = (a[2][0] * s[5] - a[2][2] * s[2] + a[2][3] * s[1]) * invdet;
-        b[2][0] = (a[1][0] * c[4] - a[1][1] * c[2] + a[1][3] * c[0]) * invdet;
-        b[2][1] = (-a[0][0] * c[4] + a[0][1] * c[2] - a[0][3] * c[0]) * invdet;
-        b[2][2] = (a[3][0] * s[4] - a[3][1] * s[2] + a[3][3] * s[0]) * invdet;
-        b[2][3] = (-a[2][0] * s[4] + a[2][1] * s[2] - a[2][3] * s[0]) * invdet;
-        b[3][0] = (-a[1][0] * c[3] + a[1][1] * c[1] - a[1][2] * c[0]) * invdet;
-        b[3][1] = (a[0][0] * c[3] - a[0][1] * c[1] + a[0][2] * c[0]) * invdet;
-        b[3][2] = (-a[3][0] * s[3] + a[3][1] * s[1] - a[3][2] * s[0]) * invdet;
-        b[3][3] = (a[2][0] * s[3] - a[2][1] * s[1] + a[2][2] * s[0]) * invdet;
-        return ESP_OK;
     }
 };
 
