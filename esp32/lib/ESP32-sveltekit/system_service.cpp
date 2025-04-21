@@ -109,7 +109,7 @@ void status(JsonObject &root) {
     root["fs_total"] = ESPFS.totalBytes();
     root["fs_used"] = ESPFS.usedBytes();
     root["core_temp"] = temperatureRead();
-    root["cpu_reset_reason"] = resetReason(rtc_get_reset_reason(0));
+    root["cpu_reset_reason"] = resetReason(esp_reset_reason());
     root["uptime"] = millis() / 1000;
 }
 
@@ -144,24 +144,38 @@ void emitMetrics() {
     socket.emit(EVENT_ANALYTICS, analyticsMessage);
 }
 
-const char *resetReason(int reason) {
+const char *resetReason(esp_reset_reason_t reason) {
     switch (reason) {
-        case 1: return "Vbat power on reset";
-        case 3: return "Software reset digital core";
-        case 4: return "Legacy watch dog reset digital core";
-        case 5: return "Deep Sleep reset digital core";
-        case 6: return "Reset by SLC module, reset digital core";
-        case 7: return "Timer Group0 Watch dog reset digital core";
-        case 8: return "Timer Group1 Watch dog reset digital core";
-        case 9: return "RTC Watch dog Reset digital core";
-        case 10: return "Intrusion tested to reset CPU";
-        case 11: return "Time Group reset CPU";
-        case 12: return "Software reset CPU";
-        case 13: return "RTC Watch dog Reset CPU";
-        case 14: return "for APP CPU, reset by PRO CPU";
-        case 15: return "Reset when the vdd voltage is not stable";
-        case 16: return "RTC Watch dog reset digital core and rtc module";
-        default: return "NO_MEAN";
+        case ESP_RST_UNKNOWN: return "Reset reason can not be determined";
+        case ESP_RST_POWERON: return "Reset due to power-on event";
+        case ESP_RST_EXT: return "Reset by external pin (not applicable for ESP32)";
+        case ESP_RST_SW: return "Software reset via esp_restart";
+        case ESP_RST_PANIC: return "Software reset due to exception/panic";
+        case ESP_RST_INT_WDT: return "Reset (software or hardware) due to interrupt watchdog";
+        case ESP_RST_TASK_WDT: return "Reset due to task watchdog";
+        case ESP_RST_WDT: return "Reset due to other watchdogs";
+        case ESP_RST_DEEPSLEEP: return "Reset after exiting deep sleep mode";
+        case ESP_RST_BROWNOUT: return "Brownout reset (software or hardware)";
+        case ESP_RST_SDIO: return "Reset over SDIO";
+#ifdef ESP_RST_USB
+        case ESP_RST_USB: return "Reset by USB peripheral";
+#endif
+#ifdef ESP_RST_JTAG
+        case ESP_RST_JTAG: return "Reset by JTAG";
+#endif
+#ifdef ESP_RST_EFUSE
+        case ESP_RST_EFUSE: return "Reset due to efuse error";
+#endif
+#ifdef ESP_RST_PWR_GLITCH
+        case ESP_RST_PWR_GLITCH: return "Reset due to power glitch detected";
+#endif
+#ifdef ESP_RST_CPU_LOCKUP
+        case ESP_RST_CPU_LOCKUP: return "Reset due to CPU lock up (double exception)";
+#endif
+        default:
+            char buffer[50];
+            snprintf(buffer, sizeof(buffer), "Unknown reset reason (%d)", reason);
+            return buffer;
     }
 }
 

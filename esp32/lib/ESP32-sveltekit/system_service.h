@@ -27,7 +27,7 @@ void metrics(JsonObject &root);
 
 void emitMetrics();
 
-const char *resetReason(int reason);
+const char *resetReason(esp_reset_reason_t reason);
 } // namespace system_service
 
 #endif
