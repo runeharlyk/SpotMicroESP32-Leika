@@ -234,7 +234,7 @@
     {#each actionButtons as button}
       {#if button.condition === undefined || button.condition()}
         <ActionButton
-          on:click={button.onClick}
+          onclick={button.onClick}
           icon={button.icon}
           label={button.label}
           type={button.type || 'primary'} />
