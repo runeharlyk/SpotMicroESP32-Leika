@@ -111,7 +111,6 @@ class ServoController : public StatefulService<ServoSettings> {
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
             if (pwm < 125 || pwm > 600) {
-                ESP_LOGE("ServoController", "Servo %d, Invalid PWM value %d", i, pwm);
                 continue;
             }
             pwms[i] = pwm;

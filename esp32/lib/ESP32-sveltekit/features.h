@@ -29,22 +29,32 @@
 
 // ESP32 IMU on by default
 #ifndef USE_MPU6050
-#define USE_MPU6050 1
+#define USE_MPU6050 0
+#endif
+
+// ESP32 IMU on by default
+#ifndef USE_BNO055
+#define USE_BNO055 1
 #endif
 
 // ESP32 magnetometer on by default
-#ifndef USE_MAG
-#define USE_MAG 0
+#ifndef USE_HMC5883
+#define USE_HMC5883 0
 #endif
 
 // ESP32 barometer off by default
-#ifndef USE_BMP
-#define USE_BMP 0
+#ifndef USE_BMP180
+#define USE_BMP180 0
 #endif
 
 // ESP32 SONAR off by default
 #ifndef USE_USS
 #define USE_USS 0
+#endif
+
+// PCA9685 Servo controller on by default
+#ifndef USE_PCA9685
+#define USE_PCA9685 1
 #endif
 
 // ESP32 GPS off by default

@@ -61,6 +61,7 @@ class Spot {
     // act
     void updateActuators() {
         if (updatedMotion) _servoController.setAngles(_motionService.getAngles());
+        updatedMotion = false;
 
         _servoController.updateServoState();
 #if FT_ENABLED(USE_WS2812)
@@ -71,7 +72,7 @@ class Spot {
     // communicate
     void emitTelemetry() {
         if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.emitAngles(); });
-        EXECUTE_EVERY_N_MS(1000, { _peripherals.emitIMU(); });
+        EXECUTE_EVERY_N_MS(250, { _peripherals.emitIMU(); });
         // _peripherals.emitSonar();
     }
 
@@ -102,7 +103,7 @@ class Spot {
     bool updatedMotion = false;
 
     const char *_appName = APP_NAME;
-    const u_int16_t _numberEndpoints = 115;
+    const u_int16_t _numberEndpoints = 116;
     const u_int32_t _maxFileUpload = 2300000; // 2.3 MB
     const uint16_t _port = 80;
 
@@ -110,7 +111,6 @@ class Spot {
     void loop();
     static void _loopImpl(void *_this) { static_cast<Spot *>(_this)->loop(); }
     void setupServer();
-    void setupMDNS();
     void startServices();
 };
 

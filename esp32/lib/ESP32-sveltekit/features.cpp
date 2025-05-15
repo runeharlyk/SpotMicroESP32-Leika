@@ -15,14 +15,15 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_MOTION: %s", USE_MOTION ? "enabled" : "disabled");
 
     // Sensors
+    ESP_LOGI("Features", "USE_BNO055: %s", USE_BNO055 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MPU6050: %s", USE_MPU6050 ? "enabled" : "disabled");
-    ESP_LOGI("Features", "USE_MAG: %s", USE_MAG ? "enabled" : "disabled");
-    ESP_LOGI("Features", "USE_BMP: %s", USE_BMP ? "enabled" : "disabled");
+    ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
+    ESP_LOGI("Features", "USE_BMP180: %s", USE_BMP180 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_USS: %s", USE_USS ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_GPS: %s", USE_GPS ? "enabled" : "disabled");
 
     // Peripherals
-    ESP_LOGI("Features", "USE_SERVO: %s", USE_SERVO ? "enabled" : "disabled");
+    ESP_LOGI("Features", "USE_PCA9685: %s", USE_PCA9685 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_WS2812: %s", USE_WS2812 ? "enabled" : "disabled");
 
     // Web services
@@ -38,12 +39,12 @@ void features(JsonObject &root) {
     root["download_firmware"] = USE_DOWNLOAD_FIRMWARE;
     root["sleep"] = USE_SLEEP;
     root["camera"] = USE_CAMERA;
-    root["imu"] = USE_MPU6050;
-    root["mag"] = USE_MAG;
-    root["bmp"] = USE_BMP;
+    root["imu"] = USE_MPU6050 || USE_BNO055;
+    root["mag"] = USE_HMC5883 || USE_BNO055;
+    root["bmp"] = USE_BMP180;
     root["sonar"] = USE_USS;
     root["motion"] = USE_MOTION;
-    root["servo"] = USE_SERVO;
+    root["servo"] = USE_PCA9685;
     root["ws2812"] = USE_WS2812;
     root["mdns"] = USE_MDNS;
     root["embed_www"] = EMBED_WWW;

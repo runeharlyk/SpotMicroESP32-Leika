@@ -67,13 +67,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
         updatePins();
 
-#if FT_ENABLED(USE_MPU6050)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
         if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
-#if FT_ENABLED(USE_MAG)
+#if FT_ENABLED(USE_HMC5883)
         if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
-#if FT_ENABLED(USE_BMP)
+#if FT_ENABLED(USE_BMP180)
         if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
@@ -137,7 +137,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     /* IMU FUNCTIONS */
     bool readIMU() {
         bool updated = false;
-#if FT_ENABLED(USE_MPU6050)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
         beginTransaction();
         updated = _imu.readIMU();
         endTransaction();
@@ -147,7 +147,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool readMag() {
         bool updated = false;
-#if FT_ENABLED(USE_MAG)
+#if FT_ENABLED(USE_HMC5883)
         beginTransaction();
         updated = _mag.readMagnetometer();
         endTransaction();
@@ -157,7 +157,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool readBMP() {
         bool updated = false;
-#if FT_ENABLED(USE_BMP)
+#if FT_ENABLED(USE_BMP180)
         beginTransaction();
         updated = _bmp.readBarometer();
         endTransaction();
@@ -181,13 +181,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void emitIMU() {
         doc.clear();
         JsonObject root = doc.to<JsonObject>();
-#if FT_ENABLED(USE_MPU6050)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
         _imu.readIMU(root);
 #endif
-#if FT_ENABLED(USE_MAG)
+#if FT_ENABLED(USE_HMC5883)
         _mag.readMagnetometer(root);
 #endif
-#if FT_ENABLED(USE_BMP)
+#if FT_ENABLED(USE_BMP180)
         _bmp.readBarometer(root);
 #endif
         serializeJson(doc, message);
@@ -196,7 +196,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void emitSonar() {
 #if FT_ENABLED(USE_USS)
-
         char output[16];
         snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
         socket.emit("sonar", output);
@@ -214,13 +213,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     JsonDocument doc;
     char message[MAX_ESP_IMU_SIZE];
-#if FT_ENABLED(USE_MPU6050)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     IMU _imu;
 #endif
-#if FT_ENABLED(USE_MAG)
+#if FT_ENABLED(USE_HMC5883)
     Magnetometer _mag;
 #endif
-#if FT_ENABLED(USE_BMP)
+#if FT_ENABLED(USE_BMP180)
     Barometer _bmp;
 #endif
 #if FT_ENABLED(USE_USS)

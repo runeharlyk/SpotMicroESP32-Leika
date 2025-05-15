@@ -8,6 +8,7 @@
 
   const i2cDevices = [
     { address: 30, part_number: 'HMC5883', name: '3-Axis Digital Compass/Magnetometer IC' },
+    { address: 41, part_number: 'BNO055', name: '9-Axis Absolute Orientation Sensor' },
     { address: 64, part_number: 'PCA9685', name: '16-channel PWM driver default address' },
     { address: 72, part_number: 'ADS1115', name: '4-channel 16-bit ADC' },
     {
