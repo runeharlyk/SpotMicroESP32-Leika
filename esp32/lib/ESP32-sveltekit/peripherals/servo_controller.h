@@ -74,9 +74,15 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void servoEvent(JsonObject &root, int originId) {
         control_state = SERVO_CONTROL_STATE::PWM;
-        uint8_t servo_id = root["servo_id"];
-        int pwm = root["pwm"].as<int>();
-        pcaWrite(servo_id, pwm);
+        int8_t servo_id = root["servo_id"];
+        uint16_t pwm = root["pwm"].as<uint16_t>();
+        if (servo_id < 0) {
+            uint16_t pwms[12];
+            std::fill_n(pwms, 12, pwm);
+            _pca.setMultiplePWM(pwms, 12);
+        } else {
+            _pca.setPWM(servo_id, 0, pwm);
+        }
         ESP_LOGI("SERVO_CONTROLLER", "Setting servo %d to %d", servo_id, pwm);
     }
 
