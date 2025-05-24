@@ -450,3 +450,453 @@ const comb = (n: number, k: number): number => {
     }
     return c;
 };
+
+/*
+Units:  meters, radians, seconds / beats
+*/
+
+// interface Options {
+//     controls: 'body' | 'legs' | 'both';
+
+//     extendable?: boolean; // if true, the animation can loop
+//     description?: string; // a description of the animation
+// }
+
+interface Frame {
+    time: number;
+    position: number[];
+    orientation: number[];
+    feet?: number[][];
+}
+
+type Parameter = {
+    // name: string;
+    min: number;
+    max: number;
+    default: number;
+};
+
+type Parameters = Record<string, Parameter>;
+
+interface Animation {
+    // options: Options = {};
+    parameters: Parameters;
+    frames: Frame[];
+}
+
+const generateCircleAnimation = (
+    radius: number,
+    y: number,
+    duration: number,
+    segments: number
+): Animation => {
+    const frames: Frame[] = [];
+    const deltaTime = duration / segments;
+
+    for (let i = 0; i <= segments; i++) {
+        const angle = (2 * Math.PI * i) / segments; // Angle in radians
+        const x = radius * Math.cos(angle);
+        const z = radius * Math.sin(angle);
+
+        frames.push({
+            time: i * deltaTime,
+            position: [x, y, z],
+            orientation: [0, 0, 0]
+        });
+    }
+
+    return {
+        parameters: {
+            speed: { min: 0.1, max: 2, default: 1 },
+            x_offset: { min: -0.1, max: 0.1, default: 0 }
+        },
+        frames
+    };
+};
+
+const kinematicShowCaseGen = generateCircleAnimation(0.5, 0.7, 4000, 32);
+
+const kinematicShowCase: Animation = {
+    parameters: {
+        speed: { min: 0.1, max: 2, default: 1 },
+        x_offset: { min: -0.1, max: 0.1, default: 0 }
+    },
+    frames: [
+        {
+            time: 0,
+            position: [0.5, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 500,
+            position: [0.3, 0.7, 0.3],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 1000,
+            position: [0, 0.7, 0.5],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 1500,
+            position: [-0.3, 0.7, 0.3],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 2000,
+            position: [-0.5, 0.7, 0],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 2500,
+            position: [-0.3, 0.7, -0.3],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 3000,
+            position: [0, 0.7, -0.5],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 3500,
+            position: [0.3, 0.7, -0.3],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 4000,
+            position: [0.5, 0.7, 0],
+            orientation: [0, 0, 0]
+        }
+    ]
+};
+
+const stretch: Animation = {
+    parameters: {
+        speed: { min: 0.1, max: 2, default: 1 },
+        x_offset: { min: -0.1, max: 0.1, default: 0 }
+    },
+    frames: [
+        // Step forward
+        {
+            time: 0,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 250,
+            position: [0, 0.7, -0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [1.5, -0.5, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 500,
+            position: [0, 0.7, -0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [2, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 750,
+            position: [0, 0.7, 0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [2, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 1000,
+            position: [0, 0.7, 0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [2, -1, 1, 1],
+                [1.5, -0.5, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 1250,
+            position: [0, 0.7, 0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [2, -1, 1, 1],
+                [2, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 2500,
+            position: [0.5, 0.7, 0],
+            orientation: [0, 0, 25]
+        },
+        {
+            time: 4000,
+            position: [-0.7, 0.7, 0],
+            orientation: [0, 0, -20]
+        },
+        {
+            time: 5000,
+            position: [-0.7, 0.7, 0],
+            orientation: [0, 0, -20]
+        },
+        {
+            time: 6000,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0]
+        },
+        {
+            time: 6000,
+            position: [-0.2, 0.7, -0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [2, -1, 1, 1],
+                [2, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 6500,
+            position: [-0.2, 0.7, -0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [0.5, -0.5, 1, 1],
+                [2, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 7000,
+            position: [-0.2, 0.7, 0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [2, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 7500,
+            position: [-0.2, 0.7, 0.2],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [0.5, -0.5, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 8000,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        }
+    ]
+};
+
+const pee: Animation = {
+    parameters: {
+        speed: { min: 0.1, max: 2, default: 1 },
+        x_offset: { min: -0.1, max: 0.1, default: 0 }
+    },
+    frames: [
+        {
+            time: 0,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 1000,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 2000,
+            position: [0.2, 0.7, 0.45],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 3000,
+            position: [0.2, 0.7, 0.45],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 4000,
+            position: [0.2, 0.7, 0.45],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, 0, -1, 1]
+            ]
+        },
+        {
+            time: 5000,
+            position: [0.2, 0.7, 0.45],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        },
+        {
+            time: 6000,
+            position: [0, 0.7, 0],
+            orientation: [0, 0, 0],
+            feet: [
+                [1, -1, 1, 1],
+                [1, -1, -1, 1],
+                [-1, -1, 1, 1],
+                [-1, -1, -1, 1]
+            ]
+        }
+    ]
+};
+
+export class Animater extends GaitState {
+    protected name = 'Bezier';
+    time = 0;
+    animation = pee; // stretch;
+
+    begin() {
+        this.time = 0;
+        super.begin();
+    }
+
+    end() {
+        this.time = 0;
+        super.end();
+    }
+
+    step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+        return this.step_animation(body_state, dt);
+    }
+
+    step_animation(body_state: body_state_t, dt: number = 0.02) {
+        this.dt = dt / 1000;
+        this.time += dt;
+
+        const duration = this.animation.frames[this.animation.frames.length - 1].time;
+        if (this.time > duration) {
+            this.time = this.time % duration;
+        }
+
+        const { prevFrame, nextFrame } = this.getBoundingFrames();
+
+        const t = this.getInterpolationFactor(prevFrame, nextFrame);
+        const position = this.interpolatePosition(prevFrame.position, nextFrame.position, t);
+        const orientation = this.interpolatePosition(
+            prevFrame.orientation,
+            nextFrame.orientation,
+            t
+        );
+
+        // Apply x_offset
+        // position[0] += this.xOffset;
+
+        body_state.xm = position[0];
+        body_state.ym = position[1];
+        body_state.zm = position[2];
+        body_state.omega = orientation[0];
+        body_state.phi = orientation[1];
+        body_state.psi = orientation[2];
+
+        if (prevFrame.feet && nextFrame.feet) {
+            for (let i = 0; i < 4; i++) {
+                body_state.feet[i] = this.interpolatePosition(
+                    prevFrame.feet[i],
+                    nextFrame.feet[i],
+                    t
+                );
+            }
+        }
+
+        return body_state;
+    }
+
+    private getBoundingFrames(): { prevFrame: Frame; nextFrame: Frame } {
+        const frames = this.animation.frames;
+
+        for (let i = 0; i < frames.length - 1; i++) {
+            const prevFrame = frames[i];
+            const nextFrame = frames[i + 1];
+
+            if (this.time >= prevFrame.time && this.time <= nextFrame.time) {
+                return { prevFrame, nextFrame };
+            }
+        }
+
+        // Fallback (should not be reached if looping correctly)
+        return { prevFrame: frames[frames.length - 1], nextFrame: frames[0] };
+    }
+
+    private getInterpolationFactor(prevFrame: Frame, nextFrame: Frame): number {
+        const timeRange = nextFrame.time - prevFrame.time;
+        const elapsed = this.time - prevFrame.time;
+        return elapsed / timeRange;
+    }
+
+    private interpolatePosition(pos1: number[], pos2: number[], t: number): number[] {
+        return pos1.map((val, index) => val + t * (pos2[index] - val));
+    }
+}
