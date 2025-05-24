@@ -5,37 +5,40 @@
 
   interface Props {
     expanded?: boolean
-    name: any
+    name: string
     files: any
-    selected: any
+    selected: (name: string) => void
+    onDelete: (name: string) => void
   }
 
-  let { expanded = $bindable(false), name, files, selected }: Props = $props()
+  let { expanded = $bindable(false), name, files, selected, onDelete }: Props = $props()
 
   function toggle() {
     expanded = !expanded
   }
 </script>
 
-<button class="flex pl-2" onclick={toggle}>
-  {#if expanded}
-    <FolderOpenOutline class="w-6 h-6" />
-  {:else}
-    <FolderIcon class="w-6 h-6" />
-  {/if}
-  {name}
-</button>
+<div class="folder-item">
+  <button class="flex items-center pl-2 hover:bg-gray-700 w-full rounded py-1" onclick={toggle}>
+    {#if expanded}
+      <FolderOpenOutline class="w-5 h-5 mr-1" />
+    {:else}
+      <FolderIcon class="w-5 h-5 mr-1" />
+    {/if}
+    <span class="text-sm">{name}</span>
+  </button>
 
-{#if expanded}
-  <ul class="ml-5 border-l border-slate-600">
-    {#each Object.entries(files) as [name, content]}
-      <li class="p-1">
-        {#if typeof content == 'object'}
-          <Folder {name} files={content} {selected} />
-        {:else}
-          <File {name} {selected} />
-        {/if}
-      </li>
-    {/each}
-  </ul>
-{/if}
+  {#if expanded}
+    <ul class="ml-4 border-l border-gray-600 mt-1">
+      {#each Object.entries(files) as [itemName, content]}
+        <li class="py-1">
+          {#if typeof content === 'object'}
+            <Folder name={itemName} files={content} {selected} {onDelete} />
+          {:else}
+            <File name={itemName} {selected} {onDelete} />
+          {/if}
+        </li>
+      {/each}
+    </ul>
+  {/if}
+</div>

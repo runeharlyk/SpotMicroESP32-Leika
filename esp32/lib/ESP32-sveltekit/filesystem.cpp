@@ -44,23 +44,28 @@ bool deleteFile(const char *filename) { return ESPFS.remove(filename); }
 
 String listFiles(const String &directory, bool isRoot) {
     File root = ESPFS.open(directory.startsWith("/") ? directory : "/" + directory);
-    if (!root.isDirectory()) return "";
+    if (!root.isDirectory()) return "{}";
 
     File file = root.openNextFile();
+    if (!file) {
+        return isRoot ? "{ \"root\": {} }" : "{}";
+    }
+
     String output = isRoot ? "{ \"root\": {" : "{";
 
     while (file) {
+        String name = String(file.name());
         if (file.isDirectory()) {
-            output += "\"" + String(file.name()) + "\": " + listFiles(file.name(), false) + ", ";
+            output += "\"" + name + "\": " + listFiles(name, false);
         } else {
-            output += "\"" + String(file.name()) + "\": " + String(file.size()) + ", ";
+            output += "\"" + name + "\": " + String(file.size());
         }
-        file = root.openNextFile();
+
+        File next = root.openNextFile();
+        if (next) output += ", ";
+        file = next;
     }
 
-    if (output.endsWith(", ")) {
-        output.remove(output.length() - 2);
-    }
     output += "}";
     if (isRoot) output += "}";
 
@@ -96,6 +101,12 @@ bool editFile(const char *filename, const char *content) {
     file.print(content);
     file.close();
     return true;
+}
+
+esp_err_t mkdir(PsychicRequest *request, JsonVariant &json) {
+    const char *path = json["path"].as<const char *>();
+    ESP_LOGI(TAG, "Creating directory: %s", path);
+    return ESPFS.mkdir(path) ? request->reply(200) : request->reply(500);
 }
 
 } // namespace FileSystem
