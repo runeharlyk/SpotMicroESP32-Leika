@@ -36,6 +36,8 @@ export { default as FileIcon } from '~icons/mdi/file'
 export { default as FolderIcon } from '~icons/mdi/folder-outline'
 export { default as FolderOpenOutline } from '~icons/mdi/folder-open-outline'
 export { default as TrashIcon } from '~icons/mdi/trash'
+export { default as RotateCcw } from '~icons/mdi/rotate-left'
+export { default as RotateCw } from '~icons/mdi/rotate-right'
 
 export { default as Down } from '~icons/tabler/chevron-down'
 export { default as Cancel } from '~icons/tabler/x'
