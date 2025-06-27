@@ -21,6 +21,7 @@ struct alignas(16) body_state_t {
 
 class Kinematics {
   private:
+#if defined(SPOTMICRO_ESP32)
     static constexpr float l1 = 60.5f / 100.0f;
     static constexpr float l2 = 10.0f / 100.0f;
     static constexpr float l3 = 111.2f / 100.0f;
@@ -28,6 +29,17 @@ class Kinematics {
 
     static constexpr float L = 207.5f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
+#elif defined(SPOTMICRO_YERTLE)
+    static constexpr float l1 = 35.0f / 100.0f;
+    static constexpr float l2 = 0.0f;
+    static constexpr float l3 = 130.0f / 100.0f;
+    static constexpr float l4 = 130.0f / 100.0f;
+
+    static constexpr float L = 207.5f / 100.0f;
+    static constexpr float W = 78.0f / 100.0f;
+#else
+#error "Must define either SPOTMICRO_ESP32 or SPOTMICRO_YERTLE"
+#endif
 
     static constexpr float mountOffsets[4][3] = {
         {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
@@ -137,7 +149,11 @@ class Kinematics {
         float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
         result[0] = RAD_TO_DEG_F(theta1);
         result[1] = RAD_TO_DEG_F(theta2);
+#if defined(SPOTMICRO_ESP32)
         result[2] = RAD_TO_DEG_F(theta3);
+#elif defined(SPOTMICRO_YERTLE)
+        result[2] = RAD_TO_DEG_F(theta3 + theta2);
+#endif
     }
 };
 
