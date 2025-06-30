@@ -103,7 +103,7 @@ class Spot {
     bool updatedMotion = false;
 
     const char *_appName = APP_NAME;
-    const u_int16_t _numberEndpoints = 116;
+    const u_int16_t _numberEndpoints = 120;
     const u_int32_t _maxFileUpload = 2300000; // 2.3 MB
     const uint16_t _port = 80;
 
