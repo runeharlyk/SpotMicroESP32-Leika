@@ -46,11 +46,11 @@ export default class Kinematic {
   constructor() {
     this.l1 = 60.5 / 100
     this.l2 = 10 / 100
-    this.l3 = 100.7 / 100
+    this.l3 = 111.7 / 100
     this.l4 = 118.5 / 100
 
-    this.L = 230 / 100
-    this.W = 75 / 100
+    this.L = 207.5 / 100
+    this.W = 78 / 100
 
     this.mountOffsets = [
       [this.L / 2, 0, this.W / 2],
@@ -58,6 +58,12 @@ export default class Kinematic {
       [-this.L / 2, 0, this.W / 2],
       [-this.L / 2, 0, -this.W / 2]
     ]
+  }
+
+  getDefaultFeetPos(): number[][] {
+    return this.mountOffsets.map((offset, i) => {
+      return [offset[0], -1, offset[2] + (i % 2 === 1 ? -this.l1 : this.l1)]
+    })
   }
 
   calcIK(p: body_state_t): number[] {
