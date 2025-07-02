@@ -35,7 +35,7 @@ class MotionService {
         socket.onSubscribe(ANGLES_EVENT,
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
-        body_state.updateFeet(default_feet_positions);
+        body_state.updateFeet(kinematics.default_feet_positions);
     }
 
     void anglesEvent(JsonObject &root, int originId) {
@@ -75,7 +75,7 @@ class MotionService {
                 body_state.psi = command.ry / 8;
                 body_state.xm = command.ly / 2 / 100;
                 body_state.zm = command.lx / 2 / 100;
-                body_state.updateFeet(default_feet_positions);
+                body_state.updateFeet(kinematics.default_feet_positions);
                 break;
             }
         }
@@ -154,10 +154,13 @@ class MotionService {
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-    float default_feet_positions[4][4] = {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}};
-
+#if defined(SPOTMICRO_ESP32)
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float calibration_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+#elif defined(SPOTMICRO_YERTLE)
+    float rest_angles[12] = {0, 45, -45, 0, 45, -45, 0, 45, -45, 0, 45, -45};
+    float calibration_angles[12] = {0, 90, 0, 0, 90, 0, 0, 90, 0, 0, 90, 0};
+#endif
 };
 
 #endif

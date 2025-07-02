@@ -35,7 +35,7 @@ class Kinematics {
     static constexpr float l3 = 130.0f / 100.0f;
     static constexpr float l4 = 130.0f / 100.0f;
 
-    static constexpr float L = 207.5f / 100.0f;
+    static constexpr float L = 240.0f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
 #else
 #error "Must define either SPOTMICRO_ESP32 or SPOTMICRO_YERTLE"
@@ -53,6 +53,13 @@ class Kinematics {
     body_state_t currentState;
 
   public:
+    static constexpr float default_feet_positions[4][4] = {
+        {mountOffsets[0][0], -1, mountOffsets[0][2] + l1, 1},
+        {mountOffsets[1][0], -1, mountOffsets[1][2] - l1, 1},
+        {mountOffsets[2][0], -1, mountOffsets[2][2] + l1, 1},
+        {mountOffsets[3][0], -1, mountOffsets[3][2] - l1, 1},
+    };
+
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 
