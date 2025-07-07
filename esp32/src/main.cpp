@@ -1,6 +1,9 @@
 #include <spot.h>
+#include <event_bus.hpp>
+#include <adapters/bluetooth.hpp>
 
 DRAM_ATTR Spot spot;
+BluetoothService bluetooth;
 
 void IRAM_ATTR SpotControlLoopEntry(void*) {
     ESP_LOGI("main", "Setup complete now runing tsk");
@@ -17,6 +20,7 @@ void IRAM_ATTR SpotControlLoopEntry(void*) {
 
 void setup() {
     Serial.begin(115200);
+    bluetooth.begin("Hexapod");
 
     spot.initialize();
 

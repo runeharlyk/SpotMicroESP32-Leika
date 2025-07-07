@@ -1,0 +1,4 @@
+#define TOPIC_LIST   \
+    X(Imu, ImuMsg)   \
+    X(Mode, ModeMsg) \
+    X(Command, CommandMsg)
