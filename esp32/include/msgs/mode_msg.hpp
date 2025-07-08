@@ -1,7 +1,7 @@
 #pragma once
 #include <ArduinoJson.h>
 
-enum class MotionState { ON, OFF };
+enum class MotionState { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WALK };
 
 struct ModeMsg {
     MotionState mode;
