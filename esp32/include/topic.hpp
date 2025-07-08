@@ -2,7 +2,7 @@
 #include "msgs/imu_msg.hpp"
 #include "msgs/command_msg.hpp"
 #include "msgs/mode_msg.hpp"
-
+#include "msgs/servo_msg.hpp"
 #include "msgs/topics.def"
 
 enum class Topic : uint8_t {
