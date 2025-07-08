@@ -41,6 +41,7 @@ class EventBus {
     inline static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
     inline static Msg latest {};
     inline static volatile bool has_latest = false;
+    inline static std::atomic<size_t> sub_cnt {0};
 
     static void store(const Msg& m) {
         portENTER_CRITICAL(&mux);
@@ -119,7 +120,11 @@ class EventBus {
         }
         ~Handle() = default;
         void unsubscribe() {
-            if (index < MaxSubs) subs[index].reset(), index = MaxSubs;
+            if (index < MaxSubs) {
+                subs[index].reset();
+                sub_cnt.fetch_sub(1, std::memory_order_acq_rel);
+                index = MaxSubs;
+            }
         }
         bool valid() const { return index < MaxSubs; }
     };
@@ -134,6 +139,7 @@ class EventBus {
                                      .last = xTaskGetTickCount(),
                                      .mode = mode,
                                      .cnt = 0});
+                sub_cnt.fetch_add(1, std::memory_order_acq_rel);
                 return Handle(i);
             }
         return Handle(MaxSubs);
@@ -200,4 +206,6 @@ class EventBus {
         portEXIT_CRITICAL(&mux);
         return true;
     }
+
+    static bool hasSubscribers() { return sub_cnt.load(std::memory_order_acquire) != 0; }
 };
