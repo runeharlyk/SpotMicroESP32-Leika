@@ -22,7 +22,7 @@ void update_started() {
     String output;
     doc["status"] = "preparing";
     serializeJson(doc, output);
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 }
 
 void update_progress(int currentBytes, int totalBytes) {
@@ -31,7 +31,7 @@ void update_progress(int currentBytes, int totalBytes) {
     int progress = ((currentBytes * 100) / totalBytes);
     if (progress > previousProgress) {
         doc["progress"] = progress;
-        socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+        // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
         ESP_LOGV("Download OTA", "HTTP update process at %d of %d bytes... (%d %%)", currentBytes, totalBytes,
                  progress);
     }
@@ -42,7 +42,7 @@ void update_finished() {
     String output;
     doc["status"] = "finished";
     serializeJson(doc, output);
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
     // delay to allow the event to be sent out
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -70,7 +70,7 @@ void updateTask(void *param) {
             doc["status"] = "error";
             doc["error"] = httpUpdate.getLastErrorString().c_str();
             serializeJson(doc, output);
-            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
             ESP_LOGE("Download OTA", "HTTP Update failed with error (%d): %s", httpUpdate.getLastError(),
                      httpUpdate.getLastErrorString().c_str());
@@ -80,7 +80,7 @@ void updateTask(void *param) {
             doc["status"] = "error";
             doc["error"] = "Update failed, has same firmware version";
             serializeJson(doc, output);
-            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
             ESP_LOGE("Download OTA", "HTTP Update failed, has same firmware version");
             break;
@@ -106,7 +106,7 @@ esp_err_t DownloadFirmwareService::handleDownloadUpdate(PsychicRequest *request,
     String output;
     serializeJson(doc, output);
 
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    // socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
 
     const BaseType_t taskResult = g_taskManager.createTask(&updateTask, "Firmware download", OTA_TASK_STACK_SIZE,
                                                            &downloadURL, (configMAX_PRIORITIES - 1), NULL, 1);

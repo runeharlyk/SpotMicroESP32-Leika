@@ -2,7 +2,7 @@
 #define ServoController_h
 
 #include <Adafruit_PWMServoDriver.h>
-#include <event_socket.h>
+#include <event_bus.hpp>
 #include <template/stateful_persistence.h>
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
@@ -32,16 +32,16 @@ class ServoController : public StatefulService<ServoSettings> {
           _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
-        socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-                       [&](JsonObject &root, int originId) { servoEvent(root, originId); });
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
+        // socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
+        //                [&](JsonObject &root, int originId) { servoEvent(root, originId); });
+        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
         _persistence.readFromFS();
 
         initializePCA();
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
-            is_active = root["active"] | false;
-            is_active ? activate() : deactivate();
-        });
+        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+        //     is_active = root["active"] | false;
+        //     is_active ? activate() : deactivate();
+        // });
     }
 
     void pcaWrite(int index, int value) {
@@ -91,7 +91,7 @@ class ServoController : public StatefulService<ServoSettings> {
         snprintf(output, sizeof(output), "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0],
                  angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9],
                  angles[10], angles[11]);
-        socket.emit("angles", output, String(originId).c_str());
+        // socket.emit("angles", output, String(originId).c_str());
     }
 
     void updateActiveState() { is_active ? activate() : deactivate(); }

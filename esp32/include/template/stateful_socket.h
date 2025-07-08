@@ -2,7 +2,7 @@
 
 #include <PsychicHttp.h>
 
-#include <event_socket.h>
+#include <event_bus.hpp>
 #include <template/stateful_service.h>
 
 template <class T>
@@ -15,10 +15,10 @@ class EventEndpoint {
     }
 
     void begin() {
-        socket.onEvent(_event,
-                       std::bind(&EventEndpoint::updateState, this, std::placeholders::_1, std::placeholders::_2));
-        socket.onSubscribe(_event,
-                           std::bind(&EventEndpoint::syncState, this, std::placeholders::_1, std::placeholders::_2));
+        // socket.onEvent(_event,
+        //                std::bind(&EventEndpoint::updateState, this, std::placeholders::_1, std::placeholders::_2));
+        // socket.onSubscribe(_event,
+        //                    std::bind(&EventEndpoint::syncState, this, std::placeholders::_1, std::placeholders::_2));
     }
 
   private:
@@ -38,6 +38,6 @@ class EventEndpoint {
         _statefulService->read(root, _stateReader);
         serializeJson(root, output);
         ESP_LOGV("EventEndpoint", "Syncing state: %s", output.c_str());
-        socket.emit(_event, output.c_str(), originId.c_str(), sync);
+        // socket.emit(_event, output.c_str(), originId.c_str(), sync);
     }
 };

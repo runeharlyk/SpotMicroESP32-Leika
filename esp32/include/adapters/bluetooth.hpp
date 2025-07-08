@@ -14,21 +14,8 @@ class BluetoothService : public CommBase<> {
     BLECharacteristic* rxCharacteristic {nullptr};
     bool connected {false};
 
-  protected:
-    template <typename Msg>
-    using EventBusHandle = typename EventBus<Msg>::Handle;
-
-    template <typename Msg>
-    EventBusHandle<Msg>& getHandle(Topic topic) {
-        return *static_cast<EventBusHandle<Msg>*>(subscriptionHandle[static_cast<size_t>(topic)]);
-    }
-
-    template <typename Msg>
-    void setHandle(Topic topic, EventBusHandle<Msg>&& handle) {
-        subscriptionHandle[static_cast<size_t>(topic)] = new EventBusHandle<Msg>(std::move(handle));
-    }
-
-    std::array<void*, static_cast<size_t>(Topic::COUNT)> subscriptionHandle {};
+  public:
+    void begin(const char* name);
 
   private:
     void handleReceive(const std::string& data);
@@ -53,8 +40,4 @@ class BluetoothService : public CommBase<> {
             if (!v.empty()) svc->handleReceive(v);
         }
     };
-
-  public:
-    void begin(const char* name);
-    void loop() {}
 };

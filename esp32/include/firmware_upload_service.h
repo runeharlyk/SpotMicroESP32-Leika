@@ -8,7 +8,7 @@
 
 #include <PsychicHttp.h>
 #include <system_service.h>
-#include <event_socket.h>
+#include <event_bus.hpp>
 
 enum FileType { ft_none = 0, ft_firmware = 1, ft_md5 = 2 };
 

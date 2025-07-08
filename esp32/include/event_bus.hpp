@@ -3,6 +3,7 @@
 #include <bitset>
 #include <functional>
 #include <optional>
+#include <atomic>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -102,11 +103,12 @@ class EventBus {
 
   public:
     class Handle {
-        size_t index;
+        size_t index {MaxSubs};
         friend class EventBus;
         explicit Handle(size_t i) : index(i) {}
 
       public:
+        Handle() = default;
         Handle(const Handle&) = delete;
         Handle& operator=(const Handle&) = delete;
         Handle(Handle&& h) noexcept : index(h.index) { h.index = MaxSubs; }

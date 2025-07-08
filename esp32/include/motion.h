@@ -1,7 +1,8 @@
 #ifndef MotionService_h
 #define MotionService_h
 
-#include <event_socket.h>
+#include <event_bus.hpp>
+#include <topic.hpp>
 #include <kinematics.h>
 #include <peripherals/servo_controller.h>
 #include <utils/timing.h>
@@ -21,51 +22,37 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WA
 
 class MotionService {
   public:
-    MotionService(ServoController *servoController) : _servoController(servoController) {}
+    MotionService(ServoController* servoController) : _servoController(servoController) {}
 
     void begin() {
-        socket.onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
-
-        socket.onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });
-
-        socket.onEvent(ANGLES_EVENT, [&](JsonObject &root, int originId) { anglesEvent(root, originId); });
-
-        socket.onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
-
-        socket.onSubscribe(ANGLES_EVENT,
-                           std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
-
+        setupEventBusSubscriptions();
         body_state.updateFeet(kinematics.default_feet_positions);
     }
 
-    void anglesEvent(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
+    void anglesEvent(const MotionAnglesMsg& msg) {
         for (int i = 0; i < 12; i++) {
-            angles[i] = array[i];
+            angles[i] = msg.angles[i];
         }
-        syncAngles(String(originId));
+        syncAngles();
     }
 
-    void positionEvent(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
-        body_state.omega = array[0];
-        body_state.phi = array[1];
-        body_state.psi = array[2];
-        body_state.xm = array[3];
-        body_state.ym = array[4];
-        body_state.zm = array[5];
+    void positionEvent(const MotionPositionMsg& msg) {
+        body_state.omega = msg.omega;
+        body_state.phi = msg.phi;
+        body_state.psi = msg.psi;
+        body_state.xm = msg.xm;
+        body_state.ym = msg.ym;
+        body_state.zm = msg.zm;
     }
 
-    void handleInput(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
-        command.lx = array[1];
-        command.lx = array[1];
-        command.ly = array[2];
-        command.rx = array[3];
-        command.ry = array[4];
-        command.h = array[5];
-        command.s = array[6];
-        command.s1 = array[7];
+    void handleInput(const MotionInputMsg& msg) {
+        command.lx = msg.lx;
+        command.ly = msg.ly;
+        command.rx = msg.rx;
+        command.ry = msg.ry;
+        command.h = msg.h;
+        command.s = msg.s;
+        command.s1 = msg.s1;
 
         body_state.ym = (command.h + 127.f) * 0.35f / 100;
 
@@ -81,25 +68,27 @@ class MotionService {
         }
     }
 
-    void handleMode(JsonObject &root, int originId) {
-        motionState = (MOTION_STATE)root["data"].as<int>();
+    void handleMode(const MotionModeMsg& msg) {
+        motionState = (MOTION_STATE)msg.mode;
         ESP_LOGV("MotionService", "Mode %d", motionState);
-        char output[2];
-        itoa((int)motionState, output, 10);
+
         motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
-        socket.emit(MODE_EVENT, output, String(originId).c_str());
+
+        MotionModeMsg response;
+        response.mode = msg.mode;
+        EventBus<MotionModeMsg>::publishAsync(response, _modeHandle);
     }
 
-    void emitAngles(const String &originId = "", bool sync = false) {
-        char output[100];
-        snprintf(output, sizeof(output), "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0],
-                 angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9],
-                 angles[10], angles[11]);
-        socket.emit(ANGLES_EVENT, output, originId.c_str());
+    void emitAngles() {
+        MotionAnglesMsg anglesMsg;
+        for (int i = 0; i < 12; i++) {
+            anglesMsg.angles[i] = angles[i];
+        }
+        EventBus<MotionAnglesMsg>::publishAsync(anglesMsg, _anglesHandle);
     }
 
-    void syncAngles(const String &originId = "", bool sync = false) {
-        emitAngles(originId, sync);
+    void syncAngles() {
+        emitAngles();
         _servoController->setAngles(angles);
     }
 
@@ -134,10 +123,33 @@ class MotionService {
         return updated;
     }
 
-    float *getAngles() { return angles; }
+    float* getAngles() { return angles; }
 
   private:
-    ServoController *_servoController;
+    void setupEventBusSubscriptions() {
+        _inputHandle = EventBus<MotionInputMsg>::subscribe([this](const MotionInputMsg* msg, size_t n) {
+            if (n > 0) handleInput(msg[0]);
+        });
+
+        _modeHandle = EventBus<MotionModeMsg>::subscribe([this](const MotionModeMsg* msg, size_t n) {
+            if (n > 0) handleMode(msg[0]);
+        });
+
+        _anglesHandle = EventBus<MotionAnglesMsg>::subscribe([this](const MotionAnglesMsg* msg, size_t n) {
+            if (n > 0) anglesEvent(msg[0]);
+        });
+
+        _positionHandle = EventBus<MotionPositionMsg>::subscribe([this](const MotionPositionMsg* msg, size_t n) {
+            if (n > 0) positionEvent(msg[0]);
+        });
+    }
+
+    EventBus<MotionInputMsg>::Handle _inputHandle;
+    EventBus<MotionModeMsg>::Handle _modeHandle;
+    EventBus<MotionAnglesMsg>::Handle _anglesHandle;
+    EventBus<MotionPositionMsg>::Handle _positionHandle;
+
+    ServoController* _servoController;
     Kinematics kinematics;
     ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};
 

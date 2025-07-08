@@ -59,7 +59,9 @@
     "three": "^0.162.0",
     "urdf-loader": "^0.12.1",
     "uzip": "^0.20201231.0",
-    "xacro-parser": "^0.3.9"
+    "xacro-parser": "^0.3.9",
+    "@types/msgpack-lite": "^0.1.11",
+    "msgpack-lite": "^0.1.26"
   },
   "packageManager": "pnpm@9.3.0"
 }

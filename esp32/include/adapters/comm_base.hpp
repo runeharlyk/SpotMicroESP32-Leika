@@ -1,4 +1,5 @@
 #pragma once
+#include "event_bus.hpp"
 #include <ArduinoJson.h>
 #include <array>
 #include <bitset>
@@ -17,6 +18,8 @@ class CommBase {
     std::array<Bits, NTopics> subs_;
     portMUX_TYPE mux_ portMUX_INITIALIZER_UNLOCKED;
 
+    std::array<void*, static_cast<size_t>(Topic::COUNT)> subscriptionHandle {};
+
     static constexpr size_t idx(Topic t) { return static_cast<size_t>(t); }
 
     template <Topic T>
@@ -29,6 +32,18 @@ class CommBase {
 
   protected:
     virtual void send(size_t cid, const char* data, size_t len) = 0;
+
+    template <class Msg>
+    auto& getHandle(Topic topic) {
+        using H = typename EventBus<Msg>::Handle;
+        return *static_cast<H*>(subscriptionHandle[static_cast<size_t>(topic)]);
+    }
+
+    template <class Msg>
+    void setHandle(Topic topic, typename EventBus<Msg>::Handle&& h) {
+        using H = typename EventBus<Msg>::Handle;
+        subscriptionHandle[static_cast<size_t>(topic)] = new H(std::move(h));
+    }
 
   public:
     void subscribe(Topic t, size_t cid) {

@@ -55,15 +55,15 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _eventEndpoint.begin();
         _persistence.readFromFS();
 
-        socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
-            scanI2C();
-            emitI2C();
-        });
+        // socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
+        //     scanI2C();
+        //     emitI2C();
+        // });
 
-        socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
-            scanI2C();
-            emitI2C(originId, sync);
-        });
+        // socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
+        //     scanI2C();
+        //     emitI2C(originId, sync);
+        // });
 
         updatePins();
 
@@ -115,7 +115,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
         serializeJson(root, output);
         ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
-        socket.emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
+        // socket.emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
     }
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
@@ -191,14 +191,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _bmp.readBarometer(root);
 #endif
         serializeJson(doc, message);
-        socket.emit(EVENT_IMU, message);
+        // socket.emit(EVENT_IMU, message);
     }
 
     void emitSonar() {
 #if FT_ENABLED(USE_USS)
         char output[16];
         snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
-        socket.emit("sonar", output);
+        // socket.emit("sonar", output);
 #endif
     }
 

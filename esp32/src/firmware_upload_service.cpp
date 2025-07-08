@@ -88,14 +88,14 @@ esp_err_t FirmwareUploadService::handleUpload(PsychicRequest *request, const Str
             char buffer[64];
             snprintf(buffer, sizeof(buffer), "{\"status\":\"progress\",\"progress\":%.1f}",
                      (float)Update.progress() / (float)fsize * 100.f);
-            socket.emit("otastatus", buffer);
+            // socket.emit("otastatus", buffer);
             delay(20);
         }
         if (final) {
             if (!Update.end(true)) {
                 handleError(request, 500);
             } else {
-                socket.emit("otastatus", "{\"status\":\"finished\",\"progress\":100}");
+                // socket.emit("otastatus", "{\"status\":\"finished\",\"progress\":100}");
                 ESP_LOGI(TAG, "Finish writing update");
             }
         }
@@ -136,7 +136,7 @@ esp_err_t FirmwareUploadService::uploadComplete(PsychicRequest *request) {
 esp_err_t FirmwareUploadService::handleError(PsychicRequest *request, int code) {
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "{\"status\":\"error\",\"error\":\"%d\"}", Update.getError());
-    socket.emit("otastatus", buffer);
+    // socket.emit("otastatus", buffer);
     // if we have had an error already, do nothing
     if (request->_tempObject) {
         return ESP_OK;
