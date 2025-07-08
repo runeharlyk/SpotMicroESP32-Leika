@@ -1,5 +1,9 @@
-#define TOPIC_LIST         \
-    X(Imu, ImuMsg)         \
-    X(Mode, ModeMsg)       \
-    X(Command, CommandMsg) \
-    X(Servo, ServoMsg)\
+#define TOPIC_LIST                       \
+    X(Imu, ImuMsg)                       \
+    X(Mode, ModeMsg)                     \
+    X(Command, CommandMsg)               \
+    X(Servo, ServoMsg)                   \
+    X(MotionInput, MotionInputMsg)       \
+    X(MotionAngles, MotionAnglesMsg)     \
+    X(MotionPosition, MotionPositionMsg) \
+    X(MotionMode, MotionModeMsg)

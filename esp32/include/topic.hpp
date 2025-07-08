@@ -3,6 +3,10 @@
 #include "msgs/command_msg.hpp"
 #include "msgs/mode_msg.hpp"
 #include "msgs/servo_msg.hpp"
+#include "msgs/motion_input_msg.hpp"
+#include "msgs/motion_angles_msg.hpp"
+#include "msgs/motion_position_msg.hpp"
+#include "msgs/motion_mode_msg.hpp"
 #include "msgs/topics.def"
 
 enum class Topic : uint8_t {
