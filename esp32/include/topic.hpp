@@ -29,29 +29,3 @@ static Msg parse(JsonVariantConst v) {
     msg.fromJson(v);
     return msg;
 }
-
-// enum class Topic : uint8_t {
-//     Imu = 0,
-//     Command = 1,
-//     Mode = 2,
-//     COUNT // Should always be the last
-// };
-
-// template <Topic>
-// struct TopicTraits;
-
-// template <>
-// struct TopicTraits<Topic::Imu> {
-//     using Msg = ImuMsg;
-//     static constexpr Topic id = Topic::Imu;
-// };
-// template <>
-// struct TopicTraits<Topic::Command> {
-//     using Msg = CommandMsg;
-//     static constexpr Topic id = Topic::Command;
-// };
-// template <>
-// struct TopicTraits<Topic::Mode> {
-//     using Msg = ModeMsg;
-//     static constexpr Topic id = Topic::Mode;
-// };
