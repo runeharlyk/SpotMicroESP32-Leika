@@ -4,6 +4,13 @@ EventSocket::EventSocket() {
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
+
+#define X(e, t)                                                                  \
+    setHandle<t>(Topic::e, EventBus<t>::subscribe([this](const t* d, size_t n) { \
+                     if (n) this->emit<Topic::e>(d[0]);                          \
+                 }));
+    TOPIC_LIST
+#undef X
 }
 
 void EventSocket::onWSOpen(PsychicWebSocketClient* client) {
@@ -93,9 +100,6 @@ void EventSocket::send(size_t clientId, const char* data, size_t len) {
 #else
     client->sendMessage(HTTPD_WS_TYPE_TEXT, data, len);
 #endif
-
-    // ESP_LOGV("EventSocket", "Sending to client %zu: %.*s", clientId, len, data);
-    // client->sendMessage(data);
 }
 
 EventSocket socket;

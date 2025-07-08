@@ -10,12 +10,6 @@
 #include "event_bus.hpp"
 #include "adapters/comm_base.hpp"
 #include "topic.hpp"
-// #include "msgs/motion_input_msg.hpp"
-// #include "msgs/motion_angles_msg.hpp"
-// #include "msgs/motion_position_msg.hpp"
-// #include "msgs/motion_mode_msg.hpp"
-
-// typedef std::function<void(JsonObject &root, int originId)> EventCallback;
 
 class EventSocket : public CommBase<> {
     PsychicWebSocketHandler _socket;
@@ -28,9 +22,6 @@ class EventSocket : public CommBase<> {
     void send(size_t clientId, const char *data, size_t len) override;
 
     void handleReceive(const std::string &data);
-    // void handleTypedMessage(const std::string &data);
-    // void handleLegacyMessage(const std::string &data, int originId);
-    // void handleEventCallbacks(String event, JsonObject &jsonObject, int originId);
 
     void onWSOpen(PsychicWebSocketClient *client);
     void onWSClose(PsychicWebSocketClient *client);

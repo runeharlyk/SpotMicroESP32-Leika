@@ -18,9 +18,14 @@ class CommBase {
     std::array<Bits, NTopics> subs_;
     portMUX_TYPE mux_ portMUX_INITIALIZER_UNLOCKED;
 
-    std::array<void*, static_cast<size_t>(Topic::COUNT)> subscriptionHandle {};
+    std::array<void*, NTopics> subscriptionHandle {};
 
-    static constexpr size_t idx(Topic t) { return static_cast<size_t>(t); }
+    static constexpr size_t invalid = SIZE_MAX;
+
+    static constexpr size_t idx(Topic t) {
+        size_t i = static_cast<size_t>(t);
+        return i < NTopics ? i : invalid;
+    }
 
     template <Topic T>
     void encode(JsonDocument& d, const typename TopicTraits<T>::Msg& m) {
@@ -36,33 +41,45 @@ class CommBase {
     template <class Msg>
     auto& getHandle(Topic topic) {
         using H = typename EventBus<Msg>::Handle;
-        return *static_cast<H*>(subscriptionHandle[static_cast<size_t>(topic)]);
+        static H dummy;
+        auto* p = static_cast<H*>(subscriptionHandle[size_t(topic)]);
+        return p ? *p : dummy;
     }
 
     template <class Msg>
     void setHandle(Topic topic, typename EventBus<Msg>::Handle&& h) {
         using H = typename EventBus<Msg>::Handle;
-        subscriptionHandle[static_cast<size_t>(topic)] = new H(std::move(h));
+        subscriptionHandle[size_t(topic)] = new H(std::move(h));
     }
 
   public:
     void subscribe(Topic t, size_t cid) {
+        size_t i = idx(t);
+        if (i == invalid) return;
         portENTER_CRITICAL(&mux_);
-        subs_[idx(t)].set(cid);
+        subs_[i].set(cid);
         portEXIT_CRITICAL(&mux_);
     }
 
     void unsubscribe(Topic t, size_t cid) {
+        size_t i = idx(t);
+        if (i == invalid) return;
         portENTER_CRITICAL(&mux_);
-        subs_[idx(t)].reset(cid);
+        subs_[i].reset(cid);
         portEXIT_CRITICAL(&mux_);
     }
 
-    bool has(Topic t) const { return subs_[idx(t)].any(); }
+    bool has(Topic t) const {
+        size_t i = idx(t);
+        return i == invalid ? false : subs_[i].any();
+    }
 
     template <Topic T>
     void emit(const typename TopicTraits<T>::Msg& m) {
-        if (!has(T)) return;
+        constexpr size_t i = idx(T);
+        if (i == invalid) return;
+        if (!subs_[i].any()) return;
+
         JsonDocument doc;
         encode<T>(doc, m);
         String out;
@@ -71,7 +88,7 @@ class CommBase {
 #else
         serializeJson(doc, out);
 #endif
-        auto& b = subs_[idx(T)];
+        auto& b = subs_[i];
         for (size_t cid = 0; cid < MaxCid; ++cid)
             if (b.test(cid)) send(cid, out.c_str(), out.length());
     }
