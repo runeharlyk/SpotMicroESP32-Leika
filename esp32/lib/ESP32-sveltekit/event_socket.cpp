@@ -105,35 +105,39 @@ void EventSocket::emit(const char *event, JsonVariant &payload, const char *orig
     a.add(event);
     a.add(payload);
 
-    String out;
 #if USE_MSGPACK
-    serializeMsgPack(doc, out);
+    static char out[512];
+    size_t len = serializeMsgPack(doc, out, sizeof(out));
+    if (len == 0 || len >= sizeof(out)) {
+        xSemaphoreGive(clientSubscriptionsMutex);
+        ESP_LOGE("EventSocket", "Message payload bigger than buffer (%d <= %d)", sizeof(out), len);
+        return;
+    }
+    const char *data = out;
 #else
-    serializeJson(doc, out);
+    static char out[1024];
+    size_t len = serializeJson(doc, out, sizeof(out));
+    if (len == 0 || len >= sizeof(out)) {
+        xSemaphoreGive(clientSubscriptionsMutex);
+        ESP_LOGE("EventSocket", "Message payload bigger than buffer (%d <= %d)", sizeof(out), len);
+        return;
+    }
+    const char *data = out;
 #endif
 
-    const char *msg = out.c_str();
-
-    // if onlyToSameOrigin == true, send the message back to the origin
-    if (onlyToSameOrigin && originSubscriptionId > 0) {
-        auto *client = _socket.getClient(originSubscriptionId);
-        if (client) {
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
-                     client->remoteIP().toString().c_str(), msg);
-            send(client, msg, strlen(msg));
+    auto sendTo = [&](int id) {
+        if (auto *c = _socket.getClient(id)) {
+            send(c, data, len);
+        } else {
+            subscriptions.remove(id);
         }
-    } else { // else send the message to all other clients
+    };
 
-        for (int subscription : client_subscriptions[event]) {
-            if (subscription == originSubscriptionId) continue;
-            auto *client = _socket.getClient(subscription);
-            if (!client) {
-                subscriptions.remove(subscription);
-                continue;
-            }
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
-                     client->remoteIP().toString().c_str(), msg);
-            send(client, msg, strlen(msg));
+    if (onlyToSameOrigin && originSubscriptionId > 0) {
+        sendTo(originSubscriptionId);
+    } else {
+        for (int id : subscriptions) {
+            if (id != originSubscriptionId) sendTo(id);
         }
     }
     xSemaphoreGive(clientSubscriptionsMutex);
