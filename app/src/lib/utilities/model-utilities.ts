@@ -10,7 +10,7 @@ let model_xml: XMLDocument
 
 export const populateModelCache = async () => {
   await cacheModelFiles()
-  const modelRes = await loadModel('/yertle.URDF')
+  const modelRes = await loadModel('/spot_micro.urdf.xacro')
   if (modelRes.isOk()) {
     const [urdf, JOINT_NAME] = modelRes.inner
     jointNames.set(JOINT_NAME)
@@ -21,7 +21,7 @@ export const populateModelCache = async () => {
 }
 
 export const cacheModelFiles = async () => {
-  const data = await fetch('/URDF.zip')
+  const data = await fetch('/stl.zip')
 
   const files = uzip.parse(await data.arrayBuffer())
 
