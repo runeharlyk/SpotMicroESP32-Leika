@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import msgpack from 'msgpack-lite';
+import { encode, decode } from '@msgpack/msgpack';
 
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const;
 type SocketEvent = (typeof socketEvents)[number];
@@ -13,7 +13,7 @@ const decodeMessage = (data: string | ArrayBuffer): SocketMessage | null => {
 
   try {
     if (useBinary) {
-      return msgpack.decode(new Uint8Array(data as ArrayBuffer));
+      return decode(new Uint8Array(data as ArrayBuffer)) as SocketMessage;
     }
     return JSON.parse(data as string);
   } catch (error) {
@@ -24,7 +24,7 @@ const decodeMessage = (data: string | ArrayBuffer): SocketMessage | null => {
 
 const encodeMessage = (data: unknown) => {
   try {
-    return useBinary ? msgpack.encode(data) : JSON.stringify(data);
+    return useBinary ? encode(data) : JSON.stringify(data);
   } catch (error) {
     console.error(`Could not encode data: ${data} - ${error}`);
   }
