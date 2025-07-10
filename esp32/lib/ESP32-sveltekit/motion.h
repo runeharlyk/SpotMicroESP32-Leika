@@ -24,13 +24,13 @@ class MotionService {
     MotionService(ServoController *servoController) : _servoController(servoController) {}
 
     void begin() {
-        socket.onEvent(INPUT_EVENT, [&](JsonObject &root, int originId) { handleInput(root, originId); });
+        socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { handleInput(root, originId); });
 
-        socket.onEvent(MODE_EVENT, [&](JsonObject &root, int originId) { handleMode(root, originId); });
+        socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) { handleMode(root, originId); });
 
-        socket.onEvent(ANGLES_EVENT, [&](JsonObject &root, int originId) { anglesEvent(root, originId); });
+        socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { anglesEvent(root, originId); });
 
-        socket.onEvent(POSITION_EVENT, [&](JsonObject &root, int originId) { positionEvent(root, originId); });
+        socket.onEvent(POSITION_EVENT, [&](JsonVariant &root, int originId) { positionEvent(root, originId); });
 
         socket.onSubscribe(ANGLES_EVENT,
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
@@ -38,16 +38,16 @@ class MotionService {
         body_state.updateFeet(kinematics.default_feet_positions);
     }
 
-    void anglesEvent(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
+    void anglesEvent(JsonVariant &root, int originId) {
+        JsonArray array = root.as<JsonArray>();
         for (int i = 0; i < 12; i++) {
             angles[i] = array[i];
         }
         syncAngles(String(originId));
     }
 
-    void positionEvent(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
+    void positionEvent(JsonVariant &root, int originId) {
+        JsonArray array = root.as<JsonArray>();
         body_state.omega = array[0];
         body_state.phi = array[1];
         body_state.psi = array[2];
@@ -56,8 +56,8 @@ class MotionService {
         body_state.zm = array[5];
     }
 
-    void handleInput(JsonObject &root, int originId) {
-        JsonArray array = root["data"].as<JsonArray>();
+    void handleInput(JsonVariant &root, int originId) {
+        JsonArray array = root.as<JsonArray>();
         command.lx = array[1];
         command.lx = array[1];
         command.ly = array[2];
@@ -81,8 +81,8 @@ class MotionService {
         }
     }
 
-    void handleMode(JsonObject &root, int originId) {
-        motionState = static_cast<MOTION_STATE>(root["data"].as<int>());
+    void handleMode(JsonVariant &root, int originId) {
+        motionState = static_cast<MOTION_STATE>(root.as<int>());
         ESP_LOGV("MotionService", "Mode %d", motionState);
         motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
         JsonDocument doc;

@@ -27,16 +27,14 @@ class EventEndpoint {
     StatefulService<T> *_statefulService;
     const char *_event;
 
-    void updateState(JsonObject &root, int originId) {
+    void updateState(JsonVariant &root, int originId) {
         _statefulService->update(root, _stateUpdater, String(originId));
     }
 
     void syncState(const String &originId, bool sync = false) {
         JsonDocument jsonDocument;
-        JsonObject root = jsonDocument.to<JsonObject>();
-        String output;
+        JsonVariant root = jsonDocument.to<JsonVariant>();
         _statefulService->read(root, _stateReader);
-        JsonVariant obj = jsonDocument.as<JsonVariant>();
-        socket.emit(_event, obj, originId.c_str(), sync);
+        socket.emit(_event, root, originId.c_str(), sync);
     }
 };

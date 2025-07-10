@@ -37,7 +37,7 @@ typedef struct {
     IPAddress dnsIP2;
     bool available;
 
-    void serialize(JsonObject &json) const {
+    void serialize(JsonVariant &json) const {
         json["ssid"] = ssid;
         json["password"] = password;
         json["static_ip_config"] = staticIPConfig;
@@ -50,7 +50,7 @@ typedef struct {
         }
     }
 
-    bool deserialize(const JsonObject &json) {
+    bool deserialize(const JsonVariant &json) {
         String newSsid = json["ssid"].as<String>();
         String newPassword = json["password"].as<String>();
         if (newSsid.length() < 1 || newSsid.length() > 31 || newPassword.length() > 64) {
@@ -98,24 +98,24 @@ class WiFiSettings {
     String hostname;
     bool priorityBySignalStrength;
     std::vector<wifi_settings_t> wifiSettings;
-    static void read(WiFiSettings &settings, JsonObject &root) {
+    static void read(WiFiSettings &settings, JsonVariant &root) {
         root["hostname"] = settings.hostname;
         root["priority_RSSI"] = settings.priorityBySignalStrength;
         JsonArray wifiNetworks = root["wifi_networks"].to<JsonArray>();
         for (const auto &wifi : settings.wifiSettings) {
-            JsonObject wifiNetwork = wifiNetworks.add<JsonObject>();
+            JsonVariant wifiNetwork = wifiNetworks.add<JsonVariant>();
             wifi.serialize(wifiNetwork);
         }
         ESP_LOGV("WiFiSettings", "WiFi Settings read");
     }
-    static StateUpdateResult update(JsonObject &root, WiFiSettings &settings) {
+    static StateUpdateResult update(JsonVariant &root, WiFiSettings &settings) {
         settings.hostname = root["hostname"] | FACTORY_WIFI_HOSTNAME;
         settings.priorityBySignalStrength = root["priority_RSSI"] | true;
         settings.wifiSettings.clear();
         if (root["wifi_networks"].is<JsonArray>()) {
             JsonArray wifiNetworks = root["wifi_networks"];
             int networkCount = 0;
-            for (JsonObject wifiNetwork : wifiNetworks) {
+            for (JsonVariant wifiNetwork : wifiNetworks) {
                 if (networkCount >= 5) {
                     ESP_LOGE("WiFiSettings", "Too many wifi networks");
                     break;

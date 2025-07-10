@@ -33,12 +33,12 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void begin() {
         socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-                       [&](JsonObject &root, int originId) { servoEvent(root, originId); });
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) { stateUpdate(root, originId); });
+                       [&](JsonVariant &root, int originId) { servoEvent(root, originId); });
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) { stateUpdate(root, originId); });
         _persistence.readFromFS();
 
         initializePCA();
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
             is_active = root["active"] | false;
             is_active ? activate() : deactivate();
         });
@@ -66,13 +66,13 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.sleep();
     }
 
-    void stateUpdate(JsonObject &root, int originId) {
+    void stateUpdate(JsonVariant &root, int originId) {
         bool active = root["active"].as<bool>();
         ESP_LOGI("SERVOCONTROLLER", "Setting state %d", active);
         active ? activate() : deactivate();
     }
 
-    void servoEvent(JsonObject &root, int originId) {
+    void servoEvent(JsonVariant &root, int originId) {
         control_state = SERVO_CONTROL_STATE::PWM;
         int8_t servo_id = root["servo_id"];
         uint16_t pwm = root["pwm"].as<uint16_t>();

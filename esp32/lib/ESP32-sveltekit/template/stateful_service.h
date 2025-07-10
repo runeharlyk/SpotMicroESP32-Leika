@@ -11,10 +11,10 @@
 #include <template/state_result.h>
 
 template <typename T>
-using JsonStateUpdater = std::function<StateUpdateResult(JsonObject &root, T &settings)>;
+using JsonStateUpdater = std::function<StateUpdateResult(JsonVariant &root, T &settings)>;
 
 template <typename T>
-using JsonStateReader = std::function<void(T &settings, JsonObject &root)>;
+using JsonStateReader = std::function<void(T &settings, JsonVariant &root)>;
 
 using HandlerId = size_t;
 using StateUpdateCallback = std::function<void(const String &originId)>;
@@ -98,7 +98,7 @@ class StatefulService {
         return result;
     }
 
-    StateUpdateResult update(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater, const String &originId) {
+    StateUpdateResult update(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater, const String &originId) {
         lock();
         StateUpdateResult result = stateUpdater(jsonObject, state_);
         unlock();
@@ -106,7 +106,7 @@ class StatefulService {
         return result;
     }
 
-    StateUpdateResult updateWithoutPropagation(JsonObject &jsonObject, JsonStateUpdater<T> stateUpdater) {
+    StateUpdateResult updateWithoutPropagation(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater) {
         lock();
         StateUpdateResult result = stateUpdater(jsonObject, state_);
         unlock();
@@ -119,7 +119,7 @@ class StatefulService {
         unlock();
     }
 
-    void read(JsonObject &jsonObject, JsonStateReader<T> stateReader) {
+    void read(JsonVariant &jsonObject, JsonStateReader<T> stateReader) {
         lock();
         stateReader(state_, jsonObject);
         unlock();

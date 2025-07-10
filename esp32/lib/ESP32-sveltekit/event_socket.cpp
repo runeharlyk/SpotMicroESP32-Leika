@@ -81,8 +81,8 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
         ESP_LOGV("EventSocket", "Disconnect: %s", event);
         client_subscriptions[event].remove(request->client()->socket());
     } else if (message_type == EVENT) {
-        JsonObject jsonObject = msg[2].as<JsonObject>();
-        handleEventCallbacks(event, jsonObject, request->client()->socket());
+        JsonVariant payload = msg[2].as<JsonVariant>();
+        handleEventCallbacks(event, payload, request->client()->socket());
         return ESP_OK;
     }
     return ESP_OK;
@@ -149,7 +149,7 @@ void EventSocket::send(PsychicWebSocketClient *client, const char *data, size_t 
 #endif
 }
 
-void EventSocket::handleEventCallbacks(String event, JsonObject &jsonObject, int originId) {
+void EventSocket::handleEventCallbacks(String event, JsonVariant &jsonObject, int originId) {
     for (auto &callback : event_callbacks[event]) {
         callback(jsonObject, originId);
     }

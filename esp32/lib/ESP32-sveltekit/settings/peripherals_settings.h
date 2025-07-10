@@ -34,13 +34,13 @@ class PeripheralsConfiguration {
     long frequency = I2C_FREQUENCY;
     std::vector<PinConfig> pins;
 
-    static void read(PeripheralsConfiguration &settings, JsonObject &root) {
+    static void read(PeripheralsConfiguration &settings, JsonVariant &root) {
         root["sda"] = settings.sda;
         root["scl"] = settings.scl;
         root["frequency"] = settings.frequency;
     }
 
-    static StateUpdateResult update(JsonObject &root, PeripheralsConfiguration &settings) {
+    static StateUpdateResult update(JsonVariant &root, PeripheralsConfiguration &settings) {
         settings.sda = root["sda"] | SDA_PIN;
         settings.scl = root["scl"] | SCL_PIN;
         settings.frequency = root["frequency"] | I2C_FREQUENCY;
