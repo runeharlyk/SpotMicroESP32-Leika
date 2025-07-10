@@ -93,61 +93,7 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
 
 bool EventSocket::hasSubscribers(const char *event) { return !client_subscriptions[event].empty(); }
 
-void EventSocket::emit(const char *event, const char *payload, const char *originId, bool onlyToSameOrigin) {
-    int originSubscriptionId = originId[0] ? atoi(originId) : -1;
-    xSemaphoreTake(clientSubscriptionsMutex, portMAX_DELAY);
-    auto &subscriptions = client_subscriptions[event];
-    if (subscriptions.empty()) {
-        xSemaphoreGive(clientSubscriptionsMutex);
-        return;
-    }
-
-    JsonDocument doc;
-    auto a = doc.to<JsonArray>();
-    a.add(static_cast<uint8_t>(message_type_t::EVENT));
-    a.add(event);
-
-    JsonDocument payloadDoc;
-    if (deserializeJson(payloadDoc, payload) == DeserializationError::Ok)
-        a.add(payloadDoc.as<JsonVariant>());
-    else
-        a.add(payload); // fallback: insert as plain string if not valid JSON
-
-    String out;
-#if USE_MSGPACK
-    serializeMsgPack(doc, out);
-#else
-    serializeJson(doc, out);
-#endif
-
-    const char *msg = out.c_str();
-
-    // if onlyToSameOrigin == true, send the message back to the origin
-    if (onlyToSameOrigin && originSubscriptionId > 0) {
-        auto *client = _socket.getClient(originSubscriptionId);
-        if (client) {
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
-                     client->remoteIP().toString().c_str(), msg);
-            send(client, msg, strlen(msg));
-        }
-    } else { // else send the message to all other clients
-
-        for (int subscription : client_subscriptions[event]) {
-            if (subscription == originSubscriptionId) continue;
-            auto *client = _socket.getClient(subscription);
-            if (!client) {
-                subscriptions.remove(subscription);
-                continue;
-            }
-            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
-                     client->remoteIP().toString().c_str(), msg);
-            send(client, msg, strlen(msg));
-        }
-    }
-    xSemaphoreGive(clientSubscriptionsMutex);
-}
-
-void EventSocket::emit(const char *event, JsonObject &payload, const char *originId, bool onlyToSameOrigin) {
+void EventSocket::emit(const char *event, JsonVariant &payload, const char *originId, bool onlyToSameOrigin) {
     int originSubscriptionId = originId[0] ? atoi(originId) : -1;
     xSemaphoreTake(clientSubscriptionsMutex, portMAX_DELAY);
     auto &subscriptions = client_subscriptions[event];

@@ -82,20 +82,21 @@ class MotionService {
     }
 
     void handleMode(JsonObject &root, int originId) {
-        motionState = (MOTION_STATE)root["data"].as<int>();
+        motionState = static_cast<MOTION_STATE>(root["data"].as<int>());
         ESP_LOGV("MotionService", "Mode %d", motionState);
-        char output[2];
-        itoa((int)motionState, output, 10);
         motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
-        socket.emit(MODE_EVENT, output, String(originId).c_str());
+        JsonDocument doc;
+        doc.set(static_cast<int>(motionState));
+        JsonVariant data = doc.as<JsonVariant>();
+        socket.emit(MODE_EVENT, data, String(originId).c_str());
     }
 
     void emitAngles(const String &originId = "", bool sync = false) {
-        char output[100];
-        snprintf(output, sizeof(output), "[%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]", angles[0],
-                 angles[1], angles[2], angles[3], angles[4], angles[5], angles[6], angles[7], angles[8], angles[9],
-                 angles[10], angles[11]);
-        socket.emit(ANGLES_EVENT, output, originId.c_str());
+        JsonDocument doc;
+        auto arr = doc.to<JsonArray>();
+        for (int i = 0; i < 12; i++) arr.add(angles[i]);
+        JsonVariant data = doc.as<JsonVariant>();
+        socket.emit(ANGLES_EVENT, data, originId.c_str());
     }
 
     void syncAngles(const String &originId = "", bool sync = false) {
