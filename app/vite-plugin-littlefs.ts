@@ -1,31 +1,49 @@
-import type { UserConfig, Plugin } from 'vite';
+import type { Plugin } from 'vite';
 
 export default function viteLittleFS(): Plugin[] {
-	return [
-		{
-			name: 'vite-plugin-littlefs',
-			enforce: 'post',
-			apply: 'build',
+  return [
+    {
+      name: 'vite-plugin-littlefs',
+      enforce: 'post',
+      apply: 'build',
 
-			async config(config, _configEnv) {
-				const { assetFileNames, chunkFileNames, entryFileNames } =
-					config.build?.rollupOptions?.output;
+      async config(config) {
+        const output = config.build?.rollupOptions?.output;
 
-				// Handle Server-build + Client Assets
-				config.build.rollupOptions.output = {
-					...config.build?.rollupOptions?.output,
-					assetFileNames: assetFileNames.replace('.[hash]', '')
-				};
+        if (!output || !config.build?.rollupOptions) {
+          return;
+        }
 
-				// Handle Client-build
-				if (config.build?.rollupOptions?.output.chunkFileNames.includes('hash')) {
-					config.build.rollupOptions.output = {
-						...config.build?.rollupOptions?.output,
-						chunkFileNames: chunkFileNames.replace('.[hash]', ''),
-						entryFileNames: entryFileNames.replace('.[hash]', '')
-					};
-				}
-			}
-		}
-	];
+        const outputOptions = Array.isArray(output) ? output[0] : output;
+
+        if (!outputOptions) {
+          return;
+        }
+
+        const { assetFileNames, chunkFileNames, entryFileNames } = outputOptions;
+
+        if (assetFileNames && typeof assetFileNames === 'string') {
+          config.build.rollupOptions.output = {
+            ...outputOptions,
+            assetFileNames: assetFileNames.replace('.[hash]', ''),
+          };
+        }
+
+        if (
+          chunkFileNames &&
+          typeof chunkFileNames === 'string' &&
+          chunkFileNames.includes('hash')
+        ) {
+          config.build.rollupOptions.output = {
+            ...config.build.rollupOptions.output,
+            chunkFileNames: chunkFileNames.replace('.[hash]', ''),
+            ...(entryFileNames &&
+              typeof entryFileNames === 'string' && {
+                entryFileNames: entryFileNames.replace('.[hash]', ''),
+              }),
+          };
+        }
+      },
+    },
+  ];
 }

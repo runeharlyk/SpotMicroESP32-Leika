@@ -38,7 +38,7 @@
     responsive: true,
     plugins: {
       legend: { display: true },
-      tooltip: { mode: 'index', intersect: false },
+      tooltip: { mode: 'index' as const, intersect: false },
     },
     elements: { point: { radius: 1 } },
     scales: {
@@ -48,8 +48,8 @@
         display: false,
       },
       y: {
-        type: 'linear',
-        position: 'left',
+        type: 'linear' as const,
+        position: 'left' as const,
         min: 0,
         max: 10,
         grid: { color: bgColor },
