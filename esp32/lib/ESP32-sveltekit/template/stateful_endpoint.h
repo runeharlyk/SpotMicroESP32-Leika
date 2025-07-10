@@ -21,9 +21,7 @@ class StatefulHttpEndpoint {
         : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService) {}
 
     esp_err_t handleStateUpdate(PsychicRequest *request, JsonVariant &json) {
-        if (!json.is<JsonObject>()) return request->reply(400);
-
-        JsonObject jsonObject = json.as<JsonObject>();
+        JsonVariant jsonObject = json.as<JsonVariant>();
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
 
         if (outcome == StateUpdateResult::ERROR)
@@ -43,7 +41,7 @@ class StatefulHttpEndpoint {
 
     esp_err_t getState(PsychicRequest *request) {
         PsychicJsonResponse response = PsychicJsonResponse(request, false);
-        JsonObject jsonObject = response.getRoot();
+        JsonVariant jsonObject = response.getRoot();
         _statefulService->read(jsonObject, _stateReader);
         return response.send();
     }

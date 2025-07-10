@@ -39,7 +39,7 @@ class CameraSettings {
     uint8_t dcw;
     uint8_t colorbar;
 
-    static void read(CameraSettings &settings, JsonObject &root) {
+    static void read(CameraSettings &settings, JsonVariant &root) {
         root["pixformat"] = settings.pixformat;
         root["framesize"] = settings.framesize;
         root["quality"] = settings.quality;
@@ -71,7 +71,7 @@ class CameraSettings {
         root["colorbar"] = settings.colorbar;
     }
 
-    static StateUpdateResult update(JsonObject &root, CameraSettings &settings) {
+    static StateUpdateResult update(JsonVariant &root, CameraSettings &settings) {
         settings.pixformat = root["pixformat"];
         settings.framesize = root["framesize"];
         settings.brightness = root["brightness"];

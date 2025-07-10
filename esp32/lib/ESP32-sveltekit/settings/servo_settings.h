@@ -19,22 +19,22 @@ class ServoSettings {
         {306, -1, 0, 2.2, "Servo4"}, {306, -1, 45, 2.1055555, "Servo5"},  {306, -1, -90, 1.96923, "Servo6"},
         {306, 1, 0, 2.2, "Servo7"},  {306, 1, -45, 2.1055555, "Servo8"},  {306, 1, 90, 1.96923, "Servo9"},
         {306, 1, 0, 2.2, "Servo10"}, {306, -1, 45, 2.1055555, "Servo11"}, {306, -1, -90, 1.96923, "Servo12"}};
-    static void read(ServoSettings &settings, JsonObject &root) {
+    static void read(ServoSettings &settings, JsonVariant &root) {
         JsonArray servos = root["servos"].to<JsonArray>();
         for (auto &servo : settings.servos) {
-            JsonObject newServo = servos.add<JsonObject>();
+            JsonVariant newServo = servos.add<JsonVariant>();
             newServo["center_pwm"] = servo.centerPwm;
             newServo["direction"] = servo.direction;
             newServo["center_angle"] = servo.centerAngle;
             newServo["conversion"] = servo.conversion;
         }
     }
-    static StateUpdateResult update(JsonObject &root, ServoSettings &settings) {
+    static StateUpdateResult update(JsonVariant &root, ServoSettings &settings) {
         if (root["servos"].is<JsonArray>()) {
             JsonArray servosJson = root["servos"];
             int i = 0;
             for (auto servo : servosJson) {
-                JsonObject servoObject = servo.as<JsonObject>();
+                JsonVariant servoObject = servo.as<JsonVariant>();
                 uint8_t servoId = i; // servoObject["id"].as<uint8_t>();
                 settings.servos[servoId].centerPwm = servoObject["center_pwm"].as<float>();
                 settings.servos[servoId].centerAngle = servoObject["center_angle"].as<float>();

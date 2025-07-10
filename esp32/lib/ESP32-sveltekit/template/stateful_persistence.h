@@ -39,8 +39,8 @@ class FSPersistence {
         if (settingsFile) {
             JsonDocument jsonDocument;
             DeserializationError error = deserializeJson(jsonDocument, settingsFile);
-            if (error == DeserializationError::Ok && jsonDocument.is<JsonObject>()) {
-                JsonObject jsonObject = jsonDocument.as<JsonObject>();
+            if (error == DeserializationError::Ok) {
+                JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
                 _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
                 settingsFile.close();
                 return;
@@ -59,7 +59,7 @@ class FSPersistence {
 
     bool writeToFS() {
         JsonDocument jsonDocument;
-        JsonObject jsonObject = jsonDocument.to<JsonObject>();
+        JsonVariant jsonObject = jsonDocument.to<JsonVariant>();
         _statefulService->read(jsonObject, _stateReader);
 
         mkdirs();
@@ -112,7 +112,7 @@ class FSPersistence {
     // is supplied, this virtual function allows that to be changed.
     virtual void applyDefaults() {
         JsonDocument jsonDocument;
-        JsonObject jsonObject = jsonDocument.as<JsonObject>();
+        JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
         _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
     }
 };

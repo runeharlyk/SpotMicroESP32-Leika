@@ -55,7 +55,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _eventEndpoint.begin();
         _persistence.readFromFS();
 
-        socket.onEvent(EVENT_I2C_SCAN, [&](JsonObject &root, int originId) {
+        socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
             scanI2C();
             emitI2C();
         });

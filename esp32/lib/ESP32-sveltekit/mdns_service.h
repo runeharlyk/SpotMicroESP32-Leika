@@ -25,7 +25,7 @@ class MDNSService : public StatefulService<MDNSSettings> {
     void begin();
 
     esp_err_t getStatus(PsychicRequest *request);
-    void getStatus(JsonObject &root);
+    void getStatus(JsonVariant &root);
 
     static esp_err_t queryServices(PsychicRequest *request, JsonVariant &json);
 

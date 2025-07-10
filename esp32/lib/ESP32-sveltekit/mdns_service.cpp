@@ -67,12 +67,12 @@ void MDNSService::addServices() {
 
 esp_err_t MDNSService::getStatus(PsychicRequest *request) {
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+    JsonVariant root = response.getRoot();
     getStatus(root);
     return response.send();
 }
 
-void MDNSService::getStatus(JsonObject &root) {
+void MDNSService::getStatus(JsonVariant &root) {
     state().read(state(), root);
     root["started"] = _started;
 }
@@ -82,7 +82,7 @@ esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json)
     String proto = json["protocol"].as<String>();
 
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+    JsonVariant root = response.getRoot();
 
     ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
 
@@ -91,7 +91,7 @@ esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json)
 
     JsonArray servicesArray = root["services"].to<JsonArray>();
     for (int i = 0; i < n; i++) {
-        JsonObject serviceObj = servicesArray.add<JsonObject>();
+        JsonVariant serviceObj = servicesArray.add<JsonVariant>();
         serviceObj["name"] = MDNS.hostname(i);
         serviceObj["ip"] = MDNS.IP(i);
         serviceObj["port"] = MDNS.port(i);
