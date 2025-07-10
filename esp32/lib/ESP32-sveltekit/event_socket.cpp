@@ -47,9 +47,6 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     };
 #endif
 
-    serializeJson(doc, Serial);
-    Serial.println();
-
     auto msg = doc.as<JsonArray>();
 
     message_type_t message_type = static_cast<message_type_t>(msg[0].as<uint8_t>());
