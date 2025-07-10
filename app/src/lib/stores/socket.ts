@@ -17,7 +17,7 @@ const decodeMessage = (data: string | ArrayBuffer): SocketMessage | null => {
     }
     return JSON.parse(data as string);
   } catch (error) {
-    console.error(`Could not decode data: ${data} - ${error}`);
+    console.error(`Could not decode data: ${new Uint8Array(data as ArrayBuffer)} - ${error}`);
   }
   return null;
 };
