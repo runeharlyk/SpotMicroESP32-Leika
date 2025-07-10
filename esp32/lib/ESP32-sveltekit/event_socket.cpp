@@ -2,46 +2,6 @@
 
 SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 
-message_type_t char_to_message_type(char c) {
-    switch (c) {
-        case '0': return CONNECT;
-        case '1': return DISCONNECT;
-        case '2': return EVENT;
-        case '3': return PING;
-        case '4': return PONG;
-        case '5': return BINARY_EVENT;
-        default: throw std::invalid_argument("Invalid message type");
-    }
-}
-
-const char *getEventName(const char *msg) {
-    const char *start = strchr(msg, '/');
-    if (!start) return nullptr;
-    start++;
-    const char *end = strchr(start, '[');
-    if (!end) return start;
-
-    static char eventName[32];
-    int len = end - start;
-    strncpy(eventName, start, len);
-    eventName[len] = '\0';
-    return eventName;
-}
-
-const char *getEventPayload(const char *msg) {
-    const char *start = strchr(msg + 2, '[');
-    const char *end = msg + strlen(msg) - 1;
-    if (*start == '[') {
-        start++;
-    }
-    int len = end - start;
-    if (len < 0) return nullptr;
-    char *payload = new char[len + 1];
-    strncpy(payload, start, len);
-    payload[len] = '\0';
-    return payload;
-}
-
 EventSocket::EventSocket() {
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
@@ -65,26 +25,51 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     ESP_LOGV("EventSocket", "ws[%s][%u] opcode[%d]", request->client()->remoteIP().toString().c_str(),
              request->client()->socket(), frame->type);
 
-    if (frame->type != HTTPD_WS_TYPE_TEXT) {
-        ESP_LOGE("EventSocket", "Unsupported frame type");
+    JsonDocument doc;
+
+#if USE_MSGPACK
+    if (frame->type != HTTPD_WS_TYPE_BINARY) {
+        ESP_LOGE("EventSocket", "Unsupported frame type: %d", frame->type);
         return ESP_OK;
     }
-
-    ESP_LOGV("EventSocket", "Received message: %s", (char *)frame->payload);
-    char *msg = (char *)frame->payload;
-
-    message_type_t message_type = char_to_message_type(msg[0]);
-
-    if (message_type == PING) {
-        ESP_LOGV("EventSocket", "Ping");
-        request->client()->sendMessage("3");
+    if (deserializeMsgPack(doc, frame->payload, frame->len)) {
+        ESP_LOGE("EventSocket", "Could not deserialize msgpack");
         return ESP_OK;
-    } else if (message_type == PONG) {
+    };
+#else
+    if (frame->type != HTTPD_WS_TYPE_TEXT) {
+        ESP_LOGE("EventSocket", "Unsupported frame type: %d", frame->type);
+        return ESP_OK;
+    }
+    if (deserializeJson(doc, frame->payload, frame->len)) {
+        ESP_LOGE("EventSocket", "Could not deserialize json");
+        return ESP_OK;
+    };
+#endif
+
+    serializeJson(doc, Serial);
+    Serial.println();
+
+    auto msg = doc.as<JsonArray>();
+
+    message_type_t message_type = static_cast<message_type_t>(msg[0].as<uint8_t>());
+
+    if (message_type == PONG) {
         ESP_LOGV("EventSocket", "Pong");
         return ESP_OK;
+    } else if (message_type == PING) {
+        ESP_LOGV("EventSocket", "Ping");
+#if USE_MSGPACK
+        const uint8_t out[] = {0x91, 0x04};
+        send(request->client(), reinterpret_cast<const char *>(out), sizeof(out));
+#else
+        const char *out = "[4]";
+        send(request->client(), out, strlen(out));
+#endif
+        return ESP_OK;
     }
 
-    const char *event = getEventName(msg);
+    const char *event = msg[1].as<const char *>();
 
     if (!event) {
         ESP_LOGE("EventSocket", "Invalid event name");
@@ -99,18 +84,7 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
         ESP_LOGV("EventSocket", "Disconnect: %s", event);
         client_subscriptions[event].remove(request->client()->socket());
     } else if (message_type == EVENT) {
-        const char *payload = getEventPayload(msg);
-        if (!payload) {
-            ESP_LOGE("EventSocket", "Invalid event payload");
-            return ESP_OK;
-        }
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, payload);
-        if (error) {
-            ESP_LOGE("EventSocket", "Failed to parse JSON payload");
-            return ESP_OK;
-        }
-        JsonObject jsonObject = doc.as<JsonObject>();
+        JsonObject jsonObject = msg[2].as<JsonObject>();
         handleEventCallbacks(event, jsonObject, request->client()->socket());
         return ESP_OK;
     }
@@ -127,8 +101,26 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         xSemaphoreGive(clientSubscriptionsMutex);
         return;
     }
-    char msg[strlen(event) + strlen(payload) + 10];
-    snprintf(msg, sizeof(msg), "2/%s[%s]", event, payload);
+
+    JsonDocument doc;
+    auto a = doc.to<JsonArray>();
+    a.add(static_cast<uint8_t>(message_type_t::EVENT));
+    a.add(event);
+
+    JsonDocument payloadDoc;
+    if (deserializeJson(payloadDoc, payload) == DeserializationError::Ok)
+        a.add(payloadDoc.as<JsonVariant>());
+    else
+        a.add(payload); // fallback: insert as plain string if not valid JSON
+
+    String out;
+#if USE_MSGPACK
+    serializeMsgPack(doc, out);
+#else
+    serializeJson(doc, out);
+#endif
+
+    const char *msg = out.c_str();
 
     // if onlyToSameOrigin == true, send the message back to the origin
     if (onlyToSameOrigin && originSubscriptionId > 0) {
@@ -136,7 +128,7 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
         if (client) {
             ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
                      client->remoteIP().toString().c_str(), msg);
-            client->sendMessage(msg);
+            send(client, msg, strlen(msg));
         }
     } else { // else send the message to all other clients
 
@@ -149,10 +141,69 @@ void EventSocket::emit(const char *event, const char *payload, const char *origi
             }
             ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
                      client->remoteIP().toString().c_str(), msg);
-            client->sendMessage(msg);
+            send(client, msg, strlen(msg));
         }
     }
     xSemaphoreGive(clientSubscriptionsMutex);
+}
+
+void EventSocket::emit(const char *event, JsonObject &payload, const char *originId, bool onlyToSameOrigin) {
+    int originSubscriptionId = originId[0] ? atoi(originId) : -1;
+    xSemaphoreTake(clientSubscriptionsMutex, portMAX_DELAY);
+    auto &subscriptions = client_subscriptions[event];
+    if (subscriptions.empty()) {
+        xSemaphoreGive(clientSubscriptionsMutex);
+        return;
+    }
+
+    JsonDocument doc;
+    auto a = doc.to<JsonArray>();
+    a.add(static_cast<uint8_t>(message_type_t::EVENT));
+    a.add(event);
+    a.add(payload);
+
+    String out;
+#if USE_MSGPACK
+    serializeMsgPack(doc, out);
+#else
+    serializeJson(doc, out);
+#endif
+
+    const char *msg = out.c_str();
+
+    // if onlyToSameOrigin == true, send the message back to the origin
+    if (onlyToSameOrigin && originSubscriptionId > 0) {
+        auto *client = _socket.getClient(originSubscriptionId);
+        if (client) {
+            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
+                     client->remoteIP().toString().c_str(), msg);
+            send(client, msg, strlen(msg));
+        }
+    } else { // else send the message to all other clients
+
+        for (int subscription : client_subscriptions[event]) {
+            if (subscription == originSubscriptionId) continue;
+            auto *client = _socket.getClient(subscription);
+            if (!client) {
+                subscriptions.remove(subscription);
+                continue;
+            }
+            ESP_LOGV("EventSocket", "Emitting event: %s to %s, Message: %s", event,
+                     client->remoteIP().toString().c_str(), msg);
+            send(client, msg, strlen(msg));
+        }
+    }
+    xSemaphoreGive(clientSubscriptionsMutex);
+}
+
+void EventSocket::send(PsychicWebSocketClient *client, const char *data, size_t len) {
+    if (!client) return;
+
+#if USE_MSGPACK
+    client->sendMessage(HTTPD_WS_TYPE_BINARY, data, len);
+#else
+    client->sendMessage(HTTPD_WS_TYPE_TEXT, data, len);
+#endif
 }
 
 void EventSocket::handleEventCallbacks(String event, JsonObject &jsonObject, int originId) {
