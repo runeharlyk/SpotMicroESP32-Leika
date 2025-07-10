@@ -72,7 +72,7 @@ function createWebSocket() {
       resetUnresponsiveCheck();
       const message = decodeMessage(frame.data);
       if (!message) return;
-      const [_, event, payload = undefined] = message;
+      const [, event, payload = undefined] = message;
       if (event) listeners.get(event)?.forEach(listener => listener(payload));
     };
     ws.onerror = ev => disconnect('error', ev);

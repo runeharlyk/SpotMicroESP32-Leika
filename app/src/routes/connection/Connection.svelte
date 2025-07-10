@@ -3,7 +3,7 @@
   import { WiFi } from '$lib/components/icons';
   import { location, socket } from '$lib/stores';
 
-  const update = async () => {
+  const update = () => {
     const ws = $location ? $location : window.location.host;
     socket.init(`ws://${ws}/api/ws/events`);
   };
