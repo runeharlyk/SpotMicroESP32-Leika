@@ -25,8 +25,8 @@ class EventSocket {
     void onSubscribe(String event, SubscribeCallback callback);
 
     void emit(const char *event, const char *payload, const char *originId = "", bool onlyToSameOrigin = false);
-    // if onlyToSameOrigin == true, the message will be sent to the originId only, otherwise it will be broadcasted to
-    // all clients except the originId
+
+    void emit(const char *event, JsonObject &root, const char *originId = "", bool onlyToSameOrigin = false);
 
   private:
     PsychicWebSocketHandler _socket;
@@ -35,6 +35,7 @@ class EventSocket {
     std::map<String, std::list<EventCallback>> event_callbacks;
     std::map<String, std::list<SubscribeCallback>> subscribe_callbacks;
     void handleEventCallbacks(String event, JsonObject &jsonObject, int originId);
+    void send(PsychicWebSocketClient *client, const char *data, size_t len);
     void handleSubscribeCallbacks(String event, const String &originId);
 
     void onWSOpen(PsychicWebSocketClient *client);
