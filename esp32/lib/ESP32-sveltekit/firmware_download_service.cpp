@@ -16,22 +16,19 @@
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_src_certs_x509_crt_bundle_bin_start");
 
 static int previousProgress = 0;
-JsonDocument doc;
+JsonVariant obj;
 
 void update_started() {
-    String output;
-    doc["status"] = "preparing";
-    serializeJson(doc, output);
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    obj["status"] = "preparing";
+    socket.emit(EVENT_DOWNLOAD_OTA, obj);
 }
 
 void update_progress(int currentBytes, int totalBytes) {
-    String output;
-    doc["status"] = "progress";
+    obj["status"] = "progress";
     int progress = ((currentBytes * 100) / totalBytes);
     if (progress > previousProgress) {
-        doc["progress"] = progress;
-        socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+        obj["progress"] = progress;
+        socket.emit(EVENT_DOWNLOAD_OTA, obj);
         ESP_LOGV("Download OTA", "HTTP update process at %d of %d bytes... (%d %%)", currentBytes, totalBytes,
                  progress);
     }
@@ -39,10 +36,8 @@ void update_progress(int currentBytes, int totalBytes) {
 }
 
 void update_finished() {
-    String output;
-    doc["status"] = "finished";
-    serializeJson(doc, output);
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    obj["status"] = "finished";
+    socket.emit(EVENT_DOWNLOAD_OTA, obj);
 
     // delay to allow the event to be sent out
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -57,7 +52,6 @@ void updateTask(void *param) {
     httpUpdate.rebootOnUpdate(true);
 
     String url = *((String *)param);
-    String output;
     // httpUpdate.onStart(update_started);
     // httpUpdate.onProgress(update_progress);
     // httpUpdate.onEnd(update_finished);
@@ -66,21 +60,18 @@ void updateTask(void *param) {
 
     switch (ret) {
         case HTTP_UPDATE_FAILED:
-
-            doc["status"] = "error";
-            doc["error"] = httpUpdate.getLastErrorString().c_str();
-            serializeJson(doc, output);
-            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            obj["status"] = "error";
+            obj["error"] = httpUpdate.getLastErrorString().c_str();
+            socket.emit(EVENT_DOWNLOAD_OTA, obj);
 
             ESP_LOGE("Download OTA", "HTTP Update failed with error (%d): %s", httpUpdate.getLastError(),
                      httpUpdate.getLastErrorString().c_str());
             break;
         case HTTP_UPDATE_NO_UPDATES:
 
-            doc["status"] = "error";
-            doc["error"] = "Update failed, has same firmware version";
-            serializeJson(doc, output);
-            socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+            obj["status"] = "error";
+            obj["error"] = "Update failed, has same firmware version";
+            socket.emit(EVENT_DOWNLOAD_OTA, obj);
 
             ESP_LOGE("Download OTA", "HTTP Update failed, has same firmware version");
             break;
@@ -99,14 +90,10 @@ esp_err_t DownloadFirmwareService::handleDownloadUpdate(PsychicRequest *request,
     String downloadURL = json["download_url"];
     ESP_LOGI("Download OTA", "Starting OTA from: %s", downloadURL.c_str());
 
-    doc["status"] = "preparing";
-    doc["progress"] = 0;
-    doc["error"] = "";
-
-    String output;
-    serializeJson(doc, output);
-
-    socket.emit(EVENT_DOWNLOAD_OTA, output.c_str());
+    obj["status"] = "preparing";
+    obj["progress"] = 0;
+    obj["error"] = "";
+    socket.emit(EVENT_DOWNLOAD_OTA, obj);
 
     const BaseType_t taskResult = g_taskManager.createTask(&updateTask, "Firmware download", OTA_TASK_STACK_SIZE,
                                                            &downloadURL, (configMAX_PRIORITIES - 1), NULL, 1);

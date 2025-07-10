@@ -113,9 +113,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         for (auto &address : addressList) {
             addresses.add(address);
         }
-        serializeJson(root, output);
         ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
-        socket.emit(EVENT_I2C_SCAN, output, originId.c_str(), sync);
+        JsonVariant data = doc.as<JsonVariant>();
+        socket.emit(EVENT_I2C_SCAN, data, originId.c_str(), sync);
     }
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
@@ -190,15 +190,17 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP180)
         _bmp.readBarometer(root);
 #endif
-        serializeJson(doc, message);
-        socket.emit(EVENT_IMU, message);
+        JsonVariant data = doc.as<JsonVariant>();
+        socket.emit(EVENT_IMU, data);
     }
 
     void emitSonar() {
 #if FT_ENABLED(USE_USS)
-        char output[16];
-        snprintf(output, sizeof(output), "[%.1f,%.1f]", _left_distance, _right_distance);
-        socket.emit("sonar", output);
+        doc.clear();
+        JsonArray root = doc.to<JsonArray>();
+        root[0] = _left_distance, root[1] = _right_distance;
+        JsonVariant data = doc.as<JsonVariant>();
+        socket.emit("sonar", data);
 #endif
     }
 

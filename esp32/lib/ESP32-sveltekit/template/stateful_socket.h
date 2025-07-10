@@ -36,8 +36,7 @@ class EventEndpoint {
         JsonObject root = jsonDocument.to<JsonObject>();
         String output;
         _statefulService->read(root, _stateReader);
-        serializeJson(root, output);
-        ESP_LOGV("EventEndpoint", "Syncing state: %s", output.c_str());
-        socket.emit(_event, output.c_str(), originId.c_str(), sync);
+        JsonVariant obj = jsonDocument.as<JsonVariant>();
+        socket.emit(_event, obj, originId.c_str(), sync);
     }
 };

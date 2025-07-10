@@ -24,9 +24,7 @@ class EventSocket {
 
     void onSubscribe(String event, SubscribeCallback callback);
 
-    void emit(const char *event, const char *payload, const char *originId = "", bool onlyToSameOrigin = false);
-
-    void emit(const char *event, JsonObject &root, const char *originId = "", bool onlyToSameOrigin = false);
+    void emit(const char *event, JsonVariant &payload, const char *originId = "", bool onlyToSameOrigin = false);
 
   private:
     PsychicWebSocketHandler _socket;

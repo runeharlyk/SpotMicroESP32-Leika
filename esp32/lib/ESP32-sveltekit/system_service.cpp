@@ -140,8 +140,8 @@ void emitMetrics() {
     analyticsDoc.clear();
     JsonObject root = analyticsDoc.to<JsonObject>();
     system_service::metrics(root);
-    serializeJson(analyticsDoc, analyticsMessage);
-    socket.emit(EVENT_ANALYTICS, analyticsMessage);
+    JsonVariant data = analyticsDoc.as<JsonVariant>();
+    socket.emit(EVENT_ANALYTICS, data);
 }
 
 const char *resetReason(esp_reset_reason_t reason) {
@@ -173,7 +173,7 @@ const char *resetReason(esp_reset_reason_t reason) {
         case ESP_RST_CPU_LOCKUP: return "Reset due to CPU lock up (double exception)";
 #endif
         default:
-            char buffer[50];
+            static char buffer[48];
             snprintf(buffer, sizeof(buffer), "Unknown reset reason (%d)", reason);
             return buffer;
     }

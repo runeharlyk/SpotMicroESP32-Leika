@@ -85,17 +85,19 @@ esp_err_t FirmwareUploadService::handleUpload(PsychicRequest *request, const Str
         if (Update.write(data, len) != len) {
             handleError(request, 500);
         } else {
-            char buffer[64];
-            snprintf(buffer, sizeof(buffer), "{\"status\":\"progress\",\"progress\":%.1f}",
-                     (float)Update.progress() / (float)fsize * 100.f);
-            socket.emit("otastatus", buffer);
+            JsonVariant obj;
+            obj["status"] = "progress";
+            obj["progress"] = (float)Update.progress() / (float)fsize * 100.f;
+            socket.emit("otastatus", obj);
             delay(20);
         }
         if (final) {
             if (!Update.end(true)) {
                 handleError(request, 500);
             } else {
-                socket.emit("otastatus", "{\"status\":\"finished\",\"progress\":100}");
+                JsonVariant obj;
+                obj["status"] = "finished", obj["progress"] = 100;
+                socket.emit("otastatus", obj);
                 ESP_LOGI(TAG, "Finish writing update");
             }
         }
@@ -134,9 +136,9 @@ esp_err_t FirmwareUploadService::uploadComplete(PsychicRequest *request) {
 }
 
 esp_err_t FirmwareUploadService::handleError(PsychicRequest *request, int code) {
-    char buffer[64];
-    snprintf(buffer, sizeof(buffer), "{\"status\":\"error\",\"error\":\"%d\"}", Update.getError());
-    socket.emit("otastatus", buffer);
+    JsonVariant obj;
+    obj["status"] = "error", obj["error"] = Update.getError();
+    socket.emit("otastatus", obj);
     // if we have had an error already, do nothing
     if (request->_tempObject) {
         return ESP_OK;
