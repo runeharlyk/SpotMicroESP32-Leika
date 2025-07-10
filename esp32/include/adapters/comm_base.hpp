@@ -7,7 +7,7 @@
 #include "topic.hpp"
 
 #ifndef MAX_CID
-#define MAX_CID 4
+#define MAX_CID 64
 #endif
 
 enum class MsgKind : uint8_t { Connect = 0, Disconnect = 1, Event = 2, Ping = 3, Pong = 4 };
