@@ -31,28 +31,30 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "EMBED_WWW: %s", EMBED_WWW ? "enabled" : "disabled");
     ESP_LOGI("Features", "ENABLE_CORS: %s", ENABLE_CORS ? "enabled" : "disabled");
     ESP_LOGI("Features", "SERVE_CONFIG_FILES: %s", SERVE_CONFIG_FILES ? "enabled" : "disabled");
+    ESP_LOGI("Features", "KINEMATICS_VARIANT: %s", KINEMATICS_VARIANT_STR);
     ESP_LOGI("Features", "==========================================================");
 }
 
 void features(JsonObject &root) {
-    root["upload_firmware"] = USE_UPLOAD_FIRMWARE;
-    root["download_firmware"] = USE_DOWNLOAD_FIRMWARE;
-    root["sleep"] = USE_SLEEP;
-    root["camera"] = USE_CAMERA;
-    root["imu"] = USE_MPU6050 || USE_BNO055;
-    root["mag"] = USE_HMC5883 || USE_BNO055;
-    root["bmp"] = USE_BMP180;
-    root["sonar"] = USE_USS;
-    root["motion"] = USE_MOTION;
-    root["servo"] = USE_PCA9685;
-    root["ws2812"] = USE_WS2812;
-    root["mdns"] = USE_MDNS;
-    root["embed_www"] = EMBED_WWW;
-    root["enable_cors"] = ENABLE_CORS;
-    root["serve_config_files"] = SERVE_CONFIG_FILES;
+    root["upload_firmware"] = USE_UPLOAD_FIRMWARE ? true : false;
+    root["download_firmware"] = USE_DOWNLOAD_FIRMWARE ? true : false;
+    root["sleep"] = USE_SLEEP ? true : false;
+    root["camera"] = USE_CAMERA ? true : false;
+    root["imu"] = (USE_MPU6050 || USE_BNO055) ? true : false;
+    root["mag"] = (USE_HMC5883 || USE_BNO055) ? true : false;
+    root["bmp"] = USE_BMP180 ? true : false;
+    root["sonar"] = USE_USS ? true : false;
+    root["motion"] = USE_MOTION ? true : false;
+    root["servo"] = USE_PCA9685 ? true : false;
+    root["ws2812"] = USE_WS2812 ? true : false;
+    root["mdns"] = USE_MDNS ? true : false;
+    root["embed_www"] = EMBED_WWW ? true : false;
+    root["enable_cors"] = ENABLE_CORS ? true : false;
+    root["serve_config_files"] = SERVE_CONFIG_FILES ? true : false;
     root["firmware_version"] = APP_VERSION;
     root["firmware_name"] = APP_NAME;
     root["firmware_built_target"] = BUILD_TARGET;
+    root["variant"] = KINEMATICS_VARIANT_STR;
 }
 
 esp_err_t getFeatures(PsychicRequest *request) {
