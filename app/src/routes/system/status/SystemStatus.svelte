@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
-  import { modals } from 'svelte-modals';
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-  import SettingsCard from '$lib/components/SettingsCard.svelte';
-  import Spinner from '$lib/components/Spinner.svelte';
-  import { slide } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
-  import type { SystemInformation, Analytics } from '$lib/types/models';
-  import { socket } from '$lib/stores/socket';
-  import { api } from '$lib/api';
-  import { convertSeconds } from '$lib/utilities';
-  import { useFeatureFlags } from '$lib/stores/featureFlags';
+  import { onDestroy, onMount } from 'svelte'
+  import { modals } from 'svelte-modals'
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+  import SettingsCard from '$lib/components/SettingsCard.svelte'
+  import Spinner from '$lib/components/Spinner.svelte'
+  import { slide } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
+  import { type SystemInformation, type Analytics, Topics } from '$lib/types/models'
+  import { socket } from '$lib/stores/socket'
+  import { api } from '$lib/api'
+  import { convertSeconds } from '$lib/utilities'
+  import { useFeatureFlags } from '$lib/stores/featureFlags'
   import {
     Cancel,
     Power,
@@ -27,42 +27,42 @@
     Flash,
     Folder,
     Temperature,
-    Stopwatch,
-  } from '$lib/components/icons';
-  import StatusItem from '$lib/components/StatusItem.svelte';
-  import ActionButton from './ActionButton.svelte';
+    Stopwatch
+  } from '$lib/components/icons'
+  import StatusItem from '$lib/components/StatusItem.svelte'
+  import ActionButton from './ActionButton.svelte'
 
-  const features = useFeatureFlags();
+  const features = useFeatureFlags()
 
-  let systemInformation: SystemInformation | null = $state(null);
+  let systemInformation: SystemInformation | null = $state(null)
 
   async function getSystemStatus() {
-    const result = await api.get<SystemInformation>('/api/system/status');
+    const result = await api.get<SystemInformation>('/api/system/status')
     if (result.isErr()) {
-      console.error('Error:', result.inner);
-      return;
+      console.error('Error:', result.inner)
+      return
     }
-    systemInformation = result.inner;
-    return systemInformation;
+    systemInformation = result.inner
+    return systemInformation
   }
 
-  const postFactoryReset = async () => await api.post('/api/system/reset');
+  const postFactoryReset = async () => await api.post('/api/system/reset')
 
-  const postSleep = async () => await api.post('api/sleep');
+  const postSleep = async () => await api.post('api/sleep')
 
-  onMount(() => socket.on('analytics', handleSystemData));
+  onMount(() => socket.on(Topics.analytics, handleSystemData))
 
-  onDestroy(() => socket.off('analytics', handleSystemData));
+  onDestroy(() => socket.off(Topics.analytics, handleSystemData))
   const handleSystemData = (data: Analytics) => {
     if (systemInformation) {
       systemInformation = {
         ...systemInformation,
-        ...(data as unknown as SystemInformation),
-      };
+        ...(data as unknown as SystemInformation)
+      }
     }
-  };
+  }
 
-  const postRestart = async () => await api.post('/api/system/restart');
+  const postRestart = async () => await api.post('/api/system/restart')
 
   function confirmRestart() {
     modals.open(ConfirmDialog, {
@@ -70,13 +70,13 @@
       message: 'Are you sure you want to restart the device?',
       labels: {
         cancel: { label: 'Abort', icon: Cancel },
-        confirm: { label: 'Restart', icon: Power },
+        confirm: { label: 'Restart', icon: Power }
       },
       onConfirm: () => {
-        modals.close();
-        postRestart();
-      },
-    });
+        modals.close()
+        postRestart()
+      }
+    })
   }
 
   function confirmReset() {
@@ -85,13 +85,13 @@
       message: 'Are you sure you want to reset the device to its factory defaults?',
       labels: {
         cancel: { label: 'Abort', icon: Cancel },
-        confirm: { label: 'Factory Reset', icon: FactoryReset },
+        confirm: { label: 'Factory Reset', icon: FactoryReset }
       },
       onConfirm: () => {
-        modals.close();
-        postFactoryReset();
-      },
-    });
+        modals.close()
+        postFactoryReset()
+      }
+    })
   }
 
   function confirmSleep() {
@@ -100,21 +100,21 @@
       message: 'Are you sure you want to put the device into sleep?',
       labels: {
         cancel: { label: 'Abort', icon: Cancel },
-        confirm: { label: 'Sleep', icon: Sleep },
+        confirm: { label: 'Sleep', icon: Sleep }
       },
       onConfirm: () => {
-        modals.close();
-        postSleep();
-      },
-    });
+        modals.close()
+        postSleep()
+      }
+    })
   }
 
   interface ActionButtonDef {
-    icon: any;
-    label: string;
-    onClick: () => void;
-    type?: string;
-    condition?: () => boolean;
+    icon: any
+    label: string
+    onClick: () => void
+    type?: string
+    condition?: () => boolean
   }
 
   const actionButtons: ActionButtonDef[] = [
@@ -122,20 +122,20 @@
       icon: Sleep,
       label: 'Sleep',
       onClick: confirmSleep,
-      condition: () => Boolean($features.sleep),
+      condition: () => Boolean($features.sleep)
     },
     {
       icon: Power,
       label: 'Restart',
-      onClick: confirmRestart,
+      onClick: confirmRestart
     },
     {
       icon: FactoryReset,
       label: 'Factory Reset',
       onClick: confirmReset,
-      type: 'secondary',
-    },
-  ];
+      type: 'secondary'
+    }
+  ]
 </script>
 
 <SettingsCard collapsible={false}>

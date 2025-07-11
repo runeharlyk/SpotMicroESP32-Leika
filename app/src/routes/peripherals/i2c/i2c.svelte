@@ -2,7 +2,7 @@
   import SettingsCard from '$lib/components/SettingsCard.svelte'
   import { onMount } from 'svelte'
   import { socket } from '$lib/stores'
-  import type { I2CDevice } from '$lib/types/models'
+  import { Topics, type I2CDevice } from '$lib/types/models'
   import { Connection } from '$lib/components/icons'
   import I2CSetting from './i2cSetting.svelte'
 
@@ -24,9 +24,9 @@
   let isLoading = $state(false)
 
   onMount(() => {
-    socket.on('i2cScan', handleScan)
+    socket.on(Topics.i2cScan, handleScan)
     triggerScan()
-    return () => socket.off('i2cScan', handleScan)
+    return () => socket.off(Topics.i2cScan, handleScan)
   })
 
   const handleScan = (data: any) => {
@@ -43,7 +43,7 @@
 
   const triggerScan = () => {
     isLoading = true
-    socket.sendEvent('i2cScan', '')
+    socket.sendEvent(Topics.i2cScan, '')
   }
 </script>
 

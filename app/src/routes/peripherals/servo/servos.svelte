@@ -1,5 +1,6 @@
 <script lang="ts">
   import { socket } from '$lib/stores'
+  import { Topics } from '$lib/types/models'
   import { throttler as Throttler } from '$lib/utilities'
 
   let { servoId = $bindable(0), pwm = $bindable(306) } = $props()
@@ -11,16 +12,16 @@
   const throttler = new Throttler()
 
   const activateServo = () => {
-    socket.sendEvent('servoState', { active: 1 })
+    socket.sendEvent(Topics.servoState, { active: 1 })
   }
 
   const deactivateServo = () => {
-    socket.sendEvent('servoState', { active: 0 })
+    socket.sendEvent(Topics.servoState, { active: 0 })
   }
 
   const updatePWM = () => {
     throttler.throttle(() => {
-      socket.sendEvent('servoPWM', { servo_id: servoId, pwm })
+      socket.sendEvent(Topics.servoPWM, { servo_id: servoId, pwm })
     }, 10)
   }
 

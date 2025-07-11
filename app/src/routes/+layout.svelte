@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
-  import { page } from '$app/state';
-  import { Modals, modals } from 'svelte-modals';
-  import Toast from '$lib/components/toasts/Toast.svelte';
-  import { notifications } from '$lib/components/toasts/notifications';
-  import { fade } from 'svelte/transition';
-  import '../app.css';
-  import Menu from '../lib/components/menu/Menu.svelte';
-  import Statusbar from '../lib/components/statusbar/statusbar.svelte';
+  import { onDestroy, onMount } from 'svelte'
+  import { page } from '$app/state'
+  import { Modals, modals } from 'svelte-modals'
+  import Toast from '$lib/components/toasts/Toast.svelte'
+  import { notifications } from '$lib/components/toasts/notifications'
+  import { fade } from 'svelte/transition'
+  import '../app.css'
+  import Menu from '../lib/components/menu/Menu.svelte'
+  import Statusbar from '../lib/components/statusbar/statusbar.svelte'
   import {
     telemetry,
     analytics,
@@ -19,75 +19,75 @@
     servoAnglesOut,
     socket,
     location,
-    useFeatureFlags,
-  } from '$lib/stores';
-  import type { Analytics, DownloadOTA } from '$lib/types/models';
+    useFeatureFlags
+  } from '$lib/stores'
+  import { Topics, type Analytics, type DownloadOTA } from '$lib/types/models'
   interface Props {
-    children?: import('svelte').Snippet;
+    children?: import('svelte').Snippet
   }
 
-  let { children }: Props = $props();
+  let { children }: Props = $props()
 
-  const features = useFeatureFlags();
+  const features = useFeatureFlags()
 
   onMount(async () => {
-    const ws = $location ? $location : window.location.host;
-    socket.init(`ws://${ws}/api/ws/events`);
+    const ws = $location ? $location : window.location.host
+    socket.init(`ws://${ws}/api/ws/events`)
 
-    addEventListeners();
+    addEventListeners()
 
-    outControllerData.subscribe(data => socket.sendEvent('input', data));
-    mode.subscribe(data => socket.sendEvent('mode', data));
-    servoAnglesOut.subscribe(data => socket.sendEvent('angles', data));
-    kinematicData.subscribe(data => socket.sendEvent('position', data));
-  });
+    outControllerData.subscribe(data => socket.sendEvent(Topics.input, data))
+    mode.subscribe(data => socket.sendEvent(Topics.mode, data))
+    servoAnglesOut.subscribe(data => socket.sendEvent(Topics.angles, data))
+    kinematicData.subscribe(data => socket.sendEvent(Topics.position, data))
+  })
 
   onDestroy(() => {
-    removeEventListeners();
-  });
+    removeEventListeners()
+  })
 
   const addEventListeners = () => {
-    socket.on('open', handleOpen);
-    socket.on('close', handleClose);
-    socket.on('error', handleError);
-    socket.on('rssi', handleNetworkStatus);
-    socket.on('mode', (data: ModesEnum) => mode.set(data));
-    socket.on('analytics', handleAnalytics);
-    socket.on('angles', (angles: number[]) => {
-      if (angles.length) servoAngles.set(angles);
-    });
+    socket.on('open', handleOpen)
+    socket.on('close', handleClose)
+    socket.on('error', handleError)
+    socket.on(Topics.rssi, handleNetworkStatus)
+    socket.on(Topics.mode, (data: ModesEnum) => mode.set(data))
+    socket.on(Topics.analytics, handleAnalytics)
+    socket.on(Topics.angles, (angles: number[]) => {
+      if (angles.length) servoAngles.set(angles)
+    })
     features.subscribe(data => {
-      if (data?.download_firmware) socket.on('otastatus', handleOAT);
-      if (data?.sonar) socket.on('sonar', data => console.log(data));
-    });
-  };
+      if (data?.download_firmware) socket.on(Topics.otastatus, handleOAT)
+      if (data?.sonar) socket.on(Topics.sonar, data => console.log(data))
+    })
+  }
 
   const removeEventListeners = () => {
-    socket.off('analytics', handleAnalytics);
-    socket.off('open', handleOpen);
-    socket.off('close', handleClose);
-    socket.off('rssi', handleNetworkStatus);
-    socket.off('otastatus', handleOAT);
-  };
+    socket.off(Topics.analytics, handleAnalytics)
+    socket.off('open', handleOpen)
+    socket.off('close', handleClose)
+    socket.off(Topics.rssi, handleNetworkStatus)
+    socket.off(Topics.otastatus, handleOAT)
+  }
 
   const handleOpen = () => {
-    notifications.success('Connection to device established', 5000);
-  };
+    notifications.success('Connection to device established', 5000)
+  }
 
   const handleClose = () => {
-    notifications.error('Connection to device lost', 5000);
-    telemetry.setRSSI(0);
-  };
+    notifications.error('Connection to device lost', 5000)
+    telemetry.setRSSI(0)
+  }
 
-  const handleError = (data: any) => console.error(data);
+  const handleError = (data: any) => console.error(data)
 
-  const handleAnalytics = (data: Analytics) => analytics.addData(data);
+  const handleAnalytics = (data: Analytics) => analytics.addData(data)
 
-  const handleNetworkStatus = (data: number) => telemetry.setRSSI(data);
+  const handleNetworkStatus = (data: number) => telemetry.setRSSI(data)
 
-  const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data);
+  const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data)
 
-  let menuOpen = $state(false);
+  let menuOpen = $state(false)
 </script>
 
 <svelte:head>

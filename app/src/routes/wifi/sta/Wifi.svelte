@@ -1,19 +1,24 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { modals } from 'svelte-modals';
-  import { slide } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
-  import { notifications } from '$lib/components/toasts/notifications';
-  import DragDropList, { VerticalDropZone, reorder, type DropEvent } from 'svelte-dnd-list';
-  import SettingsCard from '$lib/components/SettingsCard.svelte';
-  import { PasswordInput } from '$lib/components/input';
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-  import ScanNetworks from './Scan.svelte';
-  import Spinner from '$lib/components/Spinner.svelte';
-  import InfoDialog from '$lib/components/InfoDialog.svelte';
-  import type { KnownNetworkItem, WifiSettings, WifiStatus } from '$lib/types/models';
-  import { socket } from '$lib/stores';
-  import { api } from '$lib/api';
+  import { onMount, onDestroy } from 'svelte'
+  import { modals } from 'svelte-modals'
+  import { slide } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
+  import { notifications } from '$lib/components/toasts/notifications'
+  import DragDropList, { VerticalDropZone, reorder, type DropEvent } from 'svelte-dnd-list'
+  import SettingsCard from '$lib/components/SettingsCard.svelte'
+  import { PasswordInput } from '$lib/components/input'
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+  import ScanNetworks from './Scan.svelte'
+  import Spinner from '$lib/components/Spinner.svelte'
+  import InfoDialog from '$lib/components/InfoDialog.svelte'
+  import {
+    Topics,
+    type KnownNetworkItem,
+    type WifiSettings,
+    type WifiStatus
+  } from '$lib/types/models'
+  import { socket } from '$lib/stores'
+  import { api } from '$lib/api'
   import {
     Cancel,
     Delete,
@@ -31,9 +36,9 @@
     DNS,
     Add,
     Scan,
-    Edit,
-  } from '$lib/components/icons';
-  import StatusItem from '$lib/components/StatusItem.svelte';
+    Edit
+  } from '$lib/components/icons'
+  import StatusItem from '$lib/components/StatusItem.svelte'
 
   let networkEditable: KnownNetworkItem = $state({
     ssid: '',
@@ -43,22 +48,22 @@
     subnet_mask: undefined,
     gateway_ip: undefined,
     dns_ip_1: undefined,
-    dns_ip_2: undefined,
-  });
+    dns_ip_2: undefined
+  })
 
-  let static_ip_config = $state(false);
+  let static_ip_config = $state(false)
 
-  let newNetwork: boolean = $state(true);
-  let showNetworkEditor: boolean = $state(false);
+  let newNetwork: boolean = $state(true)
+  let showNetworkEditor: boolean = $state(false)
 
-  let wifiStatus: WifiStatus | null = $state(null);
-  let wifiSettings: WifiSettings | null = $state(null);
+  let wifiStatus: WifiStatus | null = $state(null)
+  let wifiSettings: WifiSettings | null = $state(null)
 
-  let dndNetworkList: KnownNetworkItem[] = $state([]);
+  let dndNetworkList: KnownNetworkItem[] = $state([])
 
-  let showWifiDetails = $state(false);
+  let showWifiDetails = $state(false)
 
-  let formField: any = $state();
+  let formField: any = $state()
 
   let formErrors = $state({
     ssid: false,
@@ -66,157 +71,157 @@
     gateway_ip: false,
     subnet_mask: false,
     dns_1: false,
-    dns_2: false,
-  });
+    dns_2: false
+  })
 
-  let formErrorhostname = $state(false);
+  let formErrorhostname = $state(false)
 
   async function getWifiStatus() {
-    const result = await api.get<WifiStatus>('/api/wifi/sta/status');
+    const result = await api.get<WifiStatus>('/api/wifi/sta/status')
     if (result.isErr()) {
-      console.error(`Error occurred while fetching: `, result.inner);
-      return;
+      console.error(`Error occurred while fetching: `, result.inner)
+      return
     }
-    wifiStatus = result.inner;
-    return wifiStatus;
+    wifiStatus = result.inner
+    return wifiStatus
   }
 
   async function getWifiSettings() {
-    const result = await api.get<WifiSettings>('/api/wifi/sta/settings');
+    const result = await api.get<WifiSettings>('/api/wifi/sta/settings')
     if (result.isErr()) {
-      console.error(`Error occurred while fetching: `, result.inner);
-      return;
+      console.error(`Error occurred while fetching: `, result.inner)
+      return
     }
-    wifiSettings = result.inner;
-    dndNetworkList = wifiSettings.wifi_networks;
-    return wifiSettings;
+    wifiSettings = result.inner
+    dndNetworkList = wifiSettings.wifi_networks
+    return wifiSettings
   }
 
-  onDestroy(() => socket.off('WiFiSettings'));
+  onDestroy(() => socket.off(Topics.WiFiSettings))
 
   onMount(() => {
-    socket.on<WifiSettings>('WiFiSettings', data => {
-      wifiSettings = data;
-      dndNetworkList = wifiSettings.wifi_networks;
-    });
-  });
+    socket.on<WifiSettings>(Topics.WiFiSettings, data => {
+      wifiSettings = data
+      dndNetworkList = wifiSettings.wifi_networks
+    })
+  })
 
   async function postWiFiSettings(data: WifiSettings) {
-    const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data);
+    const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data)
     if (result.isErr()) {
-      console.error(`Error occurred while fetching: `, result.inner);
-      notifications.error('User not authorized.', 3000);
-      return;
+      console.error(`Error occurred while fetching: `, result.inner)
+      notifications.error('User not authorized.', 3000)
+      return
     }
-    wifiSettings = result.inner;
-    notifications.success('Wi-Fi settings updated.', 3000);
+    wifiSettings = result.inner
+    notifications.success('Wi-Fi settings updated.', 3000)
   }
 
   function validateHostName() {
-    if (!wifiSettings) return false;
+    if (!wifiSettings) return false
     if (wifiSettings.hostname.length < 3 || wifiSettings.hostname.length > 32) {
-      formErrorhostname = true;
+      formErrorhostname = true
     } else {
-      formErrorhostname = false;
+      formErrorhostname = false
       // Update global wifiSettings object
-      wifiSettings.wifi_networks = dndNetworkList;
+      wifiSettings.wifi_networks = dndNetworkList
       // Post to REST API
-      postWiFiSettings(wifiSettings);
-      console.log(wifiSettings);
+      postWiFiSettings(wifiSettings)
+      console.log(wifiSettings)
     }
   }
 
   function validateWiFiForm(event: SubmitEvent) {
-    event.preventDefault();
-    let valid = true;
+    event.preventDefault()
+    let valid = true
 
     // Validate SSID
     if (networkEditable.ssid.length < 3 || networkEditable.ssid.length > 32) {
-      valid = false;
-      formErrors.ssid = true;
+      valid = false
+      formErrors.ssid = true
     } else {
-      formErrors.ssid = false;
+      formErrors.ssid = false
     }
 
-    networkEditable.static_ip_config = static_ip_config;
+    networkEditable.static_ip_config = static_ip_config
 
     if (networkEditable.static_ip_config) {
       // RegEx for IPv4
       const regexExp =
-        /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/;
+        /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/
 
       // Validate gateway IP
       if (!regexExp.test(networkEditable.gateway_ip!)) {
-        valid = false;
-        formErrors.gateway_ip = true;
+        valid = false
+        formErrors.gateway_ip = true
       } else {
-        formErrors.gateway_ip = false;
+        formErrors.gateway_ip = false
       }
 
       // Validate Subnet Mask
       if (!regexExp.test(networkEditable.subnet_mask!)) {
-        valid = false;
-        formErrors.subnet_mask = true;
+        valid = false
+        formErrors.subnet_mask = true
       } else {
-        formErrors.subnet_mask = false;
+        formErrors.subnet_mask = false
       }
 
       // Validate local IP
       if (!regexExp.test(networkEditable.local_ip!)) {
-        valid = false;
-        formErrors.local_ip = true;
+        valid = false
+        formErrors.local_ip = true
       } else {
-        formErrors.local_ip = false;
+        formErrors.local_ip = false
       }
 
       // Validate DNS 1
       if (!regexExp.test(networkEditable.dns_ip_1!)) {
-        valid = false;
-        formErrors.dns_1 = true;
+        valid = false
+        formErrors.dns_1 = true
       } else {
-        formErrors.dns_1 = false;
+        formErrors.dns_1 = false
       }
 
       // Validate DNS 2
       if (!regexExp.test(networkEditable.dns_ip_2!)) {
-        valid = false;
-        formErrors.dns_2 = true;
+        valid = false
+        formErrors.dns_2 = true
       } else {
-        formErrors.dns_2 = false;
+        formErrors.dns_2 = false
       }
     } else {
-      formErrors.local_ip = false;
-      formErrors.subnet_mask = false;
-      formErrors.gateway_ip = false;
-      formErrors.dns_1 = false;
-      formErrors.dns_2 = false;
+      formErrors.local_ip = false
+      formErrors.subnet_mask = false
+      formErrors.gateway_ip = false
+      formErrors.dns_1 = false
+      formErrors.dns_2 = false
     }
     // Submit JSON to REST API
     if (valid) {
       if (newNetwork) {
-        dndNetworkList.push(networkEditable);
+        dndNetworkList.push(networkEditable)
       } else {
-        dndNetworkList.splice(dndNetworkList.indexOf(networkEditable), 1, networkEditable);
+        dndNetworkList.splice(dndNetworkList.indexOf(networkEditable), 1, networkEditable)
       }
-      addNetwork();
-      dndNetworkList = [...dndNetworkList]; //Trigger reactivity
-      showNetworkEditor = false;
+      addNetwork()
+      dndNetworkList = [...dndNetworkList] //Trigger reactivity
+      showNetworkEditor = false
     }
   }
 
   function scanForNetworks() {
     modals.open(ScanNetworks, {
       storeNetwork: (network: string) => {
-        addNetwork();
-        networkEditable.ssid = network;
-        showNetworkEditor = true;
-        modals.close();
-      },
-    });
+        addNetwork()
+        networkEditable.ssid = network
+        showNetworkEditor = true
+        modals.close()
+      }
+    })
   }
 
   function addNetwork() {
-    newNetwork = true;
+    newNetwork = true
     networkEditable = {
       ssid: '',
       password: '',
@@ -225,14 +230,14 @@
       subnet_mask: undefined,
       gateway_ip: undefined,
       dns_ip_1: undefined,
-      dns_ip_2: undefined,
-    };
+      dns_ip_2: undefined
+    }
   }
 
   function handleEdit(index: number) {
-    newNetwork = false;
-    showNetworkEditor = true;
-    networkEditable = dndNetworkList[index];
+    newNetwork = false
+    showNetworkEditor = true
+    networkEditable = dndNetworkList[index]
   }
 
   function confirmDelete(index: number) {
@@ -241,20 +246,20 @@
       message: 'Are you sure you want to delete this network?',
       labels: {
         cancel: { label: 'Cancel', icon: Cancel },
-        confirm: { label: 'Delete', icon: Delete },
+        confirm: { label: 'Delete', icon: Delete }
       },
       onConfirm: () => {
         // Check if network is currently been edited and delete as well
         if (dndNetworkList[index].ssid === networkEditable.ssid) {
-          addNetwork();
+          addNetwork()
         }
         // Remove network from array
-        dndNetworkList.splice(index, 1);
-        dndNetworkList = [...dndNetworkList]; //Trigger reactivity
-        showNetworkEditor = false;
-        modals.close();
-      },
-    });
+        dndNetworkList.splice(index, 1)
+        dndNetworkList = [...dndNetworkList] //Trigger reactivity
+        showNetworkEditor = false
+        modals.close()
+      }
+    })
   }
 
   function checkNetworkList() {
@@ -264,21 +269,21 @@
         message:
           'You have reached the maximum number of networks. Please delete one to add another.',
         dismiss: { label: 'OK', icon: Check },
-        onDismiss: () => modals.close(),
-      });
-      return false;
+        onDismiss: () => modals.close()
+      })
+      return false
     } else {
-      return true;
+      return true
     }
   }
 
   function onDrop({ detail: { from, to } }: CustomEvent<DropEvent>) {
     if (!to || from === to) {
-      return;
+      return
     }
 
-    dndNetworkList = reorder(dndNetworkList, from.index, to.index);
-    console.log(dndNetworkList);
+    dndNetworkList = reorder(dndNetworkList, from.index, to.index)
+    console.log(dndNetworkList)
   }
 </script>
 
@@ -312,7 +317,7 @@
               <button
                 class="btn btn-circle btn-ghost btn-sm modal-button"
                 onclick={() => {
-                  showWifiDetails = !showWifiDetails;
+                  showWifiDetails = !showWifiDetails
                 }}>
                 <Down
                   class="text-base-content h-auto w-6 transition-transform duration-300 ease-in-out {(
@@ -359,8 +364,8 @@
             class="btn btn-primary text-primary-content btn-md absolute -top-14 right-16"
             onclick={() => {
               if (checkNetworkList()) {
-                addNetwork();
-                showNetworkEditor = true;
+                addNetwork()
+                showNetworkEditor = true
               }
             }}>
             <Add class="h-6 w-6" /></button>
@@ -368,8 +373,8 @@
             class="btn btn-primary text-primary-content btn-md absolute -top-14 right-0"
             onclick={() => {
               if (checkNetworkList()) {
-                scanForNetworks();
-                showNetworkEditor = true;
+                scanForNetworks()
+                showNetworkEditor = true
               }
             }}>
             <Scan class="h-6 w-6" /></button>
@@ -389,13 +394,13 @@
                     <button
                       class="btn btn-ghost btn-sm"
                       onclick={() => {
-                        handleEdit(index);
+                        handleEdit(index)
                       }}>
                       <Edit class="h-6 w-6" /></button>
                     <button
                       class="btn btn-ghost btn-sm"
                       onclick={() => {
-                        confirmDelete(index);
+                        confirmDelete(index)
                       }}>
                       <Delete class="text-error h-6 w-6" />
                     </button>
