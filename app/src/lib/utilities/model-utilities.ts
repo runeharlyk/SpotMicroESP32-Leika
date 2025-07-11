@@ -2,15 +2,16 @@ import { Color, LoaderUtils, Vector3 } from 'three'
 import URDFLoader, { type URDFRobot } from 'urdf-loader'
 import { XacroLoader } from 'xacro-parser'
 import { Result } from '$lib/utilities'
-import { jointNames, model } from '$lib/stores'
+import { currentVariant, jointNames, model } from '$lib/stores'
 import uzip from 'uzip'
 import { fileService } from '$lib/services'
+import { get } from 'svelte/store'
 
 let model_xml: XMLDocument
 
 export const populateModelCache = async () => {
   await cacheModelFiles()
-  const modelRes = await loadModel('/spot_micro.urdf.xacro')
+  const modelRes = await loadModel(get(currentVariant).model)
   if (modelRes.isOk()) {
     const [urdf, JOINT_NAME] = modelRes.inner
     jointNames.set(JOINT_NAME)
@@ -21,7 +22,7 @@ export const populateModelCache = async () => {
 }
 
 export const cacheModelFiles = async () => {
-  const data = await fetch('/stl.zip')
+  const data = await fetch(get(currentVariant).stl)
 
   const files = uzip.parse(await data.arrayBuffer())
 
