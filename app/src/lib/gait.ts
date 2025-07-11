@@ -1,6 +1,6 @@
+import { get } from 'svelte/store'
 import type { body_state_t } from './kinematic'
-import Kinematic from './kinematic'
-import { fromInt8 } from './utilities'
+import { currentKinematic } from './stores/featureFlags'
 
 const { sin } = Math
 
@@ -39,7 +39,7 @@ export abstract class GaitState {
   }
 
   public get default_feet_pos() {
-    return new Kinematic().getDefaultFeetPos()
+    return get(currentKinematic).getDefaultFeetPos()
   }
 
   protected get default_height() {

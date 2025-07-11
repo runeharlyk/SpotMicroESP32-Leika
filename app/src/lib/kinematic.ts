@@ -20,6 +20,15 @@ export interface target_position {
   yaw: number
 }
 
+export interface KinematicParams {
+  l1: number
+  l2: number
+  l3: number
+  l4: number
+  L: number
+  W: number
+}
+
 const { cos, sin, atan2, acos, sqrt, max, min } = Math
 
 const DEG2RAD = 0.017453292519943
@@ -43,14 +52,13 @@ export default class Kinematic {
     [1, 0, 0]
   ]
 
-  constructor() {
-    this.l1 = 60.5 / 100
-    this.l2 = 10 / 100
-    this.l3 = 111.7 / 100
-    this.l4 = 118.5 / 100
-
-    this.L = 207.5 / 100
-    this.W = 78 / 100
+  constructor(params: KinematicParams) {
+    this.l1 = params.l1
+    this.l2 = params.l2
+    this.l3 = params.l3
+    this.l4 = params.l4
+    this.L = params.L
+    this.W = params.W
 
     this.mountOffsets = [
       [this.L / 2, 0, this.W / 2],
