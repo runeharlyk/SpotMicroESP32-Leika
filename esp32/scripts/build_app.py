@@ -33,10 +33,21 @@ build_dir = interface_dir + "/build"
 filesystem_dir = project_dir + "/data/www"
 
 
+def get_files_to_exclude():
+    files_to_exclude = []
+    if flag_exists("SPOTMICRO_ESP32") and not flag_exists("SPOTMICRO_YERTLE"):
+        print("Excluding Yertle files for SPOTMICRO_ESP32 build")
+        files_to_exclude.extend(["yertle.URDF", "URDF.zip", "URDF/"])
+    elif flag_exists("SPOTMICRO_YERTLE") and not flag_exists("SPOTMICRO_ESP32"):
+        print("Excluding Spot Micro files for SPOTMICRO_YERTLE build")
+        files_to_exclude.extend(["spot_micro.urdf.xacro", "stl.zip", "stl/"])
+    else:
+        print("No specific variant flag set, including all files")
+    return files_to_exclude
+
+
 def find_latest_timestamp_for_app():
-    return max(
-        (getmtime(f) for f in glob.glob(f"{source_www_dir}/**/*", recursive=True))
-    )
+    return max((getmtime(f) for f in glob.glob(f"{source_www_dir}/**/*", recursive=True)))
 
 
 def should_regenerate_output_file():
@@ -53,14 +64,15 @@ def should_regenerate_output_file():
 
 
 def gzip_file(file):
-    with open(file, 'rb') as f_in:
-        with gzip.open(file + '.gz', 'wb') as f_out:
+    with open(file, "rb") as f_in:
+        with gzip.open(file + ".gz", "wb") as f_out:
             copyfileobj(f_in, f_out)
     os.remove(file)
 
+
 def flag_exists(flag):
     for define in buildFlags.get("CPPDEFINES"):
-        if (define == flag or (isinstance(define, list) and define[0] == flag)):
+        if define == flag or (isinstance(define, list) and define[0] == flag):
             return True
     return False
 
@@ -82,9 +94,7 @@ def build_webapp():
         env.Execute(f"{package_manager} run build:embedded")
         os.chdir("..")
     else:
-        raise Exception(
-            "No lock-file found. Please install dependencies for interface (eg. npm install)"
-        )
+        raise Exception("No lock-file found. Please install dependencies for interface (eg. npm install)")
 
 
 def embed_webapp():
@@ -103,11 +113,27 @@ def build_progmem():
 
         assetMap = {}
 
+        files_to_exclude = get_files_to_exclude()
+
         for idx, path in enumerate(Path(build_dir).rglob("*.*")):
             asset_path = path.relative_to(build_dir).as_posix()
-            asset_mime = (
-                mimetypes.guess_type(asset_path)[0] or "application/octet-stream"
-            )
+
+            should_exclude = False
+            for exclude_pattern in files_to_exclude:
+                if exclude_pattern.endswith("/"):
+                    if asset_path.startswith(exclude_pattern):
+                        should_exclude = True
+                        print(f"Skipping {asset_path}")
+                        break
+                elif asset_path == exclude_pattern:
+                    should_exclude = True
+                    print(f"Skipping {asset_path}")
+                    break
+
+            if should_exclude:
+                continue
+
+            asset_mime = mimetypes.guess_type(asset_path)[0] or "application/octet-stream"
             print(f"Converting {asset_path}")
 
             asset_var = f"ESP_SVELTEKIT_DATA_{idx}"
@@ -132,14 +158,10 @@ def build_progmem():
         )
         progmem.write("class WWWData {\n")
         progmem.write("\tpublic:\n")
-        progmem.write(
-            "\t\tstatic void registerRoutes(RouteRegistrationHandler handler) {\n"
-        )
+        progmem.write("\t\tstatic void registerRoutes(RouteRegistrationHandler handler) {\n")
 
         for asset_path, asset in assetMap.items():
-            progmem.write(
-                f'\t\t\thandler("/{asset_path}", "{asset["mime"]}", {asset["name"]}, {asset["size"]});\n'
-            )
+            progmem.write(f'\t\t\thandler("/{asset_path}", "{asset["mime"]}", {asset["name"]}, {asset["size"]});\n')
 
         progmem.write("\t\t}\n")
         progmem.write("};\n\n")
@@ -150,8 +172,23 @@ def add_app_to_filesystem():
     www_path = Path(filesystem_dir)
     if www_path.exists() and www_path.is_dir():
         rmtree(www_path)
+
     print("Copying and compress app to data directory")
-    copytree(build_path, www_path)
+
+    files_to_exclude = get_files_to_exclude()
+
+    def ignore_files(dir, files):
+        ignored = []
+        for file in files:
+            file_path = Path(dir) / file
+            relative_path = file_path.relative_to(build_path)
+            if str(relative_path) in files_to_exclude:
+                ignored.append(file)
+                print(f"Excluding: {relative_path}")
+        return ignored
+
+    copytree(build_path, www_path, ignore=ignore_files if files_to_exclude else None)
+
     for current_path, _, files in os.walk(www_path):
         for file in files:
             gzip_file(os.path.join(current_path, file))
