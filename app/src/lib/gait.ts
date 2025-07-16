@@ -62,8 +62,8 @@ export abstract class GaitState {
   map_command(command: ControllerCommand) {
     const newCommand = {
       step_height: 0.4 + (command.s1 / 128 + 1) / 2,
-      step_x: Math.floor((command.ly / 128) * 10) / 10,
-      step_z: -(Math.floor((command.lx / 128) * 10) / 10),
+      step_x: command.ly / 128,
+      step_z: -command.lx / 128,
       step_velocity: command.s / 128 + 1,
       step_angle: command.rx / 128,
       step_depth: 0.002
@@ -265,6 +265,7 @@ export class BezierState extends GaitState {
   protected phase = 0
   protected phase_num = 0
   protected step_length: number = 0
+  protected stand_offset = 0.75
   offset = [0, 0.5, 0.5, 0]
 
   begin() {
@@ -309,18 +310,18 @@ export class BezierState extends GaitState {
     this.body_state.feet[index][0] = this.default_feet_pos[index][0]
     this.body_state.feet[index][1] = this.default_feet_pos[index][1]
     this.body_state.feet[index][2] = this.default_feet_pos[index][2]
-    return phase <= 0.75 ?
-        this.stand_controller(index, phase / 0.75)
-      : this.swing_controller(index, (phase - 0.75) / (1 - 0.75))
+    return phase <= this.stand_offset ?
+        this.stand_controller(index, phase / this.stand_offset)
+      : this.swing_controller(index, (phase - this.stand_offset) / (1 - this.stand_offset))
   }
 
   stand_controller(index: number, phase: number) {
-    let depth = this.gait_state.step_depth
+    const depth = this.gait_state.step_depth
     return this.controller(index, phase, stance_curve, depth)
   }
 
   swing_controller(index: number, phase: number) {
-    let height = this.gait_state.step_height
+    const height = this.gait_state.step_height
     return this.controller(index, phase, bezier_curve, height)
   }
 
