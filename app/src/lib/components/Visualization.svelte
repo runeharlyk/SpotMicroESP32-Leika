@@ -6,7 +6,7 @@
     LineBasicMaterial,
     Mesh,
     MeshBasicMaterial,
-    Object3D,
+    type Object3D,
     SphereGeometry,
     Vector3,
     type NormalBufferAttributes,
