@@ -29,13 +29,6 @@
 #define EVENT_IMU "imu"
 
 /*
- * OLED Settings
- */
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define SCREEN_RESET -1
-
-/*
  * Ultrasonic Sensor Settings
  */
 #define MAX_DISTANCE 200
@@ -77,8 +70,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
-        _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
-        _right_sonar = new NewPing(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
+        _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
+        _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
 #endif
     };
 
@@ -128,10 +121,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
             }
         }
         uint8_t nDevices = addressList.size();
-        if (nDevices == 0)
-            ESP_LOGI("Peripherals", "No I2C devices found");
-        else
-            ESP_LOGI("Peripherals", "Scan complete - Found %d devices", nDevices);
+        ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", nDevices);
     }
 
     /* IMU FUNCTIONS */
@@ -190,8 +180,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_BMP180)
         _bmp.readBarometer(root);
 #endif
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055) || FT_ENABLED(USE_HMC5883)
         JsonVariant data = doc.as<JsonVariant>();
         socket.emit(EVENT_IMU, data);
+#endif
     }
 
     void emitSonar() {
@@ -225,8 +217,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Barometer _bmp;
 #endif
 #if FT_ENABLED(USE_USS)
-    NewPing *_left_sonar;
-    NewPing *_right_sonar;
+    std::unique_ptr<NewPing> _left_sonar;
+    std::unique_ptr<NewPing> _right_sonar;
 #endif
     float _left_distance {MAX_DISTANCE};
     float _right_distance {MAX_DISTANCE};
