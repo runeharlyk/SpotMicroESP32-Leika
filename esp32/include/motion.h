@@ -59,7 +59,6 @@ class MotionService {
     void handleInput(JsonVariant &root, int originId) {
         JsonArray array = root.as<JsonArray>();
         command.lx = array[1];
-        command.lx = array[1];
         command.ly = array[2];
         command.rx = array[3];
         command.ry = array[4];
@@ -123,7 +122,7 @@ class MotionService {
         return update_angles(new_angles, angles);
     }
 
-    bool update_angles(float new_angles[12], float angles[12], bool useLerp = true) {
+    bool update_angles(float new_angles[12], float angles[12], bool useLerp = false) {
         bool updated = false;
         for (int i = 0; i < 12; i++) {
             float new_angle = useLerp ? lerp(angles[i], new_angles[i] * dir[i], 0.3) : new_angles[i] * dir[i];

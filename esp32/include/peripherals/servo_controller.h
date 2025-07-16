@@ -98,7 +98,7 @@ class ServoController : public StatefulService<ServoSettings> {
     void calculatePWM() {
         uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
-            angles[i] = lerp(angles[i], target_angles[i], 0.05);
+            angles[i] = lerp(angles[i], target_angles[i], 0.1);
             auto &servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
