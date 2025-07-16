@@ -61,8 +61,8 @@ class BezierState : public GaitState {
         body_state.feet[index][2] = this->default_feet_pos[index][2];
         const float leg_phase = std::fmod(phase_time + PHASE_OFFSET[index], 1.0f);
         const bool contact = leg_phase <= STAND_OFFSET;
-        contact ? standController(body_state, index, leg_phase / 0.75)
-                : swingController(body_state, index, (leg_phase - 0.75) / (1 - 0.75));
+        contact ? standController(body_state, index, leg_phase / STAND_OFFSET)
+                : swingController(body_state, index, (leg_phase - STAND_OFFSET) / (1 - STAND_OFFSET));
     }
 
     void standController(body_state_t &body_state, const int index, const float phase) {
