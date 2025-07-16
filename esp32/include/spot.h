@@ -26,10 +26,6 @@
 #include <WWWData.h>
 #endif
 
-#ifndef CORS_ORIGIN
-#define CORS_ORIGIN "*"
-#endif
-
 #ifndef APP_VERSION
 #define APP_VERSION "v1"
 #endif

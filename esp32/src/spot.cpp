@@ -160,7 +160,7 @@ void Spot::setupServer() {
 
 #if defined(ENABLE_CORS)
     ESP_LOGV(TAG, "Enabling CORS headers");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
 #endif
