@@ -37,6 +37,7 @@ By focusing on practicality and simplicity in both hardware and software, it off
 - **Robot mirroring visualization**
 - **Highly customizable**
 - **Self-Hosted**: Complete autonomy, from code to execution.
+- **Multiple Variants**: Support both esp32 and Yertle variant
 <!-- * Servo calibration tool -->
 
 ## 📐 Robot specifications
@@ -131,6 +132,17 @@ The controller input is interpreted differently between the modes.
 | Stop button      | E stop command      | 0 or 1  |
 
 <!-- ### Static and dynamic posing -->
+
+### Trot gait (12 point bezier curve)
+
+The trot gait implements a phase time $t\in[0,1]$, but instead of using contact phases we define a swing/stance ratio of phase time offset for each leg.
+
+The stance controller implements a sin curve to control the depth of steps.
+
+The swing controller implements a bezier curve using 12 control points centered around the robot leg.
+
+Rotation is calculated using the same curve.
+
 ### 8-phase crawl gait
 
 The 8-phase crawl gait works by lifting one leg at a time while shifting its body weight away from the leg.
@@ -141,15 +153,6 @@ At each time step the phase time $t\in [0,1]$ is updated. When $t\geq 1$ the pha
 
 Is derived from [mike4192 spotMicro](https://github.com/mike4192/spotMicro)
 
-### Trot gait (12 point bezier curve)
-
-The trot gait implements a phase time $t\in[0,1]$, but instead of using contact phases we define a swing/stance ratio of phase time offset for each leg.
-
-The stance controller implements a sin curve to control the depth of steps.
-
-The swing controller implements a bezier curve using 12 control points centered around the robot leg.
-
-Rotation is calulated using the same curve
 ## 🔮 Getting started
 
 1. Clone and open the new project
