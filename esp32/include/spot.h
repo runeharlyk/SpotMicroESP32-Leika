@@ -8,19 +8,14 @@
 #include <Wire.h>
 
 #include <filesystem.h>
-#include <firmware_download_service.h>
-#include <firmware_upload_service.h>
 #include <peripherals/peripherals.h>
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
-#include <peripherals/camera_service.h>
 #include <event_socket.h>
 #include <features.h>
 #include <motion.h>
-#include <task_manager.h>
 #include <wifi_service.h>
 #include <ap_service.h>
-#include <mdns_service.h>
 
 #ifdef EMBED_WWW
 #include <WWWData.h>
@@ -52,7 +47,6 @@ class Spot {
     void readSensors() {
         _peripherals.readIMU();
         _peripherals.readMag();
-        _peripherals.readBMP();
     }
 
     // plan
@@ -81,18 +75,8 @@ class Spot {
     WiFiService _wifiService;
     APService _apService;
     EventSocket _socket;
-    MDNSService _mdnsService;
-#if FT_ENABLED(USE_UPLOAD_FIRMWARE)
-    FirmwareUploadService _uploadFirmwareService;
-#endif
-#if FT_ENABLED(USE_DOWNLOAD_FIRMWARE)
-    DownloadFirmwareService _downloadFirmwareService;
-#endif
 #if FT_ENABLED(USE_MOTION)
     MotionService _motionService;
-#endif
-#if FT_ENABLED(USE_CAMERA)
-    Camera::CameraService _cameraService;
 #endif
     Peripherals _peripherals;
     ServoController _servoController;

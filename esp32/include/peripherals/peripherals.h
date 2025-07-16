@@ -18,7 +18,6 @@
 #include <NewPing.h>
 #include <peripherals/imu.h>
 #include <peripherals/magnetometer.h>
-#include <peripherals/barometer.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 
@@ -27,13 +26,6 @@
 #define I2C_INTERVAL 250
 #define MAX_ESP_IMU_SIZE 500
 #define EVENT_IMU "imu"
-
-/*
- * OLED Settings
- */
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define SCREEN_RESET -1
 
 /*
  * Ultrasonic Sensor Settings
@@ -72,9 +64,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_HMC5883)
         if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
-#endif
-#if FT_ENABLED(USE_BMP180)
-        if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
         _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
@@ -155,16 +144,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return updated;
     }
 
-    bool readBMP() {
-        bool updated = false;
-#if FT_ENABLED(USE_BMP180)
-        beginTransaction();
-        updated = _bmp.readBarometer();
-        endTransaction();
-#endif
-        return updated;
-    }
-
     void readSonar() {
 #if FT_ENABLED(USE_USS)
         _left_distance = _left_sonar->ping_cm();
@@ -186,9 +165,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_HMC5883)
         _mag.readMagnetometer(root);
-#endif
-#if FT_ENABLED(USE_BMP180)
-        _bmp.readBarometer(root);
 #endif
         JsonVariant data = doc.as<JsonVariant>();
         socket.emit(EVENT_IMU, data);
@@ -220,9 +196,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_HMC5883)
     Magnetometer _mag;
-#endif
-#if FT_ENABLED(USE_BMP180)
-    Barometer _bmp;
 #endif
 #if FT_ENABLED(USE_USS)
     NewPing *_left_sonar;

@@ -122,17 +122,6 @@ void metrics(JsonObject &root) {
     root["fs_used"] = ESPFS.usedBytes();
     root["fs_total"] = ESPFS.totalBytes();
     root["core_temp"] = temperatureRead();
-    root["cpu0_usage"] = g_taskManager.getCpuUsage(0);
-    root["cpu1_usage"] = g_taskManager.getCpuUsage(1);
-    root["cpu_usage"] = g_taskManager.getCpuUsage();
-    JsonArray tasks = root["tasks"].to<JsonArray>();
-    for (auto const &task : g_taskManager.getTasks()) {
-        JsonObject nested = tasks.add<JsonObject>();
-        nested["name"] = task.name;
-        nested["stackSize"] = task.stackSize;
-        nested["priority"] = task.priority;
-        nested["coreId"] = task.coreId;
-    }
 }
 
 void emitMetrics() {

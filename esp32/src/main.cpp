@@ -3,7 +3,7 @@
 DRAM_ATTR Spot spot;
 
 void IRAM_ATTR SpotControlLoopEntry(void*) {
-    ESP_LOGI("main", "Setup complete now runing tsk");
+    ESP_LOGI("main", "Setup complete now runing task");
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = 5 / portTICK_PERIOD_MS;
     for (;;) {
@@ -20,7 +20,7 @@ void setup() {
 
     spot.initialize();
 
-    g_taskManager.createTask(SpotControlLoopEntry, "Spot control task", 4096, nullptr, 5);
+    xTaskCreate(SpotControlLoopEntry, "Spot control task", 4096, nullptr, 5, nullptr);
 }
 
 void loop() { vTaskDelete(NULL); }
