@@ -42,9 +42,7 @@
     kinematicData.subscribe(data => socket.sendEvent(Topics.position, data))
   })
 
-  onDestroy(() => {
-    removeEventListeners()
-  })
+  onDestroy(() => removeEventListeners())
 
   const addEventListeners = () => {
     socket.on('open', handleOpen)

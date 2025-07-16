@@ -17,14 +17,6 @@
 #include <wifi_service.h>
 #include <ap_service.h>
 
-#ifdef EMBED_WWW
-#include <WWWData.h>
-#endif
-
-#ifndef CORS_ORIGIN
-#define CORS_ORIGIN "*"
-#endif
-
 #ifndef APP_VERSION
 #define APP_VERSION "v1"
 #endif
@@ -55,7 +47,6 @@ class Spot {
     // act
     void updateActuators() {
         if (updatedMotion) _servoController.setAngles(_motionService.getAngles());
-        updatedMotion = false;
 
         _servoController.updateServoState();
 #if FT_ENABLED(USE_WS2812)
@@ -65,7 +56,7 @@ class Spot {
 
     // communicate
     void emitTelemetry() {
-        if (updatedMotion) EXECUTE_EVERY_N_MS(100, { _motionService.emitAngles(); });
+        if (updatedMotion) EXECUTE_EVERY_N_MS(50, { _motionService.emitAngles(); });
         EXECUTE_EVERY_N_MS(250, { _peripherals.emitIMU(); });
         // _peripherals.emitSonar();
     }

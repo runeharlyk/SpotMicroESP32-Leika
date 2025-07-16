@@ -59,7 +59,6 @@ class MotionService {
     void handleInput(JsonVariant &root, int originId) {
         JsonArray array = root.as<JsonArray>();
         command.lx = array[1];
-        command.lx = array[1];
         command.ly = array[2];
         command.rx = array[3];
         command.ry = array[4];

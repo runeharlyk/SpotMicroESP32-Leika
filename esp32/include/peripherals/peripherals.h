@@ -66,8 +66,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
-        _left_sonar = new NewPing(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
-        _right_sonar = new NewPing(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
+        _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
+        _left_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
 #endif
     };
 
@@ -117,10 +117,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
             }
         }
         uint8_t nDevices = addressList.size();
-        if (nDevices == 0)
-            ESP_LOGI("Peripherals", "No I2C devices found");
-        else
-            ESP_LOGI("Peripherals", "Scan complete - Found %d devices", nDevices);
+        ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", nDevices);
     }
 
     /* IMU FUNCTIONS */
@@ -167,7 +164,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _mag.readMagnetometer(root);
 #endif
         JsonVariant data = doc.as<JsonVariant>();
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055) || FT_ENABLED(USE_HMC5883)
         socket.emit(EVENT_IMU, data);
+#endif
     }
 
     void emitSonar() {
@@ -190,7 +189,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
     JsonDocument doc;
-    char message[MAX_ESP_IMU_SIZE];
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     IMU _imu;
 #endif
@@ -198,8 +196,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Magnetometer _mag;
 #endif
 #if FT_ENABLED(USE_USS)
-    NewPing *_left_sonar;
-    NewPing *_right_sonar;
+    std::unique_ptr<NewPing> _left_sonar;
+    std::unique_ptr<NewPing> _right_sonar;
 #endif
     float _left_distance {MAX_DISTANCE};
     float _right_distance {MAX_DISTANCE};

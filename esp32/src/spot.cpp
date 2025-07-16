@@ -72,7 +72,7 @@ void Spot::setupServer() {
     _server.on("/api/ws/events", socket.getHandler());
     _server.on("/api/features", feature_service::getFeatures);
 
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
     DefaultHeaders::Instance().addHeader("Server", _appName);

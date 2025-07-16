@@ -22,9 +22,6 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_WS2812: %s", USE_WS2812 ? "enabled" : "disabled");
 
     // Web services
-    ESP_LOGI("Features", "EMBED_WWW: %s", EMBED_WWW ? "enabled" : "disabled");
-    ESP_LOGI("Features", "ENABLE_CORS: %s", ENABLE_CORS ? "enabled" : "disabled");
-    ESP_LOGI("Features", "SERVE_CONFIG_FILES: %s", SERVE_CONFIG_FILES ? "enabled" : "disabled");
     ESP_LOGI("Features", "KINEMATICS_VARIANT: %s", KINEMATICS_VARIANT_STR);
     ESP_LOGI("Features", "==========================================================");
 }
