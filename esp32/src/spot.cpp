@@ -57,6 +57,7 @@ void Spot::setupServer() {
     });
 
     // CAMERA
+#if USE_CAMERA
     _server.on("/api/camera/still", HTTP_GET,
                [this](PsychicRequest *request) { return _cameraService.cameraStill(request); });
     _server.on("/api/camera/stream", HTTP_GET,
@@ -66,6 +67,7 @@ void Spot::setupServer() {
     _server.on("/api/camera/settings", HTTP_POST, [this](PsychicRequest *request, JsonVariant &json) {
         return _cameraService.endpoint.handleStateUpdate(request, json);
     });
+#endif
 
     // SYSTEM
     _server.on("/api/system/reset", HTTP_POST, system_service::handleReset);
