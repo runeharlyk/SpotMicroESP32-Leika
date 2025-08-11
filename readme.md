@@ -28,6 +28,8 @@ Leika is a smaller quadruped robot for the Spot-Micro community.
 Built on an ESP32 and powered by FreeRTOS, she can handle multiple tasks seamlessly—like video and data streaming, solving kinematic and gait planning, controlling I/O, and much more.
 By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
 
+<img src="images/short_walk.gif" width="450"/>
+
 ## 🎯 Features
 
 - **Live Preview**: Instant feedback with real-time updates.
