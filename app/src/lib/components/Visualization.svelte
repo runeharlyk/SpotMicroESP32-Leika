@@ -177,7 +177,7 @@
     sceneManager
       .addRenderer({ antialias: true, canvas, alpha: true })
       .addPerspectiveCamera({ x: -0.5, y: 0.5, z: 1 })
-      .addOrbitControls(8, 30, orbit)
+      .addOrbitControls(2, 20, orbit)
       .addDirectionalLight({ x: 10, y: 20, z: 10, color: 0xffffff, intensity: 3 })
       .addAmbientLight({ color: 0xffffff, intensity: 0.5 })
       .addFogExp2(0xcccccc, 0.015)
