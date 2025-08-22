@@ -79,16 +79,18 @@
 
 static_assert(!(USE_JSON == 1 && USE_MSGPACK == 1), "Cannot set both USE_JSON and USE_MSGPACK to 1 simultaneously");
 
-#if defined(SPOTMICRO_ESP32) && defined(SPOTMICRO_YERTLE)
+#if defined(SPOTMICRO_ESP32) && defined(SPOTMICRO_ESP32_MINI) && defined(SPOTMICRO_YERTLE)
 #error "Only one kinematics variant must be defined"
 #endif
 
-#if !defined(SPOTMICRO_ESP32) && !defined(SPOTMICRO_YERTLE)
+#if !defined(SPOTMICRO_ESP32) && !defined(SPOTMICRO_ESP32_MINI) && !defined(SPOTMICRO_YERTLE)
 #error "You must define one kinematics variant"
 #endif
 
 #if defined(SPOTMICRO_ESP32)
 #define KINEMATICS_VARIANT_STR "SPOTMICRO_ESP32"
+#elif defined(SPOTMICRO_ESP32_MINI)
+#define KINEMATICS_VARIANT_STR "SPOTMICRO_ESP32_MINI"
 #elif defined(SPOTMICRO_YERTLE)
 #define KINEMATICS_VARIANT_STR "SPOTMICRO_YERTLE"
 #else

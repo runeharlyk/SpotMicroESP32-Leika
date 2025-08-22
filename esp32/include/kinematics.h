@@ -29,6 +29,14 @@ class Kinematics {
 
     static constexpr float L = 207.5f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
+#elif defined(SPOTMICRO_ESP32_MINI)
+    static constexpr float l1 = 0.0f / 100.0f;
+    static constexpr float l2 = 0.0f / 100.0f;
+    static constexpr float l3 = 52.0f / 100.0f;
+    static constexpr float l4 = 65.0f / 100.0f;
+
+    static constexpr float L = 120.0f / 100.0f;
+    static constexpr float W = 78.5f / 100.0f;
 #elif defined(SPOTMICRO_YERTLE)
     static constexpr float l1 = 35.0f / 100.0f;
     static constexpr float l2 = 0.0f;
@@ -156,7 +164,7 @@ class Kinematics {
         float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
         result[0] = RAD_TO_DEG_F(theta1);
         result[1] = RAD_TO_DEG_F(theta2);
-#if defined(SPOTMICRO_ESP32)
+#if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
         result[2] = RAD_TO_DEG_F(theta3);
 #elif defined(SPOTMICRO_YERTLE)
         result[2] = RAD_TO_DEG_F(theta3 + theta2);

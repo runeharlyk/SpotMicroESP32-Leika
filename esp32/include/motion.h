@@ -154,7 +154,7 @@ class MotionService {
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-#if defined(SPOTMICRO_ESP32)
+#if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
     float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float calibration_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 #elif defined(SPOTMICRO_YERTLE)
