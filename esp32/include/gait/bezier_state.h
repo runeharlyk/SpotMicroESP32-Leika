@@ -36,7 +36,7 @@ class BezierState : public GaitState {
   public:
     const char *name() const override { return "Bezier"; }
 
-    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
         this->mapCommand(command);
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
         if (gait_state.step_x < 0.0f) {
@@ -78,8 +78,8 @@ class BezierState : public GaitState {
         float delta_pos[3] = {0};
         float delta_rot[3] = {0};
 
-        float length = step_length / 2.0f;
-        float angle = std::atan2(gait_state.step_z, step_length) * 2;
+        float length = step_length * 0.5f;
+        float angle = std::atan2(gait_state.step_z, step_length);
         curve(length, angle, arg, phase, delta_pos);
 
         length = gait_state.step_angle * 2.0f;
@@ -107,9 +107,10 @@ class BezierState : public GaitState {
         const float X_POLAR = std::cos(angle);
         const float Z_POLAR = std::sin(angle);
 
+        const float t = std::clamp(phase, 1e-4f, 1.f - 1e-4f);
         float phase_power = 1.0f;
-        float inv_phase_power = std::pow(1.0f - phase, 11);
-        const float one_minus_phase = 1.0f - phase;
+        float inv_phase_power = std::pow(1.0f - t, 11);
+        const float one_minus_phase = 1.0f - t;
 
         for (int i = 0; i < 12; i++) {
             float b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power;
@@ -122,7 +123,7 @@ class BezierState : public GaitState {
         }
     }
 
-    static float yawArc(const float feet_pos[4], const float *current_pos) {
+    static float yawArc(const float feet_pos[3], const float *current_pos) {
         const float foot_mag = std::hypot(feet_pos[0], feet_pos[2]);
         const float foot_dir = std::atan2(feet_pos[2], feet_pos[0]);
         const float offsets[] = {current_pos[0] - feet_pos[0], current_pos[1] - feet_pos[1],

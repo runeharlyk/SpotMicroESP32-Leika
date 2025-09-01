@@ -27,7 +27,7 @@ class EightPhaseWalkState : public PhaseGaitState {
         }
     }
 
-    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
         return PhaseGaitState::step(body_state, command, dt);
     }
 };

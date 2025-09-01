@@ -33,7 +33,7 @@
   import SceneBuilder from '$lib/sceneBuilder'
   import { lerp, degToRad } from 'three/src/math/MathUtils'
   import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
-  import Kinematic, { type body_state_t } from '$lib/kinematic'
+  import { type body_state_t } from '$lib/kinematic'
   import {
     BezierState,
     CalibrationState,
@@ -264,16 +264,15 @@
     if (sceneManager.isDragging || !settings['Internal kinematic']) return
     const controlData = get(outControllerData)
     const data = {
-      stop: controlData[0],
-      lx: controlData[1],
-      ly: controlData[2],
-      rx: controlData[3],
-      ry: controlData[4],
-      h: controlData[5],
-      s: controlData[6],
-      s1: controlData[7]
+      lx: controlData[0],
+      ly: controlData[1],
+      rx: controlData[2],
+      ry: controlData[3],
+      h: controlData[4],
+      s: controlData[5],
+      s1: controlData[6]
     }
-    body_state.ym = ((data.h + 127) * 0.35) / 100
+    body_state.ym = data.h
 
     let planner = planners[get(mode)]
     const delta = performance.now() - lastTick

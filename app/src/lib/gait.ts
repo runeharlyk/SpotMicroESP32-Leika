@@ -14,7 +14,6 @@ export interface gait_state_t {
 }
 
 export interface ControllerCommand {
-  stop: number
   lx: number
   ly: number
   rx: number
@@ -61,11 +60,11 @@ export abstract class GaitState {
 
   map_command(command: ControllerCommand) {
     const newCommand = {
-      step_height: 0.4 + (command.s1 / 128 + 1) / 2,
-      step_x: command.ly / 128,
-      step_z: -command.lx / 128,
-      step_velocity: command.s / 128 + 1,
-      step_angle: command.rx / 128,
+      step_height: 0.4 + (command.s1 + 1) / 2,
+      step_x: command.ly,
+      step_z: -command.lx,
+      step_velocity: command.s,
+      step_angle: command.rx,
       step_depth: 0.002
     }
 
@@ -112,10 +111,10 @@ export class StandState extends GaitState {
 
   step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
     body_state.omega = 0
-    body_state.phi = command.rx / 8
-    body_state.psi = command.ry / 8
-    body_state.xm = command.ly / 2 / 100
-    body_state.zm = command.lx / 2 / 100
+    body_state.phi = command.rx
+    body_state.psi = command.ry
+    body_state.xm = command.ly / 4
+    body_state.zm = command.lx / 4
     body_state.feet = this.default_feet_pos
     return body_state
   }

@@ -10,6 +10,7 @@
 #include <gait/state.h>
 #include <gait/crawl_state.h>
 #include <gait/bezier_state.h>
+#include <message_types.h>
 
 #define DEFAULT_STATE false
 #define ANGLES_EVENT "angles"
@@ -57,24 +58,27 @@ class MotionService {
     }
 
     void handleInput(JsonVariant &root, int originId) {
-        JsonArray array = root.as<JsonArray>();
-        command.lx = array[1];
-        command.ly = array[2];
-        command.rx = array[3];
-        command.ry = array[4];
-        command.h = array[5];
-        command.s = array[6];
-        command.s1 = array[7];
+        command.fromJson(root);
 
-        body_state.ym = (command.h + 127.f) * 0.35f / 100;
+        body_state.ym = command.h * 1.f - 0.5f;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
-                body_state.phi = command.rx / 8;
-                body_state.psi = command.ry / 8;
-                body_state.xm = command.ly / 2 / 100;
-                body_state.zm = command.lx / 2 / 100;
+                body_state.phi = command.rx; // * 0.254f;
+                body_state.psi = command.ry; // * 0.254f;
+                body_state.xm = command.ly / 4;
+                body_state.zm = command.lx / 4;
                 body_state.updateFeet(kinematics.default_feet_positions);
+                break;
+            }
+            case MOTION_STATE::CRAWL:
+            case MOTION_STATE::WALK: {
+                gait_state.step_height = 0.4 + (command.s1 + 1) / 2;
+                gait_state.step_x = command.ly;
+                gait_state.step_z = -command.lx;
+                gait_state.step_velocity = command.s;
+                gait_state.step_angle = command.rx;
+                gait_state.step_depth = 0.002;
                 break;
             }
         }
@@ -139,7 +143,7 @@ class MotionService {
   private:
     ServoController *_servoController;
     Kinematics kinematics;
-    ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};
+    CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
 
     friend class GaitState;
 
@@ -149,7 +153,10 @@ class MotionService {
     MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
 
+    body_state_t target_body_state = {0, 0, 0, 0, 0, 0};
     body_state_t body_state = {0, 0, 0, 0, 0, 0};
+    gait_state_t gait_state = {12, 0, 0, 0, 1, 0.002};
+
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 

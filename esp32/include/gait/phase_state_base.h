@@ -14,7 +14,7 @@ class PhaseGaitState : public GaitState {
     uint8_t contact_phases[4][8];
     float shifts[4][3];
 
-    void step(body_state_t &body_state, ControllerCommand command, float dt = 0.02f) override {
+    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
         mapCommand(command);
         this->dt = dt;
         updatePhase();

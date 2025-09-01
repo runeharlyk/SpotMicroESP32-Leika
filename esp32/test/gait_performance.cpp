@@ -7,7 +7,7 @@ void test_gaitPlanner_calculateStep_time() {
     BezierState gaitPlanner;
     body_state_t body_state = {
         128, 0, 0, 0, 0, 0, {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}}};
-    ControllerCommand command = {0, 0, 0, 0, 0, 0, 0, 0};
+    CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
     const int num_steps = 1000;
 
     unsigned long start = millis();
@@ -20,7 +20,8 @@ void test_gaitPlanner_calculateStep_time() {
     unsigned long max_duration = num_steps / 2; // Minimum 0.5 ms per step
 
     char message[50];
-    snprintf(message, sizeof(message), "The step calculation took: %lu ms (%lu ms per iter)", duration, duration / num_steps);
+    snprintf(message, sizeof(message), "The step calculation took: %lu ms (%lu ms per iter)", duration,
+             duration / num_steps);
     ESP_LOGI("Test planner", message);
     TEST_ASSERT_MESSAGE(duration <= max_duration, message);
 }
