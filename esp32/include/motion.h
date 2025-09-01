@@ -64,8 +64,8 @@ class MotionService {
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
-                body_state.phi = command.rx; // * 0.254f;
-                body_state.psi = command.ry; // * 0.254f;
+                body_state.phi = command.rx * 10 * (float)M_PI_2;
+                body_state.psi = command.ry * 10 * (float)M_PI_2;
                 body_state.xm = command.ly / 4;
                 body_state.zm = command.lx / 4;
                 body_state.updateFeet(kinematics.default_feet_positions);

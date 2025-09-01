@@ -111,8 +111,8 @@ export class StandState extends GaitState {
 
   step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
     body_state.omega = 0
-    body_state.phi = command.rx
-    body_state.psi = command.ry
+    body_state.phi = command.rx * 10 * (Math.PI / 2)
+    body_state.psi = command.ry * 10 * (Math.PI / 2)
     body_state.xm = command.ly / 4
     body_state.zm = command.lx / 4
     body_state.feet = this.default_feet_pos
