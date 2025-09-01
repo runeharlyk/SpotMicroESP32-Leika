@@ -35,10 +35,10 @@ filesystem_dir = project_dir + "/data/www"
 
 def get_files_to_exclude():
     files_to_exclude = []
-    if flag_exists("SPOTMICRO_ESP32") and not flag_exists("SPOTMICRO_YERTLE"):
+    if (flag_exists("SPOTMICRO_ESP32") or flag_exists("SPOTMICRO_ESP32_MINI")) and not flag_exists("SPOTMICRO_YERTLE"):
         print("Excluding Yertle files for SPOTMICRO_ESP32 build")
         files_to_exclude.extend(["yertle.URDF", "URDF.zip", "URDF/"])
-    elif flag_exists("SPOTMICRO_YERTLE") and not flag_exists("SPOTMICRO_ESP32"):
+    elif flag_exists("SPOTMICRO_YERTLE") and not flag_exists("SPOTMICRO_ESP32") and not flag_exists("SPOTMICRO_ESP32_MINI"):
         print("Excluding Spot Micro files for SPOTMICRO_YERTLE build")
         files_to_exclude.extend(["spot_micro.urdf.xacro", "stl.zip", "stl/"])
     else:
