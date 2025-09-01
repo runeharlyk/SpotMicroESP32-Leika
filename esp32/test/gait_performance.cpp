@@ -4,7 +4,7 @@
 #include "gait/bezier_state.h"
 
 void test_gaitPlanner_calculateStep_time() {
-    BezierState gaitPlanner;
+    WalkState gaitPlanner;
     body_state_t body_state = {
         128, 0, 0, 0, 0, 0, {{1, -1, 0.7, 1}, {1, -1, -0.7, 1}, {-1, -1, 0.7, 1}, {-1, -1, -0.7, 1}}};
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};

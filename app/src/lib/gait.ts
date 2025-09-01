@@ -2,8 +2,6 @@ import { get } from 'svelte/store'
 import type { body_state_t } from './kinematic'
 import { currentKinematic } from './stores/featureFlags'
 
-const { sin } = Math
-
 export interface gait_state_t {
   step_height: number
   step_x: number
@@ -79,7 +77,8 @@ export class IdleState extends GaitState {
 export class CalibrationState extends GaitState {
   protected name = 'Calibration'
 
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  step(body_state: body_state_t, _command: ControllerCommand) {
     body_state.omega = 0
     body_state.phi = 0
     body_state.psi = 0
@@ -94,7 +93,8 @@ export class CalibrationState extends GaitState {
 export class RestState extends GaitState {
   protected name = 'Rest'
 
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  step(body_state: body_state_t, _command: ControllerCommand) {
     body_state.omega = 0
     body_state.phi = 0
     body_state.psi = 0
@@ -109,7 +109,7 @@ export class RestState extends GaitState {
 export class StandState extends GaitState {
   protected name = 'Stand'
 
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+  step(body_state: body_state_t, command: ControllerCommand) {
     body_state.omega = 0
     body_state.phi = command.rx * 10 * (Math.PI / 2)
     body_state.psi = command.ry * 10 * (Math.PI / 2)
@@ -120,155 +120,39 @@ export class StandState extends GaitState {
   }
 }
 
-abstract class PhaseGaitState extends GaitState {
-  protected tick = 0
-  protected phase = 0
-  protected phase_time = 0
-  protected abstract num_phases: number
-  protected abstract phase_speed_factor: number
-  protected abstract swing_stand_ratio: number
-
-  protected contact_phases!: number[][]
-  protected shifts!: number[][]
-
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-    super.step(body_state, command, dt)
-    this.update_phase()
-    this.update_body_position()
-    this.update_feet_positions()
-    return this.body_state
-  }
-
-  update_phase() {
-    this.phase_time += this.dt * this.phase_speed_factor * this.gait_state.step_velocity
-
-    if (this.phase_time >= 1) {
-      this.phase += 1
-      if (this.phase == this.num_phases) this.phase = 0
-      this.phase_time = 0
-    }
-  }
-
-  update_body_position() {
-    if (this.num_phases === 4) return
-
-    const shift = this.shifts[Math.floor(this.phase / 2)]
-
-    this.body_state.xm += (shift[0] - this.body_state.xm) * this.dt * 4
-    this.body_state.zm += (shift[2] - this.body_state.zm) * this.dt * 4
-  }
-
-  update_feet_positions() {
-    for (let i = 0; i < 4; i++) {
-      this.body_state.feet[i] = this.update_foot_position(i)
-    }
-  }
-
-  update_foot_position(index: number): number[] {
-    const contact = this.contact_phases[index][this.phase]
-    return contact ? this.stand(index) : this.swing(index)
-  }
-
-  stand(index: number): number[] {
-    const delta_pos = [
-      -this.gait_state.step_x * this.dt * this.swing_stand_ratio,
-      0,
-      -this.gait_state.step_z * this.dt * this.swing_stand_ratio
-    ]
-
-    this.body_state.feet[index][0] = this.body_state.feet[index][0] + delta_pos[0]
-    this.body_state.feet[index][1] = this.default_feet_pos[index][1]
-    this.body_state.feet[index][2] = this.body_state.feet[index][2] + delta_pos[2]
-    return this.body_state.feet[index]
-  }
-
-  swing(index: number): number[] {
-    const delta_pos = [this.gait_state.step_x * this.dt, 0, this.gait_state.step_z * this.dt]
-
-    if (this.gait_state.step_x == 0) {
-      delta_pos[0] =
-        (this.default_feet_pos[index][0] - this.body_state.feet[index][0]) * this.dt * 8
-    }
-
-    if (this.gait_state.step_z == 0) {
-      delta_pos[2] =
-        (this.default_feet_pos[index][2] - this.body_state.feet[index][2]) * this.dt * 8
-    }
-
-    this.body_state.feet[index][0] = this.body_state.feet[index][0] + delta_pos[0]
-    this.body_state.feet[index][1] =
-      this.default_feet_pos[index][1] + sin(this.phase_time * Math.PI) * this.gait_state.step_height
-    this.body_state.feet[index][2] = this.body_state.feet[index][2] + delta_pos[2]
-    return this.body_state.feet[index]
-  }
-}
-
-export class FourPhaseWalkState extends PhaseGaitState {
-  protected name = 'Four phase walk'
-  protected num_phases = 4
-  protected phase_speed_factor = 6
-  protected contact_phases = [
-    [1, 0, 1, 1],
-    [1, 1, 1, 0],
-    [1, 1, 1, 0],
-    [1, 0, 1, 1]
-  ]
-  protected swing_stand_ratio = 1 / (this.num_phases - 1)
-
-  begin() {
-    super.begin()
-  }
-
-  end() {
-    super.end()
-  }
-
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-    return super.step(body_state, command, dt)
-  }
-}
-
-export class EightPhaseWalkState extends PhaseGaitState {
-  protected name = 'Eight phase walk'
-  protected num_phases = 8
-  protected phase_speed_factor = 4
-  protected contact_phases = [
-    [1, 0, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 0],
-    [1, 1, 1, 0, 1, 1, 1, 1]
-  ]
-  protected shifts = [
-    [-0.05, 0, -0.2],
-    [0.3, 0, 0.2],
-    [-0.05, 0, 0.2],
-    [0.3, 0, -0.2]
-  ]
-  protected swing_stand_ratio = 1 / (this.num_phases - 1)
-
-  begin() {
-    super.begin()
-  }
-
-  end() {
-    super.end()
-  }
-
-  step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
-    return super.step(body_state, command, dt)
-  }
-}
-
 export class BezierState extends GaitState {
   protected name = 'Bezier'
   protected phase = 0
   protected phase_num = 0
-  protected step_length: number = 0
-  protected stand_offset = 0.75
-  offset = [0, 0.5, 0.5, 0]
+  protected step_length = 0
+  protected stand_offset = 0.85
+  protected mode: 'crawl' | 'trot' = 'trot'
+  offset = [0, 0.5, 0.75, 0.25]
+
+  constructor() {
+    super()
+    this.set_mode(this.mode)
+  }
 
   begin() {
     super.begin()
+  }
+
+  set_mode(mode: 'crawl' | 'trot', duty?: number, order?: [number, number, number, number]) {
+    console.log('BezierState set_mode', mode)
+
+    this.mode = mode
+    if (mode === 'crawl') {
+      this.stand_offset = duty ?? 0.85
+      const o = order ?? [0, 3, 1, 2]
+      const base = [0, 0.25, 0.5, 0.75]
+      const offsets = new Array(4).fill(0)
+      for (let i = 0; i < 4; i++) offsets[o[i]] = base[i]
+      this.offset = offsets
+    } else {
+      this.stand_offset = duty ?? 0.6
+      this.offset = order ? (order.map(v => v % 1) as number[]) : [0, 0.5, 0.5, 0]
+    }
   }
 
   end() {
@@ -278,34 +162,78 @@ export class BezierState extends GaitState {
   step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
     super.step(body_state, command, dt)
     this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2)
-    if (this.gait_state.step_x < 0) {
-      this.step_length = -this.step_length
-    }
+    if (this.gait_state.step_x < 0) this.step_length = -this.step_length
     this.update_phase()
+    this.update_body_position()
     this.update_feet_positions()
     return this.body_state
   }
 
   update_phase() {
-    this.phase += this.dt * this.gait_state.step_velocity * 2
+    const m = this.gait_state
+    if (m.step_x === 0 && m.step_z === 0 && m.step_angle === 0) return
+    this.phase += this.dt * m.step_velocity * 2
     if (this.phase >= 1) {
-      this.phase_num += 1
-      this.phase_num %= 2
+      this.phase_num = (this.phase_num + 1) % 2
       this.phase = 0
     }
   }
 
-  update_feet_positions() {
+  protected phase_lead = 0.08
+  protected feather = 0.05
+
+  update_body_position() {
+    const m = this.gait_state
+    const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
+    if (!moving) return
+    const c = this.dynamic_stance_centroid()
+    const k = this.mode === 'crawl' ? 16 : 10
+    const a = 1 - Math.exp(-k * this.dt)
+    this.body_state.xm += (c[0] - this.body_state.xm) * a
+    this.body_state.zm += (c[2] - this.body_state.zm) * a
+  }
+
+  protected dynamic_stance_centroid(): number[] {
+    let sx = 0,
+      sz = 0,
+      sw = 0
     for (let i = 0; i < 4; i++) {
-      this.body_state.feet[i] = this.update_foot_position(i)
+      const w = this.stance_weight(i)
+      sx += this.body_state.feet[i][0] * w
+      sz += this.body_state.feet[i][2] * w
+      sw += w
     }
+    if (sw === 0) return [this.body_state.xm, 0, this.body_state.zm]
+    return [sx / sw, 0, sz / sw]
+  }
+
+  protected stance_weight(i: number): number {
+    const s = this.stand_offset
+    const e = this.feather
+    let p = this.phase + this.offset[i] + this.phase_lead
+    p -= Math.floor(p)
+    if (p < s - e) return 1
+    if (p > s + e && p < 1 - e) return 0
+    if (p <= s + e) {
+      const t = (p - (s - e)) / (2 * e)
+      return 1 - this.smoothstep01(t)
+    }
+    const q = p >= 1 - e ? (p - (1 - e)) / e : (e - p) / e
+    return this.smoothstep01(q)
+  }
+
+  protected smoothstep01(t: number): number {
+    const x = Math.max(0, Math.min(1, t))
+    return x * x * (3 - 2 * x)
+  }
+
+  update_feet_positions() {
+    for (let i = 0; i < 4; i++) this.body_state.feet[i] = this.update_foot_position(i)
   }
 
   update_foot_position(index: number): number[] {
     let phase = this.phase + this.offset[index]
-    if (phase >= 1) {
-      phase -= 1
-    }
+    if (phase >= 1) phase -= 1
     this.body_state.feet[index][0] = this.default_feet_pos[index][0]
     this.body_state.feet[index][1] = this.default_feet_pos[index][1]
     this.body_state.feet[index][2] = this.default_feet_pos[index][2]
@@ -356,10 +284,7 @@ const stance_curve = (length: number, angle: number, depth: number, phase: numbe
   const X = step * X_POLAR
   const Z = step * Y_POLAR
   let Y = 0
-
-  if (length !== 0) {
-    Y = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length))
-  }
+  if (length !== 0) Y = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length))
   return [X, Y, Z]
 }
 
@@ -390,6 +315,7 @@ const bezier_curve = (length: number, angle: number, height: number, phase: numb
   }
   return point
 }
+
 const get_control_points = (length: number, angle: number, height: number): number[][] => {
   const X_POLAR = Math.cos(angle)
   const Z_POLAR = Math.sin(angle)
@@ -440,8 +366,6 @@ const comb = (n: number, k: number): number => {
   if (k === 0 || k === n) return 1
   k = Math.min(k, n - k)
   let c = 1
-  for (let i = 0; i < k; i++) {
-    c = (c * (n - i)) / (i + 1)
-  }
+  for (let i = 0; i < k; i++) c = (c * (n - i)) / (i + 1)
   return c
 }

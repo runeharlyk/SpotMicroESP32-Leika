@@ -8,8 +8,7 @@
 #include <utils/math_utils.h>
 
 #include <gait/state.h>
-#include <gait/crawl_state.h>
-#include <gait/bezier_state.h>
+#include <gait/walk_state.h>
 #include <message_types.h>
 
 #define DEFAULT_STATE false
@@ -17,8 +16,9 @@
 #define INPUT_EVENT "input"
 #define POSITION_EVENT "position"
 #define MODE_EVENT "mode"
+#define WALK_GAIT_EVENT "walk_gait"
 
-enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, CRAWL, WALK };
+enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
 class MotionService {
   public:
@@ -28,6 +28,8 @@ class MotionService {
         socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { handleInput(root, originId); });
 
         socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) { handleMode(root, originId); });
+
+        socket.onEvent(WALK_GAIT_EVENT, [&](JsonVariant &root, int originId) { handleWalkGait(root, originId); });
 
         socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { anglesEvent(root, originId); });
 
@@ -71,7 +73,6 @@ class MotionService {
                 body_state.updateFeet(kinematics.default_feet_positions);
                 break;
             }
-            case MOTION_STATE::CRAWL:
             case MOTION_STATE::WALK: {
                 gait_state.step_height = 0.4 + (command.s1 + 1) / 2;
                 gait_state.step_x = command.ly;
@@ -82,6 +83,16 @@ class MotionService {
                 break;
             }
         }
+    }
+
+    void handleWalkGait(JsonVariant &root, int originId) {
+        ESP_LOGI("MotionService", "Walk Gait %d", root.as<int>());
+
+        WALK_GAIT walkGait = static_cast<WALK_GAIT>(root.as<int>());
+        if (walkGait == WALK_GAIT::TROT)
+            this->walkGait.set_mode_trot();
+        else
+            this->walkGait.set_mode_crawl();
     }
 
     void handleMode(JsonVariant &root, int originId) {
@@ -114,12 +125,8 @@ class MotionService {
             case MOTION_STATE::CALIBRATION: update_angles(calibration_angles, new_angles, false); break;
             case MOTION_STATE::REST: update_angles(rest_angles, new_angles, false); break;
             case MOTION_STATE::STAND: kinematics.calculate_inverse_kinematics(body_state, new_angles); break;
-            case MOTION_STATE::CRAWL:
-                crawlGait->step(body_state, command);
-                kinematics.calculate_inverse_kinematics(body_state, new_angles);
-                break;
             case MOTION_STATE::WALK:
-                walkGait->step(body_state, command);
+                walkGait.step(body_state, command);
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
         }
@@ -143,12 +150,10 @@ class MotionService {
   private:
     ServoController *_servoController;
     Kinematics kinematics;
+    WalkState walkGait;
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
 
     friend class GaitState;
-
-    std::unique_ptr<GaitState> crawlGait = std::make_unique<EightPhaseWalkState>();
-    std::unique_ptr<GaitState> walkGait = std::make_unique<BezierState>();
 
     MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
