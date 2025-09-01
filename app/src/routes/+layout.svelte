@@ -19,7 +19,8 @@
     servoAnglesOut,
     socket,
     location,
-    useFeatureFlags
+    useFeatureFlags,
+    walkGait
   } from '$lib/stores'
   import { type Analytics, type DownloadOTA } from '$lib/types/models'
   import { MessageTopic } from '$lib/types/models'
@@ -38,12 +39,9 @@
 
     addEventListeners()
 
-    outControllerData.subscribe(data => {
-      console.log(data)
-
-      socket.sendEvent(MessageTopic.input, data)
-    })
+    outControllerData.subscribe(data => socket.sendEvent(MessageTopic.input, data))
     mode.subscribe(data => socket.sendEvent(MessageTopic.mode, data))
+    walkGait.subscribe(data => socket.sendEvent(MessageTopic.gait, data))
     servoAnglesOut.subscribe(data => socket.sendEvent(MessageTopic.angles, data))
     kinematicData.subscribe(data => socket.sendEvent(MessageTopic.position, data))
   })

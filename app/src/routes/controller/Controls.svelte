@@ -2,7 +2,18 @@
   import nipplejs from 'nipplejs'
   import { onMount } from 'svelte'
   import { capitalize, throttler } from '$lib/utilities'
-  import { input, outControllerData, mode, modes, type Modes, ModesEnum } from '$lib/stores'
+  import {
+    input,
+    outControllerData,
+    mode,
+    modes,
+    type Modes,
+    ModesEnum,
+    walkGaits,
+    WalkGaits,
+    walkGait,
+    walkGaitLabels
+  } from '$lib/stores'
   import type { vector } from '$lib/types/models'
   import { VerticalSlider } from '$lib/components/input'
   import { gamepadAxes, hasGamepad } from '$lib/stores/gamepad'
@@ -13,7 +24,7 @@
   let right: nipplejs.JoystickManager
 
   let throttle_timing = 40
-  let data = new Array(8)
+  let data = new Array(7)
 
   $effect(() => {
     if ($hasGamepad) {
@@ -100,6 +111,10 @@
   const changeMode = (modeValue: Modes) => {
     mode.set(modes.indexOf(modeValue))
   }
+
+  const changeWalkGait = (walkGaitValue: WalkGaits) => {
+    walkGait.set(walkGaitValue)
+  }
 </script>
 
 <div class="absolute top-0 left-0 w-screen h-screen">
@@ -141,7 +156,20 @@
         {/each}
       </div>
 
-      {#if $mode === ModesEnum.Walk || $mode === ModesEnum.Crawl}
+      {#if $mode === ModesEnum.Walk}
+        <div class="join">
+          {#each Object.values(WalkGaits) as gaitValue}
+            {#if typeof gaitValue === 'number'}
+              <button
+                class="btn join-item btn-sm"
+                class:btn-secondary={$walkGait === gaitValue}
+                onclick={() => changeWalkGait(gaitValue)}>
+                {walkGaitLabels[gaitValue]}
+              </button>
+            {/if}
+          {/each}
+        </div>
+
         <div class="flex gap-4">
           <div>
             <label for="s1">S1</label>

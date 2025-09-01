@@ -22,7 +22,10 @@
     servoAngles,
     mpu,
     jointNames,
-    currentKinematic
+    currentKinematic,
+    walkGait,
+    walkGaits,
+    walkGaitToMode
   } from '$lib/stores'
   import {
     extractFootColor,
@@ -34,14 +37,7 @@
   import { lerp, degToRad } from 'three/src/math/MathUtils'
   import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
   import { type body_state_t } from '$lib/kinematic'
-  import {
-    BezierState,
-    CalibrationState,
-    EightPhaseWalkState,
-    IdleState,
-    RestState,
-    StandState
-  } from '$lib/gait'
+  import { BezierState, CalibrationState, IdleState, RestState, StandState } from '$lib/gait'
   import { radToDeg } from 'three/src/math/MathUtils.js'
   import type { URDFRobot } from 'urdf-loader'
   import { get } from 'svelte/store'
@@ -78,7 +74,6 @@
     [ModesEnum.Calibration]: new CalibrationState(),
     [ModesEnum.Rest]: new RestState(),
     [ModesEnum.Stand]: new StandState(),
-    [ModesEnum.Crawl]: new EightPhaseWalkState(),
     [ModesEnum.Walk]: new BezierState()
   }
   let lastTick = performance.now()
@@ -117,6 +112,7 @@
     await populateModelCache()
     await createScene()
     servoAngles.subscribe(updateAnglesFromStore)
+    walkGait.subscribe(gait => planners[ModesEnum.Walk].set_mode(walkGaitToMode(gait)))
     if (panel) createPanel()
   })
 

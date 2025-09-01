@@ -8,6 +8,7 @@ export enum MessageTopic {
   i2cScan = 'i2cScan',
   peripheralSettings = 'peripheralSettings',
   otastatus = 'otastatus',
+  gait = 'walk_gait',
   servoState = 'servoState',
   servoPWM = 'servoPWM',
   WiFiSettings = 'WiFiSettings',

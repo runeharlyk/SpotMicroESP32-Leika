@@ -5,13 +5,18 @@
 #include <array>
 #include <functional>
 
-class BezierState : public GaitState {
+enum class WALK_GAIT { TROT, CRAWL };
+
+class WalkState : public GaitState {
   private:
+    WALK_GAIT mode = WALK_GAIT::TROT;
     float phase_time = 0.0f;
-    static constexpr float PHASE_OFFSET[4] = {0.f, 0.5f, 0.5f, 0.f};
-    static constexpr float STAND_OFFSET = 0.75f;
-    static constexpr uint8_t BEZIER_POINTS = 12;
+    float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
+    float stand_offset = 0.6f;
     float step_length = 0.0f;
+    float phase_lead = 0.08f;
+    float feather = 0.05f;
+    static constexpr uint8_t BEZIER_POINTS = 12;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
         combinatorial_constexpr(11, 0),  // 1
         combinatorial_constexpr(11, 1),  // 11
@@ -36,6 +41,19 @@ class BezierState : public GaitState {
   public:
     const char *name() const override { return "Bezier"; }
 
+    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 3, 1, 2}) {
+        mode = WALK_GAIT::CRAWL;
+        stand_offset = duty;
+        const float base[4] = {0.f, 0.25f, 0.5f, 0.75f};
+        for (int i = 0; i < 4; ++i) phase_offset[order[i]] = base[i];
+    }
+
+    void set_mode_trot(float duty = 0.6f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
+        mode = WALK_GAIT::TROT;
+        stand_offset = duty;
+        for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
+    }
+
     void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
         this->mapCommand(command);
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
@@ -43,26 +61,69 @@ class BezierState : public GaitState {
             step_length = -step_length;
         }
         updatePhase(dt);
+        updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
     }
 
   protected:
     void updatePhase(float dt) { phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * 2, 1.0f); }
 
-    void updateFeetPositions(body_state_t &body_state) {
+    void updateBodyPosition(body_state_t &body_state, float dt) {
+        const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
+        if (!moving) return;
+        const auto c = dynamicStanceCentroid(body_state);
+        const float k = mode == WALK_GAIT::CRAWL ? 16.f : 10.f;
+        const float a = 1.f - std::exp(-k * dt);
+        body_state.xm += (c[0] - body_state.xm) * a;
+        body_state.zm += (c[2] - body_state.zm) * a;
+    }
+
+    std::array<float, 3> dynamicStanceCentroid(const body_state_t &body_state) const {
+        float sx = 0.f, sz = 0.f, sw = 0.f;
         for (int i = 0; i < 4; ++i) {
-            updateFootPosition(body_state, i);
+            const float w = stanceWeight(i);
+            sx += body_state.feet[i][0] * w;
+            sz += body_state.feet[i][2] * w;
+            sw += w;
         }
+        if (sw == 0.f) return {body_state.xm, 0.f, body_state.zm};
+        return {sx / sw, 0.f, sz / sw};
+    }
+
+    static float smoothstep01(float t) {
+        const float x = std::clamp(t, 0.f, 1.f);
+        return x * x * (3.f - 2.f * x);
+    }
+
+    float stanceWeight(int i) const {
+        const float s = stand_offset;
+        const float e = feather;
+        float p = std::fmod(phase_time + phase_offset[i] + phase_lead, 1.f);
+        if (p < 0.f) p += 1.f;
+        if (p < s - e) return 1.f;
+        if (p > s + e && p < 1.f - e) return 0.f;
+        if (p <= s + e) {
+            const float t = (p - (s - e)) / (2.f * e);
+            return 1.f - smoothstep01(t);
+        }
+        const float q = p >= 1.f - e ? (p - (1.f - e)) / e : (e - p) / e;
+        return smoothstep01(q);
+    }
+
+    void updateFeetPositions(body_state_t &body_state) {
+        for (int i = 0; i < 4; ++i) updateFootPosition(body_state, i);
     }
 
     void updateFootPosition(body_state_t &body_state, const int index) {
         body_state.feet[index][0] = this->default_feet_pos[index][0];
         body_state.feet[index][1] = this->default_feet_pos[index][1];
         body_state.feet[index][2] = this->default_feet_pos[index][2];
-        const float leg_phase = std::fmod(phase_time + PHASE_OFFSET[index], 1.0f);
-        const bool contact = leg_phase <= STAND_OFFSET;
-        contact ? standController(body_state, index, leg_phase / STAND_OFFSET)
-                : swingController(body_state, index, (leg_phase - STAND_OFFSET) / (1 - STAND_OFFSET));
+        const float leg_phase = std::fmod(phase_time + phase_offset[index], 1.0f);
+        const bool contact = leg_phase <= stand_offset;
+        if (contact)
+            standController(body_state, index, leg_phase / stand_offset);
+        else
+            swingController(body_state, index, (leg_phase - stand_offset) / (1.f - stand_offset));
     }
 
     void standController(body_state_t &body_state, const int index, const float phase) {
@@ -131,6 +192,6 @@ class BezierState : public GaitState {
         const float offset_mag = std::hypot(offsets[0], offsets[2]);
         const float offset_mod = std::atan2(offset_mag, foot_mag);
 
-        return M_PI_2 + foot_dir + offset_mod;
+        return (float)M_PI_2 + foot_dir + offset_mod;
     }
 };

@@ -8,29 +8,38 @@ export const jointNames = persistentStore('joint_names', <string[]>[])
 
 export const model = writable()
 
-export const modes = [
-  'deactivated',
-  'idle',
-  'calibration',
-  'rest',
-  'stand',
-  'crawl',
-  'walk'
-] as const
+export const modes = ['deactivated', 'idle', 'calibration', 'rest', 'stand', 'walk'] as const
 
 export type Modes = (typeof modes)[number]
 
 export enum ModesEnum {
-  Deactivated,
-  Idle,
-  Calibration,
-  Rest,
-  Stand,
-  Crawl,
-  Walk
+  Deactivated = 0,
+  Idle = 1,
+  Calibration = 2,
+  Rest = 3,
+  Stand = 4,
+  Walk = 5
+}
+
+export enum WalkGaits {
+  Trot = 0,
+  Crawl = 1
+}
+
+export const walkGaits = ['trot', 'crawl'] as const
+
+export const walkGaitLabels: Record<WalkGaits, string> = {
+  [WalkGaits.Trot]: 'Trot',
+  [WalkGaits.Crawl]: 'Crawl'
+}
+
+export const walkGaitToMode = (gait: WalkGaits): 'trot' | 'crawl' => {
+  return gait === WalkGaits.Trot ? 'trot' : 'crawl'
 }
 
 export const mode: Writable<ModesEnum> = writable(ModesEnum.Deactivated)
+
+export const walkGait: Writable<WalkGaits> = writable(WalkGaits.Trot)
 
 export const outControllerData = writable([0, 0, 0, 0, 0, 1, 0])
 
