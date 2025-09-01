@@ -19,50 +19,50 @@
     'WPA2 Enterprise',
     'WPA3 PSK',
     'WPA2 WPA3 PSK',
-    'WAPI PSK',
-  ];
+    'WAPI PSK'
+  ]
 
-  let listOfNetworks: NetworkItem[] = $state([]);
+  let listOfNetworks: NetworkItem[] = $state([])
 
-  let scanActive = $state(false);
+  let scanActive = $state(false)
 
-  let pollingId: ReturnType<typeof setTimeout> | number;
+  let pollingId: ReturnType<typeof setTimeout> | number
 
   async function scanNetworks() {
-    scanActive = true;
-    await api.get('/api/wifi/scan');
+    scanActive = true
+    await api.get('/api/wifi/scan')
     if ((await pollingResults()) == false) {
-      pollingId = setInterval(() => pollingResults(), 1000);
+      pollingId = setInterval(() => pollingResults(), 1000)
     }
-    return;
+    return
   }
 
   async function pollingResults() {
-    const result = await api.get<NetworkList>('/api/wifi/networks');
+    const result = await api.get<NetworkList>('/api/wifi/networks')
     if (result.isErr()) {
-      console.error(`Error occurred while fetching: `, result.inner);
-      return false;
+      console.error(`Error occurred while fetching: `, result.inner)
+      return false
     }
-    let response = result.inner;
-    listOfNetworks = response.networks;
-    scanActive = false;
+    let response = result.inner
+    listOfNetworks = response.networks
+    scanActive = false
     if (listOfNetworks.length) {
-      clearInterval(pollingId);
-      pollingId = 0;
+      clearInterval(pollingId)
+      pollingId = 0
     }
-    return listOfNetworks.length;
+    return listOfNetworks.length
   }
 
   onMount(() => {
-    scanNetworks();
-  });
+    scanNetworks()
+  })
 
   onDestroy(() => {
     if (pollingId) {
-      clearInterval(pollingId);
-      pollingId = 0;
+      clearInterval(pollingId)
+      pollingId = 0
     }
-  });
+  })
 </script>
 
 {#if isOpen}
@@ -89,7 +89,7 @@
                 <div
                   class="bg-base-200 rounded-btn my-1 flex items-center space-x-3 hover:scale-[1.02] active:scale-[0.98]"
                   onclick={() => {
-                    storeNetwork(network.ssid);
+                    storeNetwork(network.ssid)
                   }}
                   role="button"
                   tabindex="0">

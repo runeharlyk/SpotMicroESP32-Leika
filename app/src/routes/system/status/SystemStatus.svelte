@@ -6,7 +6,7 @@
   import Spinner from '$lib/components/Spinner.svelte'
   import { slide } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-  import { type SystemInformation, type Analytics, Topics } from '$lib/types/models'
+  import { type SystemInformation, type Analytics, MessageTopic } from '$lib/types/models'
   import { socket } from '$lib/stores/socket'
   import { api } from '$lib/api'
   import { convertSeconds } from '$lib/utilities'
@@ -50,9 +50,9 @@
 
   const postSleep = async () => await api.post('api/sleep')
 
-  onMount(() => socket.on(Topics.analytics, handleSystemData))
+  onMount(() => socket.on(MessageTopic.analytics, handleSystemData))
 
-  onDestroy(() => socket.off(Topics.analytics, handleSystemData))
+  onDestroy(() => socket.off(MessageTopic.analytics, handleSystemData))
   const handleSystemData = (data: Analytics) => {
     if (systemInformation) {
       systemInformation = {

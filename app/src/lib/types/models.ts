@@ -1,4 +1,4 @@
-export enum Topics {
+export enum MessageTopic {
   imu = 'imu',
   mode = 'mode',
   input = 'input',

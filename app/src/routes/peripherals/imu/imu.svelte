@@ -6,7 +6,7 @@
   import { slide } from 'svelte/transition'
   import { onDestroy, onMount } from 'svelte'
   import { socket } from '$lib/stores'
-  import { Topics, type IMU } from '$lib/types/models'
+  import { MessageTopic, type IMU } from '$lib/types/models'
   import { useFeatureFlags } from '$lib/stores/featureFlags'
   import { Rotate3d } from '$lib/components/icons'
 
@@ -201,7 +201,7 @@
   }
 
   onMount(() => {
-    socket.on(Topics.imu, (data: IMU) => {
+    socket.on(MessageTopic.imu, (data: IMU) => {
       console.log(data)
       imu.addData(data)
     })
@@ -211,7 +211,7 @@
   })
 
   onDestroy(() => {
-    socket.off(Topics.imu)
+    socket.off(MessageTopic.imu)
     clearInterval(intervalId)
   })
 </script>

@@ -5,12 +5,12 @@
   import { onMount } from 'svelte'
   import { mpu, socket } from '$lib/stores'
   import { imu } from '$lib/stores/imu'
-  import { Topics, type IMU } from '$lib/types/models'
+  import { MessageTopic, type IMU } from '$lib/types/models'
 
   let layout = $derived($views.find(v => v.name === $selectedView)!)
 
   onMount(() => {
-    socket.on(Topics.imu, (data: IMU) => {
+    socket.on(MessageTopic.imu, (data: IMU) => {
       imu.addData(data)
       if (data.heading)
         mpu.update(mpuData => {

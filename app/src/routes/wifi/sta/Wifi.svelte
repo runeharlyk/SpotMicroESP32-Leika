@@ -12,7 +12,7 @@
   import Spinner from '$lib/components/Spinner.svelte'
   import InfoDialog from '$lib/components/InfoDialog.svelte'
   import {
-    Topics,
+    MessageTopic,
     type KnownNetworkItem,
     type WifiSettings,
     type WifiStatus
@@ -97,10 +97,10 @@
     return wifiSettings
   }
 
-  onDestroy(() => socket.off(Topics.WiFiSettings))
+  onDestroy(() => socket.off(MessageTopic.WiFiSettings))
 
   onMount(() => {
-    socket.on<WifiSettings>(Topics.WiFiSettings, data => {
+    socket.on<WifiSettings>(MessageTopic.WiFiSettings, data => {
       wifiSettings = data
       dndNetworkList = wifiSettings.wifi_networks
     })

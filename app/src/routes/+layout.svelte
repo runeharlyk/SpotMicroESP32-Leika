@@ -21,7 +21,9 @@
     location,
     useFeatureFlags
   } from '$lib/stores'
-  import { Topics, type Analytics, type DownloadOTA } from '$lib/types/models'
+  import { type Analytics, type DownloadOTA } from '$lib/types/models'
+  import { MessageTopic } from '$lib/types/models'
+
   interface Props {
     children?: import('svelte').Snippet
   }
@@ -36,10 +38,14 @@
 
     addEventListeners()
 
-    outControllerData.subscribe(data => socket.sendEvent(Topics.input, data))
-    mode.subscribe(data => socket.sendEvent(Topics.mode, data))
-    servoAnglesOut.subscribe(data => socket.sendEvent(Topics.angles, data))
-    kinematicData.subscribe(data => socket.sendEvent(Topics.position, data))
+    outControllerData.subscribe(data => {
+      console.log(data)
+
+      socket.sendEvent(MessageTopic.input, data)
+    })
+    mode.subscribe(data => socket.sendEvent(MessageTopic.mode, data))
+    servoAnglesOut.subscribe(data => socket.sendEvent(MessageTopic.angles, data))
+    kinematicData.subscribe(data => socket.sendEvent(MessageTopic.position, data))
   })
 
   onDestroy(() => {
@@ -50,24 +56,24 @@
     socket.on('open', handleOpen)
     socket.on('close', handleClose)
     socket.on('error', handleError)
-    socket.on(Topics.rssi, handleNetworkStatus)
-    socket.on(Topics.mode, (data: ModesEnum) => mode.set(data))
-    socket.on(Topics.analytics, handleAnalytics)
-    socket.on(Topics.angles, (angles: number[]) => {
+    socket.on(MessageTopic.rssi, handleNetworkStatus)
+    socket.on(MessageTopic.mode, (data: ModesEnum) => mode.set(data))
+    socket.on(MessageTopic.analytics, handleAnalytics)
+    socket.on(MessageTopic.angles, (angles: number[]) => {
       if (angles.length) servoAngles.set(angles)
     })
     features.subscribe(data => {
-      if (data?.download_firmware) socket.on(Topics.otastatus, handleOAT)
-      if (data?.sonar) socket.on(Topics.sonar, data => console.log(data))
+      if (data?.download_firmware) socket.on(MessageTopic.otastatus, handleOAT)
+      if (data?.sonar) socket.on(MessageTopic.sonar, data => console.log(data))
     })
   }
 
   const removeEventListeners = () => {
-    socket.off(Topics.analytics, handleAnalytics)
+    socket.off(MessageTopic.analytics, handleAnalytics)
     socket.off('open', handleOpen)
     socket.off('close', handleClose)
-    socket.off(Topics.rssi, handleNetworkStatus)
-    socket.off(Topics.otastatus, handleOAT)
+    socket.off(MessageTopic.rssi, handleNetworkStatus)
+    socket.off(MessageTopic.otastatus, handleOAT)
   }
 
   const handleOpen = () => {
