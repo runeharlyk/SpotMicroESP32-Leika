@@ -21,10 +21,10 @@ export interface target_position {
 }
 
 export interface KinematicParams {
-  l1: number
-  l2: number
-  l3: number
-  l4: number
+  coxa: number
+  coxa_offset: number
+  femur: number
+  tibia: number
   L: number
   W: number
 }
@@ -34,10 +34,10 @@ const { cos, sin, atan2, acos, sqrt, max, min } = Math
 const DEG2RAD = 0.017453292519943
 
 export default class Kinematic {
-  l1: number
-  l2: number
-  l3: number
-  l4: number
+  coxa: number
+  coxa_offset: number
+  femur: number
+  tibia: number
 
   L: number
   W: number
@@ -53,10 +53,10 @@ export default class Kinematic {
   ]
 
   constructor(params: KinematicParams) {
-    this.l1 = params.l1
-    this.l2 = params.l2
-    this.l3 = params.l3
-    this.l4 = params.l4
+    this.coxa = params.coxa
+    this.coxa_offset = params.coxa_offset
+    this.femur = params.femur
+    this.tibia = params.tibia
     this.L = params.L
     this.W = params.W
 
@@ -70,7 +70,7 @@ export default class Kinematic {
 
   getDefaultFeetPos(): number[][] {
     return this.mountOffsets.map((offset, i) => {
-      return [offset[0], -1, offset[2] + (i % 2 === 1 ? -this.l1 : this.l1)]
+      return [offset[0], -1, offset[2] + (i % 2 === 1 ? -this.coxa : this.coxa)]
     })
   }
 
@@ -113,13 +113,14 @@ export default class Kinematic {
   }
 
   private legIK(x: number, y: number, z: number): [number, number, number] {
-    const F = sqrt(max(0, x * x + y * y - this.l1 * this.l1))
-    const G = F - this.l2
+    const F = sqrt(max(0, x * x + y * y - this.coxa * this.coxa))
+    const G = F - this.coxa_offset
     const H = sqrt(G * G + z * z)
-    const t1 = -atan2(y, x) - atan2(F, -this.l1)
-    const D = (H * H - this.l3 * this.l3 - this.l4 * this.l4) / (2 * this.l3 * this.l4)
+    const t1 = -atan2(y, x) - atan2(F, -this.coxa)
+    const D =
+      (H * H - this.femur * this.femur - this.tibia * this.tibia) / (2 * this.femur * this.tibia)
     const t3 = acos(max(-1, min(1, D)))
-    const t2 = atan2(z, G) - atan2(this.l4 * sin(t3), this.l3 + this.l4 * cos(t3))
+    const t2 = atan2(z, G) - atan2(this.tibia * sin(t3), this.femur + this.tibia * cos(t3))
     return [t1, t2, t3]
   }
 

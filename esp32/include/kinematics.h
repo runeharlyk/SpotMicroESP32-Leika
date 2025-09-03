@@ -22,26 +22,26 @@ struct alignas(16) body_state_t {
 class Kinematics {
   private:
 #if defined(SPOTMICRO_ESP32)
-    static constexpr float l1 = 60.5f / 100.0f;
-    static constexpr float l2 = 10.0f / 100.0f;
-    static constexpr float l3 = 111.2f / 100.0f;
-    static constexpr float l4 = 118.5f / 100.0f;
+    static constexpr float coxa = 60.5f / 100.0f;
+    static constexpr float coxa_offset = 10.0f / 100.0f;
+    static constexpr float femur = 111.2f / 100.0f;
+    static constexpr float tibia = 118.5f / 100.0f;
 
     static constexpr float L = 207.5f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
 #elif defined(SPOTMICRO_ESP32_MINI)
-    static constexpr float l1 = 0.01f / 100.0f;
-    static constexpr float l2 = 0.01f / 100.0f;
-    static constexpr float l3 = 52.0f / 100.0f;
-    static constexpr float l4 = 65.0f / 100.0f;
+    static constexpr float coxa = 35.0f / 100.0f;
+    static constexpr float coxa_offset = 0.0f / 100.0f;
+    static constexpr float femur = 52.0f / 100.0f;
+    static constexpr float tibia = 65.0f / 100.0f;
 
     static constexpr float L = 120.0f / 100.0f;
     static constexpr float W = 78.5f / 100.0f;
 #elif defined(SPOTMICRO_YERTLE)
-    static constexpr float l1 = 35.0f / 100.0f;
-    static constexpr float l2 = 0.0f;
-    static constexpr float l3 = 130.0f / 100.0f;
-    static constexpr float l4 = 130.0f / 100.0f;
+    static constexpr float coxa = 35.0f / 100.0f;
+    static constexpr float coxa_offset = 0.0f;
+    static constexpr float femur = 130.0f / 100.0f;
+    static constexpr float tibia = 130.0f / 100.0f;
 
     static constexpr float L = 240.0f / 100.0f;
     static constexpr float W = 78.0f / 100.0f;
@@ -62,10 +62,10 @@ class Kinematics {
 
   public:
     static constexpr float default_feet_positions[4][4] = {
-        {mountOffsets[0][0], -1, mountOffsets[0][2] + l1, 1},
-        {mountOffsets[1][0], -1, mountOffsets[1][2] - l1, 1},
-        {mountOffsets[2][0], -1, mountOffsets[2][2] + l1, 1},
-        {mountOffsets[3][0], -1, mountOffsets[3][2] - l1, 1},
+        {mountOffsets[0][0], -1, mountOffsets[0][2] + coxa, 1},
+        {mountOffsets[1][0], -1, mountOffsets[1][2] - coxa, 1},
+        {mountOffsets[2][0], -1, mountOffsets[2][2] + coxa, 1},
+        {mountOffsets[3][0], -1, mountOffsets[3][2] - coxa, 1},
     };
 
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
@@ -153,21 +153,21 @@ class Kinematics {
         inv_rot[2][2] = rot[2][2];
     }
 
-    inline void legIK(float x, float y, float z, float result[3]) {
-        float F = sqrt(max(0.0f, x * x + y * y - l1 * l1));
-        float G = F - l2;
+    inline void legIK(float x, float y, float z, float out[3]) {
+        float F = sqrt(max(0.0f, x * x + y * y - coxa * coxa));
+        float G = F - coxa_offset;
         float H = sqrt(G * G + z * z);
 
-        float theta1 = -atan2f(y, x) - atan2f(F, -l1);
-        float D = (H * H - l3 * l3 - l4 * l4) / (2 * l3 * l4);
+        float theta1 = -atan2f(y, x) - atan2f(F, -coxa);
+        float D = (H * H - femur * femur - tibia * tibia) / (2 * femur * tibia);
         float theta3 = acosf(max(-1.0f, min(1.0f, D)));
-        float theta2 = atan2f(z, G) - atan2f(l4 * sinf(theta3), l3 + l4 * cosf(theta3));
-        result[0] = RAD_TO_DEG_F(theta1);
-        result[1] = RAD_TO_DEG_F(theta2);
+        float theta2 = atan2f(z, G) - atan2f(tibia * sinf(theta3), femur + tibia * cosf(theta3));
+        out[0] = RAD_TO_DEG_F(theta1);
+        out[1] = RAD_TO_DEG_F(theta2);
 #if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
-        result[2] = RAD_TO_DEG_F(theta3);
+        out[2] = RAD_TO_DEG_F(theta3);
 #elif defined(SPOTMICRO_YERTLE)
-        result[2] = RAD_TO_DEG_F(theta3 + theta2);
+        out[2] = RAD_TO_DEG_F(theta3 + theta2);
 #endif
     }
 };
