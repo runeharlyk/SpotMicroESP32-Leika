@@ -17,10 +17,38 @@ class WalkState : public GaitState {
     float phase_lead = 0.08f;
     float feather = 0.05f;
     float speed_factor = 0.5;
-    std::array<int, 4> crawl_order = {0, 1, 2, 3};
     float com_shift_gain = 0.35f;
     float com_shift_limit = 0.06f;
     float com_tau = 0.12f;
+
+    alignas(16) float crawl_target_xz[4][2] = {{0}};
+    int crawl_order[4] = {0, 1, 2, 3};
+
+    static float d2(float ax, float az, float bx, float bz) {
+        float dx = ax - bx, dz = az - bz;
+        return std::sqrt(dx * dx + dz * dz);
+    }
+
+    void buildCrawlTargetsIncenter() {
+        for (int s = 0; s < 4; ++s) {
+            int a = (s + 1) & 3, b = (s + 2) & 3, c = (s + 3) & 3;
+            float Ax = default_feet_pos[a][0], Az = default_feet_pos[a][2];
+            float Bx = default_feet_pos[b][0], Bz = default_feet_pos[b][2];
+            float Cx = default_feet_pos[c][0], Cz = default_feet_pos[c][2];
+            float la = d2(Bx, Bz, Cx, Cz);
+            float lb = d2(Ax, Az, Cx, Cz);
+            float lc = d2(Ax, Az, Bx, Bz);
+            float L = la + lb + lc;
+            if (L <= 1e-6f) {
+                crawl_target_xz[s][0] = (Ax + Bx + Cx) / 3.f;
+                crawl_target_xz[s][1] = (Az + Bz + Cz) / 3.f;
+            } else {
+                crawl_target_xz[s][0] = (la * Ax + lb * Bx + lc * Cx) / L;
+                crawl_target_xz[s][1] = (la * Az + lb * Bz + lc * Cz) / L;
+            }
+        }
+    }
+
     static constexpr uint8_t BEZIER_POINTS = 12;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
         combinatorial_constexpr(11, 0),  // 1
@@ -44,6 +72,7 @@ class WalkState : public GaitState {
                                                              0.9f, 1.1f, 1.1f, 1.1f, 0.0f, 0.0f};
 
   public:
+    WalkState() { buildCrawlTargetsIncenter(); }
     const char *name() const override { return "Bezier"; }
 
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 1, 2, 3}) {
@@ -64,9 +93,7 @@ class WalkState : public GaitState {
     void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
         this->mapCommand(command);
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
-        if (gait_state.step_x < 0.0f) {
-            step_length = -step_length;
-        }
+        if (gait_state.step_x < 0.0f) step_length = -step_length;
         updatePhase(dt);
         updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
@@ -77,96 +104,35 @@ class WalkState : public GaitState {
         phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * speed_factor, 1.0f);
     }
 
-    int legAboutToLift() const {
-        int idx = -1;
-        float best = 2.f;
-        for (int i = 0; i < 4; ++i) {
-            float p = std::fmod(phase_time + phase_offset[i], 1.f);
-            if (p < 0.f) p += 1.f;
-            if (p <= stand_offset) {
-                float dt = stand_offset - p;
-                if (dt < best) {
-                    best = dt;
-                    idx = i;
-                }
-            }
-        }
-        return idx;
-    }
-
-    std::array<float, 3> centroidExcluding(const body_state_t &body_state, int exclude) const {
-        float sx = 0.f, sz = 0.f;
-        int n = 0;
-        for (int i = 0; i < 4; ++i) {
-            if (i == exclude) continue;
-            sx += body_state.feet[i][0];
-            sz += body_state.feet[i][2];
-            ++n;
-        }
-        if (!n) return {body_state.xm, 0.f, body_state.zm};
-        return {sx / n, 0.f, sz / n};
-    }
-
     void updateBodyPosition(body_state_t &body_state, float dt) {
         if (mode != WALK_GAIT::CRAWL) return;
         const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
-        if (!moving) return;
-
-        const int lift = legAboutToLift();
-        const float alpha = 1.f - std::exp(-dt / com_tau);
-
-        if (lift >= 0) {
-            const auto c = centroidExcluding(body_state, lift);
-            const float fx = body_state.feet[lift][0];
-            const float fz = body_state.feet[lift][2];
-            float vx = fx - c[0], vz = fz - c[2];
-            float d = std::hypot(vx, vz);
-            if (d < 1e-6f) d = 1e-6f;
-            const float r = std::min(d, com_shift_limit);
-            const float k = com_shift_gain;
-            const float tx = c[0] - k * r * (vx / d);
-            const float tz = c[2] - k * r * (vz / d);
-            body_state.xm += alpha * (tx - body_state.xm);
-            body_state.zm += alpha * (tz - body_state.zm);
+        const float a = dt / (com_tau + dt);
+        if (!moving) {
+            body_state.xm += (0.f - body_state.xm) * a;
+            body_state.zm += (0.f - body_state.zm) * a;
             return;
         }
 
-        const auto c = dynamicStanceCentroid(body_state);
-        body_state.xm += alpha * (c[0] - body_state.xm);
-        body_state.zm += alpha * (c[2] - body_state.zm);
-    }
+        int k = (int)std::floor(std::fmod(phase_time, 1.f) * 8.f) & 7;
+        int leg = crawl_order[k >> 1];
 
-    std::array<float, 3> dynamicStanceCentroid(const body_state_t &body_state) const {
-        if (mode != WALK_GAIT::CRAWL) return {body_state.xm, 0.f, body_state.zm};
-        float wx = 0.f, wz = 0.f, w = 0.f;
-        for (int i = 0; i < 4; ++i) {
-            float wi = stanceWeight(i);
-            wx += wi * default_feet_pos[i][0];
-            wz += wi * default_feet_pos[i][2];
-            w += wi;
+        float tx = crawl_target_xz[leg][0] * com_shift_gain;
+        float tz = crawl_target_xz[leg][1] * com_shift_gain;
+        float m = std::hypot(tx, tz);
+        if (m > com_shift_limit) {
+            float s = com_shift_limit / m;
+            tx *= s;
+            tz *= s;
         }
-        if (w <= 1e-6f) return {body_state.xm, 0.f, body_state.zm};
-        return {wx / w, 0.f, wz / w};
+
+        body_state.xm += (tx - body_state.xm) * a;
+        body_state.zm += (tz - body_state.zm) * a;
     }
 
     static float smoothstep01(float t) {
         const float x = std::clamp(t, 0.f, 1.f);
         return x * x * (3.f - 2.f * x);
-    }
-
-    float stanceWeight(int i) const {
-        const float s = stand_offset;
-        const float e = feather;
-        float p = std::fmod(phase_time + phase_offset[i] + phase_lead, 1.f);
-        if (p < 0.f) p += 1.f;
-        if (p < s - e) return 1.f;
-        if (p > s + e && p < 1.f - e) return 0.f;
-        if (p <= s + e) {
-            const float t = (p - (s - e)) / (2.f * e);
-            return 1.f - smoothstep01(t);
-        }
-        const float q = p >= 1.f - e ? (p - (1.f - e)) / e : (e - p) / e;
-        return smoothstep01(q);
     }
 
     void updateFeetPositions(body_state_t &body_state) {
@@ -186,21 +152,11 @@ class WalkState : public GaitState {
     }
 
     void standController(body_state_t &body_state, const int index, const float phase) {
-        if (mode == WALK_GAIT::CRAWL)
-            controller(index, body_state, phase, stanceCurveFlat, &gait_state.step_depth);
-        else
-            controller(index, body_state, phase, stanceCurve, &gait_state.step_depth);
+        controller(index, body_state, phase, stanceCurve, &gait_state.step_depth);
     }
 
     void swingController(body_state_t &body_state, const int index, const float phase) {
         controller(index, body_state, phase, bezierCurve, &gait_state.step_height);
-    }
-
-    static void stanceCurveFlat(const float length, const float angle, const float *, const float phase, float *point) {
-        float step = length * (1.0f - 2.0f * phase);
-        point[0] += step * std::cos(angle);
-        point[2] += step * std::sin(angle);
-        point[1] += 0.f;
     }
 
     void controller(const int index, body_state_t &body_state, const float phase,
@@ -226,10 +182,7 @@ class WalkState : public GaitState {
         float step = length * (1.0f - 2.0f * phase);
         point[0] += step * std::cos(angle);
         point[2] += step * std::sin(angle);
-
-        if (length != 0.0f) {
-            point[1] = -*depth * std::cos((M_PI * (point[0] + point[2])) / (2.f * length));
-        }
+        if (length != 0.0f) point[1] = -*depth * std::cos((M_PI * (point[0] + point[2])) / (2.f * length));
     }
 
     static void bezierCurve(const float length, const float angle, const float *height, const float phase,
