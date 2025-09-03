@@ -16,6 +16,7 @@ class WalkState : public GaitState {
     float step_length = 0.0f;
     float phase_lead = 0.08f;
     float feather = 0.05f;
+    float speed_factor = 0.5;
     static constexpr uint8_t BEZIER_POINTS = 12;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
         combinatorial_constexpr(11, 0),  // 1
@@ -43,6 +44,7 @@ class WalkState : public GaitState {
 
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 3, 1, 2}) {
         mode = WALK_GAIT::CRAWL;
+        speed_factor = 0.1;
         stand_offset = duty;
         const float base[4] = {0.f, 0.25f, 0.5f, 0.75f};
         for (int i = 0; i < 4; ++i) phase_offset[order[i]] = base[i];
@@ -50,6 +52,7 @@ class WalkState : public GaitState {
 
     void set_mode_trot(float duty = 0.6f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
         mode = WALK_GAIT::TROT;
+        speed_factor = 0.5;
         stand_offset = duty;
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
@@ -66,7 +69,9 @@ class WalkState : public GaitState {
     }
 
   protected:
-    void updatePhase(float dt) { phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * 2, 1.0f); }
+    void updatePhase(float dt) {
+        phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * speed_factor, 1.0f);
+    }
 
     void updateBodyPosition(body_state_t &body_state, float dt) {
         if (mode != WALK_GAIT::CRAWL) return;
