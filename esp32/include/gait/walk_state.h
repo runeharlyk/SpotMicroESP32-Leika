@@ -17,6 +17,10 @@ class WalkState : public GaitState {
     float phase_lead = 0.08f;
     float feather = 0.05f;
     float speed_factor = 0.5;
+    std::array<int, 4> crawl_order = {0, 1, 2, 3};
+    float com_shift_gain = 0.35f;
+    float com_shift_limit = 0.06f;
+    float com_tau = 0.12f;
     static constexpr uint8_t BEZIER_POINTS = 12;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
         combinatorial_constexpr(11, 0),  // 1
@@ -42,7 +46,7 @@ class WalkState : public GaitState {
   public:
     const char *name() const override { return "Bezier"; }
 
-    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 3, 1, 2}) {
+    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 1, 2, 3}) {
         mode = WALK_GAIT::CRAWL;
         speed_factor = 0.1;
         stand_offset = duty;
@@ -73,31 +77,76 @@ class WalkState : public GaitState {
         phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * speed_factor, 1.0f);
     }
 
-    void updateBodyPosition(body_state_t &body_state, float dt) {
-        if (mode != WALK_GAIT::CRAWL) return;
-        const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
-        if (!moving) return;
-        const auto c = dynamicStanceCentroid(body_state);
-        const float a = 1.f - std::exp(-16.f * dt);
-        body_state.xm += (c[0] - body_state.xm) * a;
-        body_state.zm += (c[2] - body_state.zm) * a;
-    }
-
-    std::array<float, 3> dynamicStanceCentroid(const body_state_t &body_state) const {
-        if (mode != WALK_GAIT::CRAWL) return {body_state.xm, 0.f, body_state.zm};
-        float sx = 0.f, sz = 0.f;
-        int n = 0;
+    int legAboutToLift() const {
+        int idx = -1;
+        float best = 2.f;
         for (int i = 0; i < 4; ++i) {
             float p = std::fmod(phase_time + phase_offset[i], 1.f);
             if (p < 0.f) p += 1.f;
             if (p <= stand_offset) {
-                sx += default_feet_pos[i][0];
-                sz += default_feet_pos[i][2];
-                ++n;
+                float dt = stand_offset - p;
+                if (dt < best) {
+                    best = dt;
+                    idx = i;
+                }
             }
         }
-        if (n == 0) return {body_state.xm, 0.f, body_state.zm};
+        return idx;
+    }
+
+    std::array<float, 3> centroidExcluding(const body_state_t &body_state, int exclude) const {
+        float sx = 0.f, sz = 0.f;
+        int n = 0;
+        for (int i = 0; i < 4; ++i) {
+            if (i == exclude) continue;
+            sx += body_state.feet[i][0];
+            sz += body_state.feet[i][2];
+            ++n;
+        }
+        if (!n) return {body_state.xm, 0.f, body_state.zm};
         return {sx / n, 0.f, sz / n};
+    }
+
+    void updateBodyPosition(body_state_t &body_state, float dt) {
+        if (mode != WALK_GAIT::CRAWL) return;
+        const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
+        if (!moving) return;
+
+        const int lift = legAboutToLift();
+        const float alpha = 1.f - std::exp(-dt / com_tau);
+
+        if (lift >= 0) {
+            const auto c = centroidExcluding(body_state, lift);
+            const float fx = body_state.feet[lift][0];
+            const float fz = body_state.feet[lift][2];
+            float vx = fx - c[0], vz = fz - c[2];
+            float d = std::hypot(vx, vz);
+            if (d < 1e-6f) d = 1e-6f;
+            const float r = std::min(d, com_shift_limit);
+            const float k = com_shift_gain;
+            const float tx = c[0] - k * r * (vx / d);
+            const float tz = c[2] - k * r * (vz / d);
+            body_state.xm += alpha * (tx - body_state.xm);
+            body_state.zm += alpha * (tz - body_state.zm);
+            return;
+        }
+
+        const auto c = dynamicStanceCentroid(body_state);
+        body_state.xm += alpha * (c[0] - body_state.xm);
+        body_state.zm += alpha * (c[2] - body_state.zm);
+    }
+
+    std::array<float, 3> dynamicStanceCentroid(const body_state_t &body_state) const {
+        if (mode != WALK_GAIT::CRAWL) return {body_state.xm, 0.f, body_state.zm};
+        float wx = 0.f, wz = 0.f, w = 0.f;
+        for (int i = 0; i < 4; ++i) {
+            float wi = stanceWeight(i);
+            wx += wi * default_feet_pos[i][0];
+            wz += wi * default_feet_pos[i][2];
+            w += wi;
+        }
+        if (w <= 1e-6f) return {body_state.xm, 0.f, body_state.zm};
+        return {wx / w, 0.f, wz / w};
     }
 
     static float smoothstep01(float t) {
