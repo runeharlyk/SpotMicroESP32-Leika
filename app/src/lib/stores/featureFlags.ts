@@ -27,10 +27,10 @@ export const variants = {
     model: `${base}/spot_micro.urdf.xacro`,
     stl: `${base}/stl.zip`,
     kinematics: {
-      l1: 60.5 / 100,
-      l2: 10 / 100,
-      l3: 111.7 / 100,
-      l4: 118.5 / 100,
+      coxa: 60.5 / 100,
+      coxa_offset: 10 / 100,
+      femur: 111.7 / 100,
+      tibia: 118.5 / 100,
       L: 207.5 / 100,
       W: 78 / 100
     }
@@ -39,10 +39,10 @@ export const variants = {
     model: `${base}/yertle.URDF`,
     stl: `${base}/URDF.zip`,
     kinematics: {
-      l1: 35 / 100,
-      l2: 0 / 100,
-      l3: 130 / 100,
-      l4: 130 / 100,
+      coxa: 35 / 100,
+      coxa_offset: 0 / 100,
+      femur: 130 / 100,
+      tibia: 130 / 100,
       L: 240 / 100,
       W: 78 / 100
     }
