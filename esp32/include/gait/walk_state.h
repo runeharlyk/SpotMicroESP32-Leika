@@ -16,7 +16,7 @@ class WalkState : public GaitState {
     float step_length = 0.0f;
     float phase_lead = 0.08f;
     float feather = 0.05f;
-    float speed_factor = 0.5;
+    float speed_factor = 1;
     float com_shift_gain = 0.35f;
     float com_shift_limit = 0.06f;
     float com_tau = 0.12f;
@@ -85,7 +85,7 @@ class WalkState : public GaitState {
 
     void set_mode_trot(float duty = 0.6f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
         mode = WALK_GAIT::TROT;
-        speed_factor = 0.5;
+        speed_factor = 1;
         stand_offset = duty;
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
