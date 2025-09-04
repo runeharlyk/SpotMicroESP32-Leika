@@ -130,6 +130,11 @@ export class BezierState extends GaitState {
   protected speed_factor = 1
   offset = [0, 0.5, 0.75, 0.25]
 
+  protected shift_start_pos = { x: 0, z: 0 }
+  protected shift_target_pos = { x: 0, z: 0 }
+  protected shift_start_time = 0
+  protected current_shift_leg = -1
+
   constructor() {
     super()
     this.set_mode(this.mode)
@@ -190,18 +195,45 @@ export class BezierState extends GaitState {
     const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
     if (!moving) return
 
-    const { stance, swing, next_swing } = this.get_leg_states()
+    const { stance, swing, next_swing, time_to_lift } = this.get_leg_states()
 
     // Only shift when all legs are down and we know which leg lifts next
     if (stance.length >= 3 && swing.length === 0 && next_swing !== -1) {
-      const remaining_legs = stance.filter(leg => leg !== next_swing)
-      const target = this.stance_centroid(remaining_legs)
+      // Check if we're starting a new shift
+      if (this.current_shift_leg !== next_swing) {
+        this.current_shift_leg = next_swing
+        this.shift_start_pos.x = this.body_state.xm
+        this.shift_start_pos.z = this.body_state.zm
 
-      const k = this.mode === 'crawl' ? 25 : 20
-      const a = 1 - Math.exp(-k * this.dt)
-      this.body_state.xm += (target[0] - this.body_state.xm) * a
-      this.body_state.zm += (target[2] - this.body_state.zm) * a
+        const remaining_legs = stance.filter(leg => leg !== next_swing)
+        const target = this.stance_centroid(remaining_legs)
+        this.shift_target_pos.x = target[0]
+        this.shift_target_pos.z = target[2]
+
+        this.shift_start_time = time_to_lift
+      }
+
+      // Calculate smooth progress using smoothstep
+      const total_time = this.shift_start_time
+      const progress = total_time > 0 ? 1 - time_to_lift / total_time : 1
+      const smooth_progress = this.smoothstep01(Math.max(0, Math.min(1, progress)))
+
+      // Smoothly interpolate to target
+      this.body_state.xm = this.lerp(
+        this.shift_start_pos.x,
+        this.shift_target_pos.x,
+        smooth_progress
+      )
+      this.body_state.zm = this.lerp(
+        this.shift_start_pos.z,
+        this.shift_target_pos.z,
+        smooth_progress
+      )
     }
+  }
+
+  protected lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t
   }
 
   protected stance_centroid(legs: number[]): number[] {
@@ -216,7 +248,12 @@ export class BezierState extends GaitState {
     return [sx / legs.length, 0, sz / legs.length]
   }
 
-  protected get_leg_states(): { stance: number[]; swing: number[]; next_swing: number } {
+  protected get_leg_states(): {
+    stance: number[]
+    swing: number[]
+    next_swing: number
+    time_to_lift: number
+  } {
     const stance: number[] = []
     const swing: number[] = []
     let next_swing = -1
@@ -238,7 +275,7 @@ export class BezierState extends GaitState {
       }
     }
 
-    return { stance, swing, next_swing }
+    return { stance, swing, next_swing, time_to_lift: min_time_to_swing }
   }
 
   protected stance_weight(i: number): number {
