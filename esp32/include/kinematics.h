@@ -2,9 +2,10 @@
 #define Kinematics_h
 
 #include <utils/math_utils.h>
+#include <gait/kinematic_constraints.h>
 
 struct alignas(16) body_state_t {
-    float omega, phi, psi, xm, ym, zm;
+    float omega {0}, phi {0}, psi {0}, xm {0}, ym {KinConfig::default_body_height}, zm {0};
     float feet[4][4];
 
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
@@ -21,33 +22,13 @@ struct alignas(16) body_state_t {
 
 class Kinematics {
   private:
-#if defined(SPOTMICRO_ESP32)
-    static constexpr float coxa = 60.5f / 100.0f;
-    static constexpr float coxa_offset = 10.0f / 100.0f;
-    static constexpr float femur = 111.2f / 100.0f;
-    static constexpr float tibia = 118.5f / 100.0f;
+    static constexpr float coxa = KinConfig::coxa;
+    static constexpr float coxa_offset = KinConfig::coxa_offset;
+    static constexpr float femur = KinConfig::femur;
+    static constexpr float tibia = KinConfig::tibia;
 
-    static constexpr float L = 207.5f / 100.0f;
-    static constexpr float W = 78.0f / 100.0f;
-#elif defined(SPOTMICRO_ESP32_MINI)
-    static constexpr float coxa = 35.0f / 100.0f;
-    static constexpr float coxa_offset = 0.0f / 100.0f;
-    static constexpr float femur = 52.0f / 100.0f;
-    static constexpr float tibia = 65.0f / 100.0f;
-
-    static constexpr float L = 120.0f / 100.0f;
-    static constexpr float W = 78.5f / 100.0f;
-#elif defined(SPOTMICRO_YERTLE)
-    static constexpr float coxa = 35.0f / 100.0f;
-    static constexpr float coxa_offset = 0.0f;
-    static constexpr float femur = 130.0f / 100.0f;
-    static constexpr float tibia = 130.0f / 100.0f;
-
-    static constexpr float L = 240.0f / 100.0f;
-    static constexpr float W = 78.0f / 100.0f;
-#else
-#error "Must define either SPOTMICRO_ESP32 or SPOTMICRO_YERTLE"
-#endif
+    static constexpr float L = KinConfig::L;
+    static constexpr float W = KinConfig::W;
 
     static constexpr float mountOffsets[4][3] = {
         {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
@@ -61,13 +42,6 @@ class Kinematics {
     body_state_t currentState;
 
   public:
-    static constexpr float default_feet_positions[4][4] = {
-        {mountOffsets[0][0], -1, mountOffsets[0][2] + coxa, 1},
-        {mountOffsets[1][0], -1, mountOffsets[1][2] - coxa, 1},
-        {mountOffsets[2][0], -1, mountOffsets[2][2] + coxa, 1},
-        {mountOffsets[3][0], -1, mountOffsets[3][2] - coxa, 1},
-    };
-
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 

@@ -39,7 +39,7 @@ class MotionService {
         socket.onSubscribe(ANGLES_EVENT,
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
-        body_state.updateFeet(kinematics.default_feet_positions);
+        body_state.updateFeet(KinConfig::default_feet_positions);
     }
 
     void anglesEvent(JsonVariant &root, int originId) {
@@ -63,7 +63,7 @@ class MotionService {
     void handleInput(JsonVariant &root, int originId) {
         command.fromJson(root);
 
-        body_state.ym = command.h - 0.5f;
+        body_state.ym = KinConfig::min_body_height + command.h * KinConfig::body_height_range;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
@@ -71,7 +71,7 @@ class MotionService {
                 body_state.psi = command.ry * KinConfig::max_pitch;
                 body_state.xm = command.ly * KinConfig::max_body_shift_x;
                 body_state.zm = command.lx * KinConfig::max_body_shift_z;
-                body_state.updateFeet(kinematics.default_feet_positions);
+                body_state.updateFeet(KinConfig::default_feet_positions);
                 break;
             }
             case MOTION_STATE::WALK: {
@@ -159,8 +159,8 @@ class MotionService {
     MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
     unsigned long _lastUpdate;
 
-    body_state_t target_body_state = {0, 0, 0, 0, 0, 0};
-    body_state_t body_state = {0, 0, 0, 0, 0, 0};
+    body_state_t target_body_state;
+    body_state_t body_state;
     gait_state_t gait_state;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

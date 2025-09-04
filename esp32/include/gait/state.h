@@ -16,7 +16,7 @@ struct gait_state_t {
 class GaitState {
   protected:
     virtual const char *name() const = 0;
-    static constexpr const float (&default_feet_pos)[4][4] = Kinematics::default_feet_positions;
+    static constexpr const float (&default_feet_pos)[4][4] = KinConfig::default_feet_positions;
 
     gait_state_t gait_state;
 
