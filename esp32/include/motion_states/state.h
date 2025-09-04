@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kinematics.h>
-#include <gait/kinematic_constraints.h>
+#include <motion_states/kinematic_constraints.h>
 #include <message_types.h>
 
 class MotionState {

@@ -7,11 +7,11 @@
 #include <utils/timing.h>
 #include <utils/math_utils.h>
 
-#include <gait/state.h>
-#include <gait/walk_state.h>
-#include <gait/stand_state.h>
-#include <gait/rest_state.h>
-#include <gait/kinematic_constraints.h>
+#include <motion_states/state.h>
+#include <motion_states/walk_state.h>
+#include <motion_states/stand_state.h>
+#include <motion_states/rest_state.h>
+#include <motion_states/kinematic_constraints.h>
 #include <message_types.h>
 
 #define DEFAULT_STATE false

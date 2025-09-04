@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gait/state.h>
+#include <motion_states/state.h>
 
 class StandState : public MotionState {
   protected:
