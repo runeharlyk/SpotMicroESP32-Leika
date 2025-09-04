@@ -127,6 +127,7 @@ export class BezierState extends GaitState {
   protected step_length = 0
   protected stand_offset = 0.85
   protected mode: 'crawl' | 'trot' = 'trot'
+  protected speed_factor = 1
   offset = [0, 0.5, 0.75, 0.25]
 
   constructor() {
@@ -143,6 +144,7 @@ export class BezierState extends GaitState {
 
     this.mode = mode
     if (mode === 'crawl') {
+      this.speed_factor = 0.1
       this.stand_offset = duty ?? 0.85
       const o = order ?? [0, 3, 1, 2]
       const base = [0, 0.25, 0.5, 0.75]
@@ -150,6 +152,7 @@ export class BezierState extends GaitState {
       for (let i = 0; i < 4; i++) offsets[o[i]] = base[i]
       this.offset = offsets
     } else {
+      this.speed_factor = 1
       this.stand_offset = duty ?? 0.6
       this.offset = order ? (order.map(v => v % 1) as number[]) : [0, 0.5, 0.5, 0]
     }
@@ -172,7 +175,7 @@ export class BezierState extends GaitState {
   update_phase() {
     const m = this.gait_state
     if (m.step_x === 0 && m.step_z === 0 && m.step_angle === 0) return
-    this.phase += this.dt * m.step_velocity * 2
+    this.phase += this.dt * m.step_velocity * this.speed_factor
     if (this.phase >= 1) {
       this.phase_num = (this.phase_num + 1) % 2
       this.phase = 0
