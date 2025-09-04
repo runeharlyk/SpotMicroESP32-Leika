@@ -65,11 +65,11 @@ class MotionService {
         command.fromJson(root);
 
         target_body_state.ym = KinConfig::min_body_height + command.h * KinConfig::body_height_range;
+        target_body_state.psi = command.ry * KinConfig::max_pitch;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
                 target_body_state.phi = command.rx * KinConfig::max_roll;
-                target_body_state.psi = command.ry * KinConfig::max_pitch;
                 target_body_state.xm = command.ly * KinConfig::max_body_shift_x;
                 target_body_state.zm = command.lx * KinConfig::max_body_shift_z;
                 body_state.updateFeet(KinConfig::default_feet_positions);
@@ -131,12 +131,13 @@ class MotionService {
                 body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
                 body_state.zm = lerp(body_state.zm, target_body_state.zm, smoothing_factor);
                 body_state.phi = lerp(body_state.phi, target_body_state.phi + _peripherals->angleY(), smoothing_factor);
-                body_state.omega =
-                    lerp(body_state.omega, target_body_state.omega + _peripherals->angleX(), smoothing_factor);
+                body_state.psi = lerp(body_state.psi, target_body_state.psi + _peripherals->angleX(), smoothing_factor);
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
             }
             case MOTION_STATE::WALK:
+                body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
+                body_state.psi = lerp(body_state.psi, target_body_state.psi + _peripherals->angleX(), smoothing_factor);
                 walkGait.step(body_state, command);
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
