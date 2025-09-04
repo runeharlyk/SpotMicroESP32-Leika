@@ -63,14 +63,14 @@ class MotionService {
     void handleInput(JsonVariant &root, int originId) {
         command.fromJson(root);
 
-        body_state.ym = KinConfig::min_body_height + command.h * KinConfig::body_height_range;
+        target_body_state.ym = KinConfig::min_body_height + command.h * KinConfig::body_height_range;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
-                body_state.phi = command.rx * KinConfig::max_roll;
-                body_state.psi = command.ry * KinConfig::max_pitch;
-                body_state.xm = command.ly * KinConfig::max_body_shift_x;
-                body_state.zm = command.lx * KinConfig::max_body_shift_z;
+                target_body_state.phi = command.rx * KinConfig::max_roll;
+                target_body_state.psi = command.ry * KinConfig::max_pitch;
+                target_body_state.xm = command.ly * KinConfig::max_body_shift_x;
+                target_body_state.zm = command.lx * KinConfig::max_body_shift_z;
                 body_state.updateFeet(KinConfig::default_feet_positions);
                 break;
             }
@@ -123,9 +123,17 @@ class MotionService {
         switch (motionState) {
             case MOTION_STATE::DEACTIVATED: return false;
             case MOTION_STATE::IDLE: return false;
-            case MOTION_STATE::CALIBRATION: update_angles(calibration_angles, new_angles, false); break;
-            case MOTION_STATE::REST: update_angles(rest_angles, new_angles, false); break;
-            case MOTION_STATE::STAND: kinematics.calculate_inverse_kinematics(body_state, new_angles); break;
+            case MOTION_STATE::CALIBRATION: update_angles(calibration_angles, new_angles); break;
+            case MOTION_STATE::REST: update_angles(rest_angles, new_angles); break;
+            case MOTION_STATE::STAND: {
+                body_state.xm = lerp(body_state.xm, target_body_state.xm, smoothing_factor);
+                body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
+                body_state.zm = lerp(body_state.zm, target_body_state.zm, smoothing_factor);
+                body_state.phi = lerp(body_state.phi, target_body_state.phi, smoothing_factor);
+                body_state.omega = lerp(body_state.omega, target_body_state.omega, smoothing_factor);
+                kinematics.calculate_inverse_kinematics(body_state, new_angles);
+                break;
+            }
             case MOTION_STATE::WALK:
                 walkGait.step(body_state, command);
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
@@ -134,10 +142,10 @@ class MotionService {
         return update_angles(new_angles, angles);
     }
 
-    bool update_angles(float new_angles[12], float angles[12], bool useLerp = false) {
+    bool update_angles(float new_angles[12], float angles[12]) {
         bool updated = false;
         for (int i = 0; i < 12; i++) {
-            float new_angle = useLerp ? lerp(angles[i], new_angles[i] * dir[i], 0.3) : new_angles[i] * dir[i];
+            const float new_angle = new_angles[i] * dir[i];
             if (!isEqual(new_angle, angles[i], 0.1)) {
                 angles[i] = new_angle;
                 updated = true;
@@ -162,6 +170,8 @@ class MotionService {
     body_state_t target_body_state;
     body_state_t body_state;
     gait_state_t gait_state;
+
+    const float smoothing_factor = 0.06f;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
