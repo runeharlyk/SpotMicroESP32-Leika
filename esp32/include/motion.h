@@ -9,13 +9,14 @@
 
 #include <gait/state.h>
 #include <gait/walk_state.h>
+#include <gait/stand_state.h>
+#include <gait/rest_state.h>
 #include <gait/kinematic_constraints.h>
 #include <message_types.h>
 
 #define DEFAULT_STATE false
 #define ANGLES_EVENT "angles"
 #define INPUT_EVENT "input"
-#define POSITION_EVENT "position"
 #define MODE_EVENT "mode"
 #define WALK_GAIT_EVENT "walk_gait"
 
@@ -35,8 +36,6 @@ class MotionService {
 
         socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { anglesEvent(root, originId); });
 
-        socket.onEvent(POSITION_EVENT, [&](JsonVariant &root, int originId) { positionEvent(root, originId); });
-
         socket.onSubscribe(ANGLES_EVENT,
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -51,40 +50,18 @@ class MotionService {
         syncAngles(String(originId));
     }
 
-    void positionEvent(JsonVariant &root, int originId) {
-        JsonArray array = root.as<JsonArray>();
-        body_state.omega = array[0];
-        body_state.phi = array[1];
-        body_state.psi = array[2];
-        body_state.xm = array[3];
-        body_state.ym = array[4];
-        body_state.zm = array[5];
+    void setState(MotionState *newState) {
+        _servoController->activate();
+        if (state) {
+            state->end();
+        }
+        state = newState;
+        if (state) state->begin();
     }
 
     void handleInput(JsonVariant &root, int originId) {
         command.fromJson(root);
-
-        target_body_state.ym = KinConfig::min_body_height + command.h * KinConfig::body_height_range;
-        target_body_state.psi = command.ry * KinConfig::max_pitch;
-
-        switch (motionState) {
-            case MOTION_STATE::STAND: {
-                target_body_state.phi = command.rx * KinConfig::max_roll;
-                target_body_state.xm = command.ly * KinConfig::max_body_shift_x;
-                target_body_state.zm = command.lx * KinConfig::max_body_shift_z;
-                body_state.updateFeet(KinConfig::default_feet_positions);
-                break;
-            }
-            case MOTION_STATE::WALK: {
-                gait_state.step_height = command.s1 * KinConfig::max_step_height;
-                gait_state.step_x = command.ly * KinConfig::max_step_length;
-                gait_state.step_z = -command.lx * KinConfig::max_step_length;
-                gait_state.step_velocity = command.s;
-                gait_state.step_angle = command.rx;
-                gait_state.step_depth = KinConfig::default_step_depth;
-                break;
-            }
-        }
+        if (state) state->handleCommand(command);
     }
 
     void handleWalkGait(JsonVariant &root, int originId) {
@@ -92,17 +69,26 @@ class MotionService {
 
         WALK_GAIT walkGait = static_cast<WALK_GAIT>(root.as<int>());
         if (walkGait == WALK_GAIT::TROT)
-            this->walkGait.set_mode_trot();
+            walkState.set_mode_trot();
         else
-            this->walkGait.set_mode_crawl();
+            walkState.set_mode_crawl();
     }
 
     void handleMode(JsonVariant &root, int originId) {
-        motionState = static_cast<MOTION_STATE>(root.as<int>());
-        ESP_LOGV("MotionService", "Mode %d", motionState);
-        motionState == MOTION_STATE::DEACTIVATED ? _servoController->deactivate() : _servoController->activate();
+        MOTION_STATE mode = static_cast<MOTION_STATE>(root.as<int>());
+        ESP_LOGV("MotionService", "Mode %d", mode);
+        switch (mode) {
+            case MOTION_STATE::REST: setState(&restState); break;
+            case MOTION_STATE::STAND: setState(&standState); break;
+            case MOTION_STATE::WALK: setState(&walkState); break;
+            case MOTION_STATE::DEACTIVATED:
+                setState(nullptr);
+                _servoController->deactivate();
+                break;
+            default: setState(nullptr); break;
+        }
         JsonDocument doc;
-        doc.set(static_cast<int>(motionState));
+        doc.set(static_cast<int>(mode));
         JsonVariant data = doc.as<JsonVariant>();
         socket.emit(MODE_EVENT, data, String(originId).c_str());
     }
@@ -121,27 +107,10 @@ class MotionService {
     }
 
     bool updateMotion() {
-        switch (motionState) {
-            case MOTION_STATE::DEACTIVATED: return false;
-            case MOTION_STATE::IDLE: return false;
-            case MOTION_STATE::CALIBRATION: update_angles(calibration_angles, new_angles); break;
-            case MOTION_STATE::REST: update_angles(rest_angles, new_angles); break;
-            case MOTION_STATE::STAND: {
-                body_state.xm = lerp(body_state.xm, target_body_state.xm, smoothing_factor);
-                body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
-                body_state.zm = lerp(body_state.zm, target_body_state.zm, smoothing_factor);
-                body_state.phi = lerp(body_state.phi, target_body_state.phi + _peripherals->angleY(), smoothing_factor);
-                body_state.psi = lerp(body_state.psi, target_body_state.psi + _peripherals->angleX(), smoothing_factor);
-                kinematics.calculate_inverse_kinematics(body_state, new_angles);
-                break;
-            }
-            case MOTION_STATE::WALK:
-                body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
-                body_state.psi = lerp(body_state.psi, target_body_state.psi + _peripherals->angleX(), smoothing_factor);
-                walkGait.step(body_state, command);
-                kinematics.calculate_inverse_kinematics(body_state, new_angles);
-                break;
-        }
+        if (!state) return false;
+        state->step(body_state);
+        kinematics.calculate_inverse_kinematics(body_state, new_angles);
+
         return update_angles(new_angles, angles);
     }
 
@@ -163,31 +132,23 @@ class MotionService {
     ServoController *_servoController;
     Peripherals *_peripherals;
     Kinematics kinematics;
-    WalkState walkGait;
+
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
 
-    friend class GaitState;
+    friend class MotionState;
 
-    MOTION_STATE motionState = MOTION_STATE::DEACTIVATED;
-    unsigned long _lastUpdate;
+    MotionState *state = nullptr;
 
-    body_state_t target_body_state;
+    RestState restState;
+    StandState standState;
+    WalkState walkState;
+
     body_state_t body_state;
-    gait_state_t gait_state;
-
-    const float smoothing_factor = 0.06f;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-#if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
-    float rest_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
-    float calibration_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined(SPOTMICRO_YERTLE)
-    float rest_angles[12] = {0, 45, -45, 0, 45, -45, 0, 45, -45, 0, 45, -45};
-    float calibration_angles[12] = {0, 90, 0, 0, 90, 0, 0, 90, 0, 0, 90, 0};
-#endif
 };
 
 #endif
