@@ -2,16 +2,31 @@
 
 #include <gait/state.h>
 
-class StandState : public GaitState {
+class StandState : public MotionState {
   protected:
     const char *name() const override { return "Stand"; }
 
-    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
-        body_state.omega = 0;
-        body_state.phi = command.rx / 8;
-        body_state.psi = command.ry / 8;
-        body_state.xm = command.ly / 2 / 100;
-        body_state.zm = command.lx / 2 / 100;
-        body_state.updateFeet(default_feet_pos);
+    virtual void begin() {
+        target_body_state.xm = 0;
+        target_body_state.ym = KinConfig::min_body_height + 0.5 * KinConfig::body_height_range;
+        target_body_state.zm = 0;
+        target_body_state.omega = 0;
+        target_body_state.phi = 0;
+        target_body_state.psi = 0;
+        target_body_state.updateFeet(KinConfig::default_feet_positions);
+    }
+
+    void handleCommand(const CommandMsg &cmd) override {
+        target_body_state.ym = KinConfig::min_body_height + cmd.h * KinConfig::body_height_range;
+        target_body_state.psi = cmd.ry * KinConfig::max_pitch;
+        target_body_state.phi = cmd.rx * KinConfig::max_roll;
+        target_body_state.xm = cmd.ly * KinConfig::max_body_shift_x;
+        target_body_state.zm = cmd.lx * KinConfig::max_body_shift_z;
+        target_body_state.updateFeet(KinConfig::default_feet_positions);
+    }
+
+    void step(body_state_t &body_state, float dt = 0.02f) override {
+        lerpToBody(body_state);
+        updateFeet(body_state);
     }
 };

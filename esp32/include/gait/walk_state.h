@@ -5,9 +5,18 @@
 #include <array>
 #include <functional>
 
+struct gait_state_t {
+    float step_height {KinConfig::default_step_height};
+    float step_x {0};
+    float step_z {0};
+    float step_angle {0};
+    float step_velocity {0.5};
+    float step_depth {KinConfig::default_step_depth};
+};
+
 enum class WALK_GAIT { TROT, CRAWL };
 
-class WalkState : public GaitState {
+class WalkState : public MotionState {
   private:
     WALK_GAIT mode = WALK_GAIT::TROT;
     float phase_time = 0.0f;
@@ -15,6 +24,7 @@ class WalkState : public GaitState {
     float stand_offset = 0.6f;
     float step_length = 0.0f;
     float speed_factor = 1;
+    gait_state_t gait_state;
 
     struct ShiftState {
         float start_x = 0.0f;
@@ -75,8 +85,9 @@ class WalkState : public GaitState {
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
 
-    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
-        this->mapCommand(command);
+    void step(body_state_t &body_state, float dt = 0.02f) override {
+        body_state.ym = lerp(body_state.ym, target_body_state.ym, default_smoothing_factor);
+        body_state.psi = lerp(body_state.psi, target_body_state.psi, default_smoothing_factor);
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
         if (gait_state.step_x < 0.0f) step_length = -step_length;
         updatePhase(dt);
@@ -85,6 +96,17 @@ class WalkState : public GaitState {
     }
 
   protected:
+    void handleCommand(const CommandMsg &cmd) override {
+        target_body_state.ym = KinConfig::min_body_height + cmd.h * KinConfig::body_height_range;
+        target_body_state.psi = cmd.ry * KinConfig::max_pitch;
+        gait_state.step_height = cmd.s1 * KinConfig::max_step_height;
+        gait_state.step_x = cmd.ly * KinConfig::max_step_length;
+        gait_state.step_z = -cmd.lx * KinConfig::max_step_length;
+        gait_state.step_velocity = cmd.s;
+        gait_state.step_angle = cmd.rx;
+        gait_state.step_depth = KinConfig::default_step_depth;
+    }
+
     void updatePhase(float dt) {
         if (gait_state.step_x == 0 && gait_state.step_z == 0 && gait_state.step_angle == 0) {
             phase_time = 0;

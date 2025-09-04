@@ -2,17 +2,22 @@
 
 #include <gait/state.h>
 
-class RestState : public GaitState {
+class RestState : public MotionState {
   protected:
     const char *name() const override { return "Rest"; }
 
-    void step(body_state_t &body_state, CommandMsg command, float dt = 0.02f) override {
-        body_state.omega = 0;
-        body_state.phi = 0;
-        body_state.psi = 0;
-        body_state.xm = 0;
-        body_state.ym = KinConfig::default_body_height / 2;
-        body_state.zm = 0;
-        body_state.updateFeet(default_feet_pos);
+    virtual void begin() {
+        target_body_state.xm = 0;
+        target_body_state.ym = KinConfig::min_body_height;
+        target_body_state.zm = 0;
+        target_body_state.omega = 0;
+        target_body_state.phi = 0;
+        target_body_state.psi = 0;
+        target_body_state.updateFeet(KinConfig::default_feet_positions);
+    }
+
+    void step(body_state_t &body_state, float dt = 0.02f) override {
+        lerpToBody(body_state);
+        updateFeet(body_state);
     }
 };
