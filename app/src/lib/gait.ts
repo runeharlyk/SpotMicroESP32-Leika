@@ -523,6 +523,7 @@ interface Animation {
   // options: Options = {};
   parameters: Parameters
   frames: Frame[]
+  loop?: boolean
 }
 
 const generateCircleAnimation = (
@@ -558,6 +559,7 @@ const generateCircleAnimation = (
 const kinematicShowCaseGen = generateCircleAnimation(0.5, 0.7, 4000, 32)
 
 const kinematicShowCase: Animation = {
+  loop: true,
   parameters: {
     speed: { min: 0.1, max: 2, default: 1 },
     x_offset: { min: -0.1, max: 0.1, default: 0 }
@@ -618,6 +620,7 @@ const kinematicShowCase: Animation = {
 }
 
 const stretch: Animation = {
+  loop: false,
   parameters: {
     speed: { min: 0.1, max: 2, default: 1 },
     x_offset: { min: -0.1, max: 0.1, default: 0 }
@@ -769,6 +772,8 @@ const stretch: Animation = {
 }
 
 const pee: Animation = {
+  loop: false,
+
   parameters: {
     speed: { min: 0.1, max: 2, default: 1 },
     x_offset: { min: -0.1, max: 0.1, default: 0 }
@@ -857,29 +862,43 @@ const pee: Animation = {
 export class Animater extends GaitState {
   protected name = 'Bezier'
   time = 0
-  animation = stretch //pee;
+  animation = [stretch, pee, kinematicShowCase][0]
+  speed = 1
+  xOffset = 0
 
   begin() {
-    this.time = 0
+    this.reset()
     super.begin()
   }
 
   end() {
-    this.time = 0
+    this.reset()
     super.end()
+  }
+
+  reset() {
+    this.time = 0
   }
 
   step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
     return this.step_animation(body_state, dt)
   }
 
+  setAnimation(animation: Animation) {
+    this.animation = animation
+    this.reset()
+  }
+
   step_animation(body_state: body_state_t, dt: number = 0.02) {
     this.dt = dt / 1000
-    this.time += dt
+    const frames = this.animation.frames
+    const duration = frames[frames.length - 1].time
 
-    const duration = this.animation.frames[this.animation.frames.length - 1].time
-    if (this.time > duration) {
+    this.time += dt * this.speed
+    if (this.animation.loop !== false && this.time > duration) {
       this.time = this.time % duration
+    } else if (this.time > duration) {
+      this.time = duration
     }
 
     const { prevFrame, nextFrame } = this.getBoundingFrames()
