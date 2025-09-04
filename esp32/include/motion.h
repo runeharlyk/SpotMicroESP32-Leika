@@ -9,6 +9,7 @@
 
 #include <gait/state.h>
 #include <gait/walk_state.h>
+#include <gait/kinematic_constraints.h>
 #include <message_types.h>
 
 #define DEFAULT_STATE false
@@ -62,24 +63,24 @@ class MotionService {
     void handleInput(JsonVariant &root, int originId) {
         command.fromJson(root);
 
-        body_state.ym = command.h * 1.f - 0.5f;
+        body_state.ym = command.h - 0.5f;
 
         switch (motionState) {
             case MOTION_STATE::STAND: {
-                body_state.phi = command.rx * 10 * (float)M_PI_2;
-                body_state.psi = command.ry * 10 * (float)M_PI_2;
-                body_state.xm = command.ly / 4;
-                body_state.zm = command.lx / 4;
+                body_state.phi = command.rx * KinConfig::max_roll;
+                body_state.psi = command.ry * KinConfig::max_pitch;
+                body_state.xm = command.ly * KinConfig::max_body_shift_x;
+                body_state.zm = command.lx * KinConfig::max_body_shift_z;
                 body_state.updateFeet(kinematics.default_feet_positions);
                 break;
             }
             case MOTION_STATE::WALK: {
-                gait_state.step_height = 0.4 + (command.s1 + 1) / 2;
-                gait_state.step_x = command.ly;
-                gait_state.step_z = -command.lx;
+                gait_state.step_height = KinConfig::default_step_height + command.s1;
+                gait_state.step_x = command.ly * KinConfig::max_step_length;
+                gait_state.step_z = -command.lx * KinConfig::max_step_length;
                 gait_state.step_velocity = command.s;
                 gait_state.step_angle = command.rx;
-                gait_state.step_depth = 0.002;
+                gait_state.step_depth = KinConfig::default_step_depth;
                 break;
             }
         }
@@ -160,7 +161,7 @@ class MotionService {
 
     body_state_t target_body_state = {0, 0, 0, 0, 0, 0};
     body_state_t body_state = {0, 0, 0, 0, 0, 0};
-    gait_state_t gait_state = {12, 0, 0, 0, 1, 0.002};
+    gait_state_t gait_state;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

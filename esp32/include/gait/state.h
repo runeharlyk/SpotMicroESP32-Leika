@@ -1,22 +1,24 @@
 #pragma once
 
 #include <kinematics.h>
+#include <gait/kinematic_constraints.h>
 #include <message_types.h>
 
 struct gait_state_t {
-    float step_height;
-    float step_x;
-    float step_z;
-    float step_angle;
-    float step_velocity;
-    float step_depth;
+    float step_height {KinConfig::default_step_height};
+    float step_x {0};
+    float step_z {0};
+    float step_angle {0};
+    float step_velocity {0.5};
+    float step_depth {KinConfig::default_step_depth};
 };
 
 class GaitState {
   protected:
     virtual const char *name() const = 0;
     static constexpr const float (&default_feet_pos)[4][4] = Kinematics::default_feet_positions;
-    gait_state_t gait_state = {0.4, 0, 0, 0, 1, 0.002};
+
+    gait_state_t gait_state;
 
     virtual void mapCommand(CommandMsg command) {
         this->gait_state.step_height = command.s1 / 2;
@@ -28,8 +30,6 @@ class GaitState {
     }
 
   public:
-    virtual float getDefaultHeight() const { return 0.5f; }
-
     virtual void begin() { ESP_LOGI("Gait Planner", "Starting %s", name()); }
 
     virtual void end() { ESP_LOGI("Gait Planner", "Ending %s", name()); }

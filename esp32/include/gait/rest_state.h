@@ -11,7 +11,7 @@ class RestState : public GaitState {
         body_state.phi = 0;
         body_state.psi = 0;
         body_state.xm = 0;
-        body_state.ym = getDefaultHeight() / 2;
+        body_state.ym = KinConfig::default_body_height / 2;
         body_state.zm = 0;
         body_state.updateFeet(default_feet_pos);
     }
