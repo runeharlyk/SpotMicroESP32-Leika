@@ -189,25 +189,56 @@ export class BezierState extends GaitState {
     const m = this.gait_state
     const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
     if (!moving) return
-    const c = this.dynamic_stance_centroid()
-    const k = this.mode === 'crawl' ? 16 : 10
-    const a = 1 - Math.exp(-k * this.dt)
-    this.body_state.xm += (c[0] - this.body_state.xm) * a
-    this.body_state.zm += (c[2] - this.body_state.zm) * a
+
+    const { stance, swing, next_swing } = this.get_leg_states()
+
+    // Only shift when all legs are down and we know which leg lifts next
+    if (stance.length >= 3 && swing.length === 0 && next_swing !== -1) {
+      const remaining_legs = stance.filter(leg => leg !== next_swing)
+      const target = this.stance_centroid(remaining_legs)
+
+      const k = this.mode === 'crawl' ? 25 : 20
+      const a = 1 - Math.exp(-k * this.dt)
+      this.body_state.xm += (target[0] - this.body_state.xm) * a
+      this.body_state.zm += (target[2] - this.body_state.zm) * a
+    }
   }
 
-  protected dynamic_stance_centroid(): number[] {
+  protected stance_centroid(legs: number[]): number[] {
+    if (legs.length === 0) return [this.body_state.xm, 0, this.body_state.zm]
+
     let sx = 0,
-      sz = 0,
-      sw = 0
-    for (let i = 0; i < 4; i++) {
-      const w = this.stance_weight(i)
-      sx += this.body_state.feet[i][0] * w
-      sz += this.body_state.feet[i][2] * w
-      sw += w
+      sz = 0
+    for (const i of legs) {
+      sx += this.body_state.feet[i][0]
+      sz += this.body_state.feet[i][2]
     }
-    if (sw === 0) return [this.body_state.xm, 0, this.body_state.zm]
-    return [sx / sw, 0, sz / sw]
+    return [sx / legs.length, 0, sz / legs.length]
+  }
+
+  protected get_leg_states(): { stance: number[]; swing: number[]; next_swing: number } {
+    const stance: number[] = []
+    const swing: number[] = []
+    let next_swing = -1
+    let min_time_to_swing = Infinity
+
+    for (let i = 0; i < 4; i++) {
+      let phase = this.phase + this.offset[i]
+      if (phase >= 1) phase -= 1
+
+      if (phase <= this.stand_offset) {
+        stance.push(i)
+        const time_to_swing = this.stand_offset - phase
+        if (time_to_swing < min_time_to_swing) {
+          min_time_to_swing = time_to_swing
+          next_swing = i
+        }
+      } else {
+        swing.push(i)
+      }
+    }
+
+    return { stance, swing, next_swing }
   }
 
   protected stance_weight(i: number): number {
