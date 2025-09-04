@@ -76,7 +76,7 @@ class MotionService {
                 break;
             }
             case MOTION_STATE::WALK: {
-                gait_state.step_height = KinConfig::default_step_height + command.s1;
+                gait_state.step_height = command.s1 * KinConfig::max_step_height;
                 gait_state.step_x = command.ly * KinConfig::max_step_length;
                 gait_state.step_z = -command.lx * KinConfig::max_step_length;
                 gait_state.step_velocity = command.s;

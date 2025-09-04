@@ -52,7 +52,8 @@ class KinConfig {
     static constexpr float max_body_height = max_leg_reach * 0.9;
     static constexpr float body_height_range = max_body_height - min_body_height;
 
-    static constexpr float max_step_length = 1;
+    static constexpr float max_step_length = max_leg_reach * 0.8;
+    static constexpr float max_step_height = max_leg_reach / 2;
 
     // Default constant
     static constexpr float default_step_depth = 0.002;
