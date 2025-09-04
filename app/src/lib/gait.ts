@@ -149,15 +149,15 @@ export class BezierState extends GaitState {
 
     this.mode = mode
     if (mode === 'crawl') {
-      this.speed_factor = 0.1
+      this.speed_factor = 0.5
       this.stand_offset = duty ?? 0.85
-      const o = order ?? [0, 3, 1, 2]
+      const o = order ?? [3, 0, 2, 1]
       const base = [0, 0.25, 0.5, 0.75]
       const offsets = new Array(4).fill(0)
       for (let i = 0; i < 4; i++) offsets[o[i]] = base[i]
       this.offset = offsets
     } else {
-      this.speed_factor = 1
+      this.speed_factor = 2
       this.stand_offset = duty ?? 0.6
       this.offset = order ? (order.map(v => v % 1) as number[]) : [0, 0.5, 0.5, 0]
     }
@@ -179,7 +179,10 @@ export class BezierState extends GaitState {
 
   update_phase() {
     const m = this.gait_state
-    if (m.step_x === 0 && m.step_z === 0 && m.step_angle === 0) return
+    if (m.step_x === 0 && m.step_z === 0 && m.step_angle === 0) {
+      this.phase = 0
+      return
+    }
     this.phase += this.dt * m.step_velocity * this.speed_factor
     if (this.phase >= 1) {
       this.phase_num = (this.phase_num + 1) % 2
@@ -187,19 +190,16 @@ export class BezierState extends GaitState {
     }
   }
 
-  protected phase_lead = 0.08
-  protected feather = 0.05
-
   update_body_position() {
     const m = this.gait_state
     const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
     if (!moving) return
 
+    if (this.mode !== 'crawl') return
+
     const { stance, swing, next_swing, time_to_lift } = this.get_leg_states()
 
-    // Only shift when all legs are down and we know which leg lifts next
     if (stance.length >= 3 && swing.length === 0 && next_swing !== -1) {
-      // Check if we're starting a new shift
       if (this.current_shift_leg !== next_swing) {
         this.current_shift_leg = next_swing
         this.shift_start_pos.x = this.body_state.xm
@@ -213,12 +213,10 @@ export class BezierState extends GaitState {
         this.shift_start_time = time_to_lift
       }
 
-      // Calculate smooth progress using smoothstep
       const total_time = this.shift_start_time
       const progress = total_time > 0 ? 1 - time_to_lift / total_time : 1
       const smooth_progress = this.smoothstep01(Math.max(0, Math.min(1, progress)))
 
-      // Smoothly interpolate to target
       this.body_state.xm = this.lerp(
         this.shift_start_pos.x,
         this.shift_target_pos.x,
@@ -276,21 +274,6 @@ export class BezierState extends GaitState {
     }
 
     return { stance, swing, next_swing, time_to_lift: min_time_to_swing }
-  }
-
-  protected stance_weight(i: number): number {
-    const s = this.stand_offset
-    const e = this.feather
-    let p = this.phase + this.offset[i] + this.phase_lead
-    p -= Math.floor(p)
-    if (p < s - e) return 1
-    if (p > s + e && p < 1 - e) return 0
-    if (p <= s + e) {
-      const t = (p - (s - e)) / (2 * e)
-      return 1 - this.smoothstep01(t)
-    }
-    const q = p >= 1 - e ? (p - (1 - e)) / e : (e - p) / e
-    return this.smoothstep01(q)
   }
 
   protected smoothstep01(t: number): number {

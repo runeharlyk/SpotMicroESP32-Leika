@@ -14,40 +14,25 @@ class WalkState : public GaitState {
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
     float stand_offset = 0.6f;
     float step_length = 0.0f;
-    float phase_lead = 0.08f;
-    float feather = 0.05f;
     float speed_factor = 1;
-    float com_shift_gain = 0.35f;
-    float com_shift_limit = 0.06f;
-    float com_tau = 0.12f;
 
-    alignas(16) float crawl_target_xz[4][2] = {{0}};
-    int crawl_order[4] = {0, 1, 2, 3};
+    struct ShiftState {
+        float start_x = 0.0f;
+        float start_z = 0.0f;
+        float target_x = 0.0f;
+        float target_z = 0.0f;
+        float start_time = 0.0f;
+        int current_shift_leg = -1;
+    } shift_state;
 
-    static float d2(float ax, float az, float bx, float bz) {
-        float dx = ax - bx, dz = az - bz;
-        return std::sqrt(dx * dx + dz * dz);
-    }
-
-    void buildCrawlTargetsIncenter() {
-        for (int s = 0; s < 4; ++s) {
-            int a = (s + 1) & 3, b = (s + 2) & 3, c = (s + 3) & 3;
-            float Ax = default_feet_pos[a][0], Az = default_feet_pos[a][2];
-            float Bx = default_feet_pos[b][0], Bz = default_feet_pos[b][2];
-            float Cx = default_feet_pos[c][0], Cz = default_feet_pos[c][2];
-            float la = d2(Bx, Bz, Cx, Cz);
-            float lb = d2(Ax, Az, Cx, Cz);
-            float lc = d2(Ax, Az, Bx, Bz);
-            float L = la + lb + lc;
-            if (L <= 1e-6f) {
-                crawl_target_xz[s][0] = (Ax + Bx + Cx) / 3.f;
-                crawl_target_xz[s][1] = (Az + Bz + Cz) / 3.f;
-            } else {
-                crawl_target_xz[s][0] = (la * Ax + lb * Bx + lc * Cx) / L;
-                crawl_target_xz[s][1] = (la * Az + lb * Bz + lc * Cz) / L;
-            }
-        }
-    }
+    struct LegStates {
+        std::array<int, 4> stance;
+        std::array<int, 4> swing;
+        int stance_count = 0;
+        int swing_count = 0;
+        int next_swing = -1;
+        float time_to_lift = INFINITY;
+    };
 
     static constexpr uint8_t BEZIER_POINTS = 12;
     static constexpr std::array<float, BEZIER_POINTS> COMBINATORIAL_VALUES = {
@@ -72,12 +57,12 @@ class WalkState : public GaitState {
                                                              0.9f, 1.1f, 1.1f, 1.1f, 0.0f, 0.0f};
 
   public:
-    WalkState() { buildCrawlTargetsIncenter(); }
+    WalkState() = default;
     const char *name() const override { return "Bezier"; }
 
-    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {0, 1, 2, 3}) {
+    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
         mode = WALK_GAIT::CRAWL;
-        speed_factor = 0.1;
+        speed_factor = 0.5;
         stand_offset = duty;
         const float base[4] = {0.f, 0.25f, 0.5f, 0.75f};
         for (int i = 0; i < 4; ++i) phase_offset[order[i]] = base[i];
@@ -85,7 +70,7 @@ class WalkState : public GaitState {
 
     void set_mode_trot(float duty = 0.6f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
         mode = WALK_GAIT::TROT;
-        speed_factor = 1;
+        speed_factor = 2;
         stand_offset = duty;
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
@@ -101,33 +86,90 @@ class WalkState : public GaitState {
 
   protected:
     void updatePhase(float dt) {
+        if (gait_state.step_x == 0 && gait_state.step_z == 0 && gait_state.step_angle == 0) {
+            phase_time = 0;
+            return;
+        }
         phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * speed_factor, 1.0f);
     }
 
+    LegStates getLegStates() {
+        LegStates states;
+        float min_time_to_swing = INFINITY;
+
+        for (int i = 0; i < 4; i++) {
+            float phase = std::fmod(phase_time + phase_offset[i], 1.0f);
+
+            if (phase <= stand_offset) {
+                states.stance[states.stance_count++] = i;
+                float time_to_swing = stand_offset - phase;
+                if (time_to_swing < min_time_to_swing) {
+                    min_time_to_swing = time_to_swing;
+                    states.next_swing = i;
+                }
+            } else {
+                states.swing[states.swing_count++] = i;
+            }
+        }
+
+        states.time_to_lift = min_time_to_swing;
+        return states;
+    }
+
+    std::array<float, 3> stanceCentroid(const LegStates &states) {
+        if (states.stance_count == 0) {
+            return {0.0f, 0.0f, 0.0f};
+        }
+
+        float sx = 0.0f, sz = 0.0f;
+        int remaining_count = 0;
+
+        for (int i = 0; i < states.stance_count; i++) {
+            int leg = states.stance[i];
+            if (leg != states.next_swing) {
+                sx += default_feet_pos[leg][0];
+                sz += default_feet_pos[leg][2];
+                remaining_count++;
+            }
+        }
+
+        if (remaining_count > 0) {
+            return {sx / remaining_count, 0.0f, sz / remaining_count};
+        }
+
+        return {0.0f, 0.0f, 0.0f};
+    }
+
+    static float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
     void updateBodyPosition(body_state_t &body_state, float dt) {
         if (mode != WALK_GAIT::CRAWL) return;
+
         const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
-        const float a = dt / (com_tau + dt);
-        if (!moving) {
-            body_state.xm += (0.f - body_state.xm) * a;
-            body_state.zm += (0.f - body_state.zm) * a;
-            return;
+        if (!moving) return;
+
+        LegStates leg_states = getLegStates();
+
+        if (leg_states.stance_count >= 3 && leg_states.swing_count == 0 && leg_states.next_swing != -1) {
+            if (shift_state.current_shift_leg != leg_states.next_swing) {
+                shift_state.current_shift_leg = leg_states.next_swing;
+                shift_state.start_x = body_state.xm;
+                shift_state.start_z = body_state.zm;
+
+                auto target = stanceCentroid(leg_states);
+                shift_state.target_x = target[0];
+                shift_state.target_z = target[2];
+
+                shift_state.start_time = leg_states.time_to_lift;
+            }
+
+            float total_time = shift_state.start_time;
+            float progress = total_time > 0 ? 1.0f - (leg_states.time_to_lift / total_time) : 1.0f;
+            float smooth_progress = smoothstep01(std::clamp(progress, 0.0f, 1.0f));
+
+            body_state.xm = lerp(shift_state.start_x, shift_state.target_x, smooth_progress);
+            body_state.zm = lerp(shift_state.start_z, shift_state.target_z, smooth_progress);
         }
-
-        int k = (int)std::floor(std::fmod(phase_time, 1.f) * 8.f) & 7;
-        int leg = crawl_order[k >> 1];
-
-        float tx = crawl_target_xz[leg][0] * com_shift_gain;
-        float tz = crawl_target_xz[leg][1] * com_shift_gain;
-        float m = std::hypot(tx, tz);
-        if (m > com_shift_limit) {
-            float s = com_shift_limit / m;
-            tx *= s;
-            tz *= s;
-        }
-
-        body_state.xm += (tx - body_state.xm) * a;
-        body_state.zm += (tz - body_state.zm) * a;
     }
 
     static float smoothstep01(float t) {
