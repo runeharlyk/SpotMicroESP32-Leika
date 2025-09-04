@@ -5,7 +5,7 @@ static const char *TAG = "Spot";
 Spot::Spot()
     :
 #if FT_ENABLED(USE_MOTION)
-      _motionService(&_servoController)
+      _motionService(&_servoController, &_peripherals)
 #endif
 {
 }

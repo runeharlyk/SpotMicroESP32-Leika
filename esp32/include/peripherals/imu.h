@@ -14,6 +14,30 @@
 #include <Adafruit_BNO055.h>
 #endif
 
+struct IMUAnglesMsg {
+    float rpy[3] {0, 0, 0};
+    float temperature {-1};
+    bool success {false};
+
+    friend void toJson(JsonVariant v, IMUAnglesMsg const& a) {
+        JsonArray arr = v.to<JsonArray>();
+        arr.add(a.rpy[0]);
+        arr.add(a.rpy[1]);
+        arr.add(a.rpy[2]);
+        arr.add(a.temperature);
+        arr.add(a.success);
+    }
+
+    void fromJson(JsonVariantConst o) {
+        JsonArrayConst arr = o.as<JsonArrayConst>();
+        rpy[0] = arr[0].as<float>();
+        rpy[1] = arr[1].as<float>();
+        rpy[2] = arr[2].as<float>();
+        temperature = arr[3].as<float>();
+        success = arr[4].as<bool>();
+    }
+};
+
 class IMU {
   public:
     IMU()
@@ -44,43 +68,42 @@ class IMU {
     }
 
     bool readIMU() {
-        if (!imu_success) return false;
+        if (!imuMsg.success) return false;
 #if FT_ENABLED(USE_MPU6050)
         bool updated = _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
         _imu.dmpGetQuaternion(&q, fifoBuffer);
         _imu.dmpGetGravity(&gravity, &q);
-        _imu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        ypr[0] *= 180 / M_PI;
-        ypr[1] *= 180 / M_PI;
-        ypr[2] *= 180 / M_PI;
+        _imu.dmpGetYawPitchRoll(imuMsg.rpy, &q, &gravity);
         return updated;
 #endif
 #if FT_ENABLED(USE_BNO055)
         sensors_event_t event;
         _imu.getEvent(&event);
-        ypr[0] = (float)event.orientation.x;
-        ypr[1] = (float)event.orientation.y;
-        ypr[2] = (float)event.orientation.z;
+        imuMsg.rpy[0] = event.orientation.x;
+        imuMsg.rpy[1] = event.orientation.y;
+        imuMsg.rpy[2] = event.orientation.z;
 #endif
         return true;
     }
 
-    float getTemperature() { return imu_success ? imu_temperature : -1; }
+    float getTemperature() { return imuMsg.temperature; }
 
-    float getAngleX() { return imu_success ? ypr[0] : 0; }
+    float getAngleX() { return imuMsg.rpy[2]; }
 
-    float getAngleY() { return imu_success ? ypr[1] : 0; }
+    float getAngleY() { return imuMsg.rpy[1]; }
 
-    float getAngleZ() { return imu_success ? ypr[2] : 0; }
+    float getAngleZ() { return imuMsg.rpy[0]; }
+
+    bool active() { return imuMsg.success; }
+
+    IMUAnglesMsg getIMUAngles() { return imuMsg; }
 
     void readIMU(JsonObject& root) {
-        if (!imu_success) return;
+        if (!imuMsg.success) return;
         root["x"] = round2(getAngleX());
         root["y"] = round2(getAngleY());
         root["z"] = round2(getAngleZ());
     }
-
-    bool active() { return imu_success; }
 
   private:
 #if FT_ENABLED(USE_MPU6050)
@@ -93,7 +116,5 @@ class IMU {
 #if FT_ENABLED(USE_BNO055)
     Adafruit_BNO055 _imu;
 #endif
-    bool imu_success {false};
-    float ypr[3];
-    float imu_temperature {-1};
+    IMUAnglesMsg imuMsg;
 };

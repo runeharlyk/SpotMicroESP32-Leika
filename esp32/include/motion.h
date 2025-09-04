@@ -23,7 +23,8 @@ enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
 class MotionService {
   public:
-    MotionService(ServoController *servoController) : _servoController(servoController) {}
+    MotionService(ServoController *servoController, Peripherals *peripherals)
+        : _servoController(servoController), _peripherals(peripherals) {}
 
     void begin() {
         socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { handleInput(root, originId); });
@@ -129,8 +130,9 @@ class MotionService {
                 body_state.xm = lerp(body_state.xm, target_body_state.xm, smoothing_factor);
                 body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
                 body_state.zm = lerp(body_state.zm, target_body_state.zm, smoothing_factor);
-                body_state.phi = lerp(body_state.phi, target_body_state.phi, smoothing_factor);
-                body_state.omega = lerp(body_state.omega, target_body_state.omega, smoothing_factor);
+                body_state.phi = lerp(body_state.phi, target_body_state.phi + _peripherals->angleY(), smoothing_factor);
+                body_state.omega =
+                    lerp(body_state.omega, target_body_state.omega + _peripherals->angleX(), smoothing_factor);
                 kinematics.calculate_inverse_kinematics(body_state, new_angles);
                 break;
             }
@@ -158,6 +160,7 @@ class MotionService {
 
   private:
     ServoController *_servoController;
+    Peripherals *_peripherals;
     Kinematics kinematics;
     WalkState walkGait;
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};

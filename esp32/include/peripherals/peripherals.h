@@ -163,6 +163,26 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
     }
 
+    float angleX() {
+        return
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+            _imu.getAngleX();
+#else
+            0;
+#endif
+    }
+
+    float angleY() {
+        return
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+            _imu.getAngleY();
+#else
+            0;
+#endif
+    }
+
+    // float angleZ() { return _imu.getAngleZ(); }
+
     float leftDistance() { return _left_distance; }
     float rightDistance() { return _right_distance; }
 
