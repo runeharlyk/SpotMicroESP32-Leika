@@ -36,7 +36,14 @@
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
     import { type body_state_t } from '$lib/kinematic'
-    import { BezierState, CalibrationState, IdleState, RestState, StandState } from '$lib/gait'
+    import {
+        Animater,
+        BezierState,
+        CalibrationState,
+        IdleState,
+        RestState,
+        StandState
+    } from '$lib/gait'
     import { radToDeg } from 'three/src/math/MathUtils.js'
     import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
@@ -71,7 +78,8 @@
         [ModesEnum.Calibration]: new CalibrationState(),
         [ModesEnum.Rest]: new RestState(),
         [ModesEnum.Stand]: new StandState(),
-        [ModesEnum.Walk]: new BezierState()
+        [ModesEnum.Walk]: new BezierState(),
+        [ModesEnum.Animate]: new Animater()
     }
     let lastTick = performance.now()
 
