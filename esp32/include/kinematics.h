@@ -2,7 +2,7 @@
 #define Kinematics_h
 
 #include <utils/math_utils.h>
-#include <gait/kinematic_constraints.h>
+#include <motion_states/kinematic_constraints.h>
 
 struct alignas(16) body_state_t {
     float omega {0}, phi {0}, psi {0}, xm {0}, ym {KinConfig::default_body_height}, zm {0};

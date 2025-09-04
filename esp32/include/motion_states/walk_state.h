@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gait/state.h>
+#include <motion_states/state.h>
 #include <utils/math_utils.h>
 #include <array>
 #include <functional>
