@@ -25,6 +25,7 @@ class WalkState : public MotionState {
     float step_length = 0.0f;
     float speed_factor = 1;
     gait_state_t gait_state;
+    gait_state_t target_gait_state;
 
     struct ShiftState {
         float start_x = 0.0f;
@@ -88,6 +89,13 @@ class WalkState : public MotionState {
     void step(body_state_t &body_state, float dt = 0.02f) override {
         body_state.ym = lerp(body_state.ym, target_body_state.ym, default_smoothing_factor);
         body_state.psi = lerp(body_state.psi, target_body_state.psi, default_smoothing_factor);
+        gait_state.step_height = target_gait_state.step_height;
+        gait_state.step_x = lerp(gait_state.step_x, target_gait_state.step_x, default_smoothing_factor);
+        gait_state.step_z = lerp(gait_state.step_z, target_gait_state.step_z, default_smoothing_factor);
+        gait_state.step_velocity = target_gait_state.step_velocity;
+        gait_state.step_angle = lerp(gait_state.step_angle, target_gait_state.step_angle, default_smoothing_factor);
+        gait_state.step_depth = lerp(gait_state.step_depth, target_gait_state.step_depth, default_smoothing_factor);
+
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
         if (gait_state.step_x < 0.0f) step_length = -step_length;
         updatePhase(dt);
@@ -99,16 +107,18 @@ class WalkState : public MotionState {
     void handleCommand(const CommandMsg &cmd) override {
         target_body_state.ym = KinConfig::min_body_height + cmd.h * KinConfig::body_height_range;
         target_body_state.psi = cmd.ry * KinConfig::max_pitch;
-        gait_state.step_height = cmd.s1 * KinConfig::max_step_height;
-        gait_state.step_x = cmd.ly * KinConfig::max_step_length;
-        gait_state.step_z = -cmd.lx * KinConfig::max_step_length;
-        gait_state.step_velocity = cmd.s;
-        gait_state.step_angle = cmd.rx;
-        gait_state.step_depth = KinConfig::default_step_depth;
+        target_gait_state.step_height = cmd.s1 * KinConfig::max_step_height;
+        target_gait_state.step_x = cmd.ly * KinConfig::max_step_length;
+        target_gait_state.step_z = -cmd.lx * KinConfig::max_step_length;
+        target_gait_state.step_velocity = cmd.s;
+        target_gait_state.step_angle = cmd.rx;
+        target_gait_state.step_depth = KinConfig::default_step_depth;
     }
 
+    static inline bool isZero(float num) { return std::fabs(num) < 0.01; }
+
     void updatePhase(float dt) {
-        if (gait_state.step_x == 0 && gait_state.step_z == 0 && gait_state.step_angle == 0) {
+        if (isZero(gait_state.step_x) && isZero(gait_state.step_z) && isZero(gait_state.step_angle)) {
             phase_time = 0;
             return;
         }
@@ -167,7 +177,7 @@ class WalkState : public MotionState {
     void updateBodyPosition(body_state_t &body_state, float dt) {
         if (mode != WALK_GAIT::CRAWL) return;
 
-        const bool moving = gait_state.step_x != 0.f || gait_state.step_z != 0.f || gait_state.step_angle != 0.f;
+        const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
         if (!moving) return;
 
         LegStates leg_states = getLegStates();
