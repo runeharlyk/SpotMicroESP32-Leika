@@ -49,17 +49,17 @@ class IMU {
     bool initialize() {
 #if FT_ENABLED(USE_MPU6050)
         _imu.initialize();
-        imu_success = _imu.testConnection();
+        imuMsg.success = _imu.testConnection();
         devStatus = _imu.dmpInitialize();
-        if (!imu_success) return false;
+        if (!imuMsg.success) return false;
         _imu.setDMPEnabled(true);
         _imu.setI2CMasterModeEnabled(false);
         _imu.setI2CBypassEnabled(true);
         _imu.setSleepEnabled(false);
 #endif
 #if FT_ENABLED(USE_BNO055)
-        imu_success = _imu.begin();
-        if (!imu_success) {
+        imuMsg.success = _imu.begin();
+        if (!imuMsg.success) {
             return false;
         }
         _imu.setExtCrystalUse(true);
