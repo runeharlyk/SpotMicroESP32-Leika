@@ -23,7 +23,7 @@ class WalkState : public MotionState {
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
     float stand_offset = 0.6f;
     float step_length = 0.0f;
-    float speed_factor = 1;
+    float speed_factor = 2;
     gait_state_t gait_state;
     gait_state_t target_gait_state;
 
