@@ -107,6 +107,7 @@ class MotionService {
 
     bool updateMotion() {
         if (!state) return false;
+        state->updateImuOffsets(_peripherals->angleY(), _peripherals->angleX());
         state->step(body_state);
         kinematics.calculate_inverse_kinematics(body_state, new_angles);
 

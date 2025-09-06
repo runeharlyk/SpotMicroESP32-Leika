@@ -26,7 +26,7 @@ class StandState : public MotionState {
     }
 
     void step(body_state_t &body_state, float dt = 0.02f) override {
-        lerpToBody(body_state);
+        lerpToBody(body_state, true);
         updateFeet(body_state);
     }
 };
