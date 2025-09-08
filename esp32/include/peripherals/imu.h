@@ -50,12 +50,18 @@ class IMU {
 #if FT_ENABLED(USE_MPU6050)
         _imu.initialize();
         imuMsg.success = _imu.testConnection();
-        devStatus = _imu.dmpInitialize();
         if (!imuMsg.success) return false;
-        _imu.setDMPEnabled(true);
-        _imu.setI2CMasterModeEnabled(false);
-        _imu.setI2CBypassEnabled(true);
-        _imu.setSleepEnabled(false);
+        devStatus = _imu.dmpInitialize();
+        if (devStatus == 0) {
+            _imu.setDMPEnabled(false);
+            _imu.setDMPConfig1(0x03);
+            _imu.setDMPEnabled(true);
+            _imu.setI2CMasterModeEnabled(false);
+            _imu.setI2CBypassEnabled(true);
+            _imu.setSleepEnabled(false);
+        } else {
+            return false;
+        }
 #endif
 #if FT_ENABLED(USE_BNO055)
         imuMsg.success = _imu.begin();
@@ -70,11 +76,15 @@ class IMU {
     bool readIMU() {
         if (!imuMsg.success) return false;
 #if FT_ENABLED(USE_MPU6050)
-        bool updated = _imu.dmpGetCurrentFIFOPacket(fifoBuffer);
-        _imu.dmpGetQuaternion(&q, fifoBuffer);
-        _imu.dmpGetGravity(&gravity, &q);
-        _imu.dmpGetYawPitchRoll(imuMsg.rpy, &q, &gravity);
-        return updated;
+        if (_imu.dmpPacketAvailable()) {
+            if (_imu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+                _imu.dmpGetQuaternion(&q, fifoBuffer);
+                _imu.dmpGetGravity(&gravity, &q);
+                _imu.dmpGetYawPitchRoll(imuMsg.rpy, &q, &gravity);
+                return true;
+            }
+        }
+        return false;
 #endif
 #if FT_ENABLED(USE_BNO055)
         sensors_event_t event;
