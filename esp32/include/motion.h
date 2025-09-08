@@ -107,8 +107,11 @@ class MotionService {
 
     bool updateMotion() {
         if (!state) return false;
+        unsigned long now = millis();
+        float dt = (now - lastUpdate) / 1000.0f;
+        lastUpdate = now;
         state->updateImuOffsets(_peripherals->angleY(), _peripherals->angleX());
-        state->step(body_state);
+        state->step(body_state, dt);
         kinematics.calculate_inverse_kinematics(body_state, new_angles);
 
         return update_angles(new_angles, angles);
@@ -149,6 +152,8 @@ class MotionService {
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
+
+    unsigned long lastUpdate = millis();
 };
 
 #endif
