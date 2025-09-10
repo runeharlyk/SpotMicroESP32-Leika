@@ -38,26 +38,24 @@ class PAJ7620U2 {
         uint16_t id = 0;
         wire->begin();
         selectBank(0x00);
-        if (readReg(0x00, &id, 2) != 2) return -1;
-        if (id != 0x7620) return -2;
-        for (size_t i = 0; i < sizeof(initReg) / 2; i++) writeReg(initReg[i][0], &initReg[i][1], 1);
+        if (readReg(REG_PART_ID, &id, 2) != 2) return ERR_BUS;
+        if (id != PART_ID) return ERR_IC;
+        for (size_t i = 0; i < (sizeof(initReg) / sizeof(initReg[0])); i++) writeReg(initReg[i][0], &initReg[i][1], 1);
         selectBank(0x00);
-        return 0;
+        return ERR_OK;
     }
-
     void setGestureHighRate(bool b) { highRate = b; }
-
     gesture_t getGesture() {
         uint8_t f1 = 0, f0 = 0, t0 = 0;
-        if (readReg(0x44, &f1, 1) != 1) return eGestureNone;
+        if (readReg(REG_GES_FLAG_1, &f1, 1) != 1) return eGestureNone;
         if (f1) {
-            delay(highRate ? 200 : 1000);
+            delay(highRate ? QUIT_MS / 5 : QUIT_MS);
             return eGestureWave;
         }
-        if (readReg(0x43, &f0, 1) != 1) return eGestureNone;
+        if (readReg(REG_GES_FLAG_0, &f0, 1) != 1) return eGestureNone;
         if (!highRate) {
-            delay(800);
-            if (readReg(0x43, &t0, 1) == 1) f0 |= t0;
+            delay(ENTRY_MS);
+            if (readReg(REG_GES_FLAG_0, &t0, 1) == 1) f0 |= t0;
         }
         if (f0 & 0x01) return eGestureRight;
         if (f0 & 0x02) return eGestureLeft;
@@ -71,8 +69,18 @@ class PAJ7620U2 {
     }
 
   private:
-    void selectBank(uint8_t b) { writeReg(0xEF, &b, 1); }
+    static constexpr uint8_t REG_BANK_SEL = 0xEF;
+    static constexpr uint8_t REG_GES_FLAG_0 = 0x43;
+    static constexpr uint8_t REG_GES_FLAG_1 = 0x44;
+    static constexpr uint8_t REG_PART_ID = 0x00;
+    static constexpr uint16_t PART_ID = 0x7620;
+    static constexpr uint16_t ENTRY_MS = 800;
+    static constexpr uint16_t QUIT_MS = 1000;
+    static constexpr int ERR_OK = 0;
+    static constexpr int ERR_BUS = -1;
+    static constexpr int ERR_IC = -2;
 
+    void selectBank(uint8_t b) { writeReg(REG_BANK_SEL, &b, 1); }
     void writeReg(uint8_t reg, const void* p, size_t n) {
         if (!p || !n) return;
         const uint8_t* d = static_cast<const uint8_t*>(p);
@@ -81,7 +89,6 @@ class PAJ7620U2 {
         for (size_t i = 0; i < n; i++) wire->write(d[i]);
         wire->endTransmission();
     }
-
     uint8_t readReg(uint8_t reg, void* p, size_t n) {
         if (!p || !n) return 0;
         uint8_t* d = static_cast<uint8_t*>(p);
@@ -131,18 +138,37 @@ class PAJ7620U2 {
 class GestureSensor {
   public:
     GestureSensor() {}
+
     bool initialize() {
         msg.success = paj.begin() == 0;
         if (msg.success) paj.setGestureHighRate(true);
         return msg.success;
     }
+
     bool readGesture() {
         if (!msg.success) return false;
-        msg.gesture = paj.getGesture();
-        return msg.gesture != eGestureNone;
+        const gesture_t g = paj.getGesture();
+        if (g == eGestureNone) {
+            msg.gesture = eGestureNone;
+            return false;
+        }
+        if (g != msg.gesture) {
+            msg.gesture = g;
+            return true;
+        }
+        return false;
     }
+
     gesture_t getGesture() { return msg.gesture; }
+
+    gesture_t takeGesture() {
+        const auto g = msg.gesture;
+        msg.gesture = eGestureNone;
+        return g;
+    }
+
     GestureMsg getGestureMsg() { return msg; }
+
     bool isActive() { return msg.success; }
 
   private:

@@ -106,7 +106,7 @@ class MotionService {
     }
 
     void handleGestures() {
-        const gesture_t ges = _peripherals->getGesture();
+        const gesture_t ges = _peripherals->takeGesture();
         if (ges != gesture_t::eGestureNone) {
             ESP_LOGI("Motion", "Gesture: %d", ges);
             switch (ges) {
