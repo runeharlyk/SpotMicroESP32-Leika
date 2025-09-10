@@ -184,13 +184,13 @@ class Kinematics {
     }
 
     inline void legIK(float x, float y, float z, float out[3]) {
-        float F = sqrt(max(0.0f, x * x + y * y - coxa * coxa));
+        float F = sqrt(std::max(0.0f, x * x + y * y - coxa * coxa));
         float G = F - coxa_offset;
         float H = sqrt(G * G + z * z);
 
         float theta1 = -atan2f(y, x) - atan2f(F, -coxa);
         float D = (H * H - femur * femur - tibia * tibia) / (2 * femur * tibia);
-        float theta3 = acosf(max(-1.0f, min(1.0f, D)));
+        float theta3 = acosf(std::max(-1.0f, std::min(1.0f, D)));
         float theta2 = atan2f(z, G) - atan2f(tibia * sinf(theta3), femur + tibia * cosf(theta3));
         out[0] = RAD_TO_DEG_F(theta1);
         out[1] = RAD_TO_DEG_F(theta2);
