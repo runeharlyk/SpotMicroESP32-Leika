@@ -9,51 +9,74 @@
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
 
+struct MagnetometerMsg {
+    float rpy[3] {0, 0, 0};
+    float heading {-1};
+    bool success {false};
+
+    friend void toJson(JsonVariant v, MagnetometerMsg const& a) {
+        JsonArray arr = v.to<JsonArray>();
+        arr.add(a.rpy[0]);
+        arr.add(a.rpy[1]);
+        arr.add(a.rpy[2]);
+        arr.add(a.heading);
+        arr.add(a.success);
+    }
+
+    void fromJson(JsonVariantConst o) {
+        JsonArrayConst arr = o.as<JsonArrayConst>();
+        rpy[0] = arr[0].as<float>();
+        rpy[1] = arr[1].as<float>();
+        rpy[2] = arr[2].as<float>();
+        heading = arr[3].as<float>();
+        success = arr[4].as<bool>();
+    }
+};
+
 class Magnetometer {
   public:
     Magnetometer() : _mag(12345) {}
 
     bool initialize() {
-        mag_success = _mag.begin();
-        return mag_success;
+        msg.success = _mag.begin();
+        return msg.success;
     }
 
     bool readMagnetometer() {
-        if (!mag_success) return false;
+        if (!msg.success) return false;
         sensors_event_t event;
         bool updated = _mag.getEvent(&event);
         if (!updated) return false;
-        ypr[0] = event.magnetic.x;
-        ypr[1] = event.magnetic.y;
-        ypr[2] = event.magnetic.z;
-        heading = atan2(event.magnetic.y, event.magnetic.x);
-        heading += declinationAngle;
-        if (heading < 0) heading += 2 * PI;
-        if (heading > 2 * PI) heading -= 2 * PI;
-        heading *= 180 / M_PI;
+        msg.rpy[0] = event.magnetic.x;
+        msg.rpy[1] = event.magnetic.y;
+        msg.rpy[2] = event.magnetic.z;
+        msg.heading = atan2(event.magnetic.y, event.magnetic.x);
+        msg.heading += declinationAngle;
+        if (msg.heading < 0) msg.heading += 2 * PI;
+        if (msg.heading > 2 * PI) msg.heading -= 2 * PI;
+        msg.heading *= 180 / M_PI;
         return true;
     }
 
-    float getMagX() { return mag_success ? ypr[0] : 0; }
+    float getMagX() { return msg.rpy[0]; }
 
-    float getMagY() { return mag_success ? ypr[1] : 0; }
+    float getMagY() { return msg.rpy[1]; }
 
-    float getMagZ() { return mag_success ? ypr[2] : 0; }
+    float getMagZ() { return msg.rpy[2]; }
 
-    float getHeading() { return heading; }
+    float getHeading() { return msg.heading; }
+
+    MagnetometerMsg getMagnetometerMsg() { return msg; }
 
     void readMagnetometer(JsonObject& root) {
-        if (!mag_success) return;
+        if (!msg.success) return;
         root["heading"] = round2(getHeading());
     }
 
-    bool active() { return mag_success; }
+    bool isActive() { return msg.success; }
 
   private:
     Adafruit_HMC5883_Unified _mag;
-    bool mag_success {false};
-    float ypr[3];
-    float heading {0};
-
+    MagnetometerMsg msg;
     const float declinationAngle = 0.22;
 };

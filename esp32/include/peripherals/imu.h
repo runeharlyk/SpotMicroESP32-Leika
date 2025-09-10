@@ -104,7 +104,7 @@ class IMU {
 
     float getAngleZ() { return imuMsg.rpy[0]; }
 
-    bool active() { return imuMsg.success; }
+    bool isActive() { return imuMsg.success; }
 
     IMUAnglesMsg getIMUAngles() { return imuMsg; }
 
