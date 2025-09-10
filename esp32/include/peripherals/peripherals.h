@@ -197,10 +197,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     // float angleZ() { return _imu.getAngleZ(); }
 
-    gesture_t getGesture() {
+    gesture_t takeGesture() {
         return
 #if FT_ENABLED(USE_PAJ7620U2)
-            _gesture.getGesture();
+            _gesture.takeGesture();
 #else
             gesture_t::eGestureNone;
 #endif
