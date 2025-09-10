@@ -49,6 +49,7 @@ class Spot {
         _peripherals.readIMU();
         _peripherals.readMag();
         _peripherals.readBMP();
+        EXECUTE_EVERY_N_MS(100, { _peripherals.readGesture(); });
     }
 
     // plan

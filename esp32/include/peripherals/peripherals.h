@@ -19,6 +19,7 @@
 #include <peripherals/imu.h>
 #include <peripherals/magnetometer.h>
 #include <peripherals/barometer.h>
+#include <peripherals/gesture.h>
 
 #define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
 
@@ -68,6 +69,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_BMP180)
         if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
+#endif
+#if FT_ENABLED(USE_PAJ7620U2)
+        if (!_gesture.initialize()) ESP_LOGE("IMUService", "Gesture initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
         _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
@@ -155,6 +159,16 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         return updated;
     }
 
+    bool readGesture() {
+        bool updated = false;
+#if FT_ENABLED(USE_PAJ7620U2)
+        beginTransaction();
+        updated = _gesture.readGesture();
+        endTransaction();
+#endif
+        return updated;
+    }
+
     void readSonar() {
 #if FT_ENABLED(USE_USS)
         _left_distance = _left_sonar->ping_cm();
@@ -182,6 +196,15 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     }
 
     // float angleZ() { return _imu.getAngleZ(); }
+
+    gesture_t getGesture() {
+        return
+#if FT_ENABLED(USE_PAJ7620U2)
+            _gesture.getGesture();
+#else
+            gesture_t::eGestureNone;
+#endif
+    }
 
     float leftDistance() { return _left_distance; }
     float rightDistance() { return _right_distance; }
@@ -235,6 +258,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_BMP180)
     Barometer _bmp;
+#endif
+#if FT_ENABLED(USE_PAJ7620U2)
+    GestureSensor _gesture;
 #endif
 #if FT_ENABLED(USE_USS)
     std::unique_ptr<NewPing> _left_sonar;
