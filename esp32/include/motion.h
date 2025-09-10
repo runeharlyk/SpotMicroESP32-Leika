@@ -105,7 +105,23 @@ class MotionService {
         _servoController->setAngles(angles);
     }
 
+    void handleGestures() {
+        const gesture_t ges = _peripherals->getGesture();
+        if (ges != gesture_t::eGestureNone) {
+            ESP_LOGI("Motion", "Gesture: %d", ges);
+            switch (ges) {
+                case gesture_t::eGestureDown: setState(&restState); break;
+                case gesture_t::eGestureUp: setState(&standState); break;
+                case gesture_t::eGestureLeft:
+                case gesture_t::eGestureRight: setState(&walkState); break;
+
+                default: break;
+            }
+        }
+    }
+
     bool updateMotion() {
+        handleGestures();
         if (!state) return false;
         unsigned long now = millis();
         float dt = (now - lastUpdate) / 1000.0f;

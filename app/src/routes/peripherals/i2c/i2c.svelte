@@ -16,6 +16,7 @@
       part_number: 'MPU6050',
       name: 'Six-Axis (Gyro + Accelerometer) MEMS MotionTracking™ Devices'
     },
+    { address: 115, part_number: 'PAJ7620U2', name: 'Gesture sensor' },
     { address: 119, part_number: 'BMP085', name: 'Temp/Barometric' }
   ]
 
