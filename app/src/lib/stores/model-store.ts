@@ -8,7 +8,15 @@ export const jointNames = persistentStore('joint_names', <string[]>[])
 
 export const model = writable()
 
-export const modes = ['deactivated', 'idle', 'calibration', 'rest', 'stand', 'walk'] as const
+export const modes = [
+  'deactivated',
+  'idle',
+  'calibration',
+  'rest',
+  'stand',
+  'walk',
+  'animate'
+] as const
 
 export type Modes = (typeof modes)[number]
 
@@ -18,7 +26,8 @@ export enum ModesEnum {
   Calibration = 2,
   Rest = 3,
   Stand = 4,
-  Walk = 5
+  Walk = 5,
+  Animate = 6
 }
 
 export enum WalkGaits {
