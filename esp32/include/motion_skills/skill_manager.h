@@ -2,6 +2,7 @@
 
 #include <motion_skills/skill.h>
 #include <motion_skills/spin_skill.h>
+#include <motion_skills/walk_skill.h>
 #include <motion_states/walk_state.h>
 #include <peripherals/gesture.h>
 #include <esp_log.h>
@@ -28,14 +29,40 @@ class SkillManager {
         std::unique_ptr<Skill> skill = nullptr;
 
         switch (gesture) {
+            case gesture_t::eGestureLeft:
+                // Walk 1m left (90 degrees heading)
+                skill = std::make_unique<WalkSkill>(1.0f, 90.0f, 0.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
+                break;
+
+            case gesture_t::eGestureRight:
+                // Walk 1m right (-90 degrees heading)
+                skill = std::make_unique<WalkSkill>(1.0f, -90.0f, 0.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
+                break;
+
+            case gesture_t::eGestureUp:
+                // Walk 1m forward (0 degrees heading)
+                skill = std::make_unique<WalkSkill>(1.0f, 0.0f, 0.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
+                break;
+
+            case gesture_t::eGestureDown:
+                // Walk 1m backward (180 degrees heading)
+                skill = std::make_unique<WalkSkill>(-1.0f, 0.0f, 0.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
+                break;
+
             case gesture_t::eGestureClockwise:
-                skill = std::make_unique<SpinAroundSkill>(true);
-                static_cast<SpinAroundSkill*>(skill.get())->setWalkState(_walkState);
+                // Rotate 90 degrees clockwise
+                skill = std::make_unique<WalkSkill>(0.0f, 0.0f, 90.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
                 break;
 
             case gesture_t::eGestureAntiClockwise:
-                skill = std::make_unique<SpinAroundSkill>(false);
-                static_cast<SpinAroundSkill*>(skill.get())->setWalkState(_walkState);
+                // Rotate 90 degrees counter-clockwise
+                skill = std::make_unique<WalkSkill>(0.0f, 0.0f, -90.0f);
+                static_cast<WalkSkill*>(skill.get())->setWalkState(_walkState);
                 break;
 
             default: return; // No skill mapped to this gesture

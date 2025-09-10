@@ -113,42 +113,26 @@ class MotionService {
         if (ges != gesture_t::eGestureNone) {
             ESP_LOGI("Motion", "Gesture: %d", ges);
 
-            // Check if this gesture maps to a skill
-            if (ges == gesture_t::eGestureClockwise || ges == gesture_t::eGestureAntiClockwise) {
-                skillManager.queueGestureSkill(ges);
-                return; // Let skill manager handle state transitions
-            }
-
-            // Handle basic gestures that don't require skills
-            switch (ges) {
-                case gesture_t::eGestureDown:
-                    skillManager.clearQueue(); // Clear any running skills
-                    if (state == &restState) {
-                        _servoController->deactivate();
-                        setState(nullptr);
-                    } else if (state == &standState)
-                        setState(&restState);
-                    else if (state == &walkState)
-                        setState(&standState);
-                    break;
-                case gesture_t::eGestureUp:
-                    skillManager.clearQueue(); // Clear any running skills
-
-                    if (!state) {
-                        _servoController->activate();
-                        setState(&restState);
-                    } else if (state == &restState)
-                        setState(&standState);
-                    else if (state == &standState)
-                        setState(&walkState);
-                    break;
-                    break;
-                case gesture_t::eGestureLeft:
-                case gesture_t::eGestureRight:
-                    skillManager.clearQueue(); // Clear any running skills
+            if (ges == gesture_t::eGestureUp) {
+                skillManager.clearQueue();
+                if (!state) {
+                    _servoController->activate();
+                    setState(&restState);
+                } else if (state == &restState)
+                    setState(&standState);
+                else if (state == &standState)
                     setState(&walkState);
-                    break;
-                default: break;
+            } else if (ges == gesture_t::eGestureDown) {
+                skillManager.clearQueue();
+                if (state == &restState) {
+                    _servoController->deactivate();
+                    setState(nullptr);
+                } else if (state == &standState)
+                    setState(&restState);
+                else if (state == &walkState)
+                    setState(&standState);
+            } else {
+                skillManager.queueGestureSkill(ges);
             }
         }
     }
@@ -160,10 +144,8 @@ class MotionService {
         float dt = (now - lastUpdate) / 1000.0f;
         lastUpdate = now;
 
-        // Update skill manager
         skillManager.update(body_state, state, _peripherals, dt);
 
-        // If a skill is active and requires a specific state, ensure we're in that state
         if (skillManager.hasActiveSkill()) {
             MotionState *requiredState = skillManager.getCurrentSkillRequiredState();
             if (requiredState && state != requiredState) {

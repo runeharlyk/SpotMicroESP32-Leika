@@ -71,6 +71,9 @@ class WalkState : public MotionState {
     WalkState() = default;
     const char *name() const override { return "Bezier"; }
 
+    float getPhaseTime() const { return phase_time; }
+    float getStepLength() const { return step_length; }
+
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
         mode = WALK_GAIT::CRAWL;
         speed_factor = 0.5;
