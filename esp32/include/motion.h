@@ -11,6 +11,7 @@
 #include <motion_states/walk_state.h>
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
+#include <motion_skills/skill_manager.h>
 #include <message_types.h>
 
 #define DEFAULT_STATE false
@@ -39,6 +40,8 @@ class MotionService {
                            std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
 
         body_state.updateFeet(KinConfig::default_feet_positions);
+
+        skillManager.setWalkState(&walkState);
     }
 
     void anglesEvent(JsonVariant &root, int originId) {
@@ -109,12 +112,42 @@ class MotionService {
         const gesture_t ges = _peripherals->takeGesture();
         if (ges != gesture_t::eGestureNone) {
             ESP_LOGI("Motion", "Gesture: %d", ges);
-            switch (ges) {
-                case gesture_t::eGestureDown: setState(&restState); break;
-                case gesture_t::eGestureUp: setState(&standState); break;
-                case gesture_t::eGestureLeft:
-                case gesture_t::eGestureRight: setState(&walkState); break;
 
+            // Check if this gesture maps to a skill
+            if (ges == gesture_t::eGestureClockwise || ges == gesture_t::eGestureAntiClockwise) {
+                skillManager.queueGestureSkill(ges);
+                return; // Let skill manager handle state transitions
+            }
+
+            // Handle basic gestures that don't require skills
+            switch (ges) {
+                case gesture_t::eGestureDown:
+                    skillManager.clearQueue(); // Clear any running skills
+                    if (state == &restState) {
+                        _servoController->deactivate();
+                        setState(nullptr);
+                    } else if (state == &standState)
+                        setState(&restState);
+                    else if (state == &walkState)
+                        setState(&standState);
+                    break;
+                case gesture_t::eGestureUp:
+                    skillManager.clearQueue(); // Clear any running skills
+
+                    if (!state) {
+                        _servoController->activate();
+                        setState(&restState);
+                    } else if (state == &restState)
+                        setState(&standState);
+                    else if (state == &standState)
+                        setState(&walkState);
+                    break;
+                    break;
+                case gesture_t::eGestureLeft:
+                case gesture_t::eGestureRight:
+                    skillManager.clearQueue(); // Clear any running skills
+                    setState(&walkState);
+                    break;
                 default: break;
             }
         }
@@ -122,10 +155,24 @@ class MotionService {
 
     bool updateMotion() {
         handleGestures();
-        if (!state) return false;
+
         unsigned long now = millis();
         float dt = (now - lastUpdate) / 1000.0f;
         lastUpdate = now;
+
+        // Update skill manager
+        skillManager.update(body_state, state, _peripherals, dt);
+
+        // If a skill is active and requires a specific state, ensure we're in that state
+        if (skillManager.hasActiveSkill()) {
+            MotionState *requiredState = skillManager.getCurrentSkillRequiredState();
+            if (requiredState && state != requiredState) {
+                setState(requiredState);
+            }
+        }
+
+        if (!state) return false;
+
         state->updateImuOffsets(_peripherals->angleY(), _peripherals->angleX());
         state->step(body_state, dt);
         kinematics.calculate_inverse_kinematics(body_state, new_angles);
@@ -161,6 +208,8 @@ class MotionService {
     RestState restState;
     StandState standState;
     WalkState walkState;
+
+    SkillManager skillManager;
 
     body_state_t body_state;
 

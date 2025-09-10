@@ -209,6 +209,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float leftDistance() { return _left_distance; }
     float rightDistance() { return _right_distance; }
 
+    float getHeading() {
+#if FT_ENABLED(USE_HMC5883)
+        return _mag.getHeading();
+#else
+        return 0.0f;
+#endif
+    }
+
     StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
 
     void emitIMU() {
