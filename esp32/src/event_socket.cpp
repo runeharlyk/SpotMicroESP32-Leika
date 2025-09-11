@@ -2,11 +2,13 @@
 
 SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 
-EventSocket::EventSocket() {
+EventSocket::EventSocket(PsychicHttpServer &server, const char *route) : _server(server), _route(route) {
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
 }
+
+void EventSocket::begin() { _server.on(_route, &_socket); }
 
 void EventSocket::onWSOpen(PsychicWebSocketClient *client) {
     ESP_LOGI("EventSocket", "ws[%s][%u] connect", client->remoteIP().toString().c_str(), client->socket());
@@ -172,5 +174,3 @@ void EventSocket::onEvent(String event, EventCallback callback) {
 void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
     subscribe_callbacks[event].push_back(std::move(callback));
 }
-
-EventSocket socket;

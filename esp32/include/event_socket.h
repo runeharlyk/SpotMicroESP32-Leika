@@ -14,9 +14,9 @@ typedef std::function<void(const String &originId, bool sync)> SubscribeCallback
 
 class EventSocket {
   public:
-    EventSocket();
+    EventSocket(PsychicHttpServer &server, const char *route = "/api/ws");
 
-    PsychicWebSocketHandler *getHandler() { return &_socket; }
+    void begin();
 
     bool hasSubscribers(const char *event);
 
@@ -28,6 +28,8 @@ class EventSocket {
 
   private:
     PsychicWebSocketHandler _socket;
+    PsychicHttpServer &_server;
+    const char *_route;
 
     std::map<String, std::list<int>> client_subscriptions;
     std::map<String, std::list<EventCallback>> event_callbacks;
@@ -40,7 +42,5 @@ class EventSocket {
     void onWSClose(PsychicWebSocketClient *client);
     esp_err_t onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame);
 };
-
-extern EventSocket socket;
 
 #endif

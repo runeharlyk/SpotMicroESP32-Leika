@@ -38,12 +38,12 @@ esp_err_t getMetrics(PsychicRequest *request) {
 
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
-    File root = ESPFS.open(FS_CONFIG_DIRECTORY);
+    File root = ESP_FS.open(FS_CONFIG_DIRECTORY);
     File file;
     while (file = root.openNextFile()) {
         String path = file.path();
         file.close();
-        ESPFS.remove(path);
+        ESP_FS.remove(path);
     }
     restart();
 }
@@ -106,8 +106,8 @@ void status(JsonObject &root) {
     root["arduino_version"] = ARDUINO_VERSION;
     root["flash_chip_size"] = ESP.getFlashChipSize();
     root["flash_chip_speed"] = ESP.getFlashChipSpeed();
-    root["fs_total"] = ESPFS.totalBytes();
-    root["fs_used"] = ESPFS.usedBytes();
+    root["fs_total"] = ESP_FS.totalBytes();
+    root["fs_used"] = ESP_FS.usedBytes();
     root["core_temp"] = temperatureRead();
     root["cpu_reset_reason"] = resetReason(esp_reset_reason());
     root["uptime"] = millis() / 1000;
@@ -119,8 +119,8 @@ void metrics(JsonObject &root) {
     root["total_heap"] = ESP.getHeapSize();
     root["min_free_heap"] = ESP.getMinFreeHeap();
     root["max_alloc_heap"] = ESP.getMaxAllocHeap();
-    root["fs_used"] = ESPFS.usedBytes();
-    root["fs_total"] = ESPFS.totalBytes();
+    root["fs_used"] = ESP_FS.usedBytes();
+    root["fs_total"] = ESP_FS.totalBytes();
     root["core_temp"] = temperatureRead();
     root["cpu0_usage"] = g_taskManager.getCpuUsage(0);
     root["cpu1_usage"] = g_taskManager.getCpuUsage(1);
@@ -136,12 +136,12 @@ void metrics(JsonObject &root) {
 }
 
 void emitMetrics() {
-    if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
-    analyticsDoc.clear();
-    JsonObject root = analyticsDoc.to<JsonObject>();
-    system_service::metrics(root);
-    JsonVariant data = analyticsDoc.as<JsonVariant>();
-    socket.emit(EVENT_ANALYTICS, data);
+    // if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
+    // analyticsDoc.clear();
+    // JsonObject root = analyticsDoc.to<JsonObject>();
+    // system_service::metrics(root);
+    // JsonVariant data = analyticsDoc.as<JsonVariant>();
+    // socket.emit(EVENT_ANALYTICS, data);
 }
 
 const char *resetReason(esp_reset_reason_t reason) {

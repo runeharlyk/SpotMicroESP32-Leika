@@ -161,7 +161,7 @@ class GestureSensor {
 
     gesture_t getGesture() { return msg.gesture; }
 
-    gesture_t takeGesture() {
+    gesture_t const takeGesture() {
         const auto g = msg.gesture;
         msg.gesture = eGestureNone;
         return g;

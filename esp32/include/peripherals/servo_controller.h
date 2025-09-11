@@ -32,16 +32,16 @@ class ServoController : public StatefulService<ServoSettings> {
           _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
-        socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-                       [&](JsonVariant &root, int originId) { servoEvent(root, originId); });
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) { stateUpdate(root, originId); });
+        // socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
+        //                [&](JsonVariant &root, int originId) { servoEvent(root, originId); });
+        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) { stateUpdate(root, originId); });
         _persistence.readFromFS();
 
         initializePCA();
-        socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
-            is_active = root["active"] | false;
-            is_active ? activate() : deactivate();
-        });
+        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
+        //     is_active = root["active"] | false;
+        //     is_active ? activate() : deactivate();
+        // });
     }
 
     void pcaWrite(int index, int value) {
@@ -110,7 +110,7 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.setMultiplePWM(pwms, 12);
     }
 
-    void updateServoState() {
+    void update() {
         if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
     }
 

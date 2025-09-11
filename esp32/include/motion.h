@@ -13,33 +13,13 @@
 #include <motion_states/rest_state.h>
 #include <message_types.h>
 
-#define DEFAULT_STATE false
-#define ANGLES_EVENT "angles"
-#define INPUT_EVENT "input"
-#define MODE_EVENT "mode"
-#define WALK_GAIT_EVENT "walk_gait"
-
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
 class MotionService {
   public:
-    MotionService(ServoController *servoController, Peripherals *peripherals)
-        : _servoController(servoController), _peripherals(peripherals) {}
+    MotionService() {}
 
-    void begin() {
-        socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { handleInput(root, originId); });
-
-        socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) { handleMode(root, originId); });
-
-        socket.onEvent(WALK_GAIT_EVENT, [&](JsonVariant &root, int originId) { handleWalkGait(root, originId); });
-
-        socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { anglesEvent(root, originId); });
-
-        socket.onSubscribe(ANGLES_EVENT,
-                           std::bind(&MotionService::syncAngles, this, std::placeholders::_1, std::placeholders::_2));
-
-        body_state.updateFeet(KinConfig::default_feet_positions);
-    }
+    void begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
 
     void anglesEvent(JsonVariant &root, int originId) {
         JsonArray array = root.as<JsonArray>();
@@ -50,12 +30,14 @@ class MotionService {
     }
 
     void setState(MotionState *newState) {
-        _servoController->activate();
         if (state) {
             state->end();
         }
         state = newState;
-        if (state) state->begin();
+        if (state) {
+            _servoController->activate();
+            state->begin();
+        }
     }
 
     void handleInput(JsonVariant &root, int originId) {
@@ -89,7 +71,7 @@ class MotionService {
         JsonDocument doc;
         doc.set(static_cast<int>(mode));
         JsonVariant data = doc.as<JsonVariant>();
-        socket.emit(MODE_EVENT, data, String(originId).c_str());
+        // socket.emit(MODE_EVENT, data, String(originId).c_str());
     }
 
     void emitAngles(const String &originId = "", bool sync = false) {
@@ -97,7 +79,7 @@ class MotionService {
         auto arr = doc.to<JsonArray>();
         for (int i = 0; i < 12; i++) arr.add(angles[i]);
         JsonVariant data = doc.as<JsonVariant>();
-        socket.emit(ANGLES_EVENT, data, originId.c_str());
+        // socket.emit(ANGLES_EVENT, data, originId.c_str());
     }
 
     void syncAngles(const String &originId = "", bool sync = false) {
@@ -105,8 +87,7 @@ class MotionService {
         _servoController->setAngles(angles);
     }
 
-    void handleGestures() {
-        const gesture_t ges = _peripherals->takeGesture();
+    void handleGestures(const gesture_t ges) {
         if (ges != gesture_t::eGestureNone) {
             ESP_LOGI("Motion", "Gesture: %d", ges);
             switch (ges) {
@@ -120,13 +101,13 @@ class MotionService {
         }
     }
 
-    bool updateMotion() {
-        handleGestures();
+    bool update(Peripherals *peripherals) {
+        handleGestures(peripherals->takeGesture());
         if (!state) return false;
         unsigned long now = millis();
         float dt = (now - lastUpdate) / 1000.0f;
         lastUpdate = now;
-        state->updateImuOffsets(_peripherals->angleY(), _peripherals->angleX());
+        state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());
         state->step(body_state, dt);
         kinematics.calculate_inverse_kinematics(body_state, new_angles);
 
@@ -147,9 +128,10 @@ class MotionService {
 
     float *getAngles() { return angles; }
 
+    inline bool isActive() { return state != nullptr; }
+
   private:
     ServoController *_servoController;
-    Peripherals *_peripherals;
     Kinematics kinematics;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
