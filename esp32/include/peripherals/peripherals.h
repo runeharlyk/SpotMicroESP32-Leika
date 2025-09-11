@@ -69,7 +69,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float angleZ();
 
-    gesture_t const takeGesture();
+    gesture_t takeGesture();
 
     float leftDistance();
     float rightDistance();

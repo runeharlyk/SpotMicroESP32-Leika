@@ -11,7 +11,7 @@
 class MDNSService : public StatefulService<MDNSSettings> {
   private:
     FSPersistence<MDNSSettings> _persistence;
-    bool _started;
+    bool _started {false};
 
     void reconfigureMDNS();
     void startMDNS();

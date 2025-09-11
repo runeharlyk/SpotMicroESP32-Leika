@@ -2,7 +2,6 @@
 
 #include <ArduinoJson.h>
 #include <utils/json_utils.h>
-#include <utils/string_utils.h>
 #include <template/state_result.h>
 #include <filesystem.h>
 
@@ -111,10 +110,10 @@ class MDNSSettings {
         }
 
         if (settings.services.empty()) {
-            mdns_service_t httpService = {.service = "http", .protocol = "tcp", .port = 80};
+            mdns_service_t httpService = {.service = "http", .protocol = "tcp", .port = 80, .txtRecords = {}};
             settings.services.push_back(httpService);
 
-            mdns_service_t wsService = {.service = "ws", .protocol = "tcp", .port = 80};
+            mdns_service_t wsService = {.service = "ws", .protocol = "tcp", .port = 80, .txtRecords = {}};
             settings.services.push_back(wsService);
         }
 

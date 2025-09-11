@@ -3,9 +3,8 @@
 static const char *TAG = "MDNSService";
 
 MDNSService::MDNSService()
-    : endpoint(MDNSSettings::read, MDNSSettings::update, this),
-      _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
-      _started(false) {
+    : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
+      endpoint(MDNSSettings::read, MDNSSettings::update, this) {
     addUpdateHandler([&](const String &originId) { reconfigureMDNS(); }, false);
 }
 
