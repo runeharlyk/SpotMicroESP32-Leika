@@ -1,44 +1,49 @@
-#   ESP32 SvelteKit --
-#
-#   A simple, secure and extensible framework for IoT projects for ESP32 platforms
-#   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
-#   https://github.com/theelims/ESP32-sveltekit
-#
-#   Copyright (C) 2018 - 2023 rjwats
-#   Copyright (C) 2023 theelims
-#   Copyright (C) 2023 Maxtrium B.V. [ code available under dual license ]
-#   Copyright (C) 2024 runeharlyk
-#
-#   All Rights Reserved. This software may be modified and distributed under
-#   the terms of the LGPL v3 license. See the LICENSE file for details.
-
+from functools import lru_cache
 from pathlib import Path
-from shutil import copytree, rmtree, copyfileobj
-from os.path import exists, getmtime
+from os.path import exists, getmtime, splitext
 import os
 import gzip
 import mimetypes
 import glob
-from datetime import datetime
+import zlib
 
 Import("env")
 
 project_dir = env["PROJECT_DIR"]
 buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
-interface_dir = project_dir + "/app"
-output_file = project_dir + "/esp32/include/WWWData.h"
-source_www_dir = interface_dir + "/src"
-build_dir = interface_dir + "/build"
-filesystem_dir = project_dir + "/data/www"
+interface_dir = f"{project_dir}/app"
+output_file = f"{project_dir}/esp32/include/WWWData.h"
+source_www_dir = f"{interface_dir}/src"
+build_dir = f"{interface_dir}/build"
+filesystem_dir = f"{project_dir}/data"
+
+Path(filesystem_dir).mkdir(exist_ok=True)
+Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+mimetypes.init()
+
+already_compressed_ext = {
+    ".gz", ".br", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".mp3", ".aac", ".ogg", ".wav",
+    ".wasm", ".pdf", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".7z", ".zip", ".rar", ".bz2", ".xz", ".lz", ".svgz"
+}
+
+
+@lru_cache(1)
+def get_flag(flag, default=None):
+    for d in buildFlags.get("CPPDEFINES", []):
+        if d == flag:
+            return True
+        if isinstance(d, (list, tuple)) and d[0] == flag:
+            return d[1] if len(d) > 1 else True
+    return default
 
 
 def get_files_to_exclude():
     files_to_exclude = []
-    if (flag_exists("SPOTMICRO_ESP32") or flag_exists("SPOTMICRO_ESP32_MINI")) and not flag_exists("SPOTMICRO_YERTLE"):
+    if (get_flag("SPOTMICRO_ESP32") or get_flag("SPOTMICRO_ESP32_MINI")) and not get_flag("SPOTMICRO_YERTLE"):
         print("Excluding Yertle files for SPOTMICRO_ESP32 build")
         files_to_exclude.extend(["yertle.URDF", "URDF.zip", "URDF/"])
-    elif flag_exists("SPOTMICRO_YERTLE") and not flag_exists("SPOTMICRO_ESP32") and not flag_exists("SPOTMICRO_ESP32_MINI"):
+    elif get_flag("SPOTMICRO_YERTLE") and not get_flag("SPOTMICRO_ESP32") and not get_flag("SPOTMICRO_ESP32_MINI"):
         print("Excluding Spot Micro files for SPOTMICRO_YERTLE build")
         files_to_exclude.extend(["spot_micro.urdf.xacro", "stl.zip", "stl/"])
     else:
@@ -46,157 +51,109 @@ def get_files_to_exclude():
     return files_to_exclude
 
 
-def find_latest_timestamp_for_app():
-    return max((getmtime(f) for f in glob.glob(f"{source_www_dir}/**/*", recursive=True)))
+def latest_ts():
+    files = [p for p in glob.glob(
+        f"{source_www_dir}/**/*", recursive=True) if os.path.isfile(p)]
+    return max(getmtime(p) for p in files) if files else 0
 
 
-def should_regenerate_output_file():
-    if not flag_exists("EMBED_WWW") or not exists(output_file):
+def needs_rebuild():
+    if not exists(output_file):
         return True
-    last_source_change = find_latest_timestamp_for_app()
-    last_build = getmtime(output_file)
-
-    print(
-        f"Newest file: {datetime.fromtimestamp(last_source_change)}, output file: {datetime.fromtimestamp(last_build)}"
-    )
-
-    return last_build < last_source_change
+    return getmtime(output_file) < latest_ts()
 
 
-def gzip_file(file):
-    with open(file, "rb") as f_in:
-        with gzip.open(file + ".gz", "wb") as f_out:
-            copyfileobj(f_in, f_out)
-    os.remove(file)
-
-
-def flag_exists(flag):
-    for define in buildFlags.get("CPPDEFINES"):
-        if define == flag or (isinstance(define, list) and define[0] == flag):
-            return True
-    return False
-
-
-def get_package_manager():
-    if exists(os.path.join(interface_dir, "package-lock.json")):
-        return "npm"
-    if exists(os.path.join(interface_dir, "yarn.lock")):
-        return "yarn"
+def pkg_mgr():
     if exists(os.path.join(interface_dir, "pnpm-lock.yaml")):
         return "pnpm"
+    if exists(os.path.join(interface_dir, "yarn.lock")):
+        return "yarn"
+    if exists(os.path.join(interface_dir, "package-lock.json")):
+        return "npm"
 
 
-def build_webapp():
-    if package_manager := get_package_manager():
-        print(f"Building interface with {package_manager}")
+def build_web():
+    m = pkg_mgr()
+    if not m:
+        raise Exception(
+            "No lock-file found. Please install dependencies for interface")
+    cwd = os.getcwd()
+    try:
         os.chdir(interface_dir)
-        env.Execute(f"{package_manager} install")
-        env.Execute(f"{package_manager} run build:embedded")
-        os.chdir("..")
-    else:
-        raise Exception("No lock-file found. Please install dependencies for interface (eg. npm install)")
+        env.Execute(f"{m} install")
+        env.Execute(f"{m} run build:embedded")
+    finally:
+        os.chdir(cwd)
 
 
-def embed_webapp():
-    if flag_exists("EMBED_WWW"):
-        print("Converting interface to PROGMEM")
-        build_progmem()
-        return
-    add_app_to_filesystem()
+def encode_asset_data(path):
+    ext = splitext(path.name)[1].lower()
+    raw = path.read_bytes()
+    if ext in already_compressed_ext:
+        return raw, 0, zlib.crc32(raw) & 0xFFFFFFFF
+    gz = gzip.compress(raw, mtime=0)
+    return gz, 1, zlib.crc32(gz) & 0xFFFFFFFF
 
 
-def build_progmem():
-    mimetypes.init()
-    with open(output_file, "w") as progmem:
-        progmem.write("#include <functional>\n")
-        progmem.write("#include <Arduino.h>\n")
+def write_header():
+    exclude = get_files_to_exclude()
+    assets = []
+    for p in sorted(Path(build_dir).rglob("*.*"), key=lambda x: x.relative_to(build_dir).as_posix()):
+        rel_path = p.relative_to(build_dir).as_posix()
+        if any(rel_path == ex or rel_path.startswith(ex.rstrip("/")) for ex in exclude):
+            continue
+        uri = "/" + rel_path
+        mime = mimetypes.guess_type(uri)[0] or "application/octet-stream"
+        data, gz_flag, etag = encode_asset_data(p)
+        assets.append((uri, mime, data, gz_flag, etag))
 
-        assetMap = {}
+    offsets, cursor = [], 0
+    for _, _, data, _, _ in assets:
+        offsets.append(cursor)
+        cursor += len(data)
 
-        files_to_exclude = get_files_to_exclude()
+    with open(output_file, "w", newline="\n") as f:
+        f.write("#pragma once\n")
+        f.write("#include <Arduino.h>\n\n")
+        f.write(
+            "struct WebAsset { const char* uri; const char* mime; const uint8_t* data; uint32_t len; uint32_t etag; uint8_t gz; };\n")
+        f.write(
+            "struct WebOptions { const char* default_uri; uint32_t max_age; uint8_t add_vary; };\n\n")
 
-        for idx, path in enumerate(Path(build_dir).rglob("*.*")):
-            asset_path = path.relative_to(build_dir).as_posix()
+        f.write("static const uint8_t WWW_BLOB[] PROGMEM = {\n")
+        col = 0
+        for _, _, data, _, _ in assets:
+            for b in data:
+                if col == 0:
+                    f.write("\t")
+                f.write(f"0x{b:02X},")
+                col = (col + 1) % 16
+                if col == 0:
+                    f.write("\n")
+        if col != 0:
+            f.write("\n")
+        f.write("};\n\n")
 
-            should_exclude = False
-            for exclude_pattern in files_to_exclude:
-                if exclude_pattern.endswith("/"):
-                    if asset_path.startswith(exclude_pattern):
-                        should_exclude = True
-                        print(f"Skipping {asset_path}")
-                        break
-                elif asset_path == exclude_pattern:
-                    should_exclude = True
-                    print(f"Skipping {asset_path}")
-                    break
+        for i, (uri, _, _, _, _) in enumerate(assets):
+            f.write(f'static const char WWW_URI_{i}[] PROGMEM = "{uri}";\n')
+        for i, (_, mime, _, _, _) in enumerate(assets):
+            f.write(f'static const char WWW_MIME_{i}[] PROGMEM = "{mime}";\n')
+        f.write("\n")
 
-            if should_exclude:
-                continue
+        f.write("static const WebAsset WWW_ASSETS[] PROGMEM = {\n")
+        for i, (_, _, data, gz_flag, etag) in enumerate(assets):
+            f.write(
+                f"\t{{WWW_URI_{i}, WWW_MIME_{i}, WWW_BLOB+{offsets[i]}, {len(data)}, 0x{etag:08X}, {gz_flag}}},\n")
+        f.write("};\n\n")
 
-            asset_mime = mimetypes.guess_type(asset_path)[0] or "application/octet-stream"
-            print(f"Converting {asset_path}")
-
-            asset_var = f"ESP_SVELTEKIT_DATA_{idx}"
-            progmem.write(f"// {asset_path}\n")
-            progmem.write(f"const uint8_t {asset_var}[] PROGMEM = {{\n\t")
-            file_data = gzip.compress(path.read_bytes())
-
-            for i, byte in enumerate(file_data):
-                if i and not (i % 16):
-                    progmem.write("\n\t")
-                progmem.write(f"0x{byte:02X},")
-
-            progmem.write("\n};\n\n")
-            assetMap[asset_path] = {
-                "name": asset_var,
-                "mime": asset_mime,
-                "size": len(file_data),
-            }
-
-        progmem.write(
-            "typedef std::function<void(const String& uri, const String& contentType, const uint8_t * content, size_t len)> RouteRegistrationHandler;\n\n"
-        )
-        progmem.write("class WWWData {\n")
-        progmem.write("\tpublic:\n")
-        progmem.write("\t\tstatic void registerRoutes(RouteRegistrationHandler handler) {\n")
-
-        for asset_path, asset in assetMap.items():
-            progmem.write(f'\t\t\thandler("/{asset_path}", "{asset["mime"]}", {asset["name"]}, {asset["size"]});\n')
-
-        progmem.write("\t\t}\n")
-        progmem.write("};\n\n")
+        f.write(f"static const size_t WWW_ASSETS_COUNT = {len(assets)};\n")
+        default_uri = "/index.html" if any(u == "/index.html" for u,
+                                           _, _, _, _ in assets) else (assets[0][0] if assets else "/")
+        f.write(
+            f'static const WebOptions WWW_OPT = {{ "{default_uri}", 31536000u, 1 }};\n')
 
 
-def add_app_to_filesystem():
-    build_path = Path(build_dir)
-    www_path = Path(filesystem_dir)
-    if www_path.exists() and www_path.is_dir():
-        rmtree(www_path)
-
-    print("Copying and compress app to data directory")
-
-    files_to_exclude = get_files_to_exclude()
-
-    def ignore_files(dir, files):
-        ignored = []
-        for file in files:
-            file_path = Path(dir) / file
-            relative_path = file_path.relative_to(build_path)
-            if str(relative_path) in files_to_exclude:
-                ignored.append(file)
-                print(f"Excluding: {relative_path}")
-        return ignored
-
-    copytree(build_path, www_path, ignore=ignore_files if files_to_exclude else None)
-
-    for current_path, _, files in os.walk(www_path):
-        for file in files:
-            gzip_file(os.path.join(current_path, file))
-    print("Build LittleFS file system image and upload to ESP32")
-    env.Execute("pio run --target uploadfs")
-
-
-print("running: build_app.py")
-if should_regenerate_output_file():
-    build_webapp()
-    embed_webapp()
+if get_flag("EMBED_WEBAPP") == "1" and needs_rebuild():
+    print("Building web app")
+    build_web()
+    write_header()

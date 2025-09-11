@@ -4,7 +4,7 @@
 
 #include <LittleFS.h>
 
-#define ESPFS LittleFS
+#define ESP_FS LittleFS
 
 #define AP_SETTINGS_FILE "/config/apSettings.json"
 #define CAMERA_SETTINGS_FILE "/config/cameraSettings.json"

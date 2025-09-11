@@ -49,15 +49,15 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _eventEndpoint.begin();
         _persistence.readFromFS();
 
-        socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
-            scanI2C();
-            emitI2C();
-        });
+        // socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
+        //     scanI2C();
+        //     emitI2C();
+        // });
 
-        socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
-            scanI2C();
-            emitI2C(originId, sync);
-        });
+        // socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
+        //     scanI2C();
+        //     emitI2C(originId, sync);
+        // });
 
         updatePins();
 
@@ -78,6 +78,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
 #endif
     };
+
+    void update() {
+        readIMU();
+        readMag();
+        // _peripherals.readBMP();
+        EXECUTE_EVERY_N_MS(100, { readGesture(); });
+    }
 
     void loop() {
         EXECUTE_EVERY_N_MS(_updateInterval, {
@@ -112,7 +119,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         }
         ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
         JsonVariant data = doc.as<JsonVariant>();
-        socket.emit(EVENT_I2C_SCAN, data, originId.c_str(), sync);
+        // socket.emit(EVENT_I2C_SCAN, data, originId.c_str(), sync);
     }
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
@@ -197,7 +204,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     // float angleZ() { return _imu.getAngleZ(); }
 
-    gesture_t takeGesture() {
+    gesture_t const takeGesture() {
         return
 #if FT_ENABLED(USE_PAJ7620U2)
             _gesture.takeGesture();
@@ -225,7 +232,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #endif
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055) || FT_ENABLED(USE_HMC5883)
         JsonVariant data = doc.as<JsonVariant>();
-        socket.emit(EVENT_IMU, data);
+        // socket.emit(EVENT_IMU, data);
 #endif
     }
 
@@ -235,7 +242,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
         JsonArray root = doc.to<JsonArray>();
         root[0] = _left_distance, root[1] = _right_distance;
         JsonVariant data = doc.as<JsonVariant>();
-        socket.emit("sonar", data);
+        // socket.emit("sonar", data);
 #endif
     }
 

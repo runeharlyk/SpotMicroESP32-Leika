@@ -90,7 +90,7 @@ class FSPersistence {
     JsonStateReader<T> _stateReader;
     JsonStateUpdater<T> _stateUpdater;
     StatefulService<T> *_statefulService;
-    FS *_fs {&ESPFS};
+    FS *_fs {&ESP_FS};
     const char *_filePath;
     size_t _bufferSize;
     HandlerId _updateHandlerId;

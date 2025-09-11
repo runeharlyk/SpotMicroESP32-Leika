@@ -40,10 +40,10 @@ esp_err_t handleEdit(PsychicRequest *request, JsonVariant &json) {
 
 /* Helpers */
 
-bool deleteFile(const char *filename) { return ESPFS.remove(filename); }
+bool deleteFile(const char *filename) { return ESP_FS.remove(filename); }
 
 String listFiles(const String &directory, bool isRoot) {
-    File root = ESPFS.open(directory.startsWith("/") ? directory : "/" + directory);
+    File root = ESP_FS.open(directory.startsWith("/") ? directory : "/" + directory);
     if (!root.isDirectory()) return "{}";
 
     File file = root.openNextFile();
@@ -95,7 +95,7 @@ esp_err_t uploadFile(PsychicRequest *request, const String &filename, uint64_t i
 }
 
 bool editFile(const char *filename, const char *content) {
-    File file = ESPFS.open(filename, FILE_WRITE);
+    File file = ESP_FS.open(filename, FILE_WRITE);
     if (!file) return false;
 
     file.print(content);
@@ -106,7 +106,7 @@ bool editFile(const char *filename, const char *content) {
 esp_err_t mkdir(PsychicRequest *request, JsonVariant &json) {
     const char *path = json["path"].as<const char *>();
     ESP_LOGI(TAG, "Creating directory: %s", path);
-    return ESPFS.mkdir(path) ? request->reply(200) : request->reply(500);
+    return ESP_FS.mkdir(path) ? request->reply(200) : request->reply(500);
 }
 
 } // namespace FileSystem
