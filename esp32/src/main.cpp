@@ -144,7 +144,8 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     }
 }
 
-void setup() {
+extern "C" void app_main(void) {
+    initArduino();
     Serial.begin(115200);
 
     ESP_FS.begin();
@@ -159,5 +160,3 @@ void setup() {
 
     ESP_LOGI("main", "Finished booting");
 }
-
-void loop() { vTaskDelete(nullptr); }
