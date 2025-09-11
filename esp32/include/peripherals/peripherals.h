@@ -36,215 +36,45 @@
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
-    Peripherals()
-        : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
-          _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
-                         EVENT_CONFIGURATION_SETTINGS),
-          _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
-        _accessMutex = xSemaphoreCreateMutex();
-        addUpdateHandler([&](const String &originId) { updatePins(); }, false);
-    };
+    Peripherals();
 
-    void begin() {
-        _eventEndpoint.begin();
-        _persistence.readFromFS();
+    void begin();
 
-        // socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
-        //     scanI2C();
-        //     emitI2C();
-        // });
+    void update();
 
-        // socket.onSubscribe(EVENT_I2C_SCAN, [&](const String &originId, bool sync) {
-        //     scanI2C();
-        //     emitI2C(originId, sync);
-        // });
+    void updatePins();
 
-        updatePins();
+    void scanI2C(uint8_t lower = 1, uint8_t higher = 127);
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
-#endif
-#if FT_ENABLED(USE_HMC5883)
-        if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
-#endif
-#if FT_ENABLED(USE_BMP180)
-        if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
-#endif
-#if FT_ENABLED(USE_PAJ7620U2)
-        if (!_gesture.initialize()) ESP_LOGE("IMUService", "Gesture initialize failed");
-#endif
-#if FT_ENABLED(USE_USS)
-        _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
-        _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
-#endif
-    };
+    void getI2CResult(JsonVariant &root);
 
-    void update() {
-        readIMU();
-        readMag();
-        // _peripherals.readBMP();
-        EXECUTE_EVERY_N_MS(100, { readGesture(); });
-    }
+    void getIMUResult(JsonVariant &root);
 
-    void loop() {
-        EXECUTE_EVERY_N_MS(_updateInterval, {
-            beginTransaction();
-            emitIMU();
-            readSonar();
-            emitSonar();
-            endTransaction();
-        });
-    }
-
-    void updatePins() {
-        if (i2c_active) {
-            Wire.end();
-        }
-
-        if (state().sda != -1 && state().scl != -1) {
-            Wire.begin(state().sda, state().scl, state().frequency);
-            i2c_active = true;
-        }
-    }
-
-    void emitI2C(const String &originId = "", bool sync = false) {
-        char output[150];
-        JsonDocument doc;
-        JsonObject root = doc.to<JsonObject>();
-        root["sda"] = state().sda;
-        root["scl"] = state().scl;
-        JsonArray addresses = root["addresses"].to<JsonArray>();
-        for (auto &address : addressList) {
-            addresses.add(address);
-        }
-        ESP_LOGI("Peripherals", "Emitting I2C scan results, %s %d", originId.c_str(), sync);
-        JsonVariant data = doc.as<JsonVariant>();
-        // socket.emit(EVENT_I2C_SCAN, data, originId.c_str(), sync);
-    }
-
-    void scanI2C(uint8_t lower = 1, uint8_t higher = 127) {
-        addressList.clear();
-        for (uint8_t address = lower; address < higher; address++) {
-            Wire.beginTransmission(address);
-            if (Wire.endTransmission() == 0) {
-                addressList.emplace_back(address);
-                ESP_LOGI("Peripherals", "I2C device found at address 0x%02X", address);
-            }
-        }
-        uint8_t nDevices = addressList.size();
-        ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", nDevices);
-    }
+    void getSonarResult(JsonVariant &root);
 
     /* IMU FUNCTIONS */
-    bool readIMU() {
-        bool updated = false;
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        beginTransaction();
-        updated = _imu.readIMU();
-        endTransaction();
-#endif
-        return updated;
-    }
+    bool readImu();
 
-    bool readMag() {
-        bool updated = false;
-#if FT_ENABLED(USE_HMC5883)
-        beginTransaction();
-        updated = _mag.readMagnetometer();
-        endTransaction();
-#endif
-        return updated;
-    }
+    bool readMag();
 
-    bool readBMP() {
-        bool updated = false;
-#if FT_ENABLED(USE_BMP180)
-        beginTransaction();
-        updated = _bmp.readBarometer();
-        endTransaction();
-#endif
-        return updated;
-    }
+    bool readBMP();
 
-    bool readGesture() {
-        bool updated = false;
-#if FT_ENABLED(USE_PAJ7620U2)
-        beginTransaction();
-        updated = _gesture.readGesture();
-        endTransaction();
-#endif
-        return updated;
-    }
+    bool readGesture();
 
-    void readSonar() {
-#if FT_ENABLED(USE_USS)
-        _left_distance = _left_sonar->ping_cm();
-        delay(50);
-        _right_distance = _right_sonar->ping_cm();
-#endif
-    }
+    void readSonar();
 
-    float angleX() {
-        return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-            _imu.getAngleX();
-#else
-            0;
-#endif
-    }
+    float angleX();
 
-    float angleY() {
-        return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-            _imu.getAngleY();
-#else
-            0;
-#endif
-    }
+    float angleY();
 
-    // float angleZ() { return _imu.getAngleZ(); }
+    float angleZ();
 
-    gesture_t const takeGesture() {
-        return
-#if FT_ENABLED(USE_PAJ7620U2)
-            _gesture.takeGesture();
-#else
-            gesture_t::eGestureNone;
-#endif
-    }
+    gesture_t const takeGesture();
 
-    float leftDistance() { return _left_distance; }
-    float rightDistance() { return _right_distance; }
+    float leftDistance();
+    float rightDistance();
 
     StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
-
-    void emitIMU() {
-        doc.clear();
-        JsonObject root = doc.to<JsonObject>();
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        _imu.readIMU(root);
-#endif
-#if FT_ENABLED(USE_HMC5883)
-        _mag.readMagnetometer(root);
-#endif
-#if FT_ENABLED(USE_BMP180)
-        _bmp.readBarometer(root);
-#endif
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055) || FT_ENABLED(USE_HMC5883)
-        JsonVariant data = doc.as<JsonVariant>();
-        // socket.emit(EVENT_IMU, data);
-#endif
-    }
-
-    void emitSonar() {
-#if FT_ENABLED(USE_USS)
-        doc.clear();
-        JsonArray root = doc.to<JsonArray>();
-        root[0] = _left_distance, root[1] = _right_distance;
-        JsonVariant data = doc.as<JsonVariant>();
-        // socket.emit("sonar", data);
-#endif
-    }
 
   private:
     EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
