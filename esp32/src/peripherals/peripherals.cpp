@@ -152,7 +152,7 @@ float Peripherals::angleZ() {
 #endif
 }
 
-gesture_t const Peripherals::takeGesture() {
+gesture_t Peripherals::takeGesture() {
     return
 #if FT_ENABLED(USE_PAJ7620U2)
         _gesture.takeGesture();

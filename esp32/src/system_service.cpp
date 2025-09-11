@@ -4,9 +4,6 @@ namespace system_service {
 
 static const char *TAG = "SystemService";
 
-static JsonDocument analyticsDoc;
-static char analyticsMessage[MAX_ESP_ANALYTICS_SIZE];
-
 esp_err_t handleReset(PsychicRequest *request) {
     reset();
     return request->reply(200);

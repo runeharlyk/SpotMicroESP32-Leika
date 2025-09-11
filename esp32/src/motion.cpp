@@ -36,7 +36,7 @@ void MotionService::handleWalkGait(JsonVariant &root, int originId) {
 
 void MotionService::handleMode(JsonVariant &root, int originId) {
     MOTION_STATE mode = static_cast<MOTION_STATE>(root.as<int>());
-    ESP_LOGV("MotionService", "Mode %d", mode);
+    ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
         case MOTION_STATE::REST: setState(&restState); break;
         case MOTION_STATE::STAND: setState(&standState); break;

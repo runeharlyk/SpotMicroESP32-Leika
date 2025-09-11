@@ -1,8 +1,8 @@
 #include <wifi_service.h>
 
 WiFiService::WiFiService()
-    : endpoint(WiFiSettings::read, WiFiSettings::update, this),
-      _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE) {
+    : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
+      endpoint(WiFiSettings::read, WiFiSettings::update, this) {
     addUpdateHandler([&](const String &originId) { reconfigureWiFiConnection(); }, false);
 }
 

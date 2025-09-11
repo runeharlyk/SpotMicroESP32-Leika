@@ -5,7 +5,6 @@
 #include <ArduinoJson.h>
 #include <utils/json_utils.h>
 #include <utils/ip_utils.h>
-#include <utils/string_utils.h>
 #include <template/state_result.h>
 
 #ifndef FACTORY_WIFI_SSID
@@ -82,15 +81,19 @@ typedef struct {
 } wifi_settings_t;
 
 inline wifi_settings_t createDefaultWiFiSettings() {
-    return wifi_settings_t {.ssid = FACTORY_WIFI_SSID,
-                            .password = FACTORY_WIFI_PASSWORD,
-                            .staticIPConfig = false,
-                            .localIP = INADDR_NONE,
-                            .gatewayIP = INADDR_NONE,
-                            .subnetMask = INADDR_NONE,
-                            .dnsIP1 = INADDR_NONE,
-                            .dnsIP2 = INADDR_NONE,
-                            .available = false};
+    return wifi_settings_t {
+        .ssid = FACTORY_WIFI_SSID,
+        .bssid = {0},
+        .channel = -1,
+        .password = FACTORY_WIFI_PASSWORD,
+        .staticIPConfig = false,
+        .localIP = INADDR_NONE,
+        .gatewayIP = INADDR_NONE,
+        .subnetMask = INADDR_NONE,
+        .dnsIP1 = INADDR_NONE,
+        .dnsIP2 = INADDR_NONE,
+        .available = false,
+    };
 }
 
 class WiFiSettings {
