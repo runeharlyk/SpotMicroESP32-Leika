@@ -85,9 +85,6 @@ void setupEventSocket() {
                    [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
 
     socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId); });
-
-    socket.onSubscribe(ANGLES_EVENT, std::bind(&MotionService::syncAngles, motionService, std::placeholders::_1,
-                                               std::placeholders::_2));
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {
@@ -115,6 +112,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service control task starting");
+
     wifiService.begin();
     MDNS.begin(APP_NAME);
     MDNS.setInstanceName(APP_NAME);
