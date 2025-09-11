@@ -75,8 +75,10 @@ void setupServer() {
 #define INPUT_EVENT "input"
 #define MODE_EVENT "mode"
 #define WALK_GAIT_EVENT "walk_gait"
+#define EVENT_I2C_SCAN "i2cScan"
 
 void setupEventSocket() {
+    // Motion events
     socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
 
     socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) { motionService.handleMode(root, originId); });
@@ -85,6 +87,15 @@ void setupEventSocket() {
                    [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
 
     socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId); });
+
+    // Peripherals events
+    socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
+        peripherals.scanI2C();
+        JsonDocument doc;
+        JsonVariant results = doc.to<JsonVariant>();
+        peripherals.getI2CResult(results);
+        socket.emit(EVENT_I2C_SCAN, results);
+    });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {

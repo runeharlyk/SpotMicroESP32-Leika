@@ -9,40 +9,41 @@
 #include <Adafruit_HMC5883_U.h>
 #include <Adafruit_Sensor.h>
 
-struct MagnetometerMsg {
+#include <peripherals/sensor.hpp>
+
+struct MagnetometerMsg : public SensorMessageBase {
     float rpy[3] {0, 0, 0};
     float heading {-1};
-    bool success {false};
 
-    friend void toJson(JsonVariant v, MagnetometerMsg const& a) {
+    void toJson(JsonVariant v) const override {
         JsonArray arr = v.to<JsonArray>();
-        arr.add(a.rpy[0]);
-        arr.add(a.rpy[1]);
-        arr.add(a.rpy[2]);
-        arr.add(a.heading);
-        arr.add(a.success);
+        arr.add(rpy[0]);
+        arr.add(rpy[1]);
+        arr.add(rpy[2]);
+        arr.add(heading);
+        arr.add(success);
     }
 
-    void fromJson(JsonVariantConst o) {
-        JsonArrayConst arr = o.as<JsonArrayConst>();
-        rpy[0] = arr[0].as<float>();
-        rpy[1] = arr[1].as<float>();
-        rpy[2] = arr[2].as<float>();
-        heading = arr[3].as<float>();
-        success = arr[4].as<bool>();
+    void fromJson(JsonVariantConst v) override {
+        JsonArrayConst arr = v.as<JsonArrayConst>();
+        rpy[0] = arr[0] | 0.0f;
+        rpy[1] = arr[1] | 0.0f;
+        rpy[2] = arr[2] | 0.0f;
+        heading = arr[3] | -1.0f;
+        success = arr[4] | false;
     }
+
+    friend void toJson(JsonVariant v, MagnetometerMsg const& a) { a.toJson(v); }
 };
 
-class Magnetometer {
+class Magnetometer : public SensorBase<MagnetometerMsg> {
   public:
-    Magnetometer() : _mag(12345) {}
-
     bool initialize() {
         msg.success = _mag.begin();
         return msg.success;
     }
 
-    bool readMagnetometer() {
+    bool update() {
         if (!msg.success) return false;
         sensors_event_t event;
         bool updated = _mag.getEvent(&event);
@@ -66,17 +67,8 @@ class Magnetometer {
 
     float getHeading() { return msg.heading; }
 
-    MagnetometerMsg getMagnetometerMsg() { return msg; }
-
-    void readMagnetometer(JsonObject& root) {
-        if (!msg.success) return;
-        root["heading"] = round2(getHeading());
-    }
-
-    bool isActive() { return msg.success; }
-
   private:
-    Adafruit_HMC5883_Unified _mag;
+    Adafruit_HMC5883_Unified _mag {12345};
     MagnetometerMsg msg;
     const float declinationAngle = 0.22;
 };
