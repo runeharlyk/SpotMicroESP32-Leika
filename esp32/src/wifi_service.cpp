@@ -26,7 +26,7 @@ void WiFiService::begin() {
 
     if (state().wifiSettings.size() == 1) {
         configureNetwork(state().wifiSettings[0]);
-        delay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 

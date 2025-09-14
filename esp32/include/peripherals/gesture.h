@@ -49,12 +49,12 @@ class PAJ7620U2 {
         uint8_t f1 = 0, f0 = 0, t0 = 0;
         if (readReg(REG_GES_FLAG_1, &f1, 1) != 1) return eGestureNone;
         if (f1) {
-            delay(highRate ? QUIT_MS / 5 : QUIT_MS);
+            vTaskDelay(highRate ? QUIT_MS / 5 : QUIT_MS / portTICK_PERIOD_MS);
             return eGestureWave;
         }
         if (readReg(REG_GES_FLAG_0, &f0, 1) != 1) return eGestureNone;
         if (!highRate) {
-            delay(ENTRY_MS);
+            vTaskDelay(ENTRY_MS / portTICK_PERIOD_MS);
             if (readReg(REG_GES_FLAG_0, &t0, 1) == 1) f0 |= t0;
         }
         if (f0 & 0x01) return eGestureRight;

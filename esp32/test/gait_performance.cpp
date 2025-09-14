@@ -27,7 +27,7 @@ void test_gaitPlanner_calculateStep_time() {
 }
 
 void setup() {
-    delay(2000); // Allow time for Serial to initialize if running on an ESP32
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Allow time for Serial to initialize if running on an ESP32
     UNITY_BEGIN();
     RUN_TEST(test_gaitPlanner_calculateStep_time);
     UNITY_END();

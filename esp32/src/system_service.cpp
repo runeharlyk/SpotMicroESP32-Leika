@@ -49,11 +49,11 @@ void restart() {
     xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                delay(250);
+                vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
-                delay(100);
+                vTaskDelay(100 / portTICK_PERIOD_MS);
                 WiFi.disconnect(true);
-                delay(500);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
                 ESP.restart();
             }
         },
@@ -64,11 +64,11 @@ void sleep() {
     xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                delay(250);
+                vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
-                delay(100);
+                vTaskDelay(100 / portTICK_PERIOD_MS);
                 WiFi.disconnect(true);
-                delay(500);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
 
                 uint64_t bitmask = (uint64_t)1 << (WAKEUP_PIN_NUMBER);
 

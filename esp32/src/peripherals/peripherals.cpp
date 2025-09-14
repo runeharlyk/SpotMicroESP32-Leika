@@ -120,7 +120,7 @@ bool Peripherals::readGesture() {
 void Peripherals::readSonar() {
 #if FT_ENABLED(USE_USS)
     _left_distance = _left_sonar->ping_cm();
-    delay(50);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     _right_distance = _right_sonar->ping_cm();
 #endif
 }
