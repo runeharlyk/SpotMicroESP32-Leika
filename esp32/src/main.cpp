@@ -21,7 +21,7 @@
 
 // Communication
 PsychicHttpServer server;
-EventSocket socket {server, "/api/ws"};
+Websocket socket {server, "/api/ws"};
 
 // Core
 Peripherals peripherals;
