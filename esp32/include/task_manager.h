@@ -172,7 +172,7 @@ class CPUBurnerTask {
                 esp_task_wdt_reset();
             }
 
-            delay(idle_time);
+            vTaskDelay(idle_time / portTICK_PERIOD_MS);
         }
     }
 
