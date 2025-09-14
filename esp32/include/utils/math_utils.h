@@ -29,13 +29,6 @@
 #define MAT_MULT(A, B, result, rows, cols, result_cols) \
     dspm_mult_f32_ae32((float *)(A), (float *)(B), (float *)(result), (rows), (cols), (result_cols))
 
-#define INT_TO_STRING(state, output)      \
-    do {                                  \
-        itoa((int)(state), (output), 10); \
-    } while (0)
-
-#define PI_F 3.1415927f
-
 #define DEG2RAD_F 0.0174532f
 
 #define RAD2DEG_F 57.2957795f
@@ -43,10 +36,6 @@
 #define RAD_TO_DEG_F(rad) ((rad) * RAD2DEG_F)
 
 #define DEG_TO_RAD_F(deg) ((deg) * DEG2RAD_F)
-
-#define COS_DEG_F(deg) (cosf(DEG_TO_RAD_F(deg)))
-
-#define SIN_DEG_F(deg) (sinf(DEG_TO_RAD_F(deg)))
 
 #define IS_EQUAL(a, b, epsilon) (std::fabs((a) - (b)) < (epsilon))
 
