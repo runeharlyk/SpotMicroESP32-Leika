@@ -10,7 +10,6 @@ void printFeatureConfiguration() {
     // Core features
     ESP_LOGI("Features", "USE_UPLOAD_FIRMWARE: %s", USE_UPLOAD_FIRMWARE ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_DOWNLOAD_FIRMWARE: %s", USE_DOWNLOAD_FIRMWARE ? "enabled" : "disabled");
-    ESP_LOGI("Features", "USE_SLEEP: %s", USE_SLEEP ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_CAMERA: %s", USE_CAMERA ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MOTION: %s", USE_MOTION ? "enabled" : "disabled");
 
@@ -20,7 +19,6 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_BMP180: %s", USE_BMP180 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_USS: %s", USE_USS ? "enabled" : "disabled");
-    ESP_LOGI("Features", "USE_GPS: %s", USE_GPS ? "enabled" : "disabled");
 
     // Peripherals
     ESP_LOGI("Features", "USE_PCA9685: %s", USE_PCA9685 ? "enabled" : "disabled");
@@ -37,7 +35,6 @@ void printFeatureConfiguration() {
 void features(JsonObject &root) {
     root["upload_firmware"] = USE_UPLOAD_FIRMWARE ? true : false;
     root["download_firmware"] = USE_DOWNLOAD_FIRMWARE ? true : false;
-    root["sleep"] = USE_SLEEP ? true : false;
     root["camera"] = USE_CAMERA ? true : false;
     root["imu"] = (USE_MPU6050 || USE_BNO055) ? true : false;
     root["mag"] = (USE_HMC5883 || USE_BNO055) ? true : false;
