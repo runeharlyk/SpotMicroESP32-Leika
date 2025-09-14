@@ -20,9 +20,6 @@
 #define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
 #endif
 
-#define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
-#define EVENT_SERVO_STATE "servoState"
-
 enum class SERVO_CONTROL_STATE { DEACTIVATED, PWM, ANGLE };
 
 class ServoController : public StatefulService<ServoSettings> {
@@ -32,16 +29,9 @@ class ServoController : public StatefulService<ServoSettings> {
           _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
 
     void begin() {
-        // socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-        //                [&](JsonVariant &root, int originId) { servoEvent(root, originId); });
-        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) { stateUpdate(root, originId); });
         _persistence.readFromFS();
 
         initializePCA();
-        // socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
-        //     is_active = root["active"] | false;
-        //     is_active ? activate() : deactivate();
-        // });
     }
 
     void pcaWrite(int index, int value) {

@@ -76,6 +76,8 @@ void setupServer() {
 #define MODE_EVENT "mode"
 #define WALK_GAIT_EVENT "walk_gait"
 #define EVENT_I2C_SCAN "i2cScan"
+#define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
+#define EVENT_SERVO_STATE "servoState"
 
 void setupEventSocket() {
     // Motion events
@@ -95,6 +97,17 @@ void setupEventSocket() {
         JsonVariant results = doc.to<JsonVariant>();
         peripherals.getI2CResult(results);
         socket.emit(EVENT_I2C_SCAN, results);
+    });
+
+    // Servo controller events
+    socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
+                   [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
+    socket.onEvent(EVENT_SERVO_STATE,
+                   [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
+
+    socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
+        const bool is_active = root["active"] | false;
+        is_active ? servoController.activate() : servoController.deactivate();
     });
 }
 
