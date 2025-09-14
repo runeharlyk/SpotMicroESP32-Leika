@@ -59,13 +59,6 @@ class Barometer {
 
     float getTemperature() { return temperature; }
 
-    void readBarometer(JsonObject& root) {
-        if (!bmp_success) return;
-        root["pressure"] = round2(getPressure());
-        root["altitude"] = round2(getAltitude());
-        root["bmp_temp"] = round2(getTemperature());
-    }
-
     bool active() { return bmp_success; }
 
   private:
