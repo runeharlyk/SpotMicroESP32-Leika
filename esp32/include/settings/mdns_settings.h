@@ -4,6 +4,7 @@
 #include <utils/json_utils.h>
 #include <template/state_result.h>
 #include <filesystem.h>
+#include <string>
 
 #ifndef FACTORY_MDNS_HOSTNAME
 #define FACTORY_MDNS_HOSTNAME "esp32"
@@ -14,31 +15,31 @@
 #endif
 
 typedef struct {
-    String key;
-    String value;
+    std::string key;
+    std::string value;
 
     void serialize(JsonVariant &json) const {
-        json["key"] = key;
-        json["value"] = value;
+        json["key"] = key.c_str();
+        json["value"] = value.c_str();
     }
 
     bool deserialize(const JsonVariant &json) {
-        key = json["key"].as<String>();
-        value = json["value"].as<String>();
+        key = json["key"].as<std::string>();
+        value = json["value"].as<std::string>();
 
         return key.length() > 0;
     }
 } mdns_txt_record_t;
 
 typedef struct {
-    String service;
-    String protocol;
+    std::string service;
+    std::string protocol;
     uint16_t port;
     std::vector<mdns_txt_record_t> txtRecords;
 
     void serialize(JsonVariant &json) const {
-        json["service"] = service;
-        json["protocol"] = protocol;
+        json["service"] = service.c_str();
+        json["protocol"] = protocol.c_str();
         json["port"] = port;
 
         if (txtRecords.size() > 0) {
@@ -51,8 +52,8 @@ typedef struct {
     }
 
     bool deserialize(const JsonVariant &json) {
-        service = json["service"].as<String>();
-        protocol = json["protocol"].as<String>();
+        service = json["service"].as<std::string>();
+        protocol = json["protocol"].as<std::string>();
         port = json["port"] | 0;
 
         txtRecords.clear();
@@ -72,14 +73,14 @@ typedef struct {
 
 class MDNSSettings {
   public:
-    String hostname;
-    String instance;
+    std::string hostname;
+    std::string instance;
     std::vector<mdns_service_t> services;
     std::vector<mdns_txt_record_t> globalTxtRecords;
 
     static void read(MDNSSettings &settings, JsonVariant &root) {
-        root["hostname"] = settings.hostname;
-        root["instance"] = settings.instance;
+        root["hostname"] = settings.hostname.c_str();
+        root["instance"] = settings.instance.c_str();
 
         JsonArray servicesArray = root["services"].to<JsonArray>();
         for (const auto &service : settings.services) {

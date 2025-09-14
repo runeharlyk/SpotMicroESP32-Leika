@@ -1,4 +1,5 @@
 #include <filesystem.h>
+#include <string>
 
 static const char *TAG = "FileService";
 
@@ -10,7 +11,10 @@ class Initializer {
   public:
     Initializer() {
         uploadHandler = new PsychicUploadHandler();
-        uploadHandler->onUpload(uploadFile);
+        uploadHandler->onUpload([](PsychicRequest *request, const String &filename, uint64_t index, uint8_t *data,
+                                   size_t len, bool last) -> esp_err_t {
+            return uploadFile(request, std::string(filename.c_str()), index, data, len, last);
+        });
         uploadHandler->onRequest([](PsychicRequest *request) { return request->reply(200); });
     }
 };
@@ -42,8 +46,8 @@ esp_err_t handleEdit(PsychicRequest *request, JsonVariant &json) {
 
 bool deleteFile(const char *filename) { return ESP_FS.remove(filename); }
 
-String listFiles(const String &directory, bool isRoot) {
-    File root = ESP_FS.open(directory.startsWith("/") ? directory : "/" + directory);
+std::string listFiles(const std::string &directory, bool isRoot) {
+    File root = ESP_FS.open(directory.find("/") == 0 ? directory.c_str() : ("/" + directory).c_str());
     if (!root.isDirectory()) return "{}";
 
     File file = root.openNextFile();
@@ -51,14 +55,14 @@ String listFiles(const String &directory, bool isRoot) {
         return isRoot ? "{ \"root\": {} }" : "{}";
     }
 
-    String output = isRoot ? "{ \"root\": {" : "{";
+    std::string output = isRoot ? "{ \"root\": {" : "{";
 
     while (file) {
-        String name = String(file.name());
+        std::string name = std::string(file.name());
         if (file.isDirectory()) {
             output += "\"" + name + "\": " + listFiles(name, false);
         } else {
-            output += "\"" + name + "\": " + String(file.size());
+            output += "\"" + name + "\": " + std::to_string(file.size());
         }
 
         File next = root.openNextFile();
@@ -72,15 +76,15 @@ String listFiles(const String &directory, bool isRoot) {
     return output;
 }
 
-esp_err_t uploadFile(PsychicRequest *request, const String &filename, uint64_t index, uint8_t *data, size_t len,
+esp_err_t uploadFile(PsychicRequest *request, const std::string &filename, uint64_t index, uint8_t *data, size_t len,
                      bool last) {
     File file;
-    String path = "/www/" + filename;
+    std::string path = "/www/" + filename;
     ESP_LOGI(TAG, "Writing %d/%d bytes to: %s\n", (int)index + (int)len, request->contentLength(), path.c_str());
 
     if (last) ESP_LOGI(TAG, "%s is finished. Total bytes: %d\n", path.c_str(), (int)index + (int)len);
 
-    file = ESP_FS.open(path, !index ? FILE_WRITE : FILE_APPEND);
+    file = ESP_FS.open(path.c_str(), !index ? FILE_WRITE : FILE_APPEND);
     if (!file) {
         ESP_LOGE(TAG, "Failed to open file");
         return ESP_FAIL;

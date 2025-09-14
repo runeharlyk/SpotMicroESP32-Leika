@@ -6,6 +6,7 @@
 #include <utils/json_utils.h>
 #include <utils/ip_utils.h>
 #include <template/state_result.h>
+#include <string>
 
 #include <DNSServer.h>
 #include <IPAddress.h>
@@ -58,8 +59,8 @@ enum APNetworkStatus { ACTIVE = 0, INACTIVE, LINGERING };
 class APSettings {
   public:
     uint8_t provisionMode;
-    String ssid;
-    String password;
+    std::string ssid;
+    std::string password;
     uint8_t channel;
     bool ssidHidden;
     uint8_t maxClients;
@@ -76,8 +77,8 @@ class APSettings {
 
     static void read(APSettings &settings, JsonVariant &root) {
         root["provision_mode"] = settings.provisionMode;
-        root["ssid"] = settings.ssid;
-        root["password"] = settings.password;
+        root["ssid"] = settings.ssid.c_str();
+        root["password"] = settings.password.c_str();
         root["channel"] = settings.channel;
         root["ssid_hidden"] = settings.ssidHidden;
         root["max_clients"] = settings.maxClients;

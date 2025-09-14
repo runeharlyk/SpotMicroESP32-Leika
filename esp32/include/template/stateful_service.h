@@ -7,6 +7,7 @@
 #include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <string>
 
 #include <template/state_result.h>
 
@@ -17,8 +18,8 @@ template <typename T>
 using JsonStateReader = std::function<void(T &settings, JsonVariant &root)>;
 
 using HandlerId = size_t;
-using StateUpdateCallback = std::function<void(const String &originId)>;
-using StateHookCallback = std::function<void(const String &originId, StateUpdateResult &result)>;
+using StateUpdateCallback = std::function<void(const std::string &originId)>;
+using StateHookCallback = std::function<void(const std::string &originId, StateUpdateResult &result)>;
 
 class HandlerBase {
   protected:
@@ -40,7 +41,7 @@ class UpdateHandler : public HandlerBase {
     UpdateHandler(StateUpdateCallback callback, bool allowRemove)
         : HandlerBase(allowRemove), callback_(std::move(callback)) {}
 
-    void invoke(const String &originId) const { callback_(originId); }
+    void invoke(const std::string &originId) const { callback_(originId); }
 };
 
 class HookHandler : public HandlerBase {
@@ -50,7 +51,7 @@ class HookHandler : public HandlerBase {
     HookHandler(StateHookCallback callback, bool allowRemove)
         : HandlerBase(allowRemove), callback_(std::move(callback)) {}
 
-    void invoke(const String &originId, StateUpdateResult &result) const { callback_(originId, result); }
+    void invoke(const std::string &originId, StateUpdateResult &result) const { callback_(originId, result); }
 };
 
 template <class T>
@@ -83,7 +84,7 @@ class StatefulService {
             [id](const HookHandler &handler) { return handler.isRemovable() && handler.getId() == id; });
     }
 
-    StateUpdateResult update(std::function<StateUpdateResult(T &)> stateUpdater, const String &originId) {
+    StateUpdateResult update(std::function<StateUpdateResult(T &)> stateUpdater, const std::string &originId) {
         lock();
         StateUpdateResult result = stateUpdater(state_);
         unlock();
@@ -98,7 +99,7 @@ class StatefulService {
         return result;
     }
 
-    StateUpdateResult update(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater, const String &originId) {
+    StateUpdateResult update(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater, const std::string &originId) {
         lock();
         StateUpdateResult result = stateUpdater(jsonObject, state_);
         unlock();
@@ -125,13 +126,13 @@ class StatefulService {
         unlock();
     }
 
-    void callUpdateHandlers(const String &originId) {
+    void callUpdateHandlers(const std::string &originId) {
         for (const UpdateHandler &updateHandler : updateHandlers_) {
             updateHandler.invoke(originId);
         }
     }
 
-    void callHookHandlers(const String &originId, StateUpdateResult &result) {
+    void callHookHandlers(const std::string &originId, StateUpdateResult &result) {
         for (const HookHandler &hookHandler : hookHandlers_) {
             hookHandler.invoke(originId, result);
         }
@@ -145,7 +146,7 @@ class StatefulService {
     inline void lock() { xSemaphoreTakeRecursive(mutex_, portMAX_DELAY); }
     inline void unlock() { xSemaphoreGiveRecursive(mutex_); }
 
-    void notifyStateChange(const String &originId, StateUpdateResult &result) {
+    void notifyStateChange(const std::string &originId, StateUpdateResult &result) {
         callHookHandlers(originId, result);
         if (result == StateUpdateResult::CHANGED) {
             callUpdateHandlers(originId);

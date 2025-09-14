@@ -13,7 +13,7 @@
     if (handle != nullptr) vTaskDelete(handle)
 
 struct task_t {
-    String name;
+    std::string name;
     TaskHandle_t handle;
     uint32_t stackSize;
     UBaseType_t priority;

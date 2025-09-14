@@ -82,7 +82,7 @@ class FSPersistence {
 
     void enableUpdateHandler() {
         if (!_updateHandlerId) {
-            _updateHandlerId = _statefulService->addUpdateHandler([&](const String &originId) { writeToFS(); });
+            _updateHandlerId = _statefulService->addUpdateHandler([&](const std::string &originId) { writeToFS(); });
         }
     }
 
@@ -99,11 +99,11 @@ class FSPersistence {
     // "/directory1/directory2/filename" We create a directory for each missing
     // parent
     void mkdirs() {
-        String path(_filePath);
-        int index = 0;
-        while ((index = path.indexOf('/', index + 1)) != -1) {
-            String segment = path.substring(0, index);
-            if (!_fs->exists(segment)) _fs->mkdir(segment);
+        std::string path(_filePath);
+        size_t index = 0;
+        while ((index = path.find('/', index + 1)) != std::string::npos) {
+            std::string segment = path.substr(0, index);
+            if (!_fs->exists(segment.c_str())) _fs->mkdir(segment.c_str());
         }
     }
 

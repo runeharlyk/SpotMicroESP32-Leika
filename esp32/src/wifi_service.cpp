@@ -1,9 +1,10 @@
 #include <wifi_service.h>
+#include <string>
 
 WiFiService::WiFiService()
     : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
       endpoint(WiFiSettings::read, WiFiSettings::update, this) {
-    addUpdateHandler([&](const String &originId) { reconfigureWiFiConnection(); }, false);
+    addUpdateHandler([&](const std::string &originId) { reconfigureWiFiConnection(); }, false);
 }
 
 WiFiService::~WiFiService() {}
@@ -144,7 +145,7 @@ void WiFiService::connectToWiFi() {
             WiFi.getNetworkInfo(i, ssid_scan, sec_scan, rssi_scan, BSSID_scan, chan_scan);
 
             for (auto &network : state().wifiSettings) {
-                if (ssid_scan == network.ssid) {
+                if (ssid_scan == network.ssid.c_str()) {
                     if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD) {
                         network.available = true;
                     }
