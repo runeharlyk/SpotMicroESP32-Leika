@@ -1,4 +1,4 @@
-#include <event_socket.h>
+#include <communication/websocket_adapter.h>
 #include <string>
 
 SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
