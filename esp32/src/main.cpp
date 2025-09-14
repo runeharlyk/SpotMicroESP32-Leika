@@ -55,6 +55,11 @@ void setupServer() {
         return cameraService.endpoint.handleStateUpdate(request, json);
     });
 #endif
+    server.on("/api/servo/config", HTTP_GET,
+              [&](PsychicRequest *request) { return servoController.endpoint.getState(request); });
+    server.on("/api/servo/config", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
+        return servoController.endpoint.handleStateUpdate(request, json);
+    });
 #if EMBED_WEBAPP
     mountStaticAssets(server);
 #endif
