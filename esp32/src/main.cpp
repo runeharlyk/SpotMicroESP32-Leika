@@ -12,7 +12,6 @@
 #include <event_socket.h>
 #include <features.h>
 #include <motion.h>
-#include <task_manager.h>
 #include <wifi_service.h>
 #include <ap_service.h>
 #include <mdns_service.h>
