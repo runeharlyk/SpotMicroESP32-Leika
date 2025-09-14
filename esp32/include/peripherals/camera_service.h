@@ -7,7 +7,6 @@
 #include <async_worker.h>
 
 #include <features.h>
-#include <task_manager.h>
 #include <template/stateful_socket.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_endpoint.h>

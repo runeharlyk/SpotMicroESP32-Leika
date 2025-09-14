@@ -155,7 +155,7 @@ void streamTask(void *pv) {
 }
 
 esp_err_t CameraService::cameraStream(PsychicRequest *request) {
-    g_taskManager.createTask(streamTask, "Stream client task", 4096, request, 4);
+    xTaskCreate(streamTask, "Stream client task", 4096, request, 4, nullptr);
     vTaskDelay(pdMS_TO_TICKS(100));
     return ESP_OK;
 }
