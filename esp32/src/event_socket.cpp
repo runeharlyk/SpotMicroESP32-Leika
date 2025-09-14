@@ -1,4 +1,5 @@
 #include <event_socket.h>
+#include <string>
 
 SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 
@@ -78,7 +79,7 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
     if (message_type == CONNECT) {
         ESP_LOGV("EventSocket", "Connect: %s", event);
         client_subscriptions[event].push_back(request->client()->socket());
-        handleSubscribeCallbacks(event, String(request->client()->socket()));
+        handleSubscribeCallbacks(event, std::to_string(request->client()->socket()));
     } else if (message_type == DISCONNECT) {
         ESP_LOGV("EventSocket", "Disconnect: %s", event);
         client_subscriptions[event].remove(request->client()->socket());
@@ -155,22 +156,22 @@ void EventSocket::send(PsychicWebSocketClient *client, const char *data, size_t 
 #endif
 }
 
-void EventSocket::handleEventCallbacks(String event, JsonVariant &jsonObject, int originId) {
+void EventSocket::handleEventCallbacks(std::string event, JsonVariant &jsonObject, int originId) {
     for (auto &callback : event_callbacks[event]) {
         callback(jsonObject, originId);
     }
 }
 
-void EventSocket::handleSubscribeCallbacks(String event, const String &originId) {
+void EventSocket::handleSubscribeCallbacks(std::string event, const std::string &originId) {
     for (auto &callback : subscribe_callbacks[event]) {
         callback(originId, true);
     }
 }
 
-void EventSocket::onEvent(String event, EventCallback callback) {
+void EventSocket::onEvent(std::string event, EventCallback callback) {
     event_callbacks[event].push_back(std::move(callback));
 }
 
-void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
+void EventSocket::onSubscribe(std::string event, SubscribeCallback callback) {
     subscribe_callbacks[event].push_back(std::move(callback));
 }

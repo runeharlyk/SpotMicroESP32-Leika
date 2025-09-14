@@ -6,6 +6,7 @@
 #include <utils/json_utils.h>
 #include <utils/ip_utils.h>
 #include <template/state_result.h>
+#include <string>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""
@@ -24,10 +25,10 @@
 #endif
 
 typedef struct {
-    String ssid;
+    std::string ssid;
     uint8_t bssid[6];
     int32_t channel;
-    String password;
+    std::string password;
     bool staticIPConfig;
     IPAddress localIP;
     IPAddress gatewayIP;
@@ -37,8 +38,8 @@ typedef struct {
     bool available;
 
     void serialize(JsonVariant &json) const {
-        json["ssid"] = ssid;
-        json["password"] = password;
+        json["ssid"] = ssid.c_str();
+        json["password"] = password.c_str();
         json["static_ip_config"] = staticIPConfig;
         if (staticIPConfig) {
             JsonUtils::writeIP(json, "local_ip", localIP);
@@ -50,8 +51,8 @@ typedef struct {
     }
 
     bool deserialize(const JsonVariant &json) {
-        String newSsid = json["ssid"].as<String>();
-        String newPassword = json["password"].as<String>();
+        std::string newSsid = json["ssid"].as<std::string>();
+        std::string newPassword = json["password"].as<std::string>();
         if (newSsid.length() < 1 || newSsid.length() > 31 || newPassword.length() > 64) {
             ESP_LOGE("WiFiSettings", "SSID or password length is invalid");
             return false;
@@ -98,11 +99,11 @@ inline wifi_settings_t createDefaultWiFiSettings() {
 
 class WiFiSettings {
   public:
-    String hostname;
+    std::string hostname;
     bool priorityBySignalStrength;
     std::vector<wifi_settings_t> wifiSettings;
     static void read(WiFiSettings &settings, JsonVariant &root) {
-        root["hostname"] = settings.hostname;
+        root["hostname"] = settings.hostname.c_str();
         root["priority_RSSI"] = settings.priorityBySignalStrength;
         JsonArray wifiNetworks = root["wifi_networks"].to<JsonArray>();
         for (const auto &wifi : settings.wifiSettings) {
@@ -129,7 +130,7 @@ class WiFiSettings {
                     networkCount++;
                 }
             }
-        } else if (String(FACTORY_WIFI_SSID).length() > 0) {
+        } else if (std::string(FACTORY_WIFI_SSID).length() > 0) {
             ESP_LOGI("WiFiSettings", "No WiFi config found - using factory settings");
             settings.wifiSettings.push_back(createDefaultWiFiSettings());
         }

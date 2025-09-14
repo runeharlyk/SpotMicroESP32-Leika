@@ -6,7 +6,7 @@ Peripherals::Peripherals()
                      EVENT_CONFIGURATION_SETTINGS),
       _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
     _accessMutex = xSemaphoreCreateMutex();
-    addUpdateHandler([&](const String &originId) { updatePins(); }, false);
+    addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
 }
 
 void Peripherals::begin() {

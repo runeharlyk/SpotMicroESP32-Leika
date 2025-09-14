@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <template/state_result.h>
 #include <ArduinoJson.h>
+#include <string>
 
 #ifndef FACTORY_NTP_ENABLED
 #define FACTORY_NTP_ENABLED true
@@ -21,15 +22,15 @@
 class NTPSettings {
   public:
     bool enabled;
-    String tzLabel;
-    String tzFormat;
-    String server;
+    std::string tzLabel;
+    std::string tzFormat;
+    std::string server;
 
     static void read(NTPSettings &settings, JsonVariant &root) {
         root["enabled"] = settings.enabled;
-        root["server"] = settings.server;
-        root["tz_label"] = settings.tzLabel;
-        root["tz_format"] = settings.tzFormat;
+        root["server"] = settings.server.c_str();
+        root["tz_label"] = settings.tzLabel.c_str();
+        root["tz_format"] = settings.tzFormat.c_str();
     }
 
     static StateUpdateResult update(JsonVariant &root, NTPSettings &settings) {

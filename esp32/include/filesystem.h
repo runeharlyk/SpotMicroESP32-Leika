@@ -17,10 +17,10 @@
 namespace FileSystem {
 extern PsychicUploadHandler *uploadHandler;
 
-String listFiles(const String &directory, bool isRoot = true);
+std::string listFiles(const std::string &directory, bool isRoot = true);
 bool deleteFile(const char *filename);
 bool editFile(const char *filename, const char *content);
-esp_err_t uploadFile(PsychicRequest *request, const String &filename, uint64_t index, uint8_t *data, size_t len,
+esp_err_t uploadFile(PsychicRequest *request, const std::string &filename, uint64_t index, uint8_t *data, size_t len,
                      bool last);
 
 esp_err_t getFiles(PsychicRequest *request);

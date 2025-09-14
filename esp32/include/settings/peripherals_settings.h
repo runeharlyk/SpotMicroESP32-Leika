@@ -3,6 +3,7 @@
 #include <vector>
 #include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <string>
 
 /*
  * I2C software connection
@@ -20,11 +21,11 @@
 class PinConfig {
   public:
     int pin;
-    String mode;
-    String type;
-    String role;
+    std::string mode;
+    std::string type;
+    std::string role;
 
-    PinConfig(int p, String m, String t, String r) : pin(p), mode(m), type(t), role(r) {}
+    PinConfig(int p, std::string m, std::string t, std::string r) : pin(p), mode(m), type(t), role(r) {}
 };
 
 class PeripheralsConfiguration {

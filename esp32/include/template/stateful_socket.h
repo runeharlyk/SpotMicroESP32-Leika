@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PsychicHttp.h>
+#include <string>
 
 // #include <event_socket.h>
 #include <template/stateful_service.h>
@@ -11,7 +12,7 @@ class EventEndpoint {
     EventEndpoint(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
                   const char *event)
         : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService), _event(event) {
-        _statefulService->addUpdateHandler([&](const String &originId) { syncState(originId); }, false);
+        _statefulService->addUpdateHandler([&](const std::string &originId) { syncState(originId); }, false);
     }
 
     void begin() {
@@ -28,10 +29,10 @@ class EventEndpoint {
     const char *_event;
 
     void updateState(JsonVariant &root, int originId) {
-        _statefulService->update(root, _stateUpdater, String(originId));
+        _statefulService->update(root, _stateUpdater, std::to_string(originId));
     }
 
-    void syncState(const String &originId, bool sync = false) {
+    void syncState(const std::string &originId, bool sync = false) {
         JsonDocument jsonDocument;
         JsonVariant root = jsonDocument.to<JsonVariant>();
         _statefulService->read(root, _stateReader);

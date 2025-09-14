@@ -1,11 +1,12 @@
 #include <mdns_service.h>
+#include <string>
 
 static const char *TAG = "MDNSService";
 
 MDNSService::MDNSService()
     : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
       endpoint(MDNSSettings::read, MDNSSettings::update, this) {
-    addUpdateHandler([&](const String &originId) { reconfigureMDNS(); }, false);
+    addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
 }
 
 MDNSService::~MDNSService() {
@@ -77,8 +78,8 @@ void MDNSService::getStatus(JsonVariant &root) {
 }
 
 esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json) {
-    String service = json["service"].as<String>();
-    String proto = json["protocol"].as<String>();
+    std::string service = json["service"].as<std::string>();
+    std::string proto = json["protocol"].as<std::string>();
 
     PsychicJsonResponse response = PsychicJsonResponse(request, false);
     JsonVariant root = response.getRoot();

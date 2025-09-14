@@ -1,4 +1,5 @@
 #include "system_service.h"
+#include <string>
 
 namespace system_service {
 
@@ -38,9 +39,9 @@ void reset() {
     File root = ESP_FS.open(FS_CONFIG_DIRECTORY);
     File file;
     while (file = root.openNextFile()) {
-        String path = file.path();
+        std::string path = file.path();
         file.close();
-        ESP_FS.remove(path);
+        ESP_FS.remove(path.c_str());
     }
     restart();
 }

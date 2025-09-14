@@ -33,7 +33,7 @@ CameraService::CameraService()
     : endpoint(CameraSettings::read, CameraSettings::update, this),
       _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
       _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE) {
-    addUpdateHandler([&](const String &originId) { updateCamera(); }, false);
+    addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
 }
 
 esp_err_t CameraService::begin() {

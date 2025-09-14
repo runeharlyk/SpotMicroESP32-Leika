@@ -1,11 +1,12 @@
 #include <ap_service.h>
+#include <string>
 
 static const char *TAG = "APService";
 
 APService::APService()
     : endpoint(APSettings::read, APSettings::update, this),
       _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE) {
-    addUpdateHandler([&](const String &originId) { reconfigureAP(); }, false);
+    addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
 APService::~APService() {}
