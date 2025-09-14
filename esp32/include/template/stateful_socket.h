@@ -3,7 +3,7 @@
 #include <PsychicHttp.h>
 #include <string>
 
-// #include <event_socket.h>
+// #include <communication/websocket_adapter.h>
 #include <template/stateful_service.h>
 
 template <class T>

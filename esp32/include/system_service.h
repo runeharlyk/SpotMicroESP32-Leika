@@ -4,7 +4,7 @@
 #include <ESPmDNS.h>
 #include <PsychicHttp.h>
 #include <WiFi.h>
-// #include <event_socket.h>
+// #include <communication/websocket_adapter.h>
 #include <filesystem.h>
 #include <global.h>
 

@@ -9,7 +9,7 @@
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
 #include <peripherals/camera_service.h>
-#include <event_socket.h>
+#include <communication/websocket_adapter.h>
 #include <features.h>
 #include <motion.h>
 #include <wifi_service.h>
