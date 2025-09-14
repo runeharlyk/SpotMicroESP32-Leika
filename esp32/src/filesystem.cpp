@@ -80,7 +80,7 @@ esp_err_t uploadFile(PsychicRequest *request, const String &filename, uint64_t i
 
     if (last) ESP_LOGI(TAG, "%s is finished. Total bytes: %d\n", path.c_str(), (int)index + (int)len);
 
-    file = LittleFS.open(path, !index ? FILE_WRITE : FILE_APPEND);
+    file = ESP_FS.open(path, !index ? FILE_WRITE : FILE_APPEND);
     if (!file) {
         ESP_LOGE(TAG, "Failed to open file");
         return ESP_FAIL;
