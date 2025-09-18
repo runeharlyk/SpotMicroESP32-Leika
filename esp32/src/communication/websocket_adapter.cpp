@@ -11,6 +11,14 @@ Websocket::Websocket(PsychicHttpServer &server, const char *route) : _server(ser
 
 void Websocket::begin() { _server.on(_route, &_socket); }
 
+void Websocket::onEvent(std::string event, EventCallback callback) {
+    CommAdapterBase::onEvent(std::move(event), std::move(callback));
+}
+
+void Websocket::emit(const char *event, JsonVariant &payload, const char *originId, bool onlyToSameOrigin) {
+    CommAdapterBase::emit(event, payload, originId, onlyToSameOrigin);
+}
+
 void Websocket::onWSOpen(PsychicWebSocketClient *client) {
     ESP_LOGI("EventSocket", "ws[%s][%u] connect", client->remoteIP().toString().c_str(), client->socket());
     ping(client->socket());
