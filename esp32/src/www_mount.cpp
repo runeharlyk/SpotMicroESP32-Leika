@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "www_mount.hpp"
 
 static esp_err_t web_send(PsychicRequest* req, const WebAsset& asset) {

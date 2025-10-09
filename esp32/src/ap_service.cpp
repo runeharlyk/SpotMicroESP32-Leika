@@ -1,6 +1,4 @@
 #include <ap_service.h>
-#include "esp_timer.h"
-#include <string>
 
 static const char *TAG = "APService";
 

@@ -4,6 +4,8 @@
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <WiFi.h>
+#include "esp_timer.h"
+#include <string>
 
 class APService : public StatefulService<APSettings> {
   public:

@@ -1,5 +1,4 @@
 #include <wifi_service.h>
-#include <string>
 
 WiFiService::WiFiService()
     : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
@@ -102,10 +101,10 @@ void WiFiService::getNetworkStatus(JsonObject &root) {
         root["gateway_ip"] = WiFi.gatewayIP().toString();
         IPAddress dnsIP1 = WiFi.dnsIP(0);
         IPAddress dnsIP2 = WiFi.dnsIP(1);
-        if (dnsIP1 != INADDR_NONE) {
+        if (dnsIP1 != IPAddress(0, 0, 0, 0)) {
             root["dns_ip_1"] = dnsIP1.toString();
         }
-        if (dnsIP2 != INADDR_NONE) {
+        if (dnsIP2 != IPAddress(0, 0, 0, 0)) {
             root["dns_ip_2"] = dnsIP2.toString();
         }
     }
@@ -183,7 +182,7 @@ void WiFiService::configureNetwork(wifi_settings_t &network) {
         WiFi.config(network.localIP, network.gatewayIP, network.subnetMask, network.dnsIP1, network.dnsIP2);
     } else {
         // configure for DHCP
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+        WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     }
     WiFi.setHostname(state().hostname.c_str());
 

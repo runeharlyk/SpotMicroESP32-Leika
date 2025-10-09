@@ -1,5 +1,4 @@
 #include <mdns_service.h>
-#include <string>
 
 static const char *TAG = "MDNSService";
 

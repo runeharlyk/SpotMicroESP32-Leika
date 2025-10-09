@@ -1,9 +1,9 @@
 #pragma once
 
 #include <PsychicHttp.h>
-#include <IPAddress.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <string>
 
 #include <filesystem.h>
 #include <utils/timing.h>

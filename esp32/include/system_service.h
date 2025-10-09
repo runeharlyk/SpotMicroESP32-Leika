@@ -1,5 +1,4 @@
-#ifndef SYSTEM_SERVICE_H
-#define SYSTEM_SERVICE_H
+#pragma once
 
 #include <ESPmDNS.h>
 #include <PsychicHttp.h>
@@ -7,6 +6,8 @@
 // #include <communication/websocket_adapter.h>
 #include <filesystem.h>
 #include <global.h>
+#include "esp_timer.h"
+#include <string>
 
 #define MAX_ESP_ANALYTICS_SIZE 2024
 #define EVENT_ANALYTICS "analytics"
@@ -28,5 +29,3 @@ void emitMetrics();
 
 const char *resetReason(esp_reset_reason_t reason);
 } // namespace system_service
-
-#endif

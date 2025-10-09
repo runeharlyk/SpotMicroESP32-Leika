@@ -1,5 +1,4 @@
-#ifndef MATHUTILS_H
-#define MATHUTILS_H
+#pragma once
 
 #include <dspm_mult.h>
 #include <cmath>
@@ -69,5 +68,3 @@ static constexpr float combinatorial_constexpr(const int n, int k) {
     }
     return result;
 }
-
-#endif

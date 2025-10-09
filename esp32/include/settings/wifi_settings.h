@@ -1,10 +1,8 @@
 #pragma once
 
 #include <WiFi.h>
-#include <IPAddress.h>
 #include <ArduinoJson.h>
 #include <utils/json_utils.h>
-#include <utils/ip_utils.h>
 #include <template/state_result.h>
 #include <string>
 
@@ -66,11 +64,12 @@ typedef struct {
             JsonUtils::readIP(json, "subnet_mask", subnetMask);
             JsonUtils::readIP(json, "dns_ip_1", dnsIP1);
             JsonUtils::readIP(json, "dns_ip_2", dnsIP2);
-            if (IPUtils::isNotSet(dnsIP1) && IPUtils::isSet(dnsIP2)) {
+            if (dnsIP1 == IPAddress(0, 0, 0, 0) && dnsIP2 != IPAddress(0, 0, 0, 0)) {
                 dnsIP1 = dnsIP2;
-                dnsIP2 = INADDR_NONE;
+                dnsIP2 = IPAddress(0, 0, 0, 0);
             }
-            if (IPUtils::isNotSet(localIP) || IPUtils::isNotSet(gatewayIP) || IPUtils::isNotSet(subnetMask)) {
+            if (localIP == IPAddress(0, 0, 0, 0) || gatewayIP == IPAddress(0, 0, 0, 0) ||
+                subnetMask == IPAddress(0, 0, 0, 0)) {
                 staticIPConfig = false;
                 ESP_LOGW("WiFiSettings", "Invalid static IP configuration - falling back to DHCP");
             }
@@ -88,11 +87,11 @@ inline wifi_settings_t createDefaultWiFiSettings() {
         .channel = -1,
         .password = FACTORY_WIFI_PASSWORD,
         .staticIPConfig = false,
-        .localIP = INADDR_NONE,
-        .gatewayIP = INADDR_NONE,
-        .subnetMask = INADDR_NONE,
-        .dnsIP1 = INADDR_NONE,
-        .dnsIP2 = INADDR_NONE,
+        .localIP = IPAddress(0, 0, 0, 0),
+        .gatewayIP = IPAddress(0, 0, 0, 0),
+        .subnetMask = IPAddress(0, 0, 0, 0),
+        .dnsIP1 = IPAddress(0, 0, 0, 0),
+        .dnsIP2 = IPAddress(0, 0, 0, 0),
         .available = false,
     };
 }

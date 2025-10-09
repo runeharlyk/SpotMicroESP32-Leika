@@ -1,5 +1,4 @@
-#ifndef TIMING_H
-#define TIMING_H
+#pragma once
 
 #include "esp_timer.h"
 
@@ -40,5 +39,3 @@
         name##_count = 0;                                                    \
         last_time = esp_timer_get_time() / 1000;                             \
     }
-
-#endif

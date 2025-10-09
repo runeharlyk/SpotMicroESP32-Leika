@@ -1,6 +1,4 @@
 #include "system_service.h"
-#include "esp_timer.h"
-#include <string>
 
 namespace system_service {
 

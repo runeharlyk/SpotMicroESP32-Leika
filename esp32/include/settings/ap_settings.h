@@ -1,15 +1,12 @@
 #pragma once
 
 #include <WiFi.h>
-#include <IPAddress.h>
 #include <ArduinoJson.h>
 #include <utils/json_utils.h>
-#include <utils/ip_utils.h>
 #include <template/state_result.h>
 #include <string>
 
 #include <DNSServer.h>
-#include <IPAddress.h>
 
 #ifndef FACTORY_AP_PROVISION_MODE
 #define FACTORY_AP_PROVISION_MODE AP_MODE_DISCONNECTED

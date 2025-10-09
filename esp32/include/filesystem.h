@@ -3,6 +3,7 @@
 #include <PsychicHttp.h>
 
 #include <LittleFS.h>
+#include <string>
 
 #define ESP_FS LittleFS
 

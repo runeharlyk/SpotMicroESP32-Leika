@@ -7,6 +7,7 @@
 #include <template/stateful_persistence.h>
 #include <settings/mdns_settings.h>
 #include <utils/timing.h>
+#include <string>
 
 class MDNSService : public StatefulService<MDNSSettings> {
   private:

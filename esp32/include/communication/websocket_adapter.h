@@ -33,3 +33,4 @@ class Websocket : CommAdapterBase {
 };
 
 #endif
+
