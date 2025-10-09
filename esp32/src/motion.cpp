@@ -63,8 +63,8 @@ void MotionService::handleGestures(const gesture_t ges) {
 bool MotionService::update(Peripherals *peripherals) {
     handleGestures(peripherals->takeGesture());
     if (!state) return false;
-    unsigned long now = millis();
-    float dt = (now - lastUpdate) / 1000.0f;
+    int64_t now = esp_timer_get_time();
+    float dt = (now - lastUpdate) / 1000000.0f; // Convert microseconds to seconds
     lastUpdate = now;
     state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());
     state->step(body_state, dt);

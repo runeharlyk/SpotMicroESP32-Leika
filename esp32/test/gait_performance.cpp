@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <unity.h>
+#include "esp_timer.h"
 #include "gait/state.h"
 #include "gait/bezier_state.h"
 
@@ -10,17 +11,17 @@ void test_gaitPlanner_calculateStep_time() {
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
     const int num_steps = 1000;
 
-    unsigned long start = millis();
+    uint64_t start = esp_timer_get_time() / 1000;
     for (int i = 0; i < num_steps; i++) {
         gaitPlanner.step(body_state, command, 0.02f);
     }
-    unsigned long end = millis();
+    uint64_t end = esp_timer_get_time() / 1000;
 
-    unsigned long duration = end - start;
-    unsigned long max_duration = num_steps / 2; // Minimum 0.5 ms per step
+    uint64_t duration = end - start;
+    uint64_t max_duration = num_steps / 2; // Minimum 0.5 ms per step
 
     char message[50];
-    snprintf(message, sizeof(message), "The step calculation took: %lu ms (%lu ms per iter)", duration,
+    snprintf(message, sizeof(message), "The step calculation took: %llu ms (%llu ms per iter)", duration,
              duration / num_steps);
     ESP_LOGI("Test planner", message);
     TEST_ASSERT_MESSAGE(duration <= max_duration, message);

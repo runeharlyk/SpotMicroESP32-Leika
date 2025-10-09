@@ -2,6 +2,7 @@
 #define MotionService_h
 
 #include <ArduinoJson.h>
+#include "esp_timer.h"
 
 #include <kinematics.h>
 #include <peripherals/gesture.h>
@@ -61,7 +62,7 @@ class MotionService {
 
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
-    unsigned long lastUpdate = millis();
+    int64_t lastUpdate = esp_timer_get_time();
 };
 
 #endif

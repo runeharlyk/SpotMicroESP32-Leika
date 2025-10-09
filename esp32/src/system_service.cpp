@@ -1,4 +1,5 @@
 #include "system_service.h"
+#include "esp_timer.h"
 #include <string>
 
 namespace system_service {
@@ -108,11 +109,11 @@ void status(JsonObject &root) {
     root["fs_used"] = ESP_FS.usedBytes();
     root["core_temp"] = temperatureRead();
     root["cpu_reset_reason"] = resetReason(esp_reset_reason());
-    root["uptime"] = millis() / 1000;
+    root["uptime"] = esp_timer_get_time() / 1000000;
 }
 
 void metrics(JsonObject &root) {
-    root["uptime"] = millis() / 1000;
+    root["uptime"] = esp_timer_get_time() / 1000000;
     root["free_heap"] = ESP.getFreeHeap();
     root["total_heap"] = ESP.getHeapSize();
     root["min_free_heap"] = ESP.getMinFreeHeap();

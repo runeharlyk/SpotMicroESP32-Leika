@@ -1,4 +1,5 @@
 #include <ap_service.h>
+#include "esp_timer.h"
 #include <string>
 
 static const char *TAG = "APService";
@@ -37,14 +38,14 @@ APNetworkStatus APService::getAPNetworkStatus() {
 }
 
 void APService::reconfigureAP() {
-    _lastManaged = millis() - MANAGE_NETWORK_DELAY;
+    _lastManaged = esp_timer_get_time() / 1000 - MANAGE_NETWORK_DELAY;
     _reconfigureAp = true;
     _recoveryMode = false;
 }
 
 void APService::recoveryMode() {
     ESP_LOGI(TAG, "Recovery Mode needed");
-    _lastManaged = millis() - MANAGE_NETWORK_DELAY;
+    _lastManaged = esp_timer_get_time() / 1000 - MANAGE_NETWORK_DELAY;
     _recoveryMode = true;
     _reconfigureAp = true;
 }
