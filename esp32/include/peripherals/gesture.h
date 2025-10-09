@@ -16,6 +16,8 @@ enum gesture_t : uint16_t {
     eGestureWave = 0x0100
 };
 
+enum orient_t : uint8_t { kRot0 = 0, kRot90, kRot180, kRot270 };
+
 struct GestureMsg {
     gesture_t gesture {eGestureNone};
     bool success {false};
@@ -50,21 +52,21 @@ class PAJ7620U2 {
         if (readReg(REG_GES_FLAG_1, &f1, 1) != 1) return eGestureNone;
         if (f1) {
             vTaskDelay(highRate ? QUIT_MS / 5 : QUIT_MS / portTICK_PERIOD_MS);
-            return eGestureWave;
+            return mapGesture(eGestureWave);
         }
         if (readReg(REG_GES_FLAG_0, &f0, 1) != 1) return eGestureNone;
         if (!highRate) {
             vTaskDelay(ENTRY_MS / portTICK_PERIOD_MS);
             if (readReg(REG_GES_FLAG_0, &t0, 1) == 1) f0 |= t0;
         }
-        if (f0 & 0x01) return eGestureRight;
-        if (f0 & 0x02) return eGestureLeft;
-        if (f0 & 0x04) return eGestureUp;
-        if (f0 & 0x08) return eGestureDown;
-        if (f0 & 0x10) return eGestureForward;
-        if (f0 & 0x20) return eGestureBackward;
-        if (f0 & 0x40) return eGestureClockwise;
-        if (f0 & 0x80) return eGestureAntiClockwise;
+        if (f0 & 0x01) return mapGesture(eGestureRight);
+        if (f0 & 0x02) return mapGesture(eGestureLeft);
+        if (f0 & 0x04) return mapGesture(eGestureUp);
+        if (f0 & 0x08) return mapGesture(eGestureDown);
+        if (f0 & 0x10) return mapGesture(eGestureForward);
+        if (f0 & 0x20) return mapGesture(eGestureBackward);
+        if (f0 & 0x40) return mapGesture(eGestureClockwise);
+        if (f0 & 0x80) return mapGesture(eGestureAntiClockwise);
         return eGestureNone;
     }
 
@@ -100,9 +102,37 @@ class PAJ7620U2 {
         return r;
     }
 
+    gesture_t mapGesture(gesture_t g) const {
+        if (g == eGestureForward || g == eGestureBackward || g == eGestureWave) return g;
+        if (g == eGestureClockwise || g == eGestureAntiClockwise) return g;
+        switch (orient) {
+            case kRot0: return g;
+            case kRot90:
+                if (g == eGestureRight) return eGestureDown;
+                if (g == eGestureLeft) return eGestureUp;
+                if (g == eGestureUp) return eGestureRight;
+                if (g == eGestureDown) return eGestureLeft;
+                return g;
+            case kRot180:
+                if (g == eGestureRight) return eGestureLeft;
+                if (g == eGestureLeft) return eGestureRight;
+                if (g == eGestureUp) return eGestureDown;
+                if (g == eGestureDown) return eGestureUp;
+                return g;
+            case kRot270:
+                if (g == eGestureRight) return eGestureUp;
+                if (g == eGestureLeft) return eGestureDown;
+                if (g == eGestureUp) return eGestureLeft;
+                if (g == eGestureDown) return eGestureRight;
+                return g;
+        }
+        return g;
+    }
+
     TwoWire* wire;
     uint8_t dev;
     bool highRate = false;
+    orient_t orient = kRot180;
 
     static inline const uint8_t initReg[219][2] = {
         {0xEF, 0x00}, {0x32, 0x29}, {0x33, 0x01}, {0x34, 0x00}, {0x35, 0x01}, {0x36, 0x00}, {0x37, 0x07}, {0x38, 0x17},
