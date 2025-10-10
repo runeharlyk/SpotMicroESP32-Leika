@@ -13,12 +13,14 @@ class KinConfig:
 
     mountOffsets = [[L / 2, 0, W / 2], [L / 2, 0, -W / 2], [-L / 2, 0, W / 2], [-L / 2, 0, -W / 2]]
 
-    default_feet_positions = [
-        [mountOffsets[0][0], 0, mountOffsets[0][2] + coxa, 1],
-        [mountOffsets[1][0], 0, mountOffsets[1][2] - coxa, 1],
-        [mountOffsets[2][0], 0, mountOffsets[2][2] + coxa, 1],
-        [mountOffsets[3][0], 0, mountOffsets[3][2] - coxa, 1],
-    ]
+    default_feet_positions = np.array(
+        [
+            [mountOffsets[0][0], 0, mountOffsets[0][2] + coxa, 1],
+            [mountOffsets[1][0], 0, mountOffsets[1][2] - coxa, 1],
+            [mountOffsets[2][0], 0, mountOffsets[2][2] + coxa, 1],
+            [mountOffsets[3][0], 0, mountOffsets[3][2] - coxa, 1],
+        ]
+    )
 
     # Max constants
     max_roll = 15 * np.pi / 2
