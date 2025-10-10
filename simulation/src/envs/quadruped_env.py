@@ -2,6 +2,7 @@ import gymnasium as gym
 import pybullet as p
 import pybullet_data
 import numpy as np
+import os
 from enum import Enum
 
 from src.utils.gui import GUI
@@ -16,16 +17,33 @@ class TerrainType(Enum):
 
 class QuadrupedRobot:
     def __init__(self, urdf_path, position=[0, 0, 0.3], orientation=[0, 0, 0], use_fixed_base=False):
+        print(f"Loading URDF from: {urdf_path}")
+        print(f"URDF file exists: {os.path.exists(urdf_path)}")
+
         q_orientation = p.getQuaternionFromEuler(orientation)
-        self.robot_id = p.loadURDF(
-            urdf_path, position, q_orientation, useFixedBase=use_fixed_base)
+        try:
+            self.robot_id = p.loadURDF(urdf_path, position, q_orientation, useFixedBase=use_fixed_base)
+            print(f"Robot loaded successfully with ID: {self.robot_id}")
+            if self.robot_id >= 0:
+                print(f"Number of joints: {p.getNumJoints(self.robot_id)}")
+            else:
+                print("ERROR: Robot ID is negative, URDF loading failed!")
+        except Exception as e:
+            print(f"Error loading URDF: {e}")
+            raise
+
+        # Indices of the 12 actuated joints in the URDF (PyBullet joint indices)
+        # Order: FL(shoulder, leg, foot), FR(shoulder, leg, foot), RL(shoulder, leg, foot), RR(shoulder, leg, foot)
+        self.movable_joint_indices = [2, 3, 5, 7, 8, 10, 12, 13, 15, 17, 18, 20]
+
+    def get_movable_joint_names(self):
+        return [p.getJointInfo(self.robot_id, idx)[1].decode("utf-8") for idx in self.movable_joint_indices]
 
     def get_observation(self):
         position, orientation = p.getBasePositionAndOrientation(self.robot_id)
         orientation = p.getEulerFromQuaternion(orientation)
         velocity, angular_velocity = p.getBaseVelocity(self.robot_id)
-        joint_states = p.getJointStates(
-            self.robot_id, range(p.getNumJoints(self.robot_id)))
+        joint_states = p.getJointStates(self.robot_id, range(p.getNumJoints(self.robot_id)))
         joint_positions = [state[0] for state in joint_states]
         joint_velocities = [state[1] for state in joint_states]
         return np.concatenate(
@@ -40,16 +58,19 @@ class QuadrupedRobot:
         )
 
     def apply_action(self, action):
+        # Apply target positions (radians) to actuated joints in fixed order
         for i, position in enumerate(action):
-            p.setJointMotorControl2(
-                bodyIndex=self.robot_id,
-                jointIndex=i,
-                controlMode=p.POSITION_CONTROL,
-                targetPosition=position,
-                force=50,  # 343 #  / 100 for newtons - Fix mass
-                positionGain=0.5,
-                maxVelocity=13.09,
-            )
+            if i < len(self.movable_joint_indices):
+                joint_index = self.movable_joint_indices[i]
+                p.setJointMotorControl2(
+                    bodyIndex=self.robot_id,
+                    jointIndex=joint_index,
+                    controlMode=p.POSITION_CONTROL,
+                    targetPosition=position,
+                    force=50,  # 343 #  / 100 for newtons - Fix mass
+                    positionGain=0.5,
+                    maxVelocity=13.09,
+                )
 
 
 class QuadrupedEnv(gym.Env):
@@ -60,8 +81,7 @@ class QuadrupedEnv(gym.Env):
         else:
             p.connect(p.DIRECT)
 
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(48,))
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(48,))
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(18,))
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
@@ -95,8 +115,7 @@ class QuadrupedEnv(gym.Env):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
             p.configureDebugVisualizer(p.COV_ENABLE_PLANAR_REFLECTION, 1)
             p.configureDebugVisualizer(p.COV_ENABLE_TINY_RENDERER, 0)
-            self.terrain = p.loadURDF(
-                "plane_transparent.urdf", useMaximalCoordinates=True)
+            self.terrain = p.loadURDF("plane_transparent.urdf", useMaximalCoordinates=True)
         elif terrain_type == TerrainType.TERRAIN:
             terrainShape = p.createCollisionShape(
                 shapeType=p.GEOM_HEIGHTFIELD, meshScale=[0.1, 0.1, 24], fileName="heightmaps/wm_height_out.png"

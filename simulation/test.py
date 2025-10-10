@@ -1,4 +1,4 @@
-from src.envs.environment import QuadrupedEnv
+from src.envs.quadruped_env import QuadrupedEnv
 from training.model import SimpleNN
 
 import resources as resources
