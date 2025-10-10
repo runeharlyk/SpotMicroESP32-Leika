@@ -67,13 +67,13 @@ class GUI:
 
         keys = p.getKeyboardEvents()
         if keys.get(ord("j")):
-            self.c_yaw += 0.1
+            self.c_yaw += 0.3
         if keys.get(ord("k")):
-            self.c_yaw -= 0.1
+            self.c_yaw -= 0.3
         if keys.get(ord("m")):
-            self.c_pitch += 0.1
+            self.c_pitch += 0.3
         if keys.get(ord("i")):
-            self.c_pitch -= 0.1
+            self.c_pitch -= 0.3
 
         if keys.get(ord("q")) or keys.get(27):
             p.disconnect()
