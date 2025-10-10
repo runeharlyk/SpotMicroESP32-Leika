@@ -95,6 +95,8 @@ class QuadrupedEnv(gym.Env):
         self.max_steps = max_steps
         self.current_step = 0
 
+        self.prev_velocity = None
+
         self._setup_world()
         if render_mode == "human":
             self.env_start_state = p.saveState()
@@ -143,6 +145,7 @@ class QuadrupedEnv(gym.Env):
             p.resetSimulation()
             self._setup_world()
         self.current_step = 0
+        self.prev_velocity = None
         return self.robot.get_observation(), {}
 
     def step(self, action):
@@ -165,17 +168,42 @@ class QuadrupedEnv(gym.Env):
 
     def calculate_reward(self, obs):
         position = obs[:3]
+        orientation = obs[3:6]
         velocity = obs[6:9]
         angular_velocity = obs[9:12]
 
         forward_velocity = velocity[0]
         velocity_reward = -abs(forward_velocity - self.target_velocity)
 
-        height_penalty = -abs(position[2] - 0.3)
+        height_penalty = -abs(position[2] - 0.3) * 0.5
 
-        angular_penalty = -np.sum(np.square(angular_velocity))
+        roll, pitch, yaw = orientation
+        orientation_penalty = -(abs(roll) + abs(pitch)) * 1.0
 
-        total_reward = velocity_reward + 0.1 * height_penalty + 0.01 * angular_penalty
+        angular_penalty = -np.sum(np.square(angular_velocity)) * 0.05
+
+        sideways_velocity_penalty = -abs(velocity[1]) * 0.3
+
+        if self.prev_velocity is not None:
+            dt = 1.0 / 240.0
+            acceleration = (velocity - self.prev_velocity) / dt
+            lateral_acc_penalty = -abs(acceleration[1]) * 0.01
+            vertical_acc_penalty = -abs(acceleration[2]) * 0.01
+        else:
+            lateral_acc_penalty = 0
+            vertical_acc_penalty = 0
+
+        self.prev_velocity = velocity.copy()
+
+        total_reward = (
+            velocity_reward
+            + height_penalty
+            + orientation_penalty
+            + angular_penalty
+            + sideways_velocity_penalty
+            + lateral_acc_penalty
+            + vertical_acc_penalty
+        )
         return total_reward
 
     def is_done(self, obs):
