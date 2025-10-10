@@ -174,6 +174,28 @@ A smaller and more affordable variant currently under development. Leika Mini ai
 
 <img src="images/leika_mini.jpg" alt="Leika mini" width="500">
 
+### Kinematics Configuration
+
+| Parameter             | Leika (Standard) | Leika Mini  | Yertle        |
+| --------------------- | ---------------- | ----------- | ------------- |
+| **Coxa Length**       | 60.5mm           | 35.0mm      | 35.0mm        |
+| **Coxa Offset**       | 10.0mm           | 0.0mm       | 0.0mm         |
+| **Femur Length**      | 111.2mm          | 60.0mm      | 130.0mm       |
+| **Tibia Length**      | 118.5mm          | 60.0mm      | 130.0mm       |
+| **Body Length (L)**   | 207.5mm          | 160.0mm     | 240.0mm       |
+| **Body Width (W)**    | 78.0mm           | 80.0mm      | 78.0mm        |
+| **Max Leg Reach**     | 219.7mm          | 95.0mm      | 255.0mm       |
+| **Body Height Range** | 98.9-197.7mm     | 42.8-85.5mm | 114.8-229.5mm |
+
+**Motion Limits:**
+
+- Maximum roll/pitch: ±15°
+- Maximum body shift: W/3 in X and Z directions
+- Maximum step length: 80% of leg reach
+- Maximum step height: 50% of leg reach
+
+The kinematics system automatically adapts to the selected hardware variant through compile-time configuration flags (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI`, `SPOTMICRO_YERTLE`).
+
 ## Hardware & Electronics
 
 ### Mechanical Components
