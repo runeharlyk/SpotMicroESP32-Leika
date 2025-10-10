@@ -4,11 +4,11 @@ import pybullet as p
 
 from src.robot.kinematics import Kinematics, BodyStateT, KinConfig
 from src.robot.gait import GaitController, GaitStateT, GaitType, default_offset, default_stand_frac
-from src.envs.quadruped_env import QuadrupedEnv
+from src.envs.quadruped_env import QuadrupedEnv, TerrainType
 
 print("Initializing Spot Micro simulation...")
 try:
-    env = QuadrupedEnv()
+    env = QuadrupedEnv(terrain_type=TerrainType.FLAT)
     print("Environment created successfully")
     print(f"Robot ID: {env.robot.robot_id}")
     print(f"Number of joints: {env.robot.get_observation().shape[0]}")

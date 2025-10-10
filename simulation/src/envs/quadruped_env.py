@@ -32,8 +32,6 @@ class QuadrupedRobot:
             print(f"Error loading URDF: {e}")
             raise
 
-        # Indices of the 12 actuated joints in the URDF (PyBullet joint indices)
-        # Order: FL(shoulder, leg, foot), FR(shoulder, leg, foot), RL(shoulder, leg, foot), RR(shoulder, leg, foot)
         self.movable_joint_indices = [2, 3, 5, 7, 8, 10, 12, 13, 15, 17, 18, 20]
 
     def get_movable_joint_names(self):
@@ -58,7 +56,6 @@ class QuadrupedRobot:
         )
 
     def apply_action(self, action):
-        # Apply target positions (radians) to actuated joints in fixed order
         for i, position in enumerate(action):
             if i < len(self.movable_joint_indices):
                 joint_index = self.movable_joint_indices[i]
@@ -125,7 +122,7 @@ class QuadrupedEnv(gym.Env):
             p.changeVisualShape(self.terrain, -1, textureUniqueId=textureId)
         elif terrain_type == TerrainType.MAZE:
             terrainShape = p.createCollisionShape(
-                shapeType=p.GEOM_HEIGHTFIELD, meshScale=[1, 1, 3], fileName="heightmaps/Maze.png"
+                shapeType=p.GEOM_HEIGHTFIELD, meshScale=[0.2, 0.2, 0.5], fileName="heightmaps/Maze.png"
             )
             textureId = p.loadTexture("heightmaps/Maze.png")
             maze = p.createMultiBody(0, terrainShape)
