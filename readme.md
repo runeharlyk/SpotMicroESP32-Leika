@@ -4,17 +4,12 @@
       <img src="images/leika.jpg" alt="Leika" width="450">
     </a>
     <br />  
-    Spot Micro - Leika 🐕
+    Spot Micro - Leika
   </h1>
-  <h4>A small quadruped robot, inspired by Boston Dynamics <a href="https://bostondynamics.com/products/spot/" target="_blank">Spot</a>.</h4>
+  <h4>An ESP32-based quadruped robot platform with web based controller and pybullet simulator</h4>
 
   <p>
-   <a href="docs/readme.md"><strong>Explore the docs »</strong></a>
-   <!-- <br/> -->
-    <!-- <a href="#overview">Overview</a> •
-    <a href="#features">Key Features</a> •
-    <a href="#credits">Credits</a> •
-    <a href="#license">License</a> -->
+   <a href="docs/readme.md"><strong>Documentation</strong></a>
   </p>
 
 [![Frontend Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml)
@@ -22,195 +17,279 @@
 
 </div>
 
-## 📜 Overview
+## Overview
 
-Leika is a smaller quadruped robot for the Spot-Micro community.
-Built on an ESP32 and powered by FreeRTOS, she can handle multiple tasks seamlessly—like video and data streaming, solving kinematic and gait planning, controlling I/O, and much more.
-By focusing on practicality and simplicity in both hardware and software, it offer an accessible platform for learning, experimentation, and modest real-world applications.
+Leika is an open-source quadruped robot built around the ESP32 microcontroller. The project combines embedded firmware, web-based control interfaces, and a physics-based simulation environment to create a complete robotics development platform. Using FreeRTOS for real-time task management, the robot handles inverse kinematics, gait generation, sensor fusion, and wireless communication simultaneously.
+
+The project includes a PyBullet simulation environment for testing control algorithms and training reinforcement learning policies before deploying to hardware.
 
 <img src="images/short_walk.gif" width="450"/>
 
-## 🎯 Features
+## Key Features
 
-- **Live Preview**: Instant feedback with real-time updates.
-- **Real-Time Data**: Stream camera feeds, monitor sensors, and analyze data on the fly.
-- **Kinematic Precision**: Full kinematic model for accurate movements.
-- **Dual joystick controller**
-- **Robot mirroring visualization**
-- **Highly customizable**
-- **Self-Hosted**: Complete autonomy, from code to execution.
-- **Multiple Variants**: Support both esp32 and Yertle variant
-<!-- * Servo calibration tool -->
+### Hardware & Firmware
 
-## 📐 Robot specifications
+- ESP32-based control system with FreeRTOS
+- Inverse kinematics with 3-DOF legs
+- Multiple gait implementations (Bezier trot, 8-phase crawl)
+- Real-time sensor integration
+<!-- - Over-the-air firmware updates -->
+- Multiple hardware variants (standard, Yertle, and upcoming ✨Leika Mini✨)
 
-### 🌊 Robot control flow
+### Web Controller
 
-The robots is implemented using a sense, plan, act control flow.
+- Self-hosted web interface embedded in firmware
+- Dual joystick control with real-time robot visualization
+- Complete configuration interface (calibration, network, settings)
+- Built with Svelte and embedded using LittleFS
+
+### Simulation & Training
+
+- PyBullet physics simulation with Gymnasium interface
+- Reinforcement learning support (PPO, SAC)
+- Parallel training infrastructure
+- Model evaluation and comparison tools
+- Interactive kinematics playground
+
+## Architecture
+
+### Control Flow
+
+The robot implements a sense-plan-act control architecture:
 
 ![control flow](images/flowchart.png)
 
-## 🦾 Kinematics
+1. **Sense**: Read IMU, magnetometer and gensture sensor
+2. **Plan**: Process sensor data, compute inverse kinematics, generate gait trajectories
+3. **Act**: Send servo commands, stream telemetry data
 
-To enable complex movements, it's beneficial to be able to describe the robot state using a world reference frame, instead of using raw joint angles.
+### Kinematics
 
-The robot's body pose in the world reference frame is represented as
+The kinematics system allows control through Cartesian coordinates rather than raw joint angles. This abstraction simplifies motion planning and enables intuitive control.
+
+The robot's body pose in the world reference frame:
 
 $$T_{body}=\left[x_b,y_b,z_b,\phi, \theta,\psi\right]$$
 
-Where
+Where:
 
-- $x_b, y_b, z_b$ are cartesian coordinates of the robot's body center.
-- $\phi, \theta,\psi$ are the roll, pitch and yaw angles, describing the body orientation.
+- $x_b, y_b, z_b$ are Cartesian coordinates of the body center
+- $\phi, \theta,\psi$ represent roll, pitch, and yaw angles
 
-The feet positions in the world reference frame are:
+Foot positions in the world reference frame:
 
 $$P_{feet}=\\{(x_{f_i},y_{f_i},z_{f_i})|i=1,2,3,4\\}$$
 
-where $x_{f_i}, y_{f_i}, z_{f_i}$ are cartesian coordinates for each foot $i$.
+The inverse kinematics solver converts these high-level commands into joint angles for the 12 servos (3 per leg). The kinematics library is implemented in C++ for the ESP32 firmware and TypeScript for the web controller, enabling both real-time control and browser-based visualization.
 
-Solving the inverse kinematics yields target angles for the actuators.
+### Web Controller
 
-<!-- Write about the calculation, rotation matrix and trig -->
-
-<!-- L1, L2, L3, L4, L, W -->
-
-<!-- $$
-R_{body} =
-\begin{bmatrix}
-\cos\psi\cos\theta & \cos\psi\sin\theta\sin\phi - \sin\psi\cos\phi & \cos\psi\sin\theta\cos\phi + \sin\psi\sin\phi \\
-\sin\psi\cos\theta & \sin\psi\sin\theta\sin\phi + \cos\psi\cos\phi & \sin\psi\sin\theta\cos\phi - \cos\psi\sin\phi \\
--\sin\theta & \cos\theta\sin\phi & \cos\theta\cos\phi
-\end{bmatrix}
-$$ -->
-
-### 🎮 Controller
-
-The controller is a Svelte app, which get embedded in the firmware of the robot.
-Which means that new releases and OTA updates include the latest controller.
-
-The controller includes full control over robot settings like network and calibration, and a visualization.
+The web interface is built with SvelteKit and compiled to static assets that are embedded directly in the ESP32 firmware. This approach eliminates the need for external servers and ensures the controller is always synchronized with the firmware version.
 
 <img src="images/controller.gif" alt="controller" width="500">
 
-### 🛠️ Documentation
+Features:
 
-You can find the current steps to get a fresh new doggo up and barking on [/docs](docs/readme.md)
+- Real-time 3D robot visualization
+- Dual joystick control with configurable input mapping
+- Network configuration and WiFi management
+- Servo calibration tools
+- System monitoring and diagnostics
+- Firmware over-the-air updates
 
-1. [Components](docs/1_components.md)
-1. [Assembly](docs/2_assembly.md)
-1. [Software](docs/3_software.md)
-1. [First-time setup](docs/4_configuring.md)
-1. [Running](docs/5_running.md)
-1. [Developing](docs/6_developing.md)
-1. [Contributing](docs/7_contributing.md)
+## Motion Control
 
-#### 🎮 Software
+The motion system is implemented as a finite state machine supporting multiple locomotion modes:
 
-You can find a description for the current esp32 firmware and controller [here](docs/software_description.md).
+### Available Gaits
 
-<!--## 🧠 Kinematics
+**Trot Gait (12-Point Bezier)**
 
-The kinematic for the robot is from this [kinematics paper](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot). A C++ and TypeScript library was written to enable onboard calculation and fast development iteration using the robot mirroring.
--->
+- Uses continuous phase time $t\in[0,1]$ with configurable swing/stance ratios
+- Swing phase: 12-point Bezier curve for smooth foot trajectories
+- Stance phase: Sinusoidal curve for body weight transfer
+- Supports diagonal leg pairs moving in opposition
+- Enables dynamic turning through trajectory modification
 
-## 🏁 Motion state controller
+**8-Phase Crawl Gait**
 
-The motion controller is a finite state machine with states allowing for static and dynamic posing, an 8-phase crawl, Bezier-based trot gait, and choreographed animation.
+- Static stability: three feet always on ground
+- Sequential leg lifting with center-of-mass shifting
+- Discrete phase transitions based on phase time accumulation
+- Suitable for rough terrain and slow, stable locomotion
+- Based on the implementation from [mike4192's spotMicro](https://github.com/mike4192/spotMicro)
+
+**Static/Dynamic Posing**
+
+- Direct body pose control without locomotion
+- Used for manual positioning, rest states, and transitions
 
 ### Controller Input Mapping
 
-The controller input is interpreted differently between the modes.
+| Input            | Parameter       | Range   |
+| ---------------- | --------------- | ------- |
+| Left joystick X  | Step length (X) | -1 to 1 |
+| Left joystick Y  | Step length (Z) | -1 to 1 |
+| Right joystick X | Turn angle      | -1 to 1 |
+| Right joystick Y | Body pitch      | -1 to 1 |
+| Height slider    | Body height     | 0 to 1  |
+| Speed slider     | Step velocity   | 0 to 1  |
+| S1 slider        | Step height     | 0 to 1  |
+| Stop button      | Emergency stop  | 0 or 1  |
 
-| Controller Input | Mapped to Gait Step | Range   |
-| ---------------- | ------------------- | ------- |
-| Left x joystick  | Step x              | -1 to 1 |
-| Left y joystick  | Step z              | -1 to 1 |
-| Right x joystick | Step angle          | -1 to 1 |
-| Right y joystick | Body pitch angle    | -1 to 1 |
-| Height slider    | Body height         | 0 to 1  |
-| Speed slider     | Step velocity       | 0 to 1  |
-| S1 slider        | Step height         | 0 to 1  |
-| Stop button      | E stop command      | 0 or 1  |
+## Simulation Environment
 
-<!-- ### Static and dynamic posing -->
+A PyBullet-based physics simulation is available for algorithm development and reinforcement learning training:
 
-### Trot gait (12 point bezier curve)
+```bash
+cd simulation
+pip install -r requirements.txt
+python play.py
+```
 
-The trot gait implements a phase time $t\in[0,1]$, but instead of using contact phases we define a swing/stance ratio of phase time offset for each leg.
+Features:
 
-The stance controller implements a sin curve to control the depth of steps.
+- Real-time interactive control with GUI
+- Multiple terrain types (flat, heightmap, maze)
+- Gymnasium-compatible interface for RL
+- PPO and SAC algorithm support
+- Parallel training capabilities
+- Training scripts with TensorBoard integration
 
-The swing controller implements a bezier curve using 12 control points centered around the robot leg.
+The simulation environment allows testing control algorithms and training policies before deploying to hardware. See [simulation/README.md](simulation/README.md) for detailed documentation.
 
-Rotation is calculated using the same curve.
+## Hardware Variants
 
-### 8-phase crawl gait
+### Leika (Standard)
 
-The 8-phase crawl gait works by lifting one leg at a time while shifting its body weight away from the leg.
+The original design supporting 12 servos with full 3-DOF leg control. Suitable for experimentation and learning about quadruped robotics.
 
-As the name implies, the gait consist of 8 discrete phases, which represents which feet should be contact the ground or be in swing.
+### [Yertle](https://github.com/Jerome-Graves/yertle/tree/main)
 
-At each time step the phase time $t\in [0,1]$ is updated. When $t\geq 1$ the phase index is updated and phase time is reset.
+A crossbreed between <a href="https://grabcad.com/library/diy-quadruped-robot-1">Kangal</a>, <a href="https://spotmicroai.readthedocs.io/en/latest/">SpotMicro</a> and <a href="https://github.com/adham-elarabawy/open-quadruped">Open Quadruped</a>
 
-Is derived from [mike4192 spotMicro](https://github.com/mike4192/spotMicro)
+### Leika Mini (In Development)
 
-## 🔮 Getting started
+A smaller and more affordable variant currently under development. Leika Mini aims to lower the entry barrier while being fully compatible with the platform.
 
-1. Clone and open the new project
+<img src="images/leika_mini.jpg" alt="Leika mini" width="500">
 
-   ```sh
-   git clone https://github.com/runeharlyk/SpotMicroESP32-Leika
-   ```
+## Hardware & Electronics
 
-1. Install dependencies with preferable package manager (npm, pnpm, yarn)
+### Mechanical Components
 
-   ```sh
-   cd app
-   pnpm install
-   ```
+The robot body is constructed from 3D-printed parts based on various Spot Micro community designs:
 
-1. Configure device settings
+- [robjk reinforced shoulder remix](https://www.thingiverse.com/thing:4937631)
+- [Kooba SpotMicroESP32 remix](https://www.thingiverse.com/thing:4559827)
+- [KDY0532 original design](https://www.thingiverse.com/thing:3445283)
 
-   1. Update `factory_settings.ini` with relevant settings
+### Electronics
 
-1. Upload filesystem image using platformIO
+| Component        | Specification                   | Required    | Notes                                                 |
+| ---------------- | ------------------------------- | ----------- | ----------------------------------------------------- |
+| ESP32            | Microcontroller                 | Yes         | ESP32-S3 (N8R8) recommended for better performance    |
+| PCA9685          | 16-channel PWM servo driver     | Yes         | Reinforce with thicker solder traces                  |
+| 12x Servo motors | 20-36kg torque                  | Yes         | Minimum MG996R, highly recommend the pricer CLS6336HV |
+| LM2596/XL4015    | DC-DC buck converter            | Yes         | Set to 5V for ESP32 and peripherals                   |
+| MPU6050          | IMU (accelerometer + gyroscope) | Recommended | GY-87 or MPU-9250 include magnetometer                |
+| HMC5883          | Magnetometer                    | Optional    | Included in GY-87/MPU-9250                            |
+| PAJ7620U2        | Gesture sensor                  | Optional    | For interaction capabilities                          |
+| OV2640/OV5640    | Camera module                   | Optional    | 120-160° FOV recommended                              |
+| 2x HC-SR04       | Ultrasonic distance sensors     | Optional    | For obstacle detection                                |
+| 0.96" SD1306     | OLED display                    | Optional    | Status display                                        |
+| Battery          | 7.6-8.4V                        | Yes         | 4x 18650 in 2S2P or 2S LiPo                           |
+| Power switch     | Main power                      | Yes         | Rated for battery current                             |
 
-1. Upload firmware using platformIO
+## Getting Started
 
-## 🚀 Future
+### Hardware Build
 
-See the [project backlog](https://github.com/users/runeharlyk/projects/3) and [open issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues) for a full list of proposed and active features (and known issues).
+Complete build instructions are available in the documentation:
 
-## 🙌 Credits
+1. [Components and BOM](docs/1_components.md)
+2. [Assembly Instructions](docs/2_assembly.md)
+3. [Software Installation](docs/3_software.md)
+4. [Initial Configuration](docs/4_configuring.md)
+5. [Running the Robot](docs/5_running.md)
 
-This project takes great inspiration from the following resources:
+### Firmware Development
 
-1. [Spot Micro Quadruped Project - mike4192](https://github.com/mike4192/spotMicro)
-1. [Kinematics](https://www.researchgate.net/publication/320307716_Inverse_Kinematic_Analysis_Of_A_Quadruped_Robot)
-1. [ESP32SvelteKit template](https://github.com/theelims/ESP32-sveltekit)
-1. [SpotMicro ESP32 - Maarten Weyn](https://github.com/maartenweyn/SpotMicro_ESP32)
-1. [SpotMicroAi](https://gitlab.com/public-open-source/spotmicroai)
-1. [Spot Micro - Leika](https://github.com/runeharlyk/SpotMicro-Leika/tree/main)
-1. [NightDriverStrip](https://github.com/PlummersSoftwareLLC/NightDriverStrip)
+**Prerequisites:**
 
-## ☕ Support
+- PlatformIO IDE or CLI
+- Node.js 18+ (for web controller development)
 
-If you like the project and want to follow its evolution, consider ✨-ing the project
+**Build and flash:**
+
+```bash
+git clone https://github.com/runeharlyk/SpotMicroESP32-Leika
+cd SpotMicroESP32-Leika
+
+cd app
+pnpm install
+cd ..
+
+pio run -t upload
+pio run -t uploadfs
+```
+
+Configuration is managed through `factory_settings.ini` and `features.ini` in the `esp32/` directory.
+
+### Simulation Only
+
+To experiment with the simulation environments without hardware:
+
+```bash
+cd simulation
+pip install -r requirements.txt
+python play.py
+```
+
+For development workflows and contribution guidelines, see [docs/6_developing.md](docs/6_developing.md) and [docs/7_contributing.md](docs/7_contributing.md).
+
+## Project Structure
+
+```text
+├── app/                    # SvelteKit web controller
+├── docs/                   # Build and software documentation
+├── esp32/                  # ESP32 firmware (PlatformIO)
+│   ├── include/           # Firmware headers
+│   ├── src/               # Firmware source
+│   └── lib/               # Third-party libraries (TensorFlow Lite Micro)
+├── simulation/             # PyBullet simulation environment
+├── hardware/              # 3D printable parts and CAD files
+├── scripts/               # Utility scripts
+```
+
+## Documentation
+
+- [Software Architecture](docs/software_description.md)
+- [API Reference](docs/api.md)
+- [Kinematics Details](docs/kinematics.md)
+- [Motion System](docs/motion_system.md)
+
+## Roadmap
+
+Track planned features and active development on the [project board](https://github.com/users/runeharlyk/projects/3). Report bugs or request features through [GitHub issues](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues).
+
+## Related Projects
+
+If you're interested in quadruped robotics, check out:
+
+- [mike4192's Spot Micro](https://github.com/mike4192/spotMicro) - ROS-based implementation with advanced features
+- [SpotMicroAI](https://gitlab.com/public-open-source/spotmicroai) - Community hub for Spot Micro variants
+- [Stanford Pupper](https://github.com/stanfordroboticsclub/StanfordQuadruped) - Another affordable quadruped platform
+- [OpenQuadruped](https://github.com/adham-elarabawy/open-quadruped) - Research-focused quadruped project
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE.md](LICENSE.md) for details.
+
+## Contact
+
+Rune Harlyk - [runeharlyk.dk](https://runeharlyk.dk)
+
+Project Repository: [https://github.com/runeharlyk/SpotMicroESP32-Leika](https://github.com/runeharlyk/SpotMicroESP32-Leika)
 
 <a href="https://bmc.link/runeharlyk" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/purple_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
-
-## You may also like...
-
-- [Spot Micro Quadruped Project - mike4192](https://github.com/mike4192/spotMicro) - Great ROS based project
-- [SpotMicroAi](https://gitlab.com/public-open-source/spotmicroai) - Group repository with simulations and runtimes
-
-## 📃 License
-
-[MIT](LICENSE.md)
-
----
-
-> [runeharlyk.dk](https://runeharlyk.dk) &nbsp;&middot;&nbsp;
-> GitHub [@runeharlyk](https://github.com/runeharlyk) &nbsp;&middot;&nbsp;
-> LinkedIn [@Rune Harlyk](https://www.linkedin.com/in/rune-harlyk/)
