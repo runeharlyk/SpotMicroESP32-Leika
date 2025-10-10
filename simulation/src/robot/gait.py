@@ -3,7 +3,10 @@ import numpy as np
 from typing import TypedDict
 from enum import Enum
 
-from src.robot.kinematics import BodyStateT
+try:
+    from src.robot.kinematics import BodyStateT
+except ImportError:
+    from robot.kinematics import BodyStateT
 
 
 class GaitType(Enum):
@@ -34,15 +37,12 @@ class GaitStateT(TypedDict):
     gait_type: GaitType
 
 
-length_multipliers = np.array(
-    [-1.4, -1.0, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5, 1.5, 1.4, 1.0])
-height_profile = np.array(
-    [0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0])
+length_multipliers = np.array([-1.4, -1.0, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5, 1.5, 1.4, 1.0])
+height_profile = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0])
 
 
 def sine_curve(length, angle, height, phase):
-    x, z = length * (1 - 2 * phase) * np.cos(angle), length * \
-        (1 - 2 * phase) * np.sin(angle)
+    x, z = length * (1 - 2 * phase) * np.cos(angle), length * (1 - 2 * phase) * np.sin(angle)
     y = height * np.cos(np.pi * (x + z) / (2 * length)) if length else 0
     return np.array([x, z, y])
 
@@ -67,8 +67,7 @@ def get_control_points(length, angle, height):
 def bezier_curve(length, angle, height, phase):
     ctrl = get_control_points(length, angle, height)
     n = len(ctrl) - 1
-    coeffs = np.array([math.comb(n, i) * (phase**i) *
-                      ((1 - phase) ** (n - i)) for i in range(n + 1)])
+    coeffs = np.array([math.comb(n, i) * (phase**i) * ((1 - phase) ** (n - i)) for i in range(n + 1)])
     return np.sum(ctrl * coeffs[:, None], axis=0)
 
 
@@ -80,8 +79,7 @@ class GaitController:
     def step(self, gait: GaitStateT, body: BodyStateT, dt: float):
         step_x, step_z, angle = gait["step_x"], gait["step_z"], gait["step_angle"]
         if not any((step_x, step_z, angle)):
-            body["feet"] = body["feet"] + \
-                (self.default_position - body["feet"]) * dt * 10
+            body["feet"] = body["feet"] + (self.default_position - body["feet"]) * dt * 10
             self.phase = 0.0
             return
 
@@ -101,12 +99,10 @@ class GaitController:
 
         for i, (default_foot, current_foot) in enumerate(zip(self.default_position, body["feet"])):
             phase = (self.phase + offsets[i]) % 1
-            ph_norm, curve_fn, amp = self._phase_params(
-                phase, stand_fraction, depth, height)
+            ph_norm, curve_fn, amp = self._phase_params(phase, stand_fraction, depth, height)
             delta_pos = curve_fn(length / 2, turn_amplitude, amp, ph_norm)
-            delta_rot = curve_fn(np.rad2deg(angle), yaw_arc(
-                default_foot, current_foot), amp, ph_norm)
-            new_feet[i][:2] = default_foot[:2] + delta_pos + delta_rot
+            delta_rot = curve_fn(np.rad2deg(angle), yaw_arc(default_foot, current_foot), amp, ph_norm)
+            new_feet[i][:2] = default_foot[:2] + delta_pos[:2] + delta_rot[:2]
             # new_feet[i][3] = 1
 
         body["feet"] = new_feet

@@ -4,3 +4,7 @@ onnxruntime
 tensorflow
 numpy
 matplotlib
+pybullet
+websockets
+msgpack
+asyncio
