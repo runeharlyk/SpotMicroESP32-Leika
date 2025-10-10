@@ -34,7 +34,7 @@ joint_directions = np.array([-1, 1, 1, 1, 1, 1, -1, 1, 1, 1, 1, 1])
 
 kinematics = Kinematics()
 
-standby = kinematics.get_default_feet_pos()
+standby = KinConfig.default_feet_positions[:4, :3]
 
 body_state = BodyStateT(
     omega=0,

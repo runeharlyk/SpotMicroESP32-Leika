@@ -41,18 +41,27 @@ length_multipliers = np.array([-1.4, -1.0, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5,
 height_profile = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0])
 
 
-def sine_curve(length, angle, height, phase):
-    x, z = length * (1 - 2 * phase) * np.cos(angle), length * (1 - 2 * phase) * np.sin(angle)
-    y = height * np.cos(np.pi * (x + z) / (2 * length)) if length else 0
-    return np.array([x, z, y])
+def sine_curve(length, angle, depth, phase):
+    x_polar = np.cos(angle)
+    z_polar = np.sin(angle)
+
+    step = length * (1 - 2 * phase)
+    x = step * x_polar
+    z = step * z_polar
+    y = -depth * np.cos((np.pi * (x + z)) / (2 * length)) if length != 0 else 0
+    return np.array([x, y, z])
 
 
-def yaw_arc(feet, current):
-    return (
-        np.pi / 2
-        + np.arctan2(feet[1], feet[0])
-        + np.arctan2(np.linalg.norm(current[:2] - feet[:2]), np.linalg.norm(feet[:2]))
-    )
+def yaw_arc(default_foot, current_foot):
+    foot_mag = np.sqrt(default_foot[0] ** 2 + default_foot[2] ** 2)
+    foot_dir = np.arctan2(default_foot[2], default_foot[0])
+    offset_x = current_foot[0] - default_foot[0]
+    offset_z = current_foot[2] - default_foot[2]
+    offset_y = current_foot[1] - default_foot[1]
+    offset_mag = np.sqrt(offset_x**2 + offset_z**2)
+    offset_mod = np.arctan2(offset_mag, foot_mag)
+
+    return np.pi / 2.0 + foot_dir + offset_mod
 
 
 def get_control_points(length, angle, height):
@@ -61,7 +70,7 @@ def get_control_points(length, angle, height):
     x = length * length_multipliers * x_polar
     z = length * length_multipliers * z_polar
     y = height * height_profile
-    return np.stack([x, z, y], axis=1)
+    return np.stack([x, y, z], axis=1)
 
 
 def bezier_curve(length, angle, height, phase):
@@ -73,7 +82,7 @@ def bezier_curve(length, angle, height, phase):
 
 class GaitController:
     def __init__(self, default_position: np.ndarray):
-        self.default_position = default_position
+        self.default_position = default_position.copy()
         self.phase = 0.0
 
     def step(self, gait: GaitStateT, body: BodyStateT, dt: float):
@@ -93,17 +102,20 @@ class GaitController:
         length = np.hypot(step_x, step_z)
         if step_x < 0:
             length = -length
-        turn_amplitude = np.arctan2(step_z, length) * 2
+        turn_amplitude = np.arctan2(step_z, length)
 
-        new_feet = np.zeros_like(self.default_position)
+        new_feet = self.default_position.copy()
 
         for i, (default_foot, current_foot) in enumerate(zip(self.default_position, body["feet"])):
             phase = (self.phase + offsets[i]) % 1
             ph_norm, curve_fn, amp = self._phase_params(phase, stand_fraction, depth, height)
             delta_pos = curve_fn(length / 2, turn_amplitude, amp, ph_norm)
-            delta_rot = curve_fn(np.rad2deg(angle), yaw_arc(default_foot, current_foot), amp, ph_norm)
-            new_feet[i][:2] = default_foot[:2] + delta_pos[:2] + delta_rot[:2]
-            # new_feet[i][3] = 1
+            delta_rot = curve_fn(angle * 2, yaw_arc(default_foot, current_foot), amp, ph_norm)
+
+            new_feet[i][0] = default_foot[0] + delta_pos[0] + delta_rot[0] * 0.2
+            new_feet[i][2] = default_foot[2] + delta_pos[2] + delta_rot[2] * 0.2
+            if length or angle:
+                new_feet[i][1] = default_foot[1] + delta_pos[1] + delta_rot[1] * 0.2
 
         body["feet"] = new_feet
 

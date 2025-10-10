@@ -26,22 +26,18 @@ class GUI:
         self.step_x_slider = p.addUserDebugParameter("Step x", -1, 1, 0)
         self.step_z_slider = p.addUserDebugParameter("Step z", -1, 1, 0)
         self.angle_slider = p.addUserDebugParameter("Angle", -1, 1, 0)
-        self.step_height_slider = p.addUserDebugParameter("Step height", 0, 50, 15)
+        self.step_height_slider = p.addUserDebugParameter("Step height", 0, 1, 0.5)
         self.step_depth_slider = p.addUserDebugParameter("Step depth", 0, 0.01, 0.002)
         self.speed_slider = p.addUserDebugParameter("Speed", 0, 2, 1)
-        self.stand_frac_slider = p.addUserDebugParameter("Stand frac", 0, 1, 0.5)
+        self.stand_frac_slider = p.addUserDebugParameter("Stand frac", 0, 1, 0.75)
 
-        self.gait_type_slider = p.addUserDebugParameter("Gait Type", 0, len(GaitType) - 1, 0)
-
-        # self.gait_type_slider = p.addUserDebugParameter("Gait Type", 0, len(GaitType) - 1, 0, paramType=p.GUI_ENUM,
-        #                               enumNames=[g.value for g in GaitType])
         self.last_gait_type = GaitType.TROT_GATE
 
     def update_gait_state(self, gait_state: GaitStateT):
-        gait_state["step_x"] = p.readUserDebugParameter(self.step_x_slider)
-        gait_state["step_z"] = p.readUserDebugParameter(self.step_z_slider)
+        gait_state["step_x"] = p.readUserDebugParameter(self.step_x_slider) * KinConfig.max_step_length
+        gait_state["step_z"] = p.readUserDebugParameter(self.step_z_slider) * KinConfig.max_step_length
         gait_state["step_angle"] = p.readUserDebugParameter(self.angle_slider)
-        gait_state["step_height"] = p.readUserDebugParameter(self.step_height_slider)
+        gait_state["step_height"] = p.readUserDebugParameter(self.step_height_slider) * KinConfig.max_step_height
         gait_state["step_depth"] = p.readUserDebugParameter(self.step_depth_slider)
         gait_state["step_velocity"] = p.readUserDebugParameter(self.speed_slider)
         gait_state["stand_frac"] = p.readUserDebugParameter(self.stand_frac_slider)
@@ -61,12 +57,6 @@ class GUI:
         body_state["pz"] = p.readUserDebugParameter(self.pivot_z_slider) * KinConfig.max_body_shift_z
 
     def update(self):
-        gait_type = GaitType(int(p.readUserDebugParameter(self.gait_type_slider)))
-        if gait_type != self.last_gait_type:
-            self.last_gait_type = gait_type
-            p.removeUserDebugItem(self.stand_frac_slider)
-            self.stand_frac_slider = p.addUserDebugParameter("Stand frac", 0, 1, default_stand_frac[gait_type])
-
         quadruped_pos, _ = p.getBasePositionAndOrientation(self.robot)
         p.resetDebugVisualizerCamera(
             cameraDistance=self.c_distance,
