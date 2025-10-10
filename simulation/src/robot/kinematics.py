@@ -123,8 +123,10 @@ class Kinematics:
         cr, sr = np.cos(roll), np.sin(roll)
         cp, sp = np.cos(pitch), np.sin(pitch)
         cy, sy = np.cos(yaw), np.sin(yaw)
-        return np.array([
-            [cp*cy,            -cp*sy,            sp],
-            [sr*sp*cy + cy*cr, -sr*sp*sy + cr*cy, -sr*cp],
-            [sr*sy - sp*cr*cy,  sr*cy + sp*sy*cr,  cr*cp]
-        ])
+        return np.array(
+            [
+                [cp * cy, -cp * sy, sp],
+                [sr * sp * cy + sy * cr, -sr * sp * sy + cr * cy, -sr * cp],
+                [sr * sy - sp * cr * cy, sr * cy + sp * sy * cr, cr * cp],
+            ]
+        )
