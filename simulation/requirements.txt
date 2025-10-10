@@ -8,3 +8,7 @@ pybullet
 websockets
 msgpack
 asyncio
+gymnasium
+stable-baselines3[extra]>=2.0.0
+tensorboard
+tqdm
