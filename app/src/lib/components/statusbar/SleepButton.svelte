@@ -1,13 +1,13 @@
 <script lang="ts">
-    import { useFeatureFlags } from '$lib/stores';
-    import { modals } from 'svelte-modals';
-    import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-    import { api } from '$lib/api';
-    import { Cancel, Power } from '../icons';
+    import { useFeatureFlags } from '$lib/stores'
+    import { modals } from 'svelte-modals'
+    import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+    import { api } from '$lib/api'
+    import { Cancel, Power } from '../icons'
 
-    const features = useFeatureFlags();
+    const features = useFeatureFlags()
 
-    const postSleep = async () => await api.post('/api/system/sleep');
+    const postSleep = async () => await api.post('/api/system/sleep')
 
     const confirmSleep = () => {
         modals.open(ConfirmDialog, {
@@ -18,11 +18,11 @@
                 confirm: { label: 'Switch Off', icon: Power }
             },
             onConfirm: () => {
-                modals.close();
-                postSleep();
+                modals.close()
+                postSleep()
             }
-        });
-    };
+        })
+    }
 </script>
 
 {#if $features.sleep}

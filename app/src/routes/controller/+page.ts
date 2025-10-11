@@ -1,3 +1,3 @@
 export const load = async () => {
-	return { title: 'Controller' };
-};
+    return { title: 'Controller' }
+}

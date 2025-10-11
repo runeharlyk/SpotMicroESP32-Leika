@@ -1,5 +1,5 @@
-import type { PageLoad } from './$types';
+import type { PageLoad } from './$types'
 
 export const load = (async () => {
-	return { title: 'Firmware Update' };
-}) satisfies PageLoad;
+    return { title: 'Firmware Update' }
+}) satisfies PageLoad

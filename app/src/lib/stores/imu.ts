@@ -1,7 +1,7 @@
-import { writable } from 'svelte/store';
-import type { IMU } from '$lib/types/models';
+import { writable } from 'svelte/store'
+import type { IMU } from '$lib/types/models'
 
-const maxIMUData = 100;
+const maxIMUData = 100
 
 export const imu = (() => {
     const { subscribe, update } = writable({
@@ -12,16 +12,16 @@ export const imu = (() => {
         altitude: [] as number[],
         pressure: [] as number[],
         bmp_temp: [] as number[]
-    });
+    })
 
     const addData = (content: IMU) => {
         update(data => {
-            (Object.keys(content) as (keyof IMU)[]).forEach(key => {
-                data[key] = [...data[key], content[key]].slice(-maxIMUData);
-            });
-            return data;
-        });
-    };
+            ;(Object.keys(content) as (keyof IMU)[]).forEach(key => {
+                data[key] = [...data[key], content[key]].slice(-maxIMUData)
+            })
+            return data
+        })
+    }
 
-    return { subscribe, addData };
-})();
+    return { subscribe, addData }
+})()

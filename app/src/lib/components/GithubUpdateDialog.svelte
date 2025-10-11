@@ -1,61 +1,61 @@
 <script lang="ts">
-    import { focusTrap } from 'svelte-focus-trap';
-    import { fly } from 'svelte/transition';
-    import { telemetry } from '$lib/stores/telemetry';
-    import { Cancel } from './icons';
-    import { modals, exitBeforeEnter, onBeforeClose } from 'svelte-modals';
+    import { focusTrap } from 'svelte-focus-trap'
+    import { fly } from 'svelte/transition'
+    import { telemetry } from '$lib/stores/telemetry'
+    import { Cancel } from './icons'
+    import { modals, exitBeforeEnter, onBeforeClose } from 'svelte-modals'
 
     // provided by <Modals />
     interface Props {
-        isOpen: boolean;
+        isOpen: boolean
     }
 
-    let { isOpen }: Props = $props();
+    let { isOpen }: Props = $props()
 
-    let updating = $state(true);
+    let updating = $state(true)
 
-    let progress = $state(0);
+    let progress = $state(0)
     $effect(() => {
         if ($telemetry.download_ota.status == 'progress') {
-            progress = $telemetry.download_ota.progress;
+            progress = $telemetry.download_ota.progress
         }
-    });
+    })
 
     $effect(() => {
         if ($telemetry.download_ota.status == 'error') {
-            updating = false;
+            updating = false
         }
-    });
+    })
 
-    let message = $state('Preparing ...');
+    let message = $state('Preparing ...')
 
     $effect(() => {
         if ($telemetry.download_ota.status == 'progress') {
-            message = 'Downloading ...';
+            message = 'Downloading ...'
         } else if ($telemetry.download_ota.status == 'error') {
-            message = $telemetry.download_ota.error;
+            message = $telemetry.download_ota.error
         } else if ($telemetry.download_ota.status == 'finished') {
-            message = 'Restarting ...';
-            progress = 0;
+            message = 'Restarting ...'
+            progress = 0
             // Reload page after 5 sec
             setTimeout(() => {
-                modals.closeAll();
-                location.reload();
-            }, 5000);
+                modals.closeAll()
+                location.reload()
+            }, 5000)
         }
-    });
+    })
 
     onBeforeClose(() => {
         if (updating) {
             // prevents modal from closing
-            return false;
+            return false
         } else {
-            $telemetry.download_ota.status = 'idle';
-            $telemetry.download_ota.error = '';
-            $telemetry.download_ota.progress = 0;
-            return true;
+            $telemetry.download_ota.status = 'idle'
+            $telemetry.download_ota.error = ''
+            $telemetry.download_ota.progress = 0
+            return true
         }
-    });
+    })
 </script>
 
 {#if isOpen}
@@ -89,8 +89,8 @@
                     class="btn btn-warning text-warning-content inline-flex flex-none items-center"
                     disabled={updating}
                     onclick={() => {
-                        modals.closeAll();
-                        location.reload();
+                        modals.closeAll()
+                        location.reload()
                     }}
                 >
                     <Cancel class="mr-2 h-5 w-5" /><span>Close</span></button

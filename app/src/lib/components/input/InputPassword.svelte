@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { MdiEyeOffOutline, MdiEyeOutline } from "../icons";
+    import { MdiEyeOffOutline, MdiEyeOutline } from '../icons'
 
     interface Props {
-        show?: boolean;
-        value?: string;
-        id?: string;
+        show?: boolean
+        value?: string
+        id?: string
     }
 
-    let { show = $bindable(false), value = $bindable(''), id = '' }: Props = $props();
-    
-	let type = $derived(show ? 'text' : 'password');
+    let { show = $bindable(false), value = $bindable(''), id = '' }: Props = $props()
 
-	const handleInput = (e: any) => value = e.target.value
+    let type = $derived(show ? 'text' : 'password')
 
-    const togglePassword = () => show = !show
+    const handleInput = (e: any) => (value = e.target.value)
+
+    const togglePassword = () => (show = !show)
 </script>
 
 <label class="input input-bordered flex items-center gap-2">

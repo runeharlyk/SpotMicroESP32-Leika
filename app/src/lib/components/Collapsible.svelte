@@ -1,18 +1,18 @@
 <script lang="ts">
-    import { slide } from 'svelte/transition';
-    import { cubicOut } from 'svelte/easing';
-    import { Down } from './icons';
+    import { slide } from 'svelte/transition'
+    import { cubicOut } from 'svelte/easing'
+    import { Down } from './icons'
 
     function openCollapsible() {
-        open = !open;
+        open = !open
         if (open) {
-            opened();
+            opened()
         } else {
-            closed();
+            closed()
         }
     }
 
-    let { icon, title, children, open, opened, closed, class: klass } = $props();
+    let { icon, title, children, open, opened, closed, class: klass } = $props()
 </script>
 
 <div class="{klass} relative grid w-full max-w-2xl self-center overflow-hidden">

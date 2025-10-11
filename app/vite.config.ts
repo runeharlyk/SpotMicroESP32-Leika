@@ -8,23 +8,23 @@ import tailwindcss from '@tailwindcss/vite'
 const basePath = process.env.BASE_PATH ?? ''
 
 export default defineConfig({
-  base: basePath,
-  plugins: [
-    tailwindcss(),
-    sveltekit(),
-    Icons({
-      compiler: 'svelte'
-    }),
-    viteLittleFS(),
-    EnvCaster()
-  ],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://spot-micro.local/',
-        changeOrigin: true,
-        ws: true
-      }
+    base: basePath,
+    plugins: [
+        tailwindcss(),
+        sveltekit(),
+        Icons({
+            compiler: 'svelte'
+        }),
+        viteLittleFS(),
+        EnvCaster()
+    ],
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://spot-micro.local/',
+                changeOrigin: true,
+                ws: true
+            }
+        }
     }
-  }
 })

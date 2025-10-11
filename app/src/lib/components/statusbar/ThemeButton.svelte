@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { MdiWeatherSunny, MdiMoonAndStars } from "../icons";
+    import { MdiWeatherSunny, MdiMoonAndStars } from '../icons'
 </script>
 
 <label class="swap swap-rotate">

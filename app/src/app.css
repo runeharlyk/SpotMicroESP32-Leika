@@ -23,6 +23,14 @@
     --base-content: oklch(0.3 0.012 256);
 }
 
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
 #nipple_0_0,
 #nipple_1_1 {
     z-index: 10 !important;

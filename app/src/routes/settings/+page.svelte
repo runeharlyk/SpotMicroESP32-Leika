@@ -37,20 +37,20 @@
 <h1 class="text-2xl font-bold">Settings</h1>
 
 <div class="pt-14 flex h-full">
-	<nav class="w-1/6 flex flex-col">
-		<!-- {#each menu as link} -->
-			<!-- <Link to={'/settings' + link.path}> -->
-				<div class="px-4 py-2 flex gap-2 items-center">
-					<!-- <Icon src={link.icon} size="24" />{link.title} -->
-				</div>
-			<!-- </Link> -->
-		<!-- {/each} -->
-	</nav>
-	<main class="w-full h-full">
-		<!-- <Router> -->
-			<!-- {#each menu as link} -->
-				<!-- <Route path={link.path} component={link.component}></Route> -->
-			<!-- {/each} -->
-		<!-- </Router> -->
-	</main>
+    <nav class="w-1/6 flex flex-col">
+        <!-- {#each menu as link} -->
+        <!-- <Link to={'/settings' + link.path}> -->
+        <div class="px-4 py-2 flex gap-2 items-center">
+            <!-- <Icon src={link.icon} size="24" />{link.title} -->
+        </div>
+        <!-- </Link> -->
+        <!-- {/each} -->
+    </nav>
+    <main class="w-full h-full">
+        <!-- <Router> -->
+        <!-- {#each menu as link} -->
+        <!-- <Route path={link.path} component={link.component}></Route> -->
+        <!-- {/each} -->
+        <!-- </Router> -->
+    </main>
 </div>

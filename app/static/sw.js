@@ -1,13 +1,13 @@
-const CACHE_NAME = 'v1';
-const urlsToCache = ['/', '/index.html', '/stl.zip'];
+const CACHE_NAME = 'v1'
+const urlsToCache = ['/', '/index.html', '/stl.zip']
 
-self.addEventListener('install', (event) => {
-	event.waitUntil(
-		caches.open(CACHE_NAME).then((cache) => {
-			return cache.addAll(urlsToCache);
-		})
-	);
-});
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll(urlsToCache)
+        })
+    )
+})
 
 // self.addEventListener('fetch', (event) => {
 // 	event.respondWith(
@@ -29,17 +29,17 @@ self.addEventListener('install', (event) => {
 // 	);
 // });
 
-self.addEventListener('activate', (event) => {
-	var cacheWhitelist = ['v1'];
-	event.waitUntil(
-		caches.keys().then((cacheNames) => {
-			return Promise.all(
-				cacheNames.map((cacheName) => {
-					if (cacheWhitelist.indexOf(cacheName) === -1) {
-						return caches.delete(cacheName);
-					}
-				})
-			);
-		})
-	);
-});
+self.addEventListener('activate', event => {
+    var cacheWhitelist = ['v1']
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheWhitelist.indexOf(cacheName) === -1) {
+                        return caches.delete(cacheName)
+                    }
+                })
+            )
+        })
+    )
+})
