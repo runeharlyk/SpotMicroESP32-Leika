@@ -39,7 +39,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config.max_uri_handlers = 5 + WWW_ASSETS_COUNT;
+    server.config.max_uri_handlers = 10 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
     server.serveStatic("/api/config/", ESP_FS, "/config/");
@@ -87,7 +87,11 @@ void setupEventSocket() {
     // Motion events
     socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
 
-    socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) { motionService.handleMode(root, originId); });
+    socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) {
+        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+        motionService.handleMode(root, originId);
+        motionService.isActive() ? servoController.activate() : servoController.deactivate();
+    });
 
     socket.onEvent(WALK_GAIT_EVENT,
                    [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
@@ -108,11 +112,6 @@ void setupEventSocket() {
                    [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
     socket.onEvent(EVENT_SERVO_STATE,
                    [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
-
-    socket.onEvent(EVENT_SERVO_STATE, [&](JsonVariant &root, int originId) {
-        const bool is_active = root["active"] | false;
-        is_active ? servoController.activate() : servoController.deactivate();
-    });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {
@@ -129,7 +128,6 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         peripherals.update();
         motionService.update(&peripherals);
         servoController.setAngles(motionService.getAngles());
-        motionService.isActive() ? servoController.activate() : servoController.deactivate();
         servoController.update();
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();

@@ -78,8 +78,9 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void updateActiveState() { is_active ? activate() : deactivate(); }
 
+    void setMode(SERVO_CONTROL_STATE newMode) { control_state = newMode; }
+
     void setAngles(float new_angles[12]) {
-        control_state = SERVO_CONTROL_STATE::ANGLE;
         for (int i = 0; i < 12; i++) {
             target_angles[i] = new_angles[i];
         }
