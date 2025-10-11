@@ -21,7 +21,7 @@ class WalkState : public MotionState {
     WALK_GAIT mode = WALK_GAIT::TROT;
     float phase_time = 0.0f;
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
-    float stand_offset = 0.6f;
+    float stand_offset = 0.75f;
     float step_length = 0.0f;
     float speed_factor = 2;
     gait_state_t gait_state;
@@ -79,7 +79,7 @@ class WalkState : public MotionState {
         for (int i = 0; i < 4; ++i) phase_offset[order[i]] = base[i];
     }
 
-    void set_mode_trot(float duty = 0.6f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
+    void set_mode_trot(float duty = 0.75f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
         mode = WALK_GAIT::TROT;
         speed_factor = 2;
         stand_offset = duty;
@@ -239,7 +239,7 @@ class WalkState : public MotionState {
         float delta_rot[3] = {0};
 
         float length = step_length * 0.5f;
-        float angle = std::atan2(gait_state.step_z, step_length);
+        float angle = std::atan2(gait_state.step_z, step_length) * 2.0f;
         curve(length, angle, arg, phase, delta_pos);
 
         length = gait_state.step_angle * 2.0f;
