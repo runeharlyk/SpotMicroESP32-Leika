@@ -8,7 +8,7 @@ class MotionState {
     virtual const char* name() const = 0;
     static constexpr const float (&default_feet_pos)[4][4] = KinConfig::default_feet_positions;
     body_state_t target_body_state;
-    static constexpr float default_smoothing_factor = 0.06f;
+    static constexpr float default_smoothing_factor = 0.03f;
     float omega_offset = 0, psi_offset = 0;
 
     void lerpToBody(body_state_t& body_state, const bool imuCompensate = false,
