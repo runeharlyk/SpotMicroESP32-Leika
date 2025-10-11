@@ -16,7 +16,7 @@
     let apSettings: ApSettings | null = $state(null)
     let apStatus: ApStatus | null = $state(null)
 
-    let formField: any = $state()
+    let formField: Record<string, unknown> = $state()
 
     async function getAPStatus() {
         const result = await api.get<ApStatus>('/api/wifi/ap/status')

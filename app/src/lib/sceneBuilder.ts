@@ -58,14 +58,14 @@ export default class SceneBuilder {
     public ground!: Mesh
     public renderer!: WebGLRenderer
     public orbit: OrbitControls
-    public callback: Function | undefined
+    public callback: (() => void) | undefined
     public gridHelper!: GridHelper
     public model!: URDFRobot
     public liveStreamTexture!: CanvasTexture
     private fog!: FogExp2
     private isLoaded: boolean = false
     public isDragging: boolean = false
-    highlightMaterial: any
+    highlightMaterial: MeshPhongMaterial
     sky!: Sky
     transformControl: TransformControls
     public modelGroup!: Group
@@ -229,7 +229,7 @@ export default class SceneBuilder {
         return this
     }
 
-    public addRenderCb = (callback: Function) => {
+    public addRenderCb = (callback: () => void) => {
         this.callback = callback
         return this
     }
@@ -275,7 +275,7 @@ export default class SceneBuilder {
     isJoint = (j: URDFJoint) => j.isURDFJoint && j.jointType !== 'fixed'
 
     highlightLinkGeometry = (m: URDFMimicJoint, revert: boolean, material: MeshPhongMaterial) => {
-        const traverse = (c: any) => {
+        const traverse = (c: Object3D) => {
             if (c.type === 'Mesh') {
                 if (revert) {
                     c.material = c.__origMaterial
@@ -298,9 +298,9 @@ export default class SceneBuilder {
         traverse(m)
     }
 
-    public addTransformControls = (model: any) => {
+    public addTransformControls = (model: Object3D) => {
         this.transformControl = new TransformControls(this.camera, this.renderer.domElement)
-        this.transformControl.addEventListener('dragging-changed', (event: any) => {
+        this.transformControl.addEventListener('dragging-changed', (event: { value: boolean }) => {
             this.orbit.enabled = !event.value
             this.isDragging = !event.value
         })
@@ -310,7 +310,7 @@ export default class SceneBuilder {
         return this
     }
 
-    public addModel = (model: any) => {
+    public addModel = (model: URDFRobot) => {
         this.modelGroup = new Group()
         this.modelGroup.add(model)
         this.model = model
@@ -318,7 +318,7 @@ export default class SceneBuilder {
         return this
     }
 
-    public addDragControl = (updateAngle: any) => {
+    public addDragControl = (updateAngle: (angles: Record<string, number>) => void) => {
         const highlightColor = '#FFFFFF'
         const highlightMaterial = new MeshPhongMaterial({
             shininess: 10,

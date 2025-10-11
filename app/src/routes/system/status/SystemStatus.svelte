@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
+    import type { ComponentType } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
@@ -110,7 +111,7 @@
     }
 
     interface ActionButtonDef {
-        icon: any
+        icon: ComponentType
         label: string
         onClick: () => void
         type?: string

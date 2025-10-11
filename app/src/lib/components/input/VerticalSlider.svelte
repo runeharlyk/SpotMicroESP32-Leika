@@ -3,8 +3,8 @@
         min?: number
         max?: number
         step?: number
-        value?: any
-        oninput?: any
+        value?: number
+        oninput?: (value: number) => void
     }
 
     let {

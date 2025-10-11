@@ -1,7 +1,7 @@
 import { type Analytics } from '$lib/types/models'
 import { writable } from 'svelte/store'
 
-let analytics_data = {
+const analytics_data = {
     uptime: <number[]>[],
     free_heap: <number[]>[],
     total_heap: <number[]>[],

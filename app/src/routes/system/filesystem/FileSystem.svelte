@@ -1,5 +1,4 @@
 <script lang="ts">
-    import SettingsCard from '$lib/components/SettingsCard.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import Folder from './Folder.svelte'
     import { api } from '$lib/api'
@@ -164,7 +163,7 @@
 
             {#await getContent(filename)}
                 <Spinner />
-            {:then _}
+            {:then}
                 {#if isEditing}
                     <textarea
                         class="w-full h-[300px] sm:h-[500px] font-mono p-2 bg-gray-800 text-white"

@@ -3,7 +3,7 @@
     import { onMount } from 'svelte'
     import { RotateCw, RotateCcw } from '$lib/components/icons'
     interface Props {
-        data?: any
+        data?: Record<string, unknown>
         servoId?: number
         pwm?: number
     }

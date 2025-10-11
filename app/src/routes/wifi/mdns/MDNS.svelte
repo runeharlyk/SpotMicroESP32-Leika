@@ -3,7 +3,6 @@
     import { api } from '$lib/api'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { AP, Home, MAC, Devices } from '$lib/components/icons'
-    import Spinner from '$lib/components/Spinner.svelte'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'

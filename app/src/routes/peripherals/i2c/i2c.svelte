@@ -30,7 +30,7 @@
         return () => socket.off(MessageTopic.i2cScan, handleScan)
     })
 
-    const handleScan = (data: any) => {
+    const handleScan = (data: { addresses: number[] }) => {
         active_devices = data.addresses.map(
             (address: number) =>
                 i2cDevices.find(device => device.address === address) || {

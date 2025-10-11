@@ -7,7 +7,6 @@
     "experimentalTernaries": true,
     "printWidth": 100,
     "semi": false,
-    "svelteBracketNewLine": false,
     "plugins": ["prettier-plugin-svelte"],
     "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
 }

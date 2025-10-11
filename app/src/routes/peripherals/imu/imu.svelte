@@ -173,7 +173,7 @@
         })
     }
 
-    const updateChartData = (chart: Chart, data: number[], label: string) => {
+    const updateChartData = (chart: Chart, data: number[]) => {
         chart.data.labels = data
         chart.data.datasets[0].data = data
         chart.options.scales!.y!.min = Math.min(...data) - 1

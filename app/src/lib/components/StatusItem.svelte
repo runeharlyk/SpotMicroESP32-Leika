@@ -1,4 +1,6 @@
 <script lang="ts">
+    import type { ComponentType } from 'svelte'
+
     type Variant = 'success' | 'error' | 'primary' | 'info' | 'warning'
 
     const {
@@ -9,12 +11,12 @@
         class: klass = '',
         children = null
     } = $props<{
-        icon?: any
+        icon?: ComponentType
         title: string
         description?: string | number
         variant?: Variant
         class?: string
-        children?: () => any
+        children?: () => ComponentType
     }>()
 
     const Icon = $derived(icon)

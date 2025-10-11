@@ -83,7 +83,7 @@
         telemetry.setRSSI(0)
     }
 
-    const handleError = (data: any) => console.error(data)
+    const handleError = (data: unknown) => console.error(data)
 
     const handleAnalytics = (data: Analytics) => analytics.addData(data)
 
@@ -115,13 +115,14 @@
 </div>
 
 <Modals>
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     {#snippet backdrop()}
         <div
             class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur-sm"
             transition:fade
             onclick={modals.closeAll}
+            onkeydown={e => e.key === 'Escape' && modals.closeAll()}
+            role="button"
+            tabindex="0"
         ></div>
     {/snippet}
 </Modals>

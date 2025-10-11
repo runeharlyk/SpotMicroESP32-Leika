@@ -9,7 +9,6 @@
         modes,
         type Modes,
         ModesEnum,
-        walkGaits,
         WalkGaits,
         walkGait,
         walkGaitLabels
@@ -61,9 +60,9 @@
         })
 
         left.on('move', (_, data) => handleJoyMove('left', data.vector))
-        left.on('end', (_, __) => handleJoyMove('left', { x: 0, y: 0 }))
+        left.on('end', () => handleJoyMove('left', { x: 0, y: 0 }))
         right.on('move', (_, data) => handleJoyMove('right', data.vector))
-        right.on('end', (_, __) => handleJoyMove('right', { x: 0, y: 0 }))
+        right.on('end', () => handleJoyMove('right', { x: 0, y: 0 }))
     })
 
     const handleJoyMove = (key: 'left' | 'right', data: vector) => {

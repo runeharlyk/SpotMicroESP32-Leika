@@ -2,20 +2,20 @@ import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
 import { location } from './stores'
 
-export namespace api {
-    export function get<TResponse>(endpoint: string, params?: RequestInit) {
+export const api = {
+    get<TResponse>(endpoint: string, params?: RequestInit) {
         return sendRequest<TResponse>(endpoint, 'GET', null, params)
-    }
+    },
 
-    export function post<TResponse>(endpoint: string, data?: unknown) {
+    post<TResponse>(endpoint: string, data?: unknown) {
         return sendRequest<TResponse>(endpoint, 'POST', data)
-    }
+    },
 
-    export function put<TResponse>(endpoint: string, data?: unknown) {
+    put<TResponse>(endpoint: string, data?: unknown) {
         return sendRequest<TResponse>(endpoint, 'PUT', data)
-    }
+    },
 
-    export function remove<TResponse>(endpoint: string) {
+    remove<TResponse>(endpoint: string) {
         return sendRequest<TResponse>(endpoint, 'DELETE')
     }
 }

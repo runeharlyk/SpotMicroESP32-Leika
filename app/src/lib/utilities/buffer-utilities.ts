@@ -3,7 +3,7 @@ export class throttler {
     constructor() {
         this._throttlePause = false
     }
-    throttle = (callback: Function, time: number) => {
+    throttle = (callback: () => void, time: number) => {
         if (this._throttlePause) return
 
         this._throttlePause = true

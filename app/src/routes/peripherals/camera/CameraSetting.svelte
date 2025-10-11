@@ -25,7 +25,7 @@
 
 {#await getCameraSettings()}
     <Spinner />
-{:then _}
+{:then}
     <div class="flex flex-col gap-1">
         <button class="btn btn-primary" type="button" onclick={updateCameraSettings}
             >Update camera settings</button

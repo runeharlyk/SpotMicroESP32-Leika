@@ -15,7 +15,7 @@
         return () => socket.off(MessageTopic.peripheralSettings, handleSettings)
     })
 
-    const handleSettings = (data: any) => {
+    const handleSettings = (data: Record<string, unknown>) => {
         settings = data
     }
 

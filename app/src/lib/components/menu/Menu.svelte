@@ -33,9 +33,11 @@
 
     const github = { href: 'https://github.com/' + page.data.github, active: true }
 
+    import type { ComponentType } from 'svelte'
+
     type menuItem = {
         title: string
-        icon: ConstructorOfATypedSvelteComponent
+        icon: ComponentType
         href?: string
         feature: boolean
         active?: boolean
@@ -172,7 +174,7 @@
         setActiveMenuItem(page.data.title)
     })
 
-    const updateMenu = (event: any) => {
+    const updateMenu = (event: CustomEvent) => {
         setActiveMenuItem(event.details)
     }
 </script>

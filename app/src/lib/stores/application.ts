@@ -8,7 +8,7 @@ import ChartWidget from '$lib/components/widget/ChartWidget.svelte'
 export interface WidgetConfig {
     id: string | number
     component: keyof typeof WidgetComponents
-    props?: Record<string, any>
+    props?: Record<string, unknown>
 }
 
 export interface WidgetContainerConfig {

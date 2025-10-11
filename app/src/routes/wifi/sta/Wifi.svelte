@@ -63,7 +63,7 @@
 
     let showWifiDetails = $state(false)
 
-    let formField: any = $state()
+    let formField: Record<string, unknown> = $state()
 
     let formErrors = $state({
         ssid: false,

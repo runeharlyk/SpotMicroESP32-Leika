@@ -6,7 +6,7 @@
     interface Props {
         expanded?: boolean
         name: string
-        files: any
+        files: unknown[]
         selected: (name: string) => void
         onDelete: (name: string) => void
     }

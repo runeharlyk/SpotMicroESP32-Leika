@@ -1,4 +1,4 @@
-import { writable, derived, type Writable } from 'svelte/store'
+import { writable } from 'svelte/store'
 
 type StateType = 'info' | 'success' | 'warning' | 'error'
 

@@ -3,7 +3,7 @@
         options?: string[]
         selectedOption?: string
         change?: () => void
-        [key: string]: any
+        [key: string]: unknown
     }
 
     let { options = [], selectedOption = $bindable(''), ...rest }: Props = $props()

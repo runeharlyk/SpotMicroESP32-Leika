@@ -6,12 +6,12 @@
     import { slide } from 'svelte/transition'
 
     let chartElement: HTMLCanvasElement
-    let chart: Chart
+    let chart: Chart<'line', number[], string>
 
     interface Props {
-        label: any
+        label: string
         data: number[]
-        title: any
+        title: string
     }
 
     let { label, data, title }: Props = $props()

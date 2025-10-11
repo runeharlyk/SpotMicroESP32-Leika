@@ -11,7 +11,7 @@
 
     let type = $derived(show ? 'text' : 'password')
 
-    const handleInput = (e: any) => (value = e.target.value)
+    const handleInput = (e: Event) => (value = (e.target as HTMLInputElement).value)
 
     const togglePassword = () => (show = !show)
 </script>

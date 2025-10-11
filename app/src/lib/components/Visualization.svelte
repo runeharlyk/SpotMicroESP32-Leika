@@ -24,7 +24,6 @@
         jointNames,
         currentKinematic,
         walkGait,
-        walkGaits,
         walkGaitToMode
     } from '$lib/stores'
     import {

@@ -28,7 +28,10 @@
             console.error('Error:', result.inner)
             return
         }
-        return result.inner as any
+        return result.inner as {
+            tag_name: string
+            assets: Array<{ name: string; browser_download_url: string }>
+        }
     }
 
     async function postGithubDownload(url: string) {
@@ -39,7 +42,7 @@
         }
     }
 
-    function confirmGithubUpdate(assets: any) {
+    function confirmGithubUpdate(assets: Array<{ name: string; browser_download_url: string }>) {
         let url = ''
         // iterate over assets and find the correct one
         for (let i = 0; i < assets.length; i++) {
@@ -154,7 +157,7 @@
                 </table>
             </div>
         </div>
-    {:catch error}
+    {:catch}
         <div class="alert alert-error shadow-lg">
             <Error class="h-6 w-6 shrink-0" />
             <span

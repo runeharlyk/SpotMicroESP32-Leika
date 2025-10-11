@@ -1,7 +1,7 @@
 import type { DownloadOTA } from '$lib/types/models'
 import { writable } from 'svelte/store'
 
-let telemetry_data = {
+const telemetry_data = {
     rssi: {
         rssi: 0
     },
@@ -13,7 +13,7 @@ let telemetry_data = {
 }
 
 function createTelemetry() {
-    const { subscribe, set, update } = writable(telemetry_data)
+    const { subscribe, update } = writable(telemetry_data)
 
     return {
         subscribe,
