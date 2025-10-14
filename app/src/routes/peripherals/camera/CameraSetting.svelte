@@ -2,7 +2,19 @@
     import { api } from '$lib/api'
     import Spinner from '$lib/components/Spinner.svelte'
     import type { CameraSettings } from '$lib/types/models'
-    let settings: CameraSettings = $state()
+    let settings: CameraSettings = $state({
+        brightness: 0,
+        contrast: 0,
+        framesize: 0,
+        vflip: false,
+        hmirror: false,
+        special_effect: 0,
+        quality: 0,
+        saturation: 0,
+        sharpness: 0,
+        denoise: 0,
+        wb_mode: 0
+    })
 
     const getCameraSettings = async () => {
         const result = await api.get<CameraSettings>('/api/camera/settings')

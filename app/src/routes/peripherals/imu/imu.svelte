@@ -195,8 +195,8 @@
         }
 
         if ($features.bmp) {
-            updateChartData(tempChart, $imu.bmp_temp, 'Temperature')
-            updateChartData(altitudeChart, $imu.altitude, 'Altitude')
+            updateChartData(tempChart, $imu.bmp_temp)
+            updateChartData(altitudeChart, $imu.altitude)
         }
     }
 

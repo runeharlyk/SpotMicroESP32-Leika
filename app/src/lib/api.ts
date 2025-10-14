@@ -1,6 +1,6 @@
 import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
-import { location } from './stores'
+import { apiLocation } from './stores'
 
 export const api = {
     get<TResponse>(endpoint: string, params?: RequestInit) {
@@ -44,7 +44,7 @@ async function sendRequest<TResponse>(
 
     try {
         response = await fetch(endpoint, request)
-    } catch (error) {
+    } catch {
         return Err.new(new Error(), 'An error has occurred')
     }
 
@@ -67,9 +67,9 @@ async function sendRequest<TResponse>(
 }
 
 function resolveUrl(url: string): string {
-    if (url.startsWith('http') || !get(location)) return url
+    if (url.startsWith('http') || !get(apiLocation)) return url
     const protocol = window.location.protocol
-    return `${protocol}//${get(location)}${url.startsWith('/') ? '' : '/'}${url}`
+    return `${protocol}//${get(apiLocation)}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 export class ApiError extends Error {

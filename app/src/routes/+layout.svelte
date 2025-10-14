@@ -18,7 +18,7 @@
         servoAngles,
         servoAnglesOut,
         socket,
-        location,
+        apiLocation,
         useFeatureFlags,
         walkGait
     } from '$lib/stores'
@@ -34,7 +34,7 @@
     const features = useFeatureFlags()
 
     onMount(async () => {
-        const ws = $location ? $location : window.location.host
+        const ws = $apiLocation ? $apiLocation : window.location.host
         socket.init(`ws://${ws}/api/ws`)
 
         addEventListeners()

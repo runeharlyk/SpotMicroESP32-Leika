@@ -6,7 +6,7 @@
     import { slide } from 'svelte/transition'
 
     let chartElement: HTMLCanvasElement
-    let chart: Chart<'line', number[], string>
+    let chart: Chart<'line', number[], number>
 
     interface Props {
         label: string

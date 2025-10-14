@@ -16,7 +16,7 @@
     })
 
     const handleSettings = (data: Record<string, unknown>) => {
-        settings = data
+        settings = data as PeripheralsConfiguration
     }
 
     const handleSave = () => {

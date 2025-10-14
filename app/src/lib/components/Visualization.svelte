@@ -59,8 +59,6 @@
     let gui_panel: GUI
     let Throttler = new throttler()
 
-    let feet_trace = new Array(4).fill([])
-    let trace_lines: BufferGeometry<NormalBufferAttributes>[] = []
     let target: Object3D<Object3DEventMap>
 
     let target_position = { x: 0, z: 0, yaw: 0 }
@@ -179,7 +177,7 @@
             .addDirectionalLight({ x: 10, y: 20, z: 10, color: 0xffffff, intensity: 3 })
             .addAmbientLight({ color: 0xffffff, intensity: 0.5 })
             .addFogExp2(0xcccccc, 0.015)
-            .addModel($model)
+            .addModel($model as URDFRobot)
             .addTransformControls(sceneManager.model)
             .fillParent()
             .addRenderCb(render)
@@ -193,32 +191,13 @@
         sceneManager.scene.add(target)
 
         if (debug) {
-            sceneManager.addDragControl(updateAngles)
+            sceneManager.addDragControl((angles: Record<string, number>) => {
+                Object.entries(angles).forEach(([name, angle]) => {
+                    updateAngles(name, angle)
+                })
+            })
         }
         if (sky) sceneManager.addSky()
-
-        for (let i = 0; i < 4; i++) {
-            const geometry = new BufferGeometry()
-            const material = new LineBasicMaterial({ color: extractFootColor() })
-            const line = new Line(geometry, material)
-            trace_lines.push(geometry)
-            sceneManager.scene.add(line)
-        }
-    }
-
-    const renderTraceLines = (foot_positions: Vector3[]) => {
-        if (!settings['Trace feet']) {
-            if (!feet_trace.length) return
-            trace_lines.forEach((line, i) => line.setFromPoints(feet_trace[i].slice(-1)))
-            feet_trace = new Array(4).fill([])
-            return
-        }
-
-        trace_lines.forEach((line, i) => {
-            feet_trace[i].push(foot_positions[i])
-            feet_trace[i] = feet_trace[i].slice(-settings['Trace points'])
-            line.setFromPoints(feet_trace[i])
-        })
     }
 
     const calculate_kinematics = () => {
@@ -311,7 +290,6 @@
 
         const toes = getToeWorldPositions(robot)
 
-        renderTraceLines(toes)
         update_camera(robot)
         update_gait()
         calculate_kinematics()

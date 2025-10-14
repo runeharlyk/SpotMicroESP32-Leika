@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onDestroy } from 'svelte'
-    import { location } from '$lib/stores'
+    import { apiLocation } from '$lib/stores'
 
-    let source = $state(`${$location}/api/camera/stream`)
+    let source = $state(`${$apiLocation}/api/camera/stream`)
 
     onDestroy(() => (source = '#'))
 </script>
