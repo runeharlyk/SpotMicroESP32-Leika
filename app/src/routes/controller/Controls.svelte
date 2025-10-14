@@ -15,7 +15,12 @@
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
-    import { gamepadAxes, hasGamepad } from '$lib/stores/gamepad'
+    import {
+        gamepadAxes,
+        gamepadButtons,
+        gamepadButtonsEdges,
+        hasGamepad
+    } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
 
     let throttle = new throttler()
@@ -37,10 +42,25 @@
     })
 
     // TODO React to button press
-    //   $effect(() => {
-    //     if ($gamepadButtons.length === 0) return
-    //
-    //   })
+    $effect(() => {
+        if (!$hasGamepad) return
+        const b = $gamepadButtonsEdges
+        if (!b.length) return
+        if (b[0]?.justPressed) mode.set(5)
+        if (b[1]?.justPressed) mode.set(4)
+        if (b[2]?.justPressed) mode.set(3)
+        if (b[3]?.justPressed) mode.set(0)
+        if (b[12]?.justPressed)
+            input.update(inputData => {
+                inputData['height'] = Math.min(inputData.height + 0.1, 1)
+                return inputData
+            })
+        if (b[13]?.justPressed)
+            input.update(inputData => {
+                inputData['height'] = Math.min(inputData.height - 0.1, 1)
+                return inputData
+            })
+    })
 
     onMount(() => {
         left = nipplejs.create({
