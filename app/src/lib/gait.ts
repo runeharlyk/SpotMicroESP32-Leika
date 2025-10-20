@@ -143,7 +143,7 @@ export class BezierState extends GaitState {
     protected phase = 0
     protected phase_num = 0
     protected step_length = 0
-    protected stand_offset = 0.85
+    protected stand_offset = 0.75
     protected mode: 'crawl' | 'trot' = 'trot'
     protected speed_factor = 1
     offset = [0, 0.5, 0.75, 0.25]
