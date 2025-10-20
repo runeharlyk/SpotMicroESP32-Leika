@@ -197,7 +197,7 @@
         sceneManager.scene.add(target)
 
         if (debug) {
-            sceneManager.addDragControl((angles: Record<string, number>) => {
+            sceneManager.addDragControl(angles => {
                 Object.entries(angles).forEach(([name, angle]) => {
                     updateAngles(name, angle)
                 })

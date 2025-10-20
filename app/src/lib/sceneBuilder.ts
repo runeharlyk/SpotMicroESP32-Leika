@@ -19,7 +19,8 @@ import {
     ACESFilmicToneMapping,
     Group,
     MeshBasicMaterial,
-    RepeatWrapping
+    RepeatWrapping,
+    Object3D
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
@@ -301,7 +302,7 @@ export default class SceneBuilder {
         )
         dragControls.updateJoint = (joint: URDFMimicJoint, angle: number) => {
             this.setJointValue(joint.name, angle)
-            updateAngle(joint.name, angle)
+            updateAngle({ [joint.name]: angle })
         }
         dragControls.onDragStart = () => {
             this.orbit.enabled = false
