@@ -3,11 +3,12 @@
     import Visualization from '$lib/components/Visualization.svelte'
     import { socket } from '$lib/stores'
     import { onMount } from 'svelte'
+    import { resolve } from '$app/paths'
 
     onMount(() => {
         socket.subscribe(isConnected => {
             if (isConnected) {
-                goto('/controller')
+                goto(resolve('/controller'))
             }
         })
     })
@@ -21,7 +22,7 @@
         <div class="card-body w-80">
             <h2 class="card-title text-center text-2xl">Begin you journey</h2>
             <p class="py-6 text-center"></p>
-            <a class="btn btn-primary" href={$socket ? '/controller' : '/connection'}>
+            <a class="btn btn-primary" href={resolve($socket ? '/controller' : '/connection')}>
                 Add Robot Dog
             </a>
         </div>
