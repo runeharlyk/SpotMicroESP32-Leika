@@ -53,6 +53,16 @@ export abstract class GaitState {
         this.map_command(command)
         this.body_state = body_state
         this.dt = dt / 1000
+
+        if (body_state.cumulative_x === undefined) {
+            body_state.cumulative_x = 0
+            body_state.cumulative_y = 0
+            body_state.cumulative_z = 0
+            body_state.cumulative_roll = 0
+            body_state.cumulative_pitch = 0
+            body_state.cumulative_yaw = 0
+        }
+
         return body_state
     }
 
@@ -72,6 +82,11 @@ export abstract class GaitState {
 
 export class IdleState extends GaitState {
     protected name = 'Idle'
+
+    step(body_state: body_state_t, command: ControllerCommand) {
+        super.step(body_state, command)
+        return body_state
+    }
 }
 
 export class CalibrationState extends GaitState {
@@ -79,6 +94,7 @@ export class CalibrationState extends GaitState {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     step(body_state: body_state_t, _command: ControllerCommand) {
+        super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
         body_state.psi = 0
@@ -95,6 +111,7 @@ export class RestState extends GaitState {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     step(body_state: body_state_t, _command: ControllerCommand) {
+        super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
         body_state.psi = 0
@@ -110,6 +127,7 @@ export class StandState extends GaitState {
     protected name = 'Stand'
 
     step(body_state: body_state_t, command: ControllerCommand) {
+        super.step(body_state, command)
         body_state.omega = 0
         body_state.phi = command.rx * 10 * (Math.PI / 2)
         body_state.psi = command.ry * 10 * (Math.PI / 2)
@@ -134,6 +152,10 @@ export class BezierState extends GaitState {
     protected shift_target_pos = { x: 0, z: 0 }
     protected shift_start_time = 0
     protected current_shift_leg = -1
+
+    protected last_body_state: body_state_t | null = null
+    protected cumulative_position = { x: 0, y: 0, z: 0 }
+    protected cumulative_orientation = { roll: 0, pitch: 0, yaw: 0 }
 
     constructor() {
         super()
@@ -174,6 +196,7 @@ export class BezierState extends GaitState {
         this.update_phase()
         this.update_body_position()
         this.update_feet_positions()
+        this.update_cumulative_position()
         return this.body_state
     }
 
@@ -327,6 +350,51 @@ export class BezierState extends GaitState {
             this.body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2
 
         return this.body_state.feet[index]
+    }
+
+    update_cumulative_position() {
+        if (this.last_body_state === null) {
+            this.last_body_state = { ...this.body_state }
+            this.body_state.cumulative_x = 0
+            this.body_state.cumulative_y = 0
+            this.body_state.cumulative_z = 0
+            this.body_state.cumulative_roll = 0
+            this.body_state.cumulative_pitch = 0
+            this.body_state.cumulative_yaw = 0
+            return
+        }
+
+        const m = this.gait_state
+        const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
+
+        if (moving) {
+            const step_displacement_x_local =
+                m.step_x * m.step_velocity * this.dt * this.speed_factor
+            const step_displacement_z_local =
+                m.step_z * m.step_velocity * this.dt * this.speed_factor
+            const step_displacement_yaw =
+                m.step_angle * m.step_velocity * this.dt * this.speed_factor
+
+            const cos_yaw = Math.cos(this.cumulative_orientation.yaw)
+            const sin_yaw = Math.sin(this.cumulative_orientation.yaw)
+            const step_displacement_x =
+                step_displacement_x_local * cos_yaw - step_displacement_z_local * sin_yaw
+            const step_displacement_z =
+                step_displacement_x_local * sin_yaw + step_displacement_z_local * cos_yaw
+
+            this.cumulative_position.x += step_displacement_x
+            this.cumulative_position.z += step_displacement_z
+            this.cumulative_orientation.yaw += step_displacement_yaw
+        }
+
+        this.body_state.cumulative_x = this.cumulative_position.x
+        this.body_state.cumulative_y = this.cumulative_position.y
+        this.body_state.cumulative_z = this.cumulative_position.z
+        this.body_state.cumulative_roll = this.cumulative_orientation.roll
+        this.body_state.cumulative_pitch = this.cumulative_orientation.pitch
+        this.body_state.cumulative_yaw = this.cumulative_orientation.yaw
+
+        this.last_body_state = { ...this.body_state }
     }
 }
 

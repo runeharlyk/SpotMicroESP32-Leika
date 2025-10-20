@@ -6,6 +6,12 @@ export interface body_state_t {
     ym: number
     zm: number
     feet: number[][]
+    cumulative_x: number
+    cumulative_y: number
+    cumulative_z: number
+    cumulative_roll: number
+    cumulative_pitch: number
+    cumulative_yaw: number
 }
 
 export interface position {
