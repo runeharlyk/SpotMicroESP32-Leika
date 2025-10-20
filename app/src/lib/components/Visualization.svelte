@@ -1,16 +1,13 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import {
-        BufferGeometry,
-        Line,
-        LineBasicMaterial,
         Mesh,
         MeshBasicMaterial,
         type Object3D,
         SphereGeometry,
         Vector3,
-        type NormalBufferAttributes,
-        type Object3DEventMap
+        type Object3DEventMap,
+        Color
     } from 'three'
     import {
         ModesEnum,
@@ -26,12 +23,7 @@
         walkGait,
         walkGaitToMode
     } from '$lib/stores'
-    import {
-        extractFootColor,
-        populateModelCache,
-        throttler,
-        getToeWorldPositions
-    } from '$lib/utilities'
+    import { populateModelCache, throttler, getToeWorldPositions } from '$lib/utilities'
     import SceneBuilder from '$lib/sceneBuilder'
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
@@ -42,14 +34,20 @@
     import { get } from 'svelte/store'
 
     interface Props {
-        sky?: boolean
+        defaultColor?: string | null
         orbit?: boolean
         panel?: boolean
         debug?: boolean
         ground?: boolean
     }
 
-    let { sky = true, orbit = false, panel = true, debug = false, ground = true }: Props = $props()
+    let {
+        defaultColor = '#0091ff',
+        orbit = false,
+        panel = true,
+        debug = false,
+        ground = true
+    }: Props = $props()
 
     let sceneManager = $state(new SceneBuilder())
     let canvas: HTMLCanvasElement
@@ -108,7 +106,7 @@
         xm: 0,
         ym: 0.7,
         zm: 0,
-        Background: 'black'
+        Background: defaultColor
     }
 
     onMount(async () => {
@@ -153,7 +151,7 @@
         visibility.add(settings, 'Trace points', 1, 1000, 1)
         visibility.add(settings, 'Target position')
         visibility.add(settings, 'Smooth motion')
-        visibility.addColor(settings, 'Background')
+        visibility.addColor(settings, 'Background').onChange(setSceneBackground).listen()
     }
 
     const updateKinematicPosition = () => {
@@ -166,6 +164,8 @@
             settings.zm
         ])
     }
+
+    const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))
 
     const updateAngles = (name: string, angle: number) => {
         modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
@@ -203,7 +203,7 @@
                 })
             })
         }
-        if (sky) sceneManager.addSky()
+        if (defaultColor) setSceneBackground(settings['Background'] || defaultColor)
     }
 
     const calculate_kinematics = () => {

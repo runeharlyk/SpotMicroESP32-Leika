@@ -17,7 +17,7 @@
 <div class="hero bg-base-100 h-screen">
     <div class="card md:card-side bg-base-200 shadow-2xl flex justify-center items-center">
         <div class="w-64 h-64">
-            <Visualization sky={false} orbit panel={false} ground={false} />
+            <Visualization defaultColor={null} orbit panel={false} ground={false} />
         </div>
         <div class="card-body w-80">
             <h2 class="card-title text-center text-2xl">Begin you journey</h2>

@@ -17,18 +17,15 @@ import {
     MeshPhongMaterial,
     EquirectangularReflectionMapping,
     ACESFilmicToneMapping,
-    MathUtils,
     Group,
     MeshBasicMaterial,
     RepeatWrapping
 } from 'three'
-import { Sky } from 'three/addons/objects/Sky.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
 import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader'
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
-import { sunCalculator } from './utilities/position-utilities'
 
 export const addScene = () => new Scene()
 
@@ -65,8 +62,6 @@ export default class SceneBuilder {
     private fog!: FogExp2
     private isLoaded: boolean = false
     public isDragging: boolean = false
-    highlightMaterial: MeshPhongMaterial
-    sky!: Sky
     transformControl: TransformControls
     public modelGroup!: Group
 
@@ -86,34 +81,6 @@ export default class SceneBuilder {
         this.renderer.toneMapping = ACESFilmicToneMapping
         this.renderer.toneMappingExposure = 0.85
         if (!parameters?.canvas) document.body.appendChild(this.renderer.domElement)
-        return this
-    }
-
-    public addSky = () => {
-        this.sky = new Sky()
-        this.sky.scale.setScalar(450000)
-        this.scene.add(this.sky)
-        const effectController = {
-            turbidity: 10,
-            rayleigh: 3,
-            mieCoefficient: 0.005,
-            mieDirectionalG: 0.7,
-            elevation: sunCalculator.calculateSunElevation(),
-            azimuth: 200,
-            exposure: this.renderer.toneMappingExposure
-        }
-        const uniforms = this.sky.material.uniforms
-        uniforms['turbidity'].value = effectController.turbidity
-        uniforms['rayleigh'].value = effectController.rayleigh
-        uniforms['mieCoefficient'].value = effectController.mieCoefficient
-        uniforms['mieDirectionalG'].value = effectController.mieDirectionalG
-        this.renderer.toneMappingExposure = 0.5
-        const phi = MathUtils.degToRad(90 - effectController.elevation)
-        const theta = MathUtils.degToRad(effectController.azimuth)
-        const sun = new Vector3()
-
-        sun.setFromSphericalCoords(1, phi, theta)
-        uniforms['sunPosition'].value.copy(sun)
         return this
     }
 
