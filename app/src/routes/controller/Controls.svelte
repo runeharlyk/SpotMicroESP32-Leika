@@ -15,12 +15,7 @@
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
-    import {
-        gamepadAxes,
-        gamepadButtons,
-        gamepadButtonsEdges,
-        hasGamepad
-    } from '$lib/stores/gamepad'
+    import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
 
     let throttle = new throttler()
@@ -41,7 +36,6 @@
         handleJoyMove('right', { x: $gamepadAxes[2], y: $gamepadAxes[3] })
     })
 
-    // TODO React to button press
     $effect(() => {
         if (!$hasGamepad) return
         const b = $gamepadButtonsEdges
@@ -109,9 +103,11 @@
         const down = event.type === 'keydown'
         input.update(data => {
             if (event.key === 'w') data.left.y = down ? 1 : 0
-            if (event.key === 'a') data.left.x = down ? 1 : 0
+            if (event.key === 'a') data.left.x = down ? -1 : 0
             if (event.key === 's') data.left.y = down ? -1 : 0
-            if (event.key === 'd') data.left.x = down ? -1 : 0
+            if (event.key === 'd') data.left.x = down ? 1 : 0
+            if (event.key === 'ArrowLeft') data.right.x = down ? 1 : 0
+            if (event.key === 'ArrowRight') data.right.x = down ? -1 : 0
             return data
         })
         throttle.throttle(updateData, throttle_timing)
