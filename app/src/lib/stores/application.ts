@@ -35,19 +35,19 @@ interface View {
 
 const defaultViews: View[] = [
     {
-        name: 'Stream',
-        content: {
-            id: 'root',
-            layout: 'column',
-            widgets: [{ id: 2, component: 'Stream' }]
-        }
-    },
-    {
         name: '3D representation',
         content: {
             id: 'root',
             layout: 'column',
             widgets: [{ id: 2, component: 'Visualization', props: { debug: true } }]
+        }
+    },
+    {
+        name: 'Stream',
+        content: {
+            id: 'root',
+            layout: 'column',
+            widgets: [{ id: 2, component: 'Stream' }]
         }
     },
     {
