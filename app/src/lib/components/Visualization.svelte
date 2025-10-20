@@ -232,32 +232,26 @@
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y))
 
-        robot.position.z = smooth(
-            robot.position.z,
-            -settings.xm - body_state.cumulative_x * 1.2,
-            0.1
-        )
-        robot.position.x = smooth(
-            robot.position.x,
-            -settings.zm - body_state.cumulative_z * 1.2,
-            0.1
-        )
+        const cumulativeYaw = body_state.cumulative_yaw
+
+        const cosYaw = Math.cos(cumulativeYaw)
+        const sinYaw = Math.sin(cumulativeYaw)
+        const rotatedXm = settings.xm * cosYaw - settings.zm * sinYaw
+        const rotatedZm = settings.xm * sinYaw + settings.zm * cosYaw
+
+        robot.position.x = smooth(robot.position.x, -rotatedZm - body_state.cumulative_z * 1.2, 0.1)
+        robot.position.z = smooth(robot.position.z, -rotatedXm - body_state.cumulative_x * 1.2, 0.1)
+
+        const pitch = degToRad(settings.psi - 90) + body_state.cumulative_pitch
+        const roll = degToRad(settings.omega) + body_state.cumulative_roll
 
         robot.rotation.z = smooth(
             robot.rotation.z,
-            degToRad(-settings.phi + $mpu.heading + 90) + body_state.cumulative_yaw,
+            degToRad(-settings.phi + $mpu.heading + 90) + cumulativeYaw,
             0.1
         )
-        robot.rotation.y = smooth(
-            robot.rotation.y,
-            degToRad(settings.omega) + body_state.cumulative_roll,
-            0.1
-        )
-        robot.rotation.x = smooth(
-            robot.rotation.x,
-            degToRad(settings.psi - 90) + body_state.cumulative_pitch,
-            0.1
-        )
+        robot.rotation.y = smooth(robot.rotation.y, roll, 0.1)
+        robot.rotation.x = smooth(robot.rotation.x, pitch, 0.1)
     }
 
     const update_camera = (robot: URDFRobot) => {
