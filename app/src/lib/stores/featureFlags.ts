@@ -3,7 +3,7 @@ import { notifications } from '$lib/components/toasts/notifications'
 import Kinematic from '$lib/kinematic'
 import { persistentStore } from '$lib/utilities'
 import { derived, type Writable } from 'svelte/store'
-import { base } from '$app/paths'
+import { resolve } from '$app/paths'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
 
@@ -22,10 +22,12 @@ export function useFeatureFlags() {
     return featureFlagsStore
 }
 
+const base = resolve('/')
+
 export const variants = {
     SPOTMICRO_ESP32: {
-        model: `${base}/spot_micro.urdf.xacro`,
-        stl: `${base}/stl.zip`,
+        model: `${base}spot_micro.urdf.xacro`,
+        stl: `${base}stl.zip`,
         kinematics: {
             coxa: 60.5 / 100,
             coxa_offset: 10 / 100,
@@ -36,8 +38,8 @@ export const variants = {
         }
     },
     SPOTMICRO_YERTLE: {
-        model: `${base}/yertle.URDF`,
-        stl: `${base}/URDF.zip`,
+        model: `${base}yertle.URDF`,
+        stl: `${base}URDF.zip`,
         kinematics: {
             coxa: 35 / 100,
             coxa_offset: 0 / 100,
