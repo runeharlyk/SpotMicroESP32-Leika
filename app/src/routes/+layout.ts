@@ -6,10 +6,20 @@ const registerFetchIntercept = async () => {
     const fileService = (await import('$lib/services/file-service')).default
     window.fetch = async (resource, config) => {
         const url = resource instanceof Request ? resource.url : resource.toString()
-        const file = await fileService?.getFile(url)
-        return file?.isOk() && file.inner ?
-                new Response(new Uint8Array(file.inner))
-            :   originalFetch(resource, config)
+
+        let file = await fileService?.getFile(url)
+        if (file?.isOk() && file.inner) return new Response(new Uint8Array(file.inner))
+
+        if (url.startsWith('http')) {
+            try {
+                const urlObj = new URL(url)
+                const pathOnly = urlObj.pathname
+                file = await fileService?.getFile(pathOnly)
+                if (file?.isOk() && file.inner) return new Response(new Uint8Array(file.inner))
+            } catch {}
+        }
+
+        return originalFetch(resource, config)
     }
 }
 

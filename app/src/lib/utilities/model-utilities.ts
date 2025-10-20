@@ -28,14 +28,15 @@ export const cacheModelFiles = async () => {
     const files = uzip.parse(await data.arrayBuffer())
 
     for (const [path, data] of Object.entries(files) as [path: string, data: Uint8Array][]) {
-        const url = new URL(path, window.location.href)
-        fileService?.saveFile(url.toString(), data)
+        const normalizedPath = path.startsWith('/') ? path : '/' + path
+        const resolvedUrl = resolve(normalizedPath as any)
+        fileService?.saveFile(resolvedUrl, data)
+        fileService?.saveFile(normalizedPath, data)
     }
 }
 
 export const loadModel = async (url: string): Promise<Result<[URDFRobot, string[]], string>> => {
     const urdfLoader = new URDFLoader()
-    urdfLoader.workingPath = resolve('/')
 
     let xml =
         url.endsWith('.xacro') ? await loadXacro(url) : await fetch(url).then(res => res.text())
