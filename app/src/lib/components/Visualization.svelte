@@ -84,7 +84,13 @@
         xm: 0,
         ym: 0.5,
         zm: 0,
-        feet: kinematic.getDefaultFeetPos()
+        feet: kinematic.getDefaultFeetPos(),
+        cumulative_x: 0,
+        cumulative_y: 0,
+        cumulative_z: 0,
+        cumulative_roll: 0,
+        cumulative_pitch: 0,
+        cumulative_yaw: 0
     }
 
     let settings = {
@@ -209,7 +215,13 @@
             xm: settings.xm,
             ym: settings.ym,
             zm: settings.zm,
-            feet: body_state.feet
+            feet: body_state.feet,
+            cumulative_x: body_state.cumulative_x,
+            cumulative_y: body_state.cumulative_y,
+            cumulative_z: body_state.cumulative_z,
+            cumulative_roll: body_state.cumulative_roll,
+            cumulative_pitch: body_state.cumulative_pitch,
+            cumulative_yaw: body_state.cumulative_yaw
         }
 
         let new_angles = kinematic.calcIK(position).map((x, i) => radToDeg(x * dir[i]))
@@ -220,16 +232,32 @@
         if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y))
 
-        robot.position.z = smooth(robot.position.z, -settings.xm, 0.1)
-        robot.position.x = smooth(robot.position.x, -settings.zm, 0.1)
+        robot.position.z = smooth(
+            robot.position.z,
+            -settings.xm - body_state.cumulative_x * 1.2,
+            0.1
+        )
+        robot.position.x = smooth(
+            robot.position.x,
+            -settings.zm - body_state.cumulative_z * 1.2,
+            0.1
+        )
 
         robot.rotation.z = smooth(
             robot.rotation.z,
-            degToRad(-settings.phi + $mpu.heading + 90),
+            degToRad(-settings.phi + $mpu.heading + 90) + body_state.cumulative_yaw,
             0.1
         )
-        robot.rotation.y = smooth(robot.rotation.y, degToRad(settings.omega), 0.1)
-        robot.rotation.x = smooth(robot.rotation.x, degToRad(settings.psi - 90), 0.1)
+        robot.rotation.y = smooth(
+            robot.rotation.y,
+            degToRad(settings.omega) + body_state.cumulative_roll,
+            0.1
+        )
+        robot.rotation.x = smooth(
+            robot.rotation.x,
+            degToRad(settings.psi - 90) + body_state.cumulative_pitch,
+            0.1
+        )
     }
 
     const update_camera = (robot: URDFRobot) => {
