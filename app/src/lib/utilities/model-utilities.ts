@@ -6,6 +6,7 @@ import { currentVariant, jointNames, model } from '$lib/stores'
 import uzip from 'uzip'
 import { fileService } from '$lib/services'
 import { get } from 'svelte/store'
+import { resolve } from '$app/paths'
 
 let model_xml: XMLDocument
 
@@ -34,7 +35,7 @@ export const cacheModelFiles = async () => {
 
 export const loadModel = async (url: string): Promise<Result<[URDFRobot, string[]], string>> => {
     const urdfLoader = new URDFLoader()
-    urdfLoader.workingPath = LoaderUtils.extractUrlBase(url)
+    urdfLoader.workingPath = resolve('/')
 
     let xml =
         url.endsWith('.xacro') ? await loadXacro(url) : await fetch(url).then(res => res.text())
