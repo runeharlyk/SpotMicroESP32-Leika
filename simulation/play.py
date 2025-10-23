@@ -15,7 +15,11 @@ from src.controllers import Controller, GUIController, WebSocketController
 
 class SpotMicroSimulation:
     def __init__(
-        self, controller: Controller, env: Optional[QuadrupedEnv] = None, terrain_type: TerrainType = TerrainType.FLAT
+        self,
+        controller: Controller,
+        env: Optional[QuadrupedEnv] = None,
+        terrain_type: TerrainType = TerrainType.FLAT,
+        dt: float = 1.0 / 240,
     ):
         print("Initializing Spot Micro simulation...")
         try:
@@ -23,7 +27,7 @@ class SpotMicroSimulation:
                 self.env = env
                 print("Using existing environment")
             else:
-                self.env = QuadrupedEnv(terrain_type=terrain_type)
+                self.env = QuadrupedEnv(terrain_type=terrain_type, dt=dt)
                 print("Environment created successfully")
 
             print(f"Robot ID: {self.env.robot.robot_id}")
@@ -78,7 +82,7 @@ class SpotMicroSimulation:
         )
 
         self.gait = GaitController(standby)
-        self.dt = 1.0 / 240
+        self.dt = dt
 
     def step(self):
         self.controller.update(self.body_state, self.gait_state, self.dt)
@@ -87,9 +91,23 @@ class SpotMicroSimulation:
         joints = self.kinematics.inverse_kinematics(self.body_state)
         joints = joints * self.joint_directions
 
-        _, _, done, truncated, _ = self.env.step(joints)
+        obs, _, done, truncated, _ = self.env.step(joints)
+
+        self._print_mpu6050_data(obs)
 
         return joints, done, truncated
+
+    def _print_mpu6050_data(self, obs):
+        accel = obs[0:3]
+        gyro = obs[3:6]
+        heading = obs[6]
+        altitude = obs[7]
+
+        print(
+            f"MPU6050: Accel({accel[0]:8.3f}, {accel[1]:8.3f}, {accel[2]:8.3f}) "
+            f"Gyro({gyro[0]:8.3f}, {gyro[1]:8.3f}, {gyro[2]:8.3f}) "
+            f"Mag({heading:8.3f}) Baro({altitude:8.3f})"
+        )
 
     def run_sync(self):
         try:
