@@ -36,37 +36,33 @@ struct BarometerMsg : public SensorMessageBase {
     friend void toJson(JsonVariant v, BarometerMsg const& a) { a.toJson(v); }
 };
 
-class Barometer {
+class Barometer : public SensorBase<BarometerMsg> {
   public:
-    bool initialize() {
-        bmp_success = _bmp.begin();
-        return bmp_success;
+    bool initialize() override {
+        _msg.success = _bmp.begin();
+        return _msg.success;
     }
 
-    bool readBarometer() {
-        if (!bmp_success) return false;
-        _bmp.getTemperature(&temperature);
+    bool update() override {
+        if (!_msg.success) return false;
+        _bmp.getTemperature(&_msg.temperature);
         sensors_event_t event;
         _bmp.getEvent(&event);
-        pressure = event.pressure;
-        altitude = _bmp.pressureToAltitude(seaLevelPressure, pressure);
+        _msg.pressure = event.pressure;
+        _msg.altitude = _bmp.pressureToAltitude(seaLevelPressure, _msg.pressure);
         return true;
     }
 
-    float getPressure() { return pressure; }
+    float getPressure() { return _msg.pressure; }
 
-    float getAltitude() { return altitude; }
+    float getAltitude() { return _msg.altitude; }
 
-    float getTemperature() { return temperature; }
+    float getTemperature() { return _msg.temperature; }
 
-    bool active() { return bmp_success; }
+    bool active() { return _msg.success; }
 
   private:
     Adafruit_BMP085_Unified _bmp {10085};
-    bool bmp_success {false};
-    float pressure {0};
-    float altitude {0};
-    float temperature {0};
 
     const float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 };

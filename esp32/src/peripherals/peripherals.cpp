@@ -101,7 +101,7 @@ bool Peripherals::readBMP() {
     bool updated = false;
 #if FT_ENABLED(USE_BMP180)
     beginTransaction();
-    updated = _bmp.readBarometer();
+    updated = _bmp.update();
     endTransaction();
 #endif
     return updated;
