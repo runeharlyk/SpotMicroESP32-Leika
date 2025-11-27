@@ -48,7 +48,7 @@ struct IMUAnglesMsg : public SensorMessageBase {
 
 class IMU : public SensorBase<IMUAnglesMsg> {
   public:
-    bool initialize() override {
+    bool initialize(void* _arg = nullptr) override {
 #if FT_ENABLED(USE_MPU6050)
         _imu.initialize();
         _msg.success = _imu.testConnection();
@@ -88,23 +88,25 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if USE_ICM20948_SPIMODE > 0
-        _imu.begin(CS_PIN, SPI_PORT);
+        _imu = (ICM_20948_SPI*)_arg;
+        _imu->begin(CS_PIN, SPI_PORT);
     #else
-        _imu.begin(Wire, 1, 0xFF);
+        _imu = (ICM_20948_I2C*)_arg;
+        _imu->begin(Wire, 1, 0xFF);
     #endif
-    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     
-    _imu.setSampleMode((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), ICM_20948_Sample_Mode_Continuous);
-    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    _imu->setSampleMode((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), ICM_20948_Sample_Mode_Continuous);
+    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     
     ICM_20948_fss_t myFSS;
     myFSS.a = gpm2;
     myFSS.g = dps250;
-    _imu.setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
-    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    _imu->setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
+    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     // TODO: Setup low pass filter config
-    _imu.startupMagnetometer();
-    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    _imu->startupMagnetometer();
+    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
 #endif
         return _msg.success;
     }
@@ -129,12 +131,12 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         return false;
 #endif
 #if FT_ENABLED(USE_ICM20948)
-        if (_imu.dataReady())
+        if (_imu->dataReady())
         {   
-            _imu.getAGMT();
-            _msg.rpy[0] = _imu.gyrX();
-            _msg.rpy[1] = _imu.gyrY();
-            _msg.rpy[2] = _imu.gyrZ();
+            _imu->getAGMT();
+            _msg.rpy[0] = _imu->gyrX();
+            _msg.rpy[1] = _imu->gyrY();
+            _msg.rpy[2] = _imu->gyrZ();
         }
 #endif
 #if FT_ENABLED(USE_BNO055)
@@ -180,10 +182,10 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
         #define SPI_PORT SPI // TODO in periphearals_seetings.h
         #define CS_PIN 2 
-        ICM_20948_SPI _imu;
+        ICM_20948_SPI* _imu;
     #else
         //#define WIRE_PORT Wire 
-        ICM_20948_I2C _imu;
+        ICM_20948_I2C* _imu;
     #endif
 #endif
 };

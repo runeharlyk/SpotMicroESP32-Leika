@@ -17,7 +17,7 @@ class SensorBase {
   public:
     SensorBase() {}
 
-    virtual bool initialize() = 0;
+    virtual bool initialize(void* _arg) = 0;
 
     virtual bool update() = 0;
 
