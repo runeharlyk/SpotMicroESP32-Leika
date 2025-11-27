@@ -18,6 +18,8 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_BMP180: %s", USE_BMP180 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_USS: %s", USE_USS ? "enabled" : "disabled");
+    ESP_LOGI("Features", "USE_PAJ7620U2: %s", USE_PAJ7620U2 ? "enabled" : "disabled");
+    
 
     // Peripherals
     ESP_LOGI("Features", "USE_PCA9685: %s", USE_PCA9685 ? "enabled" : "disabled");
