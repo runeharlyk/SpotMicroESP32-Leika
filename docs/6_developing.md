@@ -22,13 +22,4 @@ server: {
 
 > Changes require a restart of the development server.
 
-### Start the Development Server
 
-Use the following commands to launch the development server with Vite, enabling instant updates:
-
-```sh
-cd app
-pnpm run dev
-```
-
-Access the frontend via the provided browser link.
