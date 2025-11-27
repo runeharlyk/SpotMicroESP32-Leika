@@ -38,15 +38,15 @@ class CommAdapterBase {
         array.add(event);
         array.add(payload);
 
-        // TODO: Only send to subscribed
-
 #if USE_MSGPACK
         std::string bin;
         serializeMsgPack(doc, bin);
-        send(reinterpret_cast<const uint8_t *>(bin.data()), bin.size(), -1); // TODO: Make CID dynamic
+        xSemaphoreGive(mutex_);
+        send(reinterpret_cast<const uint8_t *>(bin.data()), bin.size(), -1);
 #else
         String out;
         serializeJson(doc, out);
+        xSemaphoreGive(mutex_);
         send(out.c_str(), -1);
 #endif
     }
