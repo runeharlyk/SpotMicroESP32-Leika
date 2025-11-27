@@ -12,7 +12,7 @@ struct MagnetometerMsg {
 
 class Magnetometer : public SensorBase<MagnetometerMsg> {
   public:
-    bool initialize() override {
+    bool initialize(void* _) override {
         _msg.success = _mag.begin();
         if (_msg.success) {
             ESP_LOGI("MAG", "HMC5883L initialized successfully");
