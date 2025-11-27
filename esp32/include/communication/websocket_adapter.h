@@ -11,7 +11,7 @@
 
 #include <communication/comm_base.hpp>
 
-class Websocket : CommAdapterBase {
+class Websocket : public CommAdapterBase {
   public:
     Websocket(httpd_handle_t *server, const char *route = "/api/ws");
 
