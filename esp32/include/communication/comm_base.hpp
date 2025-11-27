@@ -47,7 +47,7 @@ class CommAdapterBase {
 #else
         String out;
         serializeJson(doc, out);
-        send(out.c_str(), cid);
+        send(out.c_str(), -1);
 #endif
     }
 

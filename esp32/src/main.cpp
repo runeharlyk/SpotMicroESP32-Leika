@@ -209,7 +209,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     for (;;) {
         wifiService.loop();
         apService.loop();
-        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics());
+        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

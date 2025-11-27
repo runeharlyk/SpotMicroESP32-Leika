@@ -113,13 +113,14 @@ void metrics(JsonObject &root) {
     root["core_temp"] = temperatureRead();
 }
 
-void emitMetrics() {
-    // if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
-    // analyticsDoc.clear();
-    // JsonObject root = analyticsDoc.to<JsonObject>();
-    // system_service::metrics(root);
-    // JsonVariant data = analyticsDoc.as<JsonVariant>();
-    // socket.emit(EVENT_ANALYTICS, data);
+void emitMetrics(Websocket &socket) {
+    if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
+
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
+    system_service::metrics(root);
+    JsonVariant data = doc.as<JsonVariant>();
+    socket.emit(EVENT_ANALYTICS, data);
 }
 
 const char *resetReason(esp_reset_reason_t reason) {
