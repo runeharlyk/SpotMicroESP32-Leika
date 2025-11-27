@@ -19,6 +19,15 @@
 #define USE_BNO055 1
 #endif
 
+// ESP32 IMU off by default
+#ifndef USE_ICM20948
+#define USE_ICM20948 0
+#endif
+#ifndef USE_ICM20948_SPIMODE // I2C on by default
+#define USE_ICM20948_SPIMODE 0
+#endif
+
+// ESP32 magnetometer on by default
 #ifndef USE_HMC5883
 #define USE_HMC5883 0
 #endif

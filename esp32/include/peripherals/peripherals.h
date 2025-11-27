@@ -74,10 +74,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     IMU _imu;
 #endif
-#if FT_ENABLED(USE_HMC5883)
+#if FT_ENABLED(USE_HMC5883 || USE_ICM20948)
     Magnetometer _mag;
 #endif
 #if FT_ENABLED(USE_BMP180)

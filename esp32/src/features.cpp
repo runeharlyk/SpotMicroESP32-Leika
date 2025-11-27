@@ -10,6 +10,7 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_CAMERA: %s", USE_CAMERA ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MOTION: %s", USE_MOTION ? "enabled" : "disabled");
 
+    ESP_LOGI("Features", "USE_ICM20948: %s", USE_ICM20948 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_BNO055: %s", USE_BNO055 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MPU6050: %s", USE_MPU6050 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
