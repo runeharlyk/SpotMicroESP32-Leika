@@ -3,7 +3,7 @@
 #include <ESPmDNS.h>
 #include <PsychicHttp.h>
 #include <WiFi.h>
-// #include <communication/websocket_adapter.h>
+#include <communication/websocket_adapter.h>
 #include <filesystem.h>
 #include <global.h>
 #include "esp_timer.h"
@@ -25,7 +25,7 @@ void sleep();
 void status(JsonObject &root);
 void metrics(JsonObject &root);
 
-void emitMetrics();
+void emitMetrics(Websocket &socket);
 
 const char *resetReason(esp_reset_reason_t reason);
 } // namespace system_service
