@@ -6,6 +6,10 @@
 #include <ArduinoJson.h>
 #include <utils/math_utils.h>
 
+#if FT_ENABLED(USE_ICM20948)
+#include "ICM_20948.h" 
+#endif
+
 #if FT_ENABLED(USE_MPU6050)
 #include <MPU6050_6Axis_MotionApps612.h>
 #endif
@@ -68,6 +72,26 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         }
         _imu.setExtCrystalUse(true);
 #endif
+#if FT_ENABLED(USE_ICM20948)
+    #if USE_ICM20948_SPIMODE > 0
+        _imu.begin(CS_PIN, SPI_PORT);
+    #else
+        _imu.begin(Wire, 1);
+    #endif
+    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    
+    _imu.setSampleMode((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), ICM_20948_Sample_Mode_Continuous);
+    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    
+    ICM_20948_fss_t myFSS;
+    myFSS.a = gpm2;
+    myFSS.g = dps250;
+    _imu.setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
+    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+    // TODO: Setup low pass filter config
+    _imu.startupMagnetometer();
+    if (_imu.status != ICM_20948_Stat_Ok){ return false; }
+#endif
         return true;
     }
 
@@ -84,12 +108,31 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         }
         return false;
 #endif
+#if FT_ENABLED(USE_ICM20948)
+        if (_imu.dataReady())
+        {
+            _imu.getAGMT();
+            _msg.rpy[0] = _imu.magX();
+            _msg.rpy[1] = _imu.magY();
+            _msg.rpy[2] = _imu.magZ();
+        }
+#endif
 #if FT_ENABLED(USE_BNO055)
         sensors_event_t event;
         _imu.getEvent(&event);
         _msg.rpy[0] = event.orientation.x;
         _msg.rpy[1] = event.orientation.y;
         _msg.rpy[2] = event.orientation.z;
+#endif
+#if FT_ENABLED(USE_ICM20948)
+    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
+        #define SPI_PORT SPI // TODO in periphearals_seetings.h
+        #define CS_PIN 2 
+        ICM_20948_SPI _imu;
+    #else
+        //#define WIRE_PORT Wire 
+        ICM_20948_I2C _imu;
+    #endif
 #endif
         return true;
     }
@@ -112,5 +155,15 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_BNO055)
     Adafruit_BNO055 _imu {55, 0x29};
+#endif
+#if FT_ENABLED(USE_ICM20948)
+    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
+        #define SPI_PORT SPI // TODO in periphearals_seetings.h
+        #define CS_PIN 2 
+        ICM_20948_SPI _imu;
+    #else
+        //#define WIRE_PORT Wire 
+        ICM_20948_I2C _imu;
+    #endif
 #endif
 };

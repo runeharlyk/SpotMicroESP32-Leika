@@ -13,6 +13,7 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "USE_MOTION: %s", USE_MOTION ? "enabled" : "disabled");
 
     // Sensors
+    ESP_LOGI("Features", "USE_ICM20948: %s", USE_ICM20948 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_BNO055: %s", USE_BNO055 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MPU6050: %s", USE_MPU6050 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
@@ -32,8 +33,8 @@ void printFeatureConfiguration() {
 
 void features(JsonObject &root) {
     root["camera"] = USE_CAMERA ? true : false;
-    root["imu"] = (USE_MPU6050 || USE_BNO055) ? true : false;
-    root["mag"] = (USE_HMC5883 || USE_BNO055) ? true : false;
+    root["imu"] = (USE_MPU6050 || USE_BNO055 || USE_ICM20948) ? true : false;
+    root["mag"] = (USE_HMC5883 || USE_BNO055 || USE_ICM20948) ? true : false;
     root["bmp"] = USE_BMP180 ? true : false;
     root["sonar"] = USE_USS ? true : false;
     root["servo"] = USE_PCA9685 ? true : false;
