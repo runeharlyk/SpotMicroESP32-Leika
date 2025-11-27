@@ -196,6 +196,8 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     mdns_service::begin(APP_NAME);
     apService.begin();
 
+    cameraService.begin();
+
     setupServer();
 
     socket.begin();
