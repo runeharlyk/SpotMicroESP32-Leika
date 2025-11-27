@@ -38,37 +38,36 @@ struct MagnetometerMsg : public SensorMessageBase {
 
 class Magnetometer : public SensorBase<MagnetometerMsg> {
   public:
-    bool initialize() {
-        msg.success = _mag.begin();
-        return msg.success;
+    bool initialize() override {
+        _msg.success = _mag.begin();
+        return _msg.success;
     }
 
-    bool update() {
-        if (!msg.success) return false;
+    bool update() override {
+        if (!_msg.success) return false;
         sensors_event_t event;
         bool updated = _mag.getEvent(&event);
         if (!updated) return false;
-        msg.rpy[0] = event.magnetic.x;
-        msg.rpy[1] = event.magnetic.y;
-        msg.rpy[2] = event.magnetic.z;
-        msg.heading = atan2(event.magnetic.y, event.magnetic.x);
-        msg.heading += declinationAngle;
-        if (msg.heading < 0) msg.heading += 2 * PI;
-        if (msg.heading > 2 * PI) msg.heading -= 2 * PI;
-        msg.heading *= 180 / M_PI;
+        _msg.rpy[0] = event.magnetic.x;
+        _msg.rpy[1] = event.magnetic.y;
+        _msg.rpy[2] = event.magnetic.z;
+        _msg.heading = atan2(event.magnetic.y, event.magnetic.x);
+        _msg.heading += declinationAngle;
+        if (_msg.heading < 0) _msg.heading += 2 * PI;
+        if (_msg.heading > 2 * PI) _msg.heading -= 2 * PI;
+        _msg.heading *= 180 / M_PI;
         return true;
     }
 
-    float getMagX() { return msg.rpy[0]; }
+    float getMagX() { return _msg.rpy[0]; }
 
-    float getMagY() { return msg.rpy[1]; }
+    float getMagY() { return _msg.rpy[1]; }
 
-    float getMagZ() { return msg.rpy[2]; }
+    float getMagZ() { return _msg.rpy[2]; }
 
-    float getHeading() { return msg.heading; }
+    float getHeading() { return _msg.heading; }
 
   private:
     Adafruit_HMC5883_Unified _mag {12345};
-    MagnetometerMsg msg;
     const float declinationAngle = 0.22;
 };
