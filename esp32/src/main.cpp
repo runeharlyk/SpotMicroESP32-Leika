@@ -144,6 +144,10 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     MDNS.setInstanceName(APP_NAME);
     apService.begin();
 
+#if FT_ENABLED(USE_CAMERA)
+    cameraService.begin();
+#endif
+
     setupServer();
 
     socket.begin();
