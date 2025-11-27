@@ -6,7 +6,7 @@
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
     import { socket } from '$lib/stores'
-    import { MessageTopic, type IMU } from '$lib/types/models'
+    import { MessageTopic, type IMUMsg } from '$lib/types/models'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
@@ -201,7 +201,7 @@
     }
 
     onMount(() => {
-        socket.on(MessageTopic.imu, (data: IMU) => {
+        socket.on(MessageTopic.imu, (data: IMUMsg) => {
             console.log(data)
             imu.addData(data)
         })

@@ -132,6 +132,12 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
+        EXECUTE_EVERY_N_MS(250, [&]() {
+            JsonDocument doc;
+            JsonVariant results = doc.to<JsonVariant>();
+            peripherals.getIMUResult(results);
+            socket.emit(EVENT_IMU, results);
+        });
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
@@ -144,7 +150,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     MDNS.setInstanceName(APP_NAME);
     apService.begin();
 
+#if FT_ENABLED(USE_CAMERA)
     cameraService.begin();
+#endif
 
     setupServer();
 
@@ -155,7 +163,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     for (;;) {
         wifiService.loop();
         apService.loop();
-        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics());
+        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
