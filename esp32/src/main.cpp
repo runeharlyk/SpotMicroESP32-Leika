@@ -196,7 +196,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     mdns_service::begin(APP_NAME);
     apService.begin();
 
+#if FT_ENABLED(USE_CAMERA)
     cameraService.begin();
+#endif
 
     setupServer();
 
