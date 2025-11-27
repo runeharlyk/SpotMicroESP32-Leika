@@ -185,6 +185,12 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
+        EXECUTE_EVERY_N_MS(250, [&]() {
+            JsonDocument doc;
+            JsonVariant results = doc.to<JsonVariant>();
+            peripherals.getIMUResult(results);
+            socket.emit(EVENT_IMU, results);
+        });
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
