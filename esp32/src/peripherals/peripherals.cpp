@@ -15,10 +15,10 @@ void Peripherals::begin() {
 
     updatePins();
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
-#if FT_ENABLED(USE_HMC5883)
+#if FT_ENABLED(USE_HMC5883 || USE_ICM20948)
     if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
 #if FT_ENABLED(USE_BMP180)
@@ -79,7 +79,7 @@ void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
 /* IMU FUNCTIONS */
 bool Peripherals::readImu() {
     bool updated = false;
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     beginTransaction();
     updated = _imu.update();
     endTransaction();
@@ -127,7 +127,7 @@ void Peripherals::readSonar() {
 
 float Peripherals::angleX() {
     return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
         _imu.getAngleX();
 #else
         0;
@@ -136,7 +136,7 @@ float Peripherals::angleX() {
 
 float Peripherals::angleY() {
     return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
         _imu.getAngleY();
 #else
         0;
@@ -145,7 +145,7 @@ float Peripherals::angleY() {
 
 float Peripherals::angleZ() {
     return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
         _imu.getAngleZ();
 #else
         0;
@@ -165,10 +165,10 @@ float Peripherals::leftDistance() { return _left_distance; }
 float Peripherals::rightDistance() { return _right_distance; }
 
 void Peripherals::getIMUResult(JsonVariant &root) {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     _imu.getResults(root);
 #endif
-#if FT_ENABLED(USE_HMC5883)
+#if FT_ENABLED(USE_HMC5883 || USE_ICM20948)
     _mag.getResults(root);
 #endif
 #if FT_ENABLED(USE_BMP180)
