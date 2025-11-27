@@ -15,8 +15,15 @@ void Peripherals::begin() {
 
     updatePins();
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
+#elif FT_ENABLED(USE_ICM20948)
+    #if USE_ICM20948_SPIMODE > 0
+        ICM_20948_SPI* icm20948 = new ICM_20948_SPI;
+    #else
+        ICM_20948_I2C* icm20948 = new ICM_20948_I2C;
+    #endif
+    if (!_imu.initialize(icm20948)) ESP_LOGE("IMUService", "IMU initialize failed (ICM20948)");
 #endif
 #if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
     if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");

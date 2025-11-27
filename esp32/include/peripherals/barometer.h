@@ -38,7 +38,7 @@ struct BarometerMsg : public SensorMessageBase {
 
 class Barometer : public SensorBase<BarometerMsg> {
   public:
-    bool initialize() override {
+    bool initialize(void* _) override {
         _msg.success = _bmp.begin();
         return _msg.success;
     }

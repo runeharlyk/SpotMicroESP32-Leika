@@ -38,7 +38,7 @@ struct MagnetometerMsg : public SensorMessageBase {
 
 class Magnetometer : public SensorBase<MagnetometerMsg> {
   public:
-    bool initialize() override {
+    bool initialize(void* _) override {
         _msg.success = _mag.begin();
         return _msg.success;
     }
