@@ -19,7 +19,7 @@ void Peripherals::begin() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
 #endif
-#if FT_ENABLED(USE_HMC5883 || USE_ICM20948)
+#if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
     if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
 #endif
 #if FT_ENABLED(USE_BMP180)
@@ -111,7 +111,7 @@ bool Peripherals::readImu() {
 
 bool Peripherals::readMag() {
     bool updated = false;
-#if FT_ENABLED(USE_HMC5883)
+#if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
     beginTransaction();
     updated = _mag.update();
     endTransaction();
