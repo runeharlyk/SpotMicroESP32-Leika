@@ -76,7 +76,7 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     #if USE_ICM20948_SPIMODE > 0
         _imu.begin(CS_PIN, SPI_PORT);
     #else
-        _imu.begin(Wire, 1);
+        _imu.begin(Wire, 1, 0xFF);
     #endif
     if (_imu.status != ICM_20948_Stat_Ok){ return false; }
     
