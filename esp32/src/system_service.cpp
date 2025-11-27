@@ -4,33 +4,33 @@ namespace system_service {
 
 static const char *TAG = "SystemService";
 
-esp_err_t handleReset(PsychicRequest *request) {
+esp_err_t handleReset(httpd_req_t *req) {
     reset();
-    return request->reply(200);
+    return http_utils::send_empty_response(req, 200);
 }
 
-esp_err_t handleRestart(PsychicRequest *request) {
+esp_err_t handleRestart(httpd_req_t *req) {
     restart();
-    return request->reply(200);
+    return http_utils::send_empty_response(req, 200);
 }
 
-esp_err_t handleSleep(PsychicRequest *request) {
+esp_err_t handleSleep(httpd_req_t *req) {
     sleep();
-    return request->reply(200);
+    return http_utils::send_empty_response(req, 200);
 }
 
-esp_err_t getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t getStatus(httpd_req_t *req) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     status(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
-esp_err_t getMetrics(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t getMetrics(httpd_req_t *req) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     metrics(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
 void reset() {
@@ -49,12 +49,8 @@ void restart() {
     xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                MDNS.end();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-                ESP.restart();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                esp_restart();
             }
         },
         "Restart task", 4096, nullptr, 10, nullptr);
@@ -64,11 +60,7 @@ void sleep() {
     xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                MDNS.end();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 uint64_t bitmask = (uint64_t)1 << (WAKEUP_PIN_NUMBER);
 

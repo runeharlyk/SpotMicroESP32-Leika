@@ -1,5 +1,5 @@
 #pragma once
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 #include "WWWData.h"
 
-void mountStaticAssets(PsychicHttpServer& s);
+void mountStaticAssets(httpd_handle_t server);

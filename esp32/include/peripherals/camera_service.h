@@ -2,8 +2,8 @@
 #define CameraService_h
 
 #include <ArduinoJson.h>
-#include <PsychicHttp.h>
-#include <WiFi.h>
+#include <esp_http_server.h>
+#include <utils/http_utils.h>
 #include <async_worker.h>
 
 #include <features.h>
@@ -35,8 +35,8 @@ class CameraService : public StatefulService<CameraSettings> {
 
     esp_err_t begin();
 
-    esp_err_t cameraStill(PsychicRequest *request);
-    esp_err_t cameraStream(PsychicRequest *request);
+    esp_err_t cameraStill(httpd_req_t *req);
+    esp_err_t cameraStream(httpd_req_t *req);
 
     StatefulHttpEndpoint<CameraSettings> endpoint;
 

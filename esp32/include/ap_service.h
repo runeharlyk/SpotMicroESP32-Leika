@@ -3,8 +3,9 @@
 #include <template/stateful_persistence.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
-#include <WiFi.h>
-#include "esp_timer.h"
+#include <utils/http_utils.h>
+#include <esp_http_server.h>
+#include <esp_timer.h>
 #include <string>
 
 class APService : public StatefulService<APSettings> {
@@ -16,14 +17,13 @@ class APService : public StatefulService<APSettings> {
     void loop();
     void recoveryMode();
 
-    esp_err_t getStatus(PsychicRequest *request);
+    esp_err_t getStatus(httpd_req_t *req);
     void status(JsonObject &root);
     APNetworkStatus getAPNetworkStatus();
 
     StatefulHttpEndpoint<APSettings> endpoint;
 
   private:
-    PsychicHttpServer *_server;
     FSPersistence<APSettings> _persistence;
 
     DNSServer *_dnsServer;

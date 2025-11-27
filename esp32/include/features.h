@@ -1,9 +1,8 @@
 #ifndef Features_h
 #define Features_h
 
-#include <WiFi.h>
 #include <ArduinoJson.h>
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 
 #define FT_ENABLED(feature) feature
 
@@ -83,7 +82,7 @@ void printFeatureConfiguration();
 
 void features(JsonObject &root);
 
-esp_err_t getFeatures(PsychicRequest *request);
+esp_err_t getFeatures(httpd_req_t *req);
 
 } // namespace feature_service
 

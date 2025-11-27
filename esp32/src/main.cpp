@@ -1,8 +1,6 @@
-#include <Arduino.h>
-#include <PsychicHttp.h>
-#include <ESPmDNS.h>
-#include <WiFi.h>
-#include <Wire.h>
+#include <esp_http_server.h>
+#include <esp_log.h>
+#include <driver/uart.h>
 
 #include <filesystem.h>
 #include <peripherals/peripherals.h>
@@ -16,14 +14,13 @@
 #include <ap_service.h>
 #include <mdns_service.h>
 #include <system_service.h>
+#include <utils/http_utils.h>
 
 #include <www_mount.hpp>
 
-// Communication
-PsychicHttpServer server;
-Websocket socket {server, "/api/ws"};
+httpd_handle_t server = NULL;
+Websocket socket(&server, "/api/ws");
 
-// Core
 Peripherals peripherals;
 ServoController servoController;
 MotionService motionService;
@@ -34,46 +31,8 @@ LEDService ledService;
 Camera::CameraService cameraService;
 #endif
 
-// Service
 WiFiService wifiService;
 APService apService;
-
-void setupServer() {
-    server.config.max_uri_handlers = 10 + WWW_ASSETS_COUNT;
-    server.maxUploadSize = 1000000; // 1 MB;
-    server.listen(80);
-    server.serveStatic("/api/config/", ESP_FS, "/config/");
-    server.on("/api/features", feature_service::getFeatures);
-#if USE_CAMERA
-    server.on("/api/camera/still", HTTP_GET,
-              [&](PsychicRequest *request) { return cameraService.cameraStill(request); });
-    server.on("/api/camera/stream", HTTP_GET,
-              [&](PsychicRequest *request) { return cameraService.cameraStream(request); });
-    server.on("/api/camera/settings", HTTP_GET,
-              [&](PsychicRequest *request) { return cameraService.endpoint.getState(request); });
-    server.on("/api/camera/settings", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
-        return cameraService.endpoint.handleStateUpdate(request, json);
-    });
-#endif
-    server.on("/api/servo/config", HTTP_GET,
-              [&](PsychicRequest *request) { return servoController.endpoint.getState(request); });
-    server.on("/api/servo/config", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
-        return servoController.endpoint.handleStateUpdate(request, json);
-    });
-#if EMBED_WEBAPP
-    mountStaticAssets(server);
-#endif
-    server.on("/*", HTTP_OPTIONS, [](PsychicRequest *request) { // CORS handling
-        PsychicResponse response(request);
-        response.setCode(200);
-        return response.send();
-    });
-    DefaultHeaders::Instance().addHeader("Server", APP_NAME);
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    DefaultHeaders::Instance().addHeader("Access-Control-Max-Age", "86400");
-}
 
 #define ANGLES_EVENT "angles"
 #define INPUT_EVENT "input"
@@ -83,8 +42,103 @@ void setupServer() {
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
 #define EVENT_SERVO_STATE "servoState"
 
+esp_err_t cors_options_handler(httpd_req_t *req) { return http_utils::handle_options_cors(req); }
+
+esp_err_t servo_config_get_handler(httpd_req_t *req) { return servoController.endpoint.getState(req); }
+
+esp_err_t servo_config_post_handler(httpd_req_t *req) {
+    JsonDocument doc;
+    if (http_utils::parse_json_body(req, doc) != ESP_OK) {
+        return http_utils::send_error(req, 400, "Invalid JSON");
+    }
+    JsonVariant json = doc.as<JsonVariant>();
+    return servoController.endpoint.handleStateUpdate(req, json);
+}
+
+#if USE_CAMERA
+esp_err_t camera_still_handler(httpd_req_t *req) { return cameraService.cameraStill(req); }
+
+esp_err_t camera_stream_handler(httpd_req_t *req) { return cameraService.cameraStream(req); }
+
+esp_err_t camera_settings_get_handler(httpd_req_t *req) { return cameraService.endpoint.getState(req); }
+
+esp_err_t camera_settings_post_handler(httpd_req_t *req) {
+    JsonDocument doc;
+    if (http_utils::parse_json_body(req, doc) != ESP_OK) {
+        return http_utils::send_error(req, 400, "Invalid JSON");
+    }
+    JsonVariant json = doc.as<JsonVariant>();
+    return cameraService.endpoint.handleStateUpdate(req, json);
+}
+#endif
+
+void setupServer() {
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 20 + WWW_ASSETS_COUNT;
+    config.stack_size = 8192;
+    config.max_open_sockets = 7;
+    config.lru_purge_enable = true;
+
+    if (httpd_start(&server, &config) == ESP_OK) {
+        ESP_LOGI("main", "HTTP server started");
+
+        httpd_uri_t config_static = {.uri = "/api/config/*",
+                                     .method = HTTP_GET,
+                                     .handler = [](httpd_req_t *req) -> esp_err_t {
+                                         return http_utils::send_error(req, 501,
+                                                                       "Static file serving not yet implemented");
+                                     },
+                                     .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &config_static);
+
+        httpd_uri_t features_uri = {
+            .uri = "/api/features", .method = HTTP_GET, .handler = feature_service::getFeatures, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &features_uri);
+
+#if USE_CAMERA
+        httpd_uri_t camera_still_uri = {
+            .uri = "/api/camera/still", .method = HTTP_GET, .handler = camera_still_handler, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &camera_still_uri);
+
+        httpd_uri_t camera_stream_uri = {
+            .uri = "/api/camera/stream", .method = HTTP_GET, .handler = camera_stream_handler, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &camera_stream_uri);
+
+        httpd_uri_t camera_settings_get_uri = {.uri = "/api/camera/settings",
+                                               .method = HTTP_GET,
+                                               .handler = camera_settings_get_handler,
+                                               .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &camera_settings_get_uri);
+
+        httpd_uri_t camera_settings_post_uri = {.uri = "/api/camera/settings",
+                                                .method = HTTP_POST,
+                                                .handler = camera_settings_post_handler,
+                                                .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &camera_settings_post_uri);
+#endif
+
+        httpd_uri_t servo_config_get_uri = {
+            .uri = "/api/servo/config", .method = HTTP_GET, .handler = servo_config_get_handler, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &servo_config_get_uri);
+
+        httpd_uri_t servo_config_post_uri = {
+            .uri = "/api/servo/config", .method = HTTP_POST, .handler = servo_config_post_handler, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &servo_config_post_uri);
+
+#if EMBED_WEBAPP
+        mountStaticAssets(server);
+#endif
+
+        httpd_uri_t options_uri = {
+            .uri = "/*", .method = HTTP_OPTIONS, .handler = cors_options_handler, .user_ctx = nullptr};
+        httpd_register_uri_handler(server, &options_uri);
+
+    } else {
+        ESP_LOGE("main", "Failed to start HTTP server");
+    }
+}
+
 void setupEventSocket() {
-    // Motion events
     socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
 
     socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) {
@@ -98,7 +152,6 @@ void setupEventSocket() {
 
     socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId); });
 
-    // Peripherals events
     socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
         peripherals.scanI2C();
         JsonDocument doc;
@@ -107,15 +160,15 @@ void setupEventSocket() {
         socket.emit(EVENT_I2C_SCAN, results);
     });
 
-    // Servo controller events
     socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
                    [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
+
     socket.onEvent(EVENT_SERVO_STATE,
                    [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {
-    ESP_LOGI("main", "Setup complete now runing tsk");
+    ESP_LOGI("main", "Setup complete now running control task");
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = 5 / portTICK_PERIOD_MS;
 
@@ -140,8 +193,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service control task starting");
 
     wifiService.begin();
-    MDNS.begin(APP_NAME);
-    MDNS.setInstanceName(APP_NAME);
+    mdns_service::begin(APP_NAME);
     apService.begin();
 
     setupServer();
@@ -159,8 +211,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     }
 }
 
-void setup() {
-    Serial.begin(115200);
+extern "C" void app_main() {
+    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
+    esp_log_level_set("*", ESP_LOG_INFO);
 
     ESP_FS.begin();
 
@@ -168,11 +221,9 @@ void setup() {
 
     feature_service::printFeatureConfiguration();
 
-    xTaskCreate(serviceLoopEntry, "Service task", 4096, nullptr, 2, nullptr);
+    xTaskCreate(serviceLoopEntry, "Service task", 8192, nullptr, 2, nullptr);
 
-    xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 4096, nullptr, 5, nullptr, 1);
+    xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 8192, nullptr, 5, nullptr, 1);
 
     ESP_LOGI("main", "Finished booting");
 }
-
-void loop() { vTaskDelete(nullptr); }

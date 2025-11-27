@@ -1,4 +1,5 @@
 #include <ap_service.h>
+#include <WiFi.h>
 
 static const char *TAG = "APService";
 
@@ -12,11 +13,11 @@ APService::~APService() {}
 
 void APService::begin() { _persistence.readFromFS(); }
 
-esp_err_t APService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t APService::getStatus(httpd_req_t *req) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     status(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
 void APService::status(JsonObject &root) {

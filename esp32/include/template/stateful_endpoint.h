@@ -1,7 +1,8 @@
 #pragma once
 
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 #include <template/stateful_service.h>
+#include <utils/http_utils.h>
 
 #include <functional>
 
@@ -20,29 +21,27 @@ class StatefulHttpEndpoint {
                          StatefulService<T> *statefulService)
         : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService) {}
 
-    esp_err_t handleStateUpdate(PsychicRequest *request, JsonVariant &json) {
+    esp_err_t handleStateUpdate(httpd_req_t *req, JsonVariant &json) {
         JsonVariant jsonObject = json.as<JsonVariant>();
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
 
-        if (outcome == StateUpdateResult::ERROR)
-            return request->reply(400);
-        else if ((outcome == StateUpdateResult::CHANGED)) {
-            // persist the changes to the FS
+        if (outcome == StateUpdateResult::ERROR) {
+            return http_utils::send_error(req, 400);
+        } else if ((outcome == StateUpdateResult::CHANGED)) {
             _statefulService->callUpdateHandlers(HTTP_ENDPOINT_ORIGIN_ID);
         }
 
-        PsychicJsonResponse response = PsychicJsonResponse(request, false);
-        jsonObject = response.getRoot();
-
+        JsonDocument doc;
+        jsonObject = doc.to<JsonVariant>();
         _statefulService->read(jsonObject, _stateReader);
 
-        return response.send();
+        return http_utils::send_json_response(req, doc);
     }
 
-    esp_err_t getState(PsychicRequest *request) {
-        PsychicJsonResponse response = PsychicJsonResponse(request, false);
-        JsonVariant jsonObject = response.getRoot();
+    esp_err_t getState(httpd_req_t *req) {
+        JsonDocument doc;
+        JsonVariant jsonObject = doc.to<JsonVariant>();
         _statefulService->read(jsonObject, _stateReader);
-        return response.send();
+        return http_utils::send_json_response(req, doc);
     }
 };

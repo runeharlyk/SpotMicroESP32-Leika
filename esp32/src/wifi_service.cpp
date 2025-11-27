@@ -1,4 +1,6 @@
 #include <wifi_service.h>
+#include <WiFi.h>
+#include <ESPmDNS.h>
 
 WiFiService::WiFiService()
     : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
@@ -38,25 +40,25 @@ void WiFiService::reconfigureWiFiConnection() {
 
 void WiFiService::loop() { EXECUTE_EVERY_N_MS(reconnectDelay, manageSTA()); }
 
-esp_err_t WiFiService::handleScan(PsychicRequest *request) {
+esp_err_t WiFiService::handleScan(httpd_req_t *req) {
     if (WiFi.scanComplete() != -1) {
         WiFi.scanDelete();
         WiFi.scanNetworks(true);
     }
-    return request->reply(202);
+    return http_utils::send_empty_response(req, 202);
 }
 
-esp_err_t WiFiService::getNetworks(PsychicRequest *request) {
+esp_err_t WiFiService::getNetworks(httpd_req_t *req) {
     int numNetworks = WiFi.scanComplete();
     if (numNetworks == -1)
-        return request->reply(202);
+        return http_utils::send_empty_response(req, 202);
     else if (numNetworks < -1)
-        return handleScan(request);
+        return handleScan(req);
 
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     getNetworks(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -80,11 +82,11 @@ void WiFiService::getNetworks(JsonObject &root) {
     }
 }
 
-esp_err_t WiFiService::getNetworkStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t WiFiService::getNetworkStatus(httpd_req_t *req) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     getNetworkStatus(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
 void WiFiService::getNetworkStatus(JsonObject &root) {

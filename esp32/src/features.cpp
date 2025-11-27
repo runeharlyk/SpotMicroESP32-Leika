@@ -1,4 +1,5 @@
 #include <features.h>
+#include <utils/http_utils.h>
 
 namespace feature_service {
 
@@ -45,11 +46,11 @@ void features(JsonObject &root) {
     root["variant"] = KINEMATICS_VARIANT_STR;
 }
 
-esp_err_t getFeatures(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t getFeatures(httpd_req_t *req) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     features(root);
-    return response.send();
+    return http_utils::send_json_response(req, doc);
 }
 
 } // namespace feature_service

@@ -2,99 +2,54 @@
 
 static const char *TAG = "MDNSService";
 
-MDNSService::MDNSService()
-    : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
-      endpoint(MDNSSettings::read, MDNSSettings::update, this) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
-}
+namespace mdns_service {
 
-MDNSService::~MDNSService() {
-    if (_started) {
-        stopMDNS();
+void begin(const char *hostname) {
+    ESP_LOGI(TAG, "Starting mDNS with hostname: %s", hostname);
+
+    esp_err_t err = mdns_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "mDNS init failed: %d", err);
+        return;
     }
-}
 
-void MDNSService::begin() {
-    _persistence.readFromFS();
-    startMDNS();
-}
-
-void MDNSService::reconfigureMDNS() {
-    if (_started) {
-        stopMDNS();
+    err = mdns_hostname_set(hostname);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set hostname: %d", err);
+        return;
     }
-    startMDNS();
+
+    err = mdns_instance_name_set(hostname);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set instance name: %d", err);
+        return;
+    }
+
+    addService("http", "_tcp", 80);
+    addService("ws", "_tcp", 80);
+    addServiceTxt("http", "_tcp", "version", APP_VERSION);
+
+    ESP_LOGI(TAG, "mDNS started successfully");
 }
 
-void MDNSService::startMDNS() {
-    ESP_LOGV(TAG, "Starting MDNS with hostname: %s", state().hostname.c_str());
+void end() { mdns_free(); }
 
-    if (MDNS.begin(state().hostname.c_str())) {
-        _started = true;
-        MDNS.setInstanceName(state().instance.c_str());
-
-        addServices();
-
-        ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname.c_str());
+void addService(const char *service, const char *proto, uint16_t port) {
+    esp_err_t err = mdns_service_add(NULL, service, proto, port, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add service %s.%s: %d", service, proto, err);
     } else {
-        _started = false;
-        ESP_LOGE(TAG, "Failed to start MDNS");
+        ESP_LOGI(TAG, "Added mDNS service: %s.%s on port %d", service, proto, port);
     }
 }
 
-void MDNSService::stopMDNS() {
-    ESP_LOGV(TAG, "Stopping MDNS");
-    MDNS.end();
-    _started = false;
-}
+void addServiceTxt(const char *service, const char *proto, const char *key, const char *value) {
+    mdns_txt_item_t txt_data[1] = {{(char *)key, (char *)value}};
 
-void MDNSService::addServices() {
-    for (const auto &service : state().services) {
-        MDNS.addService(service.service.c_str(), service.protocol.c_str(), service.port);
-
-        for (const auto &txt : service.txtRecords) {
-            MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
-        }
-    }
-
-    for (const auto &txt : state().globalTxtRecords) {
-        for (const auto &service : state().services) {
-            MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
-        }
+    esp_err_t err = mdns_service_txt_set(service, proto, txt_data, 1);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set TXT record for %s.%s: %d", service, proto, err);
     }
 }
 
-esp_err_t MDNSService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
-    getStatus(root);
-    return response.send();
-}
-
-void MDNSService::getStatus(JsonVariant &root) {
-    state().read(state(), root);
-    root["started"] = _started;
-}
-
-esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json) {
-    std::string service = json["service"].as<std::string>();
-    std::string proto = json["protocol"].as<std::string>();
-
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
-
-    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
-
-    int n = MDNS.queryService(service.c_str(), proto.c_str());
-    ESP_LOGI(TAG, "Found %d services", n);
-
-    JsonArray servicesArray = root["services"].to<JsonArray>();
-    for (int i = 0; i < n; i++) {
-        JsonVariant serviceObj = servicesArray.add<JsonVariant>();
-        serviceObj["name"] = MDNS.hostname(i);
-        serviceObj["ip"] = MDNS.IP(i);
-        serviceObj["port"] = MDNS.port(i);
-    }
-
-    return response.send();
-}
+} // namespace mdns_service

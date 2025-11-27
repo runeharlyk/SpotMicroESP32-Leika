@@ -85,43 +85,39 @@ esp_err_t CameraService::begin() {
     return err;
 }
 
-esp_err_t CameraService::cameraStill(PsychicRequest *request) {
+esp_err_t CameraService::cameraStill(httpd_req_t *req) {
     camera_fb_t *fb = safe_camera_fb_get();
     if (!fb) {
         ESP_LOGE(TAG, "Camera capture failed");
-        request->reply(500, "text/plain", "Camera capture failed");
-        return ESP_FAIL;
+        return http_utils::send_error(req, 500, "Camera capture failed");
     }
-    PsychicStreamResponse response = PsychicStreamResponse(request, "image/jpeg", "capture.jpg");
-    response.beginSend();
-    response.write(fb->buf, fb->len);
+
+    httpd_resp_set_type(req, "image/jpeg");
+    httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
+
+    esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
     esp_camera_fb_return(fb);
-    return response.endSend();
+    return res;
 }
 
 void streamTask(void *pv) {
     esp_err_t res = ESP_OK;
 
-    PsychicRequest *request = static_cast<PsychicRequest *>(pv);
+    httpd_req_t *req = static_cast<httpd_req_t *>(pv);
 
     httpd_req_t *copy = nullptr;
-    res = httpd_req_async_handler_begin(request->request(), &copy);
+    res = httpd_req_async_handler_begin(req, &copy);
     if (res != ESP_OK) {
         return;
     }
-    PsychicHttpServer *server = request->server();
-    PsychicRequest new_request = PsychicRequest(server, copy);
-    request = &new_request;
 
-    PsychicStreamResponse response = PsychicStreamResponse(request, _STREAM_CONTENT_TYPE);
+    httpd_resp_set_type(copy, _STREAM_CONTENT_TYPE);
     camera_fb_t *fb = NULL;
 
-    char *part_buf[64];
+    char part_buf[64];
     size_t buf_len = 0;
     uint8_t *buf = NULL;
     int64_t fr_start = esp_timer_get_time();
-
-    response.beginSend();
 
     for (;;) {
         fb = safe_camera_fb_get();
@@ -136,26 +132,28 @@ void streamTask(void *pv) {
             buf = fb->buf;
         }
 
-        size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, buf_len);
-        size_t w = response.write((const char *)part_buf, hlen);
-        w += response.write((const char *)buf, buf_len);
-        w += response.write((char *)_STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        if (w == 62) break;
+        size_t hlen = snprintf(part_buf, 64, _STREAM_PART, buf_len);
+        if (httpd_resp_send_chunk(copy, part_buf, hlen) != ESP_OK) break;
+        if (httpd_resp_send_chunk(copy, (const char *)buf, buf_len) != ESP_OK) break;
+        if (httpd_resp_send_chunk(copy, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY)) != ESP_OK) break;
+
         esp_camera_fb_return(fb);
         safe_sensor_return();
         buf = NULL;
         taskYIELD();
-        int64_t delay = 30000ll - esp_timer_get_time() - fr_start;
-        if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
+        int64_t delay = 30000ll - (esp_timer_get_time() - fr_start);
+        if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay / 1000));
+        fr_start = esp_timer_get_time();
     }
+
     ESP_LOGI("Stream", "Stream ended");
-    response.endSend();
+    httpd_resp_send_chunk(copy, nullptr, 0);
     httpd_req_async_handler_complete(copy);
     vTaskDelete(NULL);
 }
 
-esp_err_t CameraService::cameraStream(PsychicRequest *request) {
-    xTaskCreate(streamTask, "Stream client task", 4096, request, 4, nullptr);
+esp_err_t CameraService::cameraStream(httpd_req_t *req) {
+    xTaskCreate(streamTask, "Stream client task", 4096, req, 4, nullptr);
     vTaskDelay(pdMS_TO_TICKS(100));
     return ESP_OK;
 }
