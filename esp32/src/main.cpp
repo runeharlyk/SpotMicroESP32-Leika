@@ -185,12 +185,6 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
-        EXECUTE_EVERY_N_MS(250, {
-            JsonDocument doc;
-            JsonVariant results = doc.to<JsonVariant>();
-            peripherals.getIMUResult(results);
-            socket.emit(EVENT_IMU, results);
-        });
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
@@ -216,6 +210,12 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         wifiService.loop();
         apService.loop();
         EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
+        EXECUTE_EVERY_N_MS(500, {
+            JsonDocument doc;
+            JsonVariant results = doc.to<JsonVariant>();
+            peripherals.getIMUResult(results);
+            socket.emit(EVENT_IMU, results);
+        });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

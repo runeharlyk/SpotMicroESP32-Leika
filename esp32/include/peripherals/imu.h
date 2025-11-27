@@ -52,22 +52,36 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #if FT_ENABLED(USE_MPU6050)
         _imu.initialize();
         _msg.success = _imu.testConnection();
-        if (!_msg.success) return false;
+        if (!_msg.success) {
+            ESP_LOGE("IMU", "MPU6050 connection test failed");
+            return false;
+        }
         devStatus = _imu.dmpInitialize();
         if (devStatus == 0) {
-            _imu.setDMPEnabled(false);
-            _imu.setDMPConfig1(0x03);
-            _imu.setDMPEnabled(true);
+            _imu.setXGyroOffset(0);
+            _imu.setYGyroOffset(0);
+            _imu.setZGyroOffset(0);
+            _imu.setXAccelOffset(0);
+            _imu.setYAccelOffset(0);
+            _imu.setZAccelOffset(0);
+
             _imu.setI2CMasterModeEnabled(false);
             _imu.setI2CBypassEnabled(true);
             _imu.setSleepEnabled(false);
+            _imu.setRate(1);
+            _imu.resetFIFO();
+            _imu.setDMPEnabled(true);
+
+            ESP_LOGI("IMU", "MPU6050 DMP initialized successfully");
         } else {
-            return false;
+            ESP_LOGE("IMU", "DMP initialization failed (code %d)", devStatus);
+            _msg.success = false;
         }
 #endif
 #if FT_ENABLED(USE_BNO055)
         _msg.success = _imu.begin();
         if (!_msg.success) {
+            ESP_LOGE("IMU", "BNO055 connection test failed");
             return false;
         }
         _imu.setExtCrystalUse(true);
@@ -98,13 +112,20 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     bool update() override {
         //if (!_msg.success) return false;
 #if FT_ENABLED(USE_MPU6050)
-        if (_imu.dmpPacketAvailable()) {
-            if (_imu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-                _imu.dmpGetQuaternion(&q, fifoBuffer);
-                _imu.dmpGetGravity(&gravity, &q);
-                _imu.dmpGetYawPitchRoll(_msg.rpy, &q, &gravity);
-                return true;
-            }
+        uint16_t fifoCount = _imu.getFIFOCount();
+        uint8_t intStatus = _imu.getIntStatus();
+
+        if (intStatus & 0x10) {
+            _imu.resetFIFO();
+            ESP_LOGW("IMU", "FIFO overflow, resetting");
+            return false;
+        }
+
+        if (_imu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+            _imu.dmpGetQuaternion(&q, fifoBuffer);
+            _imu.dmpGetGravity(&gravity, &q);
+            _imu.dmpGetYawPitchRoll(_msg.rpy, &q, &gravity);
+            return true;
         }
         return false;
 #endif
@@ -148,7 +169,7 @@ class IMU : public SensorBase<IMUAnglesMsg> {
   private:
 #if FT_ENABLED(USE_MPU6050)
     MPU6050 _imu;
-    uint8_t devStatus {false};
+    uint8_t devStatus {0};
     Quaternion q;
     uint8_t fifoBuffer[64];
     VectorFloat gravity;
