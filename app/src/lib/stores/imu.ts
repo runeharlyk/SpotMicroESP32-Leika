@@ -16,7 +16,7 @@ export const imu = (() => {
 
     const addData = (content: IMUMsg) => {
         update(data => {
-            if (content.imu && content.imu[3]) {
+            if (content.imu && content.imu[4]) {
                 data.x = [...data.x, content.imu[0]].slice(-maxIMUData)
                 data.y = [...data.y, content.imu[1]].slice(-maxIMUData)
                 data.z = [...data.z, content.imu[2]].slice(-maxIMUData)
