@@ -155,7 +155,7 @@ export type IMU = {
 }
 
 export type IMUMsg = {
-    imu: [number, number, number, boolean]
+    imu: [number, number, number, number, boolean]
     mag: [number, number, number, number, boolean]
     bmp: [number, number, number, boolean]
 }
