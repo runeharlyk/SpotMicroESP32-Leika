@@ -96,7 +96,7 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     }
 
     bool update() override {
-        if (!_msg.success) return false;
+        //if (!_msg.success) return false;
 #if FT_ENABLED(USE_MPU6050)
         if (_imu.dmpPacketAvailable()) {
             if (_imu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
@@ -110,11 +110,11 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
         if (_imu.dataReady())
-        {
+        {   
             _imu.getAGMT();
-            _msg.rpy[0] = _imu.magX();
-            _msg.rpy[1] = _imu.magY();
-            _msg.rpy[2] = _imu.magZ();
+            _msg.rpy[0] = _imu.gyrX();
+            _msg.rpy[1] = _imu.gyrY();
+            _msg.rpy[2] = _imu.gyrZ();
         }
 #endif
 #if FT_ENABLED(USE_BNO055)
