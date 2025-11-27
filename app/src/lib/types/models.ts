@@ -154,6 +154,12 @@ export type IMU = {
     pressure: number
 }
 
+export type IMUMsg = {
+    imu: [number, number, number, boolean]
+    mag: [number, number, number, number, boolean]
+    bmp: [number, number, number, boolean]
+}
+
 export interface I2CDevice {
     address: number
     part_number: string

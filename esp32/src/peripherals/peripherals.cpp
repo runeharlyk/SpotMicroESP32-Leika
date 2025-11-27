@@ -166,13 +166,16 @@ float Peripherals::rightDistance() { return _right_distance; }
 
 void Peripherals::getIMUResult(JsonVariant &root) {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    _imu.getResults(root);
+    JsonVariant imu = root["imu"].to<JsonVariant>();
+    _imu.getResults(imu);
 #endif
 #if FT_ENABLED(USE_HMC5883)
-    _mag.getResults(root);
+    JsonVariant mag = root["mag"].to<JsonVariant>();
+    _mag.getResults(mag);
 #endif
 #if FT_ENABLED(USE_BMP180)
-    _bmp.getResults(root);
+    JsonVariant bmp = root["bmp"].to<JsonVariant>();
+    _bmp.getResults(bmp);
 #endif
 }
 
