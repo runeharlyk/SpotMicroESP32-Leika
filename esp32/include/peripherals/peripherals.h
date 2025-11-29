@@ -90,7 +90,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     IMU _imu;
 #endif
-#if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
+#if FT_ENABLED(USE_HMC5883) || FT_ENABLED(USE_ICM20948)
     Magnetometer _mag;
 #endif
 #if FT_ENABLED(USE_BMP180)
