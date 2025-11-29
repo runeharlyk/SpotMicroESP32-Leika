@@ -18,10 +18,12 @@
     let angleChartElement: HTMLCanvasElement
     let tempChartElement: HTMLCanvasElement
     let altitudeChartElement: HTMLCanvasElement
+    let magnetometerChartElement: HTMLCanvasElement
 
     let angleChart: Chart
     let tempChart: Chart
     let altitudeChart: Chart
+    let magnetometerChart: Chart
 
     const getChartColors = () => {
         const style = getComputedStyle(document.body)
@@ -171,6 +173,37 @@
                 }
             }
         })
+
+        magnetometerChart = new Chart(magnetometerChartElement, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Heading',
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primary,
+                        borderWidth: 2,
+                        data: $imu.heading,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                ...baseConfig,
+                scales: {
+                    ...baseConfig.scales,
+                    y: {
+                        ...baseConfig.scales.y,
+                        title: {
+                            display: true,
+                            text: 'Heading [°]',
+                            color: colors.background,
+                            font: { size: 16, weight: 'bold' }
+                        }
+                    }
+                }
+            }
+        })
     }
 
     const updateChartData = (chart: Chart, data: number[]) => {
@@ -192,6 +225,10 @@
             angleChart.options.scales!.y!.min = Math.min(...allValues) - 1
             angleChart.options.scales!.y!.max = Math.max(...allValues) + 1
             angleChart.update('none')
+        }
+
+        if ($features.mag) {
+            updateChartData(magnetometerChart, $imu.heading)
         }
 
         if ($features.bmp) {
@@ -231,6 +268,17 @@
                 transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
                 <canvas bind:this={angleChartElement}></canvas>
+            </div>
+        </div>
+    {/if}
+
+    {#if $features.mag}
+        <div class="w-full overflow-x-auto">
+            <div
+                class="flex w-full flex-col space-y-1 h-60"
+                transition:slide|local={{ duration: 300, easing: cubicOut }}
+            >
+                <canvas bind:this={magnetometerChartElement}></canvas>
             </div>
         </div>
     {/if}
