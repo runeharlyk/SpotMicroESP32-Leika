@@ -245,6 +245,10 @@
             angleChart.update('none')
         }
 
+        if ($features.mag) {
+            updateChartData(magnetometerChart, $imu.heading)
+        }
+
         if ($features.bmp && tempChart && altitudeChart) {
             updateChartData(
                 tempChart,

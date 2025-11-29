@@ -60,6 +60,7 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     _imu->setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
     if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     // TODO: Setup low pass filter config
+    _msg.success = true;
 #endif
         return _msg.success;
     }
