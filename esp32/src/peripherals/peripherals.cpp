@@ -16,25 +16,40 @@ void Peripherals::begin() {
 
     updatePins();
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
-#elif FT_ENABLED(USE_ICM20948)
+#if FT_ENABLED(USE_ICM20948)
     #if USE_ICM20948_SPIMODE > 0
         ICM_20948_SPI* icm20948 = new ICM_20948_SPI;
     #else
         ICM_20948_I2C* icm20948 = new ICM_20948_I2C;
     #endif
-    if (!_imu.initialize(icm20948)) ESP_LOGE("IMUService", "IMU initialize failed (ICM20948)");
 #endif
-#if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
-    if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
+
+// --- IMU ---
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+    if (!_imu.initialize(nullptr)) ESP_LOGE("Peripherals", "IMU initialize failed");
+#elif FT_ENABLED(USE_ICM20948)
+    if (!_imu.initialize(icm20948)) ESP_LOGE("Peripherals", "IMU initialize failed (ICM20948)");
 #endif
+
+// --- MAGNETOMETER ---
+#if FT_ENABLED(USE_HMC5883)
+    if (!_mag.initialize(nullptr)) ESP_LOGE("Peripherals", "MAG initialize failed");
+#elif FT_ENABLED(USE_ICM20948)
+    if (!_mag.initialize(icm20948)) ESP_LOGE("Peripherals", "MAG initialize failed (ICM20948)");
+#endif
+
+// --- BMP ---
 #if FT_ENABLED(USE_BMP180)
-    if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
+    if (!_bmp.initialize(nullptr)) ESP_LOGE("Peripherals", "BMP initialize failed");
 #endif
+
+
+// --- GESTURE ---
 #if FT_ENABLED(USE_PAJ7620U2)
-    if (!_gesture.initialize()) ESP_LOGE("IMUService", "Gesture initialize failed");
+    if (!_gesture.initialize(nullptr)) ESP_LOGE("Peripherals", "Gesture initialize failed");
 #endif
+
+// --- SONAR ---
 #if FT_ENABLED(USE_USS)
     _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
     _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
@@ -118,7 +133,7 @@ bool Peripherals::readImu() {
 
 bool Peripherals::readMag() {
     bool updated = false;
-#if FT_ENABLED(USE_HMC5883) // TODO: Add USE_ICM20948
+#if FT_ENABLED(USE_HMC5883 || USE_ICM20948)
     beginTransaction();
     updated = _mag.update();
     endTransaction();
@@ -194,7 +209,7 @@ float Peripherals::leftDistance() { return _left_distance; }
 float Peripherals::rightDistance() { return _right_distance; }
 
 bool Peripherals::calibrateIMU() {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055 || USE_ICM20948)
     beginTransaction();
     bool result = _imu.calibrate();
     endTransaction();

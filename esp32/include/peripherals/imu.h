@@ -43,10 +43,11 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #if FT_ENABLED(USE_ICM20948)
     #if USE_ICM20948_SPIMODE > 0
         _imu = (ICM_20948_SPI*)_arg;
-        _imu->begin(CS_PIN, SPI_PORT);
+        if (true || !_imu->isConnected()) { _imu->begin(CS_PIN, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode"); }
     #else
         _imu = (ICM_20948_I2C*)_arg;
-        _imu->begin(Wire, 1, 0xFF);
+        if (true || !_imu->isConnected()) { _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode"); }
+        
     #endif
     if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     
@@ -59,8 +60,6 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     _imu->setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
     if (_imu->status != ICM_20948_Stat_Ok){ return false; }
     // TODO: Setup low pass filter config
-    _imu->startupMagnetometer();
-    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
 #endif
         return _msg.success;
     }
