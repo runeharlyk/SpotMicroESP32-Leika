@@ -53,6 +53,7 @@ class Magnetometer : public SensorBase<MagnetometerMsg> {
             
             _mag->startupMagnetometer();
             if (_mag->status != ICM_20948_Stat_Ok){ return false; }
+            _msg.success = true;
         #elif FT_ENABLED(USE_HMC5883)
             _msg.success = _mag.begin();
         #endif
