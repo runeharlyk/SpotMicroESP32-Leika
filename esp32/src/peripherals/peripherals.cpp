@@ -70,6 +70,7 @@ void Peripherals::updatePins() {
 
     if (state().sda != -1 && state().scl != -1) {
         Wire.begin(state().sda, state().scl, state().frequency);
+        ESP_LOGI("Peripherals", "Starting Wire with SDA=%d, SCL=%d, FREQ=%d", state().sda, state().scl, state().frequency);
         i2c_active = true;
     }
 }
