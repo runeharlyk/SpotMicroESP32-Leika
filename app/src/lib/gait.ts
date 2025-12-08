@@ -68,7 +68,7 @@ export abstract class GaitState {
 
     map_command(command: ControllerCommand) {
         const newCommand = {
-            step_height: 0.4 + (command.s1 + 1) / 2,
+            step_height: command.s1,
             step_x: command.ly,
             step_z: -command.lx,
             step_velocity: command.s,
