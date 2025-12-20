@@ -39,7 +39,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config.max_uri_handlers = 10 + WWW_ASSETS_COUNT;
+    server.config.max_uri_handlers = 18 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
     server.serveStatic("/api/config/", ESP_FS, "/config/");
@@ -70,6 +70,27 @@ void setupServer() {
     server.on("/api/servo/config", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
         return servoController.endpoint.handleStateUpdate(request, json);
     });
+
+    // WiFi
+    server.on("/api/wifi/sta/settings", HTTP_GET,
+              [&](PsychicRequest *request) { return wifiService.endpoint.getState(request); });
+    server.on("/api/wifi/sta/settings", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
+        return wifiService.endpoint.handleStateUpdate(request, json);
+    });
+    server.on("/api/wifi/scan", HTTP_GET, [&](PsychicRequest *request) { return wifiService.handleScan(request); });
+    server.on("/api/wifi/networks", HTTP_GET,
+              [&](PsychicRequest *request) { return wifiService.getNetworks(request); });
+    server.on("/api/wifi/sta/status", HTTP_GET,
+              [&](PsychicRequest *request) { return wifiService.getNetworkStatus(request); });
+
+    // AP
+    server.on("/api/ap/status", HTTP_GET, [&](PsychicRequest *request) { return apService.getStatus(request); });
+    server.on("/api/ap/settings", HTTP_GET,
+              [&](PsychicRequest *request) { return apService.endpoint.getState(request); });
+    server.on("/api/ap/settings", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
+        return apService.endpoint.handleStateUpdate(request, json);
+    });
+
 #if EMBED_WEBAPP
     mountStaticAssets(server);
 #endif

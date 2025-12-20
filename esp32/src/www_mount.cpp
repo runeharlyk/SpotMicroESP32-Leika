@@ -23,12 +23,8 @@ void mountStaticAssets(PsychicHttpServer& server) {
         auto* handle = new (&buf[i * sizeof(PsychicWebHandler)]) PsychicWebHandler();
         handle->onRequest([a](PsychicRequest* req) { return web_send(req, *a); });
         server.on(a->uri, HTTP_GET, handle);
-    }
-    for (size_t i = 0; i < WWW_ASSETS_COUNT; i++) {
-        if (strcmp(WWW_ASSETS[i].uri, WWW_OPT.default_uri) == 0) {
-            server.defaultEndpoint->setHandler(
-                reinterpret_cast<PsychicWebHandler*>(&buf[i * sizeof(PsychicWebHandler)]));
-            break;
+        if (strcmp(a->uri, WWW_OPT.default_uri) == 0) {
+            server.defaultEndpoint->setHandler(handle);
         }
     }
 }
