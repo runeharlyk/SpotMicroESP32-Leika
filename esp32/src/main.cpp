@@ -33,13 +33,16 @@ LEDService ledService;
 #if FT_ENABLED(USE_CAMERA)
 Camera::CameraService cameraService;
 #endif
+#if FT_ENABLED(USE_MDNS)
+MDNSService mdnsService;
+#endif
 
 // Service
 WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config.max_uri_handlers = 18 + WWW_ASSETS_COUNT;
+    server.config.max_uri_handlers = 28 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
     server.serveStatic("/api/config/", ESP_FS, "/config/");
@@ -90,6 +93,24 @@ void setupServer() {
     server.on("/api/ap/settings", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
         return apService.endpoint.handleStateUpdate(request, json);
     });
+
+    // Peripherals
+    server.on("/api/peripherals", HTTP_GET,
+              [&](PsychicRequest *request) { return peripherals.endpoint.getState(request); });
+    server.on("/api/peripherals", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
+        return peripherals.endpoint.handleStateUpdate(request, json);
+    });
+
+    // MDNS
+#if FT_ENABLED(USE_MDNS)
+    server.on("/api/mdns", HTTP_GET, [&](PsychicRequest *request) { return mdnsService.endpoint.getState(request); });
+    server.on("/api/mdns", HTTP_POST, [&](PsychicRequest *request, JsonVariant &json) {
+        return mdnsService.endpoint.handleStateUpdate(request, json);
+    });
+    server.on("/api/mdns/status", HTTP_GET, [&](PsychicRequest *request) { return mdnsService.getStatus(request); });
+    server.on("/api/mdns/query", HTTP_POST,
+              [&](PsychicRequest *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
+#endif
 
 #if EMBED_WEBAPP
     mountStaticAssets(server);
