@@ -1,5 +1,6 @@
 export enum MessageTopic {
     imu = 'imu',
+    imuCalibrate = 'imuCalibrate',
     mode = 'mode',
     input = 'input',
     analytics = 'analytics',
@@ -158,6 +159,10 @@ export type IMUMsg = {
     imu: [number, number, number, number, boolean]
     mag: [number, number, number, number, boolean]
     bmp: [number, number, number, boolean]
+}
+
+export type IMUCalibrationResult = {
+    success: boolean
 }
 
 export interface I2CDevice {

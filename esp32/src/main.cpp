@@ -134,6 +134,7 @@ void setupServer() {
 #define EVENT_I2C_SCAN "i2cScan"
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
 #define EVENT_SERVO_STATE "servoState"
+#define EVENT_IMU_CALIBRATE "imuCalibrate"
 
 void setupEventSocket() {
     // Motion events
@@ -159,6 +160,13 @@ void setupEventSocket() {
         socket.emit(EVENT_I2C_SCAN, results);
     });
 
+    socket.onEvent(EVENT_IMU_CALIBRATE, [&](JsonVariant &root, int originId) {
+        JsonDocument doc;
+        JsonVariant results = doc.to<JsonVariant>();
+        results["success"] = peripherals.calibrateIMU();
+        socket.emit(EVENT_IMU_CALIBRATE, results);
+    });
+
     // Servo controller events
     socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
                    [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
@@ -174,6 +182,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     peripherals.begin();
     servoController.begin();
     motionService.begin();
+    peripherals.calibrateIMU();
 
     for (;;) {
         CALLS_PER_SECOND(SpotControlLoopEntry);

@@ -6,7 +6,7 @@
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
     import { socket } from '$lib/stores'
-    import { MessageTopic, type IMUMsg } from '$lib/types/models'
+    import { MessageTopic, type IMUMsg, type IMUCalibrationResult } from '$lib/types/models'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
@@ -14,6 +14,8 @@
 
     const features = useFeatureFlags()
     let intervalId: ReturnType<typeof setInterval> | number
+    let isCalibrating = $state(false)
+    let calibrationResult = $state<IMUCalibrationResult | null>(null)
 
     let angleChartElement: HTMLCanvasElement
     let tempChartElement: HTMLCanvasElement
@@ -206,14 +208,26 @@
             imu.addData(data)
         })
 
+        socket.on(MessageTopic.imuCalibrate, (data: IMUCalibrationResult) => {
+            isCalibrating = false
+            calibrationResult = data
+        })
+
         initializeCharts()
         intervalId = setInterval(updateData, 200)
     })
 
     onDestroy(() => {
         socket.off(MessageTopic.imu)
+        socket.off(MessageTopic.imuCalibrate)
         clearInterval(intervalId)
     })
+
+    function startCalibration() {
+        isCalibrating = true
+        calibrationResult = null
+        socket.sendEvent(MessageTopic.imuCalibrate, {})
+    }
 </script>
 
 <SettingsCard collapsible={false}>
@@ -223,6 +237,26 @@
     {#snippet title()}
         <span>IMU</span>
     {/snippet}
+
+    <div class="flex items-center gap-2 mb-4">
+        <button
+            class="btn btn-sm btn-primary"
+            onclick={startCalibration}
+            disabled={isCalibrating || !$features.imu}
+        >
+            {#if isCalibrating}
+                <span class="loading loading-spinner loading-xs"></span>
+                Calibrating...
+            {:else}
+                Calibrate IMU
+            {/if}
+        </button>
+        {#if calibrationResult}
+            <span class="badge" class:badge-success={calibrationResult.success} class:badge-error={!calibrationResult.success}>
+                {calibrationResult.success ? 'Calibrated' : 'Failed'}
+            </span>
+        {/if}
+    </div>
 
     {#if $features.imu}
         <div class="w-full overflow-x-auto">

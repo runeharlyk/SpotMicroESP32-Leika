@@ -186,3 +186,14 @@ void Peripherals::getSonarResult(JsonVariant &root) {
     array[1] = _right_distance;
 #endif
 }
+
+bool Peripherals::calibrateIMU() {
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+    beginTransaction();
+    bool result = _imu.calibrate();
+    endTransaction();
+    return result;
+#else
+    return false;
+#endif
+}

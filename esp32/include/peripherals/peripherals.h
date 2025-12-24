@@ -74,6 +74,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float leftDistance();
     float rightDistance();
 
+    bool calibrateIMU();
+
     StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
 
   private:

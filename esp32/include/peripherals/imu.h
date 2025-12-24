@@ -123,6 +123,26 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 
     float getAngleZ() { return _msg.rpy[0]; }
 
+    bool calibrate() {
+#if FT_ENABLED(USE_MPU6050)
+        if (!_msg.success) return false;
+        ESP_LOGI("IMU", "Starting calibration...");
+        _imu.CalibrateGyro(6);
+        _imu.CalibrateAccel(6);
+        ESP_LOGI("IMU", "Calibration complete");
+        return true;
+#elif FT_ENABLED(USE_BNO055)
+        if (!_msg.success) return false;
+        ESP_LOGI("IMU", "Starting calibration...");
+        adafruit_bno055_offsets_t offsets;
+        bool result = _imu.getSensorOffsets(offsets);
+        ESP_LOGI("IMU", "Calibration complete");
+        return result;
+#else
+        return false;
+#endif
+    }
+
   private:
 #if FT_ENABLED(USE_MPU6050)
     MPU6050 _imu;
