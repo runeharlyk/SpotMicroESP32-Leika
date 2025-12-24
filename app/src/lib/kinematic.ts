@@ -50,7 +50,22 @@ export default class Kinematic {
 
     DEG2RAD = DEG2RAD
 
+    max_roll: number
+    max_pitch: number
+    max_body_shift_x: number
+    max_body_shift_z: number
+    max_leg_reach: number
+    min_body_height: number
+    max_body_height: number
+    body_height_range: number
+    max_step_length: number
+    max_step_height: number
+    default_step_depth: number
+    default_body_height: number
+    default_step_height: number
+
     mountOffsets: number[][]
+    default_feet_positions: number[][]
 
     invMountRot = [
         [0, 0, -1],
@@ -66,18 +81,34 @@ export default class Kinematic {
         this.L = params.L
         this.W = params.W
 
+        this.max_roll = 15 * (Math.PI / 2)
+        this.max_pitch = 15 * (Math.PI / 2)
+        this.max_body_shift_x = this.W / 3
+        this.max_body_shift_z = this.W / 3
+        this.max_leg_reach = this.femur + this.tibia - this.coxa_offset
+        this.min_body_height = this.max_leg_reach * 0.45
+        this.max_body_height = this.max_leg_reach * 1
+        this.body_height_range = this.max_body_height - this.min_body_height
+        this.max_step_length = this.max_leg_reach * 0.8
+        this.max_step_height = this.max_leg_reach / 2
+        this.default_step_depth = 0.002
+        this.default_body_height = this.min_body_height + this.body_height_range / 2
+        this.default_step_height = this.default_body_height / 2
+
         this.mountOffsets = [
             [this.L / 2, 0, this.W / 2],
             [this.L / 2, 0, -this.W / 2],
             [-this.L / 2, 0, this.W / 2],
             [-this.L / 2, 0, -this.W / 2]
         ]
+
+        this.default_feet_positions = this.mountOffsets.map((offset, i) => {
+            return [offset[0], 0, offset[2] + (i % 2 === 1 ? -this.coxa : this.coxa)]
+        })
     }
 
     getDefaultFeetPos(): number[][] {
-        return this.mountOffsets.map((offset, i) => {
-            return [offset[0], -1, offset[2] + (i % 2 === 1 ? -this.coxa : this.coxa)]
-        })
+        return this.default_feet_positions.map(pos => [...pos])
     }
 
     calcIK(p: body_state_t): number[] {

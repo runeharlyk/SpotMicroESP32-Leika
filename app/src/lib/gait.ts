@@ -26,21 +26,34 @@ export abstract class GaitState {
 
     protected dt = 0.02
     protected body_state!: body_state_t
+
+    protected get kinematic() {
+        return get(currentKinematic)
+    }
+
     protected gait_state: gait_state_t = {
-        step_height: 0.4,
+        step_height: 0,
         step_x: 0,
         step_z: 0,
         step_angle: 0,
         step_velocity: 1,
-        step_depth: 0.002
+        step_depth: 0
     }
 
     public get default_feet_pos() {
-        return get(currentKinematic).getDefaultFeetPos()
+        return this.kinematic.getDefaultFeetPos()
     }
 
     protected get default_height() {
-        return 0.5
+        return this.kinematic.default_body_height
+    }
+
+    protected get default_step_depth() {
+        return this.kinematic.default_step_depth
+    }
+
+    protected get default_step_height() {
+        return this.kinematic.default_step_height
     }
 
     begin() {
@@ -67,16 +80,15 @@ export abstract class GaitState {
     }
 
     map_command(command: ControllerCommand) {
-        const newCommand = {
-            step_height: command.s1,
-            step_x: command.ly,
-            step_z: -command.lx,
+        const kin = this.kinematic
+        this.gait_state = {
+            step_height: command.s1 * kin.max_step_height,
+            step_x: command.ly * kin.max_step_length,
+            step_z: -command.lx * kin.max_step_length,
             step_velocity: command.s,
             step_angle: command.rx,
-            step_depth: 0.002
+            step_depth: kin.default_step_depth
         }
-
-        this.gait_state = newCommand
     }
 }
 
@@ -92,14 +104,13 @@ export class IdleState extends GaitState {
 export class CalibrationState extends GaitState {
     protected name = 'Calibration'
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     step(body_state: body_state_t, _command: ControllerCommand) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
         body_state.psi = 0
         body_state.xm = 0
-        body_state.ym = this.default_height * 10
+        body_state.ym = this.kinematic.max_body_height
         body_state.zm = 0
         body_state.feet = this.default_feet_pos
         return body_state
@@ -109,14 +120,13 @@ export class CalibrationState extends GaitState {
 export class RestState extends GaitState {
     protected name = 'Rest'
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     step(body_state: body_state_t, _command: ControllerCommand) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
         body_state.psi = 0
         body_state.xm = 0
-        body_state.ym = this.default_height / 2
+        body_state.ym = this.kinematic.min_body_height
         body_state.zm = 0
         body_state.feet = this.default_feet_pos
         return body_state
@@ -128,11 +138,13 @@ export class StandState extends GaitState {
 
     step(body_state: body_state_t, command: ControllerCommand) {
         super.step(body_state, command)
+        const kin = this.kinematic
         body_state.omega = 0
-        body_state.phi = command.rx * 10 * (Math.PI / 2)
-        body_state.psi = command.ry * 10 * (Math.PI / 2)
-        body_state.xm = command.ly / 4
-        body_state.zm = command.lx / 4
+        body_state.ym = kin.min_body_height + command.h * kin.body_height_range
+        body_state.psi = command.ry * kin.max_pitch
+        body_state.phi = command.rx * kin.max_roll
+        body_state.xm = command.ly * kin.max_body_shift_x
+        body_state.zm = command.lx * kin.max_body_shift_z
         body_state.feet = this.default_feet_pos
         return body_state
     }
@@ -191,6 +203,8 @@ export class BezierState extends GaitState {
 
     step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
         super.step(body_state, command, dt)
+        const kin = this.kinematic
+        this.body_state.ym = kin.min_body_height + command.h * kin.body_height_range
         this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2)
         if (this.gait_state.step_x < 0) this.step_length = -this.step_length
         this.update_phase()
@@ -339,7 +353,8 @@ export class BezierState extends GaitState {
         let angle = Math.atan2(this.gait_state.step_z, this.step_length) * 2
         const delta_pos = controller(length, angle, ...args, phase)
 
-        length = this.gait_state.step_angle * 2
+        const kin = this.kinematic
+        length = this.gait_state.step_angle * kin.max_step_length
         angle = yawArc(this.default_feet_pos[index], this.body_state.feet[index])
 
         const delta_rot = controller(length, angle, ...args, phase)

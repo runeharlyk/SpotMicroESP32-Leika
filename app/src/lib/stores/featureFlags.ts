@@ -29,24 +29,24 @@ export const variants = {
         model: `${base}spot_micro.urdf.xacro`,
         stl: `${base}stl.zip`,
         kinematics: {
-            coxa: 60.5 / 100,
-            coxa_offset: 10 / 100,
-            femur: 111.7 / 100,
-            tibia: 118.5 / 100,
-            L: 207.5 / 100,
-            W: 78 / 100
+            coxa: 0.0605,
+            coxa_offset: 0.01,
+            femur: 0.1112,
+            tibia: 0.1185,
+            L: 0.2075,
+            W: 0.078
         }
     },
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
         kinematics: {
-            coxa: 35 / 100,
-            coxa_offset: 0 / 100,
-            femur: 130 / 100,
-            tibia: 130 / 100,
-            L: 240 / 100,
-            W: 78 / 100
+            coxa: 0.035,
+            coxa_offset: 0.0,
+            femur: 0.13,
+            tibia: 0.13,
+            L: 0.24,
+            W: 0.078
         }
     }
 }

@@ -6,26 +6,26 @@
 class KinConfig {
   public:
 #if defined(SPOTMICRO_ESP32)
-    static constexpr float coxa = 60.5f / 100.0f;
-    static constexpr float coxa_offset = 10.0f / 100.0f;
-    static constexpr float femur = 111.2f / 100.0f;
-    static constexpr float tibia = 118.5f / 100.0f;
-    static constexpr float L = 207.5f / 100.0f;
-    static constexpr float W = 78.0f / 100.0f;
+    static constexpr float coxa = 0.0605f;
+    static constexpr float coxa_offset = 0.010f;
+    static constexpr float femur = 0.1112f;
+    static constexpr float tibia = 0.1185f;
+    static constexpr float L = 0.2075f;
+    static constexpr float W = 0.078f;
 #elif defined(SPOTMICRO_ESP32_MINI)
-    static constexpr float coxa = 35.0f / 100.0f;
-    static constexpr float coxa_offset = 0.0f / 100.0f;
-    static constexpr float femur = 60.0f / 100.0f;
-    static constexpr float tibia = 60.0f / 100.0f;
-    static constexpr float L = 160.0f / 100.0f;
-    static constexpr float W = 80.0f / 100.0f;
-#elif defined(SPOTMICRO_YERTLE)
-    static constexpr float coxa = 35.0f / 100.0f;
+    static constexpr float coxa = 0.035f;
     static constexpr float coxa_offset = 0.0f;
-    static constexpr float femur = 130.0f / 100.0f;
-    static constexpr float tibia = 130.0f / 100.0f;
-    static constexpr float L = 240.0f / 100.0f;
-    static constexpr float W = 78.0f / 100.0f;
+    static constexpr float femur = 0.060f;
+    static constexpr float tibia = 0.060f;
+    static constexpr float L = 0.160f;
+    static constexpr float W = 0.080f;
+#elif defined(SPOTMICRO_YERTLE)
+    static constexpr float coxa = 0.035f;
+    static constexpr float coxa_offset = 0.0f;
+    static constexpr float femur = 0.130f;
+    static constexpr float tibia = 0.130f;
+    static constexpr float L = 0.240f;
+    static constexpr float W = 0.078f;
 #endif
 
     static constexpr float mountOffsets[4][3] = {

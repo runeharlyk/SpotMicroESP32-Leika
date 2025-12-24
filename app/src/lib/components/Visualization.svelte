@@ -74,13 +74,14 @@
     let lastTick = performance.now()
 
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
+    const THREEJS_SCALE = 10
 
     let body_state = {
         omega: 0,
         phi: 0,
         psi: 0,
         xm: 0,
-        ym: 0.5,
+        ym: 0.15,
         zm: 0,
         feet: kinematic.getDefaultFeetPos(),
         cumulative_x: 0,
@@ -104,7 +105,7 @@
         phi: 0,
         psi: 0,
         xm: 0,
-        ym: 0.7,
+        ym: 0.15,
         zm: 0,
         Background: defaultColor
     }
@@ -239,8 +240,16 @@
         const rotatedXm = settings.xm * cosYaw - settings.zm * sinYaw
         const rotatedZm = settings.xm * sinYaw + settings.zm * cosYaw
 
-        robot.position.x = smooth(robot.position.x, -rotatedZm - body_state.cumulative_z * 1.2, 0.1)
-        robot.position.z = smooth(robot.position.z, -rotatedXm - body_state.cumulative_x * 1.2, 0.1)
+        robot.position.x = smooth(
+            robot.position.x,
+            (-rotatedZm - body_state.cumulative_z) * THREEJS_SCALE,
+            0.1
+        )
+        robot.position.z = smooth(
+            robot.position.z,
+            (-rotatedXm - body_state.cumulative_x) * THREEJS_SCALE,
+            0.1
+        )
 
         const pitch = degToRad(settings.psi - 90) + body_state.cumulative_pitch
         const roll = degToRad(settings.omega) + body_state.cumulative_roll
@@ -275,7 +284,6 @@
             s: controlData[5],
             s1: controlData[6]
         }
-        body_state.ym = data.h
 
         let planner = planners[get(mode)]
         const delta = performance.now() - lastTick
@@ -296,8 +304,8 @@
         settings.omega = radToDeg(robot.rotation.y)
         settings.phi = radToDeg(robot.rotation.z) + $mpu.heading - 90
         settings.psi = radToDeg(robot.rotation.x) + 90
-        settings.xm = robot.position.z * 100
-        settings.zm = -robot.position.x * 100
+        settings.xm = robot.position.z / THREEJS_SCALE
+        settings.zm = -robot.position.x / THREEJS_SCALE
     }
 
     const updateTargetPosition = () => {
