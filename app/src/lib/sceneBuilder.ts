@@ -20,7 +20,7 @@ import {
     Group,
     MeshBasicMaterial,
     RepeatWrapping,
-    Object3D
+    type Object3D
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'

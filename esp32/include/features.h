@@ -42,6 +42,11 @@
 #define USE_PCA9685 1
 #endif
 
+// WS2812 LED strip off by default
+#ifndef USE_WS2812
+#define USE_WS2812 0
+#endif
+
 // ESP32 MDNS on by default
 #ifndef USE_MDNS
 #define USE_MDNS 1

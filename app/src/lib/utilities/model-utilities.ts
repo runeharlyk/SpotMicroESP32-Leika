@@ -1,4 +1,4 @@
-import { Color, LoaderUtils, Vector3 } from 'three'
+import { Color, Vector3 } from 'three'
 import URDFLoader, { type URDFRobot } from 'urdf-loader'
 import { XacroLoader } from 'xacro-parser'
 import { Result } from '$lib/utilities'
