@@ -42,7 +42,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config.max_uri_handlers = 28 + WWW_ASSETS_COUNT;
+    server.config.max_uri_handlers = 32 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
     server.serveStatic("/api/config/", ESP_FS, "/config/");
@@ -112,6 +112,16 @@ void setupServer() {
               [&](PsychicRequest *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
 #endif
 
+
+    // Filesystem
+    server.on("/api/files", HTTP_GET, [&](PsychicRequest *request) { return FileSystem::getFiles(request); });
+    server.on("/api/files", HTTP_POST, FileSystem::uploadHandler);
+    server.on("/api/files/delete", HTTP_POST,
+              [&](PsychicRequest *request, JsonVariant &json) { return FileSystem::handleDelete(request, json); });
+    server.on("/api/files/edit", HTTP_POST,
+              [&](PsychicRequest *request, JsonVariant &json) { return FileSystem::handleEdit(request, json); });
+    server.on("/api/files/mkdir", HTTP_POST,
+              [&](PsychicRequest *request, JsonVariant &json) { return FileSystem::mkdir(request, json); });
 #if EMBED_WEBAPP
     mountStaticAssets(server);
 #endif

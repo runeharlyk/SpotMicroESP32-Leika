@@ -25,6 +25,7 @@ esp_err_t uploadFile(PsychicRequest *request, const std::string &filename, uint6
                      bool last);
 
 esp_err_t getFiles(PsychicRequest *request);
+esp_err_t getConfigFile(PsychicRequest *request);
 esp_err_t handleDelete(PsychicRequest *request, JsonVariant &json);
 esp_err_t handleEdit(PsychicRequest *request, JsonVariant &json);
 

@@ -22,6 +22,20 @@ static Initializer initializer;
 
 esp_err_t getFiles(PsychicRequest *request) { return request->reply(200, "application/json", listFiles("/").c_str()); }
 
+esp_err_t getConfigFile(PsychicRequest *request) {
+    String path = "/config" + request->uri().substring(11);
+    if (!ESP_FS.exists(path)) {
+        return request->reply(404, "text/plain", "File not found");
+    }
+    File file = ESP_FS.open(path, "r");
+    if (!file) {
+        return request->reply(500, "text/plain", "Failed to open file");
+    }
+    String content = file.readString();
+    file.close();
+    return request->reply(200, "application/json", content.c_str());
+}
+
 esp_err_t handleDelete(PsychicRequest *request, JsonVariant &json) {
     if (json.is<JsonObject>()) {
         const char *filename = json["file"].as<const char *>();
