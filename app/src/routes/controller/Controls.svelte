@@ -133,25 +133,26 @@
 </script>
 
 <div class="absolute top-0 left-0 w-screen h-screen">
-    <div class="absolute top-0 left-0 h-full w-full flex portrait:hidden">
+    <div class="absolute top-0 left-0 h-full w-full flex max-[599px]:hidden">
         <div id="left" class="flex w-60 items-center justify-end"></div>
         <div class="flex-1"></div>
         <div id="right" class="flex w-60 items-center"></div>
     </div>
-    <div class="absolute bottom-0 right-0 p-4 z-10 gap-2 flex-col hidden lg:flex">
+    <div
+        class="absolute bottom-0 right-0 p-4 z-10 gap-1.5 flex-col hidden lg:flex opacity-40 hover:opacity-80 transition-opacity duration-300"
+    >
         <div class="flex justify-center w-full">
-            <kbd class="kbd">W</kbd>
+            <kbd class="kbd kbd-sm bg-base-100/80 border-base-content/20 shadow-md">W</kbd>
         </div>
-        <div class="flex justify-center gap-2 w-full">
-            <kbd class="kbd">A</kbd>
-            <kbd class="kbd">S</kbd>
-            <kbd class="kbd">D</kbd>
+        <div class="flex justify-center gap-1.5 w-full">
+            <kbd class="kbd kbd-sm bg-base-100/80 border-base-content/20 shadow-md">A</kbd>
+            <kbd class="kbd kbd-sm bg-base-100/80 border-base-content/20 shadow-md">S</kbd>
+            <kbd class="kbd kbd-sm bg-base-100/80 border-base-content/20 shadow-md">D</kbd>
         </div>
-        <div class="flex justify-center w-full"></div>
     </div>
-    <div class="absolute bottom-0 z-10 flex items-end">
+    <div class="absolute bottom-0 z-10 flex items-end pointer-events-none">
         <div
-            class="flex items-center flex-col bg-base-300 bg-opacity-50 p-3 pb-2 gap-2 rounded-tr-xl"
+            class="flex items-center flex-col backdrop-blur-sm bg-base-300/60 p-3 pb-2 gap-2 rounded-tr-2xl border-t border-base-content/5 pointer-events-auto"
         >
             <VerticalSlider
                 min={0}
@@ -159,15 +160,15 @@
                 step={0.01}
                 oninput={(e: Event) => handleRange(e, 'height')}
             />
-            <label for="height">Ht</label>
+            <label for="height" class="text-xs font-medium opacity-70">Ht</label>
         </div>
         <div
-            class="flex items-end gap-4 bg-base-300 bg-opacity-50 h-min rounded-tr-xl pl-0 p-3 portrait:hidden"
+            class="flex items-end gap-4 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 border-t border-r border-base-content/5 pointer-events-auto"
         >
-            <div class="join">
+            <div class="join shadow-lg">
                 {#each modes as modeValue}
                     <button
-                        class="btn join-item"
+                        class="btn join-item btn-sm transition-all duration-200"
                         class:btn-primary={$mode === modes.indexOf(modeValue)}
                         onclick={() => changeMode(modeValue)}
                     >
@@ -177,11 +178,11 @@
             </div>
 
             {#if $mode === ModesEnum.Walk}
-                <div class="join">
+                <div class="join shadow-md">
                     {#each Object.values(WalkGaits) as gaitValue}
                         {#if typeof gaitValue === 'number'}
                             <button
-                                class="btn join-item btn-sm"
+                                class="btn join-item btn-xs transition-all duration-200"
                                 class:btn-secondary={$walkGait === gaitValue}
                                 onclick={() => changeWalkGait(gaitValue)}
                             >
@@ -192,8 +193,8 @@
                 </div>
 
                 <div class="flex gap-4">
-                    <div>
-                        <label for="s1">S1</label>
+                    <div class="flex flex-col gap-1">
+                        <label for="s1" class="text-xs font-medium opacity-70">Step height</label>
                         <input
                             type="range"
                             name="s1"
@@ -201,11 +202,11 @@
                             step="0.01"
                             max="1"
                             oninput={e => handleRange(e, 's1')}
-                            class="range range-sm range-primary"
+                            class="range range-xs range-primary"
                         />
                     </div>
-                    <div>
-                        <label for="speed">Speed</label>
+                    <div class="flex flex-col gap-1">
+                        <label for="speed" class="text-xs font-medium opacity-70">Speed</label>
                         <input
                             type="range"
                             name="speed"
@@ -213,7 +214,7 @@
                             step="0.01"
                             max="1"
                             oninput={e => handleRange(e, 'speed')}
-                            class="range range-sm range-primary"
+                            class="range range-xs range-primary"
                         />
                     </div>
                 </div>
