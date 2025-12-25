@@ -55,8 +55,16 @@ class CommAdapterBase {
     void send(const char *data, int cid = -1) { send(reinterpret_cast<const uint8_t *>(data), strlen(data), cid); }
     virtual void send(const uint8_t *data, size_t len, int cid = -1) = 0;
 
-    void subscribe(const char *event, int cid = 0) { client_subscriptions[event].push_back(cid); }
-    void unsubscribe(const char *event, int cid = 0) { client_subscriptions[event].push_back(cid); }
+    void subscribe(const char *event, int cid = 0) {
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        client_subscriptions[event].push_back(cid);
+        xSemaphoreGive(mutex_);
+    }
+    void unsubscribe(const char *event, int cid = 0) {
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        client_subscriptions[event].remove(cid);
+        xSemaphoreGive(mutex_);
+    }
 
     void handleEventCallbacks(std::string event, JsonVariant &jsonObject, int originId) {
         for (auto &callback : event_callbacks[event]) {
