@@ -110,35 +110,21 @@ class CommAdapterBase {
             }
             case message_type_t::PING: {
                 ESP_LOGI("Comm Base", "PING (cid=%d)", cid);
-#if USE_MSGPACK
-                static const uint8_t pong[] = {0x91, 0x04};
-                send(pong, sizeof(pong), cid);
-#else
-                send("[4]", cid);
-#endif
+                ping(cid);
                 break;
             }
+
             case message_type_t::PONG: ESP_LOGI("Comm Base", "PONG (cid=%d)", cid); break;
             default: ESP_LOGW("Comm Base", "Unknown message type: %d", static_cast<int>(type)); break;
-        }
-
-        if (type == PONG) {
-            ESP_LOGV("EventSocket", "Pong");
-            return;
-        } else if (type == PING) {
-            ESP_LOGV("EventSocket", "Ping");
-            ping(cid);
-            return;
         }
     }
 
     void ping(int cid) {
 #if USE_MSGPACK
-        const uint8_t out[] = {0x91, 0x04};
-        send(out, sizeof(out), cid);
+        static const uint8_t pong[] = {0x91, 0x04};
+        send(pong, sizeof(pong), cid);
 #else
-        const char *out = "[4]";
-        send(out, strlen(out), cid);
+        send("[4]", cid);
 #endif
     }
 
