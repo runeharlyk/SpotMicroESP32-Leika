@@ -39,8 +39,8 @@ class KinConfig {
     };
 
     // Max constants
-    static constexpr float max_roll = 15 * (float)M_PI_2;
-    static constexpr float max_pitch = 15 * (float)M_PI_2;
+    static constexpr float max_roll = 15 * DEG2RAD_F;
+    static constexpr float max_pitch = 15 * DEG2RAD_F;
 
     static constexpr float max_body_shift_x = W / 3;
     static constexpr float max_body_shift_z = W / 3;
