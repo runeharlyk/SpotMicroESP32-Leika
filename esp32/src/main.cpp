@@ -45,7 +45,6 @@ void setupServer() {
     server.config.max_uri_handlers = 32 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
-    server.serveStatic("/api/config/", ESP_FS, "/config/");
     server.on("/api/features", feature_service::getFeatures);
     server.on("/api/system/status", HTTP_GET,
               [&](PsychicRequest *request) { return system_service::getStatus(request); });
@@ -114,6 +113,7 @@ void setupServer() {
 
 
     // Filesystem
+    server.on("/api/config/*", HTTP_GET, [](PsychicRequest *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](PsychicRequest *request) { return FileSystem::getFiles(request); });
     server.on("/api/files", HTTP_POST, FileSystem::uploadHandler);
     server.on("/api/files/delete", HTTP_POST,
