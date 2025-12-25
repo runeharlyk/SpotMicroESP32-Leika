@@ -30,37 +30,56 @@
     }
 </script>
 
-<div class="flex flex-col">
-    <h2 class="text-lg">General servo configuration</h2>
-    <span>Servo</span>
-    <span>{pwm}</span>
-</div>
-<input
-    type="range"
-    min="80"
-    max="600"
-    bind:value={pwm}
-    oninput={updatePWM}
-    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-/>
-
-<div class="flex flex-col">
-    <h2 class="text-lg">General servo configuration</h2>
-    <span>
-        <label for="mode">All servoes</label>
-        <input type="checkbox" class="toggle" bind:checked={allServos} onchange={toggleMode} />
-    </span>
-    <span>
-        <label for="active">Active</label>
+<div class="flex flex-col gap-6 p-4 bg-base-200 rounded-xl">
+    <div class="flex flex-col gap-2">
+        <h2 class="text-lg font-semibold">PWM Control</h2>
+        <div class="flex items-center justify-between">
+            <span class="text-sm opacity-70">PWM Value</span>
+            <span class="text-2xl font-mono font-bold text-primary">{pwm}</span>
+        </div>
         <input
-            type="checkbox"
-            class="toggle"
-            bind:checked={active}
-            onchange={active ? activateServo : deactivateServo}
+            type="range"
+            min="80"
+            max="600"
+            bind:value={pwm}
+            oninput={updatePWM}
+            class="range range-primary"
         />
-    </span>
-    <span class="flex items-center gap-2">
-        <label for="servoId">Servo active {servoId}</label>
-        <input type="range" min="0" max="11" step="1" bind:value={servoId} />
-    </span>
+    </div>
+
+    <div class="divider my-0"></div>
+
+    <div class="flex flex-col gap-3">
+        <h2 class="text-lg font-semibold">Servo Selection</h2>
+        <label class="flex items-center justify-between cursor-pointer">
+            <span>All servos</span>
+            <input
+                type="checkbox"
+                class="toggle toggle-primary"
+                bind:checked={allServos}
+                onchange={toggleMode}
+            />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer">
+            <span>Active</span>
+            <input
+                type="checkbox"
+                class="toggle toggle-success"
+                bind:checked={active}
+                onchange={active ? activateServo : deactivateServo}
+            />
+        </label>
+        <label class="flex items-center justify-between">
+            <span>Servo {servoId}</span>
+            <input
+                type="range"
+                min="0"
+                max="11"
+                step="1"
+                bind:value={servoId}
+                class="range range-sm w-32"
+                disabled={allServos}
+            />
+        </label>
+    </div>
 </div>
