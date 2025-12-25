@@ -34,8 +34,8 @@ void Peripherals::begin() {
 };
 
 void Peripherals::update() {
-    readImu();
-    readMag();
+    EXECUTE_EVERY_N_MS(20, { readImu(); });
+    EXECUTE_EVERY_N_MS(100, { readMag(); });
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
     EXECUTE_EVERY_N_MS(500, { readSonar(); });
