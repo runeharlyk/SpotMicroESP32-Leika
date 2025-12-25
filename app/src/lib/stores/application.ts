@@ -4,6 +4,7 @@ import { get, type Writable } from 'svelte/store'
 import Visualization from '$lib/components/Visualization.svelte'
 import Stream from '$lib/components/Stream.svelte'
 import ChartWidget from '$lib/components/widget/ChartWidget.svelte'
+import SkillPanel from '$lib/components/SkillPanel.svelte'
 
 export interface WidgetConfig {
     id: string | number
@@ -25,7 +26,8 @@ export const isWidgetConfig = (
 export const WidgetComponents = {
     Visualization,
     Stream,
-    ChartWidget
+    ChartWidget,
+    SkillPanel
 }
 
 interface View {
@@ -57,6 +59,16 @@ const defaultViews: View[] = [
             widgets: [
                 { id: 2, component: 'Stream' },
                 { id: 2, component: 'Visualization', props: { debug: true } }
+            ]
+        }
+    },
+    {
+        name: 'Skills',
+        content: {
+            id: 'root',
+            widgets: [
+                { id: 1, component: 'Visualization', props: { debug: true } },
+                { id: 2, component: 'SkillPanel' }
             ]
         }
     }

@@ -38,7 +38,6 @@ class KinConfig {
         {mountOffsets[3][0], 0, mountOffsets[3][2] - coxa, 1},
     };
 
-    // Max constants
     static constexpr float max_roll = 15 * DEG2RAD_F;
     static constexpr float max_pitch = 15 * DEG2RAD_F;
 
@@ -60,11 +59,84 @@ class KinConfig {
     static constexpr float default_step_height = default_body_height / 2;
 };
 
+struct displacement_state_t {
+    float x {0};
+    float y {0};
+    float z {0};
+    float roll {0};
+    float pitch {0};
+    float yaw {0};
+
+    void reset() { x = y = z = roll = pitch = yaw = 0; }
+    float distance() const { return std::sqrt(x * x + z * z); }
+};
+
+struct skill_target_t {
+    float target_x {0};
+    float target_z {0};
+    float target_yaw {0};
+
+    float traveled_x {0};
+    float traveled_z {0};
+    float rotated {0};
+
+    bool active {false};
+
+    void set(float x, float z, float yaw) {
+        target_x = x;
+        target_z = z;
+        target_yaw = yaw;
+        traveled_x = traveled_z = rotated = 0;
+        active = true;
+    }
+
+    void reset() {
+        target_x = target_z = target_yaw = 0;
+        traveled_x = traveled_z = rotated = 0;
+        active = false;
+    }
+
+    void accumulate(float dx, float dz, float dyaw) {
+        traveled_x += dx;
+        traveled_z += dz;
+        rotated += dyaw;
+    }
+
+    bool isComplete() const {
+        if (!active) return false;
+        bool x_ok = (target_x == 0) || (target_x > 0 ? traveled_x >= target_x : traveled_x <= target_x);
+        bool z_ok = (target_z == 0) || (target_z > 0 ? traveled_z >= target_z : traveled_z <= target_z);
+        bool yaw_ok = (target_yaw == 0) || (target_yaw > 0 ? rotated >= target_yaw : rotated <= target_yaw);
+        return x_ok && z_ok && yaw_ok;
+    }
+
+    float progress() const {
+        if (!active) return 0;
+        float total_target = std::fabs(target_x) + std::fabs(target_z) + std::fabs(target_yaw);
+        if (total_target == 0) return 1;
+
+        auto clampProgress = [](float traveled, float target) -> float {
+            if (target == 0) return 0;
+            float p = traveled / target;
+            return std::clamp(p, 0.0f, 1.0f) * std::fabs(target);
+        };
+
+        float total_progress = clampProgress(traveled_x, target_x) + clampProgress(traveled_z, target_z) +
+                               clampProgress(rotated, target_yaw);
+        return total_progress / total_target;
+    }
+};
+
 struct alignas(16) body_state_t {
     float omega {0}, phi {0}, psi {0}, xm {0}, ym {KinConfig::default_body_height}, zm {0};
     float feet[4][4];
 
+    displacement_state_t cumulative;
+    skill_target_t skill;
+
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
+
+    void resetDisplacement() { cumulative.reset(); }
 
     bool operator==(const body_state_t &other) const {
         if (!IS_ALMOST_EQUAL(omega, other.omega) || !IS_ALMOST_EQUAL(phi, other.phi) ||

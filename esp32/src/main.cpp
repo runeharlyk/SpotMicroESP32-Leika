@@ -144,6 +144,9 @@ void setupServer() {
 #define EVENT_I2C_SCAN "i2cScan"
 #define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
 #define EVENT_SERVO_STATE "servoState"
+#define EVENT_DISPLACEMENT "displacement"
+#define EVENT_SKILL "skill"
+#define EVENT_SKILL_STATUS "skill_status"
 #define EVENT_IMU_CALIBRATE "imuCalibrate"
 
 void setupEventSocket() {
@@ -182,6 +185,27 @@ void setupEventSocket() {
                    [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
     socket.onEvent(EVENT_SERVO_STATE,
                    [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
+
+    // Skill events
+    socket.onEvent(EVENT_DISPLACEMENT,
+                   [&](JsonVariant &root, int originId) { motionService.handleDisplacement(root, originId); });
+
+    socket.onEvent(EVENT_SKILL, [&](JsonVariant &root, int originId) { motionService.handleSkill(root, originId); });
+
+    socket.onEvent(EVENT_SKILL_STATUS, [&](JsonVariant &root, int originId) {
+        JsonDocument doc;
+        JsonVariant results = doc.to<JsonVariant>();
+        motionService.getDisplacementResult(results);
+        socket.emit(EVENT_SKILL_STATUS, results);
+    });
+
+    motionService.setSkillCompleteCallback([&]() {
+        JsonDocument doc;
+        JsonVariant results = doc.to<JsonVariant>();
+        motionService.getDisplacementResult(results);
+        results["event"] = "complete";
+        socket.emit(EVENT_SKILL_STATUS, results);
+    });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {
@@ -234,6 +258,14 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             JsonVariant results = doc.to<JsonVariant>();
             peripherals.getIMUResult(results);
             socket.emit(EVENT_IMU, results);
+        });
+        EXECUTE_EVERY_N_MS(200, {
+            if (motionService.isSkillActive()) {
+                JsonDocument doc;
+                JsonVariant results = doc.to<JsonVariant>();
+                motionService.getDisplacementResult(results);
+                socket.emit(EVENT_SKILL_STATUS, results);
+            }
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

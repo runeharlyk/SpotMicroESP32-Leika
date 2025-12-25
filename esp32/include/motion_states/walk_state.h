@@ -98,9 +98,31 @@ class WalkState : public MotionState {
 
         step_length = std::hypot(gait_state.step_x, gait_state.step_z);
         if (gait_state.step_x < 0.0f) step_length = -step_length;
+
+        const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
+        updateDisplacement(body_state, dt, moving);
+
         updatePhase(dt);
         updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
+    }
+
+    void updateDisplacement(body_state_t &body_state, float dt, bool moving) {
+        if (!moving) return;
+
+        float dx_local = gait_state.step_x * gait_state.step_velocity * dt * speed_factor;
+        float dz_local = gait_state.step_z * gait_state.step_velocity * dt * speed_factor;
+        float dyaw = gait_state.step_angle * gait_state.step_velocity * dt * speed_factor;
+
+        if (body_state.skill.active) {
+            body_state.skill.accumulate(dx_local, dz_local, dyaw);
+        }
+
+        float cos_yaw = std::cos(body_state.cumulative.yaw);
+        float sin_yaw = std::sin(body_state.cumulative.yaw);
+        body_state.cumulative.x += dx_local * cos_yaw - dz_local * sin_yaw;
+        body_state.cumulative.z += dx_local * sin_yaw + dz_local * cos_yaw;
+        body_state.cumulative.yaw += dyaw;
     }
 
   protected:

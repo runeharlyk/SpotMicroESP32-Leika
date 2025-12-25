@@ -14,7 +14,10 @@ export enum MessageTopic {
     servoPWM = 'servoPWM',
     WiFiSettings = 'WiFiSettings',
     sonar = 'sonar',
-    rssi = 'rssi'
+    rssi = 'rssi',
+    skill = 'skill',
+    skillStatus = 'skill_status',
+    displacement = 'displacement'
 }
 
 export type vector = { x: number; y: number }
@@ -247,4 +250,29 @@ export interface MDNSStatus {
     instance: string
     services: MDNSService[]
     global_txt_records: MDNSTxtRecord[]
+}
+
+export interface SkillCommand {
+    x: number
+    z: number
+    yaw: number
+    speed?: number
+}
+
+export interface SkillStatus {
+    x: number
+    y: number
+    z: number
+    yaw: number
+    distance: number
+    skill_active: boolean
+    skill_target_x: number
+    skill_target_z: number
+    skill_target_yaw: number
+    skill_traveled_x: number
+    skill_traveled_z: number
+    skill_rotated: number
+    skill_progress: number
+    skill_complete: boolean
+    event?: string
 }
