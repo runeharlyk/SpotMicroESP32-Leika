@@ -72,6 +72,7 @@
         [ModesEnum.Walk]: new BezierState()
     }
     let lastTick = performance.now()
+    let lastRobotPosition = new Vector3()
 
     const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
     const THREEJS_SCALE = 10
@@ -99,7 +100,6 @@
         'Trace feet': debug,
         'Target position': false,
         'Trace points': 30,
-        'Fix camera on robot': true,
         'Smooth motion': true,
         omega: 0,
         phi: 0,
@@ -264,8 +264,10 @@
     }
 
     const update_camera = (robot: URDFRobot) => {
-        if (!settings['Fix camera on robot']) return
-        sceneManager.orbit.target = robot.position.clone()
+        const delta = robot.position.clone().sub(lastRobotPosition)
+        sceneManager.orbit.target.add(delta)
+        sceneManager.camera.position.add(delta)
+        lastRobotPosition.copy(robot.position)
     }
 
     const smooth = (start: number, end: number, amount: number) => {
