@@ -92,18 +92,6 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_BNO055)
 #endif
-#if FT_ENABLED(USE_ICM20948)
-    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        ICM_20948_SPI _imu;
-    #else
-        //#define WIRE_PORT Wire 
-        ICM_20948_I2C _imu;
-    #endif
-        if (!_imu.update()) return false;
-        _msg.rpy[0] = _imu.getHeading();
-        _msg.rpy[1] = _imu.getPitch();
-        _msg.rpy[2] = _imu.getRoll();
-#endif
         return true;
     }
 
