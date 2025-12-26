@@ -82,13 +82,17 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         _msg.temperature = _imu.getTemperature();
 #endif
 #if FT_ENABLED(USE_ICM20948)
+          
+        #ifndef ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
+        #define ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
         if (_imu->dataReady())
-        {   
+        { 
             _imu->getAGMT();
-            _msg.rpy[0] = _imu->gyrX();
-            _msg.rpy[1] = _imu->gyrY();
-            _msg.rpy[2] = _imu->gyrZ();
         }
+        #endif
+        _msg.rpy[0] = _imu->accX();
+        _msg.rpy[1] = _imu->accY();
+        _msg.rpy[2] = _imu->accZ();
 #endif
 #if FT_ENABLED(USE_BNO055)
 #endif
