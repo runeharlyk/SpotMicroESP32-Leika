@@ -75,6 +75,8 @@ class Magnetometer : public SensorBase<MagnetometerMsg> {
         if (_imu->dataReady())
         { 
             _imu->getAGMT();
+        } else {
+            return false;
         }
         #endif
         _msg.rpy[0] = _mag->magX();

@@ -56,8 +56,14 @@ void Peripherals::begin() {
 };
 
 void Peripherals::update() {
-    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_imu, readImu());
-    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_mag, readMag());
+    bool res = true;
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_imu, res = readImu());
+    #ifdef FT_ENABLED(USE_ICM20948)
+        // IF ICM_20948 fails to get IMU, it means that mag also does not have new data
+        CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_mag, if (res) { res = readMag(); } );
+    #else
+        CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_mag, res = readMag());
+    #endif
     CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_gesture, EXECUTE_EVERY_N_MS(100, { readGesture(); }) );
     CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_bmp, EXECUTE_EVERY_N_MS(500, { readBMP(); }) );
     CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_sonar, EXECUTE_EVERY_N_MS(500, { readSonar(); }) );
