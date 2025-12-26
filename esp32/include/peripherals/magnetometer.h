@@ -70,11 +70,16 @@ class Magnetometer : public SensorBase<MagnetometerMsg> {
     bool update() override {
         if (!_msg.success) return false;
         #if FT_ENABLED(USE_ICM20948)
-            _mag->getAGMT();
-            if (_mag->status != ICM_20948_Stat_Ok){ return false; }
-            _msg.rpy[0] = _mag->magX();
-            _msg.rpy[1] = _mag->magY();
-            _msg.rpy[2] = _mag->magZ();
+        #ifndef ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
+        #define ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
+        if (_imu->dataReady())
+        { 
+            _imu->getAGMT();
+        }
+        #endif
+        _msg.rpy[0] = _mag->magX();
+        _msg.rpy[1] = _mag->magY();
+        _msg.rpy[2] = _mag->magZ();
 
         #elif FT_ENABLED(USE_HMC5883)
             sensors_event_t event;
