@@ -56,11 +56,19 @@ void Peripherals::begin() {
 };
 
 void Peripherals::update() {
-    readImu();
-    readMag();
-    EXECUTE_EVERY_N_MS(100, { readGesture(); });
-    EXECUTE_EVERY_N_MS(500, { readBMP(); });
-    EXECUTE_EVERY_N_MS(500, { readSonar(); });
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_imu, readImu());
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_mag, readMag());
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_gesture, EXECUTE_EVERY_N_MS(100, { readGesture(); }) );
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_bmp, EXECUTE_EVERY_N_MS(500, { readBMP(); }) );
+    CALLS_PER_SECOND_TIMED_CALL(Peripherals_update, read_sonar, EXECUTE_EVERY_N_MS(500, { readSonar(); }) );
+
+    CALLS_PER_SECOND_TIMED(Peripherals_update,
+        CALLS_PER_SECOND_TIMED_FUNC_PRINT(Peripherals_update, read_imu)
+        CALLS_PER_SECOND_TIMED_FUNC_PRINT(Peripherals_update, read_mag)
+        CALLS_PER_SECOND_TIMED_FUNC_PRINT(Peripherals_update, read_gesture)
+        CALLS_PER_SECOND_TIMED_FUNC_PRINT(Peripherals_update, read_bmp)
+        CALLS_PER_SECOND_TIMED_FUNC_PRINT(Peripherals_update, read_sonar)
+    );
 }
 
 void Peripherals::updatePins() {
