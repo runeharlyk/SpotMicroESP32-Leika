@@ -40,6 +40,51 @@
         last_time = esp_timer_get_time() / 1000;                             \
     }
 
+#define CALLS_PER_SECOND_TIMED_START_TICK(name, function)                        \
+    static uint64_t name##_##function##_start = 0;                           \
+    static uint64_t name##_##function##_total_time = 0;                      \
+    static uint64_t name##_##function##_call_count = 0;                      \
+    name##_##function##_start = esp_timer_get_time();
+
+#define CALLS_PER_SECOND_TIMED_END_TICK(name, function)                          \
+    name##_##function##_total_time += (esp_timer_get_time() - name##_##function##_start); \
+    name##_##function##_call_count++;
+
+#define CALLS_PER_SECOND_TIMED_CALL(name, function, call)                        \
+    static uint64_t name##_##function##_total_time = 0;                          \
+    static uint64_t name##_##function##_call_count = 0;                          \
+    do {                                                                         \
+        uint64_t name##_##function##_start = esp_timer_get_time();               \
+        call;                                                                    \
+        name##_##function##_total_time += (esp_timer_get_time() - name##_##function##_start); \
+        name##_##function##_call_count++;                                        \
+    } while (0)
+
+#define CALLS_PER_SECOND_TIMED_FUNC_PRINT(name, function)                        \
+    if (name##_##function##_call_count > 0) {                                    \
+        uint64_t avg = name##_##function##_total_time / name##_##function##_call_count; \
+        if (avg < 1000) {                                                        \
+            ESP_LOGI("Timing", "  %s: %llu us (avg over %llu calls)",            \
+                     #function, avg, name##_##function##_call_count);            \
+        } else {                                                                 \
+            ESP_LOGI("Timing", "  %s: %llu ms (avg over %llu calls)",            \
+                     #function, avg / 1000, name##_##function##_call_count);     \
+        }                                                                        \
+        name##_##function##_total_time = 0;                                      \
+        name##_##function##_call_count = 0;                                      \
+    }
+
+#define CALLS_PER_SECOND_TIMED(name, ...)                                        \
+    do {                                                                         \
+        static uint64_t name##_last_print = 0;                                   \
+        uint64_t name##_current_time = esp_timer_get_time() / 1000;              \
+        if (name##_current_time - name##_last_print >= 1000) {                   \
+            ESP_LOGI("Timing", "=== %s Average Timings ===", #name);             \
+            __VA_ARGS__                                                          \
+            name##_last_print = name##_current_time;                             \
+        }                                                                        \
+    } while (0)
+
 #define WARN_IF_SLOW(name, period_ms)                                                                    \
     static uint64_t name##_slow_count = 0;                                                               \
     static uint64_t name##_slow_last_time = 0;                                                           \

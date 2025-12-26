@@ -264,7 +264,13 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        CALLS_PER_SECOND_TIMED(SpotControlLoopEntry,
+            CALLS_PER_SECOND_TIMED_FUNC_PRINT(SpotControlLoopEntry, peripherals_update)
+            CALLS_PER_SECOND_TIMED_FUNC_PRINT(SpotControlLoopEntry, motionService_update)
+            CALLS_PER_SECOND_TIMED_FUNC_PRINT(SpotControlLoopEntry, servoController_setAngles)
+            CALLS_PER_SECOND_TIMED_FUNC_PRINT(SpotControlLoopEntry, servoController_update)
+        );
+        // vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
 
