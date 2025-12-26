@@ -42,11 +42,13 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
+        #define ICM_20948_USE_DMP // TODO: Move to features.ini
         SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1); // TODO: Move to global spi start
         _imu = (ICM_20948_SPI*)_arg;
         #ifndef ICM20948_ALIVE
         #define ICM20948_ALIVE
         _imu->begin(ICM20948_SPI_CS, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode");
+        _imu->initializeDMP();
         #endif
     #else
         _imu = (ICM_20948_I2C*)_arg;
