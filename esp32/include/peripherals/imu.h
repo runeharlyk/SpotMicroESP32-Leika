@@ -88,7 +88,7 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1);
+        SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1); // TODO: Move to global spi start
         _imu = (ICM_20948_SPI*)_arg;
         #ifndef ICM20948_ALIVE
         #define ICM20948_ALIVE
