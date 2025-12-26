@@ -153,14 +153,6 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         _msg.rpy[1] = event.orientation.y;
         _msg.rpy[2] = event.orientation.z;
 #endif
-#if FT_ENABLED(USE_ICM20948)
-    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        ICM_20948_SPI _imu;
-    #else
-        //#define WIRE_PORT Wire 
-        ICM_20948_I2C _imu;
-    #endif
-#endif
         return true;
     }
 
