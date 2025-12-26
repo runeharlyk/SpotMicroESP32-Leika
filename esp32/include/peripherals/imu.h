@@ -86,8 +86,10 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         #ifndef ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
         #define ICM20948_GET_AGMT_UPDATED_ONCE_PER_LOOP
         if (_imu->dataReady())
-        { 
+        {
             _imu->getAGMT();
+        } else {
+            return false;
         }
         #endif
         _msg.rpy[0] = _imu->accX();
