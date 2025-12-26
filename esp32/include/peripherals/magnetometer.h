@@ -41,7 +41,7 @@ class Magnetometer : public SensorBase<MagnetometerMsg> {
   public:
     bool initialize(void* _arg) override {
         #if FT_ENABLED(USE_ICM20948)
-            #if USE_ICM20948_SPIMODE > 0
+            #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
                 _mag = (ICM_20948_SPI*)_arg;
                 if (true || !_mag->isConnected()) { _mag->begin(CS_PIN, SPI_PORT); ESP_LOGI("Magnetometer", "Beginning ICM20948 in SPI mode"); }
             #else
