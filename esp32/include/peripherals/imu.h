@@ -7,7 +7,7 @@
 #include <utils/math_utils.h>
 
 #if FT_ENABLED(USE_ICM20948)
-#include "ICM_20948.h" 
+#include "ICM_20948.h"
 #endif
 
 #if FT_ENABLED(USE_MPU6050)
@@ -88,14 +88,12 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        #define SPI_PORT SPI
-        #define CS_PIN 2 
-        SPI_PORT.begin(41U, 19U, 20U, -1);
+        SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1);
         _imu = (ICM_20948_SPI*)_arg;
-        if (true || !_imu->isConnected()) { _imu->begin(CS_PIN, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode"); }
+        if (!_imu->isConnected()) { _imu->begin(ICM20948_SPI_CS, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode"); }
     #else
         _imu = (ICM_20948_I2C*)_arg;
-        if (true || !_imu->isConnected()) { _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode"); }
+        if (!_imu->isConnected()) { _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode"); }
         
     #endif
     if (_imu->status != ICM_20948_Stat_Ok){ ESP_LOGW("IMU", "Failed to start ICM20948: begin failed"); return false; }
