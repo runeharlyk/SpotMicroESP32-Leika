@@ -90,10 +90,16 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
         SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1);
         _imu = (ICM_20948_SPI*)_arg;
-        if (!_imu->isConnected()) { _imu->begin(ICM20948_SPI_CS, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode"); }
+        #ifndef ICM20948_ALIVE
+        #define ICM20948_ALIVE
+        _imu->begin(ICM20948_SPI_CS, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode");
+        #endif
     #else
         _imu = (ICM_20948_I2C*)_arg;
-        if (!_imu->isConnected()) { _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode"); }
+        #ifndef ICM20948_ALIVE
+        #define ICM20948_ALIVE
+        _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode");
+        #endif
         
     #endif
     if (_imu->status != ICM_20948_Stat_Ok){ ESP_LOGW("IMU", "Failed to start ICM20948: begin failed"); return false; }
