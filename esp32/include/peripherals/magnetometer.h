@@ -15,11 +15,12 @@ class Magnetometer : public SensorBase<MagnetometerMsg> {
     bool initialize(void* _arg) override {
         #if FT_ENABLED(USE_ICM20948)
             #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
+                SPI_PORT.begin(SPI_SCK, SPI_MISO, SPI_MOSI, -1);
                 _mag = (ICM_20948_SPI*)_arg;
-                if (true || !_mag->isConnected()) { _mag->begin(CS_PIN, SPI_PORT); ESP_LOGI("Magnetometer", "Beginning ICM20948 in SPI mode"); }
+                if (!_mag->isConnected()) { _mag->begin(ICM20948_SPI_CS, SPI_PORT); ESP_LOGI("Magnetometer", "Beginning ICM20948 in SPI mode"); }
             #else
                 _mag = (ICM_20948_I2C*)_arg;
-                if (true || !_mag->isConnected()) { _mag->begin(Wire, 1, 0xFF); ESP_LOGI("Magnetometer", "Beginning ICM20948 in I2C mode"); }
+                if (!_mag->isConnected()) { _mag->begin(Wire, 1, 0xFF); ESP_LOGI("Magnetometer", "Beginning ICM20948 in I2C mode"); }
                 
             #endif
             if (_mag->status != ICM_20948_Stat_Ok){ return false; }
