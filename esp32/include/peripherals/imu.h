@@ -41,7 +41,10 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         }
 #endif
 #if FT_ENABLED(USE_ICM20948)
-    #if USE_ICM20948_SPIMODE > 0
+    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
+        #define SPI_PORT SPI
+        #define CS_PIN 2 
+        SPI_PORT.begin(41U, 19U, 20U, -1);
         _imu = (ICM_20948_SPI*)_arg;
         if (true || !_imu->isConnected()) { _imu->begin(CS_PIN, SPI_PORT); ESP_LOGI("IMU", "Beginning ICM20948 in SPI mode"); }
     #else
@@ -49,16 +52,16 @@ class IMU : public SensorBase<IMUAnglesMsg> {
         if (true || !_imu->isConnected()) { _imu->begin(Wire, 1, 0xFF); ESP_LOGI("IMU", "Beginning ICM20948 in I2C mode"); }
         
     #endif
-    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
+    if (_imu->status != ICM_20948_Stat_Ok){ ESP_LOGW("IMU", "Failed to start ICM20948: begin failed"); return false; }
     
     _imu->setSampleMode((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), ICM_20948_Sample_Mode_Continuous);
-    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
+    if (_imu->status != ICM_20948_Stat_Ok){ ESP_LOGW("IMU", "Failed to start ICM20948: set sample failed"); return false; }
     
     ICM_20948_fss_t myFSS;
     myFSS.a = gpm2;
     myFSS.g = dps250;
     _imu->setFullScale((ICM_20948_Internal_Acc | ICM_20948_Internal_Gyr), myFSS);
-    if (_imu->status != ICM_20948_Stat_Ok){ return false; }
+    if (_imu->status != ICM_20948_Stat_Ok){ ESP_LOGW("IMU", "Failed to start ICM20948: set full scale failed"); return false; }
     // TODO: Setup low pass filter config
     _msg.success = true;
 #endif
@@ -87,8 +90,6 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        #define SPI_PORT SPI // TODO in periphearals_seetings.h
-        #define CS_PIN 2 
         ICM_20948_SPI _imu;
     #else
         //#define WIRE_PORT Wire 
@@ -134,8 +135,6 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 #endif
 #if FT_ENABLED(USE_ICM20948)
     #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
-        #define SPI_PORT SPI // TODO in periphearals_seetings.h
-        #define CS_PIN 2 
         ICM_20948_SPI* _imu;
     #else
         //#define WIRE_PORT Wire 

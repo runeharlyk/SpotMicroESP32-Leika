@@ -17,7 +17,7 @@ void Peripherals::begin() {
     updatePins();
 
 #if FT_ENABLED(USE_ICM20948)
-    #if USE_ICM20948_SPIMODE > 0
+    #if FT_ENABLED(USE_ICM20948_SPIMODE) > 0
         ICM_20948_SPI* icm20948 = new ICM_20948_SPI;
     #else
         ICM_20948_I2C* icm20948 = new ICM_20948_I2C;
