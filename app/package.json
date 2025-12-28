@@ -48,7 +48,6 @@
     },
     "type": "module",
     "dependencies": {
-        "@bufbuild/protobuf": "^2.10.2",
         "@msgpack/msgpack": "^3.1.2",
         "@niku/vite-env-caster": "^1.1.2",
         "@sveltejs/adapter-auto": "^6.1.1",
@@ -61,7 +60,6 @@
         "svelte-dnd-list": "^0.1.8",
         "svelte-modals": "^2.0.1",
         "three": "^0.180.0",
-        "ts-proto": "^2.10.1",
         "urdf-loader": "^0.12.6",
         "uzip": "^0.20201231.0",
         "xacro-parser": "^0.3.10"

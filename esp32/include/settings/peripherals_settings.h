@@ -14,9 +14,6 @@
 #ifndef SCL_PIN
 #define SCL_PIN SCL
 #endif
-// #define STR(x) #x
-// #define XSTR(x) STR(x)
-// #pragma message ("SDA PIN: " XSTR(SDA_PIN))
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 1000000UL
 #endif
@@ -45,9 +42,9 @@ class PeripheralsConfiguration {
     }
 
     static StateUpdateResult update(JsonVariant &root, PeripheralsConfiguration &settings) {
-        //settings.sda = root["sda"] | SDA_PIN;
-        //settings.scl = root["scl"] | SCL_PIN;
-        //settings.frequency = root["frequency"] | I2C_FREQUENCY;
+        settings.sda = root["sda"] | SDA_PIN;
+        settings.scl = root["scl"] | SCL_PIN;
+        settings.frequency = root["frequency"] | I2C_FREQUENCY;
         return StateUpdateResult::CHANGED;
     };
 };
