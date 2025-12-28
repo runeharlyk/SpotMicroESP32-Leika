@@ -21,7 +21,7 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'http://spot-micro.local/',
+                target: 'http://192.168.50.22/',
                 changeOrigin: true,
                 ws: true
             }
