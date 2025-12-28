@@ -1,3 +1,0 @@
-This file is temporary, just to show how ot compile the proto files
-
-protoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/proto" "platform_shared\example.proto"
