@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+
+message IMUReport {
+    
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float temp = 4;
+    bool success = 5;
+}

@@ -19,6 +19,17 @@ void Websocket::emit(const char *event, JsonVariant &payload, const char *origin
     CommAdapterBase::emit(event, payload, originId, onlyToSameOrigin);
 }
 
+void Websocket::emit_raw(const char *event, uint8_t* payload, size_t event_length, size_t payload_length) {
+    size_t total_len = payload_length + event_length + 1;
+    uint8_t* buf = (uint8_t*) malloc(total_len + 1);
+    memcpy(buf, event, event_length);
+    buf[event_length+1] = ',';
+    memcpy(buf + event_length+2, payload, payload_length);
+
+    send(buf, total_len, -1);
+    free(buf);
+}
+
 void Websocket::onWSOpen(PsychicWebSocketClient *client) {
     ESP_LOGI("EventSocket", "ws[%s][%u] connect", client->remoteIP().toString().c_str(), client->socket());
     ping(client->socket());
