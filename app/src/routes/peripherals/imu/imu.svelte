@@ -10,6 +10,9 @@
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
+    import { IMUReport } from '$lib/platform_shared/imu_report';
+    import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+
     Chart.register(...registerables)
 
     const features = useFeatureFlags()
@@ -203,7 +206,9 @@
     }
 
     onMount(() => {
-        socket.on(MessageTopic.imu, (data: IMUMsg) => {
+        socket.on(MessageTopic.imu, (buffer: ArrayBuffer) => {
+            // Temporary conversions here
+            let data = IMUReport.decode(new BinaryReader(new Uint8Array(buffer)))
             console.log(data)
             imu.addData(data)
         })
