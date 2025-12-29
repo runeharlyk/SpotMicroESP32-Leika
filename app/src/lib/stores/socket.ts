@@ -4,18 +4,24 @@ import { encode, decode } from '@msgpack/msgpack'
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const
 type SocketEvent = (typeof socketEvents)[number]
 
-type SocketMessage = [number, string?, unknown?]
+type SocketMessage = [string, ArrayBuffer]
 
 let useBinary = false
 
-const decodeMessage = (data: string | ArrayBuffer): SocketMessage | null => {
-    useBinary = data instanceof ArrayBuffer
+
+
+const decodeMessage = (data: ArrayBuffer): SocketMessage | null => {
 
     try {
-        if (useBinary) {
-            return decode(new Uint8Array(data as ArrayBuffer)) as SocketMessage
+        const view = new Uint8Array(data);
+        let comma_index: number = 0;
+        let tag: string = "";
+        for (comma_index = 0; view[comma_index] != 0x2c; comma_index++) { // 0x2c is the ascii code for a comma!
+            tag += String.fromCharCode(view[comma_index]);
+            if (comma_index >= data.byteLength) { throw new RangeError("Comma index exceeded")}
         }
-        return JSON.parse(data as string)
+
+        return [ tag, data.slice(comma_index+1) ]
     } catch (error) {
         console.error(`Could not decode data: ${new Uint8Array(data as ArrayBuffer)} - ${error}`)
     }
@@ -72,7 +78,7 @@ function createWebSocket() {
             resetUnresponsiveCheck()
             const message = decodeMessage(frame.data)
             if (!message) return
-            const [, event, payload = undefined] = message
+            const [event, payload] = message
             if (event) listeners.get(event)?.forEach(listener => listener(payload))
         }
         ws.onerror = ev => disconnect('error', ev)

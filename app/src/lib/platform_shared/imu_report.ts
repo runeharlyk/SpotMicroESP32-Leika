@@ -2,68 +2,41 @@
 // versions:
 //   protoc-gen-ts_proto  v2.10.1
 //   protoc               v6.33.2
-// source: platform_shared/example.proto
+// source: platform_shared/imu_report.proto
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 
 export const protobufPackage = "";
 
-export enum IMUType {
-  IMU_NONE = 0,
-  IMU_ACCEL = 1,
-  IMU_GYRO = 2,
-  UNRECOGNIZED = -1,
-}
-
-export function iMUTypeFromJSON(object: any): IMUType {
-  switch (object) {
-    case 0:
-    case "IMU_NONE":
-      return IMUType.IMU_NONE;
-    case 1:
-    case "IMU_ACCEL":
-      return IMUType.IMU_ACCEL;
-    case 2:
-    case "IMU_GYRO":
-      return IMUType.IMU_GYRO;
-    case -1:
-    case "UNRECOGNIZED":
-    default:
-      return IMUType.UNRECOGNIZED;
-  }
-}
-
-export function iMUTypeToJSON(object: IMUType): string {
-  switch (object) {
-    case IMUType.IMU_NONE:
-      return "IMU_NONE";
-    case IMUType.IMU_ACCEL:
-      return "IMU_ACCEL";
-    case IMUType.IMU_GYRO:
-      return "IMU_GYRO";
-    case IMUType.UNRECOGNIZED:
-    default:
-      return "UNRECOGNIZED";
-  }
-}
-
 export interface IMUReport {
-  type: IMUType;
-  xVal: number;
+  x: number;
+  y: number;
+  z: number;
+  temp: number;
+  success: boolean;
 }
 
 function createBaseIMUReport(): IMUReport {
-  return { type: 0, xVal: 0 };
+  return { x: 0, y: 0, z: 0, temp: 0, success: false };
 }
 
 export const IMUReport: MessageFns<IMUReport> = {
   encode(message: IMUReport, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.type !== 0) {
-      writer.uint32(8).int32(message.type);
+    if (message.x !== 0) {
+      writer.uint32(13).float(message.x);
     }
-    if (message.xVal !== 0) {
-      writer.uint32(17).double(message.xVal);
+    if (message.y !== 0) {
+      writer.uint32(21).float(message.y);
+    }
+    if (message.z !== 0) {
+      writer.uint32(29).float(message.z);
+    }
+    if (message.temp !== 0) {
+      writer.uint32(37).float(message.temp);
+    }
+    if (message.success !== false) {
+      writer.uint32(40).bool(message.success);
     }
     return writer;
   },
@@ -76,19 +49,43 @@ export const IMUReport: MessageFns<IMUReport> = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1: {
-          if (tag !== 8) {
+          if (tag !== 13) {
             break;
           }
 
-          message.type = reader.int32() as any;
+          message.x = reader.float();
           continue;
         }
         case 2: {
-          if (tag !== 17) {
+          if (tag !== 21) {
             break;
           }
 
-          message.xVal = reader.double();
+          message.y = reader.float();
+          continue;
+        }
+        case 3: {
+          if (tag !== 29) {
+            break;
+          }
+
+          message.z = reader.float();
+          continue;
+        }
+        case 4: {
+          if (tag !== 37) {
+            break;
+          }
+
+          message.temp = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.success = reader.bool();
           continue;
         }
       }
@@ -102,18 +99,30 @@ export const IMUReport: MessageFns<IMUReport> = {
 
   fromJSON(object: any): IMUReport {
     return {
-      type: isSet(object.type) ? iMUTypeFromJSON(object.type) : 0,
-      xVal: isSet(object.xVal) ? globalThis.Number(object.xVal) : 0,
+      x: isSet(object.x) ? globalThis.Number(object.x) : 0,
+      y: isSet(object.y) ? globalThis.Number(object.y) : 0,
+      z: isSet(object.z) ? globalThis.Number(object.z) : 0,
+      temp: isSet(object.temp) ? globalThis.Number(object.temp) : 0,
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
     };
   },
 
   toJSON(message: IMUReport): unknown {
     const obj: any = {};
-    if (message.type !== 0) {
-      obj.type = iMUTypeToJSON(message.type);
+    if (message.x !== 0) {
+      obj.x = message.x;
     }
-    if (message.xVal !== 0) {
-      obj.xVal = message.xVal;
+    if (message.y !== 0) {
+      obj.y = message.y;
+    }
+    if (message.z !== 0) {
+      obj.z = message.z;
+    }
+    if (message.temp !== 0) {
+      obj.temp = message.temp;
+    }
+    if (message.success !== false) {
+      obj.success = message.success;
     }
     return obj;
   },
@@ -123,8 +132,11 @@ export const IMUReport: MessageFns<IMUReport> = {
   },
   fromPartial<I extends Exact<DeepPartial<IMUReport>, I>>(object: I): IMUReport {
     const message = createBaseIMUReport();
-    message.type = object.type ?? 0;
-    message.xVal = object.xVal ?? 0;
+    message.x = object.x ?? 0;
+    message.y = object.y ?? 0;
+    message.z = object.z ?? 0;
+    message.temp = object.temp ?? 0;
+    message.success = object.success ?? false;
     return message;
   },
 };
