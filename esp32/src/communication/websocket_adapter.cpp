@@ -24,8 +24,7 @@ void Websocket::emit_raw(const char *event, uint8_t* payload, size_t event_lengt
     uint8_t* buf = (uint8_t*) malloc(total_len + 1);
     memcpy(buf, event, event_length);
     buf[event_length+1] = ',';
-    memcpy(buf + event_length+2, payload, payload_length);
-
+    memcpy(buf + event_length+1, payload, payload_length);
     send(buf, total_len, -1);
     free(buf);
 }
