@@ -17,6 +17,10 @@
 #include <mdns_service.h>
 #include <system_service.h>
 
+// Temporary includes
+#include <pb_encode.h>
+#include "platform_shared/imu_report.pb.h"
+
 #include <www_mount.hpp>
 
 // Communication
@@ -225,15 +229,33 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     setupEventSocket();
 
     ESP_LOGI("main", "Service control task started");
+    float temp = 0;
     for (;;) {
         wifiService.loop();
         apService.loop();
         EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
         EXECUTE_EVERY_N_MS(500, {
-            JsonDocument doc;
-            JsonVariant results = doc.to<JsonVariant>();
-            peripherals.getIMUResult(results);
-            socket.emit(EVENT_IMU, results);
+            // JsonDocument doc;
+            // JsonVariant results = doc.to<JsonVariant>();
+            // peripherals.getIMUResult(results);
+            // socket.emit(EVENT_IMU, results);
+
+            // TESTING PB EMITTING!!
+            IMUReport report;
+            report.x = 1;
+            report.y = 2;
+            report.z = 3;
+            report.temp = temp;
+            temp += 0.01;
+            report.success = true;
+            
+            uint8_t buffer[IMUReport_size]; 
+            pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+            bool status = pb_encode(&stream, &IMUReport_msg, &report);
+            if (!status) {
+                // PRINT ERROR HERE!
+            }
+            socket.emit_raw(EVENT_IMU, buffer, strlen(EVENT_IMU), IMUReport_size);
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

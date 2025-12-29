@@ -20,6 +20,8 @@ class Websocket : public CommAdapterBase {
 
     void emit(const char *event, JsonVariant &payload, const char *originId = "", bool onlyToSameOrigin = false);
 
+    void emit_raw(const char *event, uint8_t* payload, size_t event_length, size_t payload_length);
+
   private:
     PsychicWebSocketHandler _socket;
     PsychicHttpServer &_server;
