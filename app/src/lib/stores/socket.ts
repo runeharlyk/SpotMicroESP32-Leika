@@ -72,8 +72,7 @@ const encodeMessage = (data: WebsocketMessage): Uint8Array<ArrayBuffer> => {
 }
 
 function createWebSocket() {
-    const msg_listeners = new Map<number, Set<(data?: unknown) => void>>()
-    const event_listeners = new Map<number, Set<(data?: unknown) => void>>()
+    const listeners = new Map<string, Set<(data?: unknown) => void>>()
     const { subscribe, set } = writable(false)
     const reconnectTimeoutTime = 5000
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
