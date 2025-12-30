@@ -1,30 +1,38 @@
 import { writable } from 'svelte/store'
 import { encode, decode } from '@msgpack/msgpack'
+import { WebsocketMessage } from '$lib/platform_shared/websocket_message'
 
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const
 type SocketEvent = (typeof socketEvents)[number]
 
-type SocketMessage = [string, ArrayBuffer]
+type TaggedSocketMessage = [string, WebsocketMessage]
 
 let useBinary = false
 
 
 
-const decodeMessage = (data: ArrayBuffer): SocketMessage | null => {
+const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
 
-    try {
-        const view = new Uint8Array(data);
-        let comma_index: number = 0;
-        let tag: string = "";
-        for (comma_index = 0; view[comma_index] != 0x2c; comma_index++) { // 0x2c is the ascii code for a comma!
-            tag += String.fromCharCode(view[comma_index]);
-            if (comma_index >= data.byteLength) { throw new RangeError("Comma index exceeded")}
-        }
-
-        return [ tag, data.slice(comma_index+1) ]
-    } catch (error) {
-        console.error(`Could not decode data: ${new Uint8Array(data as ArrayBuffer)} - ${error}`)
+    const decoded = WebsocketMessage.decode(new Uint8Array(data));
+    const values = Object.entries(decoded).filter(([, value]) => value !== undefined) // Filter all values which are not undefined
+    if (values.length != 1) {
+        throw new Error("Message included either 0 or more than 1 data point")
     }
+    const [tag, value] = values[0]
+    return [tag, decoded]
+    // try {
+    //     const view = new Uint8Array(data);
+    //     let comma_index: number = 0;
+    //     let tag: string = "";
+    //     for (comma_index = 0; view[comma_index] != 0x2c; comma_index++) { // 0x2c is the ascii code for a comma!
+    //         tag += String.fromCharCode(view[comma_index]);
+    //         if (comma_index >= data.byteLength) { throw new RangeError("Comma index exceeded")}
+    //     }
+
+    //     return [ tag, data.slice(comma_index+1) ]
+    // } catch (error) {
+    //     console.error(`Could not decode data: ${new Uint8Array(data as ArrayBuffer)} - ${error}`)
+    // }
     return null
 }
 
@@ -76,10 +84,8 @@ function createWebSocket() {
         }
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
-            const message = decodeMessage(frame.data)
-            if (!message) return
-            const [event, payload] = message
-            if (event) listeners.get(event)?.forEach(listener => listener(payload))
+            const [tag, message] = decodeMessage(frame.data)
+            if (tag) listeners.get(tag)?.forEach(listener => listener(message))
         }
         ws.onerror = ev => disconnect('error', ev)
         ws.onclose = ev => disconnect('close', ev)
@@ -143,6 +149,11 @@ function createWebSocket() {
         sendEvent,
         init,
         on: <T>(event: string, listener: (data: T) => void): (() => void) => {
+
+            if (event !in Object.keys(WebsocketMessage.create())) {
+                throw new Error("Event not found in 'WebsocketMessage' type, message can never be decoded, and the listener has not been added");
+            }
+
             let eventListeners = listeners.get(event)
             if (!eventListeners) {
                 if (!socketEvents.includes(event as SocketEvent)) {
