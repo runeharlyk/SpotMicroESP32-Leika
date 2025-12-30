@@ -6,6 +6,13 @@ import type { BinaryWriter } from '@bufbuild/protobuf/wire'
 
 // Auto-build reverse mapping from MessageFns to event key
 const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<any>, string>()
+function get_event_from_messagetype(event_type: MessageFns<any>) {
+    const event = MESSAGE_TYPE_TO_KEY.get(event_type)
+    if (!event) {
+        throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+    }
+    return event
+}
 
 // Iterate through all exports and match them to WebsocketMessage fields
 for (const [exportName, exportValue] of Object.entries(WebsocketMessages)) {
@@ -67,10 +74,7 @@ function createWebSocket() {
     }
 
     function getListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void>  {
-        const event = MESSAGE_TYPE_TO_KEY.get(event_type)
-        if (!event) {
-            throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
-        }
+        const event = get_event_from_messagetype(event_type);
 
         const event_listeners = listeners.get(event);
         if (event_listeners == undefined) {
@@ -164,11 +168,7 @@ function createWebSocket() {
         sendEvent,
         init,
         on: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void): (() => void) => {
-            const event = MESSAGE_TYPE_TO_KEY.get(event_type)
-
-            if (!event) {
-                throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
-            }
+            const event = get_event_from_messagetype(event_type);
 
             let eventListeners = listeners.get(event)
             if (!eventListeners) {
@@ -185,10 +185,7 @@ function createWebSocket() {
             }
         },
         off: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void) => {
-            const event = MESSAGE_TYPE_TO_KEY.get(event_type)
-            if (!event) {
-                throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
-            }
+            const event = get_event_from_messagetype(event_type);
 
             unsubscribe(event, listener as (data: unknown) => void)
         }
