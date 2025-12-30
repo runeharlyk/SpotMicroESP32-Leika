@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { WebSocketServer } from 'ws'
 import { socket } from '../../src/lib/stores/socket'
-import { IMUData, RSSIData, WebsocketMessage, WebsocketMessage } from '../../src/lib/platform_shared/websocket_message'
+import { IMUData, RSSIData, WebsocketMessage } from '../../src/lib/platform_shared/websocket_message'
 
 // Helper function to create encoded WebSocket messages
 function createEncodedMessage(messageType: 'imu' | 'rssi' | 'mode', data: any): Uint8Array {

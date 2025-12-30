@@ -2,9 +2,10 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { onMount } from 'svelte'
     import { socket } from '$lib/stores'
-    import { MessageTopic, type I2CDevice } from '$lib/types/models'
+    import { type I2CDevice } from '$lib/types/models'
     import { Connection } from '$lib/components/icons'
     import I2CSetting from './i2cSetting.svelte'
+    import { I2CScanData } from '$lib/platform_shared/websocket_message'
 
     const i2cDevices = [
         { address: 30, part_number: 'HMC5883', name: '3-Axis Digital Compass/Magnetometer IC' },
@@ -25,9 +26,9 @@
     let isLoading = $state(false)
 
     onMount(() => {
-        socket.on(MessageTopic.i2cScan, handleScan)
+        socket.on(I2CScanData, handleScan)
         triggerScan()
-        return () => socket.off(MessageTopic.i2cScan, handleScan)
+        return () => socket.off(I2CScanData, handleScan)
     })
 
     const handleScan = (data: { addresses: number[] }) => {
@@ -44,7 +45,7 @@
 
     const triggerScan = () => {
         isLoading = true
-        socket.sendEvent(MessageTopic.i2cScan, '')
+        socket.sendEvent(I2CScanData, '')
     }
 </script>
 

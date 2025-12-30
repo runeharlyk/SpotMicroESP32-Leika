@@ -23,8 +23,14 @@
         walkGait
     } from '$lib/stores'
     import { type Analytics, type DownloadOTA } from '$lib/types/models'
-    import { MessageTopic } from '$lib/types/models'
     import { Throttler } from '$lib/utilities'
+    import {
+        AnglesData,
+        GaitData,
+        InputData,
+        ModeData,
+        PositionData
+    } from '$lib/platform_shared/websocket_message'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -41,20 +47,11 @@
 
         addEventListeners()
 
-        input.subscribe(data =>
-            socket.sendEvent(
-                MessageTopic.input,
-                throttler.throttle(() => Object.values(data), 40)
-            )
-        )
-        mode.subscribe(data => socket.sendEvent(MessageTopic.mode, data))
-        walkGait.subscribe(data => socket.sendEvent(MessageTopic.gait, data))
-        servoAnglesOut.subscribe(data =>
-            throttler.throttle(() => socket.sendEvent(MessageTopic.angles, data), 100)
-        )
-        kinematicData.subscribe(data =>
-            throttler.throttle(() => socket.sendEvent(MessageTopic.position, data), 100)
-        )
+        input.subscribe(data => socket.sendEvent(InputData, InputData.create()))
+        mode.subscribe(data => socket.sendEvent(ModeData, data))
+        walkGait.subscribe(data => socket.sendEvent(GaitData, data))
+        servoAnglesOut.subscribe(data => socket.sendEvent(AnglesData, data))
+        kinematicData.subscribe(data => socket.sendEvent(PositionData, data))
     })
 
     onDestroy(() => {
