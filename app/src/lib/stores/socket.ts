@@ -43,22 +43,8 @@ const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
     if (values.length != 1) {
         throw new Error("Message included either 0 or more than 1 data point")
     }
-    const [tag, value] = values[0]
-    return [tag, decoded]
-    // try {
-    //     const view = new Uint8Array(data);
-    //     let comma_index: number = 0;
-    //     let tag: string = "";
-    //     for (comma_index = 0; view[comma_index] != 0x2c; comma_index++) { // 0x2c is the ascii code for a comma!
-    //         tag += String.fromCharCode(view[comma_index]);
-    //         if (comma_index >= data.byteLength) { throw new RangeError("Comma index exceeded")}
-    //     }
-
-    //     return [ tag, data.slice(comma_index+1) ]
-    // } catch (error) {
-    //     console.error(`Could not decode data: ${new Uint8Array(data as ArrayBuffer)} - ${error}`)
-    // }
-    return null
+    const [event, value] = values[0]
+    return [event, decoded]
 }
 
 const encodeMessage = (data: unknown) => {
@@ -109,8 +95,8 @@ function createWebSocket() {
         }
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
-            const [tag, message] = decodeMessage(frame.data)
-            if (tag) listeners.get(tag)?.forEach(listener => listener(message))
+            const [event, message] = decodeMessage(frame.data)
+            if (event) listeners.get(event)?.forEach(listener => listener(message))
         }
         ws.onerror = ev => disconnect('error', ev)
         ws.onclose = ev => disconnect('close', ev)
@@ -194,7 +180,12 @@ function createWebSocket() {
                 unsubscribe(event, listener as (data: unknown) => void)
             }
         },
-        off: <T>(event: string, listener?: (data: T) => void) => {
+        off: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void) => {
+            const event = MESSAGE_TYPE_TO_KEY.get(event_type)
+            if (!event) {
+                throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+            }
+
             unsubscribe(event, listener as (data: unknown) => void)
         }
     }
