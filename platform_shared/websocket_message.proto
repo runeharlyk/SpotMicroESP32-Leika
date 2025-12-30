@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+// Individual message data types
+message IMUData {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float temp = 4;
+}
+
+message IMUCalibrateData {}
+message ModeData { int32 mode = 1; }
+message InputData {}
+message AnalyticsData {}
+message PositionData {}
+message AnglesData { repeated float angles = 1; }
+message I2CScanData {}
+message PeripheralSettingsData {}
+message OTAStatusData {}
+message GaitData {}
+message ServoStateData {}
+message ServoPWMData {}
+message WifiSettingsData {}
+message SonarData {}
+message RSSIData { int32 rssi = 1; }
+
+
+// WebSocket message wrapper
+// Only ONE field will be set at a time (oneof ensures this)
+message WebsocketMessage {
+    oneof message {
+        IMUData imu = 10;
+        IMUCalibrateData imu_calibrate = 20;
+        ModeData mode = 30;
+        InputData input = 40;
+        AnalyticsData analytics = 50;
+        PositionData position = 60;
+        AnglesData angles = 70;
+        I2CScanData i2c_scan = 80;
+        PeripheralSettingsData peripheral_settings = 90;
+        OTAStatusData ota_status = 100;
+        GaitData gait = 110;
+        ServoStateData servo_state = 120;
+        ServoPWMData servo_pwm = 130;
+        WifiSettingsData wifi_settings = 140;
+        SonarData sonar = 150;
+        RSSIData rssi = 160;
+    }
+}
