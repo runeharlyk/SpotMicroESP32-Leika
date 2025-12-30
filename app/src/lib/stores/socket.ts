@@ -2,6 +2,7 @@ import { writable } from 'svelte/store'
 import { encode, decode } from '@msgpack/msgpack'
 import { WebsocketMessage, type MessageFns } from '$lib/platform_shared/websocket_message'
 import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
+import type { BinaryWriter } from '@bufbuild/protobuf/wire'
 
 // Auto-build reverse mapping from MessageFns to event key
 const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<any>, string>()
@@ -32,7 +33,6 @@ type SocketEvent = (typeof socketEvents)[number]
 
 type TaggedSocketMessage = [string, WebsocketMessage]
 
-let useBinary = false
 
 
 
@@ -47,12 +47,9 @@ const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
     return [event, decoded]
 }
 
-const encodeMessage = (data: unknown) => {
-    try {
-        return useBinary ? encode(data) : JSON.stringify(data)
-    } catch (error) {
-        console.error(`Could not encode data: ${data} - ${error}`)
-    }
+const encodeMessage = (data: WebsocketMessage): Uint8Array<ArrayBuffer> => {
+    const encoded = WebsocketMessage.encode(data).finish();
+    return encoded;
 }
 
 function createWebSocket() {
@@ -69,6 +66,19 @@ function createWebSocket() {
         connect()
     }
 
+    function getListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void>  {
+        const event = MESSAGE_TYPE_TO_KEY.get(event_type)
+        if (!event) {
+            throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+        }
+
+        const event_listeners = listeners.get(event);
+        if (event_listeners == undefined) {
+            return new Set()
+        }
+        return event_listeners;
+    }
+
     function disconnect(reason: SocketEvent, event?: Event) {
         ws.close()
         set(false)
@@ -82,8 +92,6 @@ function createWebSocket() {
         ws = new WebSocket(socketUrl)
         ws.binaryType = 'arraybuffer'
         ws.onopen = ev => {
-            ping()
-            useBinary = true
             ping()
             set(true)
             clearTimeout(reconnectTimeoutId)
@@ -136,14 +144,10 @@ function createWebSocket() {
         send([0, event])
     }
 
-    function send(data: unknown) {
+    function send(data: WebsocketMessage) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const serialized = encodeMessage(data)
-        if (!serialized) {
-            console.error('Could not serialize data:', data)
-            return
-        }
-        ws.send(serialized)
+        const encoded = encodeMessage(data);
+        ws.send(encoded);
     }
 
     function ping() {
