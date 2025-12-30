@@ -1,6 +1,31 @@
 import { writable } from 'svelte/store'
 import { encode, decode } from '@msgpack/msgpack'
-import { WebsocketMessage } from '$lib/platform_shared/websocket_message'
+import { WebsocketMessage, type MessageFns } from '$lib/platform_shared/websocket_message'
+import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
+
+// Auto-build reverse mapping from MessageFns to event key
+const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<any>, string>()
+
+// Iterate through all exports and match them to WebsocketMessage fields
+for (const [exportName, exportValue] of Object.entries(WebsocketMessages)) {
+    // Check if this export is a MessageFns (has encode/decode methods)
+    if (exportValue && typeof exportValue === 'object' && 'encode' in exportValue && 'decode' in exportValue) {
+        // Try to find matching key in WebsocketMessage by creating an instance and checking
+        const messageKeys = Object.keys(WebsocketMessage.create()) as Array<keyof typeof WebsocketMessage>
+
+        for (const key of messageKeys) {
+            // Match by naming convention: exportName should match key in some pattern
+            // Common patterns: "IMUData" -> "imu", "RSSIData" -> "rssi"
+            const keyLower = key.toLowerCase()
+            const exportLower = exportName.toLowerCase().replace(/data$/, '')
+
+            if (keyLower === exportLower) {
+                MESSAGE_TYPE_TO_KEY.set(exportValue as MessageFns<any>, key)
+                break
+            }
+        }
+    }
+}
 
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const
 type SocketEvent = (typeof socketEvents)[number]
@@ -148,10 +173,11 @@ function createWebSocket() {
         subscribe,
         sendEvent,
         init,
-        on: <T>(event: string, listener: (data: T) => void): (() => void) => {
+        on: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void): (() => void) => {
+            const event = MESSAGE_TYPE_TO_KEY.get(event_type)
 
-            if (event !in Object.keys(WebsocketMessage.create())) {
-                throw new Error("Event not found in 'WebsocketMessage' type, message can never be decoded, and the listener has not been added");
+            if (!event) {
+                throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
             }
 
             let eventListeners = listeners.get(event)
