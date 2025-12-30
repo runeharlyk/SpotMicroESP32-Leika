@@ -24,26 +24,31 @@ message WifiSettingsData {}
 message SonarData {}
 message RSSIData { int32 rssi = 1; }
 
+message SubscribeNotification {}
+message UnsubscribeNotification {}
+
 
 // WebSocket message wrapper
 // Only ONE field will be set at a time (oneof ensures this)
 message WebsocketMessage {
     oneof message {
-        IMUData imu = 10;
-        IMUCalibrateData imu_calibrate = 20;
-        ModeData mode = 30;
-        InputData input = 40;
-        AnalyticsData analytics = 50;
-        PositionData position = 60;
-        AnglesData angles = 70;
-        I2CScanData i2c_scan = 80;
-        PeripheralSettingsData peripheral_settings = 90;
-        OTAStatusData ota_status = 100;
-        GaitData gait = 110;
-        ServoStateData servo_state = 120;
-        ServoPWMData servo_pwm = 130;
-        WifiSettingsData wifi_settings = 140;
-        SonarData sonar = 150;
-        RSSIData rssi = 160;
+        SubscribeNotification sub_notif = 20;
+        UnsubscribeNotification unsub_notif = 21;
+        IMUData imu = 110;
+        IMUCalibrateData imu_calibrate = 120;
+        ModeData mode = 130;
+        InputData input = 140;
+        AnalyticsData analytics = 150;
+        PositionData position = 160;
+        AnglesData angles = 170;
+        I2CScanData i2c_scan = 180;
+        PeripheralSettingsData peripheral_settings = 190;
+        OTAStatusData ota_status = 200;
+        GaitData gait = 210;
+        ServoStateData servo_state = 220;
+        ServoPWMData servo_pwm = 230;
+        WifiSettingsData wifi_settings = 240;
+        SonarData sonar = 250;
+        RSSIData rssi = 260;
     }
 }
