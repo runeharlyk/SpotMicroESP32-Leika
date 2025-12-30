@@ -67,9 +67,17 @@ export interface RSSIData {
 }
 
 export interface SubscribeNotification {
+  tag: number;
 }
 
 export interface UnsubscribeNotification {
+  tag: number;
+}
+
+export interface PingMsg {
+}
+
+export interface PongMsg {
 }
 
 /**
@@ -79,6 +87,8 @@ export interface UnsubscribeNotification {
 export interface WebsocketMessage {
   subNotif?: SubscribeNotification | undefined;
   unsubNotif?: UnsubscribeNotification | undefined;
+  pingmsg?: PingMsg | undefined;
+  pongmsg?: PongMsg | undefined;
   imu?: IMUData | undefined;
   imuCalibrate?: IMUCalibrateData | undefined;
   mode?: ModeData | undefined;
@@ -910,11 +920,14 @@ export const RSSIData: MessageFns<RSSIData> = {
 };
 
 function createBaseSubscribeNotification(): SubscribeNotification {
-  return {};
+  return { tag: 0 };
 }
 
 export const SubscribeNotification: MessageFns<SubscribeNotification> = {
-  encode(_: SubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(message: SubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tag !== 0) {
+      writer.uint32(8).int32(message.tag);
+    }
     return writer;
   },
 
@@ -925,6 +938,14 @@ export const SubscribeNotification: MessageFns<SubscribeNotification> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.tag = reader.int32();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -934,30 +955,37 @@ export const SubscribeNotification: MessageFns<SubscribeNotification> = {
     return message;
   },
 
-  fromJSON(_: any): SubscribeNotification {
-    return {};
+  fromJSON(object: any): SubscribeNotification {
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
   },
 
-  toJSON(_: SubscribeNotification): unknown {
+  toJSON(message: SubscribeNotification): unknown {
     const obj: any = {};
+    if (message.tag !== 0) {
+      obj.tag = Math.round(message.tag);
+    }
     return obj;
   },
 
   create<I extends Exact<DeepPartial<SubscribeNotification>, I>>(base?: I): SubscribeNotification {
     return SubscribeNotification.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(_: I): SubscribeNotification {
+  fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(object: I): SubscribeNotification {
     const message = createBaseSubscribeNotification();
+    message.tag = object.tag ?? 0;
     return message;
   },
 };
 
 function createBaseUnsubscribeNotification(): UnsubscribeNotification {
-  return {};
+  return { tag: 0 };
 }
 
 export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
-  encode(_: UnsubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(message: UnsubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tag !== 0) {
+      writer.uint32(8).int32(message.tag);
+    }
     return writer;
   },
 
@@ -965,6 +993,61 @@ export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseUnsubscribeNotification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.tag = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UnsubscribeNotification {
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
+  },
+
+  toJSON(message: UnsubscribeNotification): unknown {
+    const obj: any = {};
+    if (message.tag !== 0) {
+      obj.tag = Math.round(message.tag);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(base?: I): UnsubscribeNotification {
+    return UnsubscribeNotification.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(object: I): UnsubscribeNotification {
+    const message = createBaseUnsubscribeNotification();
+    message.tag = object.tag ?? 0;
+    return message;
+  },
+};
+
+function createBasePingMsg(): PingMsg {
+  return {};
+}
+
+export const PingMsg: MessageFns<PingMsg> = {
+  encode(_: PingMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PingMsg {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePingMsg();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -977,20 +1060,63 @@ export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
     return message;
   },
 
-  fromJSON(_: any): UnsubscribeNotification {
+  fromJSON(_: any): PingMsg {
     return {};
   },
 
-  toJSON(_: UnsubscribeNotification): unknown {
+  toJSON(_: PingMsg): unknown {
     const obj: any = {};
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(base?: I): UnsubscribeNotification {
-    return UnsubscribeNotification.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<PingMsg>, I>>(base?: I): PingMsg {
+    return PingMsg.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(_: I): UnsubscribeNotification {
-    const message = createBaseUnsubscribeNotification();
+  fromPartial<I extends Exact<DeepPartial<PingMsg>, I>>(_: I): PingMsg {
+    const message = createBasePingMsg();
+    return message;
+  },
+};
+
+function createBasePongMsg(): PongMsg {
+  return {};
+}
+
+export const PongMsg: MessageFns<PongMsg> = {
+  encode(_: PongMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PongMsg {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePongMsg();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): PongMsg {
+    return {};
+  },
+
+  toJSON(_: PongMsg): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PongMsg>, I>>(base?: I): PongMsg {
+    return PongMsg.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PongMsg>, I>>(_: I): PongMsg {
+    const message = createBasePongMsg();
     return message;
   },
 };
@@ -999,6 +1125,8 @@ function createBaseWebsocketMessage(): WebsocketMessage {
   return {
     subNotif: undefined,
     unsubNotif: undefined,
+    pingmsg: undefined,
+    pongmsg: undefined,
     imu: undefined,
     imuCalibrate: undefined,
     mode: undefined,
@@ -1025,6 +1153,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.unsubNotif !== undefined) {
       UnsubscribeNotification.encode(message.unsubNotif, writer.uint32(170).fork()).join();
+    }
+    if (message.pingmsg !== undefined) {
+      PingMsg.encode(message.pingmsg, writer.uint32(242).fork()).join();
+    }
+    if (message.pongmsg !== undefined) {
+      PongMsg.encode(message.pongmsg, writer.uint32(250).fork()).join();
     }
     if (message.imu !== undefined) {
       IMUData.encode(message.imu, writer.uint32(882).fork()).join();
@@ -1098,6 +1232,22 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           }
 
           message.unsubNotif = UnsubscribeNotification.decode(reader, reader.uint32());
+          continue;
+        }
+        case 30: {
+          if (tag !== 242) {
+            break;
+          }
+
+          message.pingmsg = PingMsg.decode(reader, reader.uint32());
+          continue;
+        }
+        case 31: {
+          if (tag !== 250) {
+            break;
+          }
+
+          message.pongmsg = PongMsg.decode(reader, reader.uint32());
           continue;
         }
         case 110: {
@@ -1241,6 +1391,8 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     return {
       subNotif: isSet(object.subNotif) ? SubscribeNotification.fromJSON(object.subNotif) : undefined,
       unsubNotif: isSet(object.unsubNotif) ? UnsubscribeNotification.fromJSON(object.unsubNotif) : undefined,
+      pingmsg: isSet(object.pingmsg) ? PingMsg.fromJSON(object.pingmsg) : undefined,
+      pongmsg: isSet(object.pongmsg) ? PongMsg.fromJSON(object.pongmsg) : undefined,
       imu: isSet(object.imu) ? IMUData.fromJSON(object.imu) : undefined,
       imuCalibrate: isSet(object.imuCalibrate) ? IMUCalibrateData.fromJSON(object.imuCalibrate) : undefined,
       mode: isSet(object.mode) ? ModeData.fromJSON(object.mode) : undefined,
@@ -1269,6 +1421,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.unsubNotif !== undefined) {
       obj.unsubNotif = UnsubscribeNotification.toJSON(message.unsubNotif);
+    }
+    if (message.pingmsg !== undefined) {
+      obj.pingmsg = PingMsg.toJSON(message.pingmsg);
+    }
+    if (message.pongmsg !== undefined) {
+      obj.pongmsg = PongMsg.toJSON(message.pongmsg);
     }
     if (message.imu !== undefined) {
       obj.imu = IMUData.toJSON(message.imu);
@@ -1331,6 +1489,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       : undefined;
     message.unsubNotif = (object.unsubNotif !== undefined && object.unsubNotif !== null)
       ? UnsubscribeNotification.fromPartial(object.unsubNotif)
+      : undefined;
+    message.pingmsg = (object.pingmsg !== undefined && object.pingmsg !== null)
+      ? PingMsg.fromPartial(object.pingmsg)
+      : undefined;
+    message.pongmsg = (object.pongmsg !== undefined && object.pongmsg !== null)
+      ? PongMsg.fromPartial(object.pongmsg)
       : undefined;
     message.imu = (object.imu !== undefined && object.imu !== null) ? IMUData.fromPartial(object.imu) : undefined;
     message.imuCalibrate = (object.imuCalibrate !== undefined && object.imuCalibrate !== null)
@@ -1683,7 +1847,19 @@ export const protoMetadata: ProtoMetadata = {
       "visibility": 0,
     }, {
       "name": "SubscribeNotification",
-      "field": [],
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
       "extension": [],
       "nestedType": [],
       "enumType": [],
@@ -1695,6 +1871,42 @@ export const protoMetadata: ProtoMetadata = {
       "visibility": 0,
     }, {
       "name": "UnsubscribeNotification",
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PingMsg",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PongMsg",
       "field": [],
       "extension": [],
       "nestedType": [],
@@ -1729,6 +1941,30 @@ export const protoMetadata: ProtoMetadata = {
         "defaultValue": "",
         "oneofIndex": 0,
         "jsonName": "unsubNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pingmsg",
+        "number": 30,
+        "label": 1,
+        "type": 11,
+        "typeName": ".PingMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pingmsg",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pongmsg",
+        "number": 31,
+        "label": 1,
+        "type": 11,
+        "typeName": ".PongMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pongmsg",
         "options": undefined,
         "proto3Optional": false,
       }, {
@@ -1946,8 +2182,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 18],
-        "span": [32, 0, 53, 1],
+        "path": [4, 20],
+        "span": [35, 0, 58, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -1975,6 +2211,8 @@ export const protoMetadata: ProtoMetadata = {
     ".RSSIData": RSSIData,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
+    ".PingMsg": PingMsg,
+    ".PongMsg": PongMsg,
     ".WebsocketMessage": WebsocketMessage,
   },
   dependencies: [],

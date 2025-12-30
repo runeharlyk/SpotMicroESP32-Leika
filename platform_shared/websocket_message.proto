@@ -24,14 +24,11 @@ message WifiSettingsData {}
 message SonarData {}
 message RSSIData { int32 rssi = 1; }
 
-message SubscribeNotification {}
-message UnsubscribeNotification {}
+message SubscribeNotification { int32 tag = 1; }
+message UnsubscribeNotification {int32 tag = 1; }
 
-message InternalOpen {}
-message InternalClose {}
-message InternalError {}
-message InternalMessage {}
-message InternalUnresponsive {}
+message PingMsg {}
+message PongMsg {}
 
 
 // WebSocket message wrapper
@@ -40,6 +37,8 @@ message WebsocketMessage {
     oneof message {
         SubscribeNotification sub_notif = 20;
         UnsubscribeNotification unsub_notif = 21;
+        PingMsg pingmsg = 30;
+        PongMsg pongmsg = 31;
         IMUData imu = 110;
         IMUCalibrateData imu_calibrate = 120;
         ModeData mode = 130;

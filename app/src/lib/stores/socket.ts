@@ -6,9 +6,9 @@ import type { BinaryWriter } from '@bufbuild/protobuf/wire'
 
 
 // -------- START PARSING PROTO DATA --------
-// Auto-build reverse mapping from MessageFns to event key and field number
+// Auto-build reverse mapping from MessageFns to event key and tag 
 const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<any>, string>()
-const MESSAGE_TYPE_TO_FIELD_NUMBER = new Map<MessageFns<any>, number>()
+const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<any>, number>()
 
 // Build the mapping using references from metadata
 const websocketMessageType = websocket_md.fileDescriptor.messageType?.find(
@@ -22,7 +22,7 @@ if (websocketMessageType?.field) {
             const messageFns = websocket_md.references[field.typeName]
             if (messageFns && field.jsonName && field.number) {
                 MESSAGE_TYPE_TO_KEY.set(messageFns, field.jsonName)
-                MESSAGE_TYPE_TO_FIELD_NUMBER.set(messageFns, field.number)
+                MESSAGE_TYPE_TO_TAG.set(messageFns, field.number)
             }
         }
     }
@@ -36,11 +36,11 @@ function get_name_from_messagetype(event_type: MessageFns<any>): string {
     return event
 }
 
-// Get field number from MessageFns type
-function get_field_number_from_messagetype(event_type: MessageFns<any>): number {
-    const fieldNumber = MESSAGE_TYPE_TO_FIELD_NUMBER.get(event_type)
+// Get tag from MessageFns type
+function get_tag_from_messagetype(event_type: MessageFns<any>): number {
+    const fieldNumber = MESSAGE_TYPE_TO_TAG.get(event_type)
     if (fieldNumber === undefined) {
-        throw new Error("Field number not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+        throw new Error("Tag not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
     }
     return fieldNumber
 }
@@ -85,8 +85,10 @@ function createWebSocket() {
         connect()
     }
 
-    function getListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void>  {
-        const event = get_field_number_from_messagetype(event_type);
+    function getListeners<MT>(event: MessageFns<MT> | string): Set<(data?: unknown) => void>  {
+        if (typeof event != "string") { // Parse messagefns to string
+            event = get_name_from_messagetype(event)
+        }
 
         const event_listeners = listeners.get(event);
         if (event_listeners == undefined) {
@@ -112,10 +114,11 @@ function createWebSocket() {
             set(true)
             clearTimeout(reconnectTimeoutId)
             listeners.get('open')?.forEach(listener => listener(ev))
-            for (const event of listeners.keys()) {
-                if (socketEvents.includes(event as SocketEvent)) continue
-                subscribeToEvent(event)
-            }
+            // TODO: Check if this makes sense? we also call subscribe to event when a new listen calls the "on" function
+            // for (const event of listeners.keys()) {
+            //     if (socketEvents.includes(event as SocketEvent)) continue
+            //     subscribeToEvent(event)
+            // }
         }
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
@@ -126,12 +129,13 @@ function createWebSocket() {
         ws.onclose = ev => disconnect('close', ev)
     }
 
-    function unsubscribe(event: string, listener?: (data: unknown) => void) {
+    function unsubscribe(event_type: MessageFns<any>, listener?: (data: unknown) => void) {
+        const event = get_name_from_messagetype(event_type)
         const eventListeners = listeners.get(event)
         if (!eventListeners) return
 
         if (!eventListeners.size) {
-            unsubscribeToEvent(event)
+            unsubscribeToEvent(event_type)
         }
         if (listener) {
             eventListeners?.delete(listener)
@@ -148,20 +152,28 @@ function createWebSocket() {
     // T must extend a type of WebsocketMessages
     function sendEvent<T>(event: MessageFns<T>, data: T) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const type = get_event_from_messagetype(event);
+        const type = get_name_from_messagetype(event);
         const wsm = WebsocketMessage.create();
         (wsm as any)[type] = data
         send(wsm)
     }
 
-    function unsubscribeToEvent(event: string) {
+    function unsubscribeToEvent<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        send([1, event])
+        const event = get_name_from_messagetype(event_type);
+        const unsub_msg = WebsocketMessages.UnsubscribeNotification.create(
+            {tag: get_tag_from_messagetype(event_type)}
+        );
+        send(WebsocketMessage.create({unsubNotif: unsub_msg}));
     }
 
-    function subscribeToEvent(event: string) {
+    function subscribeToEvent<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        send([0, event])
+        const event = get_name_from_messagetype(event_type);
+        const sub_msg = WebsocketMessages.SubscribeNotification.create(
+            {tag: get_tag_from_messagetype(event_type)}
+        );
+        send(WebsocketMessage.create({subNotif: sub_msg}));
     }
 
     function send(data: WebsocketMessage) {
@@ -171,12 +183,7 @@ function createWebSocket() {
     }
 
     function ping() {
-        const serialized = encodeMessage([4])
-        if (!serialized) {
-            console.error('Could not serialize message')
-            return
-        }
-        ws.send(serialized)
+        send(WebsocketMessage.create({pingmsg: {}}))
     }
 
     return {
@@ -184,12 +191,13 @@ function createWebSocket() {
         sendEvent,
         init,
         on: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void): (() => void) => {
-            const event = get_event_from_messagetype(event_type);
+            const event = get_name_from_messagetype(event_type);
 
             let eventListeners = listeners.get(event)
             if (!eventListeners) {
+                // If this is the first listener to this event, also call subscribe to the server
                 if (!socketEvents.includes(event as SocketEvent)) {
-                    subscribeToEvent(event)
+                    subscribeToEvent(event_type)
                 }
                 eventListeners = new Set()
                 listeners.set(event, eventListeners)
@@ -197,13 +205,11 @@ function createWebSocket() {
             eventListeners.add(listener as (data: unknown) => void)
 
             return () => {
-                unsubscribe(event, listener as (data: unknown) => void)
+                unsubscribe(event_type, listener as (data: unknown) => void)
             }
         },
         off: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void) => {
-            const event = get_event_from_messagetype(event_type);
-
-            unsubscribe(event, listener as (data: unknown) => void)
+            unsubscribe(event_type, listener as (data: unknown) => void)
         }
     }
 }
