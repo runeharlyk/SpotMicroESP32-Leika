@@ -6,6 +6,7 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import type { FileDescriptorProto } from "ts-proto-descriptors";
 
 export const protobufPackage = "";
 
@@ -65,11 +66,19 @@ export interface RSSIData {
   rssi: number;
 }
 
+export interface SubscribeNotification {
+}
+
+export interface UnsubscribeNotification {
+}
+
 /**
  * WebSocket message wrapper
  * Only ONE field will be set at a time (oneof ensures this)
  */
 export interface WebsocketMessage {
+  subNotif?: SubscribeNotification | undefined;
+  unsubNotif?: UnsubscribeNotification | undefined;
   imu?: IMUData | undefined;
   imuCalibrate?: IMUCalibrateData | undefined;
   mode?: ModeData | undefined;
@@ -900,8 +909,96 @@ export const RSSIData: MessageFns<RSSIData> = {
   },
 };
 
+function createBaseSubscribeNotification(): SubscribeNotification {
+  return {};
+}
+
+export const SubscribeNotification: MessageFns<SubscribeNotification> = {
+  encode(_: SubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SubscribeNotification {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubscribeNotification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): SubscribeNotification {
+    return {};
+  },
+
+  toJSON(_: SubscribeNotification): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubscribeNotification>, I>>(base?: I): SubscribeNotification {
+    return SubscribeNotification.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(_: I): SubscribeNotification {
+    const message = createBaseSubscribeNotification();
+    return message;
+  },
+};
+
+function createBaseUnsubscribeNotification(): UnsubscribeNotification {
+  return {};
+}
+
+export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
+  encode(_: UnsubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UnsubscribeNotification {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUnsubscribeNotification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): UnsubscribeNotification {
+    return {};
+  },
+
+  toJSON(_: UnsubscribeNotification): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(base?: I): UnsubscribeNotification {
+    return UnsubscribeNotification.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(_: I): UnsubscribeNotification {
+    const message = createBaseUnsubscribeNotification();
+    return message;
+  },
+};
+
 function createBaseWebsocketMessage(): WebsocketMessage {
   return {
+    subNotif: undefined,
+    unsubNotif: undefined,
     imu: undefined,
     imuCalibrate: undefined,
     mode: undefined,
@@ -923,53 +1020,59 @@ function createBaseWebsocketMessage(): WebsocketMessage {
 
 export const WebsocketMessage: MessageFns<WebsocketMessage> = {
   encode(message: WebsocketMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.subNotif !== undefined) {
+      SubscribeNotification.encode(message.subNotif, writer.uint32(162).fork()).join();
+    }
+    if (message.unsubNotif !== undefined) {
+      UnsubscribeNotification.encode(message.unsubNotif, writer.uint32(170).fork()).join();
+    }
     if (message.imu !== undefined) {
-      IMUData.encode(message.imu, writer.uint32(82).fork()).join();
+      IMUData.encode(message.imu, writer.uint32(882).fork()).join();
     }
     if (message.imuCalibrate !== undefined) {
-      IMUCalibrateData.encode(message.imuCalibrate, writer.uint32(162).fork()).join();
+      IMUCalibrateData.encode(message.imuCalibrate, writer.uint32(962).fork()).join();
     }
     if (message.mode !== undefined) {
-      ModeData.encode(message.mode, writer.uint32(242).fork()).join();
+      ModeData.encode(message.mode, writer.uint32(1042).fork()).join();
     }
     if (message.input !== undefined) {
-      InputData.encode(message.input, writer.uint32(322).fork()).join();
+      InputData.encode(message.input, writer.uint32(1122).fork()).join();
     }
     if (message.analytics !== undefined) {
-      AnalyticsData.encode(message.analytics, writer.uint32(402).fork()).join();
+      AnalyticsData.encode(message.analytics, writer.uint32(1202).fork()).join();
     }
     if (message.position !== undefined) {
-      PositionData.encode(message.position, writer.uint32(482).fork()).join();
+      PositionData.encode(message.position, writer.uint32(1282).fork()).join();
     }
     if (message.angles !== undefined) {
-      AnglesData.encode(message.angles, writer.uint32(562).fork()).join();
+      AnglesData.encode(message.angles, writer.uint32(1362).fork()).join();
     }
     if (message.i2cScan !== undefined) {
-      I2CScanData.encode(message.i2cScan, writer.uint32(642).fork()).join();
+      I2CScanData.encode(message.i2cScan, writer.uint32(1442).fork()).join();
     }
     if (message.peripheralSettings !== undefined) {
-      PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(722).fork()).join();
+      PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(1522).fork()).join();
     }
     if (message.otaStatus !== undefined) {
-      OTAStatusData.encode(message.otaStatus, writer.uint32(802).fork()).join();
+      OTAStatusData.encode(message.otaStatus, writer.uint32(1602).fork()).join();
     }
     if (message.gait !== undefined) {
-      GaitData.encode(message.gait, writer.uint32(882).fork()).join();
+      GaitData.encode(message.gait, writer.uint32(1682).fork()).join();
     }
     if (message.servoState !== undefined) {
-      ServoStateData.encode(message.servoState, writer.uint32(962).fork()).join();
+      ServoStateData.encode(message.servoState, writer.uint32(1762).fork()).join();
     }
     if (message.servoPwm !== undefined) {
-      ServoPWMData.encode(message.servoPwm, writer.uint32(1042).fork()).join();
+      ServoPWMData.encode(message.servoPwm, writer.uint32(1842).fork()).join();
     }
     if (message.wifiSettings !== undefined) {
-      WifiSettingsData.encode(message.wifiSettings, writer.uint32(1122).fork()).join();
+      WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join();
     }
     if (message.sonar !== undefined) {
-      SonarData.encode(message.sonar, writer.uint32(1202).fork()).join();
+      SonarData.encode(message.sonar, writer.uint32(2002).fork()).join();
     }
     if (message.rssi !== undefined) {
-      RSSIData.encode(message.rssi, writer.uint32(1282).fork()).join();
+      RSSIData.encode(message.rssi, writer.uint32(2082).fork()).join();
     }
     return writer;
   },
@@ -981,84 +1084,20 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 10: {
-          if (tag !== 82) {
-            break;
-          }
-
-          message.imu = IMUData.decode(reader, reader.uint32());
-          continue;
-        }
         case 20: {
           if (tag !== 162) {
             break;
           }
 
-          message.imuCalibrate = IMUCalibrateData.decode(reader, reader.uint32());
+          message.subNotif = SubscribeNotification.decode(reader, reader.uint32());
           continue;
         }
-        case 30: {
-          if (tag !== 242) {
+        case 21: {
+          if (tag !== 170) {
             break;
           }
 
-          message.mode = ModeData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 40: {
-          if (tag !== 322) {
-            break;
-          }
-
-          message.input = InputData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 50: {
-          if (tag !== 402) {
-            break;
-          }
-
-          message.analytics = AnalyticsData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 60: {
-          if (tag !== 482) {
-            break;
-          }
-
-          message.position = PositionData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 70: {
-          if (tag !== 562) {
-            break;
-          }
-
-          message.angles = AnglesData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 80: {
-          if (tag !== 642) {
-            break;
-          }
-
-          message.i2cScan = I2CScanData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 90: {
-          if (tag !== 722) {
-            break;
-          }
-
-          message.peripheralSettings = PeripheralSettingsData.decode(reader, reader.uint32());
-          continue;
-        }
-        case 100: {
-          if (tag !== 802) {
-            break;
-          }
-
-          message.otaStatus = OTAStatusData.decode(reader, reader.uint32());
+          message.unsubNotif = UnsubscribeNotification.decode(reader, reader.uint32());
           continue;
         }
         case 110: {
@@ -1066,7 +1105,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
             break;
           }
 
-          message.gait = GaitData.decode(reader, reader.uint32());
+          message.imu = IMUData.decode(reader, reader.uint32());
           continue;
         }
         case 120: {
@@ -1074,7 +1113,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
             break;
           }
 
-          message.servoState = ServoStateData.decode(reader, reader.uint32());
+          message.imuCalibrate = IMUCalibrateData.decode(reader, reader.uint32());
           continue;
         }
         case 130: {
@@ -1082,7 +1121,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
             break;
           }
 
-          message.servoPwm = ServoPWMData.decode(reader, reader.uint32());
+          message.mode = ModeData.decode(reader, reader.uint32());
           continue;
         }
         case 140: {
@@ -1090,7 +1129,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
             break;
           }
 
-          message.wifiSettings = WifiSettingsData.decode(reader, reader.uint32());
+          message.input = InputData.decode(reader, reader.uint32());
           continue;
         }
         case 150: {
@@ -1098,11 +1137,91 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
             break;
           }
 
-          message.sonar = SonarData.decode(reader, reader.uint32());
+          message.analytics = AnalyticsData.decode(reader, reader.uint32());
           continue;
         }
         case 160: {
           if (tag !== 1282) {
+            break;
+          }
+
+          message.position = PositionData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 170: {
+          if (tag !== 1362) {
+            break;
+          }
+
+          message.angles = AnglesData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 180: {
+          if (tag !== 1442) {
+            break;
+          }
+
+          message.i2cScan = I2CScanData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 190: {
+          if (tag !== 1522) {
+            break;
+          }
+
+          message.peripheralSettings = PeripheralSettingsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 200: {
+          if (tag !== 1602) {
+            break;
+          }
+
+          message.otaStatus = OTAStatusData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 210: {
+          if (tag !== 1682) {
+            break;
+          }
+
+          message.gait = GaitData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 220: {
+          if (tag !== 1762) {
+            break;
+          }
+
+          message.servoState = ServoStateData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 230: {
+          if (tag !== 1842) {
+            break;
+          }
+
+          message.servoPwm = ServoPWMData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 240: {
+          if (tag !== 1922) {
+            break;
+          }
+
+          message.wifiSettings = WifiSettingsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 250: {
+          if (tag !== 2002) {
+            break;
+          }
+
+          message.sonar = SonarData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 260: {
+          if (tag !== 2082) {
             break;
           }
 
@@ -1120,6 +1239,8 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
 
   fromJSON(object: any): WebsocketMessage {
     return {
+      subNotif: isSet(object.subNotif) ? SubscribeNotification.fromJSON(object.subNotif) : undefined,
+      unsubNotif: isSet(object.unsubNotif) ? UnsubscribeNotification.fromJSON(object.unsubNotif) : undefined,
       imu: isSet(object.imu) ? IMUData.fromJSON(object.imu) : undefined,
       imuCalibrate: isSet(object.imuCalibrate) ? IMUCalibrateData.fromJSON(object.imuCalibrate) : undefined,
       mode: isSet(object.mode) ? ModeData.fromJSON(object.mode) : undefined,
@@ -1143,6 +1264,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
 
   toJSON(message: WebsocketMessage): unknown {
     const obj: any = {};
+    if (message.subNotif !== undefined) {
+      obj.subNotif = SubscribeNotification.toJSON(message.subNotif);
+    }
+    if (message.unsubNotif !== undefined) {
+      obj.unsubNotif = UnsubscribeNotification.toJSON(message.unsubNotif);
+    }
     if (message.imu !== undefined) {
       obj.imu = IMUData.toJSON(message.imu);
     }
@@ -1199,6 +1326,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
   },
   fromPartial<I extends Exact<DeepPartial<WebsocketMessage>, I>>(object: I): WebsocketMessage {
     const message = createBaseWebsocketMessage();
+    message.subNotif = (object.subNotif !== undefined && object.subNotif !== null)
+      ? SubscribeNotification.fromPartial(object.subNotif)
+      : undefined;
+    message.unsubNotif = (object.unsubNotif !== undefined && object.unsubNotif !== null)
+      ? UnsubscribeNotification.fromPartial(object.unsubNotif)
+      : undefined;
     message.imu = (object.imu !== undefined && object.imu !== null) ? IMUData.fromPartial(object.imu) : undefined;
     message.imuCalibrate = (object.imuCalibrate !== undefined && object.imuCalibrate !== null)
       ? IMUCalibrateData.fromPartial(object.imuCalibrate)
@@ -1241,6 +1374,610 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     message.rssi = (object.rssi !== undefined && object.rssi !== null) ? RSSIData.fromPartial(object.rssi) : undefined;
     return message;
   },
+};
+
+type ProtoMetaMessageOptions = {
+  options?: { [key: string]: any };
+  fields?: { [key: string]: { [key: string]: any } };
+  oneof?: { [key: string]: { [key: string]: any } };
+  nested?: { [key: string]: ProtoMetaMessageOptions };
+};
+
+export interface ProtoMetadata {
+  fileDescriptor: FileDescriptorProto;
+  references: { [key: string]: any };
+  dependencies?: ProtoMetadata[];
+  options?: {
+    options?: { [key: string]: any };
+    services?: {
+      [key: string]: { options?: { [key: string]: any }; methods?: { [key: string]: { [key: string]: any } } };
+    };
+    messages?: { [key: string]: ProtoMetaMessageOptions };
+    enums?: { [key: string]: { options?: { [key: string]: any }; values?: { [key: string]: { [key: string]: any } } } };
+  };
+}
+
+export const protoMetadata: ProtoMetadata = {
+  fileDescriptor: {
+    "name": "platform_shared/websocket_message.proto",
+    "package": "",
+    "dependency": [],
+    "publicDependency": [],
+    "weakDependency": [],
+    "optionDependency": [],
+    "messageType": [{
+      "name": "IMUData",
+      "field": [{
+        "name": "x",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "x",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "y",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "y",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "z",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "z",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "temp",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "temp",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ModeData",
+      "field": [{
+        "name": "mode",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "InputData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnalyticsData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PositionData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnglesData",
+      "field": [{
+        "name": "angles",
+        "number": 1,
+        "label": 3,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CScanData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PeripheralSettingsData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "OTAStatusData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "GaitData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoStateData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoPWMData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WifiSettingsData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SonarData",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "RSSIData",
+      "field": [{
+        "name": "rssi",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SubscribeNotification",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "UnsubscribeNotification",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WebsocketMessage",
+      "field": [{
+        "name": "sub_notif",
+        "number": 20,
+        "label": 1,
+        "type": 11,
+        "typeName": ".SubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "subNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "unsub_notif",
+        "number": 21,
+        "label": 1,
+        "type": 11,
+        "typeName": ".UnsubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "unsubNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu",
+        "number": 110,
+        "label": 1,
+        "type": 11,
+        "typeName": ".IMUData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imu",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate",
+        "number": 120,
+        "label": 1,
+        "type": 11,
+        "typeName": ".IMUCalibrateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrate",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mode",
+        "number": 130,
+        "label": 1,
+        "type": 11,
+        "typeName": ".ModeData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "input",
+        "number": 140,
+        "label": 1,
+        "type": 11,
+        "typeName": ".InputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "input",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "analytics",
+        "number": 150,
+        "label": 1,
+        "type": 11,
+        "typeName": ".AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analytics",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "position",
+        "number": 160,
+        "label": 1,
+        "type": 11,
+        "typeName": ".PositionData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "position",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "angles",
+        "number": 170,
+        "label": 1,
+        "type": 11,
+        "typeName": ".AnglesData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan",
+        "number": 180,
+        "label": 1,
+        "type": 11,
+        "typeName": ".I2CScanData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScan",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "peripheral_settings",
+        "number": 190,
+        "label": 1,
+        "type": 11,
+        "typeName": ".PeripheralSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ota_status",
+        "number": 200,
+        "label": 1,
+        "type": 11,
+        "typeName": ".OTAStatusData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "otaStatus",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "gait",
+        "number": 210,
+        "label": 1,
+        "type": 11,
+        "typeName": ".GaitData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "gait",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_state",
+        "number": 220,
+        "label": 1,
+        "type": 11,
+        "typeName": ".ServoStateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoState",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_pwm",
+        "number": 230,
+        "label": 1,
+        "type": 11,
+        "typeName": ".ServoPWMData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "wifi_settings",
+        "number": 240,
+        "label": 1,
+        "type": 11,
+        "typeName": ".WifiSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "wifiSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sonar",
+        "number": 250,
+        "label": 1,
+        "type": 11,
+        "typeName": ".SonarData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sonar",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "rssi",
+        "number": 260,
+        "label": 1,
+        "type": 11,
+        "typeName": ".RSSIData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "message", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
+    "enumType": [],
+    "service": [],
+    "extension": [],
+    "options": undefined,
+    "sourceCodeInfo": {
+      "location": [{
+        "path": [4, 0],
+        "span": [3, 0, 8, 1],
+        "leadingComments": " Individual message data types\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 18],
+        "span": [32, 0, 53, 1],
+        "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }],
+    },
+    "syntax": "proto3",
+    "edition": 0,
+  },
+  references: {
+    ".IMUData": IMUData,
+    ".IMUCalibrateData": IMUCalibrateData,
+    ".ModeData": ModeData,
+    ".InputData": InputData,
+    ".AnalyticsData": AnalyticsData,
+    ".PositionData": PositionData,
+    ".AnglesData": AnglesData,
+    ".I2CScanData": I2CScanData,
+    ".PeripheralSettingsData": PeripheralSettingsData,
+    ".OTAStatusData": OTAStatusData,
+    ".GaitData": GaitData,
+    ".ServoStateData": ServoStateData,
+    ".ServoPWMData": ServoPWMData,
+    ".WifiSettingsData": WifiSettingsData,
+    ".SonarData": SonarData,
+    ".RSSIData": RSSIData,
+    ".SubscribeNotification": SubscribeNotification,
+    ".UnsubscribeNotification": UnsubscribeNotification,
+    ".WebsocketMessage": WebsocketMessage,
+  },
+  dependencies: [],
 };
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

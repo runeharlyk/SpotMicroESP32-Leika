@@ -3,7 +3,7 @@ This file is temporary, just to show how ot compile the proto files
 Make sure to actually create the output directories before executing the commands
 
 TS:
-protoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/src/lib" "platform_shared\example.proto"
+rotoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/src/lib" --ts_proto_opt=outputSchema=true ".\platform_shared\websocket_message.proto"
 
 NEW TS (USING PROTOBUFJS):
 cd app
