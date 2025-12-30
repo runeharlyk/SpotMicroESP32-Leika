@@ -133,9 +133,13 @@ function createWebSocket() {
         unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime)
     }
 
-    function sendEvent(event: string, data: unknown) {
+    // T must extend a type of WebsocketMessages
+    function sendEvent<T>(event: MessageFns<T>, data: T) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        send([2, event, data])
+        const type = get_event_from_messagetype(event);
+        const wsm = WebsocketMessage.create();
+        (wsm as any)[type] = data
+        send(wsm)
     }
 
     function unsubscribeToEvent(event: string) {
