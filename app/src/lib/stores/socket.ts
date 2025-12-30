@@ -1,12 +1,34 @@
 import { writable } from 'svelte/store'
 import { encode, decode } from '@msgpack/msgpack'
-import { WebsocketMessage, type MessageFns } from '$lib/platform_shared/websocket_message'
+import { WebsocketMessage, type MessageFns, protoMetadata as websocket_md } from '$lib/platform_shared/websocket_message'
 import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
 import type { BinaryWriter } from '@bufbuild/protobuf/wire'
 
-// Auto-build reverse mapping from MessageFns to event key
+
+// -------- START PARSING PROTO DATA --------
+// Auto-build reverse mapping from MessageFns to event key and field number
 const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<any>, string>()
-function get_event_from_messagetype(event_type: MessageFns<any>) {
+const MESSAGE_TYPE_TO_FIELD_NUMBER = new Map<MessageFns<any>, number>()
+
+// Build the mapping using references from metadata
+const websocketMessageType = websocket_md.fileDescriptor.messageType?.find(
+    msg => msg.name === 'WebsocketMessage'
+)
+
+if (websocketMessageType?.field) {
+    for (const field of websocketMessageType.field) {
+        // Look up the MessageFns in references using the typeName
+        if (field.typeName) {
+            const messageFns = websocket_md.references[field.typeName]
+            if (messageFns && field.jsonName && field.number) {
+                MESSAGE_TYPE_TO_KEY.set(messageFns, field.jsonName)
+                MESSAGE_TYPE_TO_FIELD_NUMBER.set(messageFns, field.number)
+            }
+        }
+    }
+}
+
+function get_name_from_messagetype(event_type: MessageFns<any>): string {
     const event = MESSAGE_TYPE_TO_KEY.get(event_type)
     if (!event) {
         throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
@@ -14,26 +36,16 @@ function get_event_from_messagetype(event_type: MessageFns<any>) {
     return event
 }
 
-// Iterate through all exports and match them to WebsocketMessage fields
-for (const [exportName, exportValue] of Object.entries(WebsocketMessages)) {
-    // Check if this export is a MessageFns (has encode/decode methods)
-    if (exportValue && typeof exportValue === 'object' && 'encode' in exportValue && 'decode' in exportValue) {
-        // Try to find matching key in WebsocketMessage by creating an instance and checking
-        const messageKeys = Object.keys(WebsocketMessage.create()) as Array<keyof typeof WebsocketMessage>
-
-        for (const key of messageKeys) {
-            // Match by naming convention: exportName should match key in some pattern
-            // Common patterns: "IMUData" -> "imu", "RSSIData" -> "rssi"
-            const keyLower = key.toLowerCase()
-            const exportLower = exportName.toLowerCase().replace(/data$/, '')
-
-            if (keyLower === exportLower) {
-                MESSAGE_TYPE_TO_KEY.set(exportValue as MessageFns<any>, key)
-                break
-            }
-        }
+// Get field number from MessageFns type
+function get_field_number_from_messagetype(event_type: MessageFns<any>): number {
+    const fieldNumber = MESSAGE_TYPE_TO_FIELD_NUMBER.get(event_type)
+    if (fieldNumber === undefined) {
+        throw new Error("Field number not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
     }
+    return fieldNumber
 }
+
+// -------- END PARSING PROTO DATA --------
 
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const
 type SocketEvent = (typeof socketEvents)[number]
@@ -60,7 +72,8 @@ const encodeMessage = (data: WebsocketMessage): Uint8Array<ArrayBuffer> => {
 }
 
 function createWebSocket() {
-    const listeners = new Map<string, Set<(data?: unknown) => void>>()
+    const msg_listeners = new Map<number, Set<(data?: unknown) => void>>()
+    const event_listeners = new Map<number, Set<(data?: unknown) => void>>()
     const { subscribe, set } = writable(false)
     const reconnectTimeoutTime = 5000
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
@@ -74,7 +87,7 @@ function createWebSocket() {
     }
 
     function getListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void>  {
-        const event = get_event_from_messagetype(event_type);
+        const event = get_field_number_from_messagetype(event_type);
 
         const event_listeners = listeners.get(event);
         if (event_listeners == undefined) {

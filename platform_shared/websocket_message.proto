@@ -27,6 +27,12 @@ message RSSIData { int32 rssi = 1; }
 message SubscribeNotification {}
 message UnsubscribeNotification {}
 
+message InternalOpen {}
+message InternalClose {}
+message InternalError {}
+message InternalMessage {}
+message InternalUnresponsive {}
+
 
 // WebSocket message wrapper
 // Only ONE field will be set at a time (oneof ensures this)
