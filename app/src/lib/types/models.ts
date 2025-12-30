@@ -1,21 +1,3 @@
-export enum MessageTopic {
-    imu = 'imu',
-    imuCalibrate = 'imuCalibrate',
-    mode = 'mode',
-    input = 'input',
-    analytics = 'analytics',
-    position = 'position',
-    angles = 'angles',
-    i2cScan = 'i2cScan',
-    peripheralSettings = 'peripheralSettings',
-    otastatus = 'otastatus',
-    gait = 'walk_gait',
-    servoState = 'servoState',
-    servoPWM = 'servoPWM',
-    WiFiSettings = 'WiFiSettings',
-    sonar = 'sonar',
-    rssi = 'rssi'
-}
 
 export type vector = { x: number; y: number }
 

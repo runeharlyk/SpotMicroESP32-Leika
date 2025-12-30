@@ -1,6 +1,11 @@
+
 <script lang="ts">
+    import { onMount } from 'svelte'
+    import { socket } from '$lib/stores'
+
+
 	//import { IMUReport, IMUType } from '$lib/platform_shared/example';
-    import { AnglesData, WebsocketMessage } from '$lib/platform_shared/websocket_message'
+    import { AnglesData, WebsocketMessage, IMUData } from '$lib/platform_shared/websocket_message'
 
 	// const imu_report: IMUReport = {type: IMUType.IMU_ACCEL, xVal: 4}
 	// const writer = IMUReport.encode(imu_report);
@@ -40,7 +45,20 @@
     //     console.log("True2!")
     // }
 
+    const handleData = (data: IMUData) => {
+        
+        console.log(data);
+    }
+    onMount(() => {
+        
+        
+        socket.on(IMUData, handleData)
+        return () => socket.off(IMUData, handleData)
+    })
+
 </script>
+
+
 
 <h1>Hexadecimal Output</h1>
 
