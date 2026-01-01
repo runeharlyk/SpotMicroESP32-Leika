@@ -13,6 +13,7 @@ message IMUData {
     float temp = 4;
 }
 
+DEACTIVATED = 0;
 enum ModesEnum {
     DEACTIVATED = 0;
     IDLE = 1;
@@ -21,6 +22,22 @@ enum ModesEnum {
     STAND = 4;
     WALK = 5;
 }
+message StaticSystemInformation {
+    string esp_platform = 1; 
+    string firmware_version = 2; 
+    uint32 cpu_freq_mhz = 3; 
+    string cpu_type = 4; 
+    int32 cpu_rev = 5; 
+    uint32 cpu_cores = 6; 
+    uint32 sketch_size = 7; 
+    uint32 free_sketch_space = 8; 
+    string sdk_version = 9; 
+    string arduino_version = 10; 
+    uint32 flash_chip_size = 11; 
+    uint32 flash_chip_speed = 12; 
+    string cpu_reset_reason = 13; 
+}
+
 
 message IMUCalibrateData { bool success = 1; }
 message ModeData { ModesEnum mode = 1; }
@@ -56,7 +73,16 @@ message SonarData { string dummy_field = 1; }
 message HumanInputData {
     Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
 }
-
+message SystemInformation {
+    AnalyticsData analytics_data = 1; StaticSystemInformation static_system_information = 2;
+}
+enum WalkGaits {
+    TROT = 0;
+    CRAWL = 1;
+}
+message WalkGaitData {
+    WalkGaits gait = 1;
+}
 
 message SubscribeNotification { int32 tag = 1; }
 message UnsubscribeNotification {int32 tag = 1; }

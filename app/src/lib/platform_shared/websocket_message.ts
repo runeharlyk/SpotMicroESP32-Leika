@@ -67,6 +67,39 @@ export function modesEnumToJSON(object: ModesEnum): string {
   }
 }
 
+export enum WalkGaits {
+  TROT = 0,
+  CRAWL = 1,
+  UNRECOGNIZED = -1,
+}
+
+export function walkGaitsFromJSON(object: any): WalkGaits {
+  switch (object) {
+    case 0:
+    case "TROT":
+      return WalkGaits.TROT;
+    case 1:
+    case "CRAWL":
+      return WalkGaits.CRAWL;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return WalkGaits.UNRECOGNIZED;
+  }
+}
+
+export function walkGaitsToJSON(object: WalkGaits): string {
+  switch (object) {
+    case WalkGaits.TROT:
+      return "TROT";
+    case WalkGaits.CRAWL:
+      return "CRAWL";
+    case WalkGaits.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface Vector {
   x: number;
   y: number;
@@ -198,6 +231,10 @@ export interface HumanInputData {
 export interface SystemInformation {
   analyticsData: AnalyticsData | undefined;
   staticSystemInformation: StaticSystemInformation | undefined;
+}
+
+export interface WalkGaitData {
+  gait: WalkGaits;
 }
 
 export interface SubscribeNotification {
@@ -2326,6 +2363,64 @@ export const SystemInformation: MessageFns<SystemInformation> = {
   },
 };
 
+function createBaseWalkGaitData(): WalkGaitData {
+  return { gait: 0 };
+}
+
+export const WalkGaitData: MessageFns<WalkGaitData> = {
+  encode(message: WalkGaitData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.gait !== 0) {
+      writer.uint32(8).int32(message.gait);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WalkGaitData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWalkGaitData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.gait = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WalkGaitData {
+    return { gait: isSet(object.gait) ? walkGaitsFromJSON(object.gait) : 0 };
+  },
+
+  toJSON(message: WalkGaitData): unknown {
+    const obj: any = {};
+    if (message.gait !== 0) {
+      obj.gait = walkGaitsToJSON(message.gait);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<WalkGaitData>, I>>(base?: I): WalkGaitData {
+    return WalkGaitData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<WalkGaitData>, I>>(object: I): WalkGaitData {
+    const message = createBaseWalkGaitData();
+    message.gait = object.gait ?? 0;
+    return message;
+  },
+};
+
 function createBaseSubscribeNotification(): SubscribeNotification {
   return { tag: 0 };
 }
@@ -4018,6 +4113,30 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "WalkGaitData",
+      "field": [{
+        "name": "gait",
+        "number": 1,
+        "label": 1,
+        "type": 14,
+        "typeName": ".WalkGaits",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "gait",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "SubscribeNotification",
       "field": [{
         "name": "tag",
@@ -4296,6 +4415,17 @@ export const protoMetadata: ProtoMetadata = {
       "reservedRange": [],
       "reservedName": [],
       "visibility": 0,
+    }, {
+      "name": "WalkGaits",
+      "value": [{ "name": "TROT", "number": 0, "options": undefined }, {
+        "name": "CRAWL",
+        "number": 1,
+        "options": undefined,
+      }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
     }],
     "service": [],
     "extension": [],
@@ -4308,8 +4438,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 23],
-        "span": [87, 0, 105, 1],
+        "path": [4, 24],
+        "span": [94, 0, 112, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -4320,6 +4450,7 @@ export const protoMetadata: ProtoMetadata = {
   },
   references: {
     ".ModesEnum": ModesEnum,
+    ".WalkGaits": WalkGaits,
     ".Vector": Vector,
     ".I2CDevice": I2CDevice,
     ".PinConfig": PinConfig,
@@ -4339,6 +4470,7 @@ export const protoMetadata: ProtoMetadata = {
     ".SonarData": SonarData,
     ".HumanInputData": HumanInputData,
     ".SystemInformation": SystemInformation,
+    ".WalkGaitData": WalkGaitData,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
     ".PingMsg": PingMsg,
