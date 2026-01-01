@@ -86,19 +86,17 @@
     const handleKeyup = (event: KeyboardEvent) => {
         const down = event.type === 'keydown'
         input.update(data => {
-            if (event.key === 'w') data.left.y = down ? 1 : 0
-            if (event.key === 'a') data.left.x = down ? -1 : 0
-            if (event.key === 's') data.left.y = down ? -1 : 0
-            if (event.key === 'd') data.left.x = down ? 1 : 0
-            if (event.key === 'ArrowLeft') data.right.x = down ? 1 : 0
-            if (event.key === 'ArrowRight') data.right.x = down ? -1 : 0
+            if (event.key === 'w') data.left!.y = down ? 1 : 0
+            if (event.key === 'a') data.left!.x = down ? -1 : 0
+            if (event.key === 's') data.left!.y = down ? -1 : 0
+            if (event.key === 'd') data.left!.x = down ? 1 : 0
+            if (event.key === 'ArrowLeft') data.right!.x = down ? 1 : 0
+            if (event.key === 'ArrowRight') data.right!.x = down ? -1 : 0
             return data
         })
     }
 
-    const handleRange = (event: Event, key: 'speed' | 'height' | 's1') => {
-        const value: number = Number((event.target as HTMLInputElement).value)
-
+    const handleRange = (value: number, key: 'speed' | 'height' | 's1') => {
         input.update(inputData => {
             inputData[key] = value
             return inputData
@@ -140,7 +138,7 @@
                 min={0}
                 max={1}
                 step={0.01}
-                oninput={(e: Event) => handleRange(e, 'height')}
+                oninput={(v: number) => handleRange(v, 'height')}
             />
             <label for="height" class="text-xs font-medium opacity-70">Ht</label>
         </div>
@@ -183,7 +181,7 @@
                             min="0"
                             step="0.01"
                             max="1"
-                            oninput={e => handleRange(e, 's1')}
+                            oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 's1')}
                             class="range range-xs range-primary"
                         />
                     </div>
@@ -195,7 +193,7 @@
                             min="0"
                             step="0.01"
                             max="1"
-                            oninput={e => handleRange(e, 'speed')}
+                            oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 'speed')}
                             class="range range-xs range-primary"
                         />
                     </div>

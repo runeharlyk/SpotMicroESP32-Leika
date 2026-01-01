@@ -10,6 +10,63 @@ import type { FileDescriptorProto } from "ts-proto-descriptors";
 
 export const protobufPackage = "";
 
+export enum ModesEnum {
+  DEACTIVATED = 0,
+  IDLE = 1,
+  CALIBRATION = 2,
+  REST = 3,
+  STAND = 4,
+  WALK = 5,
+  UNRECOGNIZED = -1,
+}
+
+export function modesEnumFromJSON(object: any): ModesEnum {
+  switch (object) {
+    case 0:
+    case "DEACTIVATED":
+      return ModesEnum.DEACTIVATED;
+    case 1:
+    case "IDLE":
+      return ModesEnum.IDLE;
+    case 2:
+    case "CALIBRATION":
+      return ModesEnum.CALIBRATION;
+    case 3:
+    case "REST":
+      return ModesEnum.REST;
+    case 4:
+    case "STAND":
+      return ModesEnum.STAND;
+    case 5:
+    case "WALK":
+      return ModesEnum.WALK;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ModesEnum.UNRECOGNIZED;
+  }
+}
+
+export function modesEnumToJSON(object: ModesEnum): string {
+  switch (object) {
+    case ModesEnum.DEACTIVATED:
+      return "DEACTIVATED";
+    case ModesEnum.IDLE:
+      return "IDLE";
+    case ModesEnum.CALIBRATION:
+      return "CALIBRATION";
+    case ModesEnum.REST:
+      return "REST";
+    case ModesEnum.STAND:
+      return "STAND";
+    case ModesEnum.WALK:
+      return "WALK";
+    case ModesEnum.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface Vector {
   x: number;
   y: number;
@@ -52,7 +109,7 @@ export interface IMUCalibrateData {
 }
 
 export interface ModeData {
-  mode: number;
+  mode: ModesEnum;
 }
 
 export interface ControllerInputData {
@@ -114,6 +171,14 @@ export interface SonarData {
   dummyField: string;
 }
 
+export interface HumanInputData {
+  left: Vector | undefined;
+  right: Vector | undefined;
+  height: number;
+  speed: number;
+  s1: number;
+}
+
 export interface SubscribeNotification {
   tag: number;
 }
@@ -146,6 +211,7 @@ export interface WebsocketMessage {
   i2cScan?: I2CScanData | undefined;
   peripheralSettings?: PeripheralSettingsData | undefined;
   wifiSettings?: WifiSettingsData | undefined;
+  humanInputData?: HumanInputData | undefined;
   rssi?: RSSIData | undefined;
 }
 
@@ -796,7 +862,7 @@ export const ModeData: MessageFns<ModeData> = {
             break;
           }
 
-          message.mode = reader.int32();
+          message.mode = reader.int32() as any;
           continue;
         }
       }
@@ -809,13 +875,13 @@ export const ModeData: MessageFns<ModeData> = {
   },
 
   fromJSON(object: any): ModeData {
-    return { mode: isSet(object.mode) ? globalThis.Number(object.mode) : 0 };
+    return { mode: isSet(object.mode) ? modesEnumFromJSON(object.mode) : 0 };
   },
 
   toJSON(message: ModeData): unknown {
     const obj: any = {};
     if (message.mode !== 0) {
-      obj.mode = Math.round(message.mode);
+      obj.mode = modesEnumToJSON(message.mode);
     }
     return obj;
   },
@@ -1764,6 +1830,132 @@ export const SonarData: MessageFns<SonarData> = {
   },
 };
 
+function createBaseHumanInputData(): HumanInputData {
+  return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
+}
+
+export const HumanInputData: MessageFns<HumanInputData> = {
+  encode(message: HumanInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.left !== undefined) {
+      Vector.encode(message.left, writer.uint32(82).fork()).join();
+    }
+    if (message.right !== undefined) {
+      Vector.encode(message.right, writer.uint32(90).fork()).join();
+    }
+    if (message.height !== 0) {
+      writer.uint32(165).float(message.height);
+    }
+    if (message.speed !== 0) {
+      writer.uint32(173).float(message.speed);
+    }
+    if (message.s1 !== 0) {
+      writer.uint32(181).float(message.s1);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): HumanInputData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHumanInputData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.left = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.right = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 20: {
+          if (tag !== 165) {
+            break;
+          }
+
+          message.height = reader.float();
+          continue;
+        }
+        case 21: {
+          if (tag !== 173) {
+            break;
+          }
+
+          message.speed = reader.float();
+          continue;
+        }
+        case 22: {
+          if (tag !== 181) {
+            break;
+          }
+
+          message.s1 = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HumanInputData {
+    return {
+      left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
+      right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      speed: isSet(object.speed) ? globalThis.Number(object.speed) : 0,
+      s1: isSet(object.s1) ? globalThis.Number(object.s1) : 0,
+    };
+  },
+
+  toJSON(message: HumanInputData): unknown {
+    const obj: any = {};
+    if (message.left !== undefined) {
+      obj.left = Vector.toJSON(message.left);
+    }
+    if (message.right !== undefined) {
+      obj.right = Vector.toJSON(message.right);
+    }
+    if (message.height !== 0) {
+      obj.height = message.height;
+    }
+    if (message.speed !== 0) {
+      obj.speed = message.speed;
+    }
+    if (message.s1 !== 0) {
+      obj.s1 = message.s1;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HumanInputData>, I>>(base?: I): HumanInputData {
+    return HumanInputData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<HumanInputData>, I>>(object: I): HumanInputData {
+    const message = createBaseHumanInputData();
+    message.left = (object.left !== undefined && object.left !== null) ? Vector.fromPartial(object.left) : undefined;
+    message.right = (object.right !== undefined && object.right !== null)
+      ? Vector.fromPartial(object.right)
+      : undefined;
+    message.height = object.height ?? 0;
+    message.speed = object.speed ?? 0;
+    message.s1 = object.s1 ?? 0;
+    return message;
+  },
+};
+
 function createBaseSubscribeNotification(): SubscribeNotification {
   return { tag: 0 };
 }
@@ -1981,6 +2173,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     i2cScan: undefined,
     peripheralSettings: undefined,
     wifiSettings: undefined,
+    humanInputData: undefined,
     rssi: undefined,
   };
 }
@@ -2025,6 +2218,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.wifiSettings !== undefined) {
       WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join();
+    }
+    if (message.humanInputData !== undefined) {
+      HumanInputData.encode(message.humanInputData, writer.uint32(2002).fork()).join();
     }
     if (message.rssi !== undefined) {
       RSSIData.encode(message.rssi, writer.uint32(2082).fork()).join();
@@ -2143,6 +2339,14 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           message.wifiSettings = WifiSettingsData.decode(reader, reader.uint32());
           continue;
         }
+        case 250: {
+          if (tag !== 2002) {
+            break;
+          }
+
+          message.humanInputData = HumanInputData.decode(reader, reader.uint32());
+          continue;
+        }
         case 260: {
           if (tag !== 2082) {
             break;
@@ -2177,6 +2381,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
         ? PeripheralSettingsData.fromJSON(object.peripheralSettings)
         : undefined,
       wifiSettings: isSet(object.wifiSettings) ? WifiSettingsData.fromJSON(object.wifiSettings) : undefined,
+      humanInputData: isSet(object.humanInputData) ? HumanInputData.fromJSON(object.humanInputData) : undefined,
       rssi: isSet(object.rssi) ? RSSIData.fromJSON(object.rssi) : undefined,
     };
   },
@@ -2221,6 +2426,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.wifiSettings !== undefined) {
       obj.wifiSettings = WifiSettingsData.toJSON(message.wifiSettings);
+    }
+    if (message.humanInputData !== undefined) {
+      obj.humanInputData = HumanInputData.toJSON(message.humanInputData);
     }
     if (message.rssi !== undefined) {
       obj.rssi = RSSIData.toJSON(message.rssi);
@@ -2267,6 +2475,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       : undefined;
     message.wifiSettings = (object.wifiSettings !== undefined && object.wifiSettings !== null)
       ? WifiSettingsData.fromPartial(object.wifiSettings)
+      : undefined;
+    message.humanInputData = (object.humanInputData !== undefined && object.humanInputData !== null)
+      ? HumanInputData.fromPartial(object.humanInputData)
       : undefined;
     message.rssi = (object.rssi !== undefined && object.rssi !== null) ? RSSIData.fromPartial(object.rssi) : undefined;
     return message;
@@ -2650,8 +2861,8 @@ export const protoMetadata: ProtoMetadata = {
         "name": "mode",
         "number": 1,
         "label": 1,
-        "type": 5,
-        "typeName": "",
+        "type": 14,
+        "typeName": ".ModesEnum",
         "extendee": "",
         "defaultValue": "",
         "oneofIndex": 0,
@@ -3161,6 +3372,78 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "HumanInputData",
+      "field": [{
+        "name": "left",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "left",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "right",
+        "number": 11,
+        "label": 1,
+        "type": 11,
+        "typeName": ".Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "right",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "height",
+        "number": 20,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "height",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "speed",
+        "number": 21,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "speed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "s1",
+        "number": 22,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "s1",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "SubscribeNotification",
       "field": [{
         "name": "tag",
@@ -3391,6 +3674,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "human_input_data",
+        "number": 250,
+        "label": 1,
+        "type": 11,
+        "typeName": ".HumanInputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "humanInputData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "rssi",
         "number": 260,
         "label": 1,
@@ -3413,7 +3708,21 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }],
-    "enumType": [],
+    "enumType": [{
+      "name": "ModesEnum",
+      "value": [
+        { "name": "DEACTIVATED", "number": 0, "options": undefined },
+        { "name": "IDLE", "number": 1, "options": undefined },
+        { "name": "CALIBRATION", "number": 2, "options": undefined },
+        { "name": "REST", "number": 3, "options": undefined },
+        { "name": "STAND", "number": 4, "options": undefined },
+        { "name": "WALK", "number": 5, "options": undefined },
+      ],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
     "service": [],
     "extension": [],
     "options": undefined,
@@ -3425,8 +3734,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 20],
-        "span": [56, 0, 73, 1],
+        "path": [4, 21],
+        "span": [69, 0, 87, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -3436,6 +3745,7 @@ export const protoMetadata: ProtoMetadata = {
     "edition": 0,
   },
   references: {
+    ".ModesEnum": ModesEnum,
     ".Vector": Vector,
     ".I2CDevice": I2CDevice,
     ".PinConfig": PinConfig,
@@ -3452,6 +3762,7 @@ export const protoMetadata: ProtoMetadata = {
     ".RSSIData": RSSIData,
     ".DownloadOTAData": DownloadOTAData,
     ".SonarData": SonarData,
+    ".HumanInputData": HumanInputData,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
     ".PingMsg": PingMsg,
