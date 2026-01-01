@@ -13,8 +13,17 @@ message IMUData {
     float temp = 4;
 }
 
+enum ModesEnum {
+    DEACTIVATED = 0;
+    IDLE = 1;
+    CALIBRATION = 2;
+    REST = 3;
+    STAND = 4;
+    WALK = 5;
+}
+
 message IMUCalibrateData { bool success = 1; }
-message ModeData { int32 mode = 1; }
+message ModeData { ModesEnum mode = 1; }
 message ControllerInputData {
     Vector left = 1;
     Vector right = 2;
@@ -44,6 +53,10 @@ message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated
 message RSSIData { int32 rssi = 1; }
 message DownloadOTAData { string status = 1; int32 progress = 2; string error = 3; }
 message SonarData { string dummy_field = 1; }
+message HumanInputData {
+    Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
+}
+
 
 message SubscribeNotification { int32 tag = 1; }
 message UnsubscribeNotification {int32 tag = 1; }
@@ -69,6 +82,7 @@ message WebsocketMessage {
         I2CScanData i2c_scan = 180;
         PeripheralSettingsData peripheral_settings = 190;
         WifiSettingsData wifi_settings = 240;
+        HumanInputData human_input_data = 250;
         RSSIData rssi = 260;
     }
 }

@@ -1,3 +1,4 @@
+import { HumanInputData, ModeData, ModesEnum } from '$lib/platform_shared/websocket_message'
 import type { ControllerInput } from '$lib/types/models'
 import { persistentStore } from '$lib/utilities/svelte-utilities'
 import { writable, type Writable } from 'svelte/store'
@@ -12,14 +13,7 @@ export const modes = ['deactivated', 'idle', 'calibration', 'rest', 'stand', 'wa
 
 export type Modes = (typeof modes)[number]
 
-export enum ModesEnum {
-    Deactivated = 0,
-    Idle = 1,
-    Calibration = 2,
-    Rest = 3,
-    Stand = 4,
-    Walk = 5
-}
+
 
 export enum WalkGaits {
     Trot = 0,
@@ -37,7 +31,7 @@ export const walkGaitToMode = (gait: WalkGaits): 'trot' | 'crawl' => {
     return gait === WalkGaits.Trot ? 'trot' : 'crawl'
 }
 
-export const mode: Writable<ModesEnum> = writable(ModesEnum.Deactivated)
+export const mode: Writable<ModeData> = writable(ModeData.create({ mode: ModesEnum.DEACTIVATED }))
 
 export const walkGait: Writable<WalkGaits> = writable(WalkGaits.Trot)
 
@@ -45,10 +39,4 @@ export const outControllerData = writable([0, 0, 0, 0, 0, 1, 0])
 
 export const kinematicData = writable([0, 0, 0, 0, 1, 0])
 
-export const input: Writable<ControllerInput> = writable({
-    left: { x: 0, y: 0 },
-    right: { x: 0, y: 0 },
-    height: 0.5,
-    speed: 0.5,
-    s1: 0.5
-})
+export const input: Writable<HumanInputData> = writable( HumanInputData.create( {left: {x:0,y:0}, right: {x:0,y:0}, height:0, s1:0, speed:0} ) )
