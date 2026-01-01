@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { WebSocketServer } from 'ws'
-import { socket } from '../../src/lib/stores/socket'
-import { IMUData, RSSIData, WebsocketMessage } from '../../src/lib/platform_shared/websocket_message'
+import { decodeMessage, MESSAGE_KEY_TO_TAG, socket } from '../../src/lib/stores/socket'
+import { IMUData, PingMsg, PongMsg, RSSIData, WebsocketMessage, protoMetadata as websocket_md  } from '../../src/lib/platform_shared/websocket_message'
 
 // Helper function to create encoded WebSocket messages
 function createEncodedMessage(messageType: 'imu' | 'rssi' | 'mode', data: any): Uint8Array {
@@ -205,6 +205,17 @@ describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
 		expect(decoded.y).toBe(imuData.y)
 		expect(decoded.z).toBe(imuData.z)
 		expect(decoded.temp).toBe(imuData.temp)
+	})
+
+    it('should encode and decode two empty types correctly', () => {
+
+		const encoded_ping = WebsocketMessage.encode(WebsocketMessage.create({ pingmsg: PingMsg.create() })).finish()
+        const decoded_ping = decodeMessage(encoded_ping.buffer)
+		expect(decoded_ping.tag).toBe(MESSAGE_KEY_TO_TAG.get("pingmsg"))
+
+		const encoded_pong = WebsocketMessage.encode(WebsocketMessage.create({ pongmsg: PongMsg.create() })).finish()
+        const decoded_pong = decodeMessage(encoded_pong.buffer)
+		expect(decoded_pong.tag).toBe(MESSAGE_KEY_TO_TAG.get("pongmsg"))
 	})
 
 	
