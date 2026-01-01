@@ -22,15 +22,8 @@
         useFeatureFlags,
         walkGait
     } from '$lib/stores'
-    import { type Analytics, type DownloadOTA } from '$lib/types/models'
+    import { AnalyticsData, AnglesData, DownloadOTAData, ModeData, RSSIData, SonarData } from '$lib/platform_shared/websocket_message'
     import { Throttler } from '$lib/utilities'
-    import {
-        AnglesData,
-        GaitData,
-        InputData,
-        ModeData,
-        PositionData
-    } from '$lib/platform_shared/websocket_message'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -58,28 +51,27 @@
         removeEventListeners()
     })
 
+    const eventListeners: (() => void)[] = [];
     const addEventListeners = () => {
-        socket.on('open', handleOpen)
-        socket.on('close', handleClose)
-        socket.on('error', handleError)
-        socket.on(MessageTopic.rssi, handleNetworkStatus)
-        socket.on(MessageTopic.mode, (data: ModesEnum) => mode.set(data))
-        socket.on(MessageTopic.analytics, handleAnalytics)
-        socket.on(MessageTopic.angles, (angles: number[]) => {
-            if (angles.length) servoAngles.set(angles)
-        })
+        eventListeners.push(...[
+            socket.onEvent('open', handleOpen),
+            socket.onEvent('close', handleClose),
+            socket.onEvent('error', handleError),
+            socket.on(RSSIData, (data) => telemetry.setRSSI(data)),
+            socket.on(ModeData, (data) => mode.set(data.mode)),
+            socket.on(AnalyticsData, (data) => {analytics.addData(data)}),
+            socket.on(AnglesData, (data) => {servoAngles.set(data.angles)})
+        ])
         features.subscribe(data => {
-            if (data?.download_firmware) socket.on(MessageTopic.otastatus, handleOAT)
-            if (data?.sonar) socket.on(MessageTopic.sonar, data => console.log(data))
+            if (data?.download_firmware) eventListeners.push( socket.on(DownloadOTAData, (data) => telemetry.setDownloadOTA(data)) )
+            if (data?.sonar) eventListeners.push( socket.on(SonarData, (data) => console.log(data)) )
         })
     }
 
     const removeEventListeners = () => {
-        socket.off(MessageTopic.analytics, handleAnalytics)
-        socket.off('open', handleOpen)
-        socket.off('close', handleClose)
-        socket.off(MessageTopic.rssi, handleNetworkStatus)
-        socket.off(MessageTopic.otastatus, handleOAT)
+        for (let offFunction of eventListeners) {
+            offFunction();
+        }
     }
 
     const handleOpen = () => {
@@ -88,16 +80,10 @@
 
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
-        telemetry.setRSSI(0)
+        telemetry.setRSSI( RSSIData.create({rssi: 0}) )
     }
 
     const handleError = (data: unknown) => console.error(data)
-
-    const handleAnalytics = (data: Analytics) => analytics.addData(data)
-
-    const handleNetworkStatus = (data: number) => telemetry.setRSSI(data)
-
-    const handleOAT = (data: DownloadOTA) => telemetry.setDownloadOTA(data)
 
     let menuOpen = $state(false)
 </script>

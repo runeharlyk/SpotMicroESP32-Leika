@@ -104,6 +104,16 @@ export interface RSSIData {
   rssi: number;
 }
 
+export interface DownloadOTAData {
+  status: string;
+  progress: number;
+  error: string;
+}
+
+export interface SonarData {
+  dummyField: string;
+}
+
 export interface SubscribeNotification {
   tag: number;
 }
@@ -1604,6 +1614,156 @@ export const RSSIData: MessageFns<RSSIData> = {
   },
 };
 
+function createBaseDownloadOTAData(): DownloadOTAData {
+  return { status: "", progress: 0, error: "" };
+}
+
+export const DownloadOTAData: MessageFns<DownloadOTAData> = {
+  encode(message: DownloadOTAData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.status !== "") {
+      writer.uint32(10).string(message.status);
+    }
+    if (message.progress !== 0) {
+      writer.uint32(16).int32(message.progress);
+    }
+    if (message.error !== "") {
+      writer.uint32(26).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DownloadOTAData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDownloadOTAData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.status = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.progress = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DownloadOTAData {
+    return {
+      status: isSet(object.status) ? globalThis.String(object.status) : "",
+      progress: isSet(object.progress) ? globalThis.Number(object.progress) : 0,
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: DownloadOTAData): unknown {
+    const obj: any = {};
+    if (message.status !== "") {
+      obj.status = message.status;
+    }
+    if (message.progress !== 0) {
+      obj.progress = Math.round(message.progress);
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DownloadOTAData>, I>>(base?: I): DownloadOTAData {
+    return DownloadOTAData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DownloadOTAData>, I>>(object: I): DownloadOTAData {
+    const message = createBaseDownloadOTAData();
+    message.status = object.status ?? "";
+    message.progress = object.progress ?? 0;
+    message.error = object.error ?? "";
+    return message;
+  },
+};
+
+function createBaseSonarData(): SonarData {
+  return { dummyField: "" };
+}
+
+export const SonarData: MessageFns<SonarData> = {
+  encode(message: SonarData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.dummyField !== "") {
+      writer.uint32(10).string(message.dummyField);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SonarData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSonarData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.dummyField = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SonarData {
+    return { dummyField: isSet(object.dummyField) ? globalThis.String(object.dummyField) : "" };
+  },
+
+  toJSON(message: SonarData): unknown {
+    const obj: any = {};
+    if (message.dummyField !== "") {
+      obj.dummyField = message.dummyField;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SonarData>, I>>(base?: I): SonarData {
+    return SonarData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SonarData>, I>>(object: I): SonarData {
+    const message = createBaseSonarData();
+    message.dummyField = object.dummyField ?? "";
+    return message;
+  },
+};
+
 function createBaseSubscribeNotification(): SubscribeNotification {
   return { tag: 0 };
 }
@@ -2929,6 +3089,78 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "DownloadOTAData",
+      "field": [{
+        "name": "status",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "status",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "progress",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "progress",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "error",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "error",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SonarData",
+      "field": [{
+        "name": "dummy_field",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "dummyField",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "SubscribeNotification",
       "field": [{
         "name": "tag",
@@ -3193,8 +3425,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 18],
-        "span": [54, 0, 71, 1],
+        "path": [4, 20],
+        "span": [56, 0, 73, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -3218,6 +3450,8 @@ export const protoMetadata: ProtoMetadata = {
     ".PeripheralSettingsData": PeripheralSettingsData,
     ".WifiSettingsData": WifiSettingsData,
     ".RSSIData": RSSIData,
+    ".DownloadOTAData": DownloadOTAData,
+    ".SonarData": SonarData,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
     ".PingMsg": PingMsg,

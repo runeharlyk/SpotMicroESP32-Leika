@@ -142,17 +142,25 @@ function createWebSocket() {
         ws.onclose = ev => disconnect('close', ev)
     }
 
-    function unsubscribe(event_type: MessageFns<any>, listener: (data: unknown) => void) {
+    function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
         const tag = get_tag_from_messagetype(event_type)
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
         // TODO: This looks like it deletes an individual listener, but unsubscribe unsubscribes for everyone. Not sure what it is supposed to do right now
-        message_listeners_totag?.delete(listener)
+        message_listeners_totag?.delete(listener as (data?: unknown) => void)
         if (message_listeners_totag.size == 0) { // No more listeners, so we can unsubscribe
-            unsubscribeToEvent(event_type)
+            unsubscribeToMessageFromServer(event_type)
         }
         
+    }
+
+    function unsubscribe_event(event_type: SocketEvent, listener: (data: unknown) => void) {
+
+        const message_listeners_totag = event_listeners.get(event_type)
+        if (!message_listeners_totag) return
+
+        message_listeners_totag?.delete(listener)
     }
 
     function resetUnresponsiveCheck() {
@@ -169,7 +177,7 @@ function createWebSocket() {
         send(wsm)
     }
 
-    function unsubscribeToEvent<T>(event_type: MessageFns<T>) {
+    function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
         const event = get_name_from_messagetype(event_type);
         const unsub_msg = WebsocketMessages.UnsubscribeNotification.create(
@@ -201,7 +209,7 @@ function createWebSocket() {
         subscribe,
         sendEvent,
         init,
-        on: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void): (() => void) => {
+        on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
             const tag = get_tag_from_messagetype(event_type);
 
             let message_listeners_totag = message_listeners.get(tag)
@@ -213,11 +221,14 @@ function createWebSocket() {
             message_listeners_totag.add(listener as (data: unknown) => void)
 
             return () => {
-                unsubscribe(event_type, listener as (data: unknown) => void)
+                unsubscribe(event_type, listener)
             }
         },
-        off: <MT, T>(event_type: MessageFns<MT>, listener: (data: T) => void) => {
-            unsubscribe(event_type, listener as (data: unknown) => void)
+        onEvent: (event_type: SocketEvent, listener: (data: unknown) => void): (() => void) => {
+
+            return () => {
+                unsubscribe_event(event_type, listener)
+            }
         }
     }
 }
