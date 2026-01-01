@@ -1,5 +1,4 @@
 import { DownloadOTAData, RSSIData } from '$lib/platform_shared/websocket_message'
-import { DownloadOTA } from '$lib/types/models'
 import { writable } from 'svelte/store'
 
 type telemetry_data_type = {
@@ -16,7 +15,7 @@ function createTelemetry() {
         setRSSI: (data: RSSIData) => {
             update(telemetry_data => { telemetry_data.rssi = data; return telemetry_data })
         },
-        setDownloadOTA: (data: DownloadOTA) => {
+        setDownloadOTA: (data: DownloadOTAData) => {
             update(telemetry_data => { telemetry_data.download_ota = data; return telemetry_data })
         }
     }

@@ -21,7 +21,7 @@
         useFeatureFlags,
         walkGait
     } from '$lib/stores'
-    import { AnalyticsData, AnglesData, DownloadOTAData, ModesEnum, RSSIData, SonarData } from '$lib/platform_shared/websocket_message'
+    import { AnalyticsData, AnglesData, DownloadOTAData, HumanInputData, ModeData, RSSIData, SonarData } from '$lib/platform_shared/websocket_message'
     import { Throttler } from '$lib/utilities'
 
     interface Props {
@@ -39,8 +39,8 @@
 
         addEventListeners()
 
-        input.subscribe(data => socket.sendEvent(InputData, InputData.create()))
-        mode.subscribe(data => socket.sendEvent(ModesD, data))
+        outControllerData.subscribe(data => socket.sendEvent(HumanInputData, data))
+        mode.subscribe(data => socket.sendEvent(ModeData, data))
         walkGait.subscribe(data => socket.sendEvent(GaitData, data))
         servoAnglesOut.subscribe(data => socket.sendEvent(AnglesData, data))
         kinematicData.subscribe(data => socket.sendEvent(PositionData, data))
@@ -57,7 +57,7 @@
             socket.onEvent('close', handleClose),
             socket.onEvent('error', handleError),
             socket.on(RSSIData, (data) => telemetry.setRSSI(data)),
-            socket.on(ModesEnum, (data) => mode.set(data)),
+            socket.on(ModeData, (data) => mode.set(data)),
             socket.on(AnalyticsData, (data) => {analytics.addData(data)}),
             socket.on(AnglesData, (data) => {servoAngles.set(data.angles)})
         ])

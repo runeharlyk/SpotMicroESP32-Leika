@@ -16,11 +16,12 @@
     import { VerticalSlider } from '$lib/components/input'
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
+    import { HumanInputData } from '$lib/platform_shared/websocket_message'
 
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
 
-    let data = new Array(7)
+    let data: HumanInputData = HumanInputData.create( {left: {x:0,y:0}, right: {x:0,y:0}, height:0, s1:0, speed:0} )
 
     $effect(() => {
         if ($hasGamepad) {
