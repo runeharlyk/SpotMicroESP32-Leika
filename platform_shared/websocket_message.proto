@@ -1,5 +1,10 @@
 syntax = "proto3";
 
+message Vector { float x = 1; float y = 2; }
+message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; }
+message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
+message KnownNetworkItem { string ssid = 1; string password = 2; bool static_ip = 3; optional string local_ip = 4; optional string subnet_mask = 5; optional string gateway_ip = 6; optional string dns_ip_1 = 7; optional string dns_ip_2 = 8;  }
+
 // Individual message data types
 message IMUData {
     float x = 1;
@@ -8,20 +13,34 @@ message IMUData {
     float temp = 4;
 }
 
-message IMUCalibrateData {}
+message IMUCalibrateData { bool success = 1; }
 message ModeData { int32 mode = 1; }
-message InputData {}
-message AnalyticsData {}
-message PositionData {}
-message AnglesData { repeated float angles = 1; }
-message I2CScanData {}
-message PeripheralSettingsData {}
-message OTAStatusData {}
-message GaitData {}
-message ServoStateData {}
-message ServoPWMData {}
-message WifiSettingsData {}
-message SonarData {}
+message ControllerInputData {
+    Vector left = 1;
+    Vector right = 2;
+    float height = 3;
+    float speed = 4;
+    float s1 = 5;
+}
+message AnalyticsData {
+    int32 max_alloc_heap = 1;
+    int32 psram_size = 2;
+    int32 free_psram = 3;
+    int32 free_heap = 4;
+    int32 total_heap = 5;
+    int32 min_free_heap = 6;
+    float core_temp = 7;
+    int32 fs_total = 8;
+    int32 fs_used = 9;
+    int64 uptime = 10;
+    int32 cpu0_usage = 11;
+    int32 cpu1_usage = 12;
+    int32 cpu_usage = 13;
+}
+message AnglesData { repeated int32 angles = 1; }
+message I2CScanData { repeated I2CDevice devices = 1; }
+message PeripheralSettingsData { int32 sda = 1; int32 scl = 2; int32 frequency = 3; repeated PinConfig pins = 4; }
+message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated KnownNetworkItem wifi_networks = 3; }
 message RSSIData { int32 rssi = 1; }
 
 message SubscribeNotification { int32 tag = 1; }
@@ -42,18 +61,12 @@ message WebsocketMessage {
         IMUData imu = 110;
         IMUCalibrateData imu_calibrate = 120;
         ModeData mode = 130;
-        InputData input = 140;
+        ControllerInputData input = 140;
         AnalyticsData analytics = 150;
-        PositionData position = 160;
         AnglesData angles = 170;
         I2CScanData i2c_scan = 180;
         PeripheralSettingsData peripheral_settings = 190;
-        OTAStatusData ota_status = 200;
-        GaitData gait = 210;
-        ServoStateData servo_state = 220;
-        ServoPWMData servo_pwm = 230;
         WifiSettingsData wifi_settings = 240;
-        SonarData sonar = 250;
         RSSIData rssi = 260;
     }
 }

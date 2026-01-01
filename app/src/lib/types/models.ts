@@ -1,13 +1,6 @@
 
 export type vector = { x: number; y: number }
 
-export interface ControllerInput {
-    left: vector
-    right: vector
-    height: number
-    speed: number
-    s1: number
-}
 
 export type GithubRelease = {
     message: string
@@ -18,7 +11,6 @@ export type GithubRelease = {
     }>
 }
 
-export type angles = number[] | Int16Array
 
 export type WifiStatus = {
     status: number
@@ -34,26 +26,11 @@ export type WifiStatus = {
     dns_ip_2?: string
 }
 
-export type WifiSettings = {
-    hostname: string
-    priority_RSSI: boolean
-    wifi_networks: KnownNetworkItem[]
-}
 
 export type NetworkList = {
     networks: NetworkItem[]
 }
 
-export type KnownNetworkItem = {
-    ssid: string
-    password: string
-    static_ip_config: boolean
-    local_ip?: string
-    subnet_mask?: string
-    gateway_ip?: string
-    dns_ip_1?: string
-    dns_ip_2?: string
-}
 
 export type NetworkItem = {
     rssi: number
@@ -86,22 +63,6 @@ export type DownloadOTA = {
     status: string
     progress: number
     error: string
-}
-
-export type Analytics = {
-    max_alloc_heap: number
-    psram_size: number
-    free_psram: number
-    free_heap: number
-    total_heap: number
-    min_free_heap: number
-    core_temp: number
-    fs_total: number
-    fs_used: number
-    uptime: number
-    cpu0_usage: number
-    cpu1_usage: number
-    cpu_usage: number
 }
 
 export type Rssi = {
@@ -143,9 +104,6 @@ export type IMUMsg = {
     bmp: [number, number, number, boolean]
 }
 
-export type IMUCalibrationResult = {
-    success: boolean
-}
 
 export interface I2CDevice {
     address: number
@@ -153,19 +111,6 @@ export interface I2CDevice {
     name: string
 }
 
-export type PinConfig = {
-    pin: number
-    mode: string
-    type: string
-    role: string
-}
-
-export type PeripheralsConfiguration = {
-    sda: number
-    scl: number
-    frequency: number
-    pins: PinConfig[]
-}
 
 export type CameraSettings = {
     framesize: number
