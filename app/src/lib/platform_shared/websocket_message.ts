@@ -104,6 +104,22 @@ export interface IMUData {
   temp: number;
 }
 
+export interface StaticSystemInformation {
+  espPlatform: string;
+  firmwareVersion: string;
+  cpuFreqMhz: number;
+  cpuType: string;
+  cpuRev: number;
+  cpuCores: number;
+  sketchSize: number;
+  freeSketchSpace: number;
+  sdkVersion: string;
+  arduinoVersion: string;
+  flashChipSize: number;
+  flashChipSpeed: number;
+  cpuResetReason: string;
+}
+
 export interface IMUCalibrateData {
   success: boolean;
 }
@@ -177,6 +193,11 @@ export interface HumanInputData {
   height: number;
   speed: number;
   s1: number;
+}
+
+export interface SystemInformation {
+  analyticsData: AnalyticsData | undefined;
+  staticSystemInformation: StaticSystemInformation | undefined;
 }
 
 export interface SubscribeNotification {
@@ -776,6 +797,272 @@ export const IMUData: MessageFns<IMUData> = {
     message.y = object.y ?? 0;
     message.z = object.z ?? 0;
     message.temp = object.temp ?? 0;
+    return message;
+  },
+};
+
+function createBaseStaticSystemInformation(): StaticSystemInformation {
+  return {
+    espPlatform: "",
+    firmwareVersion: "",
+    cpuFreqMhz: 0,
+    cpuType: "",
+    cpuRev: 0,
+    cpuCores: 0,
+    sketchSize: 0,
+    freeSketchSpace: 0,
+    sdkVersion: "",
+    arduinoVersion: "",
+    flashChipSize: 0,
+    flashChipSpeed: 0,
+    cpuResetReason: "",
+  };
+}
+
+export const StaticSystemInformation: MessageFns<StaticSystemInformation> = {
+  encode(message: StaticSystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.espPlatform !== "") {
+      writer.uint32(10).string(message.espPlatform);
+    }
+    if (message.firmwareVersion !== "") {
+      writer.uint32(18).string(message.firmwareVersion);
+    }
+    if (message.cpuFreqMhz !== 0) {
+      writer.uint32(24).uint32(message.cpuFreqMhz);
+    }
+    if (message.cpuType !== "") {
+      writer.uint32(34).string(message.cpuType);
+    }
+    if (message.cpuRev !== 0) {
+      writer.uint32(40).int32(message.cpuRev);
+    }
+    if (message.cpuCores !== 0) {
+      writer.uint32(48).uint32(message.cpuCores);
+    }
+    if (message.sketchSize !== 0) {
+      writer.uint32(56).uint32(message.sketchSize);
+    }
+    if (message.freeSketchSpace !== 0) {
+      writer.uint32(64).uint32(message.freeSketchSpace);
+    }
+    if (message.sdkVersion !== "") {
+      writer.uint32(74).string(message.sdkVersion);
+    }
+    if (message.arduinoVersion !== "") {
+      writer.uint32(82).string(message.arduinoVersion);
+    }
+    if (message.flashChipSize !== 0) {
+      writer.uint32(88).uint32(message.flashChipSize);
+    }
+    if (message.flashChipSpeed !== 0) {
+      writer.uint32(96).uint32(message.flashChipSpeed);
+    }
+    if (message.cpuResetReason !== "") {
+      writer.uint32(106).string(message.cpuResetReason);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StaticSystemInformation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStaticSystemInformation();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.espPlatform = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.firmwareVersion = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.cpuFreqMhz = reader.uint32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.cpuType = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.cpuRev = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.cpuCores = reader.uint32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.sketchSize = reader.uint32();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.freeSketchSpace = reader.uint32();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.sdkVersion = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.arduinoVersion = reader.string();
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.flashChipSize = reader.uint32();
+          continue;
+        }
+        case 12: {
+          if (tag !== 96) {
+            break;
+          }
+
+          message.flashChipSpeed = reader.uint32();
+          continue;
+        }
+        case 13: {
+          if (tag !== 106) {
+            break;
+          }
+
+          message.cpuResetReason = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StaticSystemInformation {
+    return {
+      espPlatform: isSet(object.espPlatform) ? globalThis.String(object.espPlatform) : "",
+      firmwareVersion: isSet(object.firmwareVersion) ? globalThis.String(object.firmwareVersion) : "",
+      cpuFreqMhz: isSet(object.cpuFreqMhz) ? globalThis.Number(object.cpuFreqMhz) : 0,
+      cpuType: isSet(object.cpuType) ? globalThis.String(object.cpuType) : "",
+      cpuRev: isSet(object.cpuRev) ? globalThis.Number(object.cpuRev) : 0,
+      cpuCores: isSet(object.cpuCores) ? globalThis.Number(object.cpuCores) : 0,
+      sketchSize: isSet(object.sketchSize) ? globalThis.Number(object.sketchSize) : 0,
+      freeSketchSpace: isSet(object.freeSketchSpace) ? globalThis.Number(object.freeSketchSpace) : 0,
+      sdkVersion: isSet(object.sdkVersion) ? globalThis.String(object.sdkVersion) : "",
+      arduinoVersion: isSet(object.arduinoVersion) ? globalThis.String(object.arduinoVersion) : "",
+      flashChipSize: isSet(object.flashChipSize) ? globalThis.Number(object.flashChipSize) : 0,
+      flashChipSpeed: isSet(object.flashChipSpeed) ? globalThis.Number(object.flashChipSpeed) : 0,
+      cpuResetReason: isSet(object.cpuResetReason) ? globalThis.String(object.cpuResetReason) : "",
+    };
+  },
+
+  toJSON(message: StaticSystemInformation): unknown {
+    const obj: any = {};
+    if (message.espPlatform !== "") {
+      obj.espPlatform = message.espPlatform;
+    }
+    if (message.firmwareVersion !== "") {
+      obj.firmwareVersion = message.firmwareVersion;
+    }
+    if (message.cpuFreqMhz !== 0) {
+      obj.cpuFreqMhz = Math.round(message.cpuFreqMhz);
+    }
+    if (message.cpuType !== "") {
+      obj.cpuType = message.cpuType;
+    }
+    if (message.cpuRev !== 0) {
+      obj.cpuRev = Math.round(message.cpuRev);
+    }
+    if (message.cpuCores !== 0) {
+      obj.cpuCores = Math.round(message.cpuCores);
+    }
+    if (message.sketchSize !== 0) {
+      obj.sketchSize = Math.round(message.sketchSize);
+    }
+    if (message.freeSketchSpace !== 0) {
+      obj.freeSketchSpace = Math.round(message.freeSketchSpace);
+    }
+    if (message.sdkVersion !== "") {
+      obj.sdkVersion = message.sdkVersion;
+    }
+    if (message.arduinoVersion !== "") {
+      obj.arduinoVersion = message.arduinoVersion;
+    }
+    if (message.flashChipSize !== 0) {
+      obj.flashChipSize = Math.round(message.flashChipSize);
+    }
+    if (message.flashChipSpeed !== 0) {
+      obj.flashChipSpeed = Math.round(message.flashChipSpeed);
+    }
+    if (message.cpuResetReason !== "") {
+      obj.cpuResetReason = message.cpuResetReason;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(base?: I): StaticSystemInformation {
+    return StaticSystemInformation.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(object: I): StaticSystemInformation {
+    const message = createBaseStaticSystemInformation();
+    message.espPlatform = object.espPlatform ?? "";
+    message.firmwareVersion = object.firmwareVersion ?? "";
+    message.cpuFreqMhz = object.cpuFreqMhz ?? 0;
+    message.cpuType = object.cpuType ?? "";
+    message.cpuRev = object.cpuRev ?? 0;
+    message.cpuCores = object.cpuCores ?? 0;
+    message.sketchSize = object.sketchSize ?? 0;
+    message.freeSketchSpace = object.freeSketchSpace ?? 0;
+    message.sdkVersion = object.sdkVersion ?? "";
+    message.arduinoVersion = object.arduinoVersion ?? "";
+    message.flashChipSize = object.flashChipSize ?? 0;
+    message.flashChipSpeed = object.flashChipSpeed ?? 0;
+    message.cpuResetReason = object.cpuResetReason ?? "";
     return message;
   },
 };
@@ -1956,6 +2243,89 @@ export const HumanInputData: MessageFns<HumanInputData> = {
   },
 };
 
+function createBaseSystemInformation(): SystemInformation {
+  return { analyticsData: undefined, staticSystemInformation: undefined };
+}
+
+export const SystemInformation: MessageFns<SystemInformation> = {
+  encode(message: SystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.analyticsData !== undefined) {
+      AnalyticsData.encode(message.analyticsData, writer.uint32(10).fork()).join();
+    }
+    if (message.staticSystemInformation !== undefined) {
+      StaticSystemInformation.encode(message.staticSystemInformation, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SystemInformation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSystemInformation();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.analyticsData = AnalyticsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.staticSystemInformation = StaticSystemInformation.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SystemInformation {
+    return {
+      analyticsData: isSet(object.analyticsData) ? AnalyticsData.fromJSON(object.analyticsData) : undefined,
+      staticSystemInformation: isSet(object.staticSystemInformation)
+        ? StaticSystemInformation.fromJSON(object.staticSystemInformation)
+        : undefined,
+    };
+  },
+
+  toJSON(message: SystemInformation): unknown {
+    const obj: any = {};
+    if (message.analyticsData !== undefined) {
+      obj.analyticsData = AnalyticsData.toJSON(message.analyticsData);
+    }
+    if (message.staticSystemInformation !== undefined) {
+      obj.staticSystemInformation = StaticSystemInformation.toJSON(message.staticSystemInformation);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SystemInformation>, I>>(base?: I): SystemInformation {
+    return SystemInformation.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SystemInformation>, I>>(object: I): SystemInformation {
+    const message = createBaseSystemInformation();
+    message.analyticsData = (object.analyticsData !== undefined && object.analyticsData !== null)
+      ? AnalyticsData.fromPartial(object.analyticsData)
+      : undefined;
+    message.staticSystemInformation =
+      (object.staticSystemInformation !== undefined && object.staticSystemInformation !== null)
+        ? StaticSystemInformation.fromPartial(object.staticSystemInformation)
+        : undefined;
+    return message;
+  },
+};
+
 function createBaseSubscribeNotification(): SubscribeNotification {
   return { tag: 0 };
 }
@@ -2832,6 +3202,174 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "StaticSystemInformation",
+      "field": [{
+        "name": "esp_platform",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "espPlatform",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_version",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_freq_mhz",
+        "number": 3,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuFreqMhz",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_type",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuType",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_rev",
+        "number": 5,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuRev",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_cores",
+        "number": 6,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuCores",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sketch_size",
+        "number": 7,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sketchSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_sketch_space",
+        "number": 8,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freeSketchSpace",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sdk_version",
+        "number": 9,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sdkVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "arduino_version",
+        "number": 10,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "arduinoVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_size",
+        "number": 11,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_speed",
+        "number": 12,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSpeed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_reset_reason",
+        "number": 13,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuResetReason",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "IMUCalibrateData",
       "field": [{
         "name": "success",
@@ -3444,6 +3982,42 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "SystemInformation",
+      "field": [{
+        "name": "analytics_data",
+        "number": 1,
+        "label": 1,
+        "type": 11,
+        "typeName": ".AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analyticsData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "static_system_information",
+        "number": 2,
+        "label": 1,
+        "type": 11,
+        "typeName": ".StaticSystemInformation",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "staticSystemInformation",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "SubscribeNotification",
       "field": [{
         "name": "tag",
@@ -3734,8 +4308,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 21],
-        "span": [69, 0, 87, 1],
+        "path": [4, 23],
+        "span": [87, 0, 105, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -3751,6 +4325,7 @@ export const protoMetadata: ProtoMetadata = {
     ".PinConfig": PinConfig,
     ".KnownNetworkItem": KnownNetworkItem,
     ".IMUData": IMUData,
+    ".StaticSystemInformation": StaticSystemInformation,
     ".IMUCalibrateData": IMUCalibrateData,
     ".ModeData": ModeData,
     ".ControllerInputData": ControllerInputData,
@@ -3763,6 +4338,7 @@ export const protoMetadata: ProtoMetadata = {
     ".DownloadOTAData": DownloadOTAData,
     ".SonarData": SonarData,
     ".HumanInputData": HumanInputData,
+    ".SystemInformation": SystemInformation,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
     ".PingMsg": PingMsg,

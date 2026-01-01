@@ -1,3 +1,4 @@
+import type { AnalyticsData } from "$lib/platform_shared/websocket_message";
 
 export type vector = { x: number; y: number }
 
@@ -65,23 +66,6 @@ export type Rssi = {
     ssid: string
 }
 
-export type StaticSystemInformation = {
-    esp_platform: string
-    firmware_version: string
-    cpu_freq_mhz: number
-    cpu_type: string
-    cpu_rev: number
-    cpu_cores: number
-    sketch_size: number
-    free_sketch_space: number
-    sdk_version: string
-    arduino_version: string
-    flash_chip_size: number
-    flash_chip_speed: number
-    cpu_reset_reason: string
-}
-
-export type SystemInformation = Analytics & StaticSystemInformation
 
 export type IMU = {
     x: number

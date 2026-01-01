@@ -7,7 +7,6 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
-    import { type SystemInformation, type Analytics, MessageTopic } from '$lib/types/models'
     import { socket } from '$lib/stores/socket'
     import { api } from '$lib/api'
     import { convertSeconds } from '$lib/utilities'
@@ -32,6 +31,7 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import ActionButton from './ActionButton.svelte'
+    import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/websocket_message'
 
     const features = useFeatureFlags()
 
@@ -51,10 +51,11 @@
 
     const postSleep = async () => await api.post('api/sleep')
 
-    onMount(() => socket.on(MessageTopic.analytics, handleSystemData))
+    let unsub: (() => void) | undefined = undefined;
+    onMount(() => unsub = socket.on(AnalyticsData, handleSystemData))
+    onDestroy(() => { if (unsub) unsub() })
 
-    onDestroy(() => socket.off(MessageTopic.analytics, handleSystemData))
-    const handleSystemData = (data: Analytics) => {
+    const handleSystemData = (data: AnalyticsData) => {
         if (systemInformation) {
             systemInformation = {
                 ...systemInformation,
@@ -159,58 +160,58 @@
                     <StatusItem
                         icon={CPU}
                         title="Chip"
-                        description={`${systemInformation.cpu_type} Rev ${systemInformation.cpu_rev}`}
+                        description={`${systemInformation.staticSystemInformation?.cpuType} Rev ${systemInformation.staticSystemInformation?.cpuRev}`}
                     />
 
                     <StatusItem
                         icon={SDK}
                         title="SDK Version"
-                        description={`ESP-IDF ${systemInformation.sdk_version} / Arduino ${systemInformation.arduino_version}`}
+                        description={`ESP-IDF ${systemInformation.staticSystemInformation?.sdkVersion} / Arduino ${systemInformation.staticSystemInformation?.arduinoVersion}`}
                     />
 
                     <StatusItem
                         icon={CPP}
                         title="Firmware Version"
-                        description={systemInformation.firmware_version}
+                        description={systemInformation.staticSystemInformation?.firmwareVersion}
                     />
 
                     <StatusItem
                         icon={Speed}
                         title="CPU Frequency"
-                        description={`${systemInformation.cpu_freq_mhz} MHz ${
-                            systemInformation.cpu_cores == 2 ? 'Dual Core' : 'Single Core'
+                        description={`${systemInformation.staticSystemInformation?.cpuFreqMhz} MHz ${
+                            systemInformation.staticSystemInformation?.cpuCores == 2 ? 'Dual Core' : 'Single Core'
                         }`}
                     />
 
                     <StatusItem
                         icon={Heap}
                         title="Heap (Free / Max Alloc)"
-                        description={`${systemInformation.free_heap} / ${systemInformation.max_alloc_heap} bytes`}
+                        description={`${systemInformation.analyticsData?.freeHeap} / ${systemInformation.analyticsData?.maxAllocHeap} bytes`}
                     />
 
                     <StatusItem
                         icon={Pyramid}
                         title="PSRAM (Size / Free)"
-                        description={`${systemInformation.psram_size} / ${systemInformation.psram_size} bytes`}
+                        description={`${systemInformation.analyticsData!.psramSize - systemInformation.analyticsData!.freePsram} / ${systemInformation.analyticsData?.psramSize} bytes`}
                     />
 
                     <StatusItem
                         icon={Sketch}
                         title="Sketch (Used / Free)"
                         description={`${(
-                            (systemInformation.sketch_size / systemInformation.free_sketch_space) *
+                            (systemInformation.staticSystemInformation!.sketchSize / systemInformation.staticSystemInformation!.freeSketchSpace) *
                             100
                         ).toFixed(1)} % of
-                ${systemInformation.free_sketch_space / 1000000} MB used (${
-                    (systemInformation.free_sketch_space - systemInformation.sketch_size) / 1000000
+                ${systemInformation.staticSystemInformation!.freeSketchSpace / 1000000} MB used (${
+                    (systemInformation.staticSystemInformation!.freeSketchSpace - systemInformation.staticSystemInformation!.sketchSize) / 1000000
                 } MB free)`}
                     />
 
                     <StatusItem
                         icon={Flash}
                         title="Flash Chip (Size / Speed)"
-                        description={`${systemInformation.flash_chip_size / 1000000} MB / ${
-                            systemInformation.flash_chip_speed / 1000000
+                        description={`${systemInformation.staticSystemInformation!.flashChipSize / 1000000} MB / ${
+                            systemInformation.staticSystemInformation!.flashChipSpeed / 1000000
                         } MHz`}
                     />
 
@@ -218,10 +219,10 @@
                         icon={Folder}
                         title="File System (Used / Total)"
                         description={`${(
-                            (systemInformation.fs_used / systemInformation.fs_total) *
+                            (systemInformation.analyticsData!.fsUsed / systemInformation.analyticsData!.fsTotal) *
                             100
-                        ).toFixed(1)} % of ${systemInformation.fs_total / 1000000} MB used (${
-                            (systemInformation.fs_total - systemInformation.fs_used) / 1000000
+                        ).toFixed(1)} % of ${systemInformation.analyticsData!.fsTotal / 1000000} MB used (${
+                            (systemInformation.analyticsData!.fsTotal - systemInformation.analyticsData!.fsUsed) / 1000000
                         }
                 MB free)`}
                     />
@@ -230,22 +231,22 @@
                         icon={Temperature}
                         title="Core Temperature"
                         description={`${
-                            systemInformation.core_temp == 53.33 ?
+                            systemInformation.analyticsData!.coreTemp == 53.33 ?
                                 'NaN'
-                            :   systemInformation.core_temp.toFixed(2) + ' °C'
+                            :   systemInformation.analyticsData!.coreTemp.toFixed(2) + ' °C'
                         }`}
                     />
 
                     <StatusItem
                         icon={Stopwatch}
                         title="Uptime"
-                        description={convertSeconds(systemInformation.uptime)}
+                        description={convertSeconds(systemInformation.analyticsData!.uptime)}
                     />
 
                     <StatusItem
                         icon={Power}
                         title="Reset Reason"
-                        description={systemInformation.cpu_reset_reason}
+                        description={systemInformation.staticSystemInformation?.cpuResetReason}
                     />
                 </div>
             {/if}

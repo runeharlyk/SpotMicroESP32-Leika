@@ -1,5 +1,4 @@
 import { HumanInputData, ModeData, ModesEnum } from '$lib/platform_shared/websocket_message'
-import type { ControllerInput } from '$lib/types/models'
 import { persistentStore } from '$lib/utilities/svelte-utilities'
 import { writable, type Writable } from 'svelte/store'
 
@@ -35,7 +34,7 @@ export const mode: Writable<ModeData> = writable(ModeData.create({ mode: ModesEn
 
 export const walkGait: Writable<WalkGaits> = writable(WalkGaits.Trot)
 
-export const outControllerData = writable([0, 0, 0, 0, 0, 1, 0])
+export const outControllerData = writable( HumanInputData.create( {left: {x:0,y:0}, right: {x:0,y:0}, height:0, s1:0, speed:0} ) )
 
 export const kinematicData = writable([0, 0, 0, 0, 1, 0])
 
