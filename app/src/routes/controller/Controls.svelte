@@ -1,27 +1,37 @@
 <script lang="ts">
     import nipplejs from 'nipplejs'
     import { onMount } from 'svelte'
-    import { capitalize } from '$lib/utilities'
     import {
         input,
         mode,
-        modes,
-        type Modes,
-        ModesEnum,
-        WalkGaits,
         walkGait,
+        modes,
+        modeLabels,
+        walkGaits,
         walkGaitLabels
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
-    import { HumanInputData } from '$lib/platform_shared/websocket_message'
+    import {
+        HumanInputData,
+        ModeData,
+        ModesEnum,
+        WalkGaitData,
+        WalkGaits
+    } from '$lib/platform_shared/websocket_message'
 
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
 
-    let data: HumanInputData = HumanInputData.create( {left: {x:0,y:0}, right: {x:0,y:0}, height:0, s1:0, speed:0} )
+    let data: HumanInputData = HumanInputData.create({
+        left: { x: 0, y: 0 },
+        right: { x: 0, y: 0 },
+        height: 0,
+        s1: 0,
+        speed: 0
+    })
 
     $effect(() => {
         if ($hasGamepad) {
@@ -38,10 +48,10 @@
         if (!$hasGamepad) return
         const b = $gamepadButtonsEdges
         if (!b.length) return
-        if (b[0]?.justPressed) mode.set(5)
-        if (b[1]?.justPressed) mode.set(4)
-        if (b[2]?.justPressed) mode.set(3)
-        if (b[3]?.justPressed) mode.set(0)
+        if (b[0]?.justPressed) mode.set(ModeData.create({ mode: ModesEnum.WALK }))
+        if (b[1]?.justPressed) mode.set(ModeData.create({ mode: ModesEnum.STAND }))
+        if (b[2]?.justPressed) mode.set(ModeData.create({ mode: ModesEnum.REST }))
+        if (b[3]?.justPressed) mode.set(ModeData.create({ mode: ModesEnum.DEACTIVATED }))
         if (b[12]?.justPressed)
             input.update(inputData => {
                 inputData.height = Math.min(inputData.height + 0.1, 1)
@@ -104,12 +114,12 @@
         })
     }
 
-    const changeMode = (modeValue: Modes) => {
-        mode.set(modes.indexOf(modeValue))
+    const changeMode = (modeValue: ModesEnum) => {
+        mode.set(ModeData.create({ mode: modeValue }))
     }
 
     const changeWalkGait = (walkGaitValue: WalkGaits) => {
-        walkGait.set(walkGaitValue)
+        walkGait.set(WalkGaitData.create({ gait: walkGaitValue }))
     }
 </script>
 
@@ -150,26 +160,24 @@
                 {#each modes as modeValue (modeValue)}
                     <button
                         class="btn join-item btn-sm transition-all duration-200"
-                        class:btn-primary={$mode === modes.indexOf(modeValue)}
+                        class:btn-primary={$mode.mode === modeValue}
                         onclick={() => changeMode(modeValue)}
                     >
-                        {capitalize(modeValue)}
+                        {modeLabels[modeValue]}
                     </button>
                 {/each}
             </div>
 
-            {#if $mode === ModesEnum.Walk}
+            {#if $mode.mode === ModesEnum.WALK}
                 <div class="join shadow-md">
-                    {#each Object.values(WalkGaits) as gaitValue (gaitValue)}
-                        {#if typeof gaitValue === 'number'}
-                            <button
-                                class="btn join-item btn-xs transition-all duration-200"
-                                class:btn-secondary={$walkGait === gaitValue}
-                                onclick={() => changeWalkGait(gaitValue)}
-                            >
-                                {walkGaitLabels[gaitValue]}
-                            </button>
-                        {/if}
+                    {#each walkGaits as gaitValue (gaitValue)}
+                        <button
+                            class="btn join-item btn-xs transition-all duration-200"
+                            class:btn-secondary={$walkGait.gait === gaitValue}
+                            onclick={() => changeWalkGait(gaitValue)}
+                        >
+                            {walkGaitLabels[gaitValue]}
+                        </button>
                     {/each}
                 </div>
 
@@ -182,7 +190,8 @@
                             min="0"
                             step="0.01"
                             max="1"
-                            oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 's1')}
+                            oninput={e =>
+                                handleRange(Number((e.target as HTMLInputElement).value), 's1')}
                             class="range range-xs range-primary"
                         />
                     </div>
@@ -194,7 +203,8 @@
                             min="0"
                             step="0.01"
                             max="1"
-                            oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 'speed')}
+                            oninput={e =>
+                                handleRange(Number((e.target as HTMLInputElement).value), 'speed')}
                             class="range range-xs range-primary"
                         />
                     </div>
