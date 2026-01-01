@@ -59,11 +59,6 @@ export type ApSettings = {
     subnet_mask: string
 }
 
-export type DownloadOTA = {
-    status: string
-    progress: number
-    error: string
-}
 
 export type Rssi = {
     rssi: number

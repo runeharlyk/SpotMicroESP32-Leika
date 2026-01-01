@@ -1,33 +1,23 @@
-import type { DownloadOTA } from '$lib/types/models'
+import { DownloadOTAData, RSSIData } from '$lib/platform_shared/websocket_message'
+import { DownloadOTA } from '$lib/types/models'
 import { writable } from 'svelte/store'
 
-const telemetry_data = {
-    rssi: {
-        rssi: 0
-    },
-    download_ota: {
-        status: 'none',
-        progress: 0,
-        error: ''
-    }
+type telemetry_data_type = {
+    rssi: RSSIData;
+    download_ota: DownloadOTAData;
 }
+const telemetry_data: telemetry_data_type = { rssi: RSSIData.create(), download_ota: DownloadOTAData.create() }; // Note: perhaps init these as null instead of an undefined create()
 
 function createTelemetry() {
     const { subscribe, update } = writable(telemetry_data)
 
     return {
         subscribe,
-        setRSSI: (data: number) => {
-            update(telemetry_data => ({
-                ...telemetry_data,
-                rssi: { rssi: data }
-            }))
+        setRSSI: (data: RSSIData) => {
+            update(telemetry_data => { telemetry_data.rssi = data; return telemetry_data })
         },
         setDownloadOTA: (data: DownloadOTA) => {
-            update(telemetry_data => ({
-                ...telemetry_data,
-                download_ota: { status: data.status, progress: data.progress, error: data.error }
-            }))
+            update(telemetry_data => { telemetry_data.download_ota = data; return telemetry_data })
         }
     }
 }
