@@ -1,22 +1,22 @@
 <script lang="ts">
     import { Cancel, Edit, EditOff, Power } from '$lib/components/icons'
     import { socket } from '$lib/stores'
-    import { MessageTopic, type PeripheralsConfiguration } from '$lib/types/models'
     import { onMount } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+    import { PeripheralSettingsData, PeripheralSettingsDataRequest } from '$lib/platform_shared/websocket_message'
 
-    let settings: PeripheralsConfiguration | null = $state(null)
+    let settings: PeripheralSettingsData | null = $state(null)
     let isEditing = $state(false)
 
     onMount(() => {
-        socket.on(MessageTopic.peripheralSettings, handleSettings)
-        socket.sendEvent(MessageTopic.peripheralSettings, '')
-        return () => socket.off(MessageTopic.peripheralSettings, handleSettings)
+        let unsub = socket.on(PeripheralSettingsData, handleSettings)
+        socket.sendEvent(PeripheralSettingsDataRequest, {})
+        return unsub
     })
 
-    const handleSettings = (data: Record<string, unknown>) => {
-        settings = data as PeripheralsConfiguration
+    const handleSettings = (data: PeripheralSettingsData) => {
+        settings = data
     }
 
     const handleSave = () => {
@@ -30,7 +30,7 @@
             },
             onConfirm: () => {
                 modals.close()
-                socket.sendEvent(MessageTopic.peripheralSettings, settings)
+                socket.sendEvent(PeripheralSettingsData, settings)
             }
         })
     }
