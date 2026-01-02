@@ -34,6 +34,7 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { KnownNetworkItem } from '$lib/platform_shared/websocket_message'
+    import { WifiSettings, type WifiStatus } from '$lib/rest_message'
 
     let networkEditable: KnownNetworkItem = $state( KnownNetworkItem.create() )
 
@@ -49,7 +50,7 @@
 
     let showWifiDetails = $state(false)
 
-    let formField: Record<string, unknown> = $state()
+    let formField: HTMLFormElement = $state()!
 
     let formErrors = $state({
         ssid: false,
@@ -79,19 +80,19 @@
             return
         }
         wifiSettings = result.inner
-        dndNetworkList = wifiSettings.wifi_networks
+        dndNetworkList = wifiSettings.wifiNetworks
         return wifiSettings
     }
 
-    onDestroy(() => socket.off(MessageTopic.WiFiSettings))
-
+    let unsub_obj: (() => void) | undefined = undefined;
     onMount(() => {
-        socket.on<WifiSettings>(MessageTopic.WiFiSettings, data => {
+        unsub_obj = socket.on<WifiSettings>(WifiSettings, data => {
             wifiSettings = data
-            dndNetworkList = wifiSettings.wifi_networks
+            dndNetworkList = wifiSettings.wifiNetworks
         })
     })
-
+    
+    onDestroy(() => { if (unsub_obj) unsub_obj() } )
     async function postWiFiSettings(data: WifiSettings) {
         const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data)
         if (result.isErr()) {
@@ -110,7 +111,7 @@
         } else {
             formErrorhostname = false
             // Update global wifiSettings object
-            wifiSettings.wifi_networks = dndNetworkList
+            wifiSettings.wifiNetworks = dndNetworkList
             // Post to REST API
             postWiFiSettings(wifiSettings)
             console.log(wifiSettings)
@@ -129,15 +130,15 @@
             formErrors.ssid = false
         }
 
-        networkEditable.static_ip_config = static_ip_config
+        networkEditable.staticIp = static_ip_config
 
-        if (networkEditable.static_ip_config) {
+        if (networkEditable.staticIp) {
             // RegEx for IPv4
             const regexExp =
                 /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/
 
             // Validate gateway IP
-            if (!regexExp.test(networkEditable.gateway_ip!)) {
+            if (!regexExp.test(networkEditable.gatewayIp!)) {
                 valid = false
                 formErrors.gateway_ip = true
             } else {
@@ -145,7 +146,7 @@
             }
 
             // Validate Subnet Mask
-            if (!regexExp.test(networkEditable.subnet_mask!)) {
+            if (!regexExp.test(networkEditable.subnetMask!)) {
                 valid = false
                 formErrors.subnet_mask = true
             } else {
@@ -153,7 +154,7 @@
             }
 
             // Validate local IP
-            if (!regexExp.test(networkEditable.local_ip!)) {
+            if (!regexExp.test(networkEditable.localIp!)) {
                 valid = false
                 formErrors.local_ip = true
             } else {
@@ -161,7 +162,7 @@
             }
 
             // Validate DNS 1
-            if (!regexExp.test(networkEditable.dns_ip_1!)) {
+            if (!regexExp.test(networkEditable.dnsIp1!)) {
                 valid = false
                 formErrors.dns_1 = true
             } else {
@@ -169,7 +170,8 @@
             }
 
             // Validate DNS 2
-            if (!regexExp.test(networkEditable.dns_ip_2!)) {
+            // TODO: This is optional, make sure to handle correctly?
+            if (!regexExp.test(networkEditable.dnsIp2!)) {
                 valid = false
                 formErrors.dns_2 = true
             } else {
@@ -211,12 +213,12 @@
         networkEditable = {
             ssid: '',
             password: '',
-            static_ip_config: false,
-            local_ip: undefined,
-            subnet_mask: undefined,
-            gateway_ip: undefined,
-            dns_ip_1: undefined,
-            dns_ip_2: undefined
+            staticIp: false,
+            localIp: undefined,
+            subnetMask: undefined,
+            gatewayIp: undefined,
+            dnsIp1: undefined,
+            dnsIp2: undefined
         }
     }
 
@@ -302,7 +304,7 @@
                         <StatusItem
                             icon={Home}
                             title="IP Address"
-                            description={wifiStatus.local_ip}
+                            description={wifiStatus.localIp}
                         />
 
                         <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
@@ -333,7 +335,7 @@
                         <StatusItem
                             icon={MAC}
                             title="MAC Address"
-                            description={wifiStatus.mac_address}
+                            description={wifiStatus.macAddress}
                         />
 
                         <StatusItem
@@ -345,16 +347,16 @@
                         <StatusItem
                             icon={Gateway}
                             title="Gateway IP"
-                            description={wifiStatus.gateway_ip}
+                            description={wifiStatus.gatewayIp}
                         />
 
                         <StatusItem
                             icon={Subnet}
                             title="Subnet Mask"
-                            description={wifiStatus.subnet_mask}
+                            description={wifiStatus.subnetMask}
                         />
 
-                        <StatusItem icon={DNS} title="DNS" description={wifiStatus.dns_ip_1} />
+                        <StatusItem icon={DNS} title="DNS" description={wifiStatus.dnsIp1} />
                     </div>
                 {/if}
             {/if}
@@ -471,7 +473,7 @@
                             >
                                 <input
                                     type="checkbox"
-                                    bind:checked={wifiSettings.priority_RSSI}
+                                    bind:checked={wifiSettings.priorityRssi}
                                     class="checkbox checkbox-primary sm:-mb-5"
                                 />
                                 <span class="sm:-mb-5">Connect to strongest WiFi</span>
@@ -545,7 +547,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.local_ip}
+                                            bind:value={networkEditable.localIp}
                                             id="localIP"
                                             required
                                         />
@@ -574,7 +576,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.gateway_ip}
+                                            bind:value={networkEditable.gatewayIp}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -601,7 +603,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.subnet_mask}
+                                            bind:value={networkEditable.subnetMask}
                                             required
                                         />
                                         <label class="label" for="subnet">
@@ -628,7 +630,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.dns_ip_1}
+                                            bind:value={networkEditable.dnsIp1}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -653,7 +655,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.dns_ip_2}
+                                            bind:value={networkEditable.dnsIp2}
                                             required
                                         />
                                         <label class="label" for="subnet">
