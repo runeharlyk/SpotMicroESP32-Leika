@@ -237,6 +237,15 @@ export interface WalkGaitData {
   gait: WalkGaits;
 }
 
+export interface KinematicData {
+  omega: number;
+  phi: number;
+  psi: number;
+  xm: number;
+  ym: number;
+  zm: number;
+}
+
 export interface SubscribeNotification {
   tag: number;
 }
@@ -268,6 +277,7 @@ export interface WebsocketMessage {
   angles?: AnglesData | undefined;
   i2cScan?: I2CScanData | undefined;
   peripheralSettings?: PeripheralSettingsData | undefined;
+  kinematicData?: KinematicData | undefined;
   wifiSettings?: WifiSettingsData | undefined;
   humanInputData?: HumanInputData | undefined;
   rssi?: RSSIData | undefined;
@@ -2421,6 +2431,146 @@ export const WalkGaitData: MessageFns<WalkGaitData> = {
   },
 };
 
+function createBaseKinematicData(): KinematicData {
+  return { omega: 0, phi: 0, psi: 0, xm: 0, ym: 0, zm: 0 };
+}
+
+export const KinematicData: MessageFns<KinematicData> = {
+  encode(message: KinematicData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.omega !== 0) {
+      writer.uint32(13).float(message.omega);
+    }
+    if (message.phi !== 0) {
+      writer.uint32(21).float(message.phi);
+    }
+    if (message.psi !== 0) {
+      writer.uint32(29).float(message.psi);
+    }
+    if (message.xm !== 0) {
+      writer.uint32(37).float(message.xm);
+    }
+    if (message.ym !== 0) {
+      writer.uint32(45).float(message.ym);
+    }
+    if (message.zm !== 0) {
+      writer.uint32(53).float(message.zm);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): KinematicData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseKinematicData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 13) {
+            break;
+          }
+
+          message.omega = reader.float();
+          continue;
+        }
+        case 2: {
+          if (tag !== 21) {
+            break;
+          }
+
+          message.phi = reader.float();
+          continue;
+        }
+        case 3: {
+          if (tag !== 29) {
+            break;
+          }
+
+          message.psi = reader.float();
+          continue;
+        }
+        case 4: {
+          if (tag !== 37) {
+            break;
+          }
+
+          message.xm = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 45) {
+            break;
+          }
+
+          message.ym = reader.float();
+          continue;
+        }
+        case 6: {
+          if (tag !== 53) {
+            break;
+          }
+
+          message.zm = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): KinematicData {
+    return {
+      omega: isSet(object.omega) ? globalThis.Number(object.omega) : 0,
+      phi: isSet(object.phi) ? globalThis.Number(object.phi) : 0,
+      psi: isSet(object.psi) ? globalThis.Number(object.psi) : 0,
+      xm: isSet(object.xm) ? globalThis.Number(object.xm) : 0,
+      ym: isSet(object.ym) ? globalThis.Number(object.ym) : 0,
+      zm: isSet(object.zm) ? globalThis.Number(object.zm) : 0,
+    };
+  },
+
+  toJSON(message: KinematicData): unknown {
+    const obj: any = {};
+    if (message.omega !== 0) {
+      obj.omega = message.omega;
+    }
+    if (message.phi !== 0) {
+      obj.phi = message.phi;
+    }
+    if (message.psi !== 0) {
+      obj.psi = message.psi;
+    }
+    if (message.xm !== 0) {
+      obj.xm = message.xm;
+    }
+    if (message.ym !== 0) {
+      obj.ym = message.ym;
+    }
+    if (message.zm !== 0) {
+      obj.zm = message.zm;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<KinematicData>, I>>(base?: I): KinematicData {
+    return KinematicData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<KinematicData>, I>>(object: I): KinematicData {
+    const message = createBaseKinematicData();
+    message.omega = object.omega ?? 0;
+    message.phi = object.phi ?? 0;
+    message.psi = object.psi ?? 0;
+    message.xm = object.xm ?? 0;
+    message.ym = object.ym ?? 0;
+    message.zm = object.zm ?? 0;
+    return message;
+  },
+};
+
 function createBaseSubscribeNotification(): SubscribeNotification {
   return { tag: 0 };
 }
@@ -2637,6 +2787,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     angles: undefined,
     i2cScan: undefined,
     peripheralSettings: undefined,
+    kinematicData: undefined,
     wifiSettings: undefined,
     humanInputData: undefined,
     rssi: undefined,
@@ -2680,6 +2831,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.peripheralSettings !== undefined) {
       PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(1522).fork()).join();
+    }
+    if (message.kinematicData !== undefined) {
+      KinematicData.encode(message.kinematicData, writer.uint32(1602).fork()).join();
     }
     if (message.wifiSettings !== undefined) {
       WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join();
@@ -2796,6 +2950,14 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           message.peripheralSettings = PeripheralSettingsData.decode(reader, reader.uint32());
           continue;
         }
+        case 200: {
+          if (tag !== 1602) {
+            break;
+          }
+
+          message.kinematicData = KinematicData.decode(reader, reader.uint32());
+          continue;
+        }
         case 240: {
           if (tag !== 1922) {
             break;
@@ -2845,6 +3007,7 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       peripheralSettings: isSet(object.peripheralSettings)
         ? PeripheralSettingsData.fromJSON(object.peripheralSettings)
         : undefined,
+      kinematicData: isSet(object.kinematicData) ? KinematicData.fromJSON(object.kinematicData) : undefined,
       wifiSettings: isSet(object.wifiSettings) ? WifiSettingsData.fromJSON(object.wifiSettings) : undefined,
       humanInputData: isSet(object.humanInputData) ? HumanInputData.fromJSON(object.humanInputData) : undefined,
       rssi: isSet(object.rssi) ? RSSIData.fromJSON(object.rssi) : undefined,
@@ -2888,6 +3051,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.peripheralSettings !== undefined) {
       obj.peripheralSettings = PeripheralSettingsData.toJSON(message.peripheralSettings);
+    }
+    if (message.kinematicData !== undefined) {
+      obj.kinematicData = KinematicData.toJSON(message.kinematicData);
     }
     if (message.wifiSettings !== undefined) {
       obj.wifiSettings = WifiSettingsData.toJSON(message.wifiSettings);
@@ -2937,6 +3103,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       : undefined;
     message.peripheralSettings = (object.peripheralSettings !== undefined && object.peripheralSettings !== null)
       ? PeripheralSettingsData.fromPartial(object.peripheralSettings)
+      : undefined;
+    message.kinematicData = (object.kinematicData !== undefined && object.kinematicData !== null)
+      ? KinematicData.fromPartial(object.kinematicData)
       : undefined;
     message.wifiSettings = (object.wifiSettings !== undefined && object.wifiSettings !== null)
       ? WifiSettingsData.fromPartial(object.wifiSettings)
@@ -4137,6 +4306,90 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "KinematicData",
+      "field": [{
+        "name": "omega",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "omega",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "phi",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "phi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "psi",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "psi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "xm",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "xm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ym",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ym",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "zm",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "zm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "SubscribeNotification",
       "field": [{
         "name": "tag",
@@ -4355,6 +4608,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "kinematic_data",
+        "number": 200,
+        "label": 1,
+        "type": 11,
+        "typeName": ".KinematicData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "kinematicData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "wifi_settings",
         "number": 240,
         "label": 1,
@@ -4438,8 +4703,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 24],
-        "span": [94, 0, 112, 1],
+        "path": [4, 25],
+        "span": [102, 0, 121, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -4471,6 +4736,7 @@ export const protoMetadata: ProtoMetadata = {
     ".HumanInputData": HumanInputData,
     ".SystemInformation": SystemInformation,
     ".WalkGaitData": WalkGaitData,
+    ".KinematicData": KinematicData,
     ".SubscribeNotification": SubscribeNotification,
     ".UnsubscribeNotification": UnsubscribeNotification,
     ".PingMsg": PingMsg,
