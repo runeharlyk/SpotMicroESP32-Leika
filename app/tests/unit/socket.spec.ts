@@ -67,12 +67,15 @@ describe.sequential('WebSocket Integration Tests', () => {
 		await new Promise<void>((resolve) => {
 			wss.on('connection', (ws) => {
 				// Server sends IMU data to client
-				const imuPayload = {
-					x: 1.5,
+				const imuPayload = IMUData.create({
+					x: 3.25,
 					y: 2.5,
-					z: 3.5,
-					temp: 25.0
-				}
+					z: 1.75,
+                    heading: 10,
+                    altitude: 11,
+					bmpTemp: 22,
+                    pressure: 23
+				})
 
 				const encodedMessage = createEncodedMessage('imu', imuPayload)
 				ws.send(encodedMessage)
@@ -82,10 +85,15 @@ describe.sequential('WebSocket Integration Tests', () => {
 		})
 
 		expect(receivedIMUData).toBeDefined()
-		expect(receivedIMUData.imu?.x).toBe(1.5)
-		expect(receivedIMUData.imu?.y).toBe(2.5)
-		expect(receivedIMUData.imu?.z).toBe(3.5)
-		expect(receivedIMUData.imu?.temp).toBe(25.0)
+		expect(receivedIMUData?.imu).toBeDefined()
+
+        expect(receivedIMUData?.imu.x).toBe(3.25)
+		expect(receivedIMUData?.imu.y).toBe(2.5)
+		expect(receivedIMUData?.imu.z).toBe(1.75)
+        expect(receivedIMUData?.imu.heading).toBe(10)
+        expect(receivedIMUData?.imu.altitude).toBe(11)
+		expect(receivedIMUData?.imu.bmpTemp).toBe(22)
+        expect(receivedIMUData?.imu.pressure).toBe(23)
 
 		unsubscribe()
 	})
@@ -140,12 +148,15 @@ describe.sequential('WebSocket Integration Tests', () => {
 			setTimeout(() => {
 				console.log('Client: Sending IMU data...')
 				// Client sends IMU data to server
-				const imuData = {
-					x: 3,
-					y: 2,
-					z: 1,
-					temp: 22
-				}
+				const imuData = IMUData.create({
+					x: 3.25,
+					y: 2.5,
+					z: 1.75,
+                    heading: 10,
+                    altitude: 11,
+					bmpTemp: 22,
+                    pressure: 23
+				})
 				socket.sendEvent(IMUData, imuData)
 				console.log('Client: sendEvent called')
 			}, 150)
@@ -154,10 +165,14 @@ describe.sequential('WebSocket Integration Tests', () => {
 		// Verify server received the data
 		expect(serverReceivedData).toBeDefined()
 		expect(serverReceivedData?.imu).toBeDefined()
-		expect(serverReceivedData?.imu?.x).toBe(3)
-		expect(serverReceivedData?.imu?.y).toBe(2)
-		expect(serverReceivedData?.imu?.z).toBe(1)
-		expect(serverReceivedData?.imu?.temp).toBe(22)
+
+        expect(serverReceivedData?.imu.x).toBe(3.25)
+		expect(serverReceivedData?.imu.y).toBe(2.5)
+		expect(serverReceivedData?.imu.z).toBe(1.75)
+        expect(serverReceivedData?.imu.heading).toBe(10)
+        expect(serverReceivedData?.imu.altitude).toBe(11)
+		expect(serverReceivedData?.imu.bmpTemp).toBe(22)
+        expect(serverReceivedData?.imu.pressure).toBe(23)
 	})
 
 
@@ -191,20 +206,27 @@ describe.sequential('WebSocket Integration Tests', () => {
 
 describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
 	it('should encode and decode IMU data correctly', () => {
-		const imuData = {
-			x: 1.5,
-			y: 2.5,
-			z: 3.5,
-			temp: 25.0
-		}
+
+        const imuData = IMUData.create({
+            x: 3.25,
+            y: 2.5,
+            z: 1.75,
+            heading: 10,
+            altitude: 11,
+            bmpTemp: 22,
+            pressure: 23
+        })
 
 		const encoded = IMUData.encode(imuData).finish()
 		const decoded = IMUData.decode(encoded)
 
-		expect(decoded.x).toBe(imuData.x)
-		expect(decoded.y).toBe(imuData.y)
-		expect(decoded.z).toBe(imuData.z)
-		expect(decoded.temp).toBe(imuData.temp)
+		expect(decoded.x).toBe(3.25)
+		expect(decoded.y).toBe(2.5)
+		expect(decoded.z).toBe(1.75)
+        expect(decoded.heading).toBe(10)
+        expect(decoded.altitude).toBe(11)
+		expect(decoded.bmpTemp).toBe(22)
+        expect(decoded.pressure).toBe(23)
 	})
 
     it('should encode and decode two empty types correctly', () => {
@@ -222,22 +244,28 @@ describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
 
 	it('should encode and decode complete WebsocketMessage', () => {
 		const original = WebsocketMessage.create({
-			imu: {
-				x: 1.5,
-				y: 2.5,
-				z: 3.5,
-				temp: 25.0
-			}
+			imu: IMUData.create({
+                x: 3.25,
+                y: 2.5,
+                z: 1.75,
+                heading: 10,
+                altitude: 11,
+                bmpTemp: 22,
+                pressure: 23
+            })
 		})
 
 		const encoded = WebsocketMessage.encode(original).finish()
 		const decoded = WebsocketMessage.decode(encoded)
 
 		expect(decoded.imu).toBeDefined()
-		expect(decoded.imu?.x).toBe(1.5)
+		expect(decoded.imu?.x).toBe(3.25)
 		expect(decoded.imu?.y).toBe(2.5)
-		expect(decoded.imu?.z).toBe(3.5)
-		expect(decoded.imu?.temp).toBe(25.0)
+		expect(decoded.imu?.z).toBe(1.75)
+        expect(decoded.imu?.heading).toBe(10)
+        expect(decoded.imu?.altitude).toBe(11)
+		expect(decoded.imu?.bmpTemp).toBe(22)
+        expect(decoded.imu?.pressure).toBe(23)
 	})
 
 })
