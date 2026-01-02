@@ -1,6 +1,7 @@
 import { get } from 'svelte/store'
 import type { body_state_t } from './kinematic'
 import { currentKinematic } from './stores/featureFlags'
+import { HumanInputData, WalkGaits } from './platform_shared/websocket_message'
 
 export interface gait_state_t {
     step_height: number
@@ -9,16 +10,6 @@ export interface gait_state_t {
     step_angle: number
     step_velocity: number
     step_depth: number
-}
-
-export interface ControllerCommand {
-    lx: number
-    ly: number
-    rx: number
-    ry: number
-    h: number
-    s: number
-    s1: number
 }
 
 export abstract class GaitState {
@@ -62,7 +53,7 @@ export abstract class GaitState {
     end() {
         console.log('Ending', this.name)
     }
-    step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+    step(body_state: body_state_t, command: HumanInputData, dt: number = 0.02) {
         this.map_command(command)
         this.body_state = body_state
         this.dt = dt / 1000
@@ -79,14 +70,14 @@ export abstract class GaitState {
         return body_state
     }
 
-    map_command(command: ControllerCommand) {
+    map_command(command: HumanInputData) {
         const kin = this.kinematic
         this.gait_state = {
             step_height: command.s1 * kin.max_step_height,
-            step_x: command.ly * kin.max_step_length,
-            step_z: -command.lx * kin.max_step_length,
-            step_velocity: command.s,
-            step_angle: command.rx,
+            step_x: command.left!.y * kin.max_step_length,
+            step_z: -command.left!.x * kin.max_step_length,
+            step_velocity: command.speed,
+            step_angle: command.right!.x,
             step_depth: kin.default_step_depth
         }
     }
@@ -94,8 +85,7 @@ export abstract class GaitState {
 
 export class IdleState extends GaitState {
     protected name = 'Idle'
-
-    step(body_state: body_state_t, command: ControllerCommand) {
+    step(body_state: body_state_t, command: HumanInputData) {
         super.step(body_state, command)
         return body_state
     }
@@ -104,7 +94,7 @@ export class IdleState extends GaitState {
 export class CalibrationState extends GaitState {
     protected name = 'Calibration'
 
-    step(body_state: body_state_t, _command: ControllerCommand) {
+    step(body_state: body_state_t, _command: HumanInputData) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
@@ -120,7 +110,7 @@ export class CalibrationState extends GaitState {
 export class RestState extends GaitState {
     protected name = 'Rest'
 
-    step(body_state: body_state_t, _command: ControllerCommand) {
+    step(body_state: body_state_t, _command: HumanInputData) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
@@ -136,15 +126,15 @@ export class RestState extends GaitState {
 export class StandState extends GaitState {
     protected name = 'Stand'
 
-    step(body_state: body_state_t, command: ControllerCommand) {
+    step(body_state: body_state_t, command: HumanInputData) {
         super.step(body_state, command)
         const kin = this.kinematic
         body_state.omega = 0
-        body_state.ym = kin.min_body_height + command.h * kin.body_height_range
-        body_state.psi = command.ry * kin.max_pitch
-        body_state.phi = command.rx * kin.max_roll
-        body_state.xm = command.ly * kin.max_body_shift_x
-        body_state.zm = command.lx * kin.max_body_shift_z
+        body_state.ym = kin.min_body_height + command.height * kin.body_height_range
+        body_state.psi = command.right!.y * kin.max_pitch
+        body_state.phi = command.right!.x * kin.max_roll
+        body_state.xm = command.left!.y * kin.max_body_shift_x
+        body_state.zm = command.left!.x * kin.max_body_shift_z
         body_state.feet = this.default_feet_pos
         return body_state
     }
@@ -156,7 +146,7 @@ export class BezierState extends GaitState {
     protected phase_num = 0
     protected step_length = 0
     protected stand_offset = 0.75
-    protected mode: 'crawl' | 'trot' = 'trot'
+    protected mode: WalkGaits = WalkGaits.TROT
     protected speed_factor = 1
     offset = [0, 0.5, 0.75, 0.25]
 
@@ -178,11 +168,11 @@ export class BezierState extends GaitState {
         super.begin()
     }
 
-    set_mode(mode: 'crawl' | 'trot', duty?: number, order?: [number, number, number, number]) {
+    set_mode(mode: WalkGaits, duty?: number, order?: [number, number, number, number]) {
         console.log('BezierState set_mode', mode)
 
         this.mode = mode
-        if (mode === 'crawl') {
+        if (mode === WalkGaits.CRAWL) {
             this.speed_factor = 0.5
             this.stand_offset = duty ?? 0.85
             const o = order ?? [3, 0, 2, 1]
@@ -201,10 +191,10 @@ export class BezierState extends GaitState {
         super.end()
     }
 
-    step(body_state: body_state_t, command: ControllerCommand, dt: number = 0.02) {
+    step(body_state: body_state_t, command: HumanInputData, dt: number = 0.02) {
         super.step(body_state, command, dt)
         const kin = this.kinematic
-        this.body_state.ym = kin.min_body_height + command.h * kin.body_height_range
+        this.body_state.ym = kin.min_body_height + command.height * kin.body_height_range
         this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2)
         if (this.gait_state.step_x < 0) this.step_length = -this.step_length
         this.update_phase()
@@ -232,7 +222,7 @@ export class BezierState extends GaitState {
         const moving = m.step_x !== 0 || m.step_z !== 0 || m.step_angle !== 0
         if (!moving) return
 
-        if (this.mode !== 'crawl') return
+        if (this.mode !== WalkGaits.CRAWL) return
 
         const { stance, swing, next_swing, time_to_lift } = this.get_leg_states()
 

@@ -26,11 +26,11 @@
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
     import { type body_state_t } from '$lib/kinematic'
-    import { BezierState, CalibrationState, IdleState, RestState, StandState } from '$lib/gait'
+    import { BezierState, CalibrationState, GaitState, IdleState, RestState, StandState } from '$lib/gait'
     import { radToDeg } from 'three/src/math/MathUtils.js'
     import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
-    import { KinematicData } from '$lib/platform_shared/websocket_message'
+    import { AnglesData, KinematicData, ModesEnum } from '$lib/platform_shared/websocket_message'
 
     interface Props {
         defaultColor?: string | null
@@ -51,8 +51,9 @@
     let sceneManager = $state(new SceneBuilder())
     let canvas: HTMLCanvasElement
 
-    let currentModelAngles: number[] = new Array(12).fill(0)
-    let modelTargetAngles: number[] = new Array(12).fill(0)
+    // TODO: This assumes that we have 12 angles (valid for the spot robot) but this should not be a static number defined in each individual data set
+    let currentModelAngles: AnglesData = AnglesData.create({ angles: new Array(12).fill(0) })
+    let modelTargetAngles: AnglesData = AnglesData.create({ angles: new Array(12).fill(0) })
     let gui_panel: GUI
     const SMOOTH_AMOUNT = 0.2
 
@@ -62,13 +63,15 @@
 
     let kinematic = get(currentKinematic)
 
-    let planners = {
-        [ModesEnum.Deactivated]: new IdleState(),
-        [ModesEnum.Idle]: new IdleState(),
-        [ModesEnum.Calibration]: new CalibrationState(),
-        [ModesEnum.Rest]: new RestState(),
-        [ModesEnum.Stand]: new StandState(),
-        [ModesEnum.Walk]: new BezierState()
+    // Incredibly ugly but cant be bothered to fix this or statement right now, we cant key on GaitState objects, only the class extensions themselves (which we dont use here)
+    const planners: Record<ModesEnum, IdleState | CalibrationState | RestState | StandState | BezierState> = {
+        [ModesEnum.DEACTIVATED]: new IdleState(),
+        [ModesEnum.IDLE]: new IdleState(),
+        [ModesEnum.CALIBRATION]: new CalibrationState(),
+        [ModesEnum.REST]: new RestState(),
+        [ModesEnum.STAND]: new StandState(),
+        [ModesEnum.WALK]: new BezierState(),
+        [ModesEnum.UNRECOGNIZED]: new IdleState()
     }
     let lastTick = performance.now()
     let lastRobotPosition = new Vector3()
@@ -113,7 +116,13 @@
         await populateModelCache()
         await createScene()
         servoAngles.subscribe(updateAnglesFromStore)
-        walkGait.subscribe(gait => planners[ModesEnum.Walk].set_mode(walkGaitToMode(gait)))
+        walkGait.subscribe(gait => {
+            const walkPlanner = planners[ModesEnum.WALK]
+            if (!(walkPlanner instanceof BezierState)) {
+                throw new Error(`Expected BezierState for WALK mode, got ${walkPlanner.constructor.name}`)
+            }
+            walkPlanner.set_mode(gait.gait)
+        })
         if (panel) createPanel()
     })
 
@@ -121,7 +130,7 @@
         gui_panel?.destroy()
     })
 
-    const updateAnglesFromStore = (angles: number[]) => {
+    const updateAnglesFromStore = (angles: AnglesData) => {
         if (sceneManager.isDragging) return
         if (settings['Internal kinematic']) return
         modelTargetAngles = angles
@@ -167,8 +176,10 @@
     const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))
 
     const updateAngles = (name: string, angle: number) => {
-        modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
-        servoAnglesOut.set(modelTargetAngles.map(num => Math.round(num)))
+        modelTargetAngles.angles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
+        servoAnglesOut.set(
+            AnglesData.create({ angles: modelTargetAngles.angles.map(num => Math.round(num)) })
+        )
     }
 
     const createScene = async () => {
@@ -221,7 +232,7 @@
         }
 
         let new_angles = kinematic.calcIK(position).map((x, i) => radToDeg(x * dir[i]))
-        modelTargetAngles = new_angles
+        modelTargetAngles.angles = new_angles
     }
 
     const orient_robot = (robot: URDFRobot, toes: Vector3[]) => {
@@ -271,22 +282,13 @@
 
     const update_gait = () => {
         if (sceneManager.isDragging || !settings['Internal kinematic']) return
-        const controlData = get(input)
-        const data = {
-            lx: controlData.left.x,
-            ly: controlData.left.y,
-            rx: controlData.right.x,
-            ry: controlData.right.y,
-            h: controlData.height,
-            s: controlData.speed,
-            s1: controlData.s1
-        }
+        const controlData = get(outControllerData)
 
-        let planner = planners[get(mode)]
+        let planner = planners[get(mode).mode]
         const delta = performance.now() - lastTick
         lastTick = performance.now()
 
-        body_state = planner.step(body_state, data, delta)
+        body_state = planner.step(body_state, controlData, delta)
 
         settings.omega = body_state.omega
         settings.phi = body_state.phi
@@ -327,12 +329,12 @@
         sceneManager.transformControl.showZ = settings['Robot transform controls']
 
         for (let i = 0; i < $jointNames.length; i++) {
-            currentModelAngles[i] = smooth(
+            currentModelAngles.angles[i] = smooth(
                 (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
-                modelTargetAngles[i],
+                modelTargetAngles.angles[i],
                 SMOOTH_AMOUNT
             )
-            robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles[i]))
+            robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles.angles[i]))
         }
 
         orient_robot(robot, toes)

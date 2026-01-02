@@ -59,7 +59,7 @@
             socket.on(RSSIData, (data) => telemetry.setRSSI(data)),
             socket.on(ModeData, (data) => mode.set(data)),
             socket.on(AnalyticsData, (data) => {analytics.addData(data)}),
-            socket.on(AnglesData, (data) => {servoAngles.set(data.angles)})
+            socket.on(AnglesData, (data) => {servoAngles.set(data)})
         ])
         features.subscribe(data => {
             if (data?.download_firmware) eventListeners.push( socket.on(DownloadOTAData, (data) => telemetry.setDownloadOTA(data)) )
