@@ -1,10 +1,9 @@
 <script lang="ts">
     import nipplejs from 'nipplejs'
     import { onMount } from 'svelte'
-    import { capitalize, throttler } from '$lib/utilities'
+    import { capitalize } from '$lib/utilities'
     import {
         input,
-        outControllerData,
         mode,
         modes,
         type Modes,
@@ -18,11 +17,9 @@
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
 
-    let throttle = new throttler()
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
 
-    let throttle_timing = 40
     let data = new Array(7)
 
     $effect(() => {
@@ -46,12 +43,12 @@
         if (b[3]?.justPressed) mode.set(0)
         if (b[12]?.justPressed)
             input.update(inputData => {
-                inputData['height'] = Math.min(inputData.height + 0.1, 1)
+                inputData.height = Math.min(inputData.height + 0.1, 1)
                 return inputData
             })
         if (b[13]?.justPressed)
             input.update(inputData => {
-                inputData['height'] = Math.min(inputData.height - 0.1, 1)
+                inputData.height = Math.min(inputData.height - 0.1, 1)
                 return inputData
             })
     })
@@ -84,19 +81,6 @@
             inputData[key] = data
             return inputData
         })
-        throttle.throttle(updateData, throttle_timing)
-    }
-
-    const updateData = () => {
-        data[0] = $input.left.x
-        data[1] = $input.left.y
-        data[2] = $input.right.x
-        data[3] = $input.right.y
-        data[4] = $input.height
-        data[5] = $input.speed
-        data[6] = $input.s1
-
-        outControllerData.set(data)
     }
 
     const handleKeyup = (event: KeyboardEvent) => {
@@ -110,7 +94,6 @@
             if (event.key === 'ArrowRight') data.right.x = down ? -1 : 0
             return data
         })
-        throttle.throttle(updateData, throttle_timing)
     }
 
     const handleRange = (event: Event, key: 'speed' | 'height' | 's1') => {
@@ -120,7 +103,6 @@
             inputData[key] = value
             return inputData
         })
-        throttle.throttle(updateData, throttle_timing)
     }
 
     const changeMode = (modeValue: Modes) => {

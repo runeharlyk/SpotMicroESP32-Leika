@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vitest } from 'vitest'
-import { throttler } from '../../src/lib/utilities/buffer-utilities'
+import { Throttler } from '../../src/lib/utilities/buffer-utilities'
 
 describe('throttler', () => {
-    let throttleInstance: throttler
+    let throttleInstance: Throttler
     let callback: () => void
 
     beforeEach(() => {
         vitest.useFakeTimers()
-        throttleInstance = new throttler()
+        throttleInstance = new Throttler()
         callback = vitest.fn()
     })
 

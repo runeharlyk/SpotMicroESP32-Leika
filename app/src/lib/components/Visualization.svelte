@@ -14,7 +14,7 @@
         kinematicData,
         mode,
         model,
-        outControllerData,
+        input,
         servoAnglesOut,
         servoAngles,
         mpu,
@@ -23,7 +23,7 @@
         walkGait,
         walkGaitToMode
     } from '$lib/stores'
-    import { populateModelCache, throttler, getToeWorldPositions } from '$lib/utilities'
+    import { populateModelCache, getToeWorldPositions } from '$lib/utilities'
     import SceneBuilder from '$lib/sceneBuilder'
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
@@ -55,7 +55,6 @@
     let currentModelAngles: number[] = new Array(12).fill(0)
     let modelTargetAngles: number[] = new Array(12).fill(0)
     let gui_panel: GUI
-    let Throttler = new throttler()
 
     let target: Object3D<Object3DEventMap>
 
@@ -169,10 +168,7 @@
 
     const updateAngles = (name: string, angle: number) => {
         modelTargetAngles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
-        Throttler.throttle(
-            () => servoAnglesOut.set(modelTargetAngles.map(num => Math.round(num))),
-            100
-        )
+        servoAnglesOut.set(modelTargetAngles.map(num => Math.round(num)))
     }
 
     const createScene = async () => {
@@ -275,15 +271,15 @@
 
     const update_gait = () => {
         if (sceneManager.isDragging || !settings['Internal kinematic']) return
-        const controlData = get(outControllerData)
+        const controlData = get(input)
         const data = {
-            lx: controlData[0],
-            ly: controlData[1],
-            rx: controlData[2],
-            ry: controlData[3],
-            h: controlData[4],
-            s: controlData[5],
-            s1: controlData[6]
+            lx: controlData.left.x,
+            ly: controlData.left.y,
+            rx: controlData.right.x,
+            ry: controlData.right.y,
+            h: controlData.height,
+            s: controlData.speed,
+            s1: controlData.s1
         }
 
         let planner = planners[get(mode)]

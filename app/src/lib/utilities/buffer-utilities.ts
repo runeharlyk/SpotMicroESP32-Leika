@@ -1,4 +1,4 @@
-export class throttler {
+export class Throttler {
     private _throttlePause: boolean
     constructor() {
         this._throttlePause = false

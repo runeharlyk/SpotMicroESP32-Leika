@@ -14,7 +14,7 @@
         ModesEnum,
         kinematicData,
         mode,
-        outControllerData,
+        input,
         servoAngles,
         servoAnglesOut,
         socket,
@@ -24,6 +24,7 @@
     } from '$lib/stores'
     import { type Analytics, type DownloadOTA } from '$lib/types/models'
     import { MessageTopic } from '$lib/types/models'
+    import { Throttler } from '$lib/utilities'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -32,6 +33,7 @@
     let { children }: Props = $props()
 
     const features = useFeatureFlags()
+    const throttler = new Throttler()
 
     onMount(async () => {
         const ws = $apiLocation ? $apiLocation : window.location.host
@@ -39,11 +41,20 @@
 
         addEventListeners()
 
-        outControllerData.subscribe(data => socket.sendEvent(MessageTopic.input, data))
+        input.subscribe(data =>
+            socket.sendEvent(
+                MessageTopic.input,
+                throttler.throttle(() => Object.values(data), 40)
+            )
+        )
         mode.subscribe(data => socket.sendEvent(MessageTopic.mode, data))
         walkGait.subscribe(data => socket.sendEvent(MessageTopic.gait, data))
-        servoAnglesOut.subscribe(data => socket.sendEvent(MessageTopic.angles, data))
-        kinematicData.subscribe(data => socket.sendEvent(MessageTopic.position, data))
+        servoAnglesOut.subscribe(data =>
+            throttler.throttle(() => socket.sendEvent(MessageTopic.angles, data), 100)
+        )
+        kinematicData.subscribe(data =>
+            throttler.throttle(() => socket.sendEvent(MessageTopic.position, data), 100)
+        )
     })
 
     onDestroy(() => {

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { socket } from '$lib/stores'
     import { MessageTopic } from '$lib/types/models'
-    import { throttler as Throttler } from '$lib/utilities'
+    import { Throttler } from '$lib/utilities'
 
     let { servoId = $bindable(0), pwm = $bindable(306) } = $props()
 
