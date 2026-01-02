@@ -50,10 +50,7 @@
         console.log(data);
     }
     onMount(() => {
-        
-        
-        socket.on(IMUData, handleData)
-        return () => socket.off(IMUData, handleData)
+        return socket.on(IMUData, handleData)
     })
 
 </script>
