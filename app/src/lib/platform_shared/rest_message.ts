@@ -5,622 +5,660 @@
 // source: rest_message.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import type { FileDescriptorProto } from "ts-proto-descriptors";
-import { KnownNetworkItem, protoMetadata as protoMetadata1 } from "./websocket_message";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire'
+import type { FileDescriptorProto } from 'ts-proto-descriptors'
+import { KnownNetworkItem, protoMetadata as protoMetadata1 } from './websocket_message'
 
-export const protobufPackage = "rest_message";
+export const protobufPackage = 'rest_message'
 
 export interface WifiStatus {
-  status: number;
-  localIp: string;
-  macAddress: string;
-  rssi: number;
-  ssid: string;
-  bssid: string;
-  channel: number;
-  subnetMask: string;
-  gatewayIp: string;
-  dnsIp1: string;
-  dnsIp2?: string | undefined;
+    status: number
+    localIp: string
+    macAddress: string
+    rssi: number
+    ssid: string
+    bssid: string
+    channel: number
+    subnetMask: string
+    gatewayIp: string
+    dnsIp1: string
+    dnsIp2?: string | undefined
 }
 
 export interface WifiSettings {
-  hostname: string;
-  priorityRssi: boolean;
-  wifiNetworks: KnownNetworkItem[];
+    hostname: string
+    priorityRssi: boolean
+    wifiNetworks: KnownNetworkItem[]
 }
 
 function createBaseWifiStatus(): WifiStatus {
-  return {
-    status: 0,
-    localIp: "",
-    macAddress: "",
-    rssi: 0,
-    ssid: "",
-    bssid: "",
-    channel: 0,
-    subnetMask: "",
-    gatewayIp: "",
-    dnsIp1: "",
-    dnsIp2: undefined,
-  };
+    return {
+        status: 0,
+        localIp: '',
+        macAddress: '',
+        rssi: 0,
+        ssid: '',
+        bssid: '',
+        channel: 0,
+        subnetMask: '',
+        gatewayIp: '',
+        dnsIp1: '',
+        dnsIp2: undefined
+    }
 }
 
 export const WifiStatus: MessageFns<WifiStatus> = {
-  encode(message: WifiStatus, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.status !== 0) {
-      writer.uint32(8).int32(message.status);
-    }
-    if (message.localIp !== "") {
-      writer.uint32(18).string(message.localIp);
-    }
-    if (message.macAddress !== "") {
-      writer.uint32(26).string(message.macAddress);
-    }
-    if (message.rssi !== 0) {
-      writer.uint32(37).float(message.rssi);
-    }
-    if (message.ssid !== "") {
-      writer.uint32(42).string(message.ssid);
-    }
-    if (message.bssid !== "") {
-      writer.uint32(50).string(message.bssid);
-    }
-    if (message.channel !== 0) {
-      writer.uint32(56).uint32(message.channel);
-    }
-    if (message.subnetMask !== "") {
-      writer.uint32(66).string(message.subnetMask);
-    }
-    if (message.gatewayIp !== "") {
-      writer.uint32(74).string(message.gatewayIp);
-    }
-    if (message.dnsIp1 !== "") {
-      writer.uint32(82).string(message.dnsIp1);
-    }
-    if (message.dnsIp2 !== undefined) {
-      writer.uint32(90).string(message.dnsIp2);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): WifiStatus {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseWifiStatus();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 8) {
-            break;
-          }
-
-          message.status = reader.int32();
-          continue;
+    encode(message: WifiStatus, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+        if (message.status !== 0) {
+            writer.uint32(8).int32(message.status)
         }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.localIp = reader.string();
-          continue;
+        if (message.localIp !== '') {
+            writer.uint32(18).string(message.localIp)
         }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.macAddress = reader.string();
-          continue;
+        if (message.macAddress !== '') {
+            writer.uint32(26).string(message.macAddress)
         }
-        case 4: {
-          if (tag !== 37) {
-            break;
-          }
-
-          message.rssi = reader.float();
-          continue;
+        if (message.rssi !== 0) {
+            writer.uint32(37).float(message.rssi)
         }
-        case 5: {
-          if (tag !== 42) {
-            break;
-          }
-
-          message.ssid = reader.string();
-          continue;
+        if (message.ssid !== '') {
+            writer.uint32(42).string(message.ssid)
         }
-        case 6: {
-          if (tag !== 50) {
-            break;
-          }
-
-          message.bssid = reader.string();
-          continue;
+        if (message.bssid !== '') {
+            writer.uint32(50).string(message.bssid)
         }
-        case 7: {
-          if (tag !== 56) {
-            break;
-          }
-
-          message.channel = reader.uint32();
-          continue;
+        if (message.channel !== 0) {
+            writer.uint32(56).uint32(message.channel)
         }
-        case 8: {
-          if (tag !== 66) {
-            break;
-          }
-
-          message.subnetMask = reader.string();
-          continue;
+        if (message.subnetMask !== '') {
+            writer.uint32(66).string(message.subnetMask)
         }
-        case 9: {
-          if (tag !== 74) {
-            break;
-          }
-
-          message.gatewayIp = reader.string();
-          continue;
+        if (message.gatewayIp !== '') {
+            writer.uint32(74).string(message.gatewayIp)
         }
-        case 10: {
-          if (tag !== 82) {
-            break;
-          }
-
-          message.dnsIp1 = reader.string();
-          continue;
+        if (message.dnsIp1 !== '') {
+            writer.uint32(82).string(message.dnsIp1)
         }
-        case 11: {
-          if (tag !== 90) {
-            break;
-          }
-
-          message.dnsIp2 = reader.string();
-          continue;
+        if (message.dnsIp2 !== undefined) {
+            writer.uint32(90).string(message.dnsIp2)
         }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+        return writer
+    },
 
-  fromJSON(object: any): WifiStatus {
-    return {
-      status: isSet(object.status) ? globalThis.Number(object.status) : 0,
-      localIp: isSet(object.localIp) ? globalThis.String(object.localIp) : "",
-      macAddress: isSet(object.macAddress) ? globalThis.String(object.macAddress) : "",
-      rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0,
-      ssid: isSet(object.ssid) ? globalThis.String(object.ssid) : "",
-      bssid: isSet(object.bssid) ? globalThis.String(object.bssid) : "",
-      channel: isSet(object.channel) ? globalThis.Number(object.channel) : 0,
-      subnetMask: isSet(object.subnetMask) ? globalThis.String(object.subnetMask) : "",
-      gatewayIp: isSet(object.gatewayIp) ? globalThis.String(object.gatewayIp) : "",
-      dnsIp1: isSet(object.dnsIp1) ? globalThis.String(object.dnsIp1) : "",
-      dnsIp2: isSet(object.dnsIp2) ? globalThis.String(object.dnsIp2) : undefined,
-    };
-  },
+    decode(input: BinaryReader | Uint8Array, length?: number): WifiStatus {
+        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
+        const end = length === undefined ? reader.len : reader.pos + length
+        const message = createBaseWifiStatus()
+        while (reader.pos < end) {
+            const tag = reader.uint32()
+            switch (tag >>> 3) {
+                case 1: {
+                    if (tag !== 8) {
+                        break
+                    }
 
-  toJSON(message: WifiStatus): unknown {
-    const obj: any = {};
-    if (message.status !== 0) {
-      obj.status = Math.round(message.status);
-    }
-    if (message.localIp !== "") {
-      obj.localIp = message.localIp;
-    }
-    if (message.macAddress !== "") {
-      obj.macAddress = message.macAddress;
-    }
-    if (message.rssi !== 0) {
-      obj.rssi = message.rssi;
-    }
-    if (message.ssid !== "") {
-      obj.ssid = message.ssid;
-    }
-    if (message.bssid !== "") {
-      obj.bssid = message.bssid;
-    }
-    if (message.channel !== 0) {
-      obj.channel = Math.round(message.channel);
-    }
-    if (message.subnetMask !== "") {
-      obj.subnetMask = message.subnetMask;
-    }
-    if (message.gatewayIp !== "") {
-      obj.gatewayIp = message.gatewayIp;
-    }
-    if (message.dnsIp1 !== "") {
-      obj.dnsIp1 = message.dnsIp1;
-    }
-    if (message.dnsIp2 !== undefined) {
-      obj.dnsIp2 = message.dnsIp2;
-    }
-    return obj;
-  },
+                    message.status = reader.int32()
+                    continue
+                }
+                case 2: {
+                    if (tag !== 18) {
+                        break
+                    }
 
-  create<I extends Exact<DeepPartial<WifiStatus>, I>>(base?: I): WifiStatus {
-    return WifiStatus.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<WifiStatus>, I>>(object: I): WifiStatus {
-    const message = createBaseWifiStatus();
-    message.status = object.status ?? 0;
-    message.localIp = object.localIp ?? "";
-    message.macAddress = object.macAddress ?? "";
-    message.rssi = object.rssi ?? 0;
-    message.ssid = object.ssid ?? "";
-    message.bssid = object.bssid ?? "";
-    message.channel = object.channel ?? 0;
-    message.subnetMask = object.subnetMask ?? "";
-    message.gatewayIp = object.gatewayIp ?? "";
-    message.dnsIp1 = object.dnsIp1 ?? "";
-    message.dnsIp2 = object.dnsIp2 ?? undefined;
-    return message;
-  },
-};
+                    message.localIp = reader.string()
+                    continue
+                }
+                case 3: {
+                    if (tag !== 26) {
+                        break
+                    }
+
+                    message.macAddress = reader.string()
+                    continue
+                }
+                case 4: {
+                    if (tag !== 37) {
+                        break
+                    }
+
+                    message.rssi = reader.float()
+                    continue
+                }
+                case 5: {
+                    if (tag !== 42) {
+                        break
+                    }
+
+                    message.ssid = reader.string()
+                    continue
+                }
+                case 6: {
+                    if (tag !== 50) {
+                        break
+                    }
+
+                    message.bssid = reader.string()
+                    continue
+                }
+                case 7: {
+                    if (tag !== 56) {
+                        break
+                    }
+
+                    message.channel = reader.uint32()
+                    continue
+                }
+                case 8: {
+                    if (tag !== 66) {
+                        break
+                    }
+
+                    message.subnetMask = reader.string()
+                    continue
+                }
+                case 9: {
+                    if (tag !== 74) {
+                        break
+                    }
+
+                    message.gatewayIp = reader.string()
+                    continue
+                }
+                case 10: {
+                    if (tag !== 82) {
+                        break
+                    }
+
+                    message.dnsIp1 = reader.string()
+                    continue
+                }
+                case 11: {
+                    if (tag !== 90) {
+                        break
+                    }
+
+                    message.dnsIp2 = reader.string()
+                    continue
+                }
+            }
+            if ((tag & 7) === 4 || tag === 0) {
+                break
+            }
+            reader.skip(tag & 7)
+        }
+        return message
+    },
+
+    fromJSON(object: any): WifiStatus {
+        return {
+            status: isSet(object.status) ? globalThis.Number(object.status) : 0,
+            localIp: isSet(object.localIp) ? globalThis.String(object.localIp) : '',
+            macAddress: isSet(object.macAddress) ? globalThis.String(object.macAddress) : '',
+            rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0,
+            ssid: isSet(object.ssid) ? globalThis.String(object.ssid) : '',
+            bssid: isSet(object.bssid) ? globalThis.String(object.bssid) : '',
+            channel: isSet(object.channel) ? globalThis.Number(object.channel) : 0,
+            subnetMask: isSet(object.subnetMask) ? globalThis.String(object.subnetMask) : '',
+            gatewayIp: isSet(object.gatewayIp) ? globalThis.String(object.gatewayIp) : '',
+            dnsIp1: isSet(object.dnsIp1) ? globalThis.String(object.dnsIp1) : '',
+            dnsIp2: isSet(object.dnsIp2) ? globalThis.String(object.dnsIp2) : undefined
+        }
+    },
+
+    toJSON(message: WifiStatus): unknown {
+        const obj: any = {}
+        if (message.status !== 0) {
+            obj.status = Math.round(message.status)
+        }
+        if (message.localIp !== '') {
+            obj.localIp = message.localIp
+        }
+        if (message.macAddress !== '') {
+            obj.macAddress = message.macAddress
+        }
+        if (message.rssi !== 0) {
+            obj.rssi = message.rssi
+        }
+        if (message.ssid !== '') {
+            obj.ssid = message.ssid
+        }
+        if (message.bssid !== '') {
+            obj.bssid = message.bssid
+        }
+        if (message.channel !== 0) {
+            obj.channel = Math.round(message.channel)
+        }
+        if (message.subnetMask !== '') {
+            obj.subnetMask = message.subnetMask
+        }
+        if (message.gatewayIp !== '') {
+            obj.gatewayIp = message.gatewayIp
+        }
+        if (message.dnsIp1 !== '') {
+            obj.dnsIp1 = message.dnsIp1
+        }
+        if (message.dnsIp2 !== undefined) {
+            obj.dnsIp2 = message.dnsIp2
+        }
+        return obj
+    },
+
+    create<I extends Exact<DeepPartial<WifiStatus>, I>>(base?: I): WifiStatus {
+        return WifiStatus.fromPartial(base ?? ({} as any))
+    },
+    fromPartial<I extends Exact<DeepPartial<WifiStatus>, I>>(object: I): WifiStatus {
+        const message = createBaseWifiStatus()
+        message.status = object.status ?? 0
+        message.localIp = object.localIp ?? ''
+        message.macAddress = object.macAddress ?? ''
+        message.rssi = object.rssi ?? 0
+        message.ssid = object.ssid ?? ''
+        message.bssid = object.bssid ?? ''
+        message.channel = object.channel ?? 0
+        message.subnetMask = object.subnetMask ?? ''
+        message.gatewayIp = object.gatewayIp ?? ''
+        message.dnsIp1 = object.dnsIp1 ?? ''
+        message.dnsIp2 = object.dnsIp2 ?? undefined
+        return message
+    }
+}
 
 function createBaseWifiSettings(): WifiSettings {
-  return { hostname: "", priorityRssi: false, wifiNetworks: [] };
+    return { hostname: '', priorityRssi: false, wifiNetworks: [] }
 }
 
 export const WifiSettings: MessageFns<WifiSettings> = {
-  encode(message: WifiSettings, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.hostname !== "") {
-      writer.uint32(10).string(message.hostname);
-    }
-    if (message.priorityRssi !== false) {
-      writer.uint32(16).bool(message.priorityRssi);
-    }
-    for (const v of message.wifiNetworks) {
-      KnownNetworkItem.encode(v!, writer.uint32(26).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): WifiSettings {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseWifiSettings();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.hostname = reader.string();
-          continue;
+    encode(message: WifiSettings, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+        if (message.hostname !== '') {
+            writer.uint32(10).string(message.hostname)
         }
-        case 2: {
-          if (tag !== 16) {
-            break;
-          }
-
-          message.priorityRssi = reader.bool();
-          continue;
+        if (message.priorityRssi !== false) {
+            writer.uint32(16).bool(message.priorityRssi)
         }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.wifiNetworks.push(KnownNetworkItem.decode(reader, reader.uint32()));
-          continue;
+        for (const v of message.wifiNetworks) {
+            KnownNetworkItem.encode(v!, writer.uint32(26).fork()).join()
         }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+        return writer
+    },
 
-  fromJSON(object: any): WifiSettings {
-    return {
-      hostname: isSet(object.hostname) ? globalThis.String(object.hostname) : "",
-      priorityRssi: isSet(object.priorityRssi) ? globalThis.Boolean(object.priorityRssi) : false,
-      wifiNetworks: globalThis.Array.isArray(object?.wifiNetworks)
-        ? object.wifiNetworks.map((e: any) => KnownNetworkItem.fromJSON(e))
-        : [],
-    };
-  },
+    decode(input: BinaryReader | Uint8Array, length?: number): WifiSettings {
+        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
+        const end = length === undefined ? reader.len : reader.pos + length
+        const message = createBaseWifiSettings()
+        while (reader.pos < end) {
+            const tag = reader.uint32()
+            switch (tag >>> 3) {
+                case 1: {
+                    if (tag !== 10) {
+                        break
+                    }
 
-  toJSON(message: WifiSettings): unknown {
-    const obj: any = {};
-    if (message.hostname !== "") {
-      obj.hostname = message.hostname;
-    }
-    if (message.priorityRssi !== false) {
-      obj.priorityRssi = message.priorityRssi;
-    }
-    if (message.wifiNetworks?.length) {
-      obj.wifiNetworks = message.wifiNetworks.map((e) => KnownNetworkItem.toJSON(e));
-    }
-    return obj;
-  },
+                    message.hostname = reader.string()
+                    continue
+                }
+                case 2: {
+                    if (tag !== 16) {
+                        break
+                    }
 
-  create<I extends Exact<DeepPartial<WifiSettings>, I>>(base?: I): WifiSettings {
-    return WifiSettings.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<WifiSettings>, I>>(object: I): WifiSettings {
-    const message = createBaseWifiSettings();
-    message.hostname = object.hostname ?? "";
-    message.priorityRssi = object.priorityRssi ?? false;
-    message.wifiNetworks = object.wifiNetworks?.map((e) => KnownNetworkItem.fromPartial(e)) || [];
-    return message;
-  },
-};
+                    message.priorityRssi = reader.bool()
+                    continue
+                }
+                case 3: {
+                    if (tag !== 26) {
+                        break
+                    }
+
+                    message.wifiNetworks.push(KnownNetworkItem.decode(reader, reader.uint32()))
+                    continue
+                }
+            }
+            if ((tag & 7) === 4 || tag === 0) {
+                break
+            }
+            reader.skip(tag & 7)
+        }
+        return message
+    },
+
+    fromJSON(object: any): WifiSettings {
+        return {
+            hostname: isSet(object.hostname) ? globalThis.String(object.hostname) : '',
+            priorityRssi:
+                isSet(object.priorityRssi) ? globalThis.Boolean(object.priorityRssi) : false,
+            wifiNetworks:
+                globalThis.Array.isArray(object?.wifiNetworks) ?
+                    object.wifiNetworks.map((e: any) => KnownNetworkItem.fromJSON(e))
+                :   []
+        }
+    },
+
+    toJSON(message: WifiSettings): unknown {
+        const obj: any = {}
+        if (message.hostname !== '') {
+            obj.hostname = message.hostname
+        }
+        if (message.priorityRssi !== false) {
+            obj.priorityRssi = message.priorityRssi
+        }
+        if (message.wifiNetworks?.length) {
+            obj.wifiNetworks = message.wifiNetworks.map(e => KnownNetworkItem.toJSON(e))
+        }
+        return obj
+    },
+
+    create<I extends Exact<DeepPartial<WifiSettings>, I>>(base?: I): WifiSettings {
+        return WifiSettings.fromPartial(base ?? ({} as any))
+    },
+    fromPartial<I extends Exact<DeepPartial<WifiSettings>, I>>(object: I): WifiSettings {
+        const message = createBaseWifiSettings()
+        message.hostname = object.hostname ?? ''
+        message.priorityRssi = object.priorityRssi ?? false
+        message.wifiNetworks = object.wifiNetworks?.map(e => KnownNetworkItem.fromPartial(e)) || []
+        return message
+    }
+}
 
 type ProtoMetaMessageOptions = {
-  options?: { [key: string]: any };
-  fields?: { [key: string]: { [key: string]: any } };
-  oneof?: { [key: string]: { [key: string]: any } };
-  nested?: { [key: string]: ProtoMetaMessageOptions };
-};
+    options?: { [key: string]: any }
+    fields?: { [key: string]: { [key: string]: any } }
+    oneof?: { [key: string]: { [key: string]: any } }
+    nested?: { [key: string]: ProtoMetaMessageOptions }
+}
 
 export interface ProtoMetadata {
-  fileDescriptor: FileDescriptorProto;
-  references: { [key: string]: any };
-  dependencies?: ProtoMetadata[];
-  options?: {
-    options?: { [key: string]: any };
-    services?: {
-      [key: string]: { options?: { [key: string]: any }; methods?: { [key: string]: { [key: string]: any } } };
-    };
-    messages?: { [key: string]: ProtoMetaMessageOptions };
-    enums?: { [key: string]: { options?: { [key: string]: any }; values?: { [key: string]: { [key: string]: any } } } };
-  };
+    fileDescriptor: FileDescriptorProto
+    references: { [key: string]: any }
+    dependencies?: ProtoMetadata[]
+    options?: {
+        options?: { [key: string]: any }
+        services?: {
+            [key: string]: {
+                options?: { [key: string]: any }
+                methods?: { [key: string]: { [key: string]: any } }
+            }
+        }
+        messages?: { [key: string]: ProtoMetaMessageOptions }
+        enums?: {
+            [key: string]: {
+                options?: { [key: string]: any }
+                values?: { [key: string]: { [key: string]: any } }
+            }
+        }
+    }
 }
 
 export const protoMetadata: ProtoMetadata = {
-  fileDescriptor: {
-    "name": "rest_message.proto",
-    "package": "rest_message",
-    "dependency": ["websocket_message.proto"],
-    "publicDependency": [],
-    "weakDependency": [],
-    "optionDependency": [],
-    "messageType": [{
-      "name": "WifiStatus",
-      "field": [{
-        "name": "status",
-        "number": 1,
-        "label": 1,
-        "type": 5,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "status",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "local_ip",
-        "number": 2,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "localIp",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "mac_address",
-        "number": 3,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "macAddress",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "rssi",
-        "number": 4,
-        "label": 1,
-        "type": 2,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "rssi",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "ssid",
-        "number": 5,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "ssid",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "bssid",
-        "number": 6,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "bssid",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "channel",
-        "number": 7,
-        "label": 1,
-        "type": 13,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "channel",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "subnet_mask",
-        "number": 8,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "subnetMask",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "gateway_ip",
-        "number": 9,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "gatewayIp",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "dns_ip_1",
-        "number": 10,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "dnsIp1",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "dns_ip_2",
-        "number": 11,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "dnsIp2",
-        "options": undefined,
-        "proto3Optional": true,
-      }],
-      "extension": [],
-      "nestedType": [],
-      "enumType": [],
-      "extensionRange": [],
-      "oneofDecl": [{ "name": "_dns_ip_2", "options": undefined }],
-      "options": undefined,
-      "reservedRange": [],
-      "reservedName": [],
-      "visibility": 0,
-    }, {
-      "name": "WifiSettings",
-      "field": [{
-        "name": "hostname",
-        "number": 1,
-        "label": 1,
-        "type": 9,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "hostname",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "priority_rssi",
-        "number": 2,
-        "label": 1,
-        "type": 8,
-        "typeName": "",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "priorityRssi",
-        "options": undefined,
-        "proto3Optional": false,
-      }, {
-        "name": "wifi_networks",
-        "number": 3,
-        "label": 3,
-        "type": 11,
-        "typeName": ".socket_message.KnownNetworkItem",
-        "extendee": "",
-        "defaultValue": "",
-        "oneofIndex": 0,
-        "jsonName": "wifiNetworks",
-        "options": undefined,
-        "proto3Optional": false,
-      }],
-      "extension": [],
-      "nestedType": [],
-      "enumType": [],
-      "extensionRange": [],
-      "oneofDecl": [],
-      "options": undefined,
-      "reservedRange": [],
-      "reservedName": [],
-      "visibility": 0,
-    }],
-    "enumType": [],
-    "service": [],
-    "extension": [],
-    "options": undefined,
-    "sourceCodeInfo": {
-      "location": [{
-        "path": [2],
-        "span": [5, 0, 21],
-        "leadingComments":
-          ' Note: This is most likely a "temporary" proto that will be redone, as these endpoints are static for the esp32, which means we are forced to use WiFi for communication\n',
-        "trailingComments": "",
-        "leadingDetachedComments": [],
-      }],
+    fileDescriptor: {
+        name: 'rest_message.proto',
+        package: 'rest_message',
+        dependency: ['websocket_message.proto'],
+        publicDependency: [],
+        weakDependency: [],
+        optionDependency: [],
+        messageType: [
+            {
+                name: 'WifiStatus',
+                field: [
+                    {
+                        name: 'status',
+                        number: 1,
+                        label: 1,
+                        type: 5,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'status',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'local_ip',
+                        number: 2,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'localIp',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'mac_address',
+                        number: 3,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'macAddress',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'rssi',
+                        number: 4,
+                        label: 1,
+                        type: 2,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'rssi',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'ssid',
+                        number: 5,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'ssid',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'bssid',
+                        number: 6,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'bssid',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'channel',
+                        number: 7,
+                        label: 1,
+                        type: 13,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'channel',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'subnet_mask',
+                        number: 8,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'subnetMask',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'gateway_ip',
+                        number: 9,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'gatewayIp',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'dns_ip_1',
+                        number: 10,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'dnsIp1',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'dns_ip_2',
+                        number: 11,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'dnsIp2',
+                        options: undefined,
+                        proto3Optional: true
+                    }
+                ],
+                extension: [],
+                nestedType: [],
+                enumType: [],
+                extensionRange: [],
+                oneofDecl: [{ name: '_dns_ip_2', options: undefined }],
+                options: undefined,
+                reservedRange: [],
+                reservedName: [],
+                visibility: 0
+            },
+            {
+                name: 'WifiSettings',
+                field: [
+                    {
+                        name: 'hostname',
+                        number: 1,
+                        label: 1,
+                        type: 9,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'hostname',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'priority_rssi',
+                        number: 2,
+                        label: 1,
+                        type: 8,
+                        typeName: '',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'priorityRssi',
+                        options: undefined,
+                        proto3Optional: false
+                    },
+                    {
+                        name: 'wifi_networks',
+                        number: 3,
+                        label: 3,
+                        type: 11,
+                        typeName: '.socket_message.KnownNetworkItem',
+                        extendee: '',
+                        defaultValue: '',
+                        oneofIndex: 0,
+                        jsonName: 'wifiNetworks',
+                        options: undefined,
+                        proto3Optional: false
+                    }
+                ],
+                extension: [],
+                nestedType: [],
+                enumType: [],
+                extensionRange: [],
+                oneofDecl: [],
+                options: undefined,
+                reservedRange: [],
+                reservedName: [],
+                visibility: 0
+            }
+        ],
+        enumType: [],
+        service: [],
+        extension: [],
+        options: undefined,
+        sourceCodeInfo: {
+            location: [
+                {
+                    path: [2],
+                    span: [5, 0, 21],
+                    leadingComments:
+                        ' Note: This is most likely a "temporary" proto that will be redone, as these endpoints are static for the esp32, which means we are forced to use WiFi for communication\n',
+                    trailingComments: '',
+                    leadingDetachedComments: []
+                }
+            ]
+        },
+        syntax: 'proto3',
+        edition: 0
     },
-    "syntax": "proto3",
-    "edition": 0,
-  },
-  references: { ".rest_message.WifiStatus": WifiStatus, ".rest_message.WifiSettings": WifiSettings },
-  dependencies: [protoMetadata1],
-};
+    references: {
+        '.rest_message.WifiStatus': WifiStatus,
+        '.rest_message.WifiSettings': WifiSettings
+    },
+    dependencies: [protoMetadata1]
+}
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> =
+    T extends Builtin ? T
+    : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+    : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : Partial<T>
 
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+type KeysOfUnion<T> = T extends T ? keyof T : never
+export type Exact<P, I extends P> =
+    P extends Builtin ? P
+    :   P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+            [K in Exclude<keyof I, KeysOfUnion<P>>]: never
+        }
 
 function isSet(value: any): boolean {
-  return value !== null && value !== undefined;
+    return value !== null && value !== undefined
 }
 
 export interface MessageFns<T> {
-  encode(message: T, writer?: BinaryWriter): BinaryWriter;
-  decode(input: BinaryReader | Uint8Array, length?: number): T;
-  fromJSON(object: any): T;
-  toJSON(message: T): unknown;
-  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
-  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
+    encode(message: T, writer?: BinaryWriter): BinaryWriter
+    decode(input: BinaryReader | Uint8Array, length?: number): T
+    fromJSON(object: any): T
+    toJSON(message: T): unknown
+    create<I extends Exact<DeepPartial<T>, I>>(base?: I): T
+    fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T
 }

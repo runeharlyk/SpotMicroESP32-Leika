@@ -51,9 +51,11 @@
 
     const postSleep = async () => await api.post('api/sleep')
 
-    let unsub: (() => void) | undefined = undefined;
-    onMount(() => unsub = socket.on(AnalyticsData, handleSystemData))
-    onDestroy(() => { if (unsub) unsub() })
+    let unsub: (() => void) | undefined = undefined
+    onMount(() => (unsub = socket.on(AnalyticsData, handleSystemData)))
+    onDestroy(() => {
+        if (unsub) unsub()
+    })
 
     const handleSystemData = (data: AnalyticsData) => {
         if (systemInformation) {
@@ -179,7 +181,9 @@
                         icon={Speed}
                         title="CPU Frequency"
                         description={`${systemInformation.staticSystemInformation?.cpuFreqMhz} MHz ${
-                            systemInformation.staticSystemInformation?.cpuCores == 2 ? 'Dual Core' : 'Single Core'
+                            systemInformation.staticSystemInformation?.cpuCores == 2 ?
+                                'Dual Core'
+                            :   'Single Core'
                         }`}
                     />
 
@@ -199,11 +203,14 @@
                         icon={Sketch}
                         title="Sketch (Used / Free)"
                         description={`${(
-                            (systemInformation.staticSystemInformation!.sketchSize / systemInformation.staticSystemInformation!.freeSketchSpace) *
+                            (systemInformation.staticSystemInformation!.sketchSize /
+                                systemInformation.staticSystemInformation!.freeSketchSpace) *
                             100
                         ).toFixed(1)} % of
                 ${systemInformation.staticSystemInformation!.freeSketchSpace / 1000000} MB used (${
-                    (systemInformation.staticSystemInformation!.freeSketchSpace - systemInformation.staticSystemInformation!.sketchSize) / 1000000
+                    (systemInformation.staticSystemInformation!.freeSketchSpace -
+                        systemInformation.staticSystemInformation!.sketchSize) /
+                    1000000
                 } MB free)`}
                     />
 
@@ -219,10 +226,15 @@
                         icon={Folder}
                         title="File System (Used / Total)"
                         description={`${(
-                            (systemInformation.analyticsData!.fsUsed / systemInformation.analyticsData!.fsTotal) *
+                            (systemInformation.analyticsData!.fsUsed /
+                                systemInformation.analyticsData!.fsTotal) *
                             100
-                        ).toFixed(1)} % of ${systemInformation.analyticsData!.fsTotal / 1000000} MB used (${
-                            (systemInformation.analyticsData!.fsTotal - systemInformation.analyticsData!.fsUsed) / 1000000
+                        ).toFixed(
+                            1
+                        )} % of ${systemInformation.analyticsData!.fsTotal / 1000000} MB used (${
+                            (systemInformation.analyticsData!.fsTotal -
+                                systemInformation.analyticsData!.fsUsed) /
+                            1000000
                         }
                 MB free)`}
                     />

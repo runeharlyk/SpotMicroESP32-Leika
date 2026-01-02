@@ -4,7 +4,11 @@
     import { socket } from '$lib/stores'
     import { Connection } from '$lib/components/icons'
     import I2CSetting from './i2cSetting.svelte'
-    import { I2CDevice, I2CScanData, I2CScanDataRequest } from '$lib/platform_shared/websocket_message'
+    import {
+        I2CDevice,
+        I2CScanData,
+        I2CScanDataRequest
+    } from '$lib/platform_shared/websocket_message'
 
     // TODO: Delete this completely, this should be done on esp side, as it decides what addresses are actually valid, as for example ICM20948 and MPU6050 can have same address
     // const i2cDevices = [
@@ -66,7 +70,7 @@
             <div>No I2C devices found</div>
         {:else}
             {#each active_devices as device (device.address)}
-                <div>[{device.address.toString(16)}] {device.part_number} - {device.name}</div>
+                <div>[{device.address.toString(16)}] {device.partNumber} - {device.name}</div>
             {/each}
         {/if}
     </div>

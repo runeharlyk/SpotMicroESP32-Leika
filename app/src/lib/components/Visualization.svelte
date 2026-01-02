@@ -19,14 +19,21 @@
         jointNames,
         currentKinematic,
         walkGait,
-        kinematicData,
+        kinematicData
     } from '$lib/stores'
     import { populateModelCache, getToeWorldPositions } from '$lib/utilities'
     import SceneBuilder from '$lib/sceneBuilder'
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
     import { type body_state_t } from '$lib/kinematic'
-    import { BezierState, CalibrationState, GaitState, IdleState, RestState, StandState } from '$lib/gait'
+    import {
+        BezierState,
+        CalibrationState,
+        GaitState,
+        IdleState,
+        RestState,
+        StandState
+    } from '$lib/gait'
     import { radToDeg } from 'three/src/math/MathUtils.js'
     import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
@@ -50,10 +57,12 @@
 
     let sceneManager = $state(new SceneBuilder())
     let canvas: HTMLCanvasElement
+    const NUM_ANGLES = 12 // TODO: This number should come from the robot
 
-    // TODO: This assumes that we have 12 angles (valid for the spot robot) but this should not be a static number defined in each individual data set
-    let currentModelAngles: AnglesData = AnglesData.create({ angles: new Array(12).fill(0) })
-    let modelTargetAngles: AnglesData = AnglesData.create({ angles: new Array(12).fill(0) })
+    let currentModelAngles: AnglesData = AnglesData.create({
+        angles: new Array(NUM_ANGLES).fill(0)
+    })
+    let modelTargetAngles: AnglesData = AnglesData.create({ angles: new Array(NUM_ANGLES).fill(0) })
     let gui_panel: GUI
     const SMOOTH_AMOUNT = 0.2
 
@@ -63,8 +72,7 @@
 
     let kinematic = get(currentKinematic)
 
-    // Incredibly ugly but cant be bothered to fix this or statement right now, we cant key on GaitState objects, only the class extensions themselves (which we dont use here)
-    const planners: Record<ModesEnum, IdleState | CalibrationState | RestState | StandState | BezierState> = {
+    const planners: Record<ModesEnum, GaitState> = {
         [ModesEnum.DEACTIVATED]: new IdleState(),
         [ModesEnum.IDLE]: new IdleState(),
         [ModesEnum.CALIBRATION]: new CalibrationState(),
@@ -119,7 +127,9 @@
         walkGait.subscribe(gait => {
             const walkPlanner = planners[ModesEnum.WALK]
             if (!(walkPlanner instanceof BezierState)) {
-                throw new Error(`Expected BezierState for WALK mode, got ${walkPlanner.constructor.name}`)
+                throw new Error(
+                    `Expected BezierState for WALK mode, got ${walkPlanner.constructor.name}`
+                )
             }
             walkPlanner.set_mode(gait.gait)
         })
@@ -163,14 +173,16 @@
     }
 
     const updateKinematicPosition = () => {
-        kinematicData.set(KinematicData.create({
-            omega: settings.omega,
-            phi: settings.phi,
-            psi: settings.psi,
-            xm: settings.xm,
-            ym: settings.ym,
-            zm: settings.zm
-        }))
+        kinematicData.set(
+            KinematicData.create({
+                omega: settings.omega,
+                phi: settings.phi,
+                psi: settings.psi,
+                xm: settings.xm,
+                ym: settings.ym,
+                zm: settings.zm
+            })
+        )
     }
 
     const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))
@@ -178,7 +190,9 @@
     const updateAngles = (name: string, angle: number) => {
         modelTargetAngles.angles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
         servoAnglesOut.set(
-            AnglesData.create({ angles: modelTargetAngles.angles.map(num => Math.round(num)) })
+            AnglesData.create({
+                angles: modelTargetAngles.angles.map(num => Math.round(num))
+            })
         )
     }
 
@@ -282,7 +296,7 @@
 
     const update_gait = () => {
         if (sceneManager.isDragging || !settings['Internal kinematic']) return
-        const controlData = get(outControllerData)
+        const controlData = get(input)
 
         let planner = planners[get(mode).mode]
         const delta = performance.now() - lastTick

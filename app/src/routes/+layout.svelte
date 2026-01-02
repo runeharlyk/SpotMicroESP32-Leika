@@ -21,7 +21,17 @@
         useFeatureFlags,
         walkGait
     } from '$lib/stores'
-    import { AnalyticsData, AnglesData, DownloadOTAData, HumanInputData, KinematicData, ModeData, RSSIData, SonarData, WalkGaitData } from '$lib/platform_shared/websocket_message'
+    import {
+        AnalyticsData,
+        AnglesData,
+        DownloadOTAData,
+        HumanInputData,
+        KinematicData,
+        ModeData,
+        RSSIData,
+        SonarData,
+        WalkGaitData
+    } from '$lib/platform_shared/websocket_message'
     import { Throttler } from '$lib/utilities'
 
     interface Props {
@@ -39,10 +49,14 @@
 
         addEventListeners()
 
-        outControllerData.subscribe(data => socket.sendEvent(HumanInputData, data))
+        input.subscribe(data =>
+            throttler.throttle(() => socket.sendEvent(HumanInputData, data), 100)
+        )
         mode.subscribe(data => socket.sendEvent(ModeData, data))
         walkGait.subscribe(data => socket.sendEvent(WalkGaitData, data))
-        servoAnglesOut.subscribe(data => socket.sendEvent(AnglesData, data))
+        servoAnglesOut.subscribe(data =>
+            throttler.throttle(() => socket.sendEvent(AnglesData, data), 100)
+        )
         kinematicData.subscribe(data => socket.sendEvent(KinematicData, data))
     })
 
@@ -50,26 +64,35 @@
         removeEventListeners()
     })
 
-    const eventListeners: (() => void)[] = [];
+    const eventListeners: (() => void)[] = []
     const addEventListeners = () => {
-        eventListeners.push(...[
-            socket.onEvent('open', handleOpen),
-            socket.onEvent('close', handleClose),
-            socket.onEvent('error', handleError),
-            socket.on(RSSIData, (data) => telemetry.setRSSI(data)),
-            socket.on(ModeData, (data) => mode.set(data)),
-            socket.on(AnalyticsData, (data) => {analytics.addData(data)}),
-            socket.on(AnglesData, (data) => {servoAngles.set(data)})
-        ])
+        eventListeners.push(
+            ...[
+                socket.onEvent('open', handleOpen),
+                socket.onEvent('close', handleClose),
+                socket.onEvent('error', handleError),
+                socket.on(RSSIData, data => telemetry.setRSSI(data)),
+                socket.on(ModeData, data => mode.set(data)),
+                socket.on(AnalyticsData, data => {
+                    analytics.addData(data)
+                }),
+                socket.on(AnglesData, data => {
+                    servoAngles.set(data)
+                })
+            ]
+        )
         features.subscribe(data => {
-            if (data?.download_firmware) eventListeners.push( socket.on(DownloadOTAData, (data) => telemetry.setDownloadOTA(data)) )
-            if (data?.sonar) eventListeners.push( socket.on(SonarData, (data) => console.log(data)) )
+            if (data?.download_firmware)
+                eventListeners.push(
+                    socket.on(DownloadOTAData, data => telemetry.setDownloadOTA(data))
+                )
+            if (data?.sonar) eventListeners.push(socket.on(SonarData, data => console.log(data)))
         })
     }
 
     const removeEventListeners = () => {
         for (let offFunction of eventListeners) {
-            offFunction();
+            offFunction()
         }
     }
 
@@ -79,7 +102,7 @@
 
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
-        telemetry.setRSSI( RSSIData.create({rssi: 0}) )
+        telemetry.setRSSI(RSSIData.create({ rssi: 0 }))
     }
 
     const handleError = (data: unknown) => console.error(data)

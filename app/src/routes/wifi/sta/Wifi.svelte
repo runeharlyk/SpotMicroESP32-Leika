@@ -36,7 +36,7 @@
     import { KnownNetworkItem } from '$lib/platform_shared/websocket_message'
     import { WifiSettings, type WifiStatus } from '$lib/platform_shared/rest_message'
 
-    let networkEditable: KnownNetworkItem = $state( KnownNetworkItem.create() )
+    let networkEditable: KnownNetworkItem = $state(KnownNetworkItem.create())
 
     let static_ip_config = $state(false)
 
@@ -84,15 +84,17 @@
         return wifiSettings
     }
 
-    let unsub_obj: (() => void) | undefined = undefined;
+    let unsub_obj: (() => void) | undefined = undefined
     onMount(() => {
         unsub_obj = socket.on<WifiSettings>(WifiSettings, data => {
             wifiSettings = data
             dndNetworkList = wifiSettings.wifiNetworks
         })
     })
-    
-    onDestroy(() => { if (unsub_obj) unsub_obj() } )
+
+    onDestroy(() => {
+        if (unsub_obj) unsub_obj()
+    })
     async function postWiFiSettings(data: WifiSettings) {
         const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data)
         if (result.isErr()) {

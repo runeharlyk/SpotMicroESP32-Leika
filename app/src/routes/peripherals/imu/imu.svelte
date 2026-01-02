@@ -9,9 +9,11 @@
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
-    import { IMUReport } from '$lib/platform_shared/imu_report';
-    import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-    import { IMUCalibrateData, IMUCalibrateExecute, IMUData } from '$lib/platform_shared/websocket_message'
+    import {
+        IMUCalibrateData,
+        IMUCalibrateExecute,
+        IMUData
+    } from '$lib/platform_shared/websocket_message'
 
     Chart.register(...registerables)
 
@@ -189,9 +191,9 @@
     const updateData = () => {
         if ($features.imu) {
             const x = $imu.map(datapoint => datapoint.x)
-            const y= $imu.map(datapoint => datapoint.y)
+            const y = $imu.map(datapoint => datapoint.y)
             const z = $imu.map(datapoint => datapoint.z)
-            
+
             angleChart.data.labels = Array.from({ length: $imu.length }, (_, i) => i + 1)
             angleChart.data.datasets[0].data = x
             angleChart.data.datasets[1].data = y
@@ -204,23 +206,31 @@
         }
 
         if ($features.bmp) {
-            updateChartData(tempChart, $imu.map(datapoint => datapoint.bmpTemp))
-            updateChartData(altitudeChart, $imu.map(datapoint => datapoint.altitude))
+            updateChartData(
+                tempChart,
+                $imu.map(datapoint => datapoint.bmpTemp)
+            )
+            updateChartData(
+                altitudeChart,
+                $imu.map(datapoint => datapoint.altitude)
+            )
         }
     }
-    const eventListeners: (() => void)[] = [];
+    const eventListeners: (() => void)[] = []
     onMount(() => {
-        eventListeners.push(...[
-            socket.on(IMUData, (data) => {
-                console.log(data)
-                imu.addData(data)
-            }),
+        eventListeners.push(
+            ...[
+                socket.on(IMUData, data => {
+                    console.log(data)
+                    imu.addData(data)
+                }),
 
-            socket.on(IMUCalibrateData, (data) => {
-                isCalibrating = false
-                calibrationResult = data
-            })
-        ])
+                socket.on(IMUCalibrateData, data => {
+                    isCalibrating = false
+                    calibrationResult = data
+                })
+            ]
+        )
 
         initializeCharts()
         intervalId = setInterval(updateData, 200)
@@ -228,7 +238,7 @@
 
     onDestroy(() => {
         for (let offFunction of eventListeners) {
-            offFunction();
+            offFunction()
         }
         clearInterval(intervalId)
     })

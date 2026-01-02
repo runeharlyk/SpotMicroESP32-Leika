@@ -1,9 +1,12 @@
 import { writable } from 'svelte/store'
 import { encode, decode } from '@msgpack/msgpack'
-import { WebsocketMessage, type MessageFns, protoMetadata as websocket_md } from '$lib/platform_shared/websocket_message'
+import {
+    WebsocketMessage,
+    type MessageFns,
+    protoMetadata as websocket_md
+} from '$lib/platform_shared/websocket_message'
 import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
 import type { BinaryWriter } from '@bufbuild/protobuf/wire'
-
 
 // -------- START PARSING PROTO DATA --------
 // Auto-build reverse mapping from MessageFns to event key and tag
@@ -13,7 +16,7 @@ export const MESSAGE_KEY_TO_TAG = new Map<string, number>()
 
 // Build the mapping using references from metadata
 const websocketMessageType = websocket_md.fileDescriptor.messageType?.find(
-    (    msg: { name: string } ) => msg.name === 'WebsocketMessage'
+    (msg: { name: string }) => msg.name === 'WebsocketMessage'
 )
 
 if (websocketMessageType?.field) {
@@ -33,7 +36,9 @@ if (websocketMessageType?.field) {
 function get_name_from_messagetype(event_type: MessageFns<any>): string {
     const event = MESSAGE_TYPE_TO_KEY.get(event_type)
     if (!event) {
-        throw new Error("Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+        throw new Error(
+            "Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field."
+        )
     }
     return event
 }
@@ -42,7 +47,9 @@ function get_name_from_messagetype(event_type: MessageFns<any>): string {
 function get_tag_from_messagetype(event_type: MessageFns<any>): number {
     const fieldNumber = MESSAGE_TYPE_TO_TAG.get(event_type)
     if (fieldNumber === undefined) {
-        throw new Error("Tag not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field.");
+        throw new Error(
+            "Tag not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field."
+        )
     }
     return fieldNumber
 }
@@ -52,29 +59,26 @@ function get_tag_from_messagetype(event_type: MessageFns<any>): number {
 const socketEvents = ['open', 'close', 'error', 'message', 'unresponsive'] as const
 type SocketEvent = (typeof socketEvents)[number]
 
-type TaggedSocketMessage = {"tag": number, "msg": WebsocketMessage}
-
-
+type TaggedSocketMessage = { tag: number; msg: WebsocketMessage }
 
 // Only exported for socket test
 export const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
-
-    const decoded = WebsocketMessage.decode(new Uint8Array(data));
+    const decoded = WebsocketMessage.decode(new Uint8Array(data))
     const values = Object.entries(decoded).filter(([, value]) => value !== undefined) // Filter all values which are not undefined
     if (values.length != 1) {
-        throw new Error("Message included either 0 or more than 1 data point")
+        throw new Error('Message included either 0 or more than 1 data point')
     }
     const fieldName = values[0][0]
     const tag = MESSAGE_KEY_TO_TAG.get(fieldName)
     if (tag === undefined) {
         throw new Error(`Tag not found for field: ${fieldName}`)
     }
-    return {"tag": tag, "msg": decoded}
+    return { tag: tag, msg: decoded }
 }
 
 export const encodeMessage = (data: WebsocketMessage): Uint8Array<ArrayBuffer> => {
-    const encoded = WebsocketMessage.encode(data).finish();
-    return encoded;
+    const encoded = WebsocketMessage.encode(data).finish()
+    return encoded
 }
 
 function createWebSocket() {
@@ -92,22 +96,21 @@ function createWebSocket() {
         connect()
     }
 
-    function getMsgListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void>  {
+    function getMsgListeners<MT>(event_type: MessageFns<MT>): Set<(data?: unknown) => void> {
         const type_tag = get_tag_from_messagetype(event_type)
 
-        const type_listeners = message_listeners.get(type_tag);
+        const type_listeners = message_listeners.get(type_tag)
         if (type_listeners == undefined) {
             return new Set()
         }
-        return type_listeners;
+        return type_listeners
     }
-    function getListeners<MT>(event: string): Set<(data?: unknown) => void>  {
-
-        const event_listeners_forevent = event_listeners.get(event);
+    function getListeners<MT>(event: string): Set<(data?: unknown) => void> {
+        const event_listeners_forevent = event_listeners.get(event)
         if (event_listeners_forevent == undefined) {
             return new Set()
         }
-        return event_listeners_forevent;
+        return event_listeners_forevent
     }
 
     function disconnect(reason: SocketEvent, event?: Event) {
@@ -135,7 +138,7 @@ function createWebSocket() {
         }
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
-            const {tag, msg} = decodeMessage(frame.data)
+            const { tag, msg } = decodeMessage(frame.data)
             if (tag) message_listeners.get(tag)?.forEach(listener => listener(msg))
         }
         ws.onerror = ev => disconnect('error', ev)
@@ -149,14 +152,13 @@ function createWebSocket() {
 
         // TODO: This looks like it deletes an individual listener, but unsubscribe unsubscribes for everyone. Not sure what it is supposed to do right now
         message_listeners_totag?.delete(listener as (data?: unknown) => void)
-        if (message_listeners_totag.size == 0) { // No more listeners, so we can unsubscribe
+        if (message_listeners_totag.size == 0) {
+            // No more listeners, so we can unsubscribe
             unsubscribeToMessageFromServer(event_type)
         }
-        
     }
 
     function unsubscribe_event(event_type: SocketEvent, listener: (data: unknown) => void) {
-
         const message_listeners_totag = event_listeners.get(event_type)
         if (!message_listeners_totag) return
 
@@ -171,38 +173,38 @@ function createWebSocket() {
     // T must extend a type of WebsocketMessages
     function sendEvent<T>(event: MessageFns<T>, data: T) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const type = get_name_from_messagetype(event);
-        const wsm = WebsocketMessage.create();
-        (wsm as any)[type] = data
+        const type = get_name_from_messagetype(event)
+        const wsm = WebsocketMessage.create()
+        ;(wsm as any)[type] = data
         send(wsm)
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const event = get_name_from_messagetype(event_type);
-        const unsub_msg = WebsocketMessages.UnsubscribeNotification.create(
-            {tag: get_tag_from_messagetype(event_type)}
-        );
-        send(WebsocketMessage.create({unsubNotif: unsub_msg}));
+        const event = get_name_from_messagetype(event_type)
+        const unsub_msg = WebsocketMessages.UnsubscribeNotification.create({
+            tag: get_tag_from_messagetype(event_type)
+        })
+        send(WebsocketMessage.create({ unsubNotif: unsub_msg }))
     }
 
     function subscribeToEvent<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const event = get_name_from_messagetype(event_type);
-        const sub_msg = WebsocketMessages.SubscribeNotification.create(
-            {tag: get_tag_from_messagetype(event_type)}
-        );
-        send(WebsocketMessage.create({subNotif: sub_msg}));
+        const event = get_name_from_messagetype(event_type)
+        const sub_msg = WebsocketMessages.SubscribeNotification.create({
+            tag: get_tag_from_messagetype(event_type)
+        })
+        send(WebsocketMessage.create({ subNotif: sub_msg }))
     }
 
     function send(data: WebsocketMessage) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const encoded = encodeMessage(data);
-        ws.send(encoded);
+        const encoded = encodeMessage(data)
+        ws.send(encoded)
     }
 
     function ping() {
-        send(WebsocketMessage.create({pingmsg: {}}))
+        send(WebsocketMessage.create({ pingmsg: {} }))
     }
 
     return {
@@ -210,7 +212,7 @@ function createWebSocket() {
         sendEvent,
         init,
         on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
-            const tag = get_tag_from_messagetype(event_type);
+            const tag = get_tag_from_messagetype(event_type)
 
             let message_listeners_totag = message_listeners.get(tag)
             if (!message_listeners_totag) {
@@ -225,7 +227,6 @@ function createWebSocket() {
             }
         },
         onEvent: (event_type: SocketEvent, listener: (data: unknown) => void): (() => void) => {
-
             return () => {
                 unsubscribe_event(event_type, listener)
             }

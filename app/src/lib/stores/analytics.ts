@@ -1,8 +1,7 @@
-
 import { AnalyticsData } from '$lib/platform_shared/websocket_message'
 import { writable } from 'svelte/store'
 
-const analytics_data: AnalyticsData[] = [];
+const analytics_data: AnalyticsData[] = []
 
 const maxAnalyticsData = 100
 
