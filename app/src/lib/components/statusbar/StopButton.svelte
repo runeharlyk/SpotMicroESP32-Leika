@@ -1,8 +1,9 @@
 <script lang="ts">
+    import { ModeData, ModesEnum } from '$lib/platform_shared/websocket_message'
     import { mode, modes } from '$lib/stores'
 
     const deactivate = async () => {
-        mode.set(modes.indexOf('deactivated'))
+        mode.set(ModeData.create({ mode: ModesEnum.DEACTIVATED }))
     }
 </script>
 

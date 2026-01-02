@@ -13,20 +13,6 @@ export type GithubRelease = {
 }
 
 
-export type WifiStatus = {
-    status: number
-    local_ip: string
-    mac_address: string
-    rssi: number
-    ssid: string
-    bssid: string
-    channel: number
-    subnet_mask: string
-    gateway_ip: string
-    dns_ip_1: string
-    dns_ip_2?: string
-}
-
 
 export type NetworkList = {
     networks: NetworkItem[]
@@ -66,22 +52,6 @@ export type Rssi = {
     ssid: string
 }
 
-
-export type IMU = {
-    x: number
-    y: number
-    z: number
-    heading: number
-    altitude: number
-    bmp_temp: number
-    pressure: number
-}
-
-export type IMUMsg = {
-    imu: [number, number, number, number, boolean]
-    mag: [number, number, number, number, boolean]
-    bmp: [number, number, number, boolean]
-}
 
 
 export interface I2CDevice {

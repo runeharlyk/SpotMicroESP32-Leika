@@ -1,5 +1,17 @@
 syntax = "proto3";
 
+
+// REST MESSAGE TYPES
+// TODO: i am too lazy to create a new file and compile it manually, so move this to a new proto before merging
+
+
+// END REST MESSAGE TYPES
+
+
+
+
+
+
 message Vector { float x = 1; float y = 2; }
 message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; }
 message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
@@ -10,7 +22,10 @@ message IMUData {
     float x = 1;
     float y = 2;
     float z = 3;
-    float temp = 4;
+    float heading = 4;
+    float altitude = 5;
+    float bmp_temp = 6;
+    float pressure = 7;
 }
 
 enum ModesEnum {
