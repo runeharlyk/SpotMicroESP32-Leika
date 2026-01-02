@@ -215,9 +215,9 @@ function createWebSocket() {
 
             let message_listeners_totag = message_listeners.get(tag)
             if (!message_listeners_totag) {
-                // If this is the first listener to this event, also call subscribe to the server
                 message_listeners_totag = new Set()
                 message_listeners.set(tag, message_listeners_totag)
+                subscribeToEvent(event_type)
             }
             message_listeners_totag.add(listener as (data: unknown) => void)
 
