@@ -1,0 +1,12 @@
+rest_message.WifiStatus.local_ip max_size:16
+rest_message.WifiStatus.mac_address max_size:18
+rest_message.WifiStatus.ssid max_size:33
+rest_message.WifiStatus.bssid max_size:18
+rest_message.WifiStatus.subnet_mask max_size:16
+rest_message.WifiStatus.gateway_ip max_size:16
+rest_message.WifiStatus.dns_ip_1 max_size:16
+rest_message.WifiStatus.dns_ip_2 max_size:16
+
+rest_message.WifiSettings.hostname max_size:32
+rest_message.WifiSettings.wifi_networks max_count:8
+

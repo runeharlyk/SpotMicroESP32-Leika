@@ -8,8 +8,4 @@
 
 PB_BIND(rest_message_WifiStatus, rest_message_WifiStatus, AUTO)
 
-
-PB_BIND(rest_message_WifiSettings, rest_message_WifiSettings, AUTO)
-
-
-
+PB_BIND(rest_message_WifiSettings, rest_message_WifiSettings, 2)
