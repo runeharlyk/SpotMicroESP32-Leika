@@ -131,6 +131,7 @@ message WebsocketMessage {
         ModeData mode = 130;
         ControllerInputData input = 140;
         AnalyticsData analytics = 150;
+        WalkGaitData walk_gait = 160;
         AnglesData angles = 170;
         I2CScanData i2c_scan = 180;
         I2CScanDataRequest i2c_scan_data_request = 181;

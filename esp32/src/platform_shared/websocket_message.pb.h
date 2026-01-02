@@ -32,26 +32,31 @@ typedef struct _socket_message_Vector {
 
 typedef struct _socket_message_I2CDevice {
     int32_t address;
-    pb_callback_t part_number;
-    pb_callback_t name;
+    char part_number[32];
+    char name[32];
 } socket_message_I2CDevice;
 
 typedef struct _socket_message_PinConfig {
     int32_t pin;
-    pb_callback_t mode;
-    pb_callback_t type;
-    pb_callback_t role;
+    char mode[16];
+    char type[16];
+    char role[16];
 } socket_message_PinConfig;
 
 typedef struct _socket_message_KnownNetworkItem {
-    pb_callback_t ssid;
-    pb_callback_t password;
+    char ssid[33];
+    char password[64];
     bool static_ip;
-    pb_callback_t local_ip;
-    pb_callback_t subnet_mask;
-    pb_callback_t gateway_ip;
-    pb_callback_t dns_ip_1;
-    pb_callback_t dns_ip_2;
+    bool has_local_ip;
+    char local_ip[16];
+    bool has_subnet_mask;
+    char subnet_mask[16];
+    bool has_gateway_ip;
+    char gateway_ip[16];
+    bool has_dns_ip_1;
+    char dns_ip_1[16];
+    bool has_dns_ip_2;
+    char dns_ip_2[16];
 } socket_message_KnownNetworkItem;
 
 /* Individual message data types */
@@ -66,19 +71,19 @@ typedef struct _socket_message_IMUData {
 } socket_message_IMUData;
 
 typedef struct _socket_message_StaticSystemInformation {
-    pb_callback_t esp_platform;
-    pb_callback_t firmware_version;
+    char esp_platform[32];
+    char firmware_version[16];
     uint32_t cpu_freq_mhz;
-    pb_callback_t cpu_type;
+    char cpu_type[32];
     int32_t cpu_rev;
     uint32_t cpu_cores;
     uint32_t sketch_size;
     uint32_t free_sketch_space;
-    pb_callback_t sdk_version;
-    pb_callback_t arduino_version;
+    char sdk_version[32];
+    char arduino_version[16];
     uint32_t flash_chip_size;
     uint32_t flash_chip_speed;
-    pb_callback_t cpu_reset_reason;
+    char cpu_reset_reason[32];
 } socket_message_StaticSystemInformation;
 
 typedef struct _socket_message_IMUCalibrateData {
@@ -129,11 +134,13 @@ typedef struct _socket_message_ServoStateData {
 } socket_message_ServoStateData;
 
 typedef struct _socket_message_AnglesData {
-    pb_callback_t angles;
+    pb_size_t angles_count;
+    int32_t angles[12];
 } socket_message_AnglesData;
 
 typedef struct _socket_message_I2CScanData {
-    pb_callback_t devices;
+    pb_size_t devices_count;
+    socket_message_I2CDevice devices[16];
 } socket_message_I2CScanData;
 
 typedef struct _socket_message_I2CScanDataRequest {
@@ -144,7 +151,8 @@ typedef struct _socket_message_PeripheralSettingsData {
     int32_t sda;
     int32_t scl;
     int32_t frequency;
-    pb_callback_t pins;
+    pb_size_t pins_count;
+    socket_message_PinConfig pins[32];
 } socket_message_PeripheralSettingsData;
 
 typedef struct _socket_message_PeripheralSettingsDataRequest {
@@ -152,9 +160,10 @@ typedef struct _socket_message_PeripheralSettingsDataRequest {
 } socket_message_PeripheralSettingsDataRequest;
 
 typedef struct _socket_message_WifiSettingsData {
-    pb_callback_t hostname;
+    char hostname[32];
     bool priority_rssi;
-    pb_callback_t wifi_networks;
+    pb_size_t wifi_networks_count;
+    socket_message_KnownNetworkItem wifi_networks[8];
 } socket_message_WifiSettingsData;
 
 typedef struct _socket_message_RSSIData {
@@ -162,13 +171,13 @@ typedef struct _socket_message_RSSIData {
 } socket_message_RSSIData;
 
 typedef struct _socket_message_DownloadOTAData {
-    pb_callback_t status;
+    char status[32];
     int32_t progress;
-    pb_callback_t error;
+    char error[64];
 } socket_message_DownloadOTAData;
 
 typedef struct _socket_message_SonarData {
-    pb_callback_t dummy_field;
+    char dummy_field[16];
 } socket_message_SonarData;
 
 typedef struct _socket_message_HumanInputData {
@@ -232,6 +241,7 @@ typedef struct _socket_message_WebsocketMessage {
         socket_message_ModeData mode;
         socket_message_ControllerInputData input;
         socket_message_AnalyticsData analytics;
+        socket_message_WalkGaitData walk_gait;
         socket_message_AnglesData angles;
         socket_message_I2CScanData i2c_scan;
         socket_message_I2CScanDataRequest i2c_scan_data_request;
@@ -244,7 +254,6 @@ typedef struct _socket_message_WebsocketMessage {
     } message;
 } socket_message_WebsocketMessage;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -252,120 +261,234 @@ extern "C" {
 /* Helper constants for enums */
 #define _socket_message_ModesEnum_MIN socket_message_ModesEnum_DEACTIVATED
 #define _socket_message_ModesEnum_MAX socket_message_ModesEnum_WALK
-#define _socket_message_ModesEnum_ARRAYSIZE ((socket_message_ModesEnum)(socket_message_ModesEnum_WALK+1))
+#define _socket_message_ModesEnum_ARRAYSIZE ((socket_message_ModesEnum)(socket_message_ModesEnum_WALK + 1))
 
 #define _socket_message_WalkGaits_MIN socket_message_WalkGaits_TROT
 #define _socket_message_WalkGaits_MAX socket_message_WalkGaits_CRAWL
-#define _socket_message_WalkGaits_ARRAYSIZE ((socket_message_WalkGaits)(socket_message_WalkGaits_CRAWL+1))
-
-
-
-
-
-
-
-
+#define _socket_message_WalkGaits_ARRAYSIZE ((socket_message_WalkGaits)(socket_message_WalkGaits_CRAWL + 1))
 
 #define socket_message_ModeData_mode_ENUMTYPE socket_message_ModesEnum
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #define socket_message_WalkGaitData_gait_ENUMTYPE socket_message_WalkGaits
 
-
-
-
-
-
-
-
 /* Initializer values for message structs */
-#define socket_message_Vector_init_default       {0, 0}
-#define socket_message_I2CDevice_init_default    {0, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_PinConfig_init_default    {0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_KnownNetworkItem_init_default {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_IMUData_init_default      {0, 0, 0, 0, 0, 0, 0}
-#define socket_message_StaticSystemInformation_init_default {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, 0, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, {{NULL}, NULL}}
-#define socket_message_IMUCalibrateData_init_default {0}
-#define socket_message_IMUCalibrateExecute_init_default {0}
-#define socket_message_ModeData_init_default     {_socket_message_ModesEnum_MIN}
-#define socket_message_ControllerInputData_init_default {false, socket_message_Vector_init_default, false, socket_message_Vector_init_default, 0, 0, 0}
-#define socket_message_AnalyticsData_init_default {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define socket_message_ServoPWMData_init_default {0, 0}
-#define socket_message_ServoStateData_init_default {0}
-#define socket_message_AnglesData_init_default   {{{NULL}, NULL}}
-#define socket_message_I2CScanData_init_default  {{{NULL}, NULL}}
-#define socket_message_I2CScanDataRequest_init_default {0}
-#define socket_message_PeripheralSettingsData_init_default {0, 0, 0, {{NULL}, NULL}}
-#define socket_message_PeripheralSettingsDataRequest_init_default {0}
-#define socket_message_WifiSettingsData_init_default {{{NULL}, NULL}, 0, {{NULL}, NULL}}
-#define socket_message_RSSIData_init_default     {0}
-#define socket_message_DownloadOTAData_init_default {{{NULL}, NULL}, 0, {{NULL}, NULL}}
-#define socket_message_SonarData_init_default    {{{NULL}, NULL}}
-#define socket_message_HumanInputData_init_default {false, socket_message_Vector_init_default, false, socket_message_Vector_init_default, 0, 0, 0}
-#define socket_message_SystemInformation_init_default {false, socket_message_AnalyticsData_init_default, false, socket_message_StaticSystemInformation_init_default}
-#define socket_message_WalkGaitData_init_default {_socket_message_WalkGaits_MIN}
-#define socket_message_KinematicData_init_default {0, 0, 0, 0, 0, 0}
-#define socket_message_SubscribeNotification_init_default {0}
-#define socket_message_UnsubscribeNotification_init_default {0}
-#define socket_message_PingMsg_init_default      {0}
-#define socket_message_PongMsg_init_default      {0}
-#define socket_message_WebsocketMessage_init_default {0, {socket_message_SubscribeNotification_init_default}}
-#define socket_message_Vector_init_zero          {0, 0}
-#define socket_message_I2CDevice_init_zero       {0, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_PinConfig_init_zero       {0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_KnownNetworkItem_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
-#define socket_message_IMUData_init_zero         {0, 0, 0, 0, 0, 0, 0}
-#define socket_message_StaticSystemInformation_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, 0, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, {{NULL}, NULL}}
-#define socket_message_IMUCalibrateData_init_zero {0}
-#define socket_message_IMUCalibrateExecute_init_zero {0}
-#define socket_message_ModeData_init_zero        {_socket_message_ModesEnum_MIN}
-#define socket_message_ControllerInputData_init_zero {false, socket_message_Vector_init_zero, false, socket_message_Vector_init_zero, 0, 0, 0}
-#define socket_message_AnalyticsData_init_zero   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define socket_message_ServoPWMData_init_zero    {0, 0}
-#define socket_message_ServoStateData_init_zero  {0}
-#define socket_message_AnglesData_init_zero      {{{NULL}, NULL}}
-#define socket_message_I2CScanData_init_zero     {{{NULL}, NULL}}
-#define socket_message_I2CScanDataRequest_init_zero {0}
-#define socket_message_PeripheralSettingsData_init_zero {0, 0, 0, {{NULL}, NULL}}
-#define socket_message_PeripheralSettingsDataRequest_init_zero {0}
-#define socket_message_WifiSettingsData_init_zero {{{NULL}, NULL}, 0, {{NULL}, NULL}}
-#define socket_message_RSSIData_init_zero        {0}
-#define socket_message_DownloadOTAData_init_zero {{{NULL}, NULL}, 0, {{NULL}, NULL}}
-#define socket_message_SonarData_init_zero       {{{NULL}, NULL}}
-#define socket_message_HumanInputData_init_zero  {false, socket_message_Vector_init_zero, false, socket_message_Vector_init_zero, 0, 0, 0}
-#define socket_message_SystemInformation_init_zero {false, socket_message_AnalyticsData_init_zero, false, socket_message_StaticSystemInformation_init_zero}
-#define socket_message_WalkGaitData_init_zero    {_socket_message_WalkGaits_MIN}
-#define socket_message_KinematicData_init_zero   {0, 0, 0, 0, 0, 0}
-#define socket_message_SubscribeNotification_init_zero {0}
-#define socket_message_UnsubscribeNotification_init_zero {0}
-#define socket_message_PingMsg_init_zero         {0}
-#define socket_message_PongMsg_init_zero         {0}
-#define socket_message_WebsocketMessage_init_zero {0, {socket_message_SubscribeNotification_init_zero}}
+#define socket_message_Vector_init_default \
+    { 0, 0 }
+#define socket_message_I2CDevice_init_default \
+    { 0, "", "" }
+#define socket_message_PinConfig_init_default \
+    { 0, "", "", "" }
+#define socket_message_KnownNetworkItem_init_default \
+    { "", "", 0, false, "", false, "", false, "", false, "", false, "" }
+#define socket_message_IMUData_init_default \
+    { 0, 0, 0, 0, 0, 0, 0 }
+#define socket_message_StaticSystemInformation_init_default \
+    { "", "", 0, "", 0, 0, 0, 0, "", "", 0, 0, "" }
+#define socket_message_IMUCalibrateData_init_default \
+    { 0 }
+#define socket_message_IMUCalibrateExecute_init_default \
+    { 0 }
+#define socket_message_ModeData_init_default \
+    { _socket_message_ModesEnum_MIN }
+#define socket_message_ControllerInputData_init_default \
+    { false, socket_message_Vector_init_default, false, socket_message_Vector_init_default, 0, 0, 0 }
+#define socket_message_AnalyticsData_init_default \
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define socket_message_ServoPWMData_init_default \
+    { 0, 0 }
+#define socket_message_ServoStateData_init_default \
+    { 0 }
+#define socket_message_AnglesData_init_default    \
+    {                                             \
+        0, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } \
+    }
+#define socket_message_I2CScanData_init_default                                               \
+    {                                                                                         \
+        0, {                                                                                  \
+            socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default,     \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default, \
+                socket_message_I2CDevice_init_default, socket_message_I2CDevice_init_default  \
+        }                                                                                     \
+    }
+#define socket_message_I2CScanDataRequest_init_default \
+    { 0 }
+#define socket_message_PeripheralSettingsData_init_default                                    \
+    {                                                                                         \
+        0, 0, 0, 0, {                                                                         \
+            socket_message_PinConfig_init_default, socket_message_PinConfig_init_default,     \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default, \
+                socket_message_PinConfig_init_default, socket_message_PinConfig_init_default  \
+        }                                                                                     \
+    }
+#define socket_message_PeripheralSettingsDataRequest_init_default \
+    { 0 }
+#define socket_message_WifiSettingsData_init_default                                                        \
+    {                                                                                                       \
+        "", 0, 0, {                                                                                         \
+            socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default,     \
+                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, \
+                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, \
+                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default  \
+        }                                                                                                   \
+    }
+#define socket_message_RSSIData_init_default \
+    { 0 }
+#define socket_message_DownloadOTAData_init_default \
+    { "", 0, "" }
+#define socket_message_SonarData_init_default \
+    { "" }
+#define socket_message_HumanInputData_init_default \
+    { false, socket_message_Vector_init_default, false, socket_message_Vector_init_default, 0, 0, 0 }
+#define socket_message_SystemInformation_init_default \
+    { false, socket_message_AnalyticsData_init_default, false, socket_message_StaticSystemInformation_init_default }
+#define socket_message_WalkGaitData_init_default \
+    { _socket_message_WalkGaits_MIN }
+#define socket_message_KinematicData_init_default \
+    { 0, 0, 0, 0, 0, 0 }
+#define socket_message_SubscribeNotification_init_default \
+    { 0 }
+#define socket_message_UnsubscribeNotification_init_default \
+    { 0 }
+#define socket_message_PingMsg_init_default \
+    { 0 }
+#define socket_message_PongMsg_init_default \
+    { 0 }
+#define socket_message_WebsocketMessage_init_default             \
+    {                                                            \
+        0, { socket_message_SubscribeNotification_init_default } \
+    }
+#define socket_message_Vector_init_zero \
+    { 0, 0 }
+#define socket_message_I2CDevice_init_zero \
+    { 0, "", "" }
+#define socket_message_PinConfig_init_zero \
+    { 0, "", "", "" }
+#define socket_message_KnownNetworkItem_init_zero \
+    { "", "", 0, false, "", false, "", false, "", false, "", false, "" }
+#define socket_message_IMUData_init_zero \
+    { 0, 0, 0, 0, 0, 0, 0 }
+#define socket_message_StaticSystemInformation_init_zero \
+    { "", "", 0, "", 0, 0, 0, 0, "", "", 0, 0, "" }
+#define socket_message_IMUCalibrateData_init_zero \
+    { 0 }
+#define socket_message_IMUCalibrateExecute_init_zero \
+    { 0 }
+#define socket_message_ModeData_init_zero \
+    { _socket_message_ModesEnum_MIN }
+#define socket_message_ControllerInputData_init_zero \
+    { false, socket_message_Vector_init_zero, false, socket_message_Vector_init_zero, 0, 0, 0 }
+#define socket_message_AnalyticsData_init_zero \
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define socket_message_ServoPWMData_init_zero \
+    { 0, 0 }
+#define socket_message_ServoStateData_init_zero \
+    { 0 }
+#define socket_message_AnglesData_init_zero       \
+    {                                             \
+        0, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } \
+    }
+#define socket_message_I2CScanData_init_zero                                            \
+    {                                                                                   \
+        0, {                                                                            \
+            socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero,     \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero, \
+                socket_message_I2CDevice_init_zero, socket_message_I2CDevice_init_zero  \
+        }                                                                               \
+    }
+#define socket_message_I2CScanDataRequest_init_zero \
+    { 0 }
+#define socket_message_PeripheralSettingsData_init_zero                                 \
+    {                                                                                   \
+        0, 0, 0, 0, {                                                                   \
+            socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero,     \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero, \
+                socket_message_PinConfig_init_zero, socket_message_PinConfig_init_zero  \
+        }                                                                               \
+    }
+#define socket_message_PeripheralSettingsDataRequest_init_zero \
+    { 0 }
+#define socket_message_WifiSettingsData_init_zero                                                     \
+    {                                                                                                 \
+        "", 0, 0, {                                                                                   \
+            socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero,     \
+                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, \
+                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, \
+                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero  \
+        }                                                                                             \
+    }
+#define socket_message_RSSIData_init_zero \
+    { 0 }
+#define socket_message_DownloadOTAData_init_zero \
+    { "", 0, "" }
+#define socket_message_SonarData_init_zero \
+    { "" }
+#define socket_message_HumanInputData_init_zero \
+    { false, socket_message_Vector_init_zero, false, socket_message_Vector_init_zero, 0, 0, 0 }
+#define socket_message_SystemInformation_init_zero \
+    { false, socket_message_AnalyticsData_init_zero, false, socket_message_StaticSystemInformation_init_zero }
+#define socket_message_WalkGaitData_init_zero \
+    { _socket_message_WalkGaits_MIN }
+#define socket_message_KinematicData_init_zero \
+    { 0, 0, 0, 0, 0, 0 }
+#define socket_message_SubscribeNotification_init_zero \
+    { 0 }
+#define socket_message_UnsubscribeNotification_init_zero \
+    { 0 }
+#define socket_message_PingMsg_init_zero \
+    { 0 }
+#define socket_message_PongMsg_init_zero \
+    { 0 }
+#define socket_message_WebsocketMessage_init_zero             \
+    {                                                         \
+        0, { socket_message_SubscribeNotification_init_zero } \
+    }
 
 /* Field tags (for use in manual encoding/decoding) */
-#define socket_message_Vector_x_tag              1
-#define socket_message_Vector_y_tag              2
-#define socket_message_I2CDevice_address_tag     1
+#define socket_message_Vector_x_tag 1
+#define socket_message_Vector_y_tag 2
+#define socket_message_I2CDevice_address_tag 1
 #define socket_message_I2CDevice_part_number_tag 2
-#define socket_message_I2CDevice_name_tag        3
-#define socket_message_PinConfig_pin_tag         1
-#define socket_message_PinConfig_mode_tag        2
-#define socket_message_PinConfig_type_tag        3
-#define socket_message_PinConfig_role_tag        4
+#define socket_message_I2CDevice_name_tag 3
+#define socket_message_PinConfig_pin_tag 1
+#define socket_message_PinConfig_mode_tag 2
+#define socket_message_PinConfig_type_tag 3
+#define socket_message_PinConfig_role_tag 4
 #define socket_message_KnownNetworkItem_ssid_tag 1
 #define socket_message_KnownNetworkItem_password_tag 2
 #define socket_message_KnownNetworkItem_static_ip_tag 3
@@ -374,13 +497,13 @@ extern "C" {
 #define socket_message_KnownNetworkItem_gateway_ip_tag 6
 #define socket_message_KnownNetworkItem_dns_ip_1_tag 7
 #define socket_message_KnownNetworkItem_dns_ip_2_tag 8
-#define socket_message_IMUData_x_tag             1
-#define socket_message_IMUData_y_tag             2
-#define socket_message_IMUData_z_tag             3
-#define socket_message_IMUData_heading_tag       4
-#define socket_message_IMUData_altitude_tag      5
-#define socket_message_IMUData_bmp_temp_tag      6
-#define socket_message_IMUData_pressure_tag      7
+#define socket_message_IMUData_x_tag 1
+#define socket_message_IMUData_y_tag 2
+#define socket_message_IMUData_z_tag 3
+#define socket_message_IMUData_heading_tag 4
+#define socket_message_IMUData_altitude_tag 5
+#define socket_message_IMUData_bmp_temp_tag 6
+#define socket_message_IMUData_pressure_tag 7
 #define socket_message_StaticSystemInformation_esp_platform_tag 1
 #define socket_message_StaticSystemInformation_firmware_version_tag 2
 #define socket_message_StaticSystemInformation_cpu_freq_mhz_tag 3
@@ -395,7 +518,7 @@ extern "C" {
 #define socket_message_StaticSystemInformation_flash_chip_speed_tag 12
 #define socket_message_StaticSystemInformation_cpu_reset_reason_tag 13
 #define socket_message_IMUCalibrateData_success_tag 1
-#define socket_message_ModeData_mode_tag         1
+#define socket_message_ModeData_mode_tag 1
 #define socket_message_ControllerInputData_left_tag 1
 #define socket_message_ControllerInputData_right_tag 2
 #define socket_message_ControllerInputData_height_tag 3
@@ -410,15 +533,15 @@ extern "C" {
 #define socket_message_AnalyticsData_core_temp_tag 7
 #define socket_message_AnalyticsData_fs_total_tag 8
 #define socket_message_AnalyticsData_fs_used_tag 9
-#define socket_message_AnalyticsData_uptime_tag  10
+#define socket_message_AnalyticsData_uptime_tag 10
 #define socket_message_AnalyticsData_cpu0_usage_tag 11
 #define socket_message_AnalyticsData_cpu1_usage_tag 12
 #define socket_message_AnalyticsData_cpu_usage_tag 13
 #define socket_message_ServoPWMData_servo_id_tag 1
 #define socket_message_ServoPWMData_servo_pwm_tag 2
 #define socket_message_ServoStateData_active_tag 1
-#define socket_message_AnglesData_angles_tag     1
-#define socket_message_I2CScanData_devices_tag   1
+#define socket_message_AnglesData_angles_tag 1
+#define socket_message_I2CScanData_devices_tag 1
 #define socket_message_PeripheralSettingsData_sda_tag 1
 #define socket_message_PeripheralSettingsData_scl_tag 2
 #define socket_message_PeripheralSettingsData_frequency_tag 3
@@ -426,37 +549,38 @@ extern "C" {
 #define socket_message_WifiSettingsData_hostname_tag 1
 #define socket_message_WifiSettingsData_priority_rssi_tag 2
 #define socket_message_WifiSettingsData_wifi_networks_tag 3
-#define socket_message_RSSIData_rssi_tag         1
+#define socket_message_RSSIData_rssi_tag 1
 #define socket_message_DownloadOTAData_status_tag 1
 #define socket_message_DownloadOTAData_progress_tag 2
 #define socket_message_DownloadOTAData_error_tag 3
 #define socket_message_SonarData_dummy_field_tag 1
-#define socket_message_HumanInputData_left_tag   10
-#define socket_message_HumanInputData_right_tag  11
+#define socket_message_HumanInputData_left_tag 10
+#define socket_message_HumanInputData_right_tag 11
 #define socket_message_HumanInputData_height_tag 20
-#define socket_message_HumanInputData_speed_tag  21
-#define socket_message_HumanInputData_s1_tag     22
+#define socket_message_HumanInputData_speed_tag 21
+#define socket_message_HumanInputData_s1_tag 22
 #define socket_message_SystemInformation_analytics_data_tag 1
 #define socket_message_SystemInformation_static_system_information_tag 2
-#define socket_message_WalkGaitData_gait_tag     1
-#define socket_message_KinematicData_omega_tag   1
-#define socket_message_KinematicData_phi_tag     2
-#define socket_message_KinematicData_psi_tag     3
-#define socket_message_KinematicData_xm_tag      4
-#define socket_message_KinematicData_ym_tag      5
-#define socket_message_KinematicData_zm_tag      6
+#define socket_message_WalkGaitData_gait_tag 1
+#define socket_message_KinematicData_omega_tag 1
+#define socket_message_KinematicData_phi_tag 2
+#define socket_message_KinematicData_psi_tag 3
+#define socket_message_KinematicData_xm_tag 4
+#define socket_message_KinematicData_ym_tag 5
+#define socket_message_KinematicData_zm_tag 6
 #define socket_message_SubscribeNotification_tag_tag 1
 #define socket_message_UnsubscribeNotification_tag_tag 1
 #define socket_message_WebsocketMessage_sub_notif_tag 20
 #define socket_message_WebsocketMessage_unsub_notif_tag 21
 #define socket_message_WebsocketMessage_pingmsg_tag 30
 #define socket_message_WebsocketMessage_pongmsg_tag 31
-#define socket_message_WebsocketMessage_imu_tag  110
+#define socket_message_WebsocketMessage_imu_tag 110
 #define socket_message_WebsocketMessage_imu_calibrate_tag 120
 #define socket_message_WebsocketMessage_imu_calibrate_execute_tag 121
 #define socket_message_WebsocketMessage_mode_tag 130
 #define socket_message_WebsocketMessage_input_tag 140
 #define socket_message_WebsocketMessage_analytics_tag 150
+#define socket_message_WebsocketMessage_walk_gait_tag 160
 #define socket_message_WebsocketMessage_angles_tag 170
 #define socket_message_WebsocketMessage_i2c_scan_tag 180
 #define socket_message_WebsocketMessage_i2c_scan_data_request_tag 181
@@ -469,249 +593,241 @@ extern "C" {
 
 /* Struct field encoding specification for nanopb */
 #define socket_message_Vector_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FLOAT,    x,                 1) \
-X(a, STATIC,   SINGULAR, FLOAT,    y,                 2)
+    X(a, STATIC, SINGULAR, FLOAT, x, 1)       \
+    X(a, STATIC, SINGULAR, FLOAT, y, 2)
 #define socket_message_Vector_CALLBACK NULL
 #define socket_message_Vector_DEFAULT NULL
 
-#define socket_message_I2CDevice_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    address,           1) \
-X(a, CALLBACK, SINGULAR, STRING,   part_number,       2) \
-X(a, CALLBACK, SINGULAR, STRING,   name,              3)
-#define socket_message_I2CDevice_CALLBACK pb_default_field_callback
+#define socket_message_I2CDevice_FIELDLIST(X, a)   \
+    X(a, STATIC, SINGULAR, INT32, address, 1)      \
+    X(a, STATIC, SINGULAR, STRING, part_number, 2) \
+    X(a, STATIC, SINGULAR, STRING, name, 3)
+#define socket_message_I2CDevice_CALLBACK NULL
 #define socket_message_I2CDevice_DEFAULT NULL
 
 #define socket_message_PinConfig_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    pin,               1) \
-X(a, CALLBACK, SINGULAR, STRING,   mode,              2) \
-X(a, CALLBACK, SINGULAR, STRING,   type,              3) \
-X(a, CALLBACK, SINGULAR, STRING,   role,              4)
-#define socket_message_PinConfig_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, INT32, pin, 1)        \
+    X(a, STATIC, SINGULAR, STRING, mode, 2)      \
+    X(a, STATIC, SINGULAR, STRING, type, 3)      \
+    X(a, STATIC, SINGULAR, STRING, role, 4)
+#define socket_message_PinConfig_CALLBACK NULL
 #define socket_message_PinConfig_DEFAULT NULL
 
 #define socket_message_KnownNetworkItem_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
-X(a, CALLBACK, SINGULAR, STRING,   password,          2) \
-X(a, STATIC,   SINGULAR, BOOL,     static_ip,         3) \
-X(a, CALLBACK, OPTIONAL, STRING,   local_ip,          4) \
-X(a, CALLBACK, OPTIONAL, STRING,   subnet_mask,       5) \
-X(a, CALLBACK, OPTIONAL, STRING,   gateway_ip,        6) \
-X(a, CALLBACK, OPTIONAL, STRING,   dns_ip_1,          7) \
-X(a, CALLBACK, OPTIONAL, STRING,   dns_ip_2,          8)
-#define socket_message_KnownNetworkItem_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, STRING, ssid, 1)             \
+    X(a, STATIC, SINGULAR, STRING, password, 2)         \
+    X(a, STATIC, SINGULAR, BOOL, static_ip, 3)          \
+    X(a, STATIC, OPTIONAL, STRING, local_ip, 4)         \
+    X(a, STATIC, OPTIONAL, STRING, subnet_mask, 5)      \
+    X(a, STATIC, OPTIONAL, STRING, gateway_ip, 6)       \
+    X(a, STATIC, OPTIONAL, STRING, dns_ip_1, 7)         \
+    X(a, STATIC, OPTIONAL, STRING, dns_ip_2, 8)
+#define socket_message_KnownNetworkItem_CALLBACK NULL
 #define socket_message_KnownNetworkItem_DEFAULT NULL
 
 #define socket_message_IMUData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FLOAT,    x,                 1) \
-X(a, STATIC,   SINGULAR, FLOAT,    y,                 2) \
-X(a, STATIC,   SINGULAR, FLOAT,    z,                 3) \
-X(a, STATIC,   SINGULAR, FLOAT,    heading,           4) \
-X(a, STATIC,   SINGULAR, FLOAT,    altitude,          5) \
-X(a, STATIC,   SINGULAR, FLOAT,    bmp_temp,          6) \
-X(a, STATIC,   SINGULAR, FLOAT,    pressure,          7)
+    X(a, STATIC, SINGULAR, FLOAT, x, 1)        \
+    X(a, STATIC, SINGULAR, FLOAT, y, 2)        \
+    X(a, STATIC, SINGULAR, FLOAT, z, 3)        \
+    X(a, STATIC, SINGULAR, FLOAT, heading, 4)  \
+    X(a, STATIC, SINGULAR, FLOAT, altitude, 5) \
+    X(a, STATIC, SINGULAR, FLOAT, bmp_temp, 6) \
+    X(a, STATIC, SINGULAR, FLOAT, pressure, 7)
 #define socket_message_IMUData_CALLBACK NULL
 #define socket_message_IMUData_DEFAULT NULL
 
 #define socket_message_StaticSystemInformation_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   esp_platform,      1) \
-X(a, CALLBACK, SINGULAR, STRING,   firmware_version,   2) \
-X(a, STATIC,   SINGULAR, UINT32,   cpu_freq_mhz,      3) \
-X(a, CALLBACK, SINGULAR, STRING,   cpu_type,          4) \
-X(a, STATIC,   SINGULAR, INT32,    cpu_rev,           5) \
-X(a, STATIC,   SINGULAR, UINT32,   cpu_cores,         6) \
-X(a, STATIC,   SINGULAR, UINT32,   sketch_size,       7) \
-X(a, STATIC,   SINGULAR, UINT32,   free_sketch_space,   8) \
-X(a, CALLBACK, SINGULAR, STRING,   sdk_version,       9) \
-X(a, CALLBACK, SINGULAR, STRING,   arduino_version,  10) \
-X(a, STATIC,   SINGULAR, UINT32,   flash_chip_size,  11) \
-X(a, STATIC,   SINGULAR, UINT32,   flash_chip_speed,  12) \
-X(a, CALLBACK, SINGULAR, STRING,   cpu_reset_reason,  13)
-#define socket_message_StaticSystemInformation_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, STRING, esp_platform, 1)            \
+    X(a, STATIC, SINGULAR, STRING, firmware_version, 2)        \
+    X(a, STATIC, SINGULAR, UINT32, cpu_freq_mhz, 3)            \
+    X(a, STATIC, SINGULAR, STRING, cpu_type, 4)                \
+    X(a, STATIC, SINGULAR, INT32, cpu_rev, 5)                  \
+    X(a, STATIC, SINGULAR, UINT32, cpu_cores, 6)               \
+    X(a, STATIC, SINGULAR, UINT32, sketch_size, 7)             \
+    X(a, STATIC, SINGULAR, UINT32, free_sketch_space, 8)       \
+    X(a, STATIC, SINGULAR, STRING, sdk_version, 9)             \
+    X(a, STATIC, SINGULAR, STRING, arduino_version, 10)        \
+    X(a, STATIC, SINGULAR, UINT32, flash_chip_size, 11)        \
+    X(a, STATIC, SINGULAR, UINT32, flash_chip_speed, 12)       \
+    X(a, STATIC, SINGULAR, STRING, cpu_reset_reason, 13)
+#define socket_message_StaticSystemInformation_CALLBACK NULL
 #define socket_message_StaticSystemInformation_DEFAULT NULL
 
-#define socket_message_IMUCalibrateData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, BOOL,     success,           1)
+#define socket_message_IMUCalibrateData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, BOOL, success, 1)
 #define socket_message_IMUCalibrateData_CALLBACK NULL
 #define socket_message_IMUCalibrateData_DEFAULT NULL
 
-#define socket_message_IMUCalibrateExecute_FIELDLIST(X, a) \
+#define socket_message_IMUCalibrateExecute_FIELDLIST(X, a)
 
 #define socket_message_IMUCalibrateExecute_CALLBACK NULL
 #define socket_message_IMUCalibrateExecute_DEFAULT NULL
 
-#define socket_message_ModeData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, UENUM,    mode,              1)
+#define socket_message_ModeData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, UENUM, mode, 1)
 #define socket_message_ModeData_CALLBACK NULL
 #define socket_message_ModeData_DEFAULT NULL
 
 #define socket_message_ControllerInputData_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  left,              1) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  right,             2) \
-X(a, STATIC,   SINGULAR, FLOAT,    height,            3) \
-X(a, STATIC,   SINGULAR, FLOAT,    speed,             4) \
-X(a, STATIC,   SINGULAR, FLOAT,    s1,                5)
+    X(a, STATIC, OPTIONAL, MESSAGE, left, 1)               \
+    X(a, STATIC, OPTIONAL, MESSAGE, right, 2)              \
+    X(a, STATIC, SINGULAR, FLOAT, height, 3)               \
+    X(a, STATIC, SINGULAR, FLOAT, speed, 4)                \
+    X(a, STATIC, SINGULAR, FLOAT, s1, 5)
 #define socket_message_ControllerInputData_CALLBACK NULL
 #define socket_message_ControllerInputData_DEFAULT NULL
 #define socket_message_ControllerInputData_left_MSGTYPE socket_message_Vector
 #define socket_message_ControllerInputData_right_MSGTYPE socket_message_Vector
 
 #define socket_message_AnalyticsData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    max_alloc_heap,    1) \
-X(a, STATIC,   SINGULAR, INT32,    psram_size,        2) \
-X(a, STATIC,   SINGULAR, INT32,    free_psram,        3) \
-X(a, STATIC,   SINGULAR, INT32,    free_heap,         4) \
-X(a, STATIC,   SINGULAR, INT32,    total_heap,        5) \
-X(a, STATIC,   SINGULAR, INT32,    min_free_heap,     6) \
-X(a, STATIC,   SINGULAR, FLOAT,    core_temp,         7) \
-X(a, STATIC,   SINGULAR, INT32,    fs_total,          8) \
-X(a, STATIC,   SINGULAR, INT32,    fs_used,           9) \
-X(a, STATIC,   SINGULAR, INT64,    uptime,           10) \
-X(a, STATIC,   SINGULAR, INT32,    cpu0_usage,       11) \
-X(a, STATIC,   SINGULAR, INT32,    cpu1_usage,       12) \
-X(a, STATIC,   SINGULAR, INT32,    cpu_usage,        13)
+    X(a, STATIC, SINGULAR, INT32, max_alloc_heap, 1) \
+    X(a, STATIC, SINGULAR, INT32, psram_size, 2)     \
+    X(a, STATIC, SINGULAR, INT32, free_psram, 3)     \
+    X(a, STATIC, SINGULAR, INT32, free_heap, 4)      \
+    X(a, STATIC, SINGULAR, INT32, total_heap, 5)     \
+    X(a, STATIC, SINGULAR, INT32, min_free_heap, 6)  \
+    X(a, STATIC, SINGULAR, FLOAT, core_temp, 7)      \
+    X(a, STATIC, SINGULAR, INT32, fs_total, 8)       \
+    X(a, STATIC, SINGULAR, INT32, fs_used, 9)        \
+    X(a, STATIC, SINGULAR, INT64, uptime, 10)        \
+    X(a, STATIC, SINGULAR, INT32, cpu0_usage, 11)    \
+    X(a, STATIC, SINGULAR, INT32, cpu1_usage, 12)    \
+    X(a, STATIC, SINGULAR, INT32, cpu_usage, 13)
 #define socket_message_AnalyticsData_CALLBACK NULL
 #define socket_message_AnalyticsData_DEFAULT NULL
 
 #define socket_message_ServoPWMData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    servo_id,          1) \
-X(a, STATIC,   SINGULAR, UINT32,   servo_pwm,         2)
+    X(a, STATIC, SINGULAR, INT32, servo_id, 1)      \
+    X(a, STATIC, SINGULAR, UINT32, servo_pwm, 2)
 #define socket_message_ServoPWMData_CALLBACK NULL
 #define socket_message_ServoPWMData_DEFAULT NULL
 
-#define socket_message_ServoStateData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, BOOL,     active,            1)
+#define socket_message_ServoStateData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, BOOL, active, 1)
 #define socket_message_ServoStateData_CALLBACK NULL
 #define socket_message_ServoStateData_DEFAULT NULL
 
-#define socket_message_AnglesData_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, INT32,    angles,            1)
-#define socket_message_AnglesData_CALLBACK pb_default_field_callback
+#define socket_message_AnglesData_FIELDLIST(X, a) X(a, STATIC, REPEATED, INT32, angles, 1)
+#define socket_message_AnglesData_CALLBACK NULL
 #define socket_message_AnglesData_DEFAULT NULL
 
-#define socket_message_I2CScanData_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  devices,           1)
-#define socket_message_I2CScanData_CALLBACK pb_default_field_callback
+#define socket_message_I2CScanData_FIELDLIST(X, a) X(a, STATIC, REPEATED, MESSAGE, devices, 1)
+#define socket_message_I2CScanData_CALLBACK NULL
 #define socket_message_I2CScanData_DEFAULT NULL
 #define socket_message_I2CScanData_devices_MSGTYPE socket_message_I2CDevice
 
-#define socket_message_I2CScanDataRequest_FIELDLIST(X, a) \
+#define socket_message_I2CScanDataRequest_FIELDLIST(X, a)
 
 #define socket_message_I2CScanDataRequest_CALLBACK NULL
 #define socket_message_I2CScanDataRequest_DEFAULT NULL
 
 #define socket_message_PeripheralSettingsData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    sda,               1) \
-X(a, STATIC,   SINGULAR, INT32,    scl,               2) \
-X(a, STATIC,   SINGULAR, INT32,    frequency,         3) \
-X(a, CALLBACK, REPEATED, MESSAGE,  pins,              4)
-#define socket_message_PeripheralSettingsData_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, INT32, sda, 1)                     \
+    X(a, STATIC, SINGULAR, INT32, scl, 2)                     \
+    X(a, STATIC, SINGULAR, INT32, frequency, 3)               \
+    X(a, STATIC, REPEATED, MESSAGE, pins, 4)
+#define socket_message_PeripheralSettingsData_CALLBACK NULL
 #define socket_message_PeripheralSettingsData_DEFAULT NULL
 #define socket_message_PeripheralSettingsData_pins_MSGTYPE socket_message_PinConfig
 
-#define socket_message_PeripheralSettingsDataRequest_FIELDLIST(X, a) \
+#define socket_message_PeripheralSettingsDataRequest_FIELDLIST(X, a)
 
 #define socket_message_PeripheralSettingsDataRequest_CALLBACK NULL
 #define socket_message_PeripheralSettingsDataRequest_DEFAULT NULL
 
 #define socket_message_WifiSettingsData_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   hostname,          1) \
-X(a, STATIC,   SINGULAR, BOOL,     priority_rssi,     2) \
-X(a, CALLBACK, REPEATED, MESSAGE,  wifi_networks,     3)
-#define socket_message_WifiSettingsData_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, STRING, hostname, 1)         \
+    X(a, STATIC, SINGULAR, BOOL, priority_rssi, 2)      \
+    X(a, STATIC, REPEATED, MESSAGE, wifi_networks, 3)
+#define socket_message_WifiSettingsData_CALLBACK NULL
 #define socket_message_WifiSettingsData_DEFAULT NULL
 #define socket_message_WifiSettingsData_wifi_networks_MSGTYPE socket_message_KnownNetworkItem
 
-#define socket_message_RSSIData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    rssi,              1)
+#define socket_message_RSSIData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, INT32, rssi, 1)
 #define socket_message_RSSIData_CALLBACK NULL
 #define socket_message_RSSIData_DEFAULT NULL
 
 #define socket_message_DownloadOTAData_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   status,            1) \
-X(a, STATIC,   SINGULAR, INT32,    progress,          2) \
-X(a, CALLBACK, SINGULAR, STRING,   error,             3)
-#define socket_message_DownloadOTAData_CALLBACK pb_default_field_callback
+    X(a, STATIC, SINGULAR, STRING, status, 1)          \
+    X(a, STATIC, SINGULAR, INT32, progress, 2)         \
+    X(a, STATIC, SINGULAR, STRING, error, 3)
+#define socket_message_DownloadOTAData_CALLBACK NULL
 #define socket_message_DownloadOTAData_DEFAULT NULL
 
-#define socket_message_SonarData_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   dummy_field,       1)
-#define socket_message_SonarData_CALLBACK pb_default_field_callback
+#define socket_message_SonarData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, STRING, dummy_field, 1)
+#define socket_message_SonarData_CALLBACK NULL
 #define socket_message_SonarData_DEFAULT NULL
 
 #define socket_message_HumanInputData_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  left,             10) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  right,            11) \
-X(a, STATIC,   SINGULAR, FLOAT,    height,           20) \
-X(a, STATIC,   SINGULAR, FLOAT,    speed,            21) \
-X(a, STATIC,   SINGULAR, FLOAT,    s1,               22)
+    X(a, STATIC, OPTIONAL, MESSAGE, left, 10)         \
+    X(a, STATIC, OPTIONAL, MESSAGE, right, 11)        \
+    X(a, STATIC, SINGULAR, FLOAT, height, 20)         \
+    X(a, STATIC, SINGULAR, FLOAT, speed, 21)          \
+    X(a, STATIC, SINGULAR, FLOAT, s1, 22)
 #define socket_message_HumanInputData_CALLBACK NULL
 #define socket_message_HumanInputData_DEFAULT NULL
 #define socket_message_HumanInputData_left_MSGTYPE socket_message_Vector
 #define socket_message_HumanInputData_right_MSGTYPE socket_message_Vector
 
 #define socket_message_SystemInformation_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  analytics_data,    1) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  static_system_information,   2)
+    X(a, STATIC, OPTIONAL, MESSAGE, analytics_data, 1)   \
+    X(a, STATIC, OPTIONAL, MESSAGE, static_system_information, 2)
 #define socket_message_SystemInformation_CALLBACK NULL
 #define socket_message_SystemInformation_DEFAULT NULL
 #define socket_message_SystemInformation_analytics_data_MSGTYPE socket_message_AnalyticsData
 #define socket_message_SystemInformation_static_system_information_MSGTYPE socket_message_StaticSystemInformation
 
-#define socket_message_WalkGaitData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, UENUM,    gait,              1)
+#define socket_message_WalkGaitData_FIELDLIST(X, a) X(a, STATIC, SINGULAR, UENUM, gait, 1)
 #define socket_message_WalkGaitData_CALLBACK NULL
 #define socket_message_WalkGaitData_DEFAULT NULL
 
 #define socket_message_KinematicData_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FLOAT,    omega,             1) \
-X(a, STATIC,   SINGULAR, FLOAT,    phi,               2) \
-X(a, STATIC,   SINGULAR, FLOAT,    psi,               3) \
-X(a, STATIC,   SINGULAR, FLOAT,    xm,                4) \
-X(a, STATIC,   SINGULAR, FLOAT,    ym,                5) \
-X(a, STATIC,   SINGULAR, FLOAT,    zm,                6)
+    X(a, STATIC, SINGULAR, FLOAT, omega, 1)          \
+    X(a, STATIC, SINGULAR, FLOAT, phi, 2)            \
+    X(a, STATIC, SINGULAR, FLOAT, psi, 3)            \
+    X(a, STATIC, SINGULAR, FLOAT, xm, 4)             \
+    X(a, STATIC, SINGULAR, FLOAT, ym, 5)             \
+    X(a, STATIC, SINGULAR, FLOAT, zm, 6)
 #define socket_message_KinematicData_CALLBACK NULL
 #define socket_message_KinematicData_DEFAULT NULL
 
-#define socket_message_SubscribeNotification_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    tag,               1)
+#define socket_message_SubscribeNotification_FIELDLIST(X, a) X(a, STATIC, SINGULAR, INT32, tag, 1)
 #define socket_message_SubscribeNotification_CALLBACK NULL
 #define socket_message_SubscribeNotification_DEFAULT NULL
 
-#define socket_message_UnsubscribeNotification_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    tag,               1)
+#define socket_message_UnsubscribeNotification_FIELDLIST(X, a) X(a, STATIC, SINGULAR, INT32, tag, 1)
 #define socket_message_UnsubscribeNotification_CALLBACK NULL
 #define socket_message_UnsubscribeNotification_DEFAULT NULL
 
-#define socket_message_PingMsg_FIELDLIST(X, a) \
+#define socket_message_PingMsg_FIELDLIST(X, a)
 
 #define socket_message_PingMsg_CALLBACK NULL
 #define socket_message_PingMsg_DEFAULT NULL
 
-#define socket_message_PongMsg_FIELDLIST(X, a) \
+#define socket_message_PongMsg_FIELDLIST(X, a)
 
 #define socket_message_PongMsg_CALLBACK NULL
 #define socket_message_PongMsg_DEFAULT NULL
 
-#define socket_message_WebsocketMessage_FIELDLIST(X, a) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,sub_notif,message.sub_notif),  20) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,unsub_notif,message.unsub_notif),  21) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,pingmsg,message.pingmsg),  30) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,pongmsg,message.pongmsg),  31) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,imu,message.imu), 110) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,imu_calibrate,message.imu_calibrate), 120) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,imu_calibrate_execute,message.imu_calibrate_execute), 121) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,mode,message.mode), 130) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,input,message.input), 140) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,analytics,message.analytics), 150) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,angles,message.angles), 170) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,i2c_scan,message.i2c_scan), 180) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,i2c_scan_data_request,message.i2c_scan_data_request), 181) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,peripheral_settings,message.peripheral_settings), 190) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,peripheral_settings_data_request,message.peripheral_settings_data_request), 191) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,kinematic_data,message.kinematic_data), 200) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,wifi_settings,message.wifi_settings), 240) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,human_input_data,message.human_input_data), 250) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (message,rssi,message.rssi), 260)
+#define socket_message_WebsocketMessage_FIELDLIST(X, a)                                                \
+    X(a, STATIC, ONEOF, MESSAGE, (message, sub_notif, message.sub_notif), 20)                          \
+    X(a, STATIC, ONEOF, MESSAGE, (message, unsub_notif, message.unsub_notif), 21)                      \
+    X(a, STATIC, ONEOF, MESSAGE, (message, pingmsg, message.pingmsg), 30)                              \
+    X(a, STATIC, ONEOF, MESSAGE, (message, pongmsg, message.pongmsg), 31)                              \
+    X(a, STATIC, ONEOF, MESSAGE, (message, imu, message.imu), 110)                                     \
+    X(a, STATIC, ONEOF, MESSAGE, (message, imu_calibrate, message.imu_calibrate), 120)                 \
+    X(a, STATIC, ONEOF, MESSAGE, (message, imu_calibrate_execute, message.imu_calibrate_execute), 121) \
+    X(a, STATIC, ONEOF, MESSAGE, (message, mode, message.mode), 130)                                   \
+    X(a, STATIC, ONEOF, MESSAGE, (message, input, message.input), 140)                                 \
+    X(a, STATIC, ONEOF, MESSAGE, (message, analytics, message.analytics), 150)                         \
+    X(a, STATIC, ONEOF, MESSAGE, (message, walk_gait, message.walk_gait), 160)                         \
+    X(a, STATIC, ONEOF, MESSAGE, (message, angles, message.angles), 170)                               \
+    X(a, STATIC, ONEOF, MESSAGE, (message, i2c_scan, message.i2c_scan), 180)                           \
+    X(a, STATIC, ONEOF, MESSAGE, (message, i2c_scan_data_request, message.i2c_scan_data_request), 181) \
+    X(a, STATIC, ONEOF, MESSAGE, (message, peripheral_settings, message.peripheral_settings), 190)     \
+    X(a, STATIC, ONEOF, MESSAGE,                                                                       \
+      (message, peripheral_settings_data_request, message.peripheral_settings_data_request), 191)      \
+    X(a, STATIC, ONEOF, MESSAGE, (message, kinematic_data, message.kinematic_data), 200)               \
+    X(a, STATIC, ONEOF, MESSAGE, (message, wifi_settings, message.wifi_settings), 240)                 \
+    X(a, STATIC, ONEOF, MESSAGE, (message, human_input_data, message.human_input_data), 250)           \
+    X(a, STATIC, ONEOF, MESSAGE, (message, rssi, message.rssi), 260)
 #define socket_message_WebsocketMessage_CALLBACK NULL
 #define socket_message_WebsocketMessage_DEFAULT NULL
 #define socket_message_WebsocketMessage_message_sub_notif_MSGTYPE socket_message_SubscribeNotification
@@ -724,11 +840,13 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (message,rssi,message.rssi), 260)
 #define socket_message_WebsocketMessage_message_mode_MSGTYPE socket_message_ModeData
 #define socket_message_WebsocketMessage_message_input_MSGTYPE socket_message_ControllerInputData
 #define socket_message_WebsocketMessage_message_analytics_MSGTYPE socket_message_AnalyticsData
+#define socket_message_WebsocketMessage_message_walk_gait_MSGTYPE socket_message_WalkGaitData
 #define socket_message_WebsocketMessage_message_angles_MSGTYPE socket_message_AnglesData
 #define socket_message_WebsocketMessage_message_i2c_scan_MSGTYPE socket_message_I2CScanData
 #define socket_message_WebsocketMessage_message_i2c_scan_data_request_MSGTYPE socket_message_I2CScanDataRequest
 #define socket_message_WebsocketMessage_message_peripheral_settings_MSGTYPE socket_message_PeripheralSettingsData
-#define socket_message_WebsocketMessage_message_peripheral_settings_data_request_MSGTYPE socket_message_PeripheralSettingsDataRequest
+#define socket_message_WebsocketMessage_message_peripheral_settings_data_request_MSGTYPE \
+    socket_message_PeripheralSettingsDataRequest
 #define socket_message_WebsocketMessage_message_kinematic_data_MSGTYPE socket_message_KinematicData
 #define socket_message_WebsocketMessage_message_wifi_settings_MSGTYPE socket_message_WifiSettingsData
 #define socket_message_WebsocketMessage_message_human_input_data_MSGTYPE socket_message_HumanInputData
@@ -800,38 +918,38 @@ extern const pb_msgdesc_t socket_message_WebsocketMessage_msg;
 #define socket_message_WebsocketMessage_fields &socket_message_WebsocketMessage_msg
 
 /* Maximum encoded size of messages (where known) */
-/* socket_message_I2CDevice_size depends on runtime parameters */
-/* socket_message_PinConfig_size depends on runtime parameters */
-/* socket_message_KnownNetworkItem_size depends on runtime parameters */
-/* socket_message_StaticSystemInformation_size depends on runtime parameters */
-/* socket_message_AnglesData_size depends on runtime parameters */
-/* socket_message_I2CScanData_size depends on runtime parameters */
-/* socket_message_PeripheralSettingsData_size depends on runtime parameters */
-/* socket_message_WifiSettingsData_size depends on runtime parameters */
-/* socket_message_DownloadOTAData_size depends on runtime parameters */
-/* socket_message_SonarData_size depends on runtime parameters */
-/* socket_message_SystemInformation_size depends on runtime parameters */
-/* socket_message_WebsocketMessage_size depends on runtime parameters */
-#define SOCKET_MESSAGE_WEBSOCKET_MESSAGE_PB_H_MAX_SIZE socket_message_AnalyticsData_size
-#define socket_message_AnalyticsData_size        137
-#define socket_message_ControllerInputData_size  39
-#define socket_message_HumanInputData_size       42
-#define socket_message_I2CScanDataRequest_size   0
-#define socket_message_IMUCalibrateData_size     2
-#define socket_message_IMUCalibrateExecute_size  0
-#define socket_message_IMUData_size              35
-#define socket_message_KinematicData_size        30
-#define socket_message_ModeData_size             2
+#define SOCKET_MESSAGE_WEBSOCKET_MESSAGE_PB_H_MAX_SIZE socket_message_WebsocketMessage_size
+#define socket_message_AnalyticsData_size 137
+#define socket_message_AnglesData_size 132
+#define socket_message_ControllerInputData_size 39
+#define socket_message_DownloadOTAData_size 109
+#define socket_message_HumanInputData_size 42
+#define socket_message_I2CDevice_size 77
+#define socket_message_I2CScanDataRequest_size 0
+#define socket_message_I2CScanData_size 1264
+#define socket_message_IMUCalibrateData_size 2
+#define socket_message_IMUCalibrateExecute_size 0
+#define socket_message_IMUData_size 35
+#define socket_message_KinematicData_size 30
+#define socket_message_KnownNetworkItem_size 186
+#define socket_message_ModeData_size 2
 #define socket_message_PeripheralSettingsDataRequest_size 0
-#define socket_message_PingMsg_size              0
-#define socket_message_PongMsg_size              0
-#define socket_message_RSSIData_size             11
-#define socket_message_ServoPWMData_size         17
-#define socket_message_ServoStateData_size       2
+#define socket_message_PeripheralSettingsData_size 2081
+#define socket_message_PinConfig_size 62
+#define socket_message_PingMsg_size 0
+#define socket_message_PongMsg_size 0
+#define socket_message_RSSIData_size 11
+#define socket_message_ServoPWMData_size 17
+#define socket_message_ServoStateData_size 2
+#define socket_message_SonarData_size 17
+#define socket_message_StaticSystemInformation_size 213
 #define socket_message_SubscribeNotification_size 11
+#define socket_message_SystemInformation_size 356
 #define socket_message_UnsubscribeNotification_size 11
-#define socket_message_Vector_size               10
-#define socket_message_WalkGaitData_size         2
+#define socket_message_Vector_size 10
+#define socket_message_WalkGaitData_size 2
+#define socket_message_WebsocketMessage_size 2085
+#define socket_message_WifiSettingsData_size 1547
 
 #ifdef __cplusplus
 } /* extern "C" */
