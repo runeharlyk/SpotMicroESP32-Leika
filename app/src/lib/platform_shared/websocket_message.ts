@@ -160,6 +160,9 @@ export interface IMUCalibrateData {
   success: boolean;
 }
 
+export interface IMUCalibrateExecute {
+}
+
 export interface ModeData {
   mode: ModesEnum;
 }
@@ -274,6 +277,7 @@ export interface WebsocketMessage {
   pongmsg?: PongMsg | undefined;
   imu?: IMUData | undefined;
   imuCalibrate?: IMUCalibrateData | undefined;
+  imuCalibrateExecute?: IMUCalibrateExecute | undefined;
   mode?: ModeData | undefined;
   input?: ControllerInputData | undefined;
   analytics?: AnalyticsData | undefined;
@@ -1219,6 +1223,49 @@ export const IMUCalibrateData: MessageFns<IMUCalibrateData> = {
   fromPartial<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(object: I): IMUCalibrateData {
     const message = createBaseIMUCalibrateData();
     message.success = object.success ?? false;
+    return message;
+  },
+};
+
+function createBaseIMUCalibrateExecute(): IMUCalibrateExecute {
+  return {};
+}
+
+export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute> = {
+  encode(_: IMUCalibrateExecute, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): IMUCalibrateExecute {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIMUCalibrateExecute();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): IMUCalibrateExecute {
+    return {};
+  },
+
+  toJSON(_: IMUCalibrateExecute): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(base?: I): IMUCalibrateExecute {
+    return IMUCalibrateExecute.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(_: I): IMUCalibrateExecute {
+    const message = createBaseIMUCalibrateExecute();
     return message;
   },
 };
@@ -2832,6 +2879,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     pongmsg: undefined,
     imu: undefined,
     imuCalibrate: undefined,
+    imuCalibrateExecute: undefined,
     mode: undefined,
     input: undefined,
     analytics: undefined,
@@ -2864,6 +2912,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.imuCalibrate !== undefined) {
       IMUCalibrateData.encode(message.imuCalibrate, writer.uint32(962).fork()).join();
+    }
+    if (message.imuCalibrateExecute !== undefined) {
+      IMUCalibrateExecute.encode(message.imuCalibrateExecute, writer.uint32(970).fork()).join();
     }
     if (message.mode !== undefined) {
       ModeData.encode(message.mode, writer.uint32(1042).fork()).join();
@@ -2951,6 +3002,14 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           }
 
           message.imuCalibrate = IMUCalibrateData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 121: {
+          if (tag !== 970) {
+            break;
+          }
+
+          message.imuCalibrateExecute = IMUCalibrateExecute.decode(reader, reader.uint32());
           continue;
         }
         case 130: {
@@ -3050,6 +3109,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       pongmsg: isSet(object.pongmsg) ? PongMsg.fromJSON(object.pongmsg) : undefined,
       imu: isSet(object.imu) ? IMUData.fromJSON(object.imu) : undefined,
       imuCalibrate: isSet(object.imuCalibrate) ? IMUCalibrateData.fromJSON(object.imuCalibrate) : undefined,
+      imuCalibrateExecute: isSet(object.imuCalibrateExecute)
+        ? IMUCalibrateExecute.fromJSON(object.imuCalibrateExecute)
+        : undefined,
       mode: isSet(object.mode) ? ModeData.fromJSON(object.mode) : undefined,
       input: isSet(object.input) ? ControllerInputData.fromJSON(object.input) : undefined,
       analytics: isSet(object.analytics) ? AnalyticsData.fromJSON(object.analytics) : undefined,
@@ -3084,6 +3146,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.imuCalibrate !== undefined) {
       obj.imuCalibrate = IMUCalibrateData.toJSON(message.imuCalibrate);
+    }
+    if (message.imuCalibrateExecute !== undefined) {
+      obj.imuCalibrateExecute = IMUCalibrateExecute.toJSON(message.imuCalibrateExecute);
     }
     if (message.mode !== undefined) {
       obj.mode = ModeData.toJSON(message.mode);
@@ -3138,6 +3203,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     message.imu = (object.imu !== undefined && object.imu !== null) ? IMUData.fromPartial(object.imu) : undefined;
     message.imuCalibrate = (object.imuCalibrate !== undefined && object.imuCalibrate !== null)
       ? IMUCalibrateData.fromPartial(object.imuCalibrate)
+      : undefined;
+    message.imuCalibrateExecute = (object.imuCalibrateExecute !== undefined && object.imuCalibrateExecute !== null)
+      ? IMUCalibrateExecute.fromPartial(object.imuCalibrateExecute)
       : undefined;
     message.mode = (object.mode !== undefined && object.mode !== null) ? ModeData.fromPartial(object.mode) : undefined;
     message.input = (object.input !== undefined && object.input !== null)
@@ -3735,6 +3803,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateExecute",
+      "field": [],
       "extension": [],
       "nestedType": [],
       "enumType": [],
@@ -4623,6 +4703,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "imu_calibrate_execute",
+        "number": 121,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateExecute",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrateExecute",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "mode",
         "number": 130,
         "label": 1,
@@ -4790,8 +4882,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 25],
-        "span": [109, 0, 128, 1],
+        "path": [4, 26],
+        "span": [110, 0, 130, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -4810,6 +4902,7 @@ export const protoMetadata: ProtoMetadata = {
     ".socket_message.IMUData": IMUData,
     ".socket_message.StaticSystemInformation": StaticSystemInformation,
     ".socket_message.IMUCalibrateData": IMUCalibrateData,
+    ".socket_message.IMUCalibrateExecute": IMUCalibrateExecute,
     ".socket_message.ModeData": ModeData,
     ".socket_message.ControllerInputData": ControllerInputData,
     ".socket_message.AnalyticsData": AnalyticsData,

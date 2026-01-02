@@ -6,23 +6,23 @@
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
     import { socket } from '$lib/stores'
-    import { MessageTopic, type IMUMsg, type IMUCalibrationResult } from '$lib/types/models'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
     import { IMUReport } from '$lib/platform_shared/imu_report';
     import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+    import { IMUCalibrateData, IMUCalibrateExecute, IMUData } from '$lib/platform_shared/websocket_message'
 
     Chart.register(...registerables)
 
     const features = useFeatureFlags()
     let intervalId: ReturnType<typeof setInterval> | number
     let isCalibrating = $state(false)
-    let calibrationResult = $state<IMUCalibrationResult | null>(null)
+    let calibrationResult = $state<IMUCalibrateData | null>(null)
 
-    let angleChartElement: HTMLCanvasElement
-    let tempChartElement: HTMLCanvasElement
-    let altitudeChartElement: HTMLCanvasElement
+    let angleChartElement: HTMLCanvasElement = $state()!
+    let tempChartElement: HTMLCanvasElement = $state()!
+    let altitudeChartElement: HTMLCanvasElement = $state()!
 
     let angleChart: Chart
     let tempChart: Chart
@@ -77,7 +77,7 @@
                         borderColor: colors.primary,
                         backgroundColor: colors.primary,
                         borderWidth: 2,
-                        data: $imu.x,
+                        data: $imu.map(datapoint => datapoint.x),
                         yAxisID: 'y'
                     },
                     {
@@ -85,7 +85,7 @@
                         borderColor: colors.secondary,
                         backgroundColor: colors.secondary,
                         borderWidth: 2,
-                        data: $imu.y,
+                        data: $imu.map(datapoint => datapoint.y),
                         yAxisID: 'y'
                     },
                     {
@@ -93,7 +93,7 @@
                         borderColor: colors.accent,
                         backgroundColor: colors.accent,
                         borderWidth: 2,
-                        data: $imu.z,
+                        data: $imu.map(datapoint => datapoint.z),
                         yAxisID: 'y'
                     }
                 ]
@@ -124,7 +124,7 @@
                         borderColor: colors.secondary,
                         backgroundColor: colors.secondary,
                         borderWidth: 2,
-                        data: $imu.bmp_temp,
+                        data: $imu.map(datapoint => datapoint.bmpTemp),
                         yAxisID: 'y'
                     }
                 ]
@@ -155,7 +155,7 @@
                         borderColor: colors.primary,
                         backgroundColor: colors.primary,
                         borderWidth: 2,
-                        data: $imu.altitude,
+                        data: $imu.map(datapoint => datapoint.altitude),
                         yAxisID: 'y'
                     }
                 ]
@@ -188,50 +188,55 @@
 
     const updateData = () => {
         if ($features.imu) {
-            angleChart.data.labels = $imu.x
-            angleChart.data.datasets[0].data = $imu.x
-            angleChart.data.datasets[1].data = $imu.y
-            angleChart.data.datasets[2].data = $imu.z
+            const x = $imu.map(datapoint => datapoint.x)
+            const y= $imu.map(datapoint => datapoint.y)
+            const z = $imu.map(datapoint => datapoint.z)
+            
+            angleChart.data.labels = Array.from({ length: $imu.length }, (_, i) => i + 1)
+            angleChart.data.datasets[0].data = x
+            angleChart.data.datasets[1].data = y
+            angleChart.data.datasets[2].data = z
 
-            const allValues = [...$imu.x, ...$imu.y, ...$imu.z]
+            const allValues = [...x, ...y, ...z]
             angleChart.options.scales!.y!.min = Math.min(...allValues) - 1
             angleChart.options.scales!.y!.max = Math.max(...allValues) + 1
             angleChart.update('none')
         }
 
         if ($features.bmp) {
-            updateChartData(tempChart, $imu.bmp_temp)
-            updateChartData(altitudeChart, $imu.altitude)
+            updateChartData(tempChart, $imu.map(datapoint => datapoint.bmpTemp))
+            updateChartData(altitudeChart, $imu.map(datapoint => datapoint.altitude))
         }
     }
-
+    const eventListeners: (() => void)[] = [];
     onMount(() => {
-        socket.on(MessageTopic.imu, (buffer: ArrayBuffer) => {
-            // Temporary conversions here
-            let data = IMUReport.decode(new BinaryReader(new Uint8Array(buffer)))
-            console.log(data)
-            imu.addData(data)
-        })
+        eventListeners.push(...[
+            socket.on(IMUData, (data) => {
+                console.log(data)
+                imu.addData(data)
+            }),
 
-        socket.on(MessageTopic.imuCalibrate, (data: IMUCalibrationResult) => {
-            isCalibrating = false
-            calibrationResult = data
-        })
+            socket.on(IMUCalibrateData, (data) => {
+                isCalibrating = false
+                calibrationResult = data
+            })
+        ])
 
         initializeCharts()
         intervalId = setInterval(updateData, 200)
     })
 
     onDestroy(() => {
-        socket.off(MessageTopic.imu)
-        socket.off(MessageTopic.imuCalibrate)
+        for (let offFunction of eventListeners) {
+            offFunction();
+        }
         clearInterval(intervalId)
     })
 
     function startCalibration() {
         isCalibrating = true
         calibrationResult = null
-        socket.sendEvent(MessageTopic.imuCalibrate, {})
+        socket.sendEvent(IMUCalibrateExecute, {})
     }
 </script>
 

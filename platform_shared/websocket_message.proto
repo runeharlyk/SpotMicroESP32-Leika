@@ -46,6 +46,7 @@ message StaticSystemInformation {
 
 
 message IMUCalibrateData { bool success = 1; }
+message IMUCalibrateExecute {}
 message ModeData { ModesEnum mode = 1; }
 message ControllerInputData {
     Vector left = 1;
@@ -115,6 +116,7 @@ message WebsocketMessage {
         PongMsg pongmsg = 31;
         IMUData imu = 110;
         IMUCalibrateData imu_calibrate = 120;
+        IMUCalibrateExecute imu_calibrate_execute = 121;
         ModeData mode = 130;
         ControllerInputData input = 140;
         AnalyticsData analytics = 150;

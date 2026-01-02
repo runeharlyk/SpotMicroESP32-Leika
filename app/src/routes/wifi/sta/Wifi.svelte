@@ -34,7 +34,7 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { KnownNetworkItem } from '$lib/platform_shared/websocket_message'
-    import { WifiSettings, type WifiStatus } from '$lib/rest_message'
+    import { WifiSettings, type WifiStatus } from '$lib/platform_shared/rest_message'
 
     let networkEditable: KnownNetworkItem = $state( KnownNetworkItem.create() )
 
