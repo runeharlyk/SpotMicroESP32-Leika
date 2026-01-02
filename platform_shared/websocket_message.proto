@@ -70,6 +70,15 @@ message AnalyticsData {
     int32 cpu1_usage = 12;
     int32 cpu_usage = 13;
 }
+
+message ServoPWMData {
+    int32 servo_id = 1;
+    uint32 servo_pwm = 2;
+}
+message ServoStateData {
+    bool active = 1;
+}
+
 message AnglesData { repeated int32 angles = 1; }
 message I2CScanData { repeated I2CDevice devices = 1; }
 message I2CScanDataRequest {}

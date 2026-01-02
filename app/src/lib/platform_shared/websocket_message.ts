@@ -191,6 +191,15 @@ export interface AnalyticsData {
   cpuUsage: number;
 }
 
+export interface ServoPWMData {
+  servoId: number;
+  servoPwm: number;
+}
+
+export interface ServoStateData {
+  active: boolean;
+}
+
 export interface AnglesData {
   angles: number[];
 }
@@ -1724,6 +1733,140 @@ export const AnalyticsData: MessageFns<AnalyticsData> = {
     message.cpu0Usage = object.cpu0Usage ?? 0;
     message.cpu1Usage = object.cpu1Usage ?? 0;
     message.cpuUsage = object.cpuUsage ?? 0;
+    return message;
+  },
+};
+
+function createBaseServoPWMData(): ServoPWMData {
+  return { servoId: 0, servoPwm: 0 };
+}
+
+export const ServoPWMData: MessageFns<ServoPWMData> = {
+  encode(message: ServoPWMData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.servoId !== 0) {
+      writer.uint32(8).int32(message.servoId);
+    }
+    if (message.servoPwm !== 0) {
+      writer.uint32(16).uint32(message.servoPwm);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ServoPWMData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseServoPWMData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.servoId = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.servoPwm = reader.uint32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ServoPWMData {
+    return {
+      servoId: isSet(object.servoId) ? globalThis.Number(object.servoId) : 0,
+      servoPwm: isSet(object.servoPwm) ? globalThis.Number(object.servoPwm) : 0,
+    };
+  },
+
+  toJSON(message: ServoPWMData): unknown {
+    const obj: any = {};
+    if (message.servoId !== 0) {
+      obj.servoId = Math.round(message.servoId);
+    }
+    if (message.servoPwm !== 0) {
+      obj.servoPwm = Math.round(message.servoPwm);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ServoPWMData>, I>>(base?: I): ServoPWMData {
+    return ServoPWMData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ServoPWMData>, I>>(object: I): ServoPWMData {
+    const message = createBaseServoPWMData();
+    message.servoId = object.servoId ?? 0;
+    message.servoPwm = object.servoPwm ?? 0;
+    return message;
+  },
+};
+
+function createBaseServoStateData(): ServoStateData {
+  return { active: false };
+}
+
+export const ServoStateData: MessageFns<ServoStateData> = {
+  encode(message: ServoStateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.active !== false) {
+      writer.uint32(8).bool(message.active);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ServoStateData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseServoStateData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.active = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ServoStateData {
+    return { active: isSet(object.active) ? globalThis.Boolean(object.active) : false };
+  },
+
+  toJSON(message: ServoStateData): unknown {
+    const obj: any = {};
+    if (message.active !== false) {
+      obj.active = message.active;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ServoStateData>, I>>(base?: I): ServoStateData {
+    return ServoStateData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ServoStateData>, I>>(object: I): ServoStateData {
+    const message = createBaseServoStateData();
+    message.active = object.active ?? false;
     return message;
   },
 };
@@ -4226,6 +4369,66 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "ServoPWMData",
+      "field": [{
+        "name": "servo_id",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_pwm",
+        "number": 2,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoStateData",
+      "field": [{
+        "name": "active",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "active",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "AnglesData",
       "field": [{
         "name": "angles",
@@ -5067,8 +5270,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 28],
-        "span": [112, 0, 134, 1],
+        "path": [4, 30],
+        "span": [121, 0, 143, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -5091,6 +5294,8 @@ export const protoMetadata: ProtoMetadata = {
     ".socket_message.ModeData": ModeData,
     ".socket_message.ControllerInputData": ControllerInputData,
     ".socket_message.AnalyticsData": AnalyticsData,
+    ".socket_message.ServoPWMData": ServoPWMData,
+    ".socket_message.ServoStateData": ServoStateData,
     ".socket_message.AnglesData": AnglesData,
     ".socket_message.I2CScanData": I2CScanData,
     ".socket_message.I2CScanDataRequest": I2CScanDataRequest,
