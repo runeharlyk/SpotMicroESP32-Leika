@@ -11,12 +11,6 @@
     import ScanNetworks from './Scan.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import {
-        MessageTopic,
-        type KnownNetworkItem,
-        type WifiSettings,
-        type WifiStatus
-    } from '$lib/types/models'
     import { socket } from '$lib/stores'
     import { api } from '$lib/api'
     import {
@@ -39,17 +33,9 @@
         Edit
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
+    import { KnownNetworkItem } from '$lib/platform_shared/websocket_message'
 
-    let networkEditable: KnownNetworkItem = $state({
-        ssid: '',
-        password: '',
-        static_ip_config: false,
-        local_ip: undefined,
-        subnet_mask: undefined,
-        gateway_ip: undefined,
-        dns_ip_1: undefined,
-        dns_ip_2: undefined
-    })
+    let networkEditable: KnownNetworkItem = $state( KnownNetworkItem.create() )
 
     let static_ip_config = $state(false)
 

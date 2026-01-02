@@ -134,7 +134,10 @@ export interface IMUData {
   x: number;
   y: number;
   z: number;
-  temp: number;
+  heading: number;
+  altitude: number;
+  bmpTemp: number;
+  pressure: number;
 }
 
 export interface StaticSystemInformation {
@@ -741,7 +744,7 @@ export const KnownNetworkItem: MessageFns<KnownNetworkItem> = {
 };
 
 function createBaseIMUData(): IMUData {
-  return { x: 0, y: 0, z: 0, temp: 0 };
+  return { x: 0, y: 0, z: 0, heading: 0, altitude: 0, bmpTemp: 0, pressure: 0 };
 }
 
 export const IMUData: MessageFns<IMUData> = {
@@ -755,8 +758,17 @@ export const IMUData: MessageFns<IMUData> = {
     if (message.z !== 0) {
       writer.uint32(29).float(message.z);
     }
-    if (message.temp !== 0) {
-      writer.uint32(37).float(message.temp);
+    if (message.heading !== 0) {
+      writer.uint32(37).float(message.heading);
+    }
+    if (message.altitude !== 0) {
+      writer.uint32(45).float(message.altitude);
+    }
+    if (message.bmpTemp !== 0) {
+      writer.uint32(53).float(message.bmpTemp);
+    }
+    if (message.pressure !== 0) {
+      writer.uint32(61).float(message.pressure);
     }
     return writer;
   },
@@ -797,7 +809,31 @@ export const IMUData: MessageFns<IMUData> = {
             break;
           }
 
-          message.temp = reader.float();
+          message.heading = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 45) {
+            break;
+          }
+
+          message.altitude = reader.float();
+          continue;
+        }
+        case 6: {
+          if (tag !== 53) {
+            break;
+          }
+
+          message.bmpTemp = reader.float();
+          continue;
+        }
+        case 7: {
+          if (tag !== 61) {
+            break;
+          }
+
+          message.pressure = reader.float();
           continue;
         }
       }
@@ -814,7 +850,10 @@ export const IMUData: MessageFns<IMUData> = {
       x: isSet(object.x) ? globalThis.Number(object.x) : 0,
       y: isSet(object.y) ? globalThis.Number(object.y) : 0,
       z: isSet(object.z) ? globalThis.Number(object.z) : 0,
-      temp: isSet(object.temp) ? globalThis.Number(object.temp) : 0,
+      heading: isSet(object.heading) ? globalThis.Number(object.heading) : 0,
+      altitude: isSet(object.altitude) ? globalThis.Number(object.altitude) : 0,
+      bmpTemp: isSet(object.bmpTemp) ? globalThis.Number(object.bmpTemp) : 0,
+      pressure: isSet(object.pressure) ? globalThis.Number(object.pressure) : 0,
     };
   },
 
@@ -829,8 +868,17 @@ export const IMUData: MessageFns<IMUData> = {
     if (message.z !== 0) {
       obj.z = message.z;
     }
-    if (message.temp !== 0) {
-      obj.temp = message.temp;
+    if (message.heading !== 0) {
+      obj.heading = message.heading;
+    }
+    if (message.altitude !== 0) {
+      obj.altitude = message.altitude;
+    }
+    if (message.bmpTemp !== 0) {
+      obj.bmpTemp = message.bmpTemp;
+    }
+    if (message.pressure !== 0) {
+      obj.pressure = message.pressure;
     }
     return obj;
   },
@@ -843,7 +891,10 @@ export const IMUData: MessageFns<IMUData> = {
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
     message.z = object.z ?? 0;
-    message.temp = object.temp ?? 0;
+    message.heading = object.heading ?? 0;
+    message.altitude = object.altitude ?? 0;
+    message.bmpTemp = object.bmpTemp ?? 0;
+    message.pressure = object.pressure ?? 0;
     return message;
   },
 };
@@ -3444,7 +3495,7 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
-        "name": "temp",
+        "name": "heading",
         "number": 4,
         "label": 1,
         "type": 2,
@@ -3452,7 +3503,43 @@ export const protoMetadata: ProtoMetadata = {
         "extendee": "",
         "defaultValue": "",
         "oneofIndex": 0,
-        "jsonName": "temp",
+        "jsonName": "heading",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "altitude",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "altitude",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "bmp_temp",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "bmpTemp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pressure",
+        "number": 7,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pressure",
         "options": undefined,
         "proto3Optional": false,
       }],
@@ -4698,13 +4785,13 @@ export const protoMetadata: ProtoMetadata = {
     "sourceCodeInfo": {
       "location": [{
         "path": [4, 4],
-        "span": [8, 0, 13, 1],
+        "span": [8, 0, 16, 1],
         "leadingComments": " Individual message data types\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
         "path": [4, 25],
-        "span": [102, 0, 121, 1],
+        "span": [105, 0, 124, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
