@@ -206,6 +206,9 @@ export interface PeripheralSettingsData {
   pins: PinConfig[];
 }
 
+export interface PeripheralSettingsDataRequest {
+}
+
 export interface WifiSettingsData {
   hostname: string;
   priorityRssi: boolean;
@@ -284,6 +287,7 @@ export interface WebsocketMessage {
   angles?: AnglesData | undefined;
   i2cScan?: I2CScanData | undefined;
   peripheralSettings?: PeripheralSettingsData | undefined;
+  peripheralSettingsDataRequest?: PeripheralSettingsDataRequest | undefined;
   kinematicData?: KinematicData | undefined;
   wifiSettings?: WifiSettingsData | undefined;
   humanInputData?: HumanInputData | undefined;
@@ -1960,6 +1964,49 @@ export const PeripheralSettingsData: MessageFns<PeripheralSettingsData> = {
   },
 };
 
+function createBasePeripheralSettingsDataRequest(): PeripheralSettingsDataRequest {
+  return {};
+}
+
+export const PeripheralSettingsDataRequest: MessageFns<PeripheralSettingsDataRequest> = {
+  encode(_: PeripheralSettingsDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PeripheralSettingsDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePeripheralSettingsDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): PeripheralSettingsDataRequest {
+    return {};
+  },
+
+  toJSON(_: PeripheralSettingsDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(base?: I): PeripheralSettingsDataRequest {
+    return PeripheralSettingsDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(_: I): PeripheralSettingsDataRequest {
+    const message = createBasePeripheralSettingsDataRequest();
+    return message;
+  },
+};
+
 function createBaseWifiSettingsData(): WifiSettingsData {
   return { hostname: "", priorityRssi: false, wifiNetworks: [] };
 }
@@ -2886,6 +2933,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     angles: undefined,
     i2cScan: undefined,
     peripheralSettings: undefined,
+    peripheralSettingsDataRequest: undefined,
     kinematicData: undefined,
     wifiSettings: undefined,
     humanInputData: undefined,
@@ -2933,6 +2981,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.peripheralSettings !== undefined) {
       PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(1522).fork()).join();
+    }
+    if (message.peripheralSettingsDataRequest !== undefined) {
+      PeripheralSettingsDataRequest.encode(message.peripheralSettingsDataRequest, writer.uint32(1530).fork()).join();
     }
     if (message.kinematicData !== undefined) {
       KinematicData.encode(message.kinematicData, writer.uint32(1602).fork()).join();
@@ -3060,6 +3111,14 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           message.peripheralSettings = PeripheralSettingsData.decode(reader, reader.uint32());
           continue;
         }
+        case 191: {
+          if (tag !== 1530) {
+            break;
+          }
+
+          message.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.decode(reader, reader.uint32());
+          continue;
+        }
         case 200: {
           if (tag !== 1602) {
             break;
@@ -3120,6 +3179,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       peripheralSettings: isSet(object.peripheralSettings)
         ? PeripheralSettingsData.fromJSON(object.peripheralSettings)
         : undefined,
+      peripheralSettingsDataRequest: isSet(object.peripheralSettingsDataRequest)
+        ? PeripheralSettingsDataRequest.fromJSON(object.peripheralSettingsDataRequest)
+        : undefined,
       kinematicData: isSet(object.kinematicData) ? KinematicData.fromJSON(object.kinematicData) : undefined,
       wifiSettings: isSet(object.wifiSettings) ? WifiSettingsData.fromJSON(object.wifiSettings) : undefined,
       humanInputData: isSet(object.humanInputData) ? HumanInputData.fromJSON(object.humanInputData) : undefined,
@@ -3167,6 +3229,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.peripheralSettings !== undefined) {
       obj.peripheralSettings = PeripheralSettingsData.toJSON(message.peripheralSettings);
+    }
+    if (message.peripheralSettingsDataRequest !== undefined) {
+      obj.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.toJSON(message.peripheralSettingsDataRequest);
     }
     if (message.kinematicData !== undefined) {
       obj.kinematicData = KinematicData.toJSON(message.kinematicData);
@@ -3223,6 +3288,10 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     message.peripheralSettings = (object.peripheralSettings !== undefined && object.peripheralSettings !== null)
       ? PeripheralSettingsData.fromPartial(object.peripheralSettings)
       : undefined;
+    message.peripheralSettingsDataRequest =
+      (object.peripheralSettingsDataRequest !== undefined && object.peripheralSettingsDataRequest !== null)
+        ? PeripheralSettingsDataRequest.fromPartial(object.peripheralSettingsDataRequest)
+        : undefined;
     message.kinematicData = (object.kinematicData !== undefined && object.kinematicData !== null)
       ? KinematicData.fromPartial(object.kinematicData)
       : undefined;
@@ -4197,6 +4266,18 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "PeripheralSettingsDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "WifiSettingsData",
       "field": [{
         "name": "hostname",
@@ -4787,6 +4868,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "peripheral_settings_data_request",
+        "number": 191,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PeripheralSettingsDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettingsDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "kinematic_data",
         "number": 200,
         "label": 1,
@@ -4882,8 +4975,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 26],
-        "span": [110, 0, 130, 1],
+        "path": [4, 27],
+        "span": [111, 0, 132, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -4909,6 +5002,7 @@ export const protoMetadata: ProtoMetadata = {
     ".socket_message.AnglesData": AnglesData,
     ".socket_message.I2CScanData": I2CScanData,
     ".socket_message.PeripheralSettingsData": PeripheralSettingsData,
+    ".socket_message.PeripheralSettingsDataRequest": PeripheralSettingsDataRequest,
     ".socket_message.WifiSettingsData": WifiSettingsData,
     ".socket_message.RSSIData": RSSIData,
     ".socket_message.DownloadOTAData": DownloadOTAData,

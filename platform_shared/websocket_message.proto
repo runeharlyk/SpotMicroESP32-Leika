@@ -73,6 +73,7 @@ message AnalyticsData {
 message AnglesData { repeated int32 angles = 1; }
 message I2CScanData { repeated I2CDevice devices = 1; }
 message PeripheralSettingsData { int32 sda = 1; int32 scl = 2; int32 frequency = 3; repeated PinConfig pins = 4; }
+message PeripheralSettingsDataRequest {}
 message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated KnownNetworkItem wifi_networks = 3; }
 message RSSIData { int32 rssi = 1; }
 message DownloadOTAData { string status = 1; int32 progress = 2; string error = 3; }
@@ -123,6 +124,7 @@ message WebsocketMessage {
         AnglesData angles = 170;
         I2CScanData i2c_scan = 180;
         PeripheralSettingsData peripheral_settings = 190;
+        PeripheralSettingsDataRequest peripheral_settings_data_request = 191;
         KinematicData kinematic_data = 200;
         WifiSettingsData wifi_settings = 240;
         HumanInputData human_input_data = 250;
