@@ -10,8 +10,6 @@
         Color
     } from 'three'
     import {
-        ModesEnum,
-        kinematicData,
         mode,
         model,
         input,
@@ -21,7 +19,7 @@
         jointNames,
         currentKinematic,
         walkGait,
-        walkGaitToMode
+        kinematicData,
     } from '$lib/stores'
     import { populateModelCache, getToeWorldPositions } from '$lib/utilities'
     import SceneBuilder from '$lib/sceneBuilder'
@@ -32,6 +30,7 @@
     import { radToDeg } from 'three/src/math/MathUtils.js'
     import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
+    import { KinematicData } from '$lib/platform_shared/websocket_message'
 
     interface Props {
         defaultColor?: string | null
@@ -155,14 +154,14 @@
     }
 
     const updateKinematicPosition = () => {
-        kinematicData.set([
-            settings.omega,
-            settings.phi,
-            settings.psi,
-            settings.xm,
-            settings.ym,
-            settings.zm
-        ])
+        kinematicData.set(KinematicData.create({
+            omega: settings.omega,
+            phi: settings.phi,
+            psi: settings.psi,
+            xm: settings.xm,
+            ym: settings.ym,
+            zm: settings.zm
+        }))
     }
 
     const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))

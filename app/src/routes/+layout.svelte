@@ -21,7 +21,7 @@
         useFeatureFlags,
         walkGait
     } from '$lib/stores'
-    import { AnalyticsData, AnglesData, DownloadOTAData, HumanInputData, ModeData, RSSIData, SonarData } from '$lib/platform_shared/websocket_message'
+    import { AnalyticsData, AnglesData, DownloadOTAData, HumanInputData, KinematicData, ModeData, RSSIData, SonarData, WalkGaitData } from '$lib/platform_shared/websocket_message'
     import { Throttler } from '$lib/utilities'
 
     interface Props {
@@ -41,9 +41,9 @@
 
         outControllerData.subscribe(data => socket.sendEvent(HumanInputData, data))
         mode.subscribe(data => socket.sendEvent(ModeData, data))
-        walkGait.subscribe(data => socket.sendEvent(GaitData, data))
+        walkGait.subscribe(data => socket.sendEvent(WalkGaitData, data))
         servoAnglesOut.subscribe(data => socket.sendEvent(AnglesData, data))
-        kinematicData.subscribe(data => socket.sendEvent(PositionData, data))
+        kinematicData.subscribe(data => socket.sendEvent(KinematicData, data))
     })
 
     onDestroy(() => {

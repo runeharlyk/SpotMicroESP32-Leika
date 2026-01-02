@@ -13,7 +13,6 @@ message IMUData {
     float temp = 4;
 }
 
-DEACTIVATED = 0;
 enum ModesEnum {
     DEACTIVATED = 0;
     IDLE = 1;
@@ -83,6 +82,14 @@ enum WalkGaits {
 message WalkGaitData {
     WalkGaits gait = 1;
 }
+message KinematicData {
+    float omega = 1;
+    float phi = 2;
+    float psi = 3;
+    float xm = 4;
+    float ym = 5;
+    float zm = 6;
+}
 
 message SubscribeNotification { int32 tag = 1; }
 message UnsubscribeNotification {int32 tag = 1; }
@@ -107,6 +114,7 @@ message WebsocketMessage {
         AnglesData angles = 170;
         I2CScanData i2c_scan = 180;
         PeripheralSettingsData peripheral_settings = 190;
+        KinematicData kinematic_data = 200;
         WifiSettingsData wifi_settings = 240;
         HumanInputData human_input_data = 250;
         RSSIData rssi = 260;
