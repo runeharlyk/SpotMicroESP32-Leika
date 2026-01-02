@@ -55,6 +55,7 @@
     let currentModelAngles: number[] = new Array(12).fill(0)
     let modelTargetAngles: number[] = new Array(12).fill(0)
     let gui_panel: GUI
+    const SMOOTH_AMOUNT = 0.2
 
     let target: Object3D<Object3DEventMap>
 
@@ -238,12 +239,12 @@
         robot.position.x = smooth(
             robot.position.x,
             (-rotatedZm - body_state.cumulative_z) * THREEJS_SCALE,
-            0.1
+            SMOOTH_AMOUNT
         )
         robot.position.z = smooth(
             robot.position.z,
             (-rotatedXm - body_state.cumulative_x) * THREEJS_SCALE,
-            0.1
+            SMOOTH_AMOUNT
         )
 
         const pitch = degToRad(settings.psi - 90) + body_state.cumulative_pitch
@@ -252,10 +253,10 @@
         robot.rotation.z = smooth(
             robot.rotation.z,
             degToRad(-settings.phi + $mpu.heading + 90) + cumulativeYaw,
-            0.1
+            SMOOTH_AMOUNT
         )
-        robot.rotation.y = smooth(robot.rotation.y, roll, 0.1)
-        robot.rotation.x = smooth(robot.rotation.x, pitch, 0.1)
+        robot.rotation.y = smooth(robot.rotation.y, roll, SMOOTH_AMOUNT)
+        robot.rotation.x = smooth(robot.rotation.x, pitch, SMOOTH_AMOUNT)
     }
 
     const update_camera = (robot: URDFRobot) => {
@@ -307,8 +308,8 @@
 
     const updateTargetPosition = () => {
         target.visible = settings['Target position']
-        target.position.x = smooth(target.position.x, target_position.x, 0.5)
-        target.position.z = smooth(target.position.z, target_position.z, 0.5)
+        target.position.x = smooth(target.position.x, target_position.x, SMOOTH_AMOUNT)
+        target.position.z = smooth(target.position.z, target_position.z, SMOOTH_AMOUNT)
     }
 
     const render = () => {
@@ -330,7 +331,7 @@
             currentModelAngles[i] = smooth(
                 (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
                 modelTargetAngles[i],
-                0.1
+                SMOOTH_AMOUNT
             )
             robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles[i]))
         }
