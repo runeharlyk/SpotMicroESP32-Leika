@@ -17,9 +17,11 @@
 #include <mdns_service.h>
 #include <system_service.h>
 
-// Temporary includes
 #include <pb_encode.h>
-#include "platform_shared/imu_report.pb.h"
+#include <pb_decode.h>
+
+#include <platform_shared/websocket_message.pb.h>
+
 
 #include <www_mount.hpp>
 
@@ -241,21 +243,23 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             // socket.emit(EVENT_IMU, results);
 
             // TESTING PB EMITTING!!
-            IMUReport report;
+            socket_message_IMUData report;
             report.x = 1;
             report.y = 2;
             report.z = 3;
-            report.temp = temp;
+            report.altitude = 10;
+            report.bmp_temp = temp;
             temp += 0.01;
-            report.success = true;
+            report.heading = 20;
+            report.pressure = 40;
             
-            uint8_t buffer[IMUReport_size]; 
+            uint8_t buffer[socket_message_IMUData_size]; 
             pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-            bool status = pb_encode(&stream, &IMUReport_msg, &report);
+            bool status = pb_encode(&stream, &socket_message_IMUData_msg, &report);
             if (!status) {
                 // PRINT ERROR HERE!
             }
-            socket.emit_raw(EVENT_IMU, buffer, strlen(EVENT_IMU), IMUReport_size);
+            socket.emit_raw(EVENT_IMU, buffer, strlen(EVENT_IMU), socket_message_IMUData_size);
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

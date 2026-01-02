@@ -34,6 +34,14 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
+
+      - name: Install Python dependencies for nanopb
+        run: pip install protobuf grpcio-tools
+
+      - name: Build Protocol Buffers (nanopb)
+        run: python ./submodules/nanopb/generator/nanopb_generator.py -I "./platform_shared/" -D esp32/src/platform_shared ./platform_shared/websocket_message.proto ./platform_shared/rest_message.proto
+
+
       - name: Build PlatformIO Project
         run: pio run
 

@@ -11,4 +11,4 @@ protoc -I=platform_shared --cpp_out=esp32/src/platform_shared platform_shared/ex
 
 C++ (nanopb):
 pip install protobuf grpcio-tools
-python .\submodules\nanopb\generator\nanopb_generator.py -D esp32/src .\platform_shared\example.proto
+python ./submodules/nanopb/generator/nanopb_generator.py -I "./platform_shared/" -D esp32/src ./platform_shared/websocket_message.proto ./platform_shared/rest_message.proto
