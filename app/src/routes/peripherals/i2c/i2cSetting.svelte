@@ -4,7 +4,10 @@
     import { onMount } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
-    import { PeripheralSettingsData, PeripheralSettingsDataRequest } from '$lib/platform_shared/websocket_message'
+    import {
+        PeripheralSettingsData,
+        PeripheralSettingsDataRequest
+    } from '$lib/platform_shared/websocket_message'
 
     let settings: PeripheralSettingsData | null = $state(null)
     let isEditing = $state(false)

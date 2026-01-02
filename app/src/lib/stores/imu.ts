@@ -1,9 +1,8 @@
 import { writable } from 'svelte/store'
 import { IMUData } from '$lib/platform_shared/websocket_message'
 
-const imu_data: IMUData[] = [];
+const imu_data: IMUData[] = []
 const maxIMUData = 100
-
 
 export const imu = (() => {
     const { subscribe, update } = writable(imu_data)

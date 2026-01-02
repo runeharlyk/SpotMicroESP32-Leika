@@ -169,8 +169,6 @@ export class BezierState extends GaitState {
     }
 
     set_mode(mode: WalkGaits, duty?: number, order?: [number, number, number, number]) {
-        console.log('BezierState set_mode', mode)
-
         this.mode = mode
         if (mode === WalkGaits.CRAWL) {
             this.speed_factor = 0.5

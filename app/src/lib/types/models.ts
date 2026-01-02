@@ -1,7 +1,4 @@
-import type { AnalyticsData } from "$lib/platform_shared/websocket_message";
-
 export type vector = { x: number; y: number }
-
 
 export type GithubRelease = {
     message: string
@@ -12,12 +9,9 @@ export type GithubRelease = {
     }>
 }
 
-
-
 export type NetworkList = {
     networks: NetworkItem[]
 }
-
 
 export type NetworkItem = {
     rssi: number
@@ -46,13 +40,10 @@ export type ApSettings = {
     subnet_mask: string
 }
 
-
 export type Rssi = {
     rssi: number
     ssid: string
 }
-
-
 
 export type CameraSettings = {
     framesize: number

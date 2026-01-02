@@ -15,7 +15,6 @@
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
     import {
-        HumanInputData,
         ModeData,
         ModesEnum,
         WalkGaitData,
@@ -24,14 +23,6 @@
 
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
-
-    let data: HumanInputData = HumanInputData.create({
-        left: { x: 0, y: 0 },
-        right: { x: 0, y: 0 },
-        height: 0,
-        s1: 0,
-        speed: 0
-    })
 
     $effect(() => {
         if ($hasGamepad) {
