@@ -52,7 +52,6 @@
     "type": "module",
     "dependencies": {
         "@bufbuild/protobuf": "^2.10.2",
-        "@msgpack/msgpack": "^3.1.2",
         "@niku/vite-env-caster": "^1.1.2",
         "@sveltejs/adapter-auto": "^6.1.1",
         "@tailwindcss/vite": "^4.1.14",

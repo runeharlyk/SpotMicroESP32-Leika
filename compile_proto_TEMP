@@ -3,11 +3,7 @@ This file is temporary, just to show how ot compile the proto files
 Make sure to actually create the output directories before executing the commands
 
 TS:
-protoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/src/lib/platform_shared" --ts_proto_opt=outputSchema=true --proto_path ".\platform_shared\" ".\platform_shared\websocket_message.proto"
-protoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/src/lib/platform_shared" --ts_proto_opt=outputSchema=true --proto_path ".\platform_shared\" ".\platform_shared\rest_message.proto"
-
-C++:
-protoc -I=platform_shared --cpp_out=esp32/src/platform_shared platform_shared/example.proto
+protoc --plugin="protoc-gen-ts_proto=$(Resolve-Path app\node_modules\.bin\protoc-gen-ts_proto.CMD)" --ts_proto_out="./app/src/lib/platform_shared" --ts_proto_opt=outputSchema=true --proto_path ".\platform_shared\" ".\platform_shared\rest_message.proto" ".\platform_shared\websocket_message.proto"
 
 C++ (nanopb):
 pip install protobuf grpcio-tools
