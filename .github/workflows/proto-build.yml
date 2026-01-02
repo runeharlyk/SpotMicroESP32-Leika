@@ -1,0 +1,46 @@
+name: Proto Build
+
+on:
+  push:
+    branches: [ master, protobuf-playground ]
+  pull_request:
+    branches: [ master, protobuf-playground ]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+    env:
+      BASE_PATH: /SpotMicroESP32-Leika
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Protocol Buffers compiler
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          cache-dependency-path: "./app/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./app
+
+      - name: Build Protocol Buffers (Typescript)
+        run: protoc --plugin="protoc-gen-ts_proto=./app/node_modules/.bin/protoc-gen-ts_proto" --ts_proto_out="./app/src/lib/platform_shared" --ts_proto_opt=outputSchema=true --proto_path "./platform_shared" ./platform_shared/websocket_message.proto ./platform_shared/rest_message.proto
