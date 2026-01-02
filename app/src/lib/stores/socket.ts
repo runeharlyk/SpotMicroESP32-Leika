@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store'
-import { encode, decode } from '@msgpack/msgpack'
 import {
     WebsocketMessage,
     type MessageFns,

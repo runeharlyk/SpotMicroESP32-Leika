@@ -11,9 +11,6 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.10.2
         version: 2.10.2
-      '@msgpack/msgpack':
-        specifier: ^3.1.2
-        version: 3.1.2
       '@niku/vite-env-caster':
         specifier: ^1.1.2
         version: 1.1.2
@@ -465,10 +462,6 @@ packages:
 
   '@kurkle/color@0.3.4':
     resolution: {integrity: sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==}
-
-  '@msgpack/msgpack@3.1.2':
-    resolution: {integrity: sha512-JEW4DEtBzfe8HvUYecLU9e6+XJnKDlUAIve8FvPzF3Kzs6Xo/KuZkZJsDH0wJXl/qEZbeeE7edxDNY3kMs39hQ==}
-    engines: {node: '>= 18'}
 
   '@niku/vite-env-caster@1.1.2':
     resolution: {integrity: sha512-6I/8REFdmfeGnK92H3nYHGc6lExwjm72jLxAsDPlfji97Eej4rOMl6WuYGLgsQI0pl5RrMRMveeRdijdL6hW+Q==}
@@ -2494,8 +2487,6 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@kurkle/color@0.3.4': {}
-
-  '@msgpack/msgpack@3.1.2': {}
 
   '@niku/vite-env-caster@1.1.2':
     dependencies:
