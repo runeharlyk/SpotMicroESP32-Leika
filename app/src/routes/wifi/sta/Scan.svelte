@@ -87,7 +87,7 @@
                     </div>
                 {:else}
                     <ul class="menu">
-                        {#each listOfNetworks as network}
+                        {#each listOfNetworks as network (network.ssid)}
                             <li>
                                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                                 <div

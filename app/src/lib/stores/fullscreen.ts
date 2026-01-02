@@ -4,7 +4,8 @@ export const isFullscreen = writable(false)
 
 export function toggleFullscreen() {
     isFullscreen.update(state => {
-        !state ? document.documentElement.requestFullscreen() : document.exitFullscreen()
+        if (!state) document.documentElement.requestFullscreen()
+        else document.exitFullscreen()
         return !state
     })
 }

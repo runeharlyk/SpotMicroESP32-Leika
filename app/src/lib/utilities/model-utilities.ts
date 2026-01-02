@@ -29,7 +29,7 @@ export const cacheModelFiles = async () => {
 
     for (const [path, data] of Object.entries(files) as [path: string, data: Uint8Array][]) {
         const normalizedPath = path.startsWith('/') ? path : '/' + path
-        const resolvedUrl = resolve(normalizedPath as any)
+        const resolvedUrl = `${resolve('/')}${normalizedPath}`
         fileService?.saveFile(resolvedUrl, data)
         fileService?.saveFile(normalizedPath, data)
     }

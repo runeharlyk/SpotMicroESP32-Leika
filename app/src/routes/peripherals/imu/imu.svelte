@@ -252,7 +252,11 @@
             {/if}
         </button>
         {#if calibrationResult}
-            <span class="badge" class:badge-success={calibrationResult.success} class:badge-error={!calibrationResult.success}>
+            <span
+                class="badge"
+                class:badge-success={calibrationResult.success}
+                class:badge-error={!calibrationResult.success}
+            >
                 {calibrationResult.success ? 'Calibrated' : 'Failed'}
             </span>
         {/if}

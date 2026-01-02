@@ -16,7 +16,9 @@ const registerFetchIntercept = async () => {
                 const pathOnly = urlObj.pathname
                 file = await fileService?.getFile(pathOnly)
                 if (file?.isOk() && file.inner) return new Response(new Uint8Array(file.inner))
-            } catch {}
+            } catch {
+                console.error('Failed to get file for ', url)
+            }
         }
 
         return originalFetch(resource, config)

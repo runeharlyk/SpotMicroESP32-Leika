@@ -30,7 +30,7 @@
 
     {#if expanded}
         <ul class="ml-4 border-l border-gray-600 mt-1">
-            {#each Object.entries(files) as [itemName, content]}
+            {#each Object.entries(files) as [itemName, content] (itemName)}
                 <li class="py-1">
                     {#if typeof content === 'object'}
                         <Folder name={itemName} files={content} {selected} {onDelete} />

@@ -16,6 +16,7 @@
         "test:unit": "vitest"
     },
     "devDependencies": {
+        "@eslint/js": "^9.39.2",
         "@iconify-json/mdi": "^1.2.3",
         "@iconify-json/tabler": "^1.2.23",
         "@playwright/test": "^1.56.0",
@@ -30,6 +31,7 @@
         "eslint": "^9.37.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.12.4",
+        "globals": "^17.0.0",
         "jsdom": "^27.0.0",
         "prettier": "^3.6.2",
         "prettier-plugin-svelte": "^3.4.0",
@@ -39,6 +41,7 @@
         "tailwindcss": "^4.1.14",
         "tslib": "^2.8.1",
         "typescript": "^5.9.3",
+        "typescript-eslint": "^8.51.0",
         "unplugin-icons": "^22.4.2",
         "vite": "^7.1.9",
         "vitest": "^3.2.4"

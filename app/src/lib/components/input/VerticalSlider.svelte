@@ -4,7 +4,7 @@
         max?: number
         step?: number
         value?: number
-        oninput?: (value: number) => void
+        oninput?: (value: Event) => void
     }
 
     let {

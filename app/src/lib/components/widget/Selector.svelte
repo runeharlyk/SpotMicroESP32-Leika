@@ -14,7 +14,7 @@
     {...rest}
     class="select select-bordered select-sm lg:select-md max-w-xs {rest.class || ''}"
 >
-    {#each options as option}
+    {#each options as option (option)}
         <option value={option}>{option}</option>
     {/each}
 </select>

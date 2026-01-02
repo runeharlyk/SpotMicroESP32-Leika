@@ -71,7 +71,7 @@
         {#if active_devices.length === 0}
             <div>No I2C devices found</div>
         {:else}
-            {#each active_devices as device}
+            {#each active_devices as device (device.address)}
                 <div>[{device.address.toString(16)}] {device.part_number} - {device.name}</div>
             {/each}
         {/if}

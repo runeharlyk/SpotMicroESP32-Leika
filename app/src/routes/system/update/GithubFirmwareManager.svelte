@@ -108,7 +108,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each githubReleases as release}
+                        {#each githubReleases as release (release.tag_name)}
                             <tr
                                 class={(
                                     compareVersions(
@@ -119,8 +119,8 @@
                                     'bg-primary text-primary-content'
                                 :   'bg-base-100 h-14'}
                             >
-                                <td align="left" class="text-base font-semibold">
-                                    <a
+                                <td align="left" class="text-base font-semibold"
+                                    ><!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external URL --><a
                                         href={release.html_url}
                                         class="link link-hover"
                                         target="_blank"

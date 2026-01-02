@@ -1,10 +1,10 @@
 <script lang="ts">
     import MenuList from './MenuList.svelte'
-    import type { ComponentType } from 'svelte'
+    import type { Component } from 'svelte'
 
     type MenuItem = {
         title: string
-        icon: ComponentType
+        icon: Component
         href?: string
         feature: boolean
         active?: boolean
@@ -38,7 +38,7 @@
                         </div>
                     </details>
                 {:else}
-                    <a
+                    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve --><a
                         href={menuItem.href}
                         class="font-bold"
                         class:bg-base-100={menuItem.active}

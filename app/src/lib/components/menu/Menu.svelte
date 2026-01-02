@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state'
-    import { base } from '$app/paths'
+    import { resolve } from '$app/paths'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import GithubButton from '../menu/GithubButton.svelte'
     import LogoButton from '../menu/LogoButton.svelte'
@@ -33,11 +33,11 @@
 
     const github = { href: 'https://github.com/' + page.data.github, active: true }
 
-    import type { ComponentType } from 'svelte'
+    import type { Component } from 'svelte'
 
     type menuItem = {
         title: string
-        icon: ComponentType
+        icon: Component
         href?: string
         feature: boolean
         active?: boolean
@@ -45,13 +45,15 @@
     }
 
     function withBase(path: string) {
-        return `${base}${path.startsWith('/') ? path : '/' + path}`
+        return `${resolve('/')}${path.startsWith('/') ? path.slice(1) : path}`
     }
 
-    let menuItems = $state<menuItem[]>([])
+    const { menuClicked } = $props()
 
-    $effect(() => {
-        menuItems = [
+    const activeTitle = $derived(page.data.title)
+
+    const menuItems = $derived<menuItem[]>(
+        [
             {
                 title: 'Connection',
                 icon: WiFi,
@@ -79,7 +81,7 @@
                         title: 'Camera',
                         icon: Camera,
                         href: withBase('/peripherals/camera'),
-                        feature: $features.camera
+                        feature: true
                     },
                     {
                         title: 'Servo',
@@ -91,9 +93,9 @@
                         title: 'IMU',
                         icon: Rotate3d,
                         href: withBase('/peripherals/imu'),
-                        feature: $features.imu || $features.mag || $features.bmp
+                        feature: true
                     }
-                ]
+                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
             },
             {
                 title: 'WiFi',
@@ -118,7 +120,7 @@
                         href: withBase('/wifi/mdns'),
                         feature: true
                     }
-                ]
+                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
             },
             {
                 title: 'System',
@@ -147,35 +149,19 @@
                         title: 'Firmware Update',
                         icon: Update,
                         href: withBase('/system/update'),
-                        feature:
+                        feature: !!(
                             $features.ota ||
                             $features.upload_firmware ||
                             $features.download_firmware
+                        )
                     }
-                ]
+                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
             }
-        ] as menuItem[]
-    })
+        ].map(item => ({ ...item, active: item.title === activeTitle }))
+    )
 
-    const { menuClicked } = $props()
-
-    function setActiveMenuItem(targetTitle: string) {
-        menuItems.forEach(item => {
-            item.active = item.title === targetTitle
-            item.submenu?.forEach(subItem => {
-                subItem.active = subItem.title === targetTitle
-            })
-        })
-        menuItems = menuItems
+    const updateMenu = () => {
         menuClicked()
-    }
-
-    $effect(() => {
-        setActiveMenuItem(page.data.title)
-    })
-
-    const updateMenu = (event: CustomEvent) => {
-        setActiveMenuItem(event.details)
     }
 </script>
 

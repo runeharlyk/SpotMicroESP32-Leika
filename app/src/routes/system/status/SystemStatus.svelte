@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
-    import type { ComponentType } from 'svelte'
+    import type { Component } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
@@ -111,7 +111,7 @@
     }
 
     interface ActionButtonDef {
-        icon: ComponentType
+        icon: Component
         label: string
         onClick: () => void
         type?: string
@@ -253,7 +253,7 @@
     </div>
 
     <div class="mt-4 flex flex-wrap justify-end gap-2">
-        {#each actionButtons as button}
+        {#each actionButtons as button (button.label)}
             {#if button.condition === undefined || button.condition()}
                 <ActionButton
                     onclick={button.onClick}

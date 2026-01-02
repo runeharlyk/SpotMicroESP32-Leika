@@ -59,7 +59,7 @@
             </tr>
         </thead>
         <tbody>
-            {#each data.servos as servo, index}
+            {#each data.servos as servo, index (index)}
                 <tr class="hover:bg-base-200">
                     <td class="font-medium">Servo {index}</td>
                     <td>

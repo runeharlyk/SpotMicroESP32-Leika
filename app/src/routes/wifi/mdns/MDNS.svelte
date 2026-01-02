@@ -88,7 +88,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each services as service}
+                        {#each services as service (service.ip)}
                             <tr>
                                 <td><Devices class="h-6 w-6" /></td>
                                 <td>{service.name}</td>

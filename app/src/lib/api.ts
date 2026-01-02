@@ -1,6 +1,6 @@
 import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
-import { apiLocation } from './stores'
+import { apiLocation } from './stores/location-store'
 
 export const api = {
     get<TResponse>(endpoint: string, params?: RequestInit) {

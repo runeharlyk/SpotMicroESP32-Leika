@@ -166,7 +166,7 @@
             class="flex items-end gap-4 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 border-t border-r border-base-content/5 pointer-events-auto"
         >
             <div class="join shadow-lg">
-                {#each modes as modeValue}
+                {#each modes as modeValue (modeValue)}
                     <button
                         class="btn join-item btn-sm transition-all duration-200"
                         class:btn-primary={$mode === modes.indexOf(modeValue)}
@@ -179,7 +179,7 @@
 
             {#if $mode === ModesEnum.Walk}
                 <div class="join shadow-md">
-                    {#each Object.values(WalkGaits) as gaitValue}
+                    {#each Object.values(WalkGaits) as gaitValue (gaitValue)}
                         {#if typeof gaitValue === 'number'}
                             <button
                                 class="btn join-item btn-xs transition-all duration-200"

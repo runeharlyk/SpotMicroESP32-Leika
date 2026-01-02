@@ -119,7 +119,6 @@
     })
 
     onDestroy(() => {
-        canvas.remove()
         gui_panel?.destroy()
     })
 

@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { preventDefault } from 'svelte/legacy'
-
     import { onMount, onDestroy } from 'svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
@@ -16,7 +14,7 @@
     let apSettings: ApSettings | null = $state(null)
     let apStatus: ApStatus | null = $state(null)
 
-    let formField: Record<string, unknown> = $state()
+    let formField: Record<string, unknown> = $state({})
 
     async function getAPStatus() {
         const result = await api.get<ApStatus>('/api/wifi/ap/status')
@@ -87,7 +85,8 @@
         apSettings = result.inner
     }
 
-    function handleSubmitAP() {
+    function handleSubmitAP(e: Event) {
+        e.preventDefault()
         if (!apSettings) return
         let valid = true
 
@@ -205,7 +204,7 @@
                 >
                     <form
                         class="grid w-full grid-cols-1 content-center gap-x-4 p-0s sm:grid-cols-2"
-                        onsubmit={preventDefault(handleSubmitAP)}
+                        onsubmit={handleSubmitAP}
                         novalidate
                         bind:this={formField}
                     >
@@ -218,7 +217,7 @@
                                 id="apmode"
                                 bind:value={apSettings.provision_mode}
                             >
-                                {#each provisionMode as mode}
+                                {#each provisionMode as mode (mode.id)}
                                     <option value={mode.id}>
                                         {mode.text}
                                     </option>
