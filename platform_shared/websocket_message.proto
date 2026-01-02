@@ -1,15 +1,7 @@
 syntax = "proto3";
 
 
-// REST MESSAGE TYPES
-// TODO: i am too lazy to create a new file and compile it manually, so move this to a new proto before merging
-
-
-// END REST MESSAGE TYPES
-
-
-
-
+package socket_message;
 
 
 message Vector { float x = 1; float y = 2; }
