@@ -54,13 +54,6 @@ export type Rssi = {
 
 
 
-export interface I2CDevice {
-    address: number
-    part_number: string
-    name: string
-}
-
-
 export type CameraSettings = {
     framesize: number
     quality: number

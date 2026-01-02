@@ -199,6 +199,9 @@ export interface I2CScanData {
   devices: I2CDevice[];
 }
 
+export interface I2CScanDataRequest {
+}
+
 export interface PeripheralSettingsData {
   sda: number;
   scl: number;
@@ -286,6 +289,7 @@ export interface WebsocketMessage {
   analytics?: AnalyticsData | undefined;
   angles?: AnglesData | undefined;
   i2cScan?: I2CScanData | undefined;
+  i2cScanDataRequest?: I2CScanDataRequest | undefined;
   peripheralSettings?: PeripheralSettingsData | undefined;
   peripheralSettingsDataRequest?: PeripheralSettingsDataRequest | undefined;
   kinematicData?: KinematicData | undefined;
@@ -1856,6 +1860,49 @@ export const I2CScanData: MessageFns<I2CScanData> = {
   },
 };
 
+function createBaseI2CScanDataRequest(): I2CScanDataRequest {
+  return {};
+}
+
+export const I2CScanDataRequest: MessageFns<I2CScanDataRequest> = {
+  encode(_: I2CScanDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): I2CScanDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseI2CScanDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): I2CScanDataRequest {
+    return {};
+  },
+
+  toJSON(_: I2CScanDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(base?: I): I2CScanDataRequest {
+    return I2CScanDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(_: I): I2CScanDataRequest {
+    const message = createBaseI2CScanDataRequest();
+    return message;
+  },
+};
+
 function createBasePeripheralSettingsData(): PeripheralSettingsData {
   return { sda: 0, scl: 0, frequency: 0, pins: [] };
 }
@@ -2932,6 +2979,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     analytics: undefined,
     angles: undefined,
     i2cScan: undefined,
+    i2cScanDataRequest: undefined,
     peripheralSettings: undefined,
     peripheralSettingsDataRequest: undefined,
     kinematicData: undefined,
@@ -2978,6 +3026,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.i2cScan !== undefined) {
       I2CScanData.encode(message.i2cScan, writer.uint32(1442).fork()).join();
+    }
+    if (message.i2cScanDataRequest !== undefined) {
+      I2CScanDataRequest.encode(message.i2cScanDataRequest, writer.uint32(1450).fork()).join();
     }
     if (message.peripheralSettings !== undefined) {
       PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(1522).fork()).join();
@@ -3103,6 +3154,14 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           message.i2cScan = I2CScanData.decode(reader, reader.uint32());
           continue;
         }
+        case 181: {
+          if (tag !== 1450) {
+            break;
+          }
+
+          message.i2cScanDataRequest = I2CScanDataRequest.decode(reader, reader.uint32());
+          continue;
+        }
         case 190: {
           if (tag !== 1522) {
             break;
@@ -3176,6 +3235,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       analytics: isSet(object.analytics) ? AnalyticsData.fromJSON(object.analytics) : undefined,
       angles: isSet(object.angles) ? AnglesData.fromJSON(object.angles) : undefined,
       i2cScan: isSet(object.i2cScan) ? I2CScanData.fromJSON(object.i2cScan) : undefined,
+      i2cScanDataRequest: isSet(object.i2cScanDataRequest)
+        ? I2CScanDataRequest.fromJSON(object.i2cScanDataRequest)
+        : undefined,
       peripheralSettings: isSet(object.peripheralSettings)
         ? PeripheralSettingsData.fromJSON(object.peripheralSettings)
         : undefined,
@@ -3226,6 +3288,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.i2cScan !== undefined) {
       obj.i2cScan = I2CScanData.toJSON(message.i2cScan);
+    }
+    if (message.i2cScanDataRequest !== undefined) {
+      obj.i2cScanDataRequest = I2CScanDataRequest.toJSON(message.i2cScanDataRequest);
     }
     if (message.peripheralSettings !== undefined) {
       obj.peripheralSettings = PeripheralSettingsData.toJSON(message.peripheralSettings);
@@ -3284,6 +3349,9 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
       : undefined;
     message.i2cScan = (object.i2cScan !== undefined && object.i2cScan !== null)
       ? I2CScanData.fromPartial(object.i2cScan)
+      : undefined;
+    message.i2cScanDataRequest = (object.i2cScanDataRequest !== undefined && object.i2cScanDataRequest !== null)
+      ? I2CScanDataRequest.fromPartial(object.i2cScanDataRequest)
       : undefined;
     message.peripheralSettings = (object.peripheralSettings !== undefined && object.peripheralSettings !== null)
       ? PeripheralSettingsData.fromPartial(object.peripheralSettings)
@@ -4206,6 +4274,18 @@ export const protoMetadata: ProtoMetadata = {
       "reservedName": [],
       "visibility": 0,
     }, {
+      "name": "I2CScanDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
       "name": "PeripheralSettingsData",
       "field": [{
         "name": "sda",
@@ -4856,6 +4936,18 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "i2c_scan_data_request",
+        "number": 181,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScanDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "peripheral_settings",
         "number": 190,
         "label": 1,
@@ -4975,8 +5067,8 @@ export const protoMetadata: ProtoMetadata = {
         "trailingComments": "",
         "leadingDetachedComments": [],
       }, {
-        "path": [4, 27],
-        "span": [111, 0, 132, 1],
+        "path": [4, 28],
+        "span": [112, 0, 134, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
@@ -5001,6 +5093,7 @@ export const protoMetadata: ProtoMetadata = {
     ".socket_message.AnalyticsData": AnalyticsData,
     ".socket_message.AnglesData": AnglesData,
     ".socket_message.I2CScanData": I2CScanData,
+    ".socket_message.I2CScanDataRequest": I2CScanDataRequest,
     ".socket_message.PeripheralSettingsData": PeripheralSettingsData,
     ".socket_message.PeripheralSettingsDataRequest": PeripheralSettingsDataRequest,
     ".socket_message.WifiSettingsData": WifiSettingsData,
