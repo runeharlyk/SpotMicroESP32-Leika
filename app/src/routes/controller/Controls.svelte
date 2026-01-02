@@ -57,7 +57,7 @@
                 inputData.height = Math.min(inputData.height + 0.1, 1)
                 return inputData
             })
-        if (b[13]?.justPressed)
+        if (b[13].justPressed)
             input.update(inputData => {
                 inputData.height = Math.min(inputData.height - 0.1, 1)
                 return inputData
@@ -149,7 +149,7 @@
                 min={0}
                 max={1}
                 step={0.01}
-                oninput={(v: number) => handleRange(v, 'height')}
+                oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 'height')}
             />
             <label for="height" class="text-xs font-medium opacity-70">Ht</label>
         </div>
