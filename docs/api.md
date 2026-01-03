@@ -72,3 +72,9 @@ The back end exposes a number of API endpoints which are referenced in the table
 | POST   | /api/files/delete | Delete file      |
 | POST   | /api/files/edit   | Edit file        |
 | POST   | /api/files/mkdir  | Create directory |
+
+## WebSocket
+
+Real-time communication is handled via WebSocket at `/api/ws` using Protocol Buffers.
+
+See [websocket.md](websocket.md) for the full WebSocket API documentation.
