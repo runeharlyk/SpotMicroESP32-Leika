@@ -19,8 +19,6 @@ esp_err_t handleSleep(PsychicRequest *request) {
     return request->reply(200);
 }
 
-
-
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
     File root = ESP_FS.open(FS_CONFIG_DIRECTORY);
@@ -73,25 +71,23 @@ void sleep() {
     ESP_LOGI(TAG, "Setting device to sleep");
 }
 
-
-
 void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
-    info.esp_platform = (char*) ESP_PLATFORM_NAME;
+    info.esp_platform = (char *)ESP_PLATFORM_NAME;
     info.firmware_version = APP_VERSION;
     info.cpu_freq_mhz = ESP.getCpuFreqMHz();
-    info.cpu_type = (char*) ESP.getChipModel();
+    info.cpu_type = (char *)ESP.getChipModel();
     info.cpu_rev = ESP.getChipRevision();
     info.cpu_cores = ESP.getChipCores();
     info.sketch_size = ESP.getSketchSize();
     info.free_sketch_space = ESP.getFreeSketchSpace();
-    info.sdk_version = (char*) ESP.getSdkVersion();
+    info.sdk_version = (char *)ESP.getSdkVersion();
     info.arduino_version = ARDUINO_VERSION;
     info.flash_chip_size = ESP.getFlashChipSize();
     info.flash_chip_speed = ESP.getFlashChipSpeed();
-    info.cpu_reset_reason = (char*) resetReason(esp_reset_reason());
+    info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
 }
 
 void getAnalytics(socket_message_AnalyticsData &analytics) {

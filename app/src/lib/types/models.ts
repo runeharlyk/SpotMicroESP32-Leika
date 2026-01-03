@@ -19,27 +19,27 @@ export enum MessageTopic {
 
 export type WifiStatus = {
     status: number
-    local_ip: string
+    local_ip: number
     mac_address: string
     rssi: number
     ssid: string
     bssid: string
     channel: number
-    subnet_mask: string
-    gateway_ip: string
-    dns_ip_1: string
-    dns_ip_2?: string
+    subnet_mask: number
+    gateway_ip: number
+    dns_ip_1: number
+    dns_ip_2?: number
 }
 
 export type KnownNetworkItem = {
     ssid: string
     password: string
     static_ip_config: boolean
-    local_ip?: string
-    subnet_mask?: string
-    gateway_ip?: string
-    dns_ip_1?: string
-    dns_ip_2?: string
+    local_ip?: number
+    subnet_mask?: number
+    gateway_ip?: number
+    dns_ip_1?: number
+    dns_ip_2?: number
 }
 
 export type WifiSettings = {
@@ -73,7 +73,7 @@ export type NetworkItem = {
 
 export type ApStatus = {
     status: number
-    ip_address: string
+    ip_address: number
     mac_address: string
     station_num: number
 }
@@ -85,9 +85,9 @@ export type ApSettings = {
     channel: number
     ssid_hidden: boolean
     max_clients: number
-    local_ip: string
-    gateway_ip: string
-    subnet_mask: string
+    local_ip: number
+    gateway_ip: number
+    subnet_mask: number
 }
 
 export type Rssi = {

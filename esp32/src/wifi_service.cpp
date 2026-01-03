@@ -91,21 +91,21 @@ void WiFiService::getNetworkStatus(JsonObject &root) {
     wl_status_t status = WiFi.status();
     root["status"] = (uint8_t)status;
     if (status == WL_CONNECTED) {
-        root["local_ip"] = WiFi.localIP().toString();
+        root["local_ip"] = (uint32_t)(WiFi.localIP());
         root["mac_address"] = WiFi.macAddress();
         root["rssi"] = WiFi.RSSI();
         root["ssid"] = WiFi.SSID();
         root["bssid"] = WiFi.BSSIDstr();
         root["channel"] = WiFi.channel();
-        root["subnet_mask"] = WiFi.subnetMask().toString();
-        root["gateway_ip"] = WiFi.gatewayIP().toString();
+        root["subnet_mask"] = (uint32_t)(WiFi.subnetMask());
+        root["gateway_ip"] = (uint32_t)(WiFi.gatewayIP());
         IPAddress dnsIP1 = WiFi.dnsIP(0);
         IPAddress dnsIP2 = WiFi.dnsIP(1);
         if (dnsIP1 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_1"] = dnsIP1.toString();
+            root["dns_ip_1"] = (uint32_t)(dnsIP1);
         }
         if (dnsIP2 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_2"] = dnsIP2.toString();
+            root["dns_ip_2"] = (uint32_t)(dnsIP2);
         }
     }
 }
