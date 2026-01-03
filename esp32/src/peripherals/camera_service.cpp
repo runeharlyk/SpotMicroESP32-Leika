@@ -31,13 +31,11 @@ void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
     : endpoint(CameraSettings::read, CameraSettings::update, this),
-      _eventEndpoint(CameraSettings::read, CameraSettings::update, this, EVENT_CAMERA_SETTINGS),
       _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
 }
 
 esp_err_t CameraService::begin() {
-    _eventEndpoint.begin();
     _persistence.readFromFS();
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
