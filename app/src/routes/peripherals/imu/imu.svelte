@@ -9,7 +9,7 @@
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
-    import { type IMUCalibrateData, IMUData } from '$lib/platform_shared/message'
+    import { type IMUCalibrateData } from '$lib/platform_shared/message'
 
     Chart.register(...registerables)
 
@@ -212,19 +212,14 @@
             )
         }
     }
-    let unsubscribeImu: (() => void) | undefined
     onMount(() => {
-        unsubscribeImu = socket.on(IMUData, data => {
-            console.log(data)
-            imu.addData(data)
-        })
-
+        imu.listen()
         initializeCharts()
         intervalId = setInterval(updateData, 200)
     })
 
     onDestroy(() => {
-        unsubscribeImu?.()
+        imu.stop()
         clearInterval(intervalId)
     })
 
