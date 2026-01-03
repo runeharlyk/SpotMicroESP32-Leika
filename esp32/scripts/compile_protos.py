@@ -4,6 +4,24 @@ import os
 import sys
 from pathlib import Path
 
+def ensure_protobuf_installed():
+    """Ensure protobuf package is installed in the current Python environment."""
+    try:
+        import google.protobuf
+        return True
+    except ImportError:
+        print("Installing required protobuf dependencies...")
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "protobuf", "grpcio-tools"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            print(f"Failed to install protobuf: {result.stderr}")
+            return False
+        print("Protobuf dependencies installed successfully")
+        return True
+
 def get_project_root():
     script_dir = Path(__file__).parent.absolute()
     return script_dir.parent.parent
@@ -42,6 +60,10 @@ def compile_nanopb():
     return True
 
 def main():
+    if not ensure_protobuf_installed():
+        print("Error: Failed to install protobuf dependencies")
+        sys.exit(1)
+
     if not compile_nanopb():
         sys.exit(1)
     print("Proto compilation complete!")
