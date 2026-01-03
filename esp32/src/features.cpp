@@ -29,7 +29,7 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "==========================================================");
 }
 
-void features_request(socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res) {
+void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res) {
     fd_res.camera = USE_CAMERA ? true : false;
     fd_res.imu = (USE_MPU6050 || USE_BNO055) ? true : false;
     fd_res.mag = (USE_HMC5883 || USE_BNO055) ? true : false;
@@ -40,10 +40,10 @@ void features_request(socket_message_FeaturesDataRequest& fd_req, socket_message
     fd_res.ws2812 = USE_WS2812 ? true : false;
     fd_res.mdns = USE_MDNS ? true : false;
     fd_res.embed_www = EMBED_WEBAPP ? true : false;
-    strcpy(fd_res.firmware_version, APP_VERSION);
-    strcpy(fd_res.firmware_name, APP_NAME);
-    strcpy(fd_res.firmware_built_target, BUILD_TARGET);
-    strcpy(fd_res.variant, KINEMATICS_VARIANT_STR);
+    fd_res.firmware_version = APP_VERSION;
+    fd_res.firmware_name = APP_NAME;
+    fd_res.firmware_built_target = BUILD_TARGET;
+    fd_res.variant = KINEMATICS_VARIANT_STR;
 }
 
 
