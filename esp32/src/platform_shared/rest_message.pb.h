@@ -33,70 +33,53 @@ typedef struct _rest_message_WifiSettings {
     socket_message_KnownNetworkItem wifi_networks[8];
 } rest_message_WifiSettings;
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define rest_message_WifiStatus_init_default \
-    { 0, "", "", 0, "", "", 0, "", "", "", false, "" }
-#define rest_message_WifiSettings_init_default                                                              \
-    {                                                                                                       \
-        "", 0, 0, {                                                                                         \
-            socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default,     \
-                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, \
-                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, \
-                socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default  \
-        }                                                                                                   \
-    }
-#define rest_message_WifiStatus_init_zero \
-    { 0, "", "", 0, "", "", 0, "", "", "", false, "" }
-#define rest_message_WifiSettings_init_zero                                                           \
-    {                                                                                                 \
-        "", 0, 0, {                                                                                   \
-            socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero,     \
-                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, \
-                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, \
-                socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero  \
-        }                                                                                             \
-    }
+#define rest_message_WifiStatus_init_default     {0, "", "", 0, "", "", 0, "", "", "", false, ""}
+#define rest_message_WifiSettings_init_default   {"", 0, 0, {socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default, socket_message_KnownNetworkItem_init_default}}
+#define rest_message_WifiStatus_init_zero        {0, "", "", 0, "", "", 0, "", "", "", false, ""}
+#define rest_message_WifiSettings_init_zero      {"", 0, 0, {socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero, socket_message_KnownNetworkItem_init_zero}}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define rest_message_WifiStatus_status_tag 1
-#define rest_message_WifiStatus_local_ip_tag 2
-#define rest_message_WifiStatus_mac_address_tag 3
-#define rest_message_WifiStatus_rssi_tag 4
-#define rest_message_WifiStatus_ssid_tag 5
-#define rest_message_WifiStatus_bssid_tag 6
-#define rest_message_WifiStatus_channel_tag 7
-#define rest_message_WifiStatus_subnet_mask_tag 8
-#define rest_message_WifiStatus_gateway_ip_tag 9
-#define rest_message_WifiStatus_dns_ip_1_tag 10
-#define rest_message_WifiStatus_dns_ip_2_tag 11
-#define rest_message_WifiSettings_hostname_tag 1
+#define rest_message_WifiStatus_status_tag       1
+#define rest_message_WifiStatus_local_ip_tag     2
+#define rest_message_WifiStatus_mac_address_tag  3
+#define rest_message_WifiStatus_rssi_tag         4
+#define rest_message_WifiStatus_ssid_tag         5
+#define rest_message_WifiStatus_bssid_tag        6
+#define rest_message_WifiStatus_channel_tag      7
+#define rest_message_WifiStatus_subnet_mask_tag  8
+#define rest_message_WifiStatus_gateway_ip_tag   9
+#define rest_message_WifiStatus_dns_ip_1_tag     10
+#define rest_message_WifiStatus_dns_ip_2_tag     11
+#define rest_message_WifiSettings_hostname_tag   1
 #define rest_message_WifiSettings_priority_rssi_tag 2
 #define rest_message_WifiSettings_wifi_networks_tag 3
 
 /* Struct field encoding specification for nanopb */
-#define rest_message_WifiStatus_FIELDLIST(X, a)    \
-    X(a, STATIC, SINGULAR, INT32, status, 1)       \
-    X(a, STATIC, SINGULAR, STRING, local_ip, 2)    \
-    X(a, STATIC, SINGULAR, STRING, mac_address, 3) \
-    X(a, STATIC, SINGULAR, FLOAT, rssi, 4)         \
-    X(a, STATIC, SINGULAR, STRING, ssid, 5)        \
-    X(a, STATIC, SINGULAR, STRING, bssid, 6)       \
-    X(a, STATIC, SINGULAR, UINT32, channel, 7)     \
-    X(a, STATIC, SINGULAR, STRING, subnet_mask, 8) \
-    X(a, STATIC, SINGULAR, STRING, gateway_ip, 9)  \
-    X(a, STATIC, SINGULAR, STRING, dns_ip_1, 10)   \
-    X(a, STATIC, OPTIONAL, STRING, dns_ip_2, 11)
+#define rest_message_WifiStatus_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, INT32,    status,            1) \
+X(a, STATIC,   SINGULAR, STRING,   local_ip,          2) \
+X(a, STATIC,   SINGULAR, STRING,   mac_address,       3) \
+X(a, STATIC,   SINGULAR, FLOAT,    rssi,              4) \
+X(a, STATIC,   SINGULAR, STRING,   ssid,              5) \
+X(a, STATIC,   SINGULAR, STRING,   bssid,             6) \
+X(a, STATIC,   SINGULAR, UINT32,   channel,           7) \
+X(a, STATIC,   SINGULAR, STRING,   subnet_mask,       8) \
+X(a, STATIC,   SINGULAR, STRING,   gateway_ip,        9) \
+X(a, STATIC,   SINGULAR, STRING,   dns_ip_1,         10) \
+X(a, STATIC,   OPTIONAL, STRING,   dns_ip_2,         11)
 #define rest_message_WifiStatus_CALLBACK NULL
 #define rest_message_WifiStatus_DEFAULT NULL
 
-#define rest_message_WifiSettings_FIELDLIST(X, a)  \
-    X(a, STATIC, SINGULAR, STRING, hostname, 1)    \
-    X(a, STATIC, SINGULAR, BOOL, priority_rssi, 2) \
-    X(a, STATIC, REPEATED, MESSAGE, wifi_networks, 3)
+#define rest_message_WifiSettings_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   hostname,          1) \
+X(a, STATIC,   SINGULAR, BOOL,     priority_rssi,     2) \
+X(a, STATIC,   REPEATED, MESSAGE,  wifi_networks,     3)
 #define rest_message_WifiSettings_CALLBACK NULL
 #define rest_message_WifiSettings_DEFAULT NULL
 #define rest_message_WifiSettings_wifi_networks_MSGTYPE socket_message_KnownNetworkItem
@@ -109,9 +92,9 @@ extern const pb_msgdesc_t rest_message_WifiSettings_msg;
 #define rest_message_WifiSettings_fields &rest_message_WifiSettings_msg
 
 /* Maximum encoded size of messages (where known) */
-#define REST_MESSAGE_REST_MESSAGE_PB_H_MAX_SIZE rest_message_WifiSettings_size
-#define rest_message_WifiSettings_size 1547
-#define rest_message_WifiStatus_size 179
+#define REST_MESSAGE_REST_MESSAGE_PB_H_MAX_SIZE  rest_message_WifiSettings_size
+#define rest_message_WifiSettings_size           1547
+#define rest_message_WifiStatus_size             179
 
 #ifdef __cplusplus
 } /* extern "C" */

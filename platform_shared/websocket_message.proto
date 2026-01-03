@@ -20,6 +20,44 @@ message IMUData {
     float pressure = 7;
 }
 
+message FeaturesDataResponse {
+    string variant = 10;
+    string firmware_built_target = 20;
+    string firmware_name = 30;
+    string firmware_version = 40;
+    
+    bool camera = 50;
+    bool imu = 60;
+    bool mag = 70;
+    bool bmp = 80;
+    bool sonar = 90;
+    bool servo = 100;
+    bool ws2812 = 110;
+    bool mdns = 120;
+    bool embed_www = 130;
+}
+
+message FeaturesDataRequest { bool sonar_test = 1; }
+
+
+
+message CorrelationRequest {
+    uint32 correlation_id = 1; // Used for request-response correlation
+    oneof request {
+        // NOTE: requests must have same tag id as correlating to the response type (currently not enforced in C, but will be, and tests will fail)
+        FeaturesDataRequest features_data_request = 10;
+    }
+    
+}
+message CorrelationResponse {
+    uint32 correlation_id = 1; // Used for request-response correlation'
+    uint32 stauts_code = 2;
+    oneof response {
+        // NOTE: responses must have same tag id as correlating to the request type (currently not enforced in C, but will be, and tests will fail)
+        FeaturesDataResponse features_data_response = 10;
+    }
+}
+
 enum ModesEnum {
     DEACTIVATED = 0;
     IDLE = 1;
@@ -121,6 +159,8 @@ message PongMsg {}
 // Only ONE field will be set at a time (oneof ensures this)
 message WebsocketMessage {
     oneof message {
+        CorrelationRequest correlation_request = 10;
+        CorrelationResponse correlation_response = 11;
         SubscribeNotification sub_notif = 20;
         UnsubscribeNotification unsub_notif = 21;
         PingMsg pingmsg = 30;

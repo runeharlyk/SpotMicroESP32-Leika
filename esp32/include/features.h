@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
+#include "platform_shared/websocket_message.pb.h"
 
 #define FT_ENABLED(feature) feature
 
@@ -87,6 +88,8 @@ namespace feature_service {
 void printFeatureConfiguration();
 
 void features(JsonObject &root);
+
+void features_request(socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res)
 
 esp_err_t getFeatures(PsychicRequest *request);
 
