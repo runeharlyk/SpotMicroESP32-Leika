@@ -229,7 +229,7 @@
 
         filesystemChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
         filesystemChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.fsUsed)
-        heapChart.options.scales!.y!.max = Math.ceil($analytics[0]?.fsTotal ?? 0)
+        filesystemChart.options.scales!.y!.max = Math.ceil($analytics[0]?.fsTotal ?? 0)
         filesystemChart.update('none')
 
         temperatureChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
