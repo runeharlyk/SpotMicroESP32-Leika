@@ -98,7 +98,7 @@ describe.sequential('WebSocket Integration Tests', () => {
         unsubscribe()
     })
 
-    it('should send IMU data from client to server using sendEvent', async () => {
+    it('should send IMU data from client to server using emit', async () => {
         let serverReceivedData: any = null
 
         // Connect socket
@@ -157,8 +157,8 @@ describe.sequential('WebSocket Integration Tests', () => {
                     bmpTemp: 22,
                     pressure: 23
                 })
-                socket.sendEvent(IMUData, imuData)
-                console.log('Client: sendEvent called')
+                socket.emit(IMUData, imuData)
+                console.log('Client: emit called')
             }, 150)
         })
 
@@ -175,7 +175,7 @@ describe.sequential('WebSocket Integration Tests', () => {
         expect(serverReceivedData?.imu.pressure).toBe(23)
     })
 
-    it('should fail to serialize data on sendEvent', async () => {
+    it('should fail to serialize data on emit', async () => {
         // Connect socket
         socket.init(`ws://localhost:${TEST_PORT}`)
 
@@ -190,11 +190,11 @@ describe.sequential('WebSocket Integration Tests', () => {
                 // Send any invalid message type
                 const wsm = Message.create()
                 try {
-                    socket.sendEvent(Message as any, wsm)
+                    socket.emit(Message as any, wsm)
                     clearTimeout(timeout)
-                    reject(new Error('Expected sendEvent to throw, but it did not'))
+                    reject(new Error('Expected emit to throw, but it did not'))
                 } catch (e) {
-                    console.log('Client: sendEvent correctly threw error:', e)
+                    console.log('Client: emit correctly threw error:', e)
                     clearTimeout(timeout)
                     resolve()
                 }
