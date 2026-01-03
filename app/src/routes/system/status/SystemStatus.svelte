@@ -51,9 +51,9 @@
         return
     }
 
-    const postFactoryReset = async () => await api.post('/api/system/reset')
+    const postFactoryReset = async () => await api.postEmpty('/api/system/reset')
 
-    const postSleep = async () => await api.post('api/sleep')
+    const postSleep = async () => await api.postEmpty('/api/sleep')
 
     let unsub: (() => void) | undefined = undefined
     onMount(() => (unsub = socket.on(AnalyticsData, handleSystemData)))
@@ -70,7 +70,7 @@
         }
     }
 
-    const postRestart = async () => await api.post('/api/system/restart')
+    const postRestart = async () => await api.postEmpty('/api/system/restart')
 
     function confirmRestart() {
         modals.open(ConfirmDialog, {

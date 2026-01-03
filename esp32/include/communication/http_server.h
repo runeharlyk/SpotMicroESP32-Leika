@@ -48,6 +48,7 @@ class HttpRequest {
         uint8_t buffer[HTTP_PROTO_BUFFER_SIZE];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
         if (!pb_encode(&stream, fields, &msg)) {
+            ESP_LOGE("HttpRequest", "pb_encode failed: %s (uri: %s)", PB_GET_ERROR(&stream), raw->uri);
             return reply(500);
         }
         httpd_resp_set_type(raw, "application/x-protobuf");
@@ -57,13 +58,23 @@ class HttpRequest {
     template <typename T>
     bool decodeProto(T& msg, const pb_msgdesc_t* fields) {
         size_t len = contentLength();
-        if (len == 0 || len > HTTP_PROTO_BUFFER_SIZE) return false;
+        if (len == 0 || len > HTTP_PROTO_BUFFER_SIZE) {
+            ESP_LOGE("HttpRequest", "Invalid content length: %d (uri: %s)", len, raw->uri);
+            return false;
+        }
 
         uint8_t buffer[HTTP_PROTO_BUFFER_SIZE];
-        if (receiveBody(buffer, len) != ESP_OK) return false;
+        if (receiveBody(buffer, len) != ESP_OK) {
+            ESP_LOGE("HttpRequest", "Failed to receive body (uri: %s)", raw->uri);
+            return false;
+        }
 
         pb_istream_t stream = pb_istream_from_buffer(buffer, len);
-        return pb_decode(&stream, fields, &msg);
+        if (!pb_decode(&stream, fields, &msg)) {
+            ESP_LOGE("HttpRequest", "pb_decode failed: %s (uri: %s)", PB_GET_ERROR(&stream), raw->uri);
+            return false;
+        }
+        return true;
     }
 };
 

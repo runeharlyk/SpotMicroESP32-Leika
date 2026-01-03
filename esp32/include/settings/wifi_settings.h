@@ -40,11 +40,11 @@ typedef struct {
         strlcpy(item.password, password.c_str(), sizeof(item.password));
         item.static_ip = staticIPConfig;
         if (staticIPConfig) {
-            json["local_ip"] = (uint32_t)(localIP);
-            json["gateway_ip"] = (uint32_t)(gatewayIP);
-            json["subnet_mask"] = (uint32_t)(subnetMask);
-            json["dns_ip_1"] = (uint32_t)(dnsIP1);
-            json["dns_ip_2"] = (uint32_t)(dnsIP2);
+            item.local_ip = (uint32_t)(localIP);
+            item.gateway_ip = (uint32_t)(gatewayIP);
+            item.subnet_mask = (uint32_t)(subnetMask);
+            item.dns_ip_1 = (uint32_t)(dnsIP1);
+            item.dns_ip_2 = (uint32_t)(dnsIP2);
         }
     }
 
@@ -57,11 +57,11 @@ typedef struct {
         }
         staticIPConfig = item.static_ip;
         if (staticIPConfig) {
-            localIP = IPAddress(json["local_ip"] | 0u);
-            gatewayIP = IPAddress(json["gateway_ip"] | 0u);
-            subnetMask = IPAddress(json["subnet_mask"] | 0u);
-            dnsIP1 = IPAddress(json["dns_ip_1"] | 0u);
-            dnsIP2 = IPAddress(json["dns_ip_2"] | 0u);
+            localIP = IPAddress(item.local_ip);
+            gatewayIP = IPAddress(item.gateway_ip);
+            subnetMask = IPAddress(item.subnet_mask);
+            dnsIP1 = IPAddress(item.dns_ip_1);
+            dnsIP2 = IPAddress(item.dns_ip_2);
             if (dnsIP1 == IPAddress(0, 0, 0, 0) && dnsIP2 != IPAddress(0, 0, 0, 0)) {
                 dnsIP1 = dnsIP2;
                 dnsIP2 = IPAddress(0, 0, 0, 0);

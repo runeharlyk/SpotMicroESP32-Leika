@@ -6,25 +6,30 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
-    import type { ApSettings, ApStatus } from '$lib/types/models'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
+    import {
+        type APSettingsData,
+        type APStatusData,
+        APSettingsData as APSettingsDataProto,
+        APStatusData as APStatusDataProto
+    } from '$lib/platform_shared/message'
 
-    let apSettings: ApSettings | null = $state(null)
-    let apStatus: ApStatus | null = $state(null)
+    let apSettings: APSettingsData | null = $state(null)
+    let apStatus: APStatusData | null = $state(null)
 
     let ipDisplay = $state({
-        local_ip: '',
-        gateway_ip: '',
-        subnet_mask: ''
+        localIp: '',
+        gatewayIp: '',
+        subnetMask: ''
     })
 
     let formField: Record<string, unknown> = $state({})
 
     async function getAPStatus() {
-        const result = await api.get<ApStatus>('/api/wifi/ap/status')
+        const result = await api.get('/api/wifi/ap/status', APStatusDataProto)
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -34,16 +39,16 @@
     }
 
     async function getAPSettings() {
-        const result = await api.get<ApSettings>('/api/wifi/ap/settings')
+        const result = await api.get('/api/wifi/ap/settings', APSettingsDataProto)
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
         apSettings = result.inner
         ipDisplay = {
-            local_ip: uint32ToIp(apSettings.local_ip),
-            gateway_ip: uint32ToIp(apSettings.gateway_ip),
-            subnet_mask: uint32ToIp(apSettings.subnet_mask)
+            localIp: uint32ToIp(apSettings.localIp),
+            gatewayIp: uint32ToIp(apSettings.gatewayIp),
+            subnetMask: uint32ToIp(apSettings.subnetMask)
         }
         return apSettings
     }
@@ -86,8 +91,13 @@
         subnet_mask: false
     })
 
-    async function postAPSettings(data: ApSettings) {
-        const result = await api.post<ApSettings>('/api/wifi/ap/settings', data)
+    async function postAPSettings(data: APSettingsData) {
+        const result = await api.post(
+            '/api/wifi/ap/settings',
+            data,
+            APSettingsDataProto,
+            APSettingsDataProto
+        )
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000)
             console.error('Error:', result.inner)
@@ -117,7 +127,7 @@
             formErrors.channel = false
         }
 
-        let maxClients = Number(apSettings.max_clients)
+        let maxClients = Number(apSettings.maxClients)
         if (1 > maxClients || maxClients > 8) {
             valid = false
             formErrors.max_clients = true
@@ -125,21 +135,21 @@
             formErrors.max_clients = false
         }
 
-        if (!isValidIpString(ipDisplay.gateway_ip)) {
+        if (!isValidIpString(ipDisplay.gatewayIp)) {
             valid = false
             formErrors.gateway_ip = true
         } else {
             formErrors.gateway_ip = false
         }
 
-        if (!isValidIpString(ipDisplay.subnet_mask)) {
+        if (!isValidIpString(ipDisplay.subnetMask)) {
             valid = false
             formErrors.subnet_mask = true
         } else {
             formErrors.subnet_mask = false
         }
 
-        if (!isValidIpString(ipDisplay.local_ip)) {
+        if (!isValidIpString(ipDisplay.localIp)) {
             valid = false
             formErrors.local_ip = true
         } else {
@@ -147,9 +157,9 @@
         }
 
         if (valid) {
-            apSettings.local_ip = ipToUint32(ipDisplay.local_ip)
-            apSettings.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
-            apSettings.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
+            apSettings.localIp = ipToUint32(ipDisplay.localIp)
+            apSettings.gatewayIp = ipToUint32(ipDisplay.gatewayIp)
+            apSettings.subnetMask = ipToUint32(ipDisplay.subnetMask)
             postAPSettings(apSettings)
         }
     }
@@ -181,15 +191,15 @@
                     <StatusItem
                         icon={Home}
                         title="IP Address"
-                        description={uint32ToIp(apStatus.ip_address)}
+                        description={uint32ToIp(apStatus.ipAddress)}
                     />
 
-                    <StatusItem icon={MAC} title="MAC Address" description={apStatus.mac_address} />
+                    <StatusItem icon={MAC} title="MAC Address" description={apStatus.macAddress} />
 
                     <StatusItem
                         icon={Devices}
                         title="AP Clients"
-                        description={apStatus.station_num}
+                        description={apStatus.stationNum}
                     />
                 </div>
             {/if}
@@ -223,7 +233,7 @@
                             <select
                                 class="select select-bordered w-full"
                                 id="apmode"
-                                bind:value={apSettings.provision_mode}
+                                bind:value={apSettings.provisionMode}
                             >
                                 {#each provisionMode as mode (mode.id)}
                                     <option value={mode.id}>
@@ -303,7 +313,7 @@
                                 ) ?
                                     'border-error border-2'
                                 :   ''}"
-                                bind:value={apSettings.max_clients}
+                                bind:value={apSettings.maxClients}
                                 id="clients"
                                 required
                             />
@@ -327,7 +337,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={ipDisplay.local_ip}
+                                bind:value={ipDisplay.localIp}
                                 id="localIP"
                                 required
                             />
@@ -352,7 +362,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={ipDisplay.gateway_ip}
+                                bind:value={ipDisplay.gatewayIp}
                                 id="gateway"
                                 required
                             />
@@ -376,7 +386,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={ipDisplay.subnet_mask}
+                                bind:value={ipDisplay.subnetMask}
                                 id="subnet"
                                 required
                             />
@@ -391,7 +401,7 @@
                         <label class="label my-auto cursor-pointer justify-start gap-4">
                             <input
                                 type="checkbox"
-                                bind:checked={apSettings.ssid_hidden}
+                                bind:checked={apSettings.ssidHidden}
                                 class="checkbox checkbox-primary"
                             />
                             <span class="">Hide SSID</span>

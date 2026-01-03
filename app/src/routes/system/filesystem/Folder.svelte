@@ -6,7 +6,7 @@
     interface Props {
         expanded?: boolean
         name: string
-        files: unknown[]
+        files: Record<string, unknown>
         selected: (name: string) => void
         onDelete: (name: string) => void
     }
@@ -32,8 +32,8 @@
         <ul class="ml-4 border-l border-gray-600 mt-1">
             {#each Object.entries(files) as [itemName, content] (itemName)}
                 <li class="py-1">
-                    {#if typeof content === 'object'}
-                        <Folder name={itemName} files={content} {selected} {onDelete} />
+                    {#if typeof content === 'object' && content !== null}
+                        <Folder name={itemName} files={content as Record<string, unknown>} {selected} {onDelete} />
                     {:else}
                         <File name={itemName} {selected} {onDelete} />
                     {/if}

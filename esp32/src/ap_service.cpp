@@ -18,11 +18,11 @@ esp_err_t APService::getStatus(HttpRequest& request) {
     return request.replyProto(proto, socket_message_APStatusData_fields);
 }
 
-void APService::status(JsonObject &root) {
-    root["status"] = getAPNetworkStatus();
-    root["ip_address"] = (uint32_t)(WiFi.softAPIP());
-    root["mac_address"] = WiFi.softAPmacAddress();
-    root["station_num"] = WiFi.softAPgetStationNum();
+void APService::status(socket_message_APStatusData& proto) {
+    proto.status = getAPNetworkStatus();
+    proto.ip_address = (uint32_t)WiFi.softAPIP();
+    snprintf(proto.mac_address, sizeof(proto.mac_address), "%s", WiFi.softAPmacAddress().c_str());
+    proto.station_num = WiFi.softAPgetStationNum();
 }
 
 APNetworkStatus APService::getAPNetworkStatus() {

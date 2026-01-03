@@ -89,21 +89,21 @@ void WiFiService::getNetworkStatus(socket_message_NetworkStatusData& proto) {
     wl_status_t status = WiFi.status();
     proto.status = (uint8_t)status;
     if (status == WL_CONNECTED) {
-        root["local_ip"] = (uint32_t)(WiFi.localIP());
-        root["mac_address"] = WiFi.macAddress();
-        root["rssi"] = WiFi.RSSI();
-        root["ssid"] = WiFi.SSID();
-        root["bssid"] = WiFi.BSSIDstr();
-        root["channel"] = WiFi.channel();
-        root["subnet_mask"] = (uint32_t)(WiFi.subnetMask());
-        root["gateway_ip"] = (uint32_t)(WiFi.gatewayIP());
+        proto.local_ip = (uint32_t)(WiFi.localIP());
+        snprintf(proto.mac_address, sizeof(proto.mac_address), "%s", WiFi.macAddress().c_str());
+        proto.rssi = WiFi.RSSI();
+        snprintf(proto.ssid, sizeof(proto.ssid), "%s", WiFi.SSID().c_str());
+        snprintf(proto.bssid, sizeof(proto.bssid), "%s", WiFi.BSSIDstr().c_str());
+        proto.channel = WiFi.channel();
+        proto.subnet_mask = (uint32_t)(WiFi.subnetMask());
+        proto.gateway_ip = (uint32_t)(WiFi.gatewayIP());
         IPAddress dnsIP1 = WiFi.dnsIP(0);
         IPAddress dnsIP2 = WiFi.dnsIP(1);
         if (dnsIP1 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_1"] = (uint32_t)(dnsIP1);
+            proto.dns_ip_1 = (uint32_t)(dnsIP1);
         }
         if (dnsIP2 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_2"] = (uint32_t)(dnsIP2);
+            proto.dns_ip_2 = (uint32_t)(dnsIP2);
         }
     }
 }

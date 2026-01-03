@@ -83,11 +83,11 @@ void setupServer() {
 
     server.on("/api/wifi/sta/status", HTTP_GET, [](HttpRequest& req) { return wifiService.getNetworkStatus(req); });
 
-    server.on("/api/ap/status", HTTP_GET, [](HttpRequest& req) { return apService.getStatus(req); });
+    server.on("/api/wifi/ap/status", HTTP_GET, [](HttpRequest& req) { return apService.getStatus(req); });
 
-    server.on("/api/ap/settings", HTTP_GET, [](HttpRequest& req) { return apService.endpoint.getState(req); });
+    server.on("/api/wifi/ap/settings", HTTP_GET, [](HttpRequest& req) { return apService.endpoint.getState(req); });
 
-    server.on("/api/ap/settings", HTTP_POST,
+    server.on("/api/wifi/ap/settings", HTTP_POST,
               [](HttpRequest& req) { return apService.endpoint.handleStateUpdate(req); });
 
     server.on("/api/peripherals", HTTP_GET, [](HttpRequest& req) { return peripherals.endpoint.getState(req); });
@@ -164,13 +164,14 @@ void setupEventSocket() {
              res.response.imu_calibrate_data.success = peripherals.calibrateIMU();
          }},
 
-         {socket_message_CorrelationRequest_system_information_request_tag, // All system information data
-         [](const auto &req, auto &res) {
-            res.which_response = socket_message_CorrelationResponse_system_information_response_tag;
-            res.response.system_information_response.has_analytics_data = true;
-            res.response.system_information_response.has_static_system_information = true;
-            system_service::getAnalytics(res.response.system_information_response.analytics_data);
-            system_service::getStaticSystemInformation(res.response.system_information_response.static_system_information);
+        {socket_message_CorrelationRequest_system_information_request_tag, // All system information data
+         [](const auto& req, auto& res) {
+             res.which_response = socket_message_CorrelationResponse_system_information_response_tag;
+             res.response.system_information_response.has_analytics_data = true;
+             res.response.system_information_response.has_static_system_information = true;
+             system_service::getAnalytics(res.response.system_information_response.analytics_data);
+             system_service::getStaticSystemInformation(
+                 res.response.system_information_response.static_system_information);
          }},
     };
 

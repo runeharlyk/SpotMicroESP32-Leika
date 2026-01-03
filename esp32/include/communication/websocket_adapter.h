@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Arduino.h>
 #include <esp_http_server.h>
 #include <template/stateful_service.h>
 #include <list>

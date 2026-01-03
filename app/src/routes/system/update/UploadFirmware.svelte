@@ -11,7 +11,7 @@
     async function uploadBIN() {
         const formData = new FormData()
         formData.append('file', files![0])
-        const result = await api.post('/api/firmware', formData)
+        const result = await api.postFormData('/api/firmware', formData)
         if (result.isErr()) console.error('Error:', result.inner)
     }
 

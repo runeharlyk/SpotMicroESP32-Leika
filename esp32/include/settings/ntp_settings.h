@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Arduino.h>
 #include <template/state_result.h>
 #include <platform_shared/message.pb.h>
 #include <string>
