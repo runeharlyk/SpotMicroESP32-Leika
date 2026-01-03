@@ -34,7 +34,7 @@ socket_message.DownloadOTAData.error max_size:64
 
 socket_message.SonarData.dummy_field max_size:16
 
-socket_message.FeaturesDataResponse.variant max_size:32
-socket_message.FeaturesDataResponse.firmware_built_target max_size:32
-socket_message.FeaturesDataResponse.firmware_name max_size:32
-socket_message.FeaturesDataResponse.firmware_version max_size:32
+socket_message.FeaturesDataResponse.variant type:FT_POINTER
+socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
+socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
+socket_message.FeaturesDataResponse.firmware_version type:FT_POINTER

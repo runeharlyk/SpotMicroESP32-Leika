@@ -39,6 +39,9 @@ DEFINE_MESSAGE_TRAITS(I2CScanDataRequest, i2c_scan_data_request)
 DEFINE_MESSAGE_TRAITS(PeripheralSettingsDataRequest, peripheral_settings_data_request)
 DEFINE_MESSAGE_TRAITS(ServoPWMData, servo_pwm)
 DEFINE_MESSAGE_TRAITS(ServoStateData, servo_state)
+DEFINE_MESSAGE_TRAITS(CorrelationRequest, correlation_request)
+DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
+
 
 #undef DEFINE_MESSAGE_TRAITS
 

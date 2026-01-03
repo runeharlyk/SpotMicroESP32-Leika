@@ -340,6 +340,8 @@ export interface WebsocketMessage {
   peripheralSettings?: PeripheralSettingsData | undefined;
   peripheralSettingsDataRequest?: PeripheralSettingsDataRequest | undefined;
   kinematicData?: KinematicData | undefined;
+  servoPwm?: ServoPWMData | undefined;
+  servoState?: ServoStateData | undefined;
   wifiSettings?: WifiSettingsData | undefined;
   humanInputData?: HumanInputData | undefined;
   rssi?: RSSIData | undefined;
@@ -3667,6 +3669,8 @@ function createBaseWebsocketMessage(): WebsocketMessage {
     peripheralSettings: undefined,
     peripheralSettingsDataRequest: undefined,
     kinematicData: undefined,
+    servoPwm: undefined,
+    servoState: undefined,
     wifiSettings: undefined,
     humanInputData: undefined,
     rssi: undefined,
@@ -3731,6 +3735,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.kinematicData !== undefined) {
       KinematicData.encode(message.kinematicData, writer.uint32(1602).fork()).join();
+    }
+    if (message.servoPwm !== undefined) {
+      ServoPWMData.encode(message.servoPwm, writer.uint32(1682).fork()).join();
+    }
+    if (message.servoState !== undefined) {
+      ServoStateData.encode(message.servoState, writer.uint32(1690).fork()).join();
     }
     if (message.wifiSettings !== undefined) {
       WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join();
@@ -3903,6 +3913,22 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
           message.kinematicData = KinematicData.decode(reader, reader.uint32());
           continue;
         }
+        case 210: {
+          if (tag !== 1682) {
+            break;
+          }
+
+          message.servoPwm = ServoPWMData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 211: {
+          if (tag !== 1690) {
+            break;
+          }
+
+          message.servoState = ServoStateData.decode(reader, reader.uint32());
+          continue;
+        }
         case 240: {
           if (tag !== 1922) {
             break;
@@ -3969,6 +3995,8 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
         ? PeripheralSettingsDataRequest.fromJSON(object.peripheralSettingsDataRequest)
         : undefined,
       kinematicData: isSet(object.kinematicData) ? KinematicData.fromJSON(object.kinematicData) : undefined,
+      servoPwm: isSet(object.servoPwm) ? ServoPWMData.fromJSON(object.servoPwm) : undefined,
+      servoState: isSet(object.servoState) ? ServoStateData.fromJSON(object.servoState) : undefined,
       wifiSettings: isSet(object.wifiSettings) ? WifiSettingsData.fromJSON(object.wifiSettings) : undefined,
       humanInputData: isSet(object.humanInputData) ? HumanInputData.fromJSON(object.humanInputData) : undefined,
       rssi: isSet(object.rssi) ? RSSIData.fromJSON(object.rssi) : undefined,
@@ -4033,6 +4061,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
     }
     if (message.kinematicData !== undefined) {
       obj.kinematicData = KinematicData.toJSON(message.kinematicData);
+    }
+    if (message.servoPwm !== undefined) {
+      obj.servoPwm = ServoPWMData.toJSON(message.servoPwm);
+    }
+    if (message.servoState !== undefined) {
+      obj.servoState = ServoStateData.toJSON(message.servoState);
     }
     if (message.wifiSettings !== undefined) {
       obj.wifiSettings = WifiSettingsData.toJSON(message.wifiSettings);
@@ -4104,6 +4138,12 @@ export const WebsocketMessage: MessageFns<WebsocketMessage> = {
         : undefined;
     message.kinematicData = (object.kinematicData !== undefined && object.kinematicData !== null)
       ? KinematicData.fromPartial(object.kinematicData)
+      : undefined;
+    message.servoPwm = (object.servoPwm !== undefined && object.servoPwm !== null)
+      ? ServoPWMData.fromPartial(object.servoPwm)
+      : undefined;
+    message.servoState = (object.servoState !== undefined && object.servoState !== null)
+      ? ServoStateData.fromPartial(object.servoState)
       : undefined;
     message.wifiSettings = (object.wifiSettings !== undefined && object.wifiSettings !== null)
       ? WifiSettingsData.fromPartial(object.wifiSettings)
@@ -6098,6 +6138,30 @@ export const protoMetadata: ProtoMetadata = {
         "options": undefined,
         "proto3Optional": false,
       }, {
+        "name": "servo_pwm",
+        "number": 210,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ServoPWMData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_state",
+        "number": 211,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ServoStateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoState",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
         "name": "wifi_settings",
         "number": 240,
         "label": 1,
@@ -6208,7 +6272,7 @@ export const protoMetadata: ProtoMetadata = {
         "leadingDetachedComments": [],
       }, {
         "path": [4, 34],
-        "span": [159, 0, 184, 1],
+        "span": [159, 0, 186, 1],
         "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
         "trailingComments": "",
         "leadingDetachedComments": [],
