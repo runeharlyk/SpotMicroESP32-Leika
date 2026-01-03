@@ -101,6 +101,7 @@ function createWebSocket() {
             ping()
             set(true)
             clearTimeout(reconnectTimeoutId)
+            resubscribeAll()
             event_listeners.get('open')?.forEach(listener => listener(ev))
         }
         ws.onmessage = frame => {
@@ -159,6 +160,13 @@ function createWebSocket() {
         send(WebsocketMessage.create({ subNotif: sub_msg }))
     }
 
+    function resubscribeAll() {
+        for (const tag of message_listeners.keys()) {
+            const sub_msg = WebsocketMessages.SubscribeNotification.create({ tag })
+            send(WebsocketMessage.create({ subNotif: sub_msg }))
+        }
+    }
+
     function send(data: WebsocketMessage) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
         const encoded = encodeMessage(data)
@@ -189,6 +197,12 @@ function createWebSocket() {
             }
         },
         onEvent: (event_type: SocketEvent, listener: (data: unknown) => void): (() => void) => {
+            let listeners = event_listeners.get(event_type)
+            if (!listeners) {
+                listeners = new Set()
+                event_listeners.set(event_type, listeners)
+            }
+            listeners.add(listener)
             return () => {
                 unsubscribe_event(event_type, listener)
             }
