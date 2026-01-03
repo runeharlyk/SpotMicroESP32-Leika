@@ -17,12 +17,6 @@
 #include <mdns_service.h>
 #include <system_service.h>
 
-#include <pb_encode.h>
-#include <pb_decode.h>
-
-#include <platform_shared/websocket_message.pb.h>
-
-
 #include <www_mount.hpp>
 
 // Communication
@@ -60,8 +54,8 @@ void setupServer() {
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleRestart(request); });
     server.on("/api/system/sleep", HTTP_POST,
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleSleep(request); });
-    server.on("/api/system/metrics", HTTP_GET,
-              [&](PsychicRequest *request) { return system_service::getMetrics(request); });
+    // server.on("/api/system/metrics", HTTP_GET,
+    //           [&](PsychicRequest *request) { return system_service::getMetrics(request); });
 #if USE_CAMERA
     server.on("/api/camera/still", HTTP_GET,
               [&](PsychicRequest *request) { return cameraService.cameraStill(request); });
@@ -231,35 +225,15 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     setupEventSocket();
 
     ESP_LOGI("main", "Service control task started");
-    float temp = 0;
     for (;;) {
         wifiService.loop();
         apService.loop();
         EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
         EXECUTE_EVERY_N_MS(500, {
-            // JsonDocument doc;
-            // JsonVariant results = doc.to<JsonVariant>();
-            // peripherals.getIMUResult(results);
-            // socket.emit(EVENT_IMU, results);
-
-            // TESTING PB EMITTING!!
-            socket_message_IMUData report;
-            report.x = 1;
-            report.y = 2;
-            report.z = 3;
-            report.altitude = 10;
-            report.bmp_temp = temp;
-            temp += 0.01;
-            report.heading = 20;
-            report.pressure = 40;
-            
-            uint8_t buffer[socket_message_IMUData_size]; 
-            pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-            bool status = pb_encode(&stream, &socket_message_IMUData_msg, &report);
-            if (!status) {
-                // PRINT ERROR HERE!
-            }
-            socket.emit_raw(EVENT_IMU, buffer, strlen(EVENT_IMU), socket_message_IMUData_size);
+            JsonDocument doc;
+            JsonVariant results = doc.to<JsonVariant>();
+            peripherals.getIMUResult(results);
+            socket.emit(EVENT_IMU, results);
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

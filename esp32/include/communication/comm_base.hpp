@@ -2,6 +2,9 @@
 
 #include <ArduinoJson.h>
 #include <functional>
+#include <pb_encode.h>
+#include <pb_decode.h>
+#include <platform_shared/websocket_message.pb.h>
 
 enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4, BINARY_EVENT = 5 };
 
@@ -51,9 +54,30 @@ class CommAdapterBase {
 #endif
     }
 
+    void send_wsm_by_function( void (*setmsg)(socket_message_WebsocketMessage* message), int cid ) {
+        setmsg(&msg);
+        send_wsm(&msg, cid);
+    }
+
   protected:
+    socket_message_WebsocketMessage msg;
+    uint8_t data_buffer[512];
     void send(const char *data, int cid = -1) { send(reinterpret_cast<const uint8_t *>(data), strlen(data), cid); }
     virtual void send(const uint8_t *data, size_t len, int cid = -1) = 0;
+    void send_wsm(socket_message_WebsocketMessage* message, int cid) {
+        pb_ostream_t ostream = pb_ostream_from_buffer(data_buffer, sizeof(data_buffer));
+        // Encode the message
+        bool ostatus = pb_encode(&ostream, &socket_message_WebsocketMessage_msg, message);
+
+        if (!ostatus) {
+            // TODO: Make a re-encoder using malloc instead (which increases exponentially but only if the error is the buffer size)
+            printf("Encoding of socket message failed: %s\n", PB_GET_ERROR(&ostream));
+            return;
+        }
+
+        send(data_buffer, ostream.bytes_written, cid);
+    }
+    
 
     void subscribe(const char *event, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);

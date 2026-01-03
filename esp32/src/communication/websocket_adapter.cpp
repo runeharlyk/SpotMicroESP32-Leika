@@ -12,22 +12,13 @@ Websocket::Websocket(PsychicHttpServer &server, const char *route) : _server(ser
 void Websocket::begin() { _server.on(_route, &_socket); }
 
 void Websocket::onEvent(std::string event, EventCallback callback) {
-    CommAdapterBase::onEvent(std::move(event), std::move(callback));
+    //CommAdapterBase::onEvent(std::move(event), std::move(callback));
 }
 
 void Websocket::emit(const char *event, JsonVariant &payload, const char *originId, bool onlyToSameOrigin) {
-    CommAdapterBase::emit(event, payload, originId, onlyToSameOrigin);
+    //CommAdapterBase::emit(event, payload, originId, onlyToSameOrigin);
 }
 
-void Websocket::emit_raw(const char *event, uint8_t* payload, size_t event_length, size_t payload_length) {
-    size_t total_len = payload_length + event_length + 1;
-    uint8_t* buf = (uint8_t*) malloc(total_len + 1);
-    memcpy(buf, event, event_length);
-    buf[event_length] = ',';
-    memcpy(buf + event_length+1, payload, payload_length);
-    send(buf, total_len, -1);
-    free(buf);
-}
 
 void Websocket::onWSOpen(PsychicWebSocketClient *client) {
     ESP_LOGI("EventSocket", "ws[%s][%u] connect", client->remoteIP().toString().c_str(), client->socket());
@@ -44,27 +35,27 @@ void Websocket::onWSClose(PsychicWebSocketClient *client) {
 }
 
 esp_err_t Websocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame) {
-    ESP_LOGV(TAG, "ws[%s][%u] opcode[%d]", request->client()->remoteIP().toString().c_str(),
-             request->client()->socket(), frame->type);
+//     ESP_LOGV(TAG, "ws[%s][%u] opcode[%d]", request->client()->remoteIP().toString().c_str(),
+//              request->client()->socket(), frame->type);
 
-    if (frame->type != HTTPD_WS_TYPE_TEXT && frame->type != HTTPD_WS_TYPE_BINARY) {
-        ESP_LOGE(TAG, "Unsupported frame type: %d", frame->type);
-        return ESP_OK;
-    }
+//     if (frame->type != HTTPD_WS_TYPE_TEXT && frame->type != HTTPD_WS_TYPE_BINARY) {
+//         ESP_LOGE(TAG, "Unsupported frame type: %d", frame->type);
+//         return ESP_OK;
+//     }
 
-#if USE_MSGPACK
-    if (frame->type == HTTPD_WS_TYPE_BINARY) {
-        handleIncoming(frame->payload, frame->len, request->client()->socket());
-    } else {
-        ESP_LOGE(TAG, "Expected binary, got text");
-    }
-#else
-    if (frame->type == HTTPD_WS_TYPE_TEXT) {
-        handleIncoming(frame->payload, frame->len, request->client()->socket());
-    } else {
-        ESP_LOGE(TAG, "Expected text, got binary");
-    }
-#endif
+// #if USE_MSGPACK
+//     if (frame->type == HTTPD_WS_TYPE_BINARY) {
+//         handleIncoming(frame->payload, frame->len, request->client()->socket());
+//     } else {
+//         ESP_LOGE(TAG, "Expected binary, got text");
+//     }
+// #else
+//     if (frame->type == HTTPD_WS_TYPE_TEXT) {
+//         handleIncoming(frame->payload, frame->len, request->client()->socket());
+//     } else {
+//         ESP_LOGE(TAG, "Expected text, got binary");
+//     }
+// #endif
 
     return ESP_OK;
 }
