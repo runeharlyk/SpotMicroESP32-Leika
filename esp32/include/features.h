@@ -1,5 +1,4 @@
-#ifndef Features_h
-#define Features_h
+#pragma once
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
@@ -53,18 +52,6 @@
 #define USE_MDNS 1
 #endif
 
-// ESP32 MSGPACK on by default
-#ifndef USE_MSGPACK
-#define USE_MSGPACK 1
-#endif
-
-// ESP32 JSON off by default
-#ifndef USE_JSON
-#define USE_JSON 0
-#endif
-
-static_assert(!(USE_JSON == 1 && USE_MSGPACK == 1), "Cannot set both USE_JSON and USE_MSGPACK to 1 simultaneously");
-
 #if defined(SPOTMICRO_ESP32) && defined(SPOTMICRO_ESP32_MINI) && defined(SPOTMICRO_YERTLE)
 #error "Only one kinematics variant must be defined"
 #endif
@@ -94,5 +81,3 @@ void features_request(socket_message_FeaturesDataRequest& fd_req, socket_message
 esp_err_t getFeatures(PsychicRequest *request);
 
 } // namespace feature_service
-
-#endif
