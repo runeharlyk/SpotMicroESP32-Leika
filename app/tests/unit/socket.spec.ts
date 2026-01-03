@@ -59,7 +59,7 @@ describe.sequential('WebSocket Integration Tests', () => {
     })
 
     it('should receive and decode IMU data from server', async () => {
-        let receivedIMUData: any = null
+        let receivedIMUData: IMUData = null
 
         // Subscribe to IMU messages before connecting
         const unsubscribe = socket.on(IMUData, data => {
@@ -91,15 +91,14 @@ describe.sequential('WebSocket Integration Tests', () => {
         })
 
         expect(receivedIMUData).toBeDefined()
-        expect(receivedIMUData?.imu).toBeDefined()
 
-        expect(receivedIMUData?.imu.x).toBe(3.25)
-        expect(receivedIMUData?.imu.y).toBe(2.5)
-        expect(receivedIMUData?.imu.z).toBe(1.75)
-        expect(receivedIMUData?.imu.heading).toBe(10)
-        expect(receivedIMUData?.imu.altitude).toBe(11)
-        expect(receivedIMUData?.imu.bmpTemp).toBe(22)
-        expect(receivedIMUData?.imu.pressure).toBe(23)
+        expect(receivedIMUData.x).toBe(3.25)
+        expect(receivedIMUData.y).toBe(2.5)
+        expect(receivedIMUData.z).toBe(1.75)
+        expect(receivedIMUData.heading).toBe(10)
+        expect(receivedIMUData.altitude).toBe(11)
+        expect(receivedIMUData.bmpTemp).toBe(22)
+        expect(receivedIMUData.pressure).toBe(23)
 
         unsubscribe()
     })
