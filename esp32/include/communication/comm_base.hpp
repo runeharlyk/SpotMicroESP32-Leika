@@ -6,84 +6,14 @@
 #include <type_traits>
 #include <communication/proto_helpers.h>
 
-template <typename T>
-struct MessageTraits;
-
-template <>
-struct MessageTraits<socket_message_IMUData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_imu_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_IMUData& data) {
-        msg.message.imu = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_ModeData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_mode_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_ModeData& data) {
-        msg.message.mode = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_AnalyticsData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_analytics_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_AnalyticsData& data) {
-        msg.message.analytics = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_AnglesData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_angles_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_AnglesData& data) {
-        msg.message.angles = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_RSSIData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_rssi_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_RSSIData& data) {
-        msg.message.rssi = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_KinematicData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_kinematic_data_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_KinematicData& data) {
-        msg.message.kinematic_data = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_IMUCalibrateData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_imu_calibrate_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_IMUCalibrateData& data) {
-        msg.message.imu_calibrate = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_I2CScanData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_i2c_scan_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_I2CScanData& data) {
-        msg.message.i2c_scan = data;
-    }
-};
-
-template <>
-struct MessageTraits<socket_message_PeripheralSettingsData> {
-    static constexpr pb_size_t tag = socket_message_WebsocketMessage_peripheral_settings_tag;
-    static void assign(socket_message_WebsocketMessage& msg, const socket_message_PeripheralSettingsData& data) {
-        msg.message.peripheral_settings = data;
-    }
-};
-
 class CommAdapterBase {
   public:
-    CommAdapterBase() { mutex_ = xSemaphoreCreateMutex(); }
+    CommAdapterBase() {
+        mutex_ = xSemaphoreCreateMutex();
+        decoder_.onSubscribe([this](int32_t tag, int cid) { subscribe(tag, cid); });
+        decoder_.onUnsubscribe([this](int32_t tag, int cid) { unsubscribe(tag, cid); });
+        decoder_.onPing([this](int cid) { sendPong(cid); });
+    }
     ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
 
     virtual void begin() {}
@@ -96,6 +26,11 @@ class CommAdapterBase {
     }
 
     ProtoDecoder& decoder() { return decoder_; }
+
+    template <typename T>
+    void on(std::function<void(const T&, int)> handler) {
+        decoder_.on<T>(handler);
+    }
 
     template <typename T>
     void emit(const T& data, int clientId = -1) {
@@ -157,14 +92,6 @@ class CommAdapterBase {
         if (pb_encode(&stream, socket_message_WebsocketMessage_fields, &msg_)) {
             send(pongBuffer, stream.bytes_written, cid);
         }
-    }
-
-    void setupDecoderHandlers() {
-        decoder_.onSubscribe([this](int32_t tag, int cid) { subscribe(tag, cid); });
-
-        decoder_.onUnsubscribe([this](int32_t tag, int cid) { unsubscribe(tag, cid); });
-
-        decoder_.onPing([this](int cid) { sendPong(cid); });
     }
 
     SemaphoreHandle_t mutex_;

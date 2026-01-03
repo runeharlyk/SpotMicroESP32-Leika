@@ -16,9 +16,9 @@ class Websocket : public CommAdapterBase {
     void begin() override;
 
   private:
-    PsychicWebSocketHandler _socket;
-    PsychicHttpServer &_server;
-    const char *_route;
+    PsychicWebSocketHandler socket_;
+    PsychicHttpServer &server_;
+    const char *route_;
 
     void onWSOpen(PsychicWebSocketClient *client);
     void onWSClose(PsychicWebSocketClient *client);

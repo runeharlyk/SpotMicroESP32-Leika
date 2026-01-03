@@ -136,52 +136,41 @@ void setupServer() {
     DefaultHeaders::Instance().addHeader("Access-Control-Max-Age", "86400");
 }
 
-#define ANGLES_EVENT "angles"
-#define INPUT_EVENT "input"
-#define MODE_EVENT "mode"
-#define WALK_GAIT_EVENT "walk_gait"
-#define EVENT_I2C_SCAN "i2cScan"
-#define EVENT_SERVO_CONFIGURATION_SETTINGS "servoPWM"
-#define EVENT_SERVO_STATE "servoState"
-#define EVENT_IMU_CALIBRATE "imuCalibrate"
-
 void setupEventSocket() {
-    // Motion events
-    // socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
+    socket.on<socket_message_HumanInputData>(
+        [&](const socket_message_HumanInputData &data, int clientId) { motionService.handleInput(data); });
 
-    // socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) {
-    //     servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
-    //     motionService.handleMode(root, originId);
-    //     motionService.isActive() ? servoController.activate() : servoController.deactivate();
-    // });
+    socket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
+        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+        motionService.handleMode(data);
+        motionService.isActive() ? servoController.activate() : servoController.deactivate();
+    });
 
-    // socket.onEvent(WALK_GAIT_EVENT,
-    //                [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
+    socket.on<socket_message_WalkGaitData>(
+        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.handleWalkGait(data); });
 
-    // socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId);
-    // });
+    socket.on<socket_message_AnglesData>(
+        [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
 
-    // // Peripherals events
-    // socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
-    //     peripherals.scanI2C();
-    //     JsonDocument doc;
-    //     JsonVariant results = doc.to<JsonVariant>();
-    //     peripherals.getI2CResult(results);
-    //     socket.emit(EVENT_I2C_SCAN, results);
-    // });
+    socket.on<socket_message_I2CScanDataRequest>([&](const socket_message_I2CScanDataRequest &data, int clientId) {
+        peripherals.scanI2C();
+        socket_message_I2CScanData result = socket_message_I2CScanData_init_zero;
+        peripherals.getI2CResultProto(result);
+        socket.emit(result, clientId);
+    });
 
-    // socket.onEvent(EVENT_IMU_CALIBRATE, [&](JsonVariant &root, int originId) {
-    //     JsonDocument doc;
-    //     JsonVariant results = doc.to<JsonVariant>();
-    //     results["success"] = peripherals.calibrateIMU();
-    //     socket.emit(EVENT_IMU_CALIBRATE, results);
-    // });
+    socket.on<socket_message_IMUCalibrateExecute>([&](const socket_message_IMUCalibrateExecute &data, int clientId) {
+        socket_message_IMUCalibrateData result = {.success = peripherals.calibrateIMU()};
+        socket.emit(result, clientId);
+    });
 
-    // // Servo controller events
-    // socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-    //                [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
-    // socket.onEvent(EVENT_SERVO_STATE,
-    //                [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
+    socket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
+        servoController.setServoPWM(data.servo_id, data.servo_pwm);
+    });
+
+    socket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
+        data.active ? servoController.activate() : servoController.deactivate();
+    });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {

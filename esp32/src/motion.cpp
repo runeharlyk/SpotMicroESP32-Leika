@@ -2,14 +2,13 @@
 
 void MotionService::begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
 
-void MotionService::anglesEvent(JsonVariant &root, int originId) {
-    JsonArray array = root.as<JsonArray>();
-    for (int i = 0; i < 12; i++) {
-        angles[i] = array[i];
+void MotionService::handleAngles(const socket_message_AnglesData& data) {
+    for (int i = 0; i < 12 && i < data.angles_count; i++) {
+        angles[i] = data.angles[i];
     }
 }
 
-void MotionService::setState(MotionState *newState) {
+void MotionService::setState(MotionState* newState) {
     if (state) {
         state->end();
     }
@@ -19,23 +18,21 @@ void MotionService::setState(MotionState *newState) {
     }
 }
 
-void MotionService::handleInput(JsonVariant &root, int originId) {
-    command.fromJson(root);
+void MotionService::handleInput(const socket_message_HumanInputData& data) {
+    command.fromProto(data);
     if (state) state->handleCommand(command);
 }
 
-void MotionService::handleWalkGait(JsonVariant &root, int originId) {
-    ESP_LOGI("MotionService", "Walk Gait %d", root.as<int>());
-
-    WALK_GAIT walkGait = static_cast<WALK_GAIT>(root.as<int>());
-    if (walkGait == WALK_GAIT::TROT)
+void MotionService::handleWalkGait(const socket_message_WalkGaitData& data) {
+    ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(data.gait));
+    if (data.gait == socket_message_WalkGaits_TROT)
         walkState.set_mode_trot();
     else
         walkState.set_mode_crawl();
 }
 
-void MotionService::handleMode(JsonVariant &root, int originId) {
-    MOTION_STATE mode = static_cast<MOTION_STATE>(root.as<int>());
+void MotionService::handleMode(const socket_message_ModeData& data) {
+    MOTION_STATE mode = static_cast<MOTION_STATE>(data.mode);
     ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
         case MOTION_STATE::REST: setState(&restState); break;
@@ -60,7 +57,7 @@ void MotionService::handleGestures(const gesture_t ges) {
     }
 }
 
-bool MotionService::update(Peripherals *peripherals) {
+bool MotionService::update(Peripherals* peripherals) {
     handleGestures(peripherals->takeGesture());
     if (!state) return false;
     int64_t now = esp_timer_get_time();

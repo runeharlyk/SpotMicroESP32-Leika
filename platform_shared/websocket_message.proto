@@ -178,6 +178,8 @@ message WebsocketMessage {
         PeripheralSettingsData peripheral_settings = 190;
         PeripheralSettingsDataRequest peripheral_settings_data_request = 191;
         KinematicData kinematic_data = 200;
+        ServoPWMData servo_pwm = 210;
+        ServoStateData servo_state = 211;
         WifiSettingsData wifi_settings = 240;
         HumanInputData human_input_data = 250;
         RSSIData rssi = 260;

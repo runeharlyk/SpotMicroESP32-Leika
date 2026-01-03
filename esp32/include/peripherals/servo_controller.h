@@ -56,19 +56,11 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.sleep();
     }
 
-    void stateUpdate(JsonVariant &root, int originId) {
-        bool active = root["active"].as<bool>();
-        ESP_LOGI("SERVOCONTROLLER", "Setting state %d", active);
-        active ? activate() : deactivate();
-    }
-
-    void servoEvent(JsonVariant &root, int originId) {
+    void setServoPWM(int32_t servo_id, uint32_t pwm) {
         control_state = SERVO_CONTROL_STATE::PWM;
-        int8_t servo_id = root["servo_id"];
-        uint16_t pwm = root["pwm"].as<uint16_t>();
         if (servo_id < 0) {
             uint16_t pwms[12];
-            std::fill_n(pwms, 12, pwm);
+            std::fill_n(pwms, 12, static_cast<uint16_t>(pwm));
             _pca.setMultiplePWM(pwms, 12);
         } else {
             _pca.setPWM(servo_id, 0, pwm);
