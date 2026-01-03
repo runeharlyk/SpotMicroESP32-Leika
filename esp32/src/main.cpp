@@ -169,6 +169,32 @@ void setupEventSocket() {
     socket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
         data.active ? servoController.activate() : servoController.deactivate();
     });
+
+    socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
+        printf("Received correlation request: %d\n", data.correlation_id);
+        // Temporarily hardcoded
+        switch (data.which_request) {
+            case socket_message_CorrelationRequest_features_data_request_tag: {
+                socket_message_CorrelationResponse res = socket_message_CorrelationResponse_init_default;
+                res.correlation_id = data.correlation_id;
+                res.stauts_code = 200;
+                res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
+
+                feature_service::features_request(
+                    data.request.features_data_request,
+                    res.response.features_data_response
+                );
+
+                socket.emit(res, clientId);
+
+                break;
+            }
+            default: {
+                printf("WARNING: no tag found for correlation request: %d", data.which_request);
+                break;
+            }
+        }
+    });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {

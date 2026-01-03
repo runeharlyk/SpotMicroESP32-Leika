@@ -28,6 +28,7 @@
         HumanInputData,
         KinematicData,
         ModeData,
+        PingMsg,
         RSSIData,
         SonarData,
         WalkGaitData
@@ -74,10 +75,14 @@
                 socket.on(RSSIData, data => telemetry.setRSSI(data)),
                 socket.on(ModeData, data => mode.set(data)),
                 socket.on(AnalyticsData, data => {
+                    // console.log(data);
                     analytics.addData(data)
                 }),
                 socket.on(AnglesData, data => {
                     servoAngles.set(data)
+                }),
+                socket.on(PingMsg, data => {
+                    console.log("Ping received!")
                 })
             ]
         )

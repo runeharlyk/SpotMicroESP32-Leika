@@ -3,7 +3,7 @@
     import { socket } from '$lib/stores'
 
     //import { IMUReport, IMUType } from '$lib/platform_shared/example';
-    import { AnglesData, WebsocketMessage, IMUData } from '$lib/platform_shared/websocket_message'
+    import { AnglesData, WebsocketMessage, IMUData, CorrelationRequest, CorrelationResponse } from '$lib/platform_shared/websocket_message'
 
     // const imu_report: IMUReport = {type: IMUType.IMU_ACCEL, xVal: 4}
     // const writer = IMUReport.encode(imu_report);
@@ -15,9 +15,10 @@
 
     // const wmd: WebsocketMessage = { imu: {temp: 0, x: 0, y: 0, z: 1}, angles: {angles: [2]}}
     // const wmd: WebsocketMessage = { imu: {temp: 0, x: 0, y: 0, z: 0} }
-    const wmd: WebsocketMessage = { rssi: { rssi: 16 } }
+    // const wmd: WebsocketMessage = { rssi: { rssi: 16 } }
     // const wmd: WebsocketMessage = { imu: {temp: 1, x: 2, y: 4, z: 5} }
     // const wmd: WebsocketMessage = { angles: {angles: [1,2,3,4]} }
+    const wmd: WebsocketMessage = { pongmsg: {} }
     const writer = WebsocketMessage.encode(wmd)
     const bytes = writer.finish()
     // Convert bytes to hex
@@ -44,9 +45,16 @@
     // }
 
     const handleData = (data: IMUData) => {
-        console.log(data)
+        // console.log(data)
     }
     onMount(() => {
+        socket.on(CorrelationResponse, (data) => {
+            console.log(data)
+        })
+        socket.onEvent('open', () => {
+            socket.sendEvent(CorrelationRequest, CorrelationRequest.create({correlationId: 69, featuresDataRequest: { sonarTest: true }}))
+        })
+
         return socket.on(IMUData, handleData)
     })
 </script>
