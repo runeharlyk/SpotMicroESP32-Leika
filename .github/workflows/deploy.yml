@@ -36,6 +36,11 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: "./app/pnpm-lock.yaml"
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+
       - run: pnpm install
       - run: pnpm run build
 

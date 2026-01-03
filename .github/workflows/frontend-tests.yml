@@ -2,14 +2,14 @@ name: Frontend Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
     paths:
-        - 'app/**'  
+      - "app/**"
   pull_request:
-    branches: [ master ]
+    branches: [master]
     paths:
-        - 'app/**'  
-    
+      - "app/**"
+
 permissions:
   contents: read
 
@@ -20,22 +20,31 @@ jobs:
       run:
         working-directory: ./app
     steps:
-    - uses: actions/checkout@v4
-    - uses: pnpm/action-setup@v2
-      with:
-        version: 9
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 'latest'
-        cache: 'pnpm'
-        cache-dependency-path: './app/pnpm-lock.yaml'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+          cache: "pnpm"
+          cache-dependency-path: "./app/pnpm-lock.yaml"
 
-    - name: Install dependencies
-      run: pnpm install
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
 
-    - name: Run tests
-      run: pnpm test
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate Proto
+        run: pnpm proto
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run tests
+        run: pnpm test
