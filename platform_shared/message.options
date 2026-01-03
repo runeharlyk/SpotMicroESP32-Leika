@@ -13,12 +13,12 @@ socket_message.KnownNetworkItem.gateway_ip max_size:16
 socket_message.KnownNetworkItem.dns_ip_1 max_size:16
 socket_message.KnownNetworkItem.dns_ip_2 max_size:16
 
-socket_message.StaticSystemInformation.esp_platform max_size:32
-socket_message.StaticSystemInformation.firmware_version max_size:16
-socket_message.StaticSystemInformation.cpu_type max_size:32
-socket_message.StaticSystemInformation.sdk_version max_size:32
-socket_message.StaticSystemInformation.arduino_version max_size:16
-socket_message.StaticSystemInformation.cpu_reset_reason max_size:32
+socket_message.StaticSystemInformation.esp_platform type:FT_POINTER
+socket_message.StaticSystemInformation.firmware_version type:FT_POINTER
+socket_message.StaticSystemInformation.cpu_type type:FT_POINTER
+socket_message.StaticSystemInformation.sdk_version type:FT_POINTER
+socket_message.StaticSystemInformation.arduino_version type:FT_POINTER
+socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
 socket_message.AnglesData.angles max_count:12
 

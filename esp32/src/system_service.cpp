@@ -19,12 +19,7 @@ esp_err_t handleSleep(PsychicRequest *request) {
     return request->reply(200);
 }
 
-esp_err_t getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
-    status(root);
-    return response.send();
-}
+
 
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
@@ -78,32 +73,25 @@ void sleep() {
     ESP_LOGI(TAG, "Setting device to sleep");
 }
 
-void status(JsonObject &root) {
+
+
+void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
-    root["esp_platform"] = ESP_PLATFORM;
-    root["firmware_version"] = APP_VERSION;
-    root["max_alloc_heap"] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    root["psram_size"] = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
-    root["free_psram"] = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-    root["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
-    root["cpu_type"] = ESP.getChipModel();
-    root["cpu_rev"] = ESP.getChipRevision();
-    root["cpu_cores"] = ESP.getChipCores();
-    root["free_heap"] = esp_get_free_heap_size();
-    root["min_free_heap"] = esp_get_minimum_free_heap_size();
-    root["sketch_size"] = ESP.getSketchSize();
-    root["free_sketch_space"] = ESP.getFreeSketchSpace();
-    root["sdk_version"] = ESP.getSdkVersion();
-    root["arduino_version"] = ARDUINO_VERSION;
-    root["flash_chip_size"] = ESP.getFlashChipSize();
-    root["flash_chip_speed"] = ESP.getFlashChipSpeed();
-    root["fs_total"] = fs_total;
-    root["fs_used"] = fs_used;
-    root["core_temp"] = temperatureRead();
-    root["cpu_reset_reason"] = resetReason(esp_reset_reason());
-    root["uptime"] = esp_timer_get_time() / 1000000;
+    info.esp_platform = (char*) ESP_PLATFORM_NAME;
+    info.firmware_version = APP_VERSION;
+    info.cpu_freq_mhz = ESP.getCpuFreqMHz();
+    info.cpu_type = (char*) ESP.getChipModel();
+    info.cpu_rev = ESP.getChipRevision();
+    info.cpu_cores = ESP.getChipCores();
+    info.sketch_size = ESP.getSketchSize();
+    info.free_sketch_space = ESP.getFreeSketchSpace();
+    info.sdk_version = (char*) ESP.getSdkVersion();
+    info.arduino_version = ARDUINO_VERSION;
+    info.flash_chip_size = ESP.getFlashChipSize();
+    info.flash_chip_speed = ESP.getFlashChipSpeed();
+    info.cpu_reset_reason = (char*) resetReason(esp_reset_reason());
 }
 
 void getAnalytics(socket_message_AnalyticsData &analytics) {

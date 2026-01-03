@@ -32,19 +32,23 @@
     import StatusItem from '$lib/components/StatusItem.svelte'
     import ActionButton from './ActionButton.svelte'
     import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/message'
+    import Error from '../../+error.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
 
     const features = useFeatureFlags()
 
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
-        const result = await api.get<SystemInformation>('/api/system/status')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-        systemInformation = result.inner
-        return systemInformation
+        socket
+            .request({ systemInformationRequest: {} })
+            .then(response => {
+                if (response.systemInformationResponse) {
+                    systemInformation = response.systemInformationResponse
+                    return systemInformation;
+                } else { throw new TypeError("System Information not found in reponse") }
+            })
+        return
     }
 
     const postFactoryReset = async () => await api.post('/api/system/reset')
