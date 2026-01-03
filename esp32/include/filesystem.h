@@ -21,7 +21,6 @@ void begin();
 
 bool deleteFile(const char* filename);
 bool editFile(const char* filename, const char* content);
-std::string listFilesJson(const std::string& directory, bool isRoot = true);
 
 esp_err_t getFiles(HttpRequest& request);
 esp_err_t getConfigFile(HttpRequest& request);

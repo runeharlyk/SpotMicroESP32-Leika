@@ -7,8 +7,23 @@ namespace FileSystem {
 void begin() { ESP_FS.begin(true); }
 
 esp_err_t getFiles(HttpRequest& request) {
-    std::string json = listFilesJson("/");
-    return request.reply(200, "application/json", (const uint8_t*)json.c_str(), json.length());
+    socket_message_FileListData proto = socket_message_FileListData_init_zero;
+    strlcpy(proto.path, "/", sizeof(proto.path));
+
+    File root = ESP_FS.open("/");
+    if (root && root.isDirectory()) {
+        File file = root.openNextFile();
+        while (file && proto.files_count < 24) {
+            socket_message_FileEntry& entry = proto.files[proto.files_count];
+            strlcpy(entry.name, file.name(), sizeof(entry.name));
+            entry.size = file.size();
+            entry.is_directory = file.isDirectory();
+            proto.files_count++;
+            file = root.openNextFile();
+        }
+    }
+
+    return request.replyProto(proto, socket_message_FileListData_fields);
 }
 
 esp_err_t getConfigFile(HttpRequest& request) {
@@ -60,36 +75,6 @@ esp_err_t handleEdit(HttpRequest& request) {
 }
 
 bool deleteFile(const char* filename) { return ESP_FS.remove(filename); }
-
-std::string listFilesJson(const std::string& directory, bool isRoot) {
-    File root = ESP_FS.open(directory.find("/") == 0 ? directory.c_str() : ("/" + directory).c_str());
-    if (!root.isDirectory()) return "{}";
-
-    File file = root.openNextFile();
-    if (!file) {
-        return isRoot ? "{ \"root\": {} }" : "{}";
-    }
-
-    std::string output = isRoot ? "{ \"root\": {" : "{";
-
-    while (file) {
-        std::string name = std::string(file.name());
-        if (file.isDirectory()) {
-            output += "\"" + name + "\": " + listFilesJson(name, false);
-        } else {
-            output += "\"" + name + "\": " + std::to_string(file.size());
-        }
-
-        File next = root.openNextFile();
-        if (next) output += ", ";
-        file = next;
-    }
-
-    output += "}";
-    if (isRoot) output += "}";
-
-    return output;
-}
 
 esp_err_t handleUpload(HttpRequest& request) { return request.reply(501); }
 
