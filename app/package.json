@@ -66,6 +66,7 @@
         "ts-proto": "^2.10.1",
         "urdf-loader": "^0.12.6",
         "uzip": "^0.20201231.0",
+        "ws": "^8.18.3",
         "xacro-parser": "^0.3.10"
     },
     "packageManager": "pnpm@9.3.0"

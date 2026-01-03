@@ -53,6 +53,9 @@ importers:
       uzip:
         specifier: ^0.20201231.0
         version: 0.20201231.0
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
       xacro-parser:
         specifier: ^0.3.10
         version: 0.3.10
