@@ -1,9 +1,7 @@
 #pragma once
 
-#include <list>
 #include <SPI.h>
 #include <Wire.h>
-#include <ArduinoJson.h>
 #include <utils/math_utils.h>
 
 #include <Adafruit_HMC5883_U.h>
@@ -11,29 +9,10 @@
 
 #include <peripherals/sensor.hpp>
 
-struct MagnetometerMsg : public SensorMessageBase {
+struct MagnetometerMsg {
     float rpy[3] {0, 0, 0};
     float heading {-1};
-
-    void toJson(JsonVariant v) const override {
-        JsonArray arr = v.to<JsonArray>();
-        arr.add(rpy[0]);
-        arr.add(rpy[1]);
-        arr.add(rpy[2]);
-        arr.add(heading);
-        arr.add(success);
-    }
-
-    void fromJson(JsonVariantConst v) override {
-        JsonArrayConst arr = v.as<JsonArrayConst>();
-        rpy[0] = arr[0] | 0.0f;
-        rpy[1] = arr[1] | 0.0f;
-        rpy[2] = arr[2] | 0.0f;
-        heading = arr[3] | -1.0f;
-        success = arr[4] | false;
-    }
-
-    friend void toJson(JsonVariant v, MagnetometerMsg const& a) { a.toJson(v); }
+    bool success {false};
 };
 
 class Magnetometer : public SensorBase<MagnetometerMsg> {

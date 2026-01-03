@@ -47,14 +47,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127);
 
-    void getI2CResult(JsonVariant &root);
-    void getI2CResultProto(socket_message_I2CScanData &data);
-
-    void getIMUResult(JsonVariant &root);
+    void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
-
-    void getSonarResult(JsonVariant &root);
-
     void getSettingsProto(socket_message_PeripheralSettingsData &data);
 
     /* IMU FUNCTIONS */
@@ -92,8 +86,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
-    JsonDocument doc;
-    char message[MAX_ESP_IMU_SIZE];
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     IMU _imu;
 #endif
