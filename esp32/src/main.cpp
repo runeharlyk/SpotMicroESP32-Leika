@@ -242,16 +242,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
         EXECUTE_EVERY_N_MS(2000, {
             socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
-            analytics.max_alloc_heap = ESP.getMaxAllocHeap();
-            analytics.psram_size = ESP.getPsramSize();
-            analytics.free_psram = ESP.getFreePsram();
-            analytics.free_heap = ESP.getFreeHeap();
-            analytics.total_heap = ESP.getHeapSize();
-            analytics.min_free_heap = ESP.getMinFreeHeap();
-            analytics.core_temp = temperatureRead();
-            analytics.fs_total = ESP_FS.totalBytes();
-            analytics.fs_used = ESP_FS.usedBytes();
-            analytics.uptime = esp_timer_get_time() / 1000;
+            system_service::getAnalytics(analytics);
             socket.emit(analytics);
         });
 
