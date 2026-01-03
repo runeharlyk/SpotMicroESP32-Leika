@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
+    import { onMount, onDestroy } from 'svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
@@ -21,6 +21,7 @@
     let temperatureChart: Chart
 
     onMount(() => {
+        analytics.listen()
         heapChart = new Chart(heapChartElement, {
             type: 'line',
             data: {
@@ -221,9 +222,13 @@
         setInterval(updateData, 500)
     })
 
+    onDestroy(() => analytics.stop())
+
     function updateData() {
         heapChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
-        heapChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.totalHeap - datapoint.freeHeap)
+        heapChart.data.datasets[0].data = $analytics.map(
+            datapoint => datapoint.totalHeap - datapoint.freeHeap
+        )
         heapChart.options.scales!.y!.max = Math.ceil($analytics[0]?.totalHeap ?? 0)
         heapChart.update('none')
 

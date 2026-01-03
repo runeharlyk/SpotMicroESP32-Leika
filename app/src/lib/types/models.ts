@@ -1,3 +1,53 @@
+export enum MessageTopic {
+    imu = 'imu',
+    imuCalibrate = 'imuCalibrate',
+    mode = 'mode',
+    input = 'input',
+    analytics = 'analytics',
+    position = 'position',
+    angles = 'angles',
+    i2cScan = 'i2cScan',
+    peripheralSettings = 'peripheralSettings',
+    otastatus = 'otastatus',
+    gait = 'walk_gait',
+    servoState = 'servoState',
+    servoPWM = 'servoPWM',
+    WiFiSettings = 'WiFiSettings',
+    sonar = 'sonar',
+    rssi = 'rssi'
+}
+
+export type WifiStatus = {
+    status: number
+    local_ip: string
+    mac_address: string
+    rssi: number
+    ssid: string
+    bssid: string
+    channel: number
+    subnet_mask: string
+    gateway_ip: string
+    dns_ip_1: string
+    dns_ip_2?: string
+}
+
+export type KnownNetworkItem = {
+    ssid: string
+    password: string
+    static_ip_config: boolean
+    local_ip?: string
+    subnet_mask?: string
+    gateway_ip?: string
+    dns_ip_1?: string
+    dns_ip_2?: string
+}
+
+export type WifiSettings = {
+    hostname: string
+    priority_RSSI: boolean
+    wifi_networks: KnownNetworkItem[]
+}
+
 export type vector = { x: number; y: number }
 
 export type GithubRelease = {

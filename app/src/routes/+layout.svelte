@@ -10,7 +10,6 @@
     import Statusbar from '../lib/components/statusbar/statusbar.svelte'
     import {
         telemetry,
-        analytics,
         kinematicData,
         mode,
         input,
@@ -22,13 +21,11 @@
         walkGait
     } from '$lib/stores'
     import {
-        AnalyticsData,
         AnglesData,
         DownloadOTAData,
         HumanInputData,
         KinematicData,
         ModeData,
-        PingMsg,
         RSSIData,
         SonarData,
         WalkGaitData
@@ -68,23 +65,14 @@
     const eventListeners: (() => void)[] = []
     const addEventListeners = () => {
         eventListeners.push(
-            ...[
-                socket.onEvent('open', handleOpen),
-                socket.onEvent('close', handleClose),
-                socket.onEvent('error', handleError),
-                socket.on(RSSIData, data => telemetry.setRSSI(data)),
-                socket.on(ModeData, data => mode.set(data)),
-                socket.on(AnalyticsData, data => {
-                    // console.log(data);
-                    analytics.addData(data)
-                }),
-                socket.on(AnglesData, data => {
-                    servoAngles.set(data)
-                }),
-                socket.on(PingMsg, data => {
-                    console.log('Ping received!')
-                })
-            ]
+            socket.onEvent('open', handleOpen),
+            socket.onEvent('close', handleClose),
+            socket.onEvent('error', handleError),
+            socket.on(RSSIData, data => telemetry.setRSSI(data)),
+            socket.on(ModeData, data => mode.set(data)),
+            socket.on(AnglesData, data => {
+                servoAngles.set(data)
+            })
         )
         features.subscribe(data => {
             if (data?.download_firmware)
@@ -96,14 +84,10 @@
     }
 
     const removeEventListeners = () => {
-        for (let offFunction of eventListeners) {
-            offFunction()
-        }
+        eventListeners.forEach(offFunction => offFunction())
     }
 
-    const handleOpen = () => {
-        notifications.success('Connection to device established', 5000)
-    }
+    const handleOpen = () => notifications.success('Connection to device established', 5000)
 
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
