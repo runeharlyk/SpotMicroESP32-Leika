@@ -111,7 +111,6 @@ void setupServer() {
               [&](PsychicRequest *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
 #endif
 
-
     // Filesystem
     server.on("/api/config/*", HTTP_GET, [](PsychicRequest *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](PsychicRequest *request) { return FileSystem::getFiles(request); });
@@ -148,44 +147,45 @@ void setupServer() {
 
 void setupEventSocket() {
     // Motion events
-    socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
+    // socket.onEvent(INPUT_EVENT, [&](JsonVariant &root, int originId) { motionService.handleInput(root, originId); });
 
-    socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) {
-        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
-        motionService.handleMode(root, originId);
-        motionService.isActive() ? servoController.activate() : servoController.deactivate();
-    });
+    // socket.onEvent(MODE_EVENT, [&](JsonVariant &root, int originId) {
+    //     servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+    //     motionService.handleMode(root, originId);
+    //     motionService.isActive() ? servoController.activate() : servoController.deactivate();
+    // });
 
-    socket.onEvent(WALK_GAIT_EVENT,
-                   [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
+    // socket.onEvent(WALK_GAIT_EVENT,
+    //                [&](JsonVariant &root, int originId) { motionService.handleWalkGait(root, originId); });
 
-    socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId); });
+    // socket.onEvent(ANGLES_EVENT, [&](JsonVariant &root, int originId) { motionService.anglesEvent(root, originId);
+    // });
 
-    // Peripherals events
-    socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
-        peripherals.scanI2C();
-        JsonDocument doc;
-        JsonVariant results = doc.to<JsonVariant>();
-        peripherals.getI2CResult(results);
-        socket.emit(EVENT_I2C_SCAN, results);
-    });
+    // // Peripherals events
+    // socket.onEvent(EVENT_I2C_SCAN, [&](JsonVariant &root, int originId) {
+    //     peripherals.scanI2C();
+    //     JsonDocument doc;
+    //     JsonVariant results = doc.to<JsonVariant>();
+    //     peripherals.getI2CResult(results);
+    //     socket.emit(EVENT_I2C_SCAN, results);
+    // });
 
-    socket.onEvent(EVENT_IMU_CALIBRATE, [&](JsonVariant &root, int originId) {
-        JsonDocument doc;
-        JsonVariant results = doc.to<JsonVariant>();
-        results["success"] = peripherals.calibrateIMU();
-        socket.emit(EVENT_IMU_CALIBRATE, results);
-    });
+    // socket.onEvent(EVENT_IMU_CALIBRATE, [&](JsonVariant &root, int originId) {
+    //     JsonDocument doc;
+    //     JsonVariant results = doc.to<JsonVariant>();
+    //     results["success"] = peripherals.calibrateIMU();
+    //     socket.emit(EVENT_IMU_CALIBRATE, results);
+    // });
 
-    // Servo controller events
-    socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
-                   [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
-    socket.onEvent(EVENT_SERVO_STATE,
-                   [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
+    // // Servo controller events
+    // socket.onEvent(EVENT_SERVO_CONFIGURATION_SETTINGS,
+    //                [&](JsonVariant &root, int originId) { servoController.servoEvent(root, originId); });
+    // socket.onEvent(EVENT_SERVO_STATE,
+    //                [&](JsonVariant &root, int originId) { servoController.stateUpdate(root, originId); });
 }
 
 void IRAM_ATTR SpotControlLoopEntry(void *) {
-    ESP_LOGI("main", "Setup complete now runing tsk");
+    ESP_LOGI("main", "Control task starting");
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = 5 / portTICK_PERIOD_MS;
 
@@ -208,7 +208,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 }
 
 void IRAM_ATTR serviceLoopEntry(void *) {
-    ESP_LOGI("main", "Service control task starting");
+    ESP_LOGI("main", "Service task starting");
 
     wifiService.begin();
     MDNS.begin(APP_NAME);
@@ -224,16 +224,33 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     socket.begin();
     setupEventSocket();
 
-    ESP_LOGI("main", "Service control task started");
+    ESP_LOGI("main", "Service task started");
     for (;;) {
         wifiService.loop();
         apService.loop();
-        EXECUTE_EVERY_N_MS(2000, system_service::emitMetrics(socket));
+
+        EXECUTE_EVERY_N_MS(2000, {
+            socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
+            analytics.max_alloc_heap = ESP.getMaxAllocHeap();
+            analytics.psram_size = ESP.getPsramSize();
+            analytics.free_psram = ESP.getFreePsram();
+            analytics.free_heap = ESP.getFreeHeap();
+            analytics.total_heap = ESP.getHeapSize();
+            analytics.min_free_heap = ESP.getMinFreeHeap();
+            analytics.core_temp = temperatureRead();
+            analytics.fs_total = ESP_FS.totalBytes();
+            analytics.fs_used = ESP_FS.usedBytes();
+            analytics.uptime = esp_timer_get_time() / 1000;
+            socket.emit(analytics);
+        });
+
         EXECUTE_EVERY_N_MS(500, {
-            JsonDocument doc;
-            JsonVariant results = doc.to<JsonVariant>();
-            peripherals.getIMUResult(results);
-            socket.emit(EVENT_IMU, results);
+            socket_message_IMUData imu = socket_message_IMUData_init_zero;
+            peripherals.getIMUProto(imu);
+            socket.emit(imu);
+
+            socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
+            socket.emit(rssi);
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

@@ -1,5 +1,4 @@
-#ifndef Socket_h
-#define Socket_h
+#pragma once
 
 #include <PsychicHttp.h>
 #include <template/stateful_service.h>
@@ -16,12 +15,6 @@ class Websocket : public CommAdapterBase {
 
     void begin() override;
 
-    void onEvent(std::string event, EventCallback callback);
-
-    void emit(const char *event, JsonVariant &payload, const char *originId = "", bool onlyToSameOrigin = false);
-
-    void emit_raw(const char *event, uint8_t* payload, size_t event_length, size_t payload_length);
-
   private:
     PsychicWebSocketHandler _socket;
     PsychicHttpServer &_server;
@@ -33,6 +26,3 @@ class Websocket : public CommAdapterBase {
 
     void send(const uint8_t *data, size_t len, int cid = -1) override;
 };
-
-#endif
-
