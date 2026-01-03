@@ -1,5 +1,4 @@
-#ifndef CameraService_h
-#define CameraService_h
+#pragma once
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
@@ -7,7 +6,6 @@
 #include <async_worker.h>
 
 #include <features.h>
-#include <template/stateful_socket.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_endpoint.h>
 
@@ -22,8 +20,6 @@ namespace Camera {
 #endif
 
 #define PART_BOUNDARY "frame"
-
-#define EVENT_CAMERA_SETTINGS "CameraSettings"
 
 camera_fb_t *safe_camera_fb_get();
 sensor_t *safe_sensor_get();
@@ -41,10 +37,7 @@ class CameraService : public StatefulService<CameraSettings> {
     StatefulHttpEndpoint<CameraSettings> endpoint;
 
   private:
-    EventEndpoint<CameraSettings> _eventEndpoint;
     FSPersistence<CameraSettings> _persistence;
     void updateCamera();
 };
 } // namespace Camera
-
-#endif // end CameraService_h

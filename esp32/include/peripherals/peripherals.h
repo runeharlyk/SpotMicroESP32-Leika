@@ -1,7 +1,5 @@
-#ifndef Peripherals_h
-#define Peripherals_h
+#pragma once
 
-#include <template/stateful_socket.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_service.h>
 #include <utils/math_utils.h>
@@ -21,14 +19,6 @@
 #include <peripherals/magnetometer.h>
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
-
-#define EVENT_CONFIGURATION_SETTINGS "peripheralSettings"
-
-#define EVENT_I2C_SCAN "i2cScan"
-
-#define I2C_INTERVAL 250
-#define MAX_ESP_IMU_SIZE 500
-#define EVENT_IMU "imu"
 
 /*
  * Ultrasonic Sensor Settings
@@ -78,7 +68,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
 
   private:
-    EventEndpoint<PeripheralsConfiguration> _eventEndpoint;
     FSPersistence<PeripheralsConfiguration> _persistence;
 
     SemaphoreHandle_t _accessMutex;
@@ -107,7 +96,4 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     std::list<uint8_t> addressList;
     bool i2c_active = false;
-    unsigned long _updateInterval {I2C_INTERVAL};
 };
-
-#endif

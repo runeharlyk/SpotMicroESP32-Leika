@@ -2,15 +2,12 @@
 
 Peripherals::Peripherals()
     : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
-      _eventEndpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
-                     EVENT_CONFIGURATION_SETTINGS),
       _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
     _accessMutex = xSemaphoreCreateMutex();
     addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
 }
 
 void Peripherals::begin() {
-    _eventEndpoint.begin();
     _persistence.readFromFS();
 
     updatePins();
