@@ -4,7 +4,7 @@
     import { socket } from '$lib/stores'
     import { Connection } from '$lib/components/icons'
     import I2CSetting from './i2cSetting.svelte'
-    import type { I2CDevice } from '$lib/platform_shared/websocket_message'
+    import type { I2CDevice } from '$lib/platform_shared/message'
 
     let active_devices: I2CDevice[] = $state([])
     let isLoading = $state(false)

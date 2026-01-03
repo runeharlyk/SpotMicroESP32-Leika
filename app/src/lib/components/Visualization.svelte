@@ -37,7 +37,7 @@
     import { radToDeg } from 'three/src/math/MathUtils.js'
     import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
-    import { AnglesData, KinematicData, ModesEnum } from '$lib/platform_shared/websocket_message'
+    import { AnglesData, KinematicData, ModesEnum } from '$lib/platform_shared/message'
 
     interface Props {
         defaultColor?: string | null

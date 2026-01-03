@@ -17,7 +17,7 @@ const pluginPath =
         path.join(projectRoot, 'node_modules', '.bin', 'protoc-gen-ts_proto.cmd')
     :   path.join(projectRoot, 'node_modules', '.bin', 'protoc-gen-ts_proto')
 
-const protoFiles = ['websocket_message.proto', 'rest_message.proto']
+const protoFiles = ['message.proto']
 
 const tsProtoOpts = ['useExactTypes=false', 'outputExtensions=true', 'outputSchema=true'].join(',')
 

@@ -1,4 +1,4 @@
-import { AnglesData } from '$lib/platform_shared/websocket_message'
+import { AnglesData } from '$lib/platform_shared/message'
 import { writable, type Writable } from 'svelte/store'
 
 export const servoAnglesOut: Writable<AnglesData> = writable(

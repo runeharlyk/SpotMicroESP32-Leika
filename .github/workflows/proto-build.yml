@@ -2,10 +2,9 @@ name: Proto Build
 
 on:
   push:
-    branches: [ master, protobuf-playground ]
+    branches: [master, protobuf-playground]
   pull_request:
-    branches: [ master, protobuf-playground ]
-
+    branches: [master, protobuf-playground]
 
 jobs:
   build:
@@ -20,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -31,7 +30,7 @@ jobs:
         run: pip install protobuf grpcio-tools
 
       - name: Build Protocol Buffers (nanopb)
-        run: python ./submodules/nanopb/generator/nanopb_generator.py -I "./platform_shared/" -D esp32/src/platform_shared ./platform_shared/websocket_message.proto ./platform_shared/rest_message.proto
+        run: python ./submodules/nanopb/generator/nanopb_generator.py -I "./platform_shared/" -D esp32/src/platform_shared ./platform_shared/message.proto
 
       - name: Setup Protocol Buffers compiler
         uses: arduino/setup-protoc@v3

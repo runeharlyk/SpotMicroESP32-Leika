@@ -1,6 +1,6 @@
 #pragma once
 
-#include <platform_shared/websocket_message.pb.h>
+#include <platform_shared/message.pb.h>
 
 struct CommandMsg {
     float lx, ly, rx, ry, h, s, s1;

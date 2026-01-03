@@ -7,7 +7,7 @@
     import {
         PeripheralSettingsData,
         PeripheralSettingsDataRequest
-    } from '$lib/platform_shared/websocket_message'
+    } from '$lib/platform_shared/message'
 
     let settings: PeripheralSettingsData | null = $state(null)
     let isEditing = $state(false)

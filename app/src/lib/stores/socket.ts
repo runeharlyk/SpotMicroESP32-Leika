@@ -1,12 +1,12 @@
 import { writable } from 'svelte/store'
 import {
-    WebsocketMessage,
+    Message,
     CorrelationRequest,
     CorrelationResponse,
-    protoMetadata as websocket_md,
+    protoMetadata,
     type MessageFns
-} from '$lib/platform_shared/websocket_message'
-import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
+} from '$lib/platform_shared/message'
+import * as Messages from '$lib/platform_shared/message'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -20,14 +20,14 @@ type PendingRequest = {
     timeoutId: ReturnType<typeof setTimeout>
 }
 
-const websocketMessageType = websocket_md.fileDescriptor.messageType?.find(
-    (msg: { name: string }) => msg.name === 'WebsocketMessage'
+const MessageType = protoMetadata.fileDescriptor.messageType?.find(
+    (msg: { name: string }) => msg.name === 'Message'
 )
 
-if (websocketMessageType?.field) {
-    for (const field of websocketMessageType.field) {
+if (MessageType?.field) {
+    for (const field of MessageType.field) {
         if (field.typeName) {
-            const messageFns = websocket_md.references[field.typeName]
+            const messageFns = protoMetadata.references[field.typeName]
             if (messageFns && field.jsonName && field.number) {
                 MESSAGE_TYPE_TO_KEY.set(messageFns, field.jsonName)
                 MESSAGE_TYPE_TO_TAG.set(messageFns, field.number)
@@ -38,21 +38,21 @@ if (websocketMessageType?.field) {
     }
 }
 
-function get_name_from_messagetype<T>(event_type: MessageFns<T>): string {
+function getNameFromMessageType<T>(event_type: MessageFns<T>): string {
     const event = MESSAGE_TYPE_TO_KEY.get(event_type as MessageFns<unknown>)
     if (!event) {
         throw new Error(
-            "Event type not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field."
+            "Event type not found in 'Message'. The MessageFns you passed doesn't correspond to any Message field."
         )
     }
     return event
 }
 
-function get_tag_from_messagetype<T>(event_type: MessageFns<T>): number {
+function getTagFromMessageType<T>(event_type: MessageFns<T>): number {
     const fieldNumber = MESSAGE_TYPE_TO_TAG.get(event_type as MessageFns<unknown>)
     if (fieldNumber === undefined) {
         throw new Error(
-            "Tag not found in 'WebsocketMessage'. The MessageFns you passed doesn't correspond to any WebsocketMessage field."
+            "Tag not found in 'Message'. The MessageFns you passed doesn't correspond to any Message field."
         )
     }
     return fieldNumber
@@ -60,10 +60,10 @@ function get_tag_from_messagetype<T>(event_type: MessageFns<T>): number {
 
 type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive'
 
-type TaggedSocketMessage = { tag: number; msg: WebsocketMessage }
+type TaggedMessage = { tag: number; msg: Message }
 
-export const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
-    const decoded = WebsocketMessage.decode(new Uint8Array(data))
+export const decodeMessage = (data: ArrayBuffer): TaggedMessage => {
+    const decoded = Message.decode(new Uint8Array(data))
     const values = Object.entries(decoded).filter(([, value]) => value !== undefined)
     if (values.length != 1) {
         throw new Error('Message included either 0 or more than 1 data point')
@@ -76,8 +76,8 @@ export const decodeMessage = (data: ArrayBuffer): TaggedSocketMessage => {
     return { tag: tag, msg: decoded }
 }
 
-export const encodeMessage = (data: WebsocketMessage): Uint8Array<ArrayBuffer> => {
-    const encoded = WebsocketMessage.encode(data).finish()
+export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
+    const encoded = Message.encode(data).finish()
     return encoded
 }
 
@@ -158,7 +158,7 @@ function createWebSocket() {
     }
 
     function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
-        const tag = get_tag_from_messagetype(event_type)
+        const tag = getTagFromMessageType(event_type)
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
@@ -182,43 +182,43 @@ function createWebSocket() {
 
     function sendEvent<T>(event: MessageFns<T>, data: T) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const type = get_name_from_messagetype(event)
-        const wsm = WebsocketMessage.create() as Record<string, unknown>
+        const type = getNameFromMessageType(event)
+        const wsm = Message.create() as Record<string, unknown>
         wsm[type] = data
-        send(wsm as WebsocketMessage)
+        send(wsm as Message)
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const unsub_msg = WebsocketMessages.UnsubscribeNotification.create({
-            tag: get_tag_from_messagetype(event_type)
+        const unsub_msg = Messages.UnsubscribeNotification.create({
+            tag: getTagFromMessageType(event_type)
         })
-        send(WebsocketMessage.create({ unsubNotif: unsub_msg }))
+        send(Message.create({ unsubNotif: unsub_msg }))
     }
 
     function subscribeToEvent<T>(event_type: MessageFns<T>) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const sub_msg = WebsocketMessages.SubscribeNotification.create({
-            tag: get_tag_from_messagetype(event_type)
+        const sub_msg = Messages.SubscribeNotification.create({
+            tag: getTagFromMessageType(event_type)
         })
-        send(WebsocketMessage.create({ subNotif: sub_msg }))
+        send(Message.create({ subNotif: sub_msg }))
     }
 
     function resubscribeAll() {
         for (const tag of message_listeners.keys()) {
-            const sub_msg = WebsocketMessages.SubscribeNotification.create({ tag })
-            send(WebsocketMessage.create({ subNotif: sub_msg }))
+            const sub_msg = Messages.SubscribeNotification.create({ tag })
+            send(Message.create({ subNotif: sub_msg }))
         }
     }
 
-    function send(data: WebsocketMessage) {
+    function send(data: Message) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
         const encoded = encodeMessage(data)
         ws.send(encoded)
     }
 
     function ping() {
-        send(WebsocketMessage.create({ pingmsg: {} }))
+        send(Message.create({ pingmsg: {} }))
     }
 
     function sendRequest(
@@ -235,7 +235,7 @@ function createWebSocket() {
         pending_requests.set(correlationId, { resolve, reject, timeoutId })
 
         const request = CorrelationRequest.create({ correlationId, ...data })
-        send(WebsocketMessage.create({ correlationRequest: request }))
+        send(Message.create({ correlationRequest: request }))
     }
 
     function flushQueuedRequests() {
@@ -250,7 +250,7 @@ function createWebSocket() {
         sendEvent,
         init,
         on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
-            const tag = get_tag_from_messagetype(event_type)
+            const tag = getTagFromMessageType(event_type)
 
             let message_listeners_totag = message_listeners.get(tag)
             if (!message_listeners_totag) {

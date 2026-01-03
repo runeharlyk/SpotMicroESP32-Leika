@@ -9,7 +9,7 @@
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
-    import { type IMUCalibrateData, IMUData } from '$lib/platform_shared/websocket_message'
+    import { type IMUCalibrateData, IMUData } from '$lib/platform_shared/message'
 
     Chart.register(...registerables)
 

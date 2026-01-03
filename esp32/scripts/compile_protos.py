@@ -16,10 +16,7 @@ def compile_nanopb():
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    proto_files = [
-        proto_dir / "websocket_message.proto",
-        proto_dir / "rest_message.proto"
-    ]
+    proto_files = [proto_dir / "message.proto"]
     
     print(f"Compiling protobuf files with nanopb...")
     print(f"  Proto dir: {proto_dir}")

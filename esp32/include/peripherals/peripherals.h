@@ -8,7 +8,7 @@
 #include <features.h>
 #include <settings/peripherals_settings.h>
 #include <template/stateful_endpoint.h>
-#include <platform_shared/websocket_message.pb.h>
+#include <platform_shared/message.pb.h>
 
 #include <list>
 #include <SPI.h>

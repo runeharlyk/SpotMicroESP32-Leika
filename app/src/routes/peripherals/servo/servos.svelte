@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ServoPWMData, ServoStateData } from '$lib/platform_shared/websocket_message'
+    import { ServoPWMData, ServoStateData } from '$lib/platform_shared/message'
     import { socket } from '$lib/stores'
     import { Throttler } from '$lib/utilities'
 

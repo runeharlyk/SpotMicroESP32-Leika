@@ -1,4 +1,4 @@
-import { AnalyticsData } from '$lib/platform_shared/websocket_message'
+import { AnalyticsData } from '$lib/platform_shared/message'
 import { writable } from 'svelte/store'
 
 const analytics_data: AnalyticsData[] = []
