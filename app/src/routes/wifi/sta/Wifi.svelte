@@ -10,8 +10,14 @@
     import ScanNetworks from './Scan.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { type KnownNetworkItem, type WifiSettings, type WifiStatus } from '$lib/types/models'
     import { api } from '$lib/api'
+    import {
+        type KnownNetworkItem,
+        type WifiSettingsData,
+        type NetworkStatusData,
+        WifiSettingsData as WifiSettingsDataProto,
+        NetworkStatusData as NetworkStatusDataProto
+    } from '$lib/platform_shared/message'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import {
         Cancel,
@@ -37,20 +43,20 @@
     let networkEditable: KnownNetworkItem = $state({
         ssid: '',
         password: '',
-        static_ip_config: false,
-        local_ip: 0,
-        subnet_mask: 0,
-        gateway_ip: 0,
-        dns_ip_1: 0,
-        dns_ip_2: 0
+        staticIp: false,
+        localIp: 0,
+        subnetMask: 0,
+        gatewayIp: 0,
+        dnsIp1: 0,
+        dnsIp2: 0
     })
 
     let ipDisplay = $state({
-        local_ip: '',
-        subnet_mask: '',
-        gateway_ip: '',
-        dns_ip_1: '',
-        dns_ip_2: ''
+        localIp: '',
+        subnetMask: '',
+        gatewayIp: '',
+        dnsIp1: '',
+        dnsIp2: ''
     })
 
     let static_ip_config = $state(false)
@@ -58,8 +64,8 @@
     let newNetwork: boolean = $state(true)
     let showNetworkEditor: boolean = $state(false)
 
-    let wifiStatus: WifiStatus | null = $state(null)
-    let wifiSettings: WifiSettings | null = $state(null)
+    let wifiStatus: NetworkStatusData | null = $state(null)
+    let wifiSettings: WifiSettingsData | null = $state(null)
 
     let dndNetworkList: KnownNetworkItem[] = $state([])
 
@@ -79,7 +85,7 @@
     let formErrorhostname = $state(false)
 
     async function getWifiStatus() {
-        const result = await api.get<WifiStatus>('/api/wifi/sta/status')
+        const result = await api.get('/api/wifi/sta/status', NetworkStatusDataProto)
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return
@@ -89,18 +95,23 @@
     }
 
     async function getWifiSettings() {
-        const result = await api.get<WifiSettings>('/api/wifi/sta/settings')
+        const result = await api.get('/api/wifi/sta/settings', WifiSettingsDataProto)
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return
         }
         wifiSettings = result.inner
-        dndNetworkList = wifiSettings.wifi_networks
+        dndNetworkList = wifiSettings.wifiNetworks
         return wifiSettings
     }
 
-    async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data)
+    async function postWiFiSettings(data: WifiSettingsData) {
+        const result = await api.post(
+            '/api/wifi/sta/settings',
+            data,
+            WifiSettingsDataProto,
+            WifiSettingsDataProto
+        )
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             notifications.error('User not authorized.', 3000)
@@ -116,9 +127,7 @@
             formErrorhostname = true
         } else {
             formErrorhostname = false
-            // Update global wifiSettings object
-            wifiSettings.wifi_networks = dndNetworkList
-            // Post to REST API
+            wifiSettings.wifiNetworks = dndNetworkList
             postWiFiSettings(wifiSettings)
             console.log(wifiSettings)
         }
@@ -135,49 +144,49 @@
             formErrors.ssid = false
         }
 
-        networkEditable.static_ip_config = static_ip_config
+        networkEditable.staticIp = static_ip_config
 
-        if (networkEditable.static_ip_config) {
-            if (!isValidIpString(ipDisplay.gateway_ip)) {
+        if (networkEditable.staticIp) {
+            if (!isValidIpString(ipDisplay.gatewayIp)) {
                 valid = false
                 formErrors.gateway_ip = true
             } else {
                 formErrors.gateway_ip = false
             }
 
-            if (!isValidIpString(ipDisplay.subnet_mask)) {
+            if (!isValidIpString(ipDisplay.subnetMask)) {
                 valid = false
                 formErrors.subnet_mask = true
             } else {
                 formErrors.subnet_mask = false
             }
 
-            if (!isValidIpString(ipDisplay.local_ip)) {
+            if (!isValidIpString(ipDisplay.localIp)) {
                 valid = false
                 formErrors.local_ip = true
             } else {
                 formErrors.local_ip = false
             }
 
-            if (!isValidIpString(ipDisplay.dns_ip_1)) {
+            if (!isValidIpString(ipDisplay.dnsIp1)) {
                 valid = false
                 formErrors.dns_1 = true
             } else {
                 formErrors.dns_1 = false
             }
 
-            if (!isValidIpString(ipDisplay.dns_ip_2)) {
+            if (!isValidIpString(ipDisplay.dnsIp2)) {
                 valid = false
                 formErrors.dns_2 = true
             } else {
                 formErrors.dns_2 = false
             }
 
-            networkEditable.local_ip = ipToUint32(ipDisplay.local_ip)
-            networkEditable.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
-            networkEditable.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
-            networkEditable.dns_ip_1 = ipToUint32(ipDisplay.dns_ip_1)
-            networkEditable.dns_ip_2 = ipToUint32(ipDisplay.dns_ip_2)
+            networkEditable.localIp = ipToUint32(ipDisplay.localIp)
+            networkEditable.subnetMask = ipToUint32(ipDisplay.subnetMask)
+            networkEditable.gatewayIp = ipToUint32(ipDisplay.gatewayIp)
+            networkEditable.dnsIp1 = ipToUint32(ipDisplay.dnsIp1)
+            networkEditable.dnsIp2 = ipToUint32(ipDisplay.dnsIp2)
         } else {
             formErrors.local_ip = false
             formErrors.subnet_mask = false
@@ -214,19 +223,19 @@
         networkEditable = {
             ssid: '',
             password: '',
-            static_ip_config: false,
-            local_ip: 0,
-            subnet_mask: 0,
-            gateway_ip: 0,
-            dns_ip_1: 0,
-            dns_ip_2: 0
+            staticIp: false,
+            localIp: 0,
+            subnetMask: 0,
+            gatewayIp: 0,
+            dnsIp1: 0,
+            dnsIp2: 0
         }
         ipDisplay = {
-            local_ip: '',
-            subnet_mask: '',
-            gateway_ip: '',
-            dns_ip_1: '',
-            dns_ip_2: ''
+            localIp: '',
+            subnetMask: '',
+            gatewayIp: '',
+            dnsIp1: '',
+            dnsIp2: ''
         }
     }
 
@@ -234,12 +243,13 @@
         newNetwork = false
         showNetworkEditor = true
         networkEditable = dndNetworkList[index]
+        static_ip_config = networkEditable.staticIp
         ipDisplay = {
-            local_ip: networkEditable.local_ip ? uint32ToIp(networkEditable.local_ip) : '',
-            subnet_mask: networkEditable.subnet_mask ? uint32ToIp(networkEditable.subnet_mask) : '',
-            gateway_ip: networkEditable.gateway_ip ? uint32ToIp(networkEditable.gateway_ip) : '',
-            dns_ip_1: networkEditable.dns_ip_1 ? uint32ToIp(networkEditable.dns_ip_1) : '',
-            dns_ip_2: networkEditable.dns_ip_2 ? uint32ToIp(networkEditable.dns_ip_2) : ''
+            localIp: networkEditable.localIp ? uint32ToIp(networkEditable.localIp) : '',
+            subnetMask: networkEditable.subnetMask ? uint32ToIp(networkEditable.subnetMask) : '',
+            gatewayIp: networkEditable.gatewayIp ? uint32ToIp(networkEditable.gatewayIp) : '',
+            dnsIp1: networkEditable.dnsIp1 ? uint32ToIp(networkEditable.dnsIp1) : '',
+            dnsIp2: networkEditable.dnsIp2 ? uint32ToIp(networkEditable.dnsIp2) : ''
         }
     }
 
@@ -319,7 +329,7 @@
                         <StatusItem
                             icon={Home}
                             title="IP Address"
-                            description={uint32ToIp(wifiStatus.local_ip)}
+                            description={uint32ToIp(wifiStatus.localIp)}
                         />
 
                         <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
@@ -350,7 +360,7 @@
                         <StatusItem
                             icon={MAC}
                             title="MAC Address"
-                            description={wifiStatus.mac_address}
+                            description={wifiStatus.macAddress}
                         />
 
                         <StatusItem
@@ -362,19 +372,19 @@
                         <StatusItem
                             icon={Gateway}
                             title="Gateway IP"
-                            description={uint32ToIp(wifiStatus.gateway_ip)}
+                            description={uint32ToIp(wifiStatus.gatewayIp)}
                         />
 
                         <StatusItem
                             icon={Subnet}
                             title="Subnet Mask"
-                            description={uint32ToIp(wifiStatus.subnet_mask)}
+                            description={uint32ToIp(wifiStatus.subnetMask)}
                         />
 
                         <StatusItem
                             icon={DNS}
                             title="DNS"
-                            description={uint32ToIp(wifiStatus.dns_ip_1)}
+                            description={uint32ToIp(wifiStatus.dnsIp1)}
                         />
                     </div>
                 {/if}
@@ -492,7 +502,7 @@
                             >
                                 <input
                                     type="checkbox"
-                                    bind:checked={wifiSettings.priority_RSSI}
+                                    bind:checked={wifiSettings.priorityRssi}
                                     class="checkbox checkbox-primary sm:-mb-5"
                                 />
                                 <span class="sm:-mb-5">Connect to strongest WiFi</span>
@@ -566,7 +576,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.local_ip}
+                                            bind:value={ipDisplay.localIp}
                                             id="localIP"
                                             required
                                         />
@@ -595,7 +605,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.gateway_ip}
+                                            bind:value={ipDisplay.gatewayIp}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -622,7 +632,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.subnet_mask}
+                                            bind:value={ipDisplay.subnetMask}
                                             required
                                         />
                                         <label class="label" for="subnet">
@@ -649,7 +659,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.dns_ip_1}
+                                            bind:value={ipDisplay.dnsIp1}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -674,7 +684,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.dns_ip_2}
+                                            bind:value={ipDisplay.dnsIp2}
                                             required
                                         />
                                         <label class="label" for="subnet">

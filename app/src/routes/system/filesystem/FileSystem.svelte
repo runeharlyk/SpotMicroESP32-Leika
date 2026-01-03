@@ -2,29 +2,56 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import Folder from './Folder.svelte'
     import { api } from '$lib/api'
-    import type { Directory } from '$lib/types/models'
     import { FolderIcon, Add, FileIcon } from '$lib/components/icons'
     import { modals } from 'svelte-modals'
     import NewFolderDialog from './NewFolderDialog.svelte'
     import NewFileDialog from './NewFileDialog.svelte'
+    import {
+        type FileListData,
+        type FileDeleteRequest,
+        type FileEditRequest,
+        type FileMkdirRequest,
+        type FileContentData,
+        FileListData as FileListDataProto,
+        FileDeleteRequest as FileDeleteRequestProto,
+        FileEditRequest as FileEditRequestProto,
+        FileMkdirRequest as FileMkdirRequestProto,
+        FileContentData as FileContentDataProto
+    } from '$lib/platform_shared/message'
+
+    type Directory = {
+        [key: string]: number | Directory
+    }
 
     let filename = $state('')
     let content = $state('')
     let isEditing = $state(false)
 
-    const getFiles = async () => {
-        const result = await api.get<Directory>('/api/files')
+    function convertFileListToDirectory(fileList: FileListData): { root: Directory } {
+        const root: Directory = {}
+        for (const file of fileList.files) {
+            if (file.isDirectory) {
+                root[file.name] = {}
+            } else {
+                root[file.name] = file.size
+            }
+        }
+        return { root }
+    }
+
+    const getFiles = async (): Promise<{ root: Directory }> => {
+        const result = await api.get('/api/files', FileListDataProto)
         if (result.isOk()) {
-            return result.inner
+            return convertFileListToDirectory(result.inner)
         }
         return { root: {} }
     }
 
     const getContent = async (name: string) => {
         if (!name) return ''
-        const result = await api.get(`/api/config/${name}`)
+        const result = await api.get(`/api/config/${name}`, FileContentDataProto)
         if (result.isOk()) {
-            content = JSON.stringify(result.inner, null, 4)
+            content = result.inner.content
             return content
         }
         return ''
@@ -32,10 +59,11 @@
 
     const saveContent = async () => {
         if (!filename) return
-        const result = await api.post('/api/files/edit', {
+        const request: FileEditRequest = {
             file: '/config/' + filename,
             content
-        })
+        }
+        const result = await api.postNoResponse('/api/files/edit', request, FileEditRequestProto)
         if (result.isOk()) {
             isEditing = false
         }
@@ -43,7 +71,8 @@
 
     const deleteFile = async (name: string) => {
         if (!confirm(`Are you sure you want to delete ${name}?`)) return
-        const result = await api.post('/api/files/delete', { file: '/config/' + name })
+        const request: FileDeleteRequest = { file: '/config/' + name }
+        const result = await api.postNoResponse('/api/files/delete', request, FileDeleteRequestProto)
         if (result.isOk()) {
             filename = ''
             content = ''
@@ -52,11 +81,9 @@
 
     const createFolder = async (folderName: string) => {
         if (!folderName) return
-        const result = await api.post('/api/files/mkdir', {
-            path: '/config/' + folderName
-        })
+        const request: FileMkdirRequest = { path: '/config/' + folderName }
+        const result = await api.postNoResponse('/api/files/mkdir', request, FileMkdirRequestProto)
         if (result.isOk()) {
-            // Refresh the file list
             await getFiles()
         }
     }
@@ -75,12 +102,12 @@
 
     const createFile = async (fileName: string) => {
         if (!fileName) return
-        const result = await api.post('/api/files/edit', {
+        const request: FileEditRequest = {
             file: '/config/' + fileName,
-            content: '{}' // Default empty JSON object
-        })
+            content: '{}'
+        }
+        const result = await api.postNoResponse('/api/files/edit', request, FileEditRequestProto)
         if (result.isOk()) {
-            // Refresh the file list and select the new file
             await getFiles()
             await updateSelected(fileName)
         }
@@ -93,11 +120,7 @@
     }
 </script>
 
-<!-- <SettingsCard collapsible={false}> -->
-<!-- {#snippet icon()} -->
 <FolderIcon class="flex-shrink-0 mr-2 h-6 w-6 self-end" />
-<!-- {/snippet}
-  {#snippet title()} -->
 <div class="flex justify-between items-center w-full gap-2">
     <span>File System</span>
     <div class="flex gap-2">
@@ -114,10 +137,8 @@
         </button>
     </div>
 </div>
-<!-- {/snippet} -->
 
 <div class="flex flex-col md:flex-row gap-4 w-full">
-    <!-- File Tree -->
     <div
         class="w-full md:w-[300px] md:min-w-[300px] md:max-w-[300px] border-b md:border-b-0 md:border-r pb-4 md:pb-0 md:pr-4"
     >
@@ -134,7 +155,6 @@
         {/await}
     </div>
 
-    <!-- File Content -->
     <div class="flex-1 min-w-0">
         {#if filename}
             <div
@@ -179,4 +199,3 @@
         {/if}
     </div>
 </div>
-<!-- </SettingsCard> -->

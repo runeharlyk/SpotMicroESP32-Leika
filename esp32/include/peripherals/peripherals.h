@@ -20,9 +20,6 @@
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
 
-/*
- * Ultrasonic Sensor Settings
- */
 #define MAX_DISTANCE 200
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
@@ -37,11 +34,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127);
 
-    void getI2CScanProto(socket_message_I2CScanData &data);
-    void getIMUProto(socket_message_IMUData &data);
-    void getSettingsProto(socket_message_PeripheralSettingsData &data);
+    void getI2CScanProto(socket_message_I2CScanData& data);
+    void getIMUProto(socket_message_IMUData& data);
+    void getSettingsProto(socket_message_PeripheralSettingsData& data);
 
-    /* IMU FUNCTIONS */
     bool readImu();
 
     bool readMag();
@@ -65,10 +61,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
-    StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
+    StatefulHttpEndpoint<PeripheralsConfiguration, socket_message_PeripheralSettingsData> endpoint;
 
   private:
-    FSPersistence<PeripheralsConfiguration> _persistence;
+    FSPersistence<PeripheralsConfiguration, socket_message_PeripheralSettingsData> _persistence;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

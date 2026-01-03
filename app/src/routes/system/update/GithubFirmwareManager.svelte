@@ -10,8 +10,9 @@
     import { compareVersions } from 'compare-versions'
     import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { api } from '$lib/api'
+    import { api, jsonApi } from '$lib/api'
     import { useFeatureFlags } from '$lib/stores'
+    import { DownloadOTAData as DownloadOTADataProto } from '$lib/platform_shared/message'
     import { Error, Cancel, Check, CloudDown, Github, Prerelease } from '$lib/components/icons'
 
     const features = useFeatureFlags()
@@ -21,21 +22,26 @@
             accept: 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
         }
-        const result = await api.get(`https://api.github.com/repos/${page.data.github}/releases`, {
+        const result = await jsonApi.get(`https://api.github.com/repos/${page.data.github}/releases`, {
             headers
         })
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
-        return result.inner as {
+        return result.inner as Array<{
             tag_name: string
+            name: string
+            html_url: string
+            published_at: string
+            prerelease: boolean
             assets: Array<{ name: string; browser_download_url: string }>
-        }
+        }>
     }
 
     async function postGithubDownload(url: string) {
-        const result = await api.post('/api/firmware/download', { download_url: url })
+        const request = { downloadUrl: url, status: '', progress: 0, error: '' }
+        const result = await api.postNoResponse('/api/firmware/download', request, DownloadOTADataProto)
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -49,7 +55,7 @@
             // check if the asset is of type *.bin
             if (
                 assets[i].name.includes('.bin') &&
-                assets[i].name.includes($features.firmware_built_target)
+                assets[i].name.includes($features.firmware_built_target as string)
             ) {
                 url = assets[i].browser_download_url
             }

@@ -2,8 +2,13 @@
     import { api } from '$lib/api'
     import { onMount } from 'svelte'
     import { RotateCw, RotateCcw } from '$lib/components/icons'
+    import {
+        type ServoSettingsData,
+        ServoSettingsData as ServoSettingsDataProto
+    } from '$lib/platform_shared/message'
+
     interface Props {
-        data?: Record<string, unknown>
+        data?: ServoSettingsData
         servoId?: number
         pwm?: number
     }
@@ -16,12 +21,14 @@
         servoId = $bindable(0)
     }: Props = $props()
 
-    const updateValue = (event: Event, index: number, key: string) => {
-        data.servos[index][key] = Number((event.target as HTMLInputElement).value)
+    const updateValue = (event: Event, index: number, key: keyof typeof data.servos[0]) => {
+        (data.servos[index] as unknown as Record<string, number>)[key] = Number(
+            (event.target as HTMLInputElement).value
+        )
     }
 
     const syncConfig = async () => {
-        await api.post('/api/servo/config', data)
+        await api.postNoResponse('/api/servo/config', data, ServoSettingsDataProto)
     }
 
     const toggleDirection = async (index: number) => {
@@ -30,7 +37,7 @@
     }
 
     onMount(async () => {
-        const result = await api.get('/api/servo/config')
+        const result = await api.get('/api/servo/config', ServoSettingsDataProto)
         if (result.isOk()) {
             data = result.inner
         }
@@ -38,7 +45,7 @@
 
     const setCenterPWM = async () => {
         console.log('setCenterPWM', servoId, pwm)
-        data.servos[servoId]['center_pwm'] = pwm
+        data.servos[servoId].centerPwm = pwm
         await syncConfig()
     }
 </script>
@@ -66,9 +73,9 @@
                         <input
                             type="number"
                             class="input input-sm input-bordered w-20"
-                            value={servo.center_pwm}
+                            value={servo.centerPwm}
                             onblur={syncConfig}
-                            oninput={event => updateValue(event, index, 'center_pwm')}
+                            oninput={event => updateValue(event, index, 'centerPwm')}
                             min="80"
                             max="600"
                         />
@@ -78,9 +85,9 @@
                             type="number"
                             step="0.1"
                             class="input input-sm input-bordered w-20"
-                            value={servo.center_angle}
+                            value={servo.centerAngle}
                             onblur={syncConfig}
-                            oninput={event => updateValue(event, index, 'center_angle')}
+                            oninput={event => updateValue(event, index, 'centerAngle')}
                             min="-90"
                             max="90"
                         />

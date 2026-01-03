@@ -6,15 +6,23 @@
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
-    import type { MDNSStatus, MDNSServiceItem, MDNSServiceQuery } from '$lib/types/models'
     import { compareIp } from '$lib/utilities'
+    import {
+        type MDNSStatusData,
+        type MDNSQueryResult,
+        type MDNSQueryRequest,
+        type MDNSQueryResponse,
+        MDNSStatusData as MDNSStatusDataProto,
+        MDNSQueryRequest as MDNSQueryRequestProto,
+        MDNSQueryResponse as MDNSQueryResponseProto
+    } from '$lib/platform_shared/message'
 
-    let mdnsStatus: MDNSStatus | undefined = $state()
-    let services: MDNSServiceItem[] = $state([])
+    let mdnsStatus: MDNSStatusData | undefined = $state()
+    let services: MDNSQueryResult[] = $state([])
     let isLoading = $state(false)
 
     const getMDNSStatus = async () => {
-        const result = await api.get<MDNSStatus>('/api/mdns/status')
+        const result = await api.get('/api/mdns/status', MDNSStatusDataProto)
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -24,15 +32,18 @@
 
     const queryMDNSServices = async () => {
         isLoading = true
-        const result = await api.post<MDNSServiceQuery>('/api/mdns/query', {
-            service: 'http',
-            protocol: 'tcp'
-        })
+        const request: MDNSQueryRequest = { service: 'http', protocol: 'tcp' }
+        const result = await api.post(
+            '/api/mdns/query',
+            request,
+            MDNSQueryRequestProto,
+            MDNSQueryResponseProto
+        )
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
-        services = result.inner.services.sort((a, b) => compareIp(a.ip, b.ip))
+        services = result.inner.services.sort((a, b) => compareIp(a.address, b.address))
         isLoading = false
     }
 
@@ -88,11 +99,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each services as service (service.ip)}
+                        {#each services as service (service.address)}
                             <tr>
                                 <td><Devices class="h-6 w-6" /></td>
-                                <td>{service.name}</td>
-                                <td>{service.ip}</td>
+                                <td>{service.hostname}</td>
+                                <td>{service.address}</td>
                                 <td>{service.port}</td>
                             </tr>
                         {/each}

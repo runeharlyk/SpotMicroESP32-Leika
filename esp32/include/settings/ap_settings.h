@@ -1,8 +1,8 @@
 #pragma once
 
 #include <WiFi.h>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/message.pb.h>
 #include <string>
 
 #include <DNSServer.h>
@@ -52,12 +52,6 @@
 
 enum APNetworkStatus { ACTIVE = 0, INACTIVE, LINGERING };
 
-inline uint32_t parseIPv4(const char *str) {
-    IPAddress ip;
-    ip.fromString(str);
-    return (uint32_t)ip;
-}
-
 class APSettings {
   public:
     uint8_t provisionMode;
@@ -71,42 +65,45 @@ class APSettings {
     IPAddress gatewayIP;
     IPAddress subnetMask;
 
-    bool operator==(const APSettings &settings) const {
+    bool operator==(const APSettings& settings) const {
         return provisionMode == settings.provisionMode && ssid == settings.ssid && password == settings.password &&
                channel == settings.channel && ssidHidden == settings.ssidHidden && maxClients == settings.maxClients &&
                localIP == settings.localIP && gatewayIP == settings.gatewayIP && subnetMask == settings.subnetMask;
     }
 
-    static void read(APSettings &settings, JsonVariant &root) {
-        root["provision_mode"] = settings.provisionMode;
-        root["ssid"] = settings.ssid.c_str();
-        root["password"] = settings.password.c_str();
-        root["channel"] = settings.channel;
-        root["ssid_hidden"] = settings.ssidHidden;
-        root["max_clients"] = settings.maxClients;
-        root["local_ip"] = (uint32_t)(settings.localIP);
-        root["gateway_ip"] = (uint32_t)(settings.gatewayIP);
-        root["subnet_mask"] = (uint32_t)(settings.subnetMask);
+    static void read(const APSettings& settings, socket_message_APSettingsData& proto) {
+        proto.provision_mode = settings.provisionMode;
+        snprintf(proto.ssid, sizeof(proto.ssid), "%s", settings.ssid.c_str());
+        snprintf(proto.password, sizeof(proto.password), "%s", settings.password.c_str());
+        proto.channel = settings.channel;
+        proto.ssid_hidden = settings.ssidHidden;
+        proto.max_clients = settings.maxClients;
+        proto.local_ip = (uint32_t)settings.localIP;
+        proto.gateway_ip = (uint32_t)settings.gatewayIP;
+        proto.subnet_mask = (uint32_t)settings.subnetMask;
     }
 
-    static StateUpdateResult update(JsonVariant &root, APSettings &settings) {
+    static StateUpdateResult update(const socket_message_APSettingsData& proto, APSettings& settings) {
         APSettings newSettings = {};
-        newSettings.provisionMode = root["provision_mode"] | FACTORY_AP_PROVISION_MODE;
-        switch (settings.provisionMode) {
+        newSettings.provisionMode = proto.provision_mode;
+        switch (newSettings.provisionMode) {
             case AP_MODE_ALWAYS:
             case AP_MODE_DISCONNECTED:
             case AP_MODE_NEVER: break;
             default: newSettings.provisionMode = AP_MODE_DISCONNECTED;
         }
-        newSettings.ssid = root["ssid"] | FACTORY_AP_SSID;
-        newSettings.password = root["password"] | FACTORY_AP_PASSWORD;
-        newSettings.channel = root["channel"] | FACTORY_AP_CHANNEL;
-        newSettings.ssidHidden = root["ssid_hidden"] | FACTORY_AP_SSID_HIDDEN;
-        newSettings.maxClients = root["max_clients"] | FACTORY_AP_MAX_CLIENTS;
+        newSettings.ssid = strlen(proto.ssid) > 0 ? proto.ssid : FACTORY_AP_SSID;
+        newSettings.password = strlen(proto.password) > 0 ? proto.password : FACTORY_AP_PASSWORD;
+        newSettings.channel = proto.channel > 0 ? proto.channel : FACTORY_AP_CHANNEL;
+        newSettings.ssidHidden = proto.ssid_hidden;
+        newSettings.maxClients = proto.max_clients > 0 ? proto.max_clients : FACTORY_AP_MAX_CLIENTS;
 
-        newSettings.localIP = IPAddress(root["local_ip"] | parseIPv4(FACTORY_AP_LOCAL_IP));
-        newSettings.gatewayIP = IPAddress(root["gateway_ip"] | parseIPv4(FACTORY_AP_GATEWAY_IP));
-        newSettings.subnetMask = IPAddress(root["subnet_mask"] | parseIPv4(FACTORY_AP_SUBNET_MASK));
+        newSettings.localIP = proto.local_ip ? IPAddress(proto.local_ip) : IPAddress();
+        newSettings.gatewayIP = proto.gateway_ip ? IPAddress(proto.gateway_ip) : IPAddress();
+        newSettings.subnetMask = proto.subnet_mask ? IPAddress(proto.subnet_mask) : IPAddress();
+        if (!newSettings.localIP) newSettings.localIP.fromString(FACTORY_AP_LOCAL_IP);
+        if (!newSettings.gatewayIP) newSettings.gatewayIP.fromString(FACTORY_AP_GATEWAY_IP);
+        if (!newSettings.subnetMask) newSettings.subnetMask.fromString(FACTORY_AP_SUBNET_MASK);
 
         if (newSettings == settings) {
             return StateUpdateResult::UNCHANGED;

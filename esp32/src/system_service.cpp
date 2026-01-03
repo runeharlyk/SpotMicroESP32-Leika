@@ -2,21 +2,21 @@
 
 namespace system_service {
 
-static const char *TAG = "SystemService";
+static const char* TAG = "SystemService";
 
-esp_err_t handleReset(PsychicRequest *request) {
+esp_err_t handleReset(HttpRequest& request) {
     reset();
-    return request->reply(200);
+    return request.reply(200);
 }
 
-esp_err_t handleRestart(PsychicRequest *request) {
+esp_err_t handleRestart(HttpRequest& request) {
     restart();
-    return request->reply(200);
+    return request.reply(200);
 }
 
-esp_err_t handleSleep(PsychicRequest *request) {
+esp_err_t handleSleep(HttpRequest& request) {
     sleep();
-    return request->reply(200);
+    return request.reply(200);
 }
 
 void reset() {
@@ -33,7 +33,7 @@ void reset() {
 
 void restart() {
     xTaskCreate(
-        [](void *pvParameters) {
+        [](void* pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
@@ -48,7 +48,7 @@ void restart() {
 
 void sleep() {
     xTaskCreate(
-        [](void *pvParameters) {
+        [](void* pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
@@ -71,34 +71,38 @@ void sleep() {
     ESP_LOGI(TAG, "Setting device to sleep");
 }
 
-void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
+void getStaticSystemInformation(socket_message_StaticSystemInformation& info) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
-    info.esp_platform = (char *)ESP_PLATFORM_NAME;
+    info.esp_platform = (char*)ESP_PLATFORM_NAME;
     info.firmware_version = APP_VERSION;
     info.cpu_freq_mhz = ESP.getCpuFreqMHz();
-    info.cpu_type = (char *)ESP.getChipModel();
+    info.cpu_type = (char*)ESP.getChipModel();
     info.cpu_rev = ESP.getChipRevision();
     info.cpu_cores = ESP.getChipCores();
     info.sketch_size = ESP.getSketchSize();
     info.free_sketch_space = ESP.getFreeSketchSpace();
-    info.sdk_version = (char *)ESP.getSdkVersion();
-    info.arduino_version = ARDUINO_VERSION;
+    info.sdk_version = (char*)ESP.getSdkVersion();
+    info.arduino_version = (char*)ARDUINO_VERSION;
     info.flash_chip_size = ESP.getFlashChipSize();
     info.flash_chip_speed = ESP.getFlashChipSpeed();
-    info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
+    info.cpu_reset_reason = (char*)resetReason(esp_reset_reason());
 }
 
-void getAnalytics(socket_message_AnalyticsData &analytics) {
+void getAnalytics(socket_message_AnalyticsData& analytics) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
+
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    uint32_t total_heap = info.total_free_bytes + info.total_allocated_bytes;
 
     analytics.max_alloc_heap = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     analytics.psram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
     analytics.free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     analytics.free_heap = esp_get_free_heap_size();
-    analytics.total_heap = heap_caps_get_total_size(MALLOC_CAP_8BIT);
+    analytics.total_heap = total_heap;
     analytics.min_free_heap = esp_get_minimum_free_heap_size();
     analytics.core_temp = temperatureRead();
     analytics.fs_total = fs_total;
@@ -106,7 +110,7 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     analytics.uptime = esp_timer_get_time() / 1000;
 }
 
-const char *resetReason(esp_reset_reason_t reason) {
+const char* resetReason(esp_reset_reason_t reason) {
     switch (reason) {
         case ESP_RST_UNKNOWN: return "Reset reason can not be determined";
         case ESP_RST_POWERON: return "Reset due to power-on event";
@@ -139,6 +143,15 @@ const char *resetReason(esp_reset_reason_t reason) {
             snprintf(buffer, sizeof(buffer), "Unknown reset reason (%d)", reason);
             return buffer;
     }
+}
+
+esp_err_t getStatus(HttpRequest& request) {
+    socket_message_SystemInformationResponse proto = socket_message_SystemInformationResponse_init_zero;
+    proto.has_analytics_data = true;
+    proto.has_static_system_information = true;
+    getAnalytics(proto.analytics_data);
+    getStaticSystemInformation(proto.static_system_information);
+    return request.replyProto(proto, socket_message_SystemInformationResponse_fields);
 }
 
 } // namespace system_service

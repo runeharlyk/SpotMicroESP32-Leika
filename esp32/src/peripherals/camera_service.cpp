@@ -2,16 +2,16 @@
 
 namespace Camera {
 
-static const char *const TAG = "CameraService";
+static const char* const TAG = "CameraService";
 
-static constexpr const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
-static constexpr const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static constexpr const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+static constexpr const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static constexpr const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+static constexpr const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 SemaphoreHandle_t cameraMutex = xSemaphoreCreateMutex();
 
-camera_fb_t *safe_camera_fb_get() {
-    camera_fb_t *fb = NULL;
+camera_fb_t* safe_camera_fb_get() {
+    camera_fb_t* fb = NULL;
     if (xSemaphoreTakeRecursive(cameraMutex, portMAX_DELAY) == pdTRUE) {
         fb = esp_camera_fb_get();
         xSemaphoreGiveRecursive(cameraMutex);
@@ -19,8 +19,8 @@ camera_fb_t *safe_camera_fb_get() {
     return fb;
 }
 
-sensor_t *safe_sensor_get() {
-    sensor_t *s = NULL;
+sensor_t* safe_sensor_get() {
+    sensor_t* s = NULL;
     if (xSemaphoreTakeRecursive(cameraMutex, portMAX_DELAY) == pdTRUE) {
         s = esp_camera_sensor_get();
     }
@@ -30,9 +30,10 @@ sensor_t *safe_sensor_get() {
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
-    : endpoint(CameraSettings::read, CameraSettings::update, this),
-      _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE) {
-    addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
+    : endpoint(CameraSettings::read, CameraSettings::update, this, socket_message_CameraSettingsData_fields),
+      _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE,
+                   socket_message_CameraSettingsData_fields) {
+    addUpdateHandler([&](const std::string& originId) { updateCamera(); }, false);
 }
 
 esp_err_t CameraService::begin() {
@@ -83,84 +84,101 @@ esp_err_t CameraService::begin() {
     return err;
 }
 
-esp_err_t CameraService::cameraStill(PsychicRequest *request) {
-    camera_fb_t *fb = safe_camera_fb_get();
+esp_err_t CameraService::cameraStill(HttpRequest& request) {
+    camera_fb_t* fb = safe_camera_fb_get();
     if (!fb) {
         ESP_LOGE(TAG, "Camera capture failed");
-        request->reply(500, "text/plain", "Camera capture failed");
-        return ESP_FAIL;
+        return request.reply(500);
     }
-    PsychicStreamResponse response = PsychicStreamResponse(request, "image/jpeg", "capture.jpg");
-    response.beginSend();
-    response.write(fb->buf, fb->len);
+
+    httpd_resp_set_type(request.raw, "image/jpeg");
+    httpd_resp_set_hdr(request.raw, "Content-Disposition", "inline; filename=capture.jpg");
+    esp_err_t ret = httpd_resp_send(request.raw, (const char*)fb->buf, fb->len);
     esp_camera_fb_return(fb);
-    return response.endSend();
+    return ret;
 }
 
-void streamTask(void *pv) {
-    esp_err_t res = ESP_OK;
+struct StreamContext {
+    httpd_handle_t hd;
+    int fd;
+};
 
-    PsychicRequest *request = static_cast<PsychicRequest *>(pv);
+void streamTask(void* pv) {
+    StreamContext* ctx = static_cast<StreamContext*>(pv);
 
-    httpd_req_t *copy = nullptr;
-    res = httpd_req_async_handler_begin(request->request(), &copy);
-    if (res != ESP_OK) {
-        return;
-    }
-    PsychicHttpServer *server = request->server();
-    PsychicRequest new_request = PsychicRequest(server, copy);
-    request = &new_request;
-
-    PsychicStreamResponse response = PsychicStreamResponse(request, _STREAM_CONTENT_TYPE);
-    camera_fb_t *fb = NULL;
-
-    char *part_buf[64];
-    size_t buf_len = 0;
-    uint8_t *buf = NULL;
-    int64_t fr_start = esp_timer_get_time();
-
-    response.beginSend();
+    httpd_ws_frame_t ws_pkt = {};
+    char part_buf[64];
 
     for (;;) {
-        fb = safe_camera_fb_get();
+        camera_fb_t* fb = safe_camera_fb_get();
         if (!fb) {
             ESP_LOGE("Stream", "Camera capture failed");
             break;
         }
-        if (fb->format != PIXFORMAT_JPEG) {
-            if (!frame2jpg(fb, 80, &buf, &buf_len)) break;
-        } else {
-            buf_len = fb->len;
-            buf = fb->buf;
-        }
 
-        size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, buf_len);
-        size_t w = response.write((const char *)part_buf, hlen);
-        w += response.write((const char *)buf, buf_len);
-        w += response.write((char *)_STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        if (w == 62) break;
+        size_t hlen = snprintf(part_buf, sizeof(part_buf), _STREAM_PART, fb->len);
+
+        httpd_resp_send_chunk(nullptr, part_buf, hlen);
+        httpd_resp_send_chunk(nullptr, (const char*)fb->buf, fb->len);
+        httpd_resp_send_chunk(nullptr, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+
         esp_camera_fb_return(fb);
         safe_sensor_return();
-        buf = NULL;
+
         taskYIELD();
-        int64_t delay = 30000ll - esp_timer_get_time() - fr_start;
-        if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
+        vTaskDelay(pdMS_TO_TICKS(30));
     }
-    ESP_LOGI("Stream", "Stream ended");
-    response.endSend();
-    httpd_req_async_handler_complete(copy);
+
+    delete ctx;
     vTaskDelete(NULL);
 }
 
-esp_err_t CameraService::cameraStream(PsychicRequest *request) {
-    xTaskCreate(streamTask, "Stream client task", 4096, request, 4, nullptr);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    return ESP_OK;
+esp_err_t CameraService::cameraStream(HttpRequest& request) {
+    httpd_resp_set_type(request.raw, _STREAM_CONTENT_TYPE);
+
+    esp_err_t ret = httpd_resp_send_chunk(request.raw, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    camera_fb_t* fb = NULL;
+    char part_buf[64];
+
+    while (true) {
+        fb = safe_camera_fb_get();
+        if (!fb) {
+            ESP_LOGE(TAG, "Camera capture failed");
+            break;
+        }
+
+        size_t hlen = snprintf(part_buf, sizeof(part_buf), _STREAM_PART, fb->len);
+
+        ret = httpd_resp_send_chunk(request.raw, part_buf, hlen);
+        if (ret != ESP_OK) {
+            esp_camera_fb_return(fb);
+            break;
+        }
+
+        ret = httpd_resp_send_chunk(request.raw, (const char*)fb->buf, fb->len);
+        if (ret != ESP_OK) {
+            esp_camera_fb_return(fb);
+            break;
+        }
+
+        ret = httpd_resp_send_chunk(request.raw, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+        esp_camera_fb_return(fb);
+
+        if (ret != ESP_OK) break;
+
+        vTaskDelay(pdMS_TO_TICKS(30));
+    }
+
+    return httpd_resp_send_chunk(request.raw, NULL, 0);
 }
 
 void CameraService::updateCamera() {
     ESP_LOGI("CameraSettings", "Updating camera settings");
-    sensor_t *s = safe_sensor_get();
+    sensor_t* s = safe_sensor_get();
     if (!s) {
         ESP_LOGE("CameraSettings", "Failed to update camera settings");
         safe_sensor_return();

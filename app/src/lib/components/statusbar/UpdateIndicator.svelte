@@ -6,12 +6,21 @@
     import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte'
     import { compareVersions } from 'compare-versions'
     import { onMount } from 'svelte'
-    import { api } from '$lib/api'
-    import type { GithubRelease } from '$lib/types/models'
+    import { jsonApi, api } from '$lib/api'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Cancel, CloudDown, Firmware } from '../icons'
+    import { DownloadOTAData as DownloadOTADataProto } from '$lib/platform_shared/message'
 
     const features = useFeatureFlags()
+
+    interface GithubRelease {
+        message?: string
+        tag_name: string
+        assets: Array<{
+            name: string
+            browser_download_url: string
+        }>
+    }
 
     interface Props {
         update?: boolean
@@ -27,16 +36,16 @@
             accept: 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
         }
-        const result = await api.get<GithubRelease>(
+        const result = await jsonApi.get<GithubRelease>(
             `https://api.github.com/repos/${page.data.github}/releases/latest`,
             { headers }
         )
-        if (result.inner.message === '404' || result.inner.message == 'Not Found') {
-            console.warn('Error: Could not find releases in the repository')
-            return
-        }
         if (result.isErr()) {
             console.error('Error:', result.inner)
+            return
+        }
+        if (result.inner.message === '404' || result.inner.message == 'Not Found') {
+            console.warn('Error: Could not find releases in the repository')
             return
         }
 
@@ -45,9 +54,7 @@
         firmwareVersion = ''
 
         if (compareVersions(results.tag_name, $features.firmware_version as string) === 1) {
-            // iterate over assets and find the correct one
             for (let i = 0; i < results.assets.length; i++) {
-                // check if the asset is of type *.bin
                 if (
                     results.assets[i].name.includes('.bin') &&
                     results.assets[i].name.includes($features.firmware_built_target as string)
@@ -62,7 +69,8 @@
     }
 
     async function postGithubDownload(url: string) {
-        const result = await api.post('/api/downloadUpdate', { download_url: url })
+        const request = { downloadUrl: url, status: '', progress: 0, error: '' }
+        const result = await api.postNoResponse('/api/downloadUpdate', request, DownloadOTADataProto)
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -72,7 +80,7 @@
     onMount(async () => {
         if ($features.download_firmware) {
             await getGithubAPI()
-            setInterval(async () => await getGithubAPI(), 60 * 60 * 1000) // once per hour
+            setInterval(async () => await getGithubAPI(), 60 * 60 * 1000)
         }
     })
 

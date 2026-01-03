@@ -1,9 +1,7 @@
 #pragma once
 
-#include <ArduinoJson.h>
-#include <PsychicHttp.h>
+#include <communication/http_server.h>
 #include <WiFi.h>
-#include <async_worker.h>
 
 #include <features.h>
 #include <template/stateful_persistence.h>
@@ -21,8 +19,8 @@ namespace Camera {
 
 #define PART_BOUNDARY "frame"
 
-camera_fb_t *safe_camera_fb_get();
-sensor_t *safe_sensor_get();
+camera_fb_t* safe_camera_fb_get();
+sensor_t* safe_sensor_get();
 void safe_sensor_return();
 
 class CameraService : public StatefulService<CameraSettings> {
@@ -31,13 +29,13 @@ class CameraService : public StatefulService<CameraSettings> {
 
     esp_err_t begin();
 
-    esp_err_t cameraStill(PsychicRequest *request);
-    esp_err_t cameraStream(PsychicRequest *request);
+    esp_err_t cameraStill(HttpRequest& request);
+    esp_err_t cameraStream(HttpRequest& request);
 
-    StatefulHttpEndpoint<CameraSettings> endpoint;
+    StatefulHttpEndpoint<CameraSettings, socket_message_CameraSettingsData> endpoint;
 
   private:
-    FSPersistence<CameraSettings> _persistence;
+    FSPersistence<CameraSettings, socket_message_CameraSettingsData> _persistence;
     void updateCamera();
 };
 } // namespace Camera

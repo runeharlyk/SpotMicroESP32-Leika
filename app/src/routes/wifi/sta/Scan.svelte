@@ -3,10 +3,14 @@
     import { fly } from 'svelte/transition'
     import { onMount, onDestroy } from 'svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import type { NetworkItem, NetworkList } from '$lib/types/models'
     import { api } from '$lib/api'
     import { AP, Network, Reload, Cancel } from '$lib/components/icons'
     import { modals, exitBeforeEnter, type ModalProps } from 'svelte-modals'
+    import {
+        type NetworkInfo,
+        type NetworkListData,
+        NetworkListData as NetworkListDataProto
+    } from '$lib/platform_shared/message'
 
     let { isOpen, storeNetwork }: ModalProps = $props()
 
@@ -22,7 +26,7 @@
         'WAPI PSK'
     ]
 
-    let listOfNetworks: NetworkItem[] = $state([])
+    let listOfNetworks: NetworkInfo[] = $state([])
 
     let scanActive = $state(false)
 
@@ -30,7 +34,7 @@
 
     async function scanNetworks() {
         scanActive = true
-        await api.get('/api/wifi/scan')
+        await api.getEmpty('/api/wifi/scan')
         if ((await pollingResults()) == false) {
             pollingId = setInterval(() => pollingResults(), 1000)
         }
@@ -38,7 +42,7 @@
     }
 
     async function pollingResults() {
-        const result = await api.get<NetworkList>('/api/wifi/networks')
+        const result = await api.get('/api/wifi/networks', NetworkListDataProto)
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return false
@@ -106,7 +110,7 @@
                                     <div>
                                         <div class="font-bold">{network.ssid}</div>
                                         <div class="text-sm opacity-75">
-                                            Security: {encryptionType[network.encryption_type]},
+                                            Security: {encryptionType[network.encryptionType]},
                                             Channel: {network.channel}
                                         </div>
                                     </div>
