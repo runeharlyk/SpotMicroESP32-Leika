@@ -63,6 +63,15 @@ void Peripherals::getI2CResult(JsonVariant &root) {
     ESP_LOGI("Peripherals", "Emitting I2C scan results: %d", addressList.size());
 }
 
+void Peripherals::getI2CResultProto(socket_message_I2CScanData &data) {
+    data.devices_count = 0;
+    for (auto &address : addressList) {
+        if (data.devices_count >= 16) break;
+        data.devices[data.devices_count].address = address;
+        data.devices_count++;
+    }
+}
+
 void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
     addressList.clear();
     for (uint8_t address = lower; address < higher; address++) {
@@ -74,6 +83,29 @@ void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
     }
     uint8_t nDevices = addressList.size();
     ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", nDevices);
+}
+
+void Peripherals::getIMUProto(socket_message_IMUData &data) {
+#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+    data.x = _imu.getAngleX();
+    data.y = _imu.getAngleY();
+    data.z = _imu.getAngleZ();
+#endif
+#if FT_ENABLED(USE_HMC5883)
+    data.heading = _mag.getHeading();
+#endif
+#if FT_ENABLED(USE_BMP180)
+    data.altitude = _bmp.getAltitude();
+    data.bmp_temp = _bmp.getTemperature();
+    data.pressure = _bmp.getPressure();
+#endif
+}
+
+void Peripherals::getSettingsProto(socket_message_PeripheralSettingsData &data) {
+    data.sda = state().sda;
+    data.scl = state().scl;
+    data.frequency = state().frequency;
+    data.pins_count = 0;
 }
 
 /* IMU FUNCTIONS */

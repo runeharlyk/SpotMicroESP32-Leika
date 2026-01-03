@@ -10,6 +10,7 @@
 #include <features.h>
 #include <settings/peripherals_settings.h>
 #include <template/stateful_endpoint.h>
+#include <platform_shared/websocket_message.pb.h>
 
 #include <list>
 #include <SPI.h>
@@ -47,10 +48,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void scanI2C(uint8_t lower = 1, uint8_t higher = 127);
 
     void getI2CResult(JsonVariant &root);
+    void getI2CResultProto(socket_message_I2CScanData &data);
 
     void getIMUResult(JsonVariant &root);
+    void getIMUProto(socket_message_IMUData &data);
 
     void getSonarResult(JsonVariant &root);
+
+    void getSettingsProto(socket_message_PeripheralSettingsData &data);
 
     /* IMU FUNCTIONS */
     bool readImu();
