@@ -34,16 +34,15 @@ void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_m
     fd_res.imu = (USE_MPU6050 || USE_BNO055) ? true : false;
     fd_res.mag = (USE_HMC5883 || USE_BNO055) ? true : false;
     fd_res.bmp = USE_BMP180 ? true : false;
-    //fd_res.sonar = USE_USS ? true : false;
-    fd_res.sonar = fd_req.sonar_test; // Temporarily set to a variable for testing
+    fd_res.sonar = USE_USS ? true : false;
     fd_res.servo = USE_PCA9685 ? true : false;
     fd_res.ws2812 = USE_WS2812 ? true : false;
     fd_res.mdns = USE_MDNS ? true : false;
     fd_res.embed_www = EMBED_WEBAPP ? true : false;
-    fd_res.firmware_version = APP_VERSION;
-    fd_res.firmware_name = APP_NAME;
-    fd_res.firmware_built_target = BUILD_TARGET;
-    fd_res.variant = KINEMATICS_VARIANT_STR;
+    fd_res.firmware_version = const_cast<char*>(APP_VERSION);
+    fd_res.firmware_name = const_cast<char*>(APP_NAME);
+    fd_res.firmware_built_target = const_cast<char*>(BUILD_TARGET);
+    fd_res.variant = const_cast<char*>(KINEMATICS_VARIANT_STR);
 }
 
 
