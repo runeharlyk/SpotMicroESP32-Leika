@@ -1,9 +1,8 @@
 syntax = "proto3";
 
-
 package socket_message;
 
-
+// Partial data types
 message Vector { float x = 1; float y = 2; }
 message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; }
 message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
@@ -39,8 +38,6 @@ message FeaturesDataResponse {
 
 message FeaturesDataRequest { }
 
-
-
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -49,6 +46,7 @@ message CorrelationRequest {
         IMUCalibrateExecute imu_calibrate_execute = 30;
     }
 }
+
 message CorrelationResponse {
     uint32 correlation_id = 1;
     uint32 status_code = 2;
@@ -67,6 +65,7 @@ enum ModesEnum {
     STAND = 4;
     WALK = 5;
 }
+
 message StaticSystemInformation {
     string esp_platform = 1; 
     string firmware_version = 2; 
@@ -83,10 +82,12 @@ message StaticSystemInformation {
     string cpu_reset_reason = 13; 
 }
 
-
 message IMUCalibrateData { bool success = 1; }
+
 message IMUCalibrateExecute {}
+
 message ModeData { ModesEnum mode = 1; }
+
 message ControllerInputData {
     Vector left = 1;
     Vector right = 2;
@@ -94,6 +95,7 @@ message ControllerInputData {
     float speed = 4;
     float s1 = 5;
 }
+
 message AnalyticsData {
     int32 max_alloc_heap = 1;
     int32 psram_size = 2;
@@ -114,32 +116,46 @@ message ServoPWMData {
     int32 servo_id = 1;
     uint32 servo_pwm = 2;
 }
+
 message ServoStateData {
     bool active = 1;
 }
 
 message AnglesData { repeated int32 angles = 1; }
+
 message I2CScanData { repeated I2CDevice devices = 1; }
+
 message I2CScanDataRequest {}
+
 message PeripheralSettingsData { int32 sda = 1; int32 scl = 2; int32 frequency = 3; repeated PinConfig pins = 4; }
+
 message PeripheralSettingsDataRequest {}
+
 message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated KnownNetworkItem wifi_networks = 3; }
+
 message RSSIData { int32 rssi = 1; }
+
 message DownloadOTAData { string status = 1; int32 progress = 2; string error = 3; }
+
 message SonarData { string dummy_field = 1; }
+
 message HumanInputData {
     Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
 }
+
 message SystemInformation {
     AnalyticsData analytics_data = 1; StaticSystemInformation static_system_information = 2;
 }
+
 enum WalkGaits {
     TROT = 0;
     CRAWL = 1;
 }
+
 message WalkGaitData {
     WalkGaits gait = 1;
 }
+
 message KinematicData {
     float omega = 1;
     float phi = 2;
@@ -150,15 +166,15 @@ message KinematicData {
 }
 
 message SubscribeNotification { int32 tag = 1; }
+
 message UnsubscribeNotification {int32 tag = 1; }
 
 message PingMsg {}
+
 message PongMsg {}
 
-
 // WebSocket message wrapper
-// Only ONE field will be set at a time (oneof ensures this)
-message WebsocketMessage {
+message Message {
     oneof message {
         CorrelationRequest correlation_request = 10;
         CorrelationResponse correlation_response = 11;

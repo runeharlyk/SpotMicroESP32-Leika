@@ -2,7 +2,7 @@
 
 #include <pb_encode.h>
 #include <pb_decode.h>
-#include <platform_shared/websocket_message.pb.h>
+#include <platform_shared/message.pb.h>
 #include <functional>
 #include <map>
 
@@ -11,16 +11,16 @@
 template <typename T>
 struct MessageTraits;
 
-#define DEFINE_MESSAGE_TRAITS(DataType, field)                                                            \
-    template <>                                                                                           \
-    struct MessageTraits<socket_message_##DataType> {                                                     \
-        static constexpr pb_size_t tag = socket_message_WebsocketMessage_##field##_tag;                   \
-        static void assign(socket_message_WebsocketMessage& msg, const socket_message_##DataType& data) { \
-            msg.message.field = data;                                                                     \
-        }                                                                                                 \
-        static const socket_message_##DataType& access(const socket_message_WebsocketMessage& msg) {      \
-            return msg.message.field;                                                                     \
-        }                                                                                                 \
+#define DEFINE_MESSAGE_TRAITS(DataType, field)                                                   \
+    template <>                                                                                  \
+    struct MessageTraits<socket_message_##DataType> {                                            \
+        static constexpr pb_size_t tag = socket_message_Message_##field##_tag;                   \
+        static void assign(socket_message_Message& msg, const socket_message_##DataType& data) { \
+            msg.message.field = data;                                                            \
+        }                                                                                        \
+        static const socket_message_##DataType& access(const socket_message_Message& msg) {      \
+            return msg.message.field;                                                            \
+        }                                                                                        \
     };
 
 DEFINE_MESSAGE_TRAITS(IMUData, imu)
@@ -41,7 +41,6 @@ DEFINE_MESSAGE_TRAITS(ServoPWMData, servo_pwm)
 DEFINE_MESSAGE_TRAITS(ServoStateData, servo_state)
 DEFINE_MESSAGE_TRAITS(CorrelationRequest, correlation_request)
 DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
-
 
 #undef DEFINE_MESSAGE_TRAITS
 
@@ -65,20 +64,20 @@ class ProtoDecoder {
     bool decode(const uint8_t* data, size_t len, int clientId) {
         pb_istream_t stream = pb_istream_from_buffer(data, len);
 
-        if (!pb_decode(&stream, socket_message_WebsocketMessage_fields, &msg_)) {
+        if (!pb_decode(&stream, socket_message_Message_fields, &msg_)) {
             return false;
         }
 
         switch (msg_.which_message) {
-            case socket_message_WebsocketMessage_sub_notif_tag:
+            case socket_message_Message_sub_notif_tag:
                 if (subscribeHandler_) subscribeHandler_(msg_.message.sub_notif.tag, clientId);
                 return true;
 
-            case socket_message_WebsocketMessage_unsub_notif_tag:
+            case socket_message_Message_unsub_notif_tag:
                 if (unsubscribeHandler_) unsubscribeHandler_(msg_.message.unsub_notif.tag, clientId);
                 return true;
 
-            case socket_message_WebsocketMessage_pingmsg_tag:
+            case socket_message_Message_pingmsg_tag:
                 if (pingHandler_) pingHandler_(clientId);
                 return true;
 
@@ -94,7 +93,7 @@ class ProtoDecoder {
     }
 
   private:
-    socket_message_WebsocketMessage msg_ = socket_message_WebsocketMessage_init_zero;
+    socket_message_Message msg_ = socket_message_Message_init_zero;
     SubscribeHandler subscribeHandler_;
     UnsubscribeHandler unsubscribeHandler_;
     PingHandler pingHandler_;

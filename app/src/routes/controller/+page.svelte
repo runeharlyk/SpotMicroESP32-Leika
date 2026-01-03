@@ -5,7 +5,7 @@
     import { onMount } from 'svelte'
     import { mpu, socket } from '$lib/stores'
     import { imu } from '$lib/stores/imu'
-    import { IMUData } from '$lib/platform_shared/websocket_message'
+    import { IMUData } from '$lib/platform_shared/message'
 
     let layout = $derived($views.find(v => v.name === $selectedView)!)
 

@@ -42,7 +42,7 @@ class CommAdapterBase {
         MessageTraits<T>::assign(msg_, data);
 
         pb_ostream_t stream = pb_ostream_from_buffer(buffer_, sizeof(buffer_));
-        if (!pb_encode(&stream, socket_message_WebsocketMessage_fields, &msg_)) {
+        if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             return;
         }
 
@@ -86,10 +86,10 @@ class CommAdapterBase {
 
     void sendPong(int cid) {
         uint8_t pongBuffer[16];
-        msg_.which_message = socket_message_WebsocketMessage_pongmsg_tag;
+        msg_.which_message = socket_message_Message_pongmsg_tag;
         msg_.message.pongmsg = socket_message_PongMsg_init_zero;
         pb_ostream_t stream = pb_ostream_from_buffer(pongBuffer, sizeof(pongBuffer));
-        if (pb_encode(&stream, socket_message_WebsocketMessage_fields, &msg_)) {
+        if (pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             send(pongBuffer, stream.bytes_written, cid);
         }
     }
@@ -97,7 +97,7 @@ class CommAdapterBase {
     SemaphoreHandle_t mutex_;
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
-    socket_message_WebsocketMessage msg_ = socket_message_WebsocketMessage_init_zero;
+    socket_message_Message msg_ = socket_message_Message_init_zero;
     uint8_t buffer_[PROTO_BUFFER_SIZE];
 
   private:

@@ -1,4 +1,4 @@
-import { DownloadOTAData, RSSIData } from '$lib/platform_shared/websocket_message'
+import { DownloadOTAData, RSSIData } from '$lib/platform_shared/message'
 import { writable } from 'svelte/store'
 
 type telemetry_data_type = {

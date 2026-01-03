@@ -1,20 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { WebSocketServer } from 'ws'
 import { decodeMessage, MESSAGE_KEY_TO_TAG, socket } from '../../src/lib/stores/socket'
-import {
-    IMUData,
-    PingMsg,
-    PongMsg,
-    WebsocketMessage
-} from '../../src/lib/platform_shared/websocket_message'
+import { IMUData, PingMsg, PongMsg, Message } from '../../src/lib/platform_shared/message'
 
 // Helper function to create encoded WebSocket messages
 function createEncodedMessage(messageType: 'imu' | 'rssi' | 'mode', data: unknown): Uint8Array {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const message: any = {}
     message[messageType] = data
-    const wsMessage = WebsocketMessage.create(message)
-    return WebsocketMessage.encode(wsMessage).finish()
+    const wsMessage = Message.create(message)
+    return Message.encode(wsMessage).finish()
 }
 
 describe.sequential('WebSocket Integration Tests', () => {
@@ -130,7 +125,7 @@ describe.sequential('WebSocket Integration Tests', () => {
 
                     try {
                         // Decode the protobuf message
-                        const decoded = WebsocketMessage.decode(new Uint8Array(data))
+                        const decoded = Message.decode(new Uint8Array(data))
                         // console.log('Server: Decoded message:', JSON.stringify(decoded, null, 2))
 
                         // Only resolve if we got actual IMU data
@@ -193,9 +188,9 @@ describe.sequential('WebSocket Integration Tests', () => {
             setTimeout(() => {
                 console.log('Client: Sending invalid message type...')
                 // Send any invalid message type
-                const wsm = WebsocketMessage.create()
+                const wsm = Message.create()
                 try {
-                    socket.sendEvent(WebsocketMessage as any, wsm)
+                    socket.sendEvent(Message as any, wsm)
                     clearTimeout(timeout)
                     reject(new Error('Expected sendEvent to throw, but it did not'))
                 } catch (e) {
@@ -208,7 +203,7 @@ describe.sequential('WebSocket Integration Tests', () => {
     })
 })
 
-describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
+describe('Message Protobuf Encoding/Decoding', () => {
     it('should encode and decode IMU data correctly', () => {
         const imuData = IMUData.create({
             x: 3.25,
@@ -233,21 +228,17 @@ describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
     })
 
     it('should encode and decode two empty types correctly', () => {
-        const encoded_ping = WebsocketMessage.encode(
-            WebsocketMessage.create({ pingmsg: PingMsg.create() })
-        ).finish()
+        const encoded_ping = Message.encode(Message.create({ pingmsg: PingMsg.create() })).finish()
         const decoded_ping = decodeMessage(encoded_ping.buffer)
         expect(decoded_ping.tag).toBe(MESSAGE_KEY_TO_TAG.get('pingmsg'))
 
-        const encoded_pong = WebsocketMessage.encode(
-            WebsocketMessage.create({ pongmsg: PongMsg.create() })
-        ).finish()
+        const encoded_pong = Message.encode(Message.create({ pongmsg: PongMsg.create() })).finish()
         const decoded_pong = decodeMessage(encoded_pong.buffer)
         expect(decoded_pong.tag).toBe(MESSAGE_KEY_TO_TAG.get('pongmsg'))
     })
 
-    it('should encode and decode complete WebsocketMessage', () => {
-        const original = WebsocketMessage.create({
+    it('should encode and decode complete Message', () => {
+        const original = Message.create({
             imu: IMUData.create({
                 x: 3.25,
                 y: 2.5,
@@ -259,8 +250,8 @@ describe('WebsocketMessage Protobuf Encoding/Decoding', () => {
             })
         })
 
-        const encoded = WebsocketMessage.encode(original).finish()
-        const decoded = WebsocketMessage.decode(encoded)
+        const encoded = Message.encode(original).finish()
+        const decoded = Message.decode(encoded)
 
         expect(decoded.imu).toBeDefined()
         expect(decoded.imu?.x).toBe(3.25)

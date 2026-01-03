@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ModeData, ModesEnum } from '$lib/platform_shared/websocket_message'
+    import { ModeData, ModesEnum } from '$lib/platform_shared/message'
     import { mode } from '$lib/stores'
 
     const deactivate = async () => {

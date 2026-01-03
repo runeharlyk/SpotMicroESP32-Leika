@@ -1,7 +1,7 @@
 import { get } from 'svelte/store'
 import type { body_state_t } from './kinematic'
 import { currentKinematic } from './stores/featureFlags'
-import { HumanInputData, WalkGaits } from './platform_shared/websocket_message'
+import { HumanInputData, WalkGaits } from './platform_shared/message'
 
 export interface gait_state_t {
     step_height: number

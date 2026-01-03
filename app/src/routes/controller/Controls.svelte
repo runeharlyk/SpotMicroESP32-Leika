@@ -14,12 +14,7 @@
     import { VerticalSlider } from '$lib/components/input'
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { notifications } from '$lib/components/toasts/notifications'
-    import {
-        ModeData,
-        ModesEnum,
-        WalkGaitData,
-        WalkGaits
-    } from '$lib/platform_shared/websocket_message'
+    import { ModeData, ModesEnum, WalkGaitData, WalkGaits } from '$lib/platform_shared/message'
 
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager

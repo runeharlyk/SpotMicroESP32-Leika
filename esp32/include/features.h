@@ -3,7 +3,7 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>
-#include "platform_shared/websocket_message.pb.h"
+#include "platform_shared/message.pb.h"
 
 #define FT_ENABLED(feature) feature
 

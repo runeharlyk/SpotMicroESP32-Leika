@@ -32,7 +32,7 @@
         RSSIData,
         SonarData,
         WalkGaitData
-    } from '$lib/platform_shared/websocket_message'
+    } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
 
     interface Props {
@@ -82,7 +82,7 @@
                     servoAngles.set(data)
                 }),
                 socket.on(PingMsg, data => {
-                    console.log("Ping received!")
+                    console.log('Ping received!')
                 })
             ]
         )

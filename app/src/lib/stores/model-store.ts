@@ -6,7 +6,7 @@ import {
     ModesEnum,
     WalkGaitData,
     WalkGaits
-} from '$lib/platform_shared/websocket_message'
+} from '$lib/platform_shared/message'
 import { persistentStore } from '$lib/utilities/svelte-utilities'
 import { writable, type Writable } from 'svelte/store'
 
