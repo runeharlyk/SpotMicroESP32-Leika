@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ESPmDNS.h>
-#include <PsychicHttp.h>
+#include <communication/http_server.h>
 #include <WiFi.h>
 #include <filesystem.h>
 #include <global.h>
@@ -13,16 +13,16 @@
 #include "platform_shared/message.pb.h"
 
 namespace system_service {
-esp_err_t handleReset(PsychicRequest *request);
-esp_err_t handleRestart(PsychicRequest *request);
-esp_err_t handleSleep(PsychicRequest *request);
+esp_err_t handleReset(HttpRequest& request);
+esp_err_t handleRestart(HttpRequest& request);
+esp_err_t handleSleep(HttpRequest& request);
+esp_err_t getStatus(HttpRequest& request);
 
 void reset();
 void restart();
 void sleep();
-void status(JsonObject &root);
 void getAnalytics(socket_message_AnalyticsData &analytics);
 void getStaticSystemInformation(socket_message_StaticSystemInformation &info);
 
-const char *resetReason(esp_reset_reason_t reason);
+const char* resetReason(esp_reset_reason_t reason);
 } // namespace system_service

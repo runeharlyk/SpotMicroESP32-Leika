@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PsychicHttp.h>
+#include <communication/http_server.h>
 #include <ESPmDNS.h>
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
@@ -11,8 +11,8 @@
 
 class MDNSService : public StatefulService<MDNSSettings> {
   private:
-    FSPersistence<MDNSSettings> _persistence;
-    bool _started {false};
+    FSPersistence<MDNSSettings, socket_message_MDNSSettingsData> _persistence;
+    bool _started{false};
 
     void reconfigureMDNS();
     void startMDNS();
@@ -25,10 +25,10 @@ class MDNSService : public StatefulService<MDNSSettings> {
 
     void begin();
 
-    esp_err_t getStatus(PsychicRequest *request);
-    void getStatus(JsonVariant &root);
+    esp_err_t getStatus(HttpRequest& request);
+    void getStatus(socket_message_MDNSStatusData& proto);
 
-    static esp_err_t queryServices(PsychicRequest *request, JsonVariant &json);
+    esp_err_t queryServices(HttpRequest& request);
 
-    StatefulHttpEndpoint<MDNSSettings> endpoint;
+    StatefulHttpEndpoint<MDNSSettings, socket_message_MDNSSettingsData> endpoint;
 };

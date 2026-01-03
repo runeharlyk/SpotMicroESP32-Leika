@@ -1,6 +1,8 @@
+#pragma once
+
 #include <Arduino.h>
 #include <template/state_result.h>
-#include <ArduinoJson.h>
+#include <platform_shared/message.pb.h>
 #include <string>
 
 #ifndef FACTORY_NTP_ENABLED
@@ -26,18 +28,18 @@ class NTPSettings {
     std::string tzFormat;
     std::string server;
 
-    static void read(NTPSettings &settings, JsonVariant &root) {
-        root["enabled"] = settings.enabled;
-        root["server"] = settings.server.c_str();
-        root["tz_label"] = settings.tzLabel.c_str();
-        root["tz_format"] = settings.tzFormat.c_str();
+    static void read(const NTPSettings& settings, socket_message_NTPSettingsData& proto) {
+        proto.enabled = settings.enabled;
+        strlcpy(proto.server, settings.server.c_str(), sizeof(proto.server));
+        strlcpy(proto.tz_label, settings.tzLabel.c_str(), sizeof(proto.tz_label));
+        strlcpy(proto.tz_format, settings.tzFormat.c_str(), sizeof(proto.tz_format));
     }
 
-    static StateUpdateResult update(JsonVariant &root, NTPSettings &settings) {
-        settings.enabled = root["enabled"] | FACTORY_NTP_ENABLED;
-        settings.server = root["server"] | FACTORY_NTP_SERVER;
-        settings.tzLabel = root["tz_label"] | FACTORY_NTP_TIME_ZONE_LABEL;
-        settings.tzFormat = root["tz_format"] | FACTORY_NTP_TIME_ZONE_FORMAT;
+    static StateUpdateResult update(const socket_message_NTPSettingsData& proto, NTPSettings& settings) {
+        settings.enabled = proto.enabled;
+        settings.server = strlen(proto.server) > 0 ? proto.server : FACTORY_NTP_SERVER;
+        settings.tzLabel = strlen(proto.tz_label) > 0 ? proto.tz_label : FACTORY_NTP_TIME_ZONE_LABEL;
+        settings.tzFormat = strlen(proto.tz_format) > 0 ? proto.tz_format : FACTORY_NTP_TIME_ZONE_FORMAT;
         return StateUpdateResult::CHANGED;
     }
 };

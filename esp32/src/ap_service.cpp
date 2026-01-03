@@ -1,22 +1,21 @@
 #include <ap_service.h>
 
-static const char *TAG = "APService";
+static const char* TAG = "APService";
 
 APService::APService()
-    : endpoint(APSettings::read, APSettings::update, this),
-      _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
+    : endpoint(APSettings::read, APSettings::update, this, socket_message_APSettingsData_fields),
+      _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE, socket_message_APSettingsData_fields) {
+    addUpdateHandler([&](const std::string& originId) { reconfigureAP(); }, false);
 }
 
 APService::~APService() {}
 
 void APService::begin() { _persistence.readFromFS(); }
 
-esp_err_t APService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
-    status(root);
-    return response.send();
+esp_err_t APService::getStatus(HttpRequest& request) {
+    socket_message_APStatusData proto = socket_message_APStatusData_init_zero;
+    status(proto);
+    return request.replyProto(proto, socket_message_APStatusData_fields);
 }
 
 void APService::status(JsonObject &root) {
@@ -73,7 +72,7 @@ void APService::startAP() {
     WiFi.softAP(state().ssid.c_str(), state().password.c_str(), state().channel, state().ssidHidden,
                 state().maxClients);
 #if CONFIG_IDF_TARGET_ESP32C3
-    WiFi.setTxPower(WIFI_POWER_8_5dBm); // https://www.wemos.cc/en/latest/c3/c3_mini_1_0_0.html#about-wifi
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
 #endif
     if (!_dnsServer) {
         IPAddress apIp = WiFi.softAPIP();

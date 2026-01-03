@@ -2,7 +2,7 @@
 
 #include <esp32-hal.h>
 
-#if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
+#if CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/rtc.h"
 #ifndef ESP_PLATFORM_NAME
 #define ESP_PLATFORM_NAME "ESP32"

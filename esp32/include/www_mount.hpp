@@ -1,5 +1,6 @@
 #pragma once
-#include <PsychicHttp.h>
+
+#include <communication/http_server.h>
 #include "WWWData.h"
 
-void mountStaticAssets(PsychicHttpServer& s);
+void mountStaticAssets(HttpServer& server);

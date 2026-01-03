@@ -1,6 +1,9 @@
+#pragma once
+
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
 #include <template/stateful_persistence.h>
+#include <communication/http_server.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <WiFi.h>
@@ -16,17 +19,16 @@ class APService : public StatefulService<APSettings> {
     void loop();
     void recoveryMode();
 
-    esp_err_t getStatus(PsychicRequest *request);
-    void status(JsonObject &root);
+    esp_err_t getStatus(HttpRequest& request);
+    void status(socket_message_APStatusData& proto);
     APNetworkStatus getAPNetworkStatus();
 
-    StatefulHttpEndpoint<APSettings> endpoint;
+    StatefulHttpEndpoint<APSettings, socket_message_APSettingsData> endpoint;
 
   private:
-    PsychicHttpServer *_server;
-    FSPersistence<APSettings> _persistence;
+    FSPersistence<APSettings, socket_message_APSettingsData> _persistence;
 
-    DNSServer *_dnsServer;
+    DNSServer* _dnsServer;
 
     volatile unsigned long _lastManaged;
     volatile boolean _reconfigureAp;

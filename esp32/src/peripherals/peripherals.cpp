@@ -1,8 +1,10 @@
 #include <peripherals/peripherals.h>
 
 Peripherals::Peripherals()
-    : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this),
-      _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE) {
+    : endpoint(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this,
+               socket_message_PeripheralSettingsData_fields),
+      _persistence(PeripheralsConfiguration::read, PeripheralsConfiguration::update, this, DEVICE_CONFIG_FILE,
+                   socket_message_PeripheralSettingsData_fields) {
     _accessMutex = xSemaphoreCreateMutex();
     addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
 }
@@ -91,7 +93,6 @@ void Peripherals::getSettingsProto(socket_message_PeripheralSettingsData &data) 
     data.sda = state().sda;
     data.scl = state().scl;
     data.frequency = state().frequency;
-    data.pins_count = 0;
 }
 
 /* IMU FUNCTIONS */

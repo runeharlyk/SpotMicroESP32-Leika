@@ -1,9 +1,10 @@
 #pragma once
 
 #include <WiFi.h>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/message.pb.h>
 #include <string>
+#include <vector>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""
@@ -34,10 +35,10 @@ typedef struct {
     IPAddress dnsIP2;
     bool available;
 
-    void serialize(JsonVariant &json) const {
-        json["ssid"] = ssid.c_str();
-        json["password"] = password.c_str();
-        json["static_ip_config"] = staticIPConfig;
+    void toProto(socket_message_KnownNetworkItem& item) const {
+        strlcpy(item.ssid, ssid.c_str(), sizeof(item.ssid));
+        strlcpy(item.password, password.c_str(), sizeof(item.password));
+        item.static_ip = staticIPConfig;
         if (staticIPConfig) {
             json["local_ip"] = (uint32_t)(localIP);
             json["gateway_ip"] = (uint32_t)(gatewayIP);
@@ -47,16 +48,14 @@ typedef struct {
         }
     }
 
-    bool deserialize(const JsonVariant &json) {
-        std::string newSsid = json["ssid"].as<std::string>();
-        std::string newPassword = json["password"].as<std::string>();
-        if (newSsid.length() < 1 || newSsid.length() > 31 || newPassword.length() > 64) {
+    bool fromProto(const socket_message_KnownNetworkItem& item) {
+        ssid = item.ssid;
+        password = item.password;
+        if (ssid.length() < 1 || ssid.length() > 31 || password.length() > 64) {
             ESP_LOGE("WiFiSettings", "SSID or password length is invalid");
             return false;
         }
-        ssid = newSsid;
-        password = newPassword;
-        staticIPConfig = json["static_ip_config"] | false;
+        staticIPConfig = item.static_ip;
         if (staticIPConfig) {
             localIP = IPAddress(json["local_ip"] | 0u);
             gatewayIP = IPAddress(json["gateway_ip"] | 0u);
@@ -76,11 +75,10 @@ typedef struct {
         available = false;
         return true;
     }
-
 } wifi_settings_t;
 
 inline wifi_settings_t createDefaultWiFiSettings() {
-    return wifi_settings_t {
+    return wifi_settings_t{
         .ssid = FACTORY_WIFI_SSID,
         .bssid = {0},
         .channel = -1,
@@ -100,35 +98,30 @@ class WiFiSettings {
     std::string hostname;
     bool priorityBySignalStrength;
     std::vector<wifi_settings_t> wifiSettings;
-    static void read(WiFiSettings &settings, JsonVariant &root) {
-        root["hostname"] = settings.hostname.c_str();
-        root["priority_RSSI"] = settings.priorityBySignalStrength;
-        JsonArray wifiNetworks = root["wifi_networks"].to<JsonArray>();
-        for (const auto &wifi : settings.wifiSettings) {
-            JsonVariant wifiNetwork = wifiNetworks.add<JsonVariant>();
-            wifi.serialize(wifiNetwork);
+    
+    static void read(const WiFiSettings& settings, socket_message_WifiSettingsData& proto) {
+        strlcpy(proto.hostname, settings.hostname.c_str(), sizeof(proto.hostname));
+        proto.priority_rssi = settings.priorityBySignalStrength;
+        proto.wifi_networks_count = std::min((size_t)8, settings.wifiSettings.size());
+        for (size_t i = 0; i < proto.wifi_networks_count; i++) {
+            settings.wifiSettings[i].toProto(proto.wifi_networks[i]);
         }
         ESP_LOGV("WiFiSettings", "WiFi Settings read");
     }
-    static StateUpdateResult update(JsonVariant &root, WiFiSettings &settings) {
-        settings.hostname = root["hostname"] | FACTORY_WIFI_HOSTNAME;
-        settings.priorityBySignalStrength = root["priority_RSSI"] | true;
+    
+    static StateUpdateResult update(const socket_message_WifiSettingsData& proto, WiFiSettings& settings) {
+        settings.hostname = strlen(proto.hostname) > 0 ? proto.hostname : FACTORY_WIFI_HOSTNAME;
+        settings.priorityBySignalStrength = proto.priority_rssi;
         settings.wifiSettings.clear();
-        if (root["wifi_networks"].is<JsonArray>()) {
-            JsonArray wifiNetworks = root["wifi_networks"];
-            int networkCount = 0;
-            for (JsonVariant wifiNetwork : wifiNetworks) {
-                if (networkCount >= 5) {
-                    ESP_LOGE("WiFiSettings", "Too many wifi networks");
-                    break;
-                }
-                wifi_settings_t newSettings;
-                if (newSettings.deserialize(wifiNetwork)) {
-                    settings.wifiSettings.push_back(newSettings);
-                    networkCount++;
-                }
+        
+        for (size_t i = 0; i < proto.wifi_networks_count && i < 8; i++) {
+            wifi_settings_t newSettings;
+            if (newSettings.fromProto(proto.wifi_networks[i])) {
+                settings.wifiSettings.push_back(newSettings);
             }
-        } else if (std::string(FACTORY_WIFI_SSID).length() > 0) {
+        }
+        
+        if (settings.wifiSettings.empty() && std::string(FACTORY_WIFI_SSID).length() > 0) {
             ESP_LOGI("WiFiSettings", "No WiFi config found - using factory settings");
             settings.wifiSettings.push_back(createDefaultWiFiSettings());
         }

@@ -1,34 +1,23 @@
-#ifndef FSPersistence_h
-#define FSPersistence_h
-
-/**
- *   ESP32 SvelteKit
- *
- *   A simple, secure and extensible framework for IoT projects for ESP32 platforms
- *   with responsive Sveltekit front-end built with TailwindCSS and DaisyUI.
- *   https://github.com/theelims/ESP32-sveltekit
- *
- *   Copyright (C) 2018 - 2023 rjwats
- *   Copyright (C) 2023 theelims
- *   Copyright (C) 2025 runeharlyk
- *
- *   All Rights Reserved. This software may be modified and distributed under
- *   the terms of the LGPL v3 license. See the LICENSE file for details.
- **/
+#pragma once
 
 #include <FS.h>
 #include <template/stateful_service.h>
 #include <filesystem.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
 
-template <class T>
+#define PROTO_FILE_BUFFER_SIZE 2048
+
+template <class T, class ProtoT>
 class FSPersistence {
   public:
-    FSPersistence(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
-                  const char *filePath)
+    FSPersistence(ProtoStateReader<T, ProtoT> stateReader, ProtoStateUpdater<T, ProtoT> stateUpdater, 
+                  StatefulService<T>* statefulService, const char* filePath, const pb_msgdesc_t* fields)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
           _filePath(filePath),
+          _fields(fields),
           _updateHandlerId(0) {
         enableUpdateHandler();
     }
@@ -37,40 +26,48 @@ class FSPersistence {
         File settingsFile = _fs->open(_filePath, "r");
 
         if (settingsFile) {
-            JsonDocument jsonDocument;
-            DeserializationError error = deserializeJson(jsonDocument, settingsFile);
-            if (error == DeserializationError::Ok) {
-                JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
-                _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
+            size_t fileSize = settingsFile.size();
+            if (fileSize > 0 && fileSize <= PROTO_FILE_BUFFER_SIZE) {
+                uint8_t buffer[PROTO_FILE_BUFFER_SIZE];
+                size_t bytesRead = settingsFile.read(buffer, fileSize);
                 settingsFile.close();
-                return;
+                
+                if (bytesRead == fileSize) {
+                    ProtoT proto = {};
+                    pb_istream_t stream = pb_istream_from_buffer(buffer, fileSize);
+                    if (pb_decode(&stream, _fields, &proto)) {
+                        _statefulService->updateWithoutPropagation(proto, _stateUpdater);
+                        return;
+                    }
+                }
             }
             settingsFile.close();
         }
 
-        // If we reach here we have not been successful in loading the config
-        // and hard-coded defaults are now applied. The settings are then
-        // written back to the file system so the defaults persist between
-        // resets. This last step is required as in some cases defaults contain
-        // randomly generated values which would otherwise be modified on reset.
         applyDefaults();
         writeToFS();
     }
 
     bool writeToFS() {
-        JsonDocument jsonDocument;
-        JsonVariant jsonObject = jsonDocument.to<JsonVariant>();
-        _statefulService->read(jsonObject, _stateReader);
+        ProtoT proto = {};
+        _statefulService->read(proto, _stateReader);
+
+        uint8_t buffer[PROTO_FILE_BUFFER_SIZE];
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+        
+        if (!pb_encode(&stream, _fields, &proto)) {
+            ESP_LOGE("FSPersistence", "Failed to encode proto");
+            return false;
+        }
 
         mkdirs();
 
         File file = _fs->open(_filePath, "w");
-
         if (!file) return false;
 
-        serializeJson(jsonDocument, file);
+        size_t written = file.write(buffer, stream.bytes_written);
         file.close();
-        return true;
+        return written == stream.bytes_written;
     }
 
     void disableUpdateHandler() {
@@ -82,22 +79,19 @@ class FSPersistence {
 
     void enableUpdateHandler() {
         if (!_updateHandlerId) {
-            _updateHandlerId = _statefulService->addUpdateHandler([&](const std::string &originId) { writeToFS(); });
+            _updateHandlerId = _statefulService->addUpdateHandler([&](const std::string& originId) { writeToFS(); });
         }
     }
 
   private:
-    JsonStateReader<T> _stateReader;
-    JsonStateUpdater<T> _stateUpdater;
-    StatefulService<T> *_statefulService;
-    FS *_fs {&ESP_FS};
-    const char *_filePath;
-    size_t _bufferSize;
+    ProtoStateReader<T, ProtoT> _stateReader;
+    ProtoStateUpdater<T, ProtoT> _stateUpdater;
+    StatefulService<T>* _statefulService;
+    FS* _fs{&ESP_FS};
+    const char* _filePath;
+    const pb_msgdesc_t* _fields;
     HandlerId _updateHandlerId;
 
-    // We assume we have a _filePath with format
-    // "/directory1/directory2/filename" We create a directory for each missing
-    // parent
     void mkdirs() {
         std::string path(_filePath);
         size_t index = 0;
@@ -108,13 +102,8 @@ class FSPersistence {
     }
 
   protected:
-    // We assume the updater supplies sensible defaults if an empty object
-    // is supplied, this virtual function allows that to be changed.
     virtual void applyDefaults() {
-        JsonDocument jsonDocument;
-        JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
-        _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
+        ProtoT proto = {};
+        _statefulService->updateWithoutPropagation(proto, _stateUpdater);
     }
 };
-
-#endif // end FSPersistence

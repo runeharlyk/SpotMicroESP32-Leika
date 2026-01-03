@@ -20,11 +20,87 @@ socket_message.StaticSystemInformation.sdk_version type:FT_POINTER
 socket_message.StaticSystemInformation.arduino_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
+socket_message.ServoSettingsData.servos max_count:12
+
+socket_message.APSettingsData.ssid max_size:33
+socket_message.APSettingsData.password max_size:64
+socket_message.APSettingsData.local_ip max_size:16
+socket_message.APSettingsData.gateway_ip max_size:16
+socket_message.APSettingsData.subnet_mask max_size:16
+
+socket_message.APStatusData.ip_address max_size:16
+socket_message.APStatusData.mac_address max_size:18
+
+socket_message.NetworkInfo.ssid max_size:33
+socket_message.NetworkInfo.bssid max_size:18
+
+socket_message.NetworkListData.networks max_count:20
+
+socket_message.NetworkStatusData.local_ip max_size:16
+socket_message.NetworkStatusData.mac_address max_size:18
+socket_message.NetworkStatusData.ssid max_size:33
+socket_message.NetworkStatusData.bssid max_size:18
+socket_message.NetworkStatusData.subnet_mask max_size:16
+socket_message.NetworkStatusData.gateway_ip max_size:16
+socket_message.NetworkStatusData.dns_ip_1 max_size:16
+socket_message.NetworkStatusData.dns_ip_2 max_size:16
+
+socket_message.MDNSTxtRecord.key max_size:32
+socket_message.MDNSTxtRecord.value max_size:64
+
+socket_message.MDNSServiceConfig.service max_size:32
+socket_message.MDNSServiceConfig.protocol max_size:8
+socket_message.MDNSServiceConfig.txt_records max_count:10
+
+socket_message.MDNSSettingsData.hostname max_size:64
+socket_message.MDNSSettingsData.instance max_size:64
+socket_message.MDNSSettingsData.services max_count:10
+socket_message.MDNSSettingsData.global_txt_records max_count:10
+
+socket_message.MDNSStatusData.hostname max_size:64
+socket_message.MDNSStatusData.instance max_size:64
+socket_message.MDNSStatusData.services max_count:10
+
+socket_message.MDNSQueryRequest.service max_size:32
+socket_message.MDNSQueryRequest.protocol max_size:8
+
+socket_message.MDNSQueryResult.hostname max_size:64
+socket_message.MDNSQueryResult.address max_size:16
+socket_message.MDNSQueryResult.txt_records max_count:10
+
+socket_message.MDNSQueryResponse.services max_count:10
+
+socket_message.FileEntry.name max_size:64
+socket_message.FileListData.files max_count:32
+socket_message.FileListData.path max_size:128
+socket_message.FileDeleteRequest.file max_size:128
+socket_message.FileEditRequest.file max_size:128
+socket_message.FileEditRequest.content max_size:4096
+socket_message.FileMkdirRequest.path max_size:128
+socket_message.FileContentData.content max_size:4096
+
+socket_message.SystemStatusData.esp_platform max_size:32
+socket_message.SystemStatusData.firmware_version max_size:16
+socket_message.SystemStatusData.cpu_type max_size:32
+socket_message.SystemStatusData.sdk_version max_size:32
+socket_message.SystemStatusData.arduino_version max_size:16
+socket_message.SystemStatusData.cpu_reset_reason max_size:64
+
+socket_message.NTPSettingsData.server max_size:64
+socket_message.NTPSettingsData.tz_label max_size:32
+socket_message.NTPSettingsData.tz_format max_size:64
+
+socket_message.StaticSystemInformation.esp_platform max_size:32
+socket_message.StaticSystemInformation.firmware_version max_size:16
+socket_message.StaticSystemInformation.cpu_type max_size:32
+socket_message.StaticSystemInformation.sdk_version max_size:32
+socket_message.StaticSystemInformation.arduino_version max_size:16
+socket_message.StaticSystemInformation.cpu_reset_reason max_size:32
+
 socket_message.AnglesData.angles max_count:12
 
 socket_message.I2CScanData.devices max_count:16
 
-socket_message.PeripheralSettingsData.pins max_count:32
 
 socket_message.WifiSettingsData.hostname max_size:32
 socket_message.WifiSettingsData.wifi_networks max_count:8
@@ -34,7 +110,7 @@ socket_message.DownloadOTAData.error max_size:64
 
 socket_message.SonarData.dummy_field max_size:16
 
-socket_message.FeaturesDataResponse.variant type:FT_POINTER
-socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
-socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
-socket_message.FeaturesDataResponse.firmware_version type:FT_POINTER
+socket_message.FeaturesDataResponse.variant max_size:32
+socket_message.FeaturesDataResponse.firmware_built_target max_size:32
+socket_message.FeaturesDataResponse.firmware_name max_size:32
+socket_message.FeaturesDataResponse.firmware_version max_size:16

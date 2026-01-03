@@ -1,5 +1,4 @@
-#ifndef ServoController_h
-#define ServoController_h
+#pragma once
 
 #include <Adafruit_PWMServoDriver.h>
 #include <communication/websocket_adapter.h>
@@ -9,9 +8,6 @@
 #include <utils/math_utils.h>
 #include <settings/servo_settings.h>
 
-/*
- * Servo Settings
- */
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
 #endif
@@ -25,8 +21,8 @@ enum class SERVO_CONTROL_STATE { DEACTIVATED, PWM, ANGLE };
 class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
-        : endpoint(ServoSettings::read, ServoSettings::update, this),
-          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE) {}
+        : endpoint(ServoSettings::read, ServoSettings::update, this, socket_message_ServoSettingsData_fields),
+          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE, socket_message_ServoSettingsData_fields) {}
 
     void begin() {
         _persistence.readFromFS();
@@ -82,7 +78,7 @@ class ServoController : public StatefulService<ServoSettings> {
         uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.1);
-            auto &servo = state().servos[i];
+            auto& servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.centerAngle;
             uint16_t pwm = angle * servo.conversion + servo.centerPwm;
             pwms[i] = pwm = std::clamp<uint16_t>(pwm, 125, 600);
@@ -94,7 +90,7 @@ class ServoController : public StatefulService<ServoSettings> {
         if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
     }
 
-    StatefulHttpEndpoint<ServoSettings> endpoint;
+    StatefulHttpEndpoint<ServoSettings, socket_message_ServoSettingsData> endpoint;
 
   private:
     void initializePCA() {
@@ -103,15 +99,13 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
         _pca.sleep();
     }
-    FSPersistence<ServoSettings> _persistence;
+    FSPersistence<ServoSettings, socket_message_ServoSettingsData> _persistence;
 
     Adafruit_PWMServoDriver _pca;
 
     SERVO_CONTROL_STATE control_state = SERVO_CONTROL_STATE::DEACTIVATED;
 
-    bool is_active {false};
+    bool is_active{false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };
-
-#endif

@@ -2,21 +2,21 @@
 
 namespace system_service {
 
-static const char *TAG = "SystemService";
+static const char* TAG = "SystemService";
 
-esp_err_t handleReset(PsychicRequest *request) {
+esp_err_t handleReset(HttpRequest& request) {
     reset();
-    return request->reply(200);
+    return request.reply(200);
 }
 
-esp_err_t handleRestart(PsychicRequest *request) {
+esp_err_t handleRestart(HttpRequest& request) {
     restart();
-    return request->reply(200);
+    return request.reply(200);
 }
 
-esp_err_t handleSleep(PsychicRequest *request) {
+esp_err_t handleSleep(HttpRequest& request) {
     sleep();
-    return request->reply(200);
+    return request.reply(200);
 }
 
 void reset() {
@@ -33,7 +33,7 @@ void reset() {
 
 void restart() {
     xTaskCreate(
-        [](void *pvParameters) {
+        [](void* pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
@@ -48,7 +48,7 @@ void restart() {
 
 void sleep() {
     xTaskCreate(
-        [](void *pvParameters) {
+        [](void* pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
                 MDNS.end();
@@ -90,7 +90,7 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
 }
 
-void getAnalytics(socket_message_AnalyticsData &analytics) {
+void getAnalytics(socket_message_AnalyticsData& analytics) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
@@ -106,7 +106,7 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     analytics.uptime = esp_timer_get_time() / 1000;
 }
 
-const char *resetReason(esp_reset_reason_t reason) {
+const char* resetReason(esp_reset_reason_t reason) {
     switch (reason) {
         case ESP_RST_UNKNOWN: return "Reset reason can not be determined";
         case ESP_RST_POWERON: return "Reset due to power-on event";

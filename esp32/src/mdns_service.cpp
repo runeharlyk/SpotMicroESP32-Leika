@@ -1,11 +1,12 @@
 #include <mdns_service.h>
 
-static const char *TAG = "MDNSService";
+static const char* TAG = "MDNSService";
 
 MDNSService::MDNSService()
-    : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
-      endpoint(MDNSSettings::read, MDNSSettings::update, this) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
+    : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE,
+                   socket_message_MDNSSettingsData_fields),
+      endpoint(MDNSSettings::read, MDNSSettings::update, this, socket_message_MDNSSettingsData_fields) {
+    addUpdateHandler([&](const std::string& originId) { reconfigureMDNS(); }, false);
 }
 
 MDNSService::~MDNSService() {
@@ -49,52 +50,55 @@ void MDNSService::stopMDNS() {
 }
 
 void MDNSService::addServices() {
-    for (const auto &service : state().services) {
+    for (const auto& service : state().services) {
         MDNS.addService(service.service.c_str(), service.protocol.c_str(), service.port);
 
-        for (const auto &txt : service.txtRecords) {
+        for (const auto& txt : service.txtRecords) {
             MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
         }
     }
 
-    for (const auto &txt : state().globalTxtRecords) {
-        for (const auto &service : state().services) {
+    for (const auto& txt : state().globalTxtRecords) {
+        for (const auto& service : state().services) {
             MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
         }
     }
 }
 
-esp_err_t MDNSService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
-    getStatus(root);
-    return response.send();
+esp_err_t MDNSService::getStatus(HttpRequest& request) {
+    socket_message_MDNSStatusData proto = socket_message_MDNSStatusData_init_zero;
+    getStatus(proto);
+    return request.replyProto(proto, socket_message_MDNSStatusData_fields);
 }
 
-void MDNSService::getStatus(JsonVariant &root) {
-    state().read(state(), root);
-    root["started"] = _started;
+void MDNSService::getStatus(socket_message_MDNSStatusData& proto) {
+    strlcpy(proto.hostname, state().hostname.c_str(), sizeof(proto.hostname));
+    strlcpy(proto.instance, state().instance.c_str(), sizeof(proto.instance));
+    proto.services_count = std::min((pb_size_t)10, (pb_size_t)state().services.size());
+    for (pb_size_t i = 0; i < proto.services_count; i++) {
+        state().services[i].toProto(proto.services[i]);
+    }
 }
 
-esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json) {
-    std::string service = json["service"].as<std::string>();
-    std::string proto = json["protocol"].as<std::string>();
+esp_err_t MDNSService::queryServices(HttpRequest& request) {
+    socket_message_MDNSQueryRequest queryReq = socket_message_MDNSQueryRequest_init_zero;
+    if (!request.decodeProto(queryReq, socket_message_MDNSQueryRequest_fields)) {
+        return request.reply(400);
+    }
 
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
+    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", queryReq.service, queryReq.protocol);
 
-    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
-
-    int n = MDNS.queryService(service.c_str(), proto.c_str());
+    int n = MDNS.queryService(queryReq.service, queryReq.protocol);
     ESP_LOGI(TAG, "Found %d services", n);
 
-    JsonArray servicesArray = root["services"].to<JsonArray>();
-    for (int i = 0; i < n; i++) {
-        JsonVariant serviceObj = servicesArray.add<JsonVariant>();
-        serviceObj["name"] = MDNS.hostname(i);
-        serviceObj["ip"] = MDNS.IP(i);
-        serviceObj["port"] = MDNS.port(i);
+    socket_message_MDNSQueryResponse response = socket_message_MDNSQueryResponse_init_zero;
+    response.services_count = std::min(n, 10);
+
+    for (int i = 0; i < (int)response.services_count; i++) {
+        strlcpy(response.services[i].hostname, MDNS.hostname(i).c_str(), sizeof(response.services[i].hostname));
+        strlcpy(response.services[i].address, MDNS.IP(i).toString().c_str(), sizeof(response.services[i].address));
+        response.services[i].port = MDNS.port(i);
     }
 
-    return response.send();
+    return request.replyProto(response, socket_message_MDNSQueryResponse_fields);
 }

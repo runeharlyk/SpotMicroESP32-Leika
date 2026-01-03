@@ -1,15 +1,14 @@
 #pragma once
 
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/message.pb.h>
 
 typedef struct {
     float centerPwm;
     float direction;
     float centerAngle;
     float conversion;
-    const char *name;
-    // bool enable;
+    const char* name;
 } servo_settings_t;
 
 class ServoSettings {
@@ -19,29 +18,23 @@ class ServoSettings {
         {306, -1, 0, 2.2, "Servo4"}, {306, -1, 45, 2.1055555, "Servo5"},  {306, -1, -90, 1.96923, "Servo6"},
         {306, 1, 0, 2.2, "Servo7"},  {306, 1, -45, 2.1055555, "Servo8"},  {306, 1, 90, 1.96923, "Servo9"},
         {306, 1, 0, 2.2, "Servo10"}, {306, -1, 45, 2.1055555, "Servo11"}, {306, -1, -90, 1.96923, "Servo12"}};
-    static void read(ServoSettings &settings, JsonVariant &root) {
-        JsonArray servos = root["servos"].to<JsonArray>();
-        for (auto &servo : settings.servos) {
-            JsonVariant newServo = servos.add<JsonVariant>();
-            newServo["center_pwm"] = servo.centerPwm;
-            newServo["direction"] = servo.direction;
-            newServo["center_angle"] = servo.centerAngle;
-            newServo["conversion"] = servo.conversion;
+
+    static void read(const ServoSettings& settings, socket_message_ServoSettingsData& proto) {
+        proto.servos_count = 12;
+        for (int i = 0; i < 12; i++) {
+            proto.servos[i].center_pwm = settings.servos[i].centerPwm;
+            proto.servos[i].direction = settings.servos[i].direction;
+            proto.servos[i].center_angle = settings.servos[i].centerAngle;
+            proto.servos[i].conversion = settings.servos[i].conversion;
         }
     }
-    static StateUpdateResult update(JsonVariant &root, ServoSettings &settings) {
-        if (root["servos"].is<JsonArray>()) {
-            JsonArray servosJson = root["servos"];
-            int i = 0;
-            for (auto servo : servosJson) {
-                JsonVariant servoObject = servo.as<JsonVariant>();
-                uint8_t servoId = i; // servoObject["id"].as<uint8_t>();
-                settings.servos[servoId].centerPwm = servoObject["center_pwm"].as<float>();
-                settings.servos[servoId].centerAngle = servoObject["center_angle"].as<float>();
-                settings.servos[servoId].direction = servoObject["direction"].as<float>();
-                settings.servos[servoId].conversion = servoObject["conversion"].as<float>();
-                i++;
-            }
+
+    static StateUpdateResult update(const socket_message_ServoSettingsData& proto, ServoSettings& settings) {
+        for (size_t i = 0; i < proto.servos_count && i < 12; i++) {
+            settings.servos[i].centerPwm = proto.servos[i].center_pwm;
+            settings.servos[i].centerAngle = proto.servos[i].center_angle;
+            settings.servos[i].direction = proto.servos[i].direction;
+            settings.servos[i].conversion = proto.servos[i].conversion;
         }
         ESP_LOGI("ServoController", "Updating servo data");
         return StateUpdateResult::CHANGED;

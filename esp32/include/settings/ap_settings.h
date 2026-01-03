@@ -1,8 +1,8 @@
 #pragma once
 
 #include <WiFi.h>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/message.pb.h>
 #include <string>
 
 #include <DNSServer.h>
@@ -71,7 +71,7 @@ class APSettings {
     IPAddress gatewayIP;
     IPAddress subnetMask;
 
-    bool operator==(const APSettings &settings) const {
+    bool operator==(const APSettings& settings) const {
         return provisionMode == settings.provisionMode && ssid == settings.ssid && password == settings.password &&
                channel == settings.channel && ssidHidden == settings.ssidHidden && maxClients == settings.maxClients &&
                localIP == settings.localIP && gatewayIP == settings.gatewayIP && subnetMask == settings.subnetMask;
@@ -89,21 +89,36 @@ class APSettings {
         root["subnet_mask"] = (uint32_t)(settings.subnetMask);
     }
 
-    static StateUpdateResult update(JsonVariant &root, APSettings &settings) {
+    static StateUpdateResult update(const socket_message_APSettingsData& proto, APSettings& settings) {
         APSettings newSettings = {};
-        newSettings.provisionMode = root["provision_mode"] | FACTORY_AP_PROVISION_MODE;
-        switch (settings.provisionMode) {
+        newSettings.provisionMode = proto.provision_mode;
+        switch (newSettings.provisionMode) {
             case AP_MODE_ALWAYS:
             case AP_MODE_DISCONNECTED:
             case AP_MODE_NEVER: break;
             default: newSettings.provisionMode = AP_MODE_DISCONNECTED;
         }
-        newSettings.ssid = root["ssid"] | FACTORY_AP_SSID;
-        newSettings.password = root["password"] | FACTORY_AP_PASSWORD;
-        newSettings.channel = root["channel"] | FACTORY_AP_CHANNEL;
-        newSettings.ssidHidden = root["ssid_hidden"] | FACTORY_AP_SSID_HIDDEN;
-        newSettings.maxClients = root["max_clients"] | FACTORY_AP_MAX_CLIENTS;
+        newSettings.ssid = strlen(proto.ssid) > 0 ? proto.ssid : FACTORY_AP_SSID;
+        newSettings.password = strlen(proto.password) > 0 ? proto.password : FACTORY_AP_PASSWORD;
+        newSettings.channel = proto.channel > 0 ? proto.channel : FACTORY_AP_CHANNEL;
+        newSettings.ssidHidden = proto.ssid_hidden;
+        newSettings.maxClients = proto.max_clients > 0 ? proto.max_clients : FACTORY_AP_MAX_CLIENTS;
 
+        if (strlen(proto.local_ip) > 0) {
+            newSettings.localIP.fromString(proto.local_ip);
+        } else {
+            newSettings.localIP.fromString(FACTORY_AP_LOCAL_IP);
+        }
+        if (strlen(proto.gateway_ip) > 0) {
+            newSettings.gatewayIP.fromString(proto.gateway_ip);
+        } else {
+            newSettings.gatewayIP.fromString(FACTORY_AP_GATEWAY_IP);
+        }
+        if (strlen(proto.subnet_mask) > 0) {
+            newSettings.subnetMask.fromString(proto.subnet_mask);
+        } else {
+            newSettings.subnetMask.fromString(FACTORY_AP_SUBNET_MASK);
+        }
         newSettings.localIP = IPAddress(root["local_ip"] | parseIPv4(FACTORY_AP_LOCAL_IP));
         newSettings.gatewayIP = IPAddress(root["gateway_ip"] | parseIPv4(FACTORY_AP_GATEWAY_IP));
         newSettings.subnetMask = IPAddress(root["subnet_mask"] | parseIPv4(FACTORY_AP_SUBNET_MASK));

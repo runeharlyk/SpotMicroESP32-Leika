@@ -1,9 +1,10 @@
 #pragma once
 
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/message.pb.h>
 #include <filesystem.h>
 #include <string>
+#include <vector>
 
 #ifndef FACTORY_MDNS_HOSTNAME
 #define FACTORY_MDNS_HOSTNAME "esp32"
@@ -17,15 +18,14 @@ typedef struct {
     std::string key;
     std::string value;
 
-    void serialize(JsonVariant &json) const {
-        json["key"] = key.c_str();
-        json["value"] = value.c_str();
+    void toProto(socket_message_MDNSTxtRecord& proto) const {
+        strlcpy(proto.key, key.c_str(), sizeof(proto.key));
+        strlcpy(proto.value, value.c_str(), sizeof(proto.value));
     }
 
-    bool deserialize(const JsonVariant &json) {
-        key = json["key"].as<std::string>();
-        value = json["value"].as<std::string>();
-
+    bool fromProto(const socket_message_MDNSTxtRecord& proto) {
+        key = proto.key;
+        value = proto.value;
         return key.length() > 0;
     }
 } mdns_txt_record_t;
@@ -36,33 +36,26 @@ typedef struct {
     uint16_t port;
     std::vector<mdns_txt_record_t> txtRecords;
 
-    void serialize(JsonVariant &json) const {
-        json["service"] = service.c_str();
-        json["protocol"] = protocol.c_str();
-        json["port"] = port;
-
-        if (txtRecords.size() > 0) {
-            JsonArray txtArray = json["txt_records"].to<JsonArray>();
-            for (const auto &txt : txtRecords) {
-                JsonVariant txtObj = txtArray.add<JsonVariant>();
-                txt.serialize(txtObj);
-            }
+    void toProto(socket_message_MDNSServiceConfig& proto) const {
+        strlcpy(proto.service, service.c_str(), sizeof(proto.service));
+        strlcpy(proto.protocol, protocol.c_str(), sizeof(proto.protocol));
+        proto.port = port;
+        proto.txt_records_count = std::min((pb_size_t)10, (pb_size_t)txtRecords.size());
+        for (pb_size_t i = 0; i < proto.txt_records_count; i++) {
+            txtRecords[i].toProto(proto.txt_records[i]);
         }
     }
 
-    bool deserialize(const JsonVariant &json) {
-        service = json["service"].as<std::string>();
-        protocol = json["protocol"].as<std::string>();
-        port = json["port"] | 0;
+    bool fromProto(const socket_message_MDNSServiceConfig& proto) {
+        service = proto.service;
+        protocol = proto.protocol;
+        port = proto.port;
 
         txtRecords.clear();
-        if (json["txt_records"].is<JsonArray>()) {
-            JsonArray txtArray = json["txt_records"];
-            for (JsonVariant txtObj : txtArray) {
-                mdns_txt_record_t txt;
-                if (txt.deserialize(txtObj)) {
-                    txtRecords.push_back(txt);
-                }
+        for (pb_size_t i = 0; i < proto.txt_records_count; i++) {
+            mdns_txt_record_t txt;
+            if (txt.fromProto(proto.txt_records[i])) {
+                txtRecords.push_back(txt);
             }
         }
 
@@ -77,35 +70,30 @@ class MDNSSettings {
     std::vector<mdns_service_t> services;
     std::vector<mdns_txt_record_t> globalTxtRecords;
 
-    static void read(MDNSSettings &settings, JsonVariant &root) {
-        root["hostname"] = settings.hostname.c_str();
-        root["instance"] = settings.instance.c_str();
+    static void read(const MDNSSettings& settings, socket_message_MDNSSettingsData& proto) {
+        strlcpy(proto.hostname, settings.hostname.c_str(), sizeof(proto.hostname));
+        strlcpy(proto.instance, settings.instance.c_str(), sizeof(proto.instance));
 
-        JsonArray servicesArray = root["services"].to<JsonArray>();
-        for (const auto &service : settings.services) {
-            JsonVariant serviceObj = servicesArray.add<JsonVariant>();
-            service.serialize(serviceObj);
+        proto.services_count = std::min((pb_size_t)10, (pb_size_t)settings.services.size());
+        for (pb_size_t i = 0; i < proto.services_count; i++) {
+            settings.services[i].toProto(proto.services[i]);
         }
 
-        JsonArray txtArray = root["global_txt_records"].to<JsonArray>();
-        for (const auto &txt : settings.globalTxtRecords) {
-            JsonVariant txtObj = txtArray.add<JsonVariant>();
-            txt.serialize(txtObj);
+        proto.global_txt_records_count = std::min((pb_size_t)10, (pb_size_t)settings.globalTxtRecords.size());
+        for (pb_size_t i = 0; i < proto.global_txt_records_count; i++) {
+            settings.globalTxtRecords[i].toProto(proto.global_txt_records[i]);
         }
     }
 
-    static StateUpdateResult update(JsonVariant &root, MDNSSettings &settings) {
-        settings.hostname = root["hostname"] | FACTORY_MDNS_HOSTNAME;
-        settings.instance = root["instance"] | FACTORY_MDNS_INSTANCE;
+    static StateUpdateResult update(const socket_message_MDNSSettingsData& proto, MDNSSettings& settings) {
+        settings.hostname = strlen(proto.hostname) > 0 ? proto.hostname : FACTORY_MDNS_HOSTNAME;
+        settings.instance = strlen(proto.instance) > 0 ? proto.instance : FACTORY_MDNS_INSTANCE;
 
         settings.services.clear();
-        if (root["services"].is<JsonArray>()) {
-            JsonArray servicesArray = root["services"];
-            for (JsonVariant serviceObj : servicesArray) {
-                mdns_service_t service;
-                if (service.deserialize(serviceObj)) {
-                    settings.services.push_back(service);
-                }
+        for (pb_size_t i = 0; i < proto.services_count; i++) {
+            mdns_service_t service;
+            if (service.fromProto(proto.services[i])) {
+                settings.services.push_back(service);
             }
         }
 
@@ -118,13 +106,10 @@ class MDNSSettings {
         }
 
         settings.globalTxtRecords.clear();
-        if (root["global_txt_records"].is<JsonArray>()) {
-            JsonArray txtArray = root["global_txt_records"];
-            for (JsonVariant txtObj : txtArray) {
-                mdns_txt_record_t txt;
-                if (txt.deserialize(txtObj)) {
-                    settings.globalTxtRecords.push_back(txt);
-                }
+        for (pb_size_t i = 0; i < proto.global_txt_records_count; i++) {
+            mdns_txt_record_t txt;
+            if (txt.fromProto(proto.global_txt_records[i])) {
+                settings.globalTxtRecords.push_back(txt);
             }
         }
 
