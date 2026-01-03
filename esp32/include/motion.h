@@ -1,7 +1,6 @@
 #ifndef MotionService_h
 #define MotionService_h
 
-#include <ArduinoJson.h>
 #include "esp_timer.h"
 
 #include <kinematics.h>
@@ -22,23 +21,23 @@ class MotionService {
   public:
     void begin();
 
-    void anglesEvent(JsonVariant &root, int originId);
+    void handleAngles(const socket_message_AnglesData& data);
 
-    void handleInput(JsonVariant &root, int originId);
+    void handleInput(const socket_message_HumanInputData& data);
 
-    void handleWalkGait(JsonVariant &root, int originId);
+    void handleWalkGait(const socket_message_WalkGaitData& data);
 
-    void handleMode(JsonVariant &root, int originId);
+    void handleMode(const socket_message_ModeData& data);
 
-    void setState(MotionState *newState);
+    void setState(MotionState* newState);
 
     void handleGestures(const gesture_t ges);
 
-    bool update(Peripherals *peripherals);
+    bool update(Peripherals* peripherals);
 
     bool update_angles(float new_angles[12], float angles[12]);
 
-    float *getAngles() { return angles; }
+    float* getAngles() { return angles; }
 
     inline bool isActive() { return state != nullptr; }
 
@@ -49,7 +48,7 @@ class MotionService {
 
     friend class MotionState;
 
-    MotionState *state = nullptr;
+    MotionState* state = nullptr;
 
     RestState restState;
     StandState standState;
