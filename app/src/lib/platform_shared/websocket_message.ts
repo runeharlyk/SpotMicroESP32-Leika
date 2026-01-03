@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import { messageTypeRegistry } from "./typeRegistry";
+import type { FileDescriptorProto } from "ts-proto-descriptors";
 
 export const protobufPackage = "socket_message";
 
@@ -101,20 +101,17 @@ export function walkGaitsToJSON(object: WalkGaits): string {
 }
 
 export interface Vector {
-  $type: "socket_message.Vector";
   x: number;
   y: number;
 }
 
 export interface I2CDevice {
-  $type: "socket_message.I2CDevice";
   address: number;
   partNumber: string;
   name: string;
 }
 
 export interface PinConfig {
-  $type: "socket_message.PinConfig";
   pin: number;
   mode: string;
   type: string;
@@ -122,7 +119,6 @@ export interface PinConfig {
 }
 
 export interface KnownNetworkItem {
-  $type: "socket_message.KnownNetworkItem";
   ssid: string;
   password: string;
   staticIp: boolean;
@@ -135,7 +131,6 @@ export interface KnownNetworkItem {
 
 /** Individual message data types */
 export interface IMUData {
-  $type: "socket_message.IMUData";
   x: number;
   y: number;
   z: number;
@@ -146,7 +141,6 @@ export interface IMUData {
 }
 
 export interface FeaturesDataResponse {
-  $type: "socket_message.FeaturesDataResponse";
   variant: string;
   firmwareBuiltTarget: string;
   firmwareName: string;
@@ -163,12 +157,10 @@ export interface FeaturesDataResponse {
 }
 
 export interface FeaturesDataRequest {
-  $type: "socket_message.FeaturesDataRequest";
   sonarTest: boolean;
 }
 
 export interface CorrelationRequest {
-  $type: "socket_message.CorrelationRequest";
   correlationId: number;
   featuresDataRequest?: FeaturesDataRequest | undefined;
   i2cScanDataRequest?: I2CScanDataRequest | undefined;
@@ -176,7 +168,6 @@ export interface CorrelationRequest {
 }
 
 export interface CorrelationResponse {
-  $type: "socket_message.CorrelationResponse";
   correlationId: number;
   statusCode: number;
   featuresDataResponse?: FeaturesDataResponse | undefined;
@@ -185,7 +176,6 @@ export interface CorrelationResponse {
 }
 
 export interface StaticSystemInformation {
-  $type: "socket_message.StaticSystemInformation";
   espPlatform: string;
   firmwareVersion: string;
   cpuFreqMhz: number;
@@ -202,21 +192,17 @@ export interface StaticSystemInformation {
 }
 
 export interface IMUCalibrateData {
-  $type: "socket_message.IMUCalibrateData";
   success: boolean;
 }
 
 export interface IMUCalibrateExecute {
-  $type: "socket_message.IMUCalibrateExecute";
 }
 
 export interface ModeData {
-  $type: "socket_message.ModeData";
   mode: ModesEnum;
 }
 
 export interface ControllerInputData {
-  $type: "socket_message.ControllerInputData";
   left: Vector | undefined;
   right: Vector | undefined;
   height: number;
@@ -225,7 +211,6 @@ export interface ControllerInputData {
 }
 
 export interface AnalyticsData {
-  $type: "socket_message.AnalyticsData";
   maxAllocHeap: number;
   psramSize: number;
   freePsram: number;
@@ -242,32 +227,26 @@ export interface AnalyticsData {
 }
 
 export interface ServoPWMData {
-  $type: "socket_message.ServoPWMData";
   servoId: number;
   servoPwm: number;
 }
 
 export interface ServoStateData {
-  $type: "socket_message.ServoStateData";
   active: boolean;
 }
 
 export interface AnglesData {
-  $type: "socket_message.AnglesData";
   angles: number[];
 }
 
 export interface I2CScanData {
-  $type: "socket_message.I2CScanData";
   devices: I2CDevice[];
 }
 
 export interface I2CScanDataRequest {
-  $type: "socket_message.I2CScanDataRequest";
 }
 
 export interface PeripheralSettingsData {
-  $type: "socket_message.PeripheralSettingsData";
   sda: number;
   scl: number;
   frequency: number;
@@ -275,35 +254,29 @@ export interface PeripheralSettingsData {
 }
 
 export interface PeripheralSettingsDataRequest {
-  $type: "socket_message.PeripheralSettingsDataRequest";
 }
 
 export interface WifiSettingsData {
-  $type: "socket_message.WifiSettingsData";
   hostname: string;
   priorityRssi: boolean;
   wifiNetworks: KnownNetworkItem[];
 }
 
 export interface RSSIData {
-  $type: "socket_message.RSSIData";
   rssi: number;
 }
 
 export interface DownloadOTAData {
-  $type: "socket_message.DownloadOTAData";
   status: string;
   progress: number;
   error: string;
 }
 
 export interface SonarData {
-  $type: "socket_message.SonarData";
   dummyField: string;
 }
 
 export interface HumanInputData {
-  $type: "socket_message.HumanInputData";
   left: Vector | undefined;
   right: Vector | undefined;
   height: number;
@@ -312,18 +285,15 @@ export interface HumanInputData {
 }
 
 export interface SystemInformation {
-  $type: "socket_message.SystemInformation";
   analyticsData: AnalyticsData | undefined;
   staticSystemInformation: StaticSystemInformation | undefined;
 }
 
 export interface WalkGaitData {
-  $type: "socket_message.WalkGaitData";
   gait: WalkGaits;
 }
 
 export interface KinematicData {
-  $type: "socket_message.KinematicData";
   omega: number;
   phi: number;
   psi: number;
@@ -333,21 +303,17 @@ export interface KinematicData {
 }
 
 export interface SubscribeNotification {
-  $type: "socket_message.SubscribeNotification";
   tag: number;
 }
 
 export interface UnsubscribeNotification {
-  $type: "socket_message.UnsubscribeNotification";
   tag: number;
 }
 
 export interface PingMsg {
-  $type: "socket_message.PingMsg";
 }
 
 export interface PongMsg {
-  $type: "socket_message.PongMsg";
 }
 
 /**
@@ -355,7 +321,6 @@ export interface PongMsg {
  * Only ONE field will be set at a time (oneof ensures this)
  */
 export interface WebsocketMessage {
-  $type: "socket_message.WebsocketMessage";
   correlationRequest?: CorrelationRequest | undefined;
   correlationResponse?: CorrelationResponse | undefined;
   subNotif?: SubscribeNotification | undefined;
@@ -383,12 +348,10 @@ export interface WebsocketMessage {
 }
 
 function createBaseVector(): Vector {
-  return { $type: "socket_message.Vector", x: 0, y: 0 };
+  return { x: 0, y: 0 };
 }
 
-export const Vector: MessageFns<Vector, "socket_message.Vector"> = {
-  $type: "socket_message.Vector" as const,
-
+export const Vector: MessageFns<Vector> = {
   encode(message: Vector, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.x !== 0) {
       writer.uint32(13).float(message.x);
@@ -433,7 +396,6 @@ export const Vector: MessageFns<Vector, "socket_message.Vector"> = {
 
   fromJSON(object: any): Vector {
     return {
-      $type: Vector.$type,
       x: isSet(object.x) ? globalThis.Number(object.x) : 0,
       y: isSet(object.y) ? globalThis.Number(object.y) : 0,
     };
@@ -450,10 +412,10 @@ export const Vector: MessageFns<Vector, "socket_message.Vector"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<Vector>): Vector {
-    return Vector.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<Vector>, I>>(base?: I): Vector {
+    return Vector.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<Vector>): Vector {
+  fromPartial<I extends Exact<DeepPartial<Vector>, I>>(object: I): Vector {
     const message = createBaseVector();
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
@@ -461,15 +423,11 @@ export const Vector: MessageFns<Vector, "socket_message.Vector"> = {
   },
 };
 
-messageTypeRegistry.set(Vector.$type, Vector);
-
 function createBaseI2CDevice(): I2CDevice {
-  return { $type: "socket_message.I2CDevice", address: 0, partNumber: "", name: "" };
+  return { address: 0, partNumber: "", name: "" };
 }
 
-export const I2CDevice: MessageFns<I2CDevice, "socket_message.I2CDevice"> = {
-  $type: "socket_message.I2CDevice" as const,
-
+export const I2CDevice: MessageFns<I2CDevice> = {
   encode(message: I2CDevice, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.address !== 0) {
       writer.uint32(8).int32(message.address);
@@ -525,7 +483,6 @@ export const I2CDevice: MessageFns<I2CDevice, "socket_message.I2CDevice"> = {
 
   fromJSON(object: any): I2CDevice {
     return {
-      $type: I2CDevice.$type,
       address: isSet(object.address) ? globalThis.Number(object.address) : 0,
       partNumber: isSet(object.partNumber) ? globalThis.String(object.partNumber) : "",
       name: isSet(object.name) ? globalThis.String(object.name) : "",
@@ -546,10 +503,10 @@ export const I2CDevice: MessageFns<I2CDevice, "socket_message.I2CDevice"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<I2CDevice>): I2CDevice {
-    return I2CDevice.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<I2CDevice>, I>>(base?: I): I2CDevice {
+    return I2CDevice.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<I2CDevice>): I2CDevice {
+  fromPartial<I extends Exact<DeepPartial<I2CDevice>, I>>(object: I): I2CDevice {
     const message = createBaseI2CDevice();
     message.address = object.address ?? 0;
     message.partNumber = object.partNumber ?? "";
@@ -558,15 +515,11 @@ export const I2CDevice: MessageFns<I2CDevice, "socket_message.I2CDevice"> = {
   },
 };
 
-messageTypeRegistry.set(I2CDevice.$type, I2CDevice);
-
 function createBasePinConfig(): PinConfig {
-  return { $type: "socket_message.PinConfig", pin: 0, mode: "", type: "", role: "" };
+  return { pin: 0, mode: "", type: "", role: "" };
 }
 
-export const PinConfig: MessageFns<PinConfig, "socket_message.PinConfig"> = {
-  $type: "socket_message.PinConfig" as const,
-
+export const PinConfig: MessageFns<PinConfig> = {
   encode(message: PinConfig, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.pin !== 0) {
       writer.uint32(8).int32(message.pin);
@@ -633,7 +586,6 @@ export const PinConfig: MessageFns<PinConfig, "socket_message.PinConfig"> = {
 
   fromJSON(object: any): PinConfig {
     return {
-      $type: PinConfig.$type,
       pin: isSet(object.pin) ? globalThis.Number(object.pin) : 0,
       mode: isSet(object.mode) ? globalThis.String(object.mode) : "",
       type: isSet(object.type) ? globalThis.String(object.type) : "",
@@ -658,10 +610,10 @@ export const PinConfig: MessageFns<PinConfig, "socket_message.PinConfig"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<PinConfig>): PinConfig {
-    return PinConfig.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<PinConfig>, I>>(base?: I): PinConfig {
+    return PinConfig.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<PinConfig>): PinConfig {
+  fromPartial<I extends Exact<DeepPartial<PinConfig>, I>>(object: I): PinConfig {
     const message = createBasePinConfig();
     message.pin = object.pin ?? 0;
     message.mode = object.mode ?? "";
@@ -671,11 +623,8 @@ export const PinConfig: MessageFns<PinConfig, "socket_message.PinConfig"> = {
   },
 };
 
-messageTypeRegistry.set(PinConfig.$type, PinConfig);
-
 function createBaseKnownNetworkItem(): KnownNetworkItem {
   return {
-    $type: "socket_message.KnownNetworkItem",
     ssid: "",
     password: "",
     staticIp: false,
@@ -687,9 +636,7 @@ function createBaseKnownNetworkItem(): KnownNetworkItem {
   };
 }
 
-export const KnownNetworkItem: MessageFns<KnownNetworkItem, "socket_message.KnownNetworkItem"> = {
-  $type: "socket_message.KnownNetworkItem" as const,
-
+export const KnownNetworkItem: MessageFns<KnownNetworkItem> = {
   encode(message: KnownNetworkItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.ssid !== "") {
       writer.uint32(10).string(message.ssid);
@@ -800,7 +747,6 @@ export const KnownNetworkItem: MessageFns<KnownNetworkItem, "socket_message.Know
 
   fromJSON(object: any): KnownNetworkItem {
     return {
-      $type: KnownNetworkItem.$type,
       ssid: isSet(object.ssid) ? globalThis.String(object.ssid) : "",
       password: isSet(object.password) ? globalThis.String(object.password) : "",
       staticIp: isSet(object.staticIp) ? globalThis.Boolean(object.staticIp) : false,
@@ -841,10 +787,10 @@ export const KnownNetworkItem: MessageFns<KnownNetworkItem, "socket_message.Know
     return obj;
   },
 
-  create(base?: DeepPartial<KnownNetworkItem>): KnownNetworkItem {
-    return KnownNetworkItem.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(base?: I): KnownNetworkItem {
+    return KnownNetworkItem.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<KnownNetworkItem>): KnownNetworkItem {
+  fromPartial<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(object: I): KnownNetworkItem {
     const message = createBaseKnownNetworkItem();
     message.ssid = object.ssid ?? "";
     message.password = object.password ?? "";
@@ -858,15 +804,11 @@ export const KnownNetworkItem: MessageFns<KnownNetworkItem, "socket_message.Know
   },
 };
 
-messageTypeRegistry.set(KnownNetworkItem.$type, KnownNetworkItem);
-
 function createBaseIMUData(): IMUData {
-  return { $type: "socket_message.IMUData", x: 0, y: 0, z: 0, heading: 0, altitude: 0, bmpTemp: 0, pressure: 0 };
+  return { x: 0, y: 0, z: 0, heading: 0, altitude: 0, bmpTemp: 0, pressure: 0 };
 }
 
-export const IMUData: MessageFns<IMUData, "socket_message.IMUData"> = {
-  $type: "socket_message.IMUData" as const,
-
+export const IMUData: MessageFns<IMUData> = {
   encode(message: IMUData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.x !== 0) {
       writer.uint32(13).float(message.x);
@@ -966,7 +908,6 @@ export const IMUData: MessageFns<IMUData, "socket_message.IMUData"> = {
 
   fromJSON(object: any): IMUData {
     return {
-      $type: IMUData.$type,
       x: isSet(object.x) ? globalThis.Number(object.x) : 0,
       y: isSet(object.y) ? globalThis.Number(object.y) : 0,
       z: isSet(object.z) ? globalThis.Number(object.z) : 0,
@@ -1003,10 +944,10 @@ export const IMUData: MessageFns<IMUData, "socket_message.IMUData"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<IMUData>): IMUData {
-    return IMUData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<IMUData>, I>>(base?: I): IMUData {
+    return IMUData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<IMUData>): IMUData {
+  fromPartial<I extends Exact<DeepPartial<IMUData>, I>>(object: I): IMUData {
     const message = createBaseIMUData();
     message.x = object.x ?? 0;
     message.y = object.y ?? 0;
@@ -1019,11 +960,8 @@ export const IMUData: MessageFns<IMUData, "socket_message.IMUData"> = {
   },
 };
 
-messageTypeRegistry.set(IMUData.$type, IMUData);
-
 function createBaseFeaturesDataResponse(): FeaturesDataResponse {
   return {
-    $type: "socket_message.FeaturesDataResponse",
     variant: "",
     firmwareBuiltTarget: "",
     firmwareName: "",
@@ -1040,9 +978,7 @@ function createBaseFeaturesDataResponse(): FeaturesDataResponse {
   };
 }
 
-export const FeaturesDataResponse: MessageFns<FeaturesDataResponse, "socket_message.FeaturesDataResponse"> = {
-  $type: "socket_message.FeaturesDataResponse" as const,
-
+export const FeaturesDataResponse: MessageFns<FeaturesDataResponse> = {
   encode(message: FeaturesDataResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.variant !== "") {
       writer.uint32(82).string(message.variant);
@@ -1208,7 +1144,6 @@ export const FeaturesDataResponse: MessageFns<FeaturesDataResponse, "socket_mess
 
   fromJSON(object: any): FeaturesDataResponse {
     return {
-      $type: FeaturesDataResponse.$type,
       variant: isSet(object.variant) ? globalThis.String(object.variant) : "",
       firmwareBuiltTarget: isSet(object.firmwareBuiltTarget) ? globalThis.String(object.firmwareBuiltTarget) : "",
       firmwareName: isSet(object.firmwareName) ? globalThis.String(object.firmwareName) : "",
@@ -1269,10 +1204,10 @@ export const FeaturesDataResponse: MessageFns<FeaturesDataResponse, "socket_mess
     return obj;
   },
 
-  create(base?: DeepPartial<FeaturesDataResponse>): FeaturesDataResponse {
-    return FeaturesDataResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<FeaturesDataResponse>, I>>(base?: I): FeaturesDataResponse {
+    return FeaturesDataResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<FeaturesDataResponse>): FeaturesDataResponse {
+  fromPartial<I extends Exact<DeepPartial<FeaturesDataResponse>, I>>(object: I): FeaturesDataResponse {
     const message = createBaseFeaturesDataResponse();
     message.variant = object.variant ?? "";
     message.firmwareBuiltTarget = object.firmwareBuiltTarget ?? "";
@@ -1291,15 +1226,11 @@ export const FeaturesDataResponse: MessageFns<FeaturesDataResponse, "socket_mess
   },
 };
 
-messageTypeRegistry.set(FeaturesDataResponse.$type, FeaturesDataResponse);
-
 function createBaseFeaturesDataRequest(): FeaturesDataRequest {
-  return { $type: "socket_message.FeaturesDataRequest", sonarTest: false };
+  return { sonarTest: false };
 }
 
-export const FeaturesDataRequest: MessageFns<FeaturesDataRequest, "socket_message.FeaturesDataRequest"> = {
-  $type: "socket_message.FeaturesDataRequest" as const,
-
+export const FeaturesDataRequest: MessageFns<FeaturesDataRequest> = {
   encode(message: FeaturesDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.sonarTest !== false) {
       writer.uint32(8).bool(message.sonarTest);
@@ -1332,10 +1263,7 @@ export const FeaturesDataRequest: MessageFns<FeaturesDataRequest, "socket_messag
   },
 
   fromJSON(object: any): FeaturesDataRequest {
-    return {
-      $type: FeaturesDataRequest.$type,
-      sonarTest: isSet(object.sonarTest) ? globalThis.Boolean(object.sonarTest) : false,
-    };
+    return { sonarTest: isSet(object.sonarTest) ? globalThis.Boolean(object.sonarTest) : false };
   },
 
   toJSON(message: FeaturesDataRequest): unknown {
@@ -1346,21 +1274,18 @@ export const FeaturesDataRequest: MessageFns<FeaturesDataRequest, "socket_messag
     return obj;
   },
 
-  create(base?: DeepPartial<FeaturesDataRequest>): FeaturesDataRequest {
-    return FeaturesDataRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<FeaturesDataRequest>, I>>(base?: I): FeaturesDataRequest {
+    return FeaturesDataRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<FeaturesDataRequest>): FeaturesDataRequest {
+  fromPartial<I extends Exact<DeepPartial<FeaturesDataRequest>, I>>(object: I): FeaturesDataRequest {
     const message = createBaseFeaturesDataRequest();
     message.sonarTest = object.sonarTest ?? false;
     return message;
   },
 };
 
-messageTypeRegistry.set(FeaturesDataRequest.$type, FeaturesDataRequest);
-
 function createBaseCorrelationRequest(): CorrelationRequest {
   return {
-    $type: "socket_message.CorrelationRequest",
     correlationId: 0,
     featuresDataRequest: undefined,
     i2cScanDataRequest: undefined,
@@ -1368,9 +1293,7 @@ function createBaseCorrelationRequest(): CorrelationRequest {
   };
 }
 
-export const CorrelationRequest: MessageFns<CorrelationRequest, "socket_message.CorrelationRequest"> = {
-  $type: "socket_message.CorrelationRequest" as const,
-
+export const CorrelationRequest: MessageFns<CorrelationRequest> = {
   encode(message: CorrelationRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.correlationId !== 0) {
       writer.uint32(8).uint32(message.correlationId);
@@ -1437,7 +1360,6 @@ export const CorrelationRequest: MessageFns<CorrelationRequest, "socket_message.
 
   fromJSON(object: any): CorrelationRequest {
     return {
-      $type: CorrelationRequest.$type,
       correlationId: isSet(object.correlationId) ? globalThis.Number(object.correlationId) : 0,
       featuresDataRequest: isSet(object.featuresDataRequest)
         ? FeaturesDataRequest.fromJSON(object.featuresDataRequest)
@@ -1468,10 +1390,10 @@ export const CorrelationRequest: MessageFns<CorrelationRequest, "socket_message.
     return obj;
   },
 
-  create(base?: DeepPartial<CorrelationRequest>): CorrelationRequest {
-    return CorrelationRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<CorrelationRequest>, I>>(base?: I): CorrelationRequest {
+    return CorrelationRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<CorrelationRequest>): CorrelationRequest {
+  fromPartial<I extends Exact<DeepPartial<CorrelationRequest>, I>>(object: I): CorrelationRequest {
     const message = createBaseCorrelationRequest();
     message.correlationId = object.correlationId ?? 0;
     message.featuresDataRequest = (object.featuresDataRequest !== undefined && object.featuresDataRequest !== null)
@@ -1487,11 +1409,8 @@ export const CorrelationRequest: MessageFns<CorrelationRequest, "socket_message.
   },
 };
 
-messageTypeRegistry.set(CorrelationRequest.$type, CorrelationRequest);
-
 function createBaseCorrelationResponse(): CorrelationResponse {
   return {
-    $type: "socket_message.CorrelationResponse",
     correlationId: 0,
     statusCode: 0,
     featuresDataResponse: undefined,
@@ -1500,9 +1419,7 @@ function createBaseCorrelationResponse(): CorrelationResponse {
   };
 }
 
-export const CorrelationResponse: MessageFns<CorrelationResponse, "socket_message.CorrelationResponse"> = {
-  $type: "socket_message.CorrelationResponse" as const,
-
+export const CorrelationResponse: MessageFns<CorrelationResponse> = {
   encode(message: CorrelationResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.correlationId !== 0) {
       writer.uint32(8).uint32(message.correlationId);
@@ -1580,7 +1497,6 @@ export const CorrelationResponse: MessageFns<CorrelationResponse, "socket_messag
 
   fromJSON(object: any): CorrelationResponse {
     return {
-      $type: CorrelationResponse.$type,
       correlationId: isSet(object.correlationId) ? globalThis.Number(object.correlationId) : 0,
       statusCode: isSet(object.statusCode) ? globalThis.Number(object.statusCode) : 0,
       featuresDataResponse: isSet(object.featuresDataResponse)
@@ -1611,10 +1527,10 @@ export const CorrelationResponse: MessageFns<CorrelationResponse, "socket_messag
     return obj;
   },
 
-  create(base?: DeepPartial<CorrelationResponse>): CorrelationResponse {
-    return CorrelationResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<CorrelationResponse>, I>>(base?: I): CorrelationResponse {
+    return CorrelationResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<CorrelationResponse>): CorrelationResponse {
+  fromPartial<I extends Exact<DeepPartial<CorrelationResponse>, I>>(object: I): CorrelationResponse {
     const message = createBaseCorrelationResponse();
     message.correlationId = object.correlationId ?? 0;
     message.statusCode = object.statusCode ?? 0;
@@ -1631,11 +1547,8 @@ export const CorrelationResponse: MessageFns<CorrelationResponse, "socket_messag
   },
 };
 
-messageTypeRegistry.set(CorrelationResponse.$type, CorrelationResponse);
-
 function createBaseStaticSystemInformation(): StaticSystemInformation {
   return {
-    $type: "socket_message.StaticSystemInformation",
     espPlatform: "",
     firmwareVersion: "",
     cpuFreqMhz: 0,
@@ -1652,9 +1565,7 @@ function createBaseStaticSystemInformation(): StaticSystemInformation {
   };
 }
 
-export const StaticSystemInformation: MessageFns<StaticSystemInformation, "socket_message.StaticSystemInformation"> = {
-  $type: "socket_message.StaticSystemInformation" as const,
-
+export const StaticSystemInformation: MessageFns<StaticSystemInformation> = {
   encode(message: StaticSystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.espPlatform !== "") {
       writer.uint32(10).string(message.espPlatform);
@@ -1820,7 +1731,6 @@ export const StaticSystemInformation: MessageFns<StaticSystemInformation, "socke
 
   fromJSON(object: any): StaticSystemInformation {
     return {
-      $type: StaticSystemInformation.$type,
       espPlatform: isSet(object.espPlatform) ? globalThis.String(object.espPlatform) : "",
       firmwareVersion: isSet(object.firmwareVersion) ? globalThis.String(object.firmwareVersion) : "",
       cpuFreqMhz: isSet(object.cpuFreqMhz) ? globalThis.Number(object.cpuFreqMhz) : 0,
@@ -1881,10 +1791,10 @@ export const StaticSystemInformation: MessageFns<StaticSystemInformation, "socke
     return obj;
   },
 
-  create(base?: DeepPartial<StaticSystemInformation>): StaticSystemInformation {
-    return StaticSystemInformation.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(base?: I): StaticSystemInformation {
+    return StaticSystemInformation.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<StaticSystemInformation>): StaticSystemInformation {
+  fromPartial<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(object: I): StaticSystemInformation {
     const message = createBaseStaticSystemInformation();
     message.espPlatform = object.espPlatform ?? "";
     message.firmwareVersion = object.firmwareVersion ?? "";
@@ -1903,15 +1813,11 @@ export const StaticSystemInformation: MessageFns<StaticSystemInformation, "socke
   },
 };
 
-messageTypeRegistry.set(StaticSystemInformation.$type, StaticSystemInformation);
-
 function createBaseIMUCalibrateData(): IMUCalibrateData {
-  return { $type: "socket_message.IMUCalibrateData", success: false };
+  return { success: false };
 }
 
-export const IMUCalibrateData: MessageFns<IMUCalibrateData, "socket_message.IMUCalibrateData"> = {
-  $type: "socket_message.IMUCalibrateData" as const,
-
+export const IMUCalibrateData: MessageFns<IMUCalibrateData> = {
   encode(message: IMUCalibrateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.success !== false) {
       writer.uint32(8).bool(message.success);
@@ -1944,10 +1850,7 @@ export const IMUCalibrateData: MessageFns<IMUCalibrateData, "socket_message.IMUC
   },
 
   fromJSON(object: any): IMUCalibrateData {
-    return {
-      $type: IMUCalibrateData.$type,
-      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
-    };
+    return { success: isSet(object.success) ? globalThis.Boolean(object.success) : false };
   },
 
   toJSON(message: IMUCalibrateData): unknown {
@@ -1958,25 +1861,21 @@ export const IMUCalibrateData: MessageFns<IMUCalibrateData, "socket_message.IMUC
     return obj;
   },
 
-  create(base?: DeepPartial<IMUCalibrateData>): IMUCalibrateData {
-    return IMUCalibrateData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(base?: I): IMUCalibrateData {
+    return IMUCalibrateData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<IMUCalibrateData>): IMUCalibrateData {
+  fromPartial<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(object: I): IMUCalibrateData {
     const message = createBaseIMUCalibrateData();
     message.success = object.success ?? false;
     return message;
   },
 };
 
-messageTypeRegistry.set(IMUCalibrateData.$type, IMUCalibrateData);
-
 function createBaseIMUCalibrateExecute(): IMUCalibrateExecute {
-  return { $type: "socket_message.IMUCalibrateExecute" };
+  return {};
 }
 
-export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute, "socket_message.IMUCalibrateExecute"> = {
-  $type: "socket_message.IMUCalibrateExecute" as const,
-
+export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute> = {
   encode(_: IMUCalibrateExecute, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
@@ -1998,7 +1897,7 @@ export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute, "socket_messag
   },
 
   fromJSON(_: any): IMUCalibrateExecute {
-    return { $type: IMUCalibrateExecute.$type };
+    return {};
   },
 
   toJSON(_: IMUCalibrateExecute): unknown {
@@ -2006,24 +1905,20 @@ export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute, "socket_messag
     return obj;
   },
 
-  create(base?: DeepPartial<IMUCalibrateExecute>): IMUCalibrateExecute {
-    return IMUCalibrateExecute.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(base?: I): IMUCalibrateExecute {
+    return IMUCalibrateExecute.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<IMUCalibrateExecute>): IMUCalibrateExecute {
+  fromPartial<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(_: I): IMUCalibrateExecute {
     const message = createBaseIMUCalibrateExecute();
     return message;
   },
 };
 
-messageTypeRegistry.set(IMUCalibrateExecute.$type, IMUCalibrateExecute);
-
 function createBaseModeData(): ModeData {
-  return { $type: "socket_message.ModeData", mode: 0 };
+  return { mode: 0 };
 }
 
-export const ModeData: MessageFns<ModeData, "socket_message.ModeData"> = {
-  $type: "socket_message.ModeData" as const,
-
+export const ModeData: MessageFns<ModeData> = {
   encode(message: ModeData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.mode !== 0) {
       writer.uint32(8).int32(message.mode);
@@ -2056,7 +1951,7 @@ export const ModeData: MessageFns<ModeData, "socket_message.ModeData"> = {
   },
 
   fromJSON(object: any): ModeData {
-    return { $type: ModeData.$type, mode: isSet(object.mode) ? modesEnumFromJSON(object.mode) : 0 };
+    return { mode: isSet(object.mode) ? modesEnumFromJSON(object.mode) : 0 };
   },
 
   toJSON(message: ModeData): unknown {
@@ -2067,25 +1962,21 @@ export const ModeData: MessageFns<ModeData, "socket_message.ModeData"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<ModeData>): ModeData {
-    return ModeData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ModeData>, I>>(base?: I): ModeData {
+    return ModeData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ModeData>): ModeData {
+  fromPartial<I extends Exact<DeepPartial<ModeData>, I>>(object: I): ModeData {
     const message = createBaseModeData();
     message.mode = object.mode ?? 0;
     return message;
   },
 };
 
-messageTypeRegistry.set(ModeData.$type, ModeData);
-
 function createBaseControllerInputData(): ControllerInputData {
-  return { $type: "socket_message.ControllerInputData", left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
+  return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
 }
 
-export const ControllerInputData: MessageFns<ControllerInputData, "socket_message.ControllerInputData"> = {
-  $type: "socket_message.ControllerInputData" as const,
-
+export const ControllerInputData: MessageFns<ControllerInputData> = {
   encode(message: ControllerInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.left !== undefined) {
       Vector.encode(message.left, writer.uint32(10).fork()).join();
@@ -2163,7 +2054,6 @@ export const ControllerInputData: MessageFns<ControllerInputData, "socket_messag
 
   fromJSON(object: any): ControllerInputData {
     return {
-      $type: ControllerInputData.$type,
       left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
       right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
       height: isSet(object.height) ? globalThis.Number(object.height) : 0,
@@ -2192,10 +2082,10 @@ export const ControllerInputData: MessageFns<ControllerInputData, "socket_messag
     return obj;
   },
 
-  create(base?: DeepPartial<ControllerInputData>): ControllerInputData {
-    return ControllerInputData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ControllerInputData>, I>>(base?: I): ControllerInputData {
+    return ControllerInputData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ControllerInputData>): ControllerInputData {
+  fromPartial<I extends Exact<DeepPartial<ControllerInputData>, I>>(object: I): ControllerInputData {
     const message = createBaseControllerInputData();
     message.left = (object.left !== undefined && object.left !== null) ? Vector.fromPartial(object.left) : undefined;
     message.right = (object.right !== undefined && object.right !== null)
@@ -2208,11 +2098,8 @@ export const ControllerInputData: MessageFns<ControllerInputData, "socket_messag
   },
 };
 
-messageTypeRegistry.set(ControllerInputData.$type, ControllerInputData);
-
 function createBaseAnalyticsData(): AnalyticsData {
   return {
-    $type: "socket_message.AnalyticsData",
     maxAllocHeap: 0,
     psramSize: 0,
     freePsram: 0,
@@ -2229,9 +2116,7 @@ function createBaseAnalyticsData(): AnalyticsData {
   };
 }
 
-export const AnalyticsData: MessageFns<AnalyticsData, "socket_message.AnalyticsData"> = {
-  $type: "socket_message.AnalyticsData" as const,
-
+export const AnalyticsData: MessageFns<AnalyticsData> = {
   encode(message: AnalyticsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.maxAllocHeap !== 0) {
       writer.uint32(8).int32(message.maxAllocHeap);
@@ -2397,7 +2282,6 @@ export const AnalyticsData: MessageFns<AnalyticsData, "socket_message.AnalyticsD
 
   fromJSON(object: any): AnalyticsData {
     return {
-      $type: AnalyticsData.$type,
       maxAllocHeap: isSet(object.maxAllocHeap) ? globalThis.Number(object.maxAllocHeap) : 0,
       psramSize: isSet(object.psramSize) ? globalThis.Number(object.psramSize) : 0,
       freePsram: isSet(object.freePsram) ? globalThis.Number(object.freePsram) : 0,
@@ -2458,10 +2342,10 @@ export const AnalyticsData: MessageFns<AnalyticsData, "socket_message.AnalyticsD
     return obj;
   },
 
-  create(base?: DeepPartial<AnalyticsData>): AnalyticsData {
-    return AnalyticsData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<AnalyticsData>, I>>(base?: I): AnalyticsData {
+    return AnalyticsData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<AnalyticsData>): AnalyticsData {
+  fromPartial<I extends Exact<DeepPartial<AnalyticsData>, I>>(object: I): AnalyticsData {
     const message = createBaseAnalyticsData();
     message.maxAllocHeap = object.maxAllocHeap ?? 0;
     message.psramSize = object.psramSize ?? 0;
@@ -2480,15 +2364,11 @@ export const AnalyticsData: MessageFns<AnalyticsData, "socket_message.AnalyticsD
   },
 };
 
-messageTypeRegistry.set(AnalyticsData.$type, AnalyticsData);
-
 function createBaseServoPWMData(): ServoPWMData {
-  return { $type: "socket_message.ServoPWMData", servoId: 0, servoPwm: 0 };
+  return { servoId: 0, servoPwm: 0 };
 }
 
-export const ServoPWMData: MessageFns<ServoPWMData, "socket_message.ServoPWMData"> = {
-  $type: "socket_message.ServoPWMData" as const,
-
+export const ServoPWMData: MessageFns<ServoPWMData> = {
   encode(message: ServoPWMData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.servoId !== 0) {
       writer.uint32(8).int32(message.servoId);
@@ -2533,7 +2413,6 @@ export const ServoPWMData: MessageFns<ServoPWMData, "socket_message.ServoPWMData
 
   fromJSON(object: any): ServoPWMData {
     return {
-      $type: ServoPWMData.$type,
       servoId: isSet(object.servoId) ? globalThis.Number(object.servoId) : 0,
       servoPwm: isSet(object.servoPwm) ? globalThis.Number(object.servoPwm) : 0,
     };
@@ -2550,10 +2429,10 @@ export const ServoPWMData: MessageFns<ServoPWMData, "socket_message.ServoPWMData
     return obj;
   },
 
-  create(base?: DeepPartial<ServoPWMData>): ServoPWMData {
-    return ServoPWMData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ServoPWMData>, I>>(base?: I): ServoPWMData {
+    return ServoPWMData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ServoPWMData>): ServoPWMData {
+  fromPartial<I extends Exact<DeepPartial<ServoPWMData>, I>>(object: I): ServoPWMData {
     const message = createBaseServoPWMData();
     message.servoId = object.servoId ?? 0;
     message.servoPwm = object.servoPwm ?? 0;
@@ -2561,15 +2440,11 @@ export const ServoPWMData: MessageFns<ServoPWMData, "socket_message.ServoPWMData
   },
 };
 
-messageTypeRegistry.set(ServoPWMData.$type, ServoPWMData);
-
 function createBaseServoStateData(): ServoStateData {
-  return { $type: "socket_message.ServoStateData", active: false };
+  return { active: false };
 }
 
-export const ServoStateData: MessageFns<ServoStateData, "socket_message.ServoStateData"> = {
-  $type: "socket_message.ServoStateData" as const,
-
+export const ServoStateData: MessageFns<ServoStateData> = {
   encode(message: ServoStateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.active !== false) {
       writer.uint32(8).bool(message.active);
@@ -2602,7 +2477,7 @@ export const ServoStateData: MessageFns<ServoStateData, "socket_message.ServoSta
   },
 
   fromJSON(object: any): ServoStateData {
-    return { $type: ServoStateData.$type, active: isSet(object.active) ? globalThis.Boolean(object.active) : false };
+    return { active: isSet(object.active) ? globalThis.Boolean(object.active) : false };
   },
 
   toJSON(message: ServoStateData): unknown {
@@ -2613,25 +2488,21 @@ export const ServoStateData: MessageFns<ServoStateData, "socket_message.ServoSta
     return obj;
   },
 
-  create(base?: DeepPartial<ServoStateData>): ServoStateData {
-    return ServoStateData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ServoStateData>, I>>(base?: I): ServoStateData {
+    return ServoStateData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ServoStateData>): ServoStateData {
+  fromPartial<I extends Exact<DeepPartial<ServoStateData>, I>>(object: I): ServoStateData {
     const message = createBaseServoStateData();
     message.active = object.active ?? false;
     return message;
   },
 };
 
-messageTypeRegistry.set(ServoStateData.$type, ServoStateData);
-
 function createBaseAnglesData(): AnglesData {
-  return { $type: "socket_message.AnglesData", angles: [] };
+  return { angles: [] };
 }
 
-export const AnglesData: MessageFns<AnglesData, "socket_message.AnglesData"> = {
-  $type: "socket_message.AnglesData" as const,
-
+export const AnglesData: MessageFns<AnglesData> = {
   encode(message: AnglesData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     writer.uint32(10).fork();
     for (const v of message.angles) {
@@ -2677,7 +2548,6 @@ export const AnglesData: MessageFns<AnglesData, "socket_message.AnglesData"> = {
 
   fromJSON(object: any): AnglesData {
     return {
-      $type: AnglesData.$type,
       angles: globalThis.Array.isArray(object?.angles) ? object.angles.map((e: any) => globalThis.Number(e)) : [],
     };
   },
@@ -2690,25 +2560,21 @@ export const AnglesData: MessageFns<AnglesData, "socket_message.AnglesData"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<AnglesData>): AnglesData {
-    return AnglesData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<AnglesData>, I>>(base?: I): AnglesData {
+    return AnglesData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<AnglesData>): AnglesData {
+  fromPartial<I extends Exact<DeepPartial<AnglesData>, I>>(object: I): AnglesData {
     const message = createBaseAnglesData();
     message.angles = object.angles?.map((e) => e) || [];
     return message;
   },
 };
 
-messageTypeRegistry.set(AnglesData.$type, AnglesData);
-
 function createBaseI2CScanData(): I2CScanData {
-  return { $type: "socket_message.I2CScanData", devices: [] };
+  return { devices: [] };
 }
 
-export const I2CScanData: MessageFns<I2CScanData, "socket_message.I2CScanData"> = {
-  $type: "socket_message.I2CScanData" as const,
-
+export const I2CScanData: MessageFns<I2CScanData> = {
   encode(message: I2CScanData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     for (const v of message.devices) {
       I2CDevice.encode(v!, writer.uint32(10).fork()).join();
@@ -2742,7 +2608,6 @@ export const I2CScanData: MessageFns<I2CScanData, "socket_message.I2CScanData"> 
 
   fromJSON(object: any): I2CScanData {
     return {
-      $type: I2CScanData.$type,
       devices: globalThis.Array.isArray(object?.devices) ? object.devices.map((e: any) => I2CDevice.fromJSON(e)) : [],
     };
   },
@@ -2755,25 +2620,21 @@ export const I2CScanData: MessageFns<I2CScanData, "socket_message.I2CScanData"> 
     return obj;
   },
 
-  create(base?: DeepPartial<I2CScanData>): I2CScanData {
-    return I2CScanData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<I2CScanData>, I>>(base?: I): I2CScanData {
+    return I2CScanData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<I2CScanData>): I2CScanData {
+  fromPartial<I extends Exact<DeepPartial<I2CScanData>, I>>(object: I): I2CScanData {
     const message = createBaseI2CScanData();
     message.devices = object.devices?.map((e) => I2CDevice.fromPartial(e)) || [];
     return message;
   },
 };
 
-messageTypeRegistry.set(I2CScanData.$type, I2CScanData);
-
 function createBaseI2CScanDataRequest(): I2CScanDataRequest {
-  return { $type: "socket_message.I2CScanDataRequest" };
+  return {};
 }
 
-export const I2CScanDataRequest: MessageFns<I2CScanDataRequest, "socket_message.I2CScanDataRequest"> = {
-  $type: "socket_message.I2CScanDataRequest" as const,
-
+export const I2CScanDataRequest: MessageFns<I2CScanDataRequest> = {
   encode(_: I2CScanDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
@@ -2795,7 +2656,7 @@ export const I2CScanDataRequest: MessageFns<I2CScanDataRequest, "socket_message.
   },
 
   fromJSON(_: any): I2CScanDataRequest {
-    return { $type: I2CScanDataRequest.$type };
+    return {};
   },
 
   toJSON(_: I2CScanDataRequest): unknown {
@@ -2803,24 +2664,20 @@ export const I2CScanDataRequest: MessageFns<I2CScanDataRequest, "socket_message.
     return obj;
   },
 
-  create(base?: DeepPartial<I2CScanDataRequest>): I2CScanDataRequest {
-    return I2CScanDataRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(base?: I): I2CScanDataRequest {
+    return I2CScanDataRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<I2CScanDataRequest>): I2CScanDataRequest {
+  fromPartial<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(_: I): I2CScanDataRequest {
     const message = createBaseI2CScanDataRequest();
     return message;
   },
 };
 
-messageTypeRegistry.set(I2CScanDataRequest.$type, I2CScanDataRequest);
-
 function createBasePeripheralSettingsData(): PeripheralSettingsData {
-  return { $type: "socket_message.PeripheralSettingsData", sda: 0, scl: 0, frequency: 0, pins: [] };
+  return { sda: 0, scl: 0, frequency: 0, pins: [] };
 }
 
-export const PeripheralSettingsData: MessageFns<PeripheralSettingsData, "socket_message.PeripheralSettingsData"> = {
-  $type: "socket_message.PeripheralSettingsData" as const,
-
+export const PeripheralSettingsData: MessageFns<PeripheralSettingsData> = {
   encode(message: PeripheralSettingsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.sda !== 0) {
       writer.uint32(8).int32(message.sda);
@@ -2887,7 +2744,6 @@ export const PeripheralSettingsData: MessageFns<PeripheralSettingsData, "socket_
 
   fromJSON(object: any): PeripheralSettingsData {
     return {
-      $type: PeripheralSettingsData.$type,
       sda: isSet(object.sda) ? globalThis.Number(object.sda) : 0,
       scl: isSet(object.scl) ? globalThis.Number(object.scl) : 0,
       frequency: isSet(object.frequency) ? globalThis.Number(object.frequency) : 0,
@@ -2912,10 +2768,10 @@ export const PeripheralSettingsData: MessageFns<PeripheralSettingsData, "socket_
     return obj;
   },
 
-  create(base?: DeepPartial<PeripheralSettingsData>): PeripheralSettingsData {
-    return PeripheralSettingsData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(base?: I): PeripheralSettingsData {
+    return PeripheralSettingsData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<PeripheralSettingsData>): PeripheralSettingsData {
+  fromPartial<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(object: I): PeripheralSettingsData {
     const message = createBasePeripheralSettingsData();
     message.sda = object.sda ?? 0;
     message.scl = object.scl ?? 0;
@@ -2925,18 +2781,11 @@ export const PeripheralSettingsData: MessageFns<PeripheralSettingsData, "socket_
   },
 };
 
-messageTypeRegistry.set(PeripheralSettingsData.$type, PeripheralSettingsData);
-
 function createBasePeripheralSettingsDataRequest(): PeripheralSettingsDataRequest {
-  return { $type: "socket_message.PeripheralSettingsDataRequest" };
+  return {};
 }
 
-export const PeripheralSettingsDataRequest: MessageFns<
-  PeripheralSettingsDataRequest,
-  "socket_message.PeripheralSettingsDataRequest"
-> = {
-  $type: "socket_message.PeripheralSettingsDataRequest" as const,
-
+export const PeripheralSettingsDataRequest: MessageFns<PeripheralSettingsDataRequest> = {
   encode(_: PeripheralSettingsDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
@@ -2958,7 +2807,7 @@ export const PeripheralSettingsDataRequest: MessageFns<
   },
 
   fromJSON(_: any): PeripheralSettingsDataRequest {
-    return { $type: PeripheralSettingsDataRequest.$type };
+    return {};
   },
 
   toJSON(_: PeripheralSettingsDataRequest): unknown {
@@ -2966,24 +2815,20 @@ export const PeripheralSettingsDataRequest: MessageFns<
     return obj;
   },
 
-  create(base?: DeepPartial<PeripheralSettingsDataRequest>): PeripheralSettingsDataRequest {
-    return PeripheralSettingsDataRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(base?: I): PeripheralSettingsDataRequest {
+    return PeripheralSettingsDataRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<PeripheralSettingsDataRequest>): PeripheralSettingsDataRequest {
+  fromPartial<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(_: I): PeripheralSettingsDataRequest {
     const message = createBasePeripheralSettingsDataRequest();
     return message;
   },
 };
 
-messageTypeRegistry.set(PeripheralSettingsDataRequest.$type, PeripheralSettingsDataRequest);
-
 function createBaseWifiSettingsData(): WifiSettingsData {
-  return { $type: "socket_message.WifiSettingsData", hostname: "", priorityRssi: false, wifiNetworks: [] };
+  return { hostname: "", priorityRssi: false, wifiNetworks: [] };
 }
 
-export const WifiSettingsData: MessageFns<WifiSettingsData, "socket_message.WifiSettingsData"> = {
-  $type: "socket_message.WifiSettingsData" as const,
-
+export const WifiSettingsData: MessageFns<WifiSettingsData> = {
   encode(message: WifiSettingsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.hostname !== "") {
       writer.uint32(10).string(message.hostname);
@@ -3039,7 +2884,6 @@ export const WifiSettingsData: MessageFns<WifiSettingsData, "socket_message.Wifi
 
   fromJSON(object: any): WifiSettingsData {
     return {
-      $type: WifiSettingsData.$type,
       hostname: isSet(object.hostname) ? globalThis.String(object.hostname) : "",
       priorityRssi: isSet(object.priorityRssi) ? globalThis.Boolean(object.priorityRssi) : false,
       wifiNetworks: globalThis.Array.isArray(object?.wifiNetworks)
@@ -3062,10 +2906,10 @@ export const WifiSettingsData: MessageFns<WifiSettingsData, "socket_message.Wifi
     return obj;
   },
 
-  create(base?: DeepPartial<WifiSettingsData>): WifiSettingsData {
-    return WifiSettingsData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<WifiSettingsData>, I>>(base?: I): WifiSettingsData {
+    return WifiSettingsData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<WifiSettingsData>): WifiSettingsData {
+  fromPartial<I extends Exact<DeepPartial<WifiSettingsData>, I>>(object: I): WifiSettingsData {
     const message = createBaseWifiSettingsData();
     message.hostname = object.hostname ?? "";
     message.priorityRssi = object.priorityRssi ?? false;
@@ -3074,15 +2918,11 @@ export const WifiSettingsData: MessageFns<WifiSettingsData, "socket_message.Wifi
   },
 };
 
-messageTypeRegistry.set(WifiSettingsData.$type, WifiSettingsData);
-
 function createBaseRSSIData(): RSSIData {
-  return { $type: "socket_message.RSSIData", rssi: 0 };
+  return { rssi: 0 };
 }
 
-export const RSSIData: MessageFns<RSSIData, "socket_message.RSSIData"> = {
-  $type: "socket_message.RSSIData" as const,
-
+export const RSSIData: MessageFns<RSSIData> = {
   encode(message: RSSIData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.rssi !== 0) {
       writer.uint32(8).int32(message.rssi);
@@ -3115,7 +2955,7 @@ export const RSSIData: MessageFns<RSSIData, "socket_message.RSSIData"> = {
   },
 
   fromJSON(object: any): RSSIData {
-    return { $type: RSSIData.$type, rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0 };
+    return { rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0 };
   },
 
   toJSON(message: RSSIData): unknown {
@@ -3126,25 +2966,21 @@ export const RSSIData: MessageFns<RSSIData, "socket_message.RSSIData"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<RSSIData>): RSSIData {
-    return RSSIData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<RSSIData>, I>>(base?: I): RSSIData {
+    return RSSIData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<RSSIData>): RSSIData {
+  fromPartial<I extends Exact<DeepPartial<RSSIData>, I>>(object: I): RSSIData {
     const message = createBaseRSSIData();
     message.rssi = object.rssi ?? 0;
     return message;
   },
 };
 
-messageTypeRegistry.set(RSSIData.$type, RSSIData);
-
 function createBaseDownloadOTAData(): DownloadOTAData {
-  return { $type: "socket_message.DownloadOTAData", status: "", progress: 0, error: "" };
+  return { status: "", progress: 0, error: "" };
 }
 
-export const DownloadOTAData: MessageFns<DownloadOTAData, "socket_message.DownloadOTAData"> = {
-  $type: "socket_message.DownloadOTAData" as const,
-
+export const DownloadOTAData: MessageFns<DownloadOTAData> = {
   encode(message: DownloadOTAData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.status !== "") {
       writer.uint32(10).string(message.status);
@@ -3200,7 +3036,6 @@ export const DownloadOTAData: MessageFns<DownloadOTAData, "socket_message.Downlo
 
   fromJSON(object: any): DownloadOTAData {
     return {
-      $type: DownloadOTAData.$type,
       status: isSet(object.status) ? globalThis.String(object.status) : "",
       progress: isSet(object.progress) ? globalThis.Number(object.progress) : 0,
       error: isSet(object.error) ? globalThis.String(object.error) : "",
@@ -3221,10 +3056,10 @@ export const DownloadOTAData: MessageFns<DownloadOTAData, "socket_message.Downlo
     return obj;
   },
 
-  create(base?: DeepPartial<DownloadOTAData>): DownloadOTAData {
-    return DownloadOTAData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<DownloadOTAData>, I>>(base?: I): DownloadOTAData {
+    return DownloadOTAData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<DownloadOTAData>): DownloadOTAData {
+  fromPartial<I extends Exact<DeepPartial<DownloadOTAData>, I>>(object: I): DownloadOTAData {
     const message = createBaseDownloadOTAData();
     message.status = object.status ?? "";
     message.progress = object.progress ?? 0;
@@ -3233,15 +3068,11 @@ export const DownloadOTAData: MessageFns<DownloadOTAData, "socket_message.Downlo
   },
 };
 
-messageTypeRegistry.set(DownloadOTAData.$type, DownloadOTAData);
-
 function createBaseSonarData(): SonarData {
-  return { $type: "socket_message.SonarData", dummyField: "" };
+  return { dummyField: "" };
 }
 
-export const SonarData: MessageFns<SonarData, "socket_message.SonarData"> = {
-  $type: "socket_message.SonarData" as const,
-
+export const SonarData: MessageFns<SonarData> = {
   encode(message: SonarData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.dummyField !== "") {
       writer.uint32(10).string(message.dummyField);
@@ -3274,7 +3105,7 @@ export const SonarData: MessageFns<SonarData, "socket_message.SonarData"> = {
   },
 
   fromJSON(object: any): SonarData {
-    return { $type: SonarData.$type, dummyField: isSet(object.dummyField) ? globalThis.String(object.dummyField) : "" };
+    return { dummyField: isSet(object.dummyField) ? globalThis.String(object.dummyField) : "" };
   },
 
   toJSON(message: SonarData): unknown {
@@ -3285,25 +3116,21 @@ export const SonarData: MessageFns<SonarData, "socket_message.SonarData"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<SonarData>): SonarData {
-    return SonarData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<SonarData>, I>>(base?: I): SonarData {
+    return SonarData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<SonarData>): SonarData {
+  fromPartial<I extends Exact<DeepPartial<SonarData>, I>>(object: I): SonarData {
     const message = createBaseSonarData();
     message.dummyField = object.dummyField ?? "";
     return message;
   },
 };
 
-messageTypeRegistry.set(SonarData.$type, SonarData);
-
 function createBaseHumanInputData(): HumanInputData {
-  return { $type: "socket_message.HumanInputData", left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
+  return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
 }
 
-export const HumanInputData: MessageFns<HumanInputData, "socket_message.HumanInputData"> = {
-  $type: "socket_message.HumanInputData" as const,
-
+export const HumanInputData: MessageFns<HumanInputData> = {
   encode(message: HumanInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.left !== undefined) {
       Vector.encode(message.left, writer.uint32(82).fork()).join();
@@ -3381,7 +3208,6 @@ export const HumanInputData: MessageFns<HumanInputData, "socket_message.HumanInp
 
   fromJSON(object: any): HumanInputData {
     return {
-      $type: HumanInputData.$type,
       left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
       right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
       height: isSet(object.height) ? globalThis.Number(object.height) : 0,
@@ -3410,10 +3236,10 @@ export const HumanInputData: MessageFns<HumanInputData, "socket_message.HumanInp
     return obj;
   },
 
-  create(base?: DeepPartial<HumanInputData>): HumanInputData {
-    return HumanInputData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<HumanInputData>, I>>(base?: I): HumanInputData {
+    return HumanInputData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<HumanInputData>): HumanInputData {
+  fromPartial<I extends Exact<DeepPartial<HumanInputData>, I>>(object: I): HumanInputData {
     const message = createBaseHumanInputData();
     message.left = (object.left !== undefined && object.left !== null) ? Vector.fromPartial(object.left) : undefined;
     message.right = (object.right !== undefined && object.right !== null)
@@ -3426,15 +3252,11 @@ export const HumanInputData: MessageFns<HumanInputData, "socket_message.HumanInp
   },
 };
 
-messageTypeRegistry.set(HumanInputData.$type, HumanInputData);
-
 function createBaseSystemInformation(): SystemInformation {
-  return { $type: "socket_message.SystemInformation", analyticsData: undefined, staticSystemInformation: undefined };
+  return { analyticsData: undefined, staticSystemInformation: undefined };
 }
 
-export const SystemInformation: MessageFns<SystemInformation, "socket_message.SystemInformation"> = {
-  $type: "socket_message.SystemInformation" as const,
-
+export const SystemInformation: MessageFns<SystemInformation> = {
   encode(message: SystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.analyticsData !== undefined) {
       AnalyticsData.encode(message.analyticsData, writer.uint32(10).fork()).join();
@@ -3479,7 +3301,6 @@ export const SystemInformation: MessageFns<SystemInformation, "socket_message.Sy
 
   fromJSON(object: any): SystemInformation {
     return {
-      $type: SystemInformation.$type,
       analyticsData: isSet(object.analyticsData) ? AnalyticsData.fromJSON(object.analyticsData) : undefined,
       staticSystemInformation: isSet(object.staticSystemInformation)
         ? StaticSystemInformation.fromJSON(object.staticSystemInformation)
@@ -3498,10 +3319,10 @@ export const SystemInformation: MessageFns<SystemInformation, "socket_message.Sy
     return obj;
   },
 
-  create(base?: DeepPartial<SystemInformation>): SystemInformation {
-    return SystemInformation.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<SystemInformation>, I>>(base?: I): SystemInformation {
+    return SystemInformation.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<SystemInformation>): SystemInformation {
+  fromPartial<I extends Exact<DeepPartial<SystemInformation>, I>>(object: I): SystemInformation {
     const message = createBaseSystemInformation();
     message.analyticsData = (object.analyticsData !== undefined && object.analyticsData !== null)
       ? AnalyticsData.fromPartial(object.analyticsData)
@@ -3514,15 +3335,11 @@ export const SystemInformation: MessageFns<SystemInformation, "socket_message.Sy
   },
 };
 
-messageTypeRegistry.set(SystemInformation.$type, SystemInformation);
-
 function createBaseWalkGaitData(): WalkGaitData {
-  return { $type: "socket_message.WalkGaitData", gait: 0 };
+  return { gait: 0 };
 }
 
-export const WalkGaitData: MessageFns<WalkGaitData, "socket_message.WalkGaitData"> = {
-  $type: "socket_message.WalkGaitData" as const,
-
+export const WalkGaitData: MessageFns<WalkGaitData> = {
   encode(message: WalkGaitData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.gait !== 0) {
       writer.uint32(8).int32(message.gait);
@@ -3555,7 +3372,7 @@ export const WalkGaitData: MessageFns<WalkGaitData, "socket_message.WalkGaitData
   },
 
   fromJSON(object: any): WalkGaitData {
-    return { $type: WalkGaitData.$type, gait: isSet(object.gait) ? walkGaitsFromJSON(object.gait) : 0 };
+    return { gait: isSet(object.gait) ? walkGaitsFromJSON(object.gait) : 0 };
   },
 
   toJSON(message: WalkGaitData): unknown {
@@ -3566,25 +3383,21 @@ export const WalkGaitData: MessageFns<WalkGaitData, "socket_message.WalkGaitData
     return obj;
   },
 
-  create(base?: DeepPartial<WalkGaitData>): WalkGaitData {
-    return WalkGaitData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<WalkGaitData>, I>>(base?: I): WalkGaitData {
+    return WalkGaitData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<WalkGaitData>): WalkGaitData {
+  fromPartial<I extends Exact<DeepPartial<WalkGaitData>, I>>(object: I): WalkGaitData {
     const message = createBaseWalkGaitData();
     message.gait = object.gait ?? 0;
     return message;
   },
 };
 
-messageTypeRegistry.set(WalkGaitData.$type, WalkGaitData);
-
 function createBaseKinematicData(): KinematicData {
-  return { $type: "socket_message.KinematicData", omega: 0, phi: 0, psi: 0, xm: 0, ym: 0, zm: 0 };
+  return { omega: 0, phi: 0, psi: 0, xm: 0, ym: 0, zm: 0 };
 }
 
-export const KinematicData: MessageFns<KinematicData, "socket_message.KinematicData"> = {
-  $type: "socket_message.KinematicData" as const,
-
+export const KinematicData: MessageFns<KinematicData> = {
   encode(message: KinematicData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.omega !== 0) {
       writer.uint32(13).float(message.omega);
@@ -3673,7 +3486,6 @@ export const KinematicData: MessageFns<KinematicData, "socket_message.KinematicD
 
   fromJSON(object: any): KinematicData {
     return {
-      $type: KinematicData.$type,
       omega: isSet(object.omega) ? globalThis.Number(object.omega) : 0,
       phi: isSet(object.phi) ? globalThis.Number(object.phi) : 0,
       psi: isSet(object.psi) ? globalThis.Number(object.psi) : 0,
@@ -3706,10 +3518,10 @@ export const KinematicData: MessageFns<KinematicData, "socket_message.KinematicD
     return obj;
   },
 
-  create(base?: DeepPartial<KinematicData>): KinematicData {
-    return KinematicData.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<KinematicData>, I>>(base?: I): KinematicData {
+    return KinematicData.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<KinematicData>): KinematicData {
+  fromPartial<I extends Exact<DeepPartial<KinematicData>, I>>(object: I): KinematicData {
     const message = createBaseKinematicData();
     message.omega = object.omega ?? 0;
     message.phi = object.phi ?? 0;
@@ -3721,15 +3533,11 @@ export const KinematicData: MessageFns<KinematicData, "socket_message.KinematicD
   },
 };
 
-messageTypeRegistry.set(KinematicData.$type, KinematicData);
-
 function createBaseSubscribeNotification(): SubscribeNotification {
-  return { $type: "socket_message.SubscribeNotification", tag: 0 };
+  return { tag: 0 };
 }
 
-export const SubscribeNotification: MessageFns<SubscribeNotification, "socket_message.SubscribeNotification"> = {
-  $type: "socket_message.SubscribeNotification" as const,
-
+export const SubscribeNotification: MessageFns<SubscribeNotification> = {
   encode(message: SubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.tag !== 0) {
       writer.uint32(8).int32(message.tag);
@@ -3762,7 +3570,7 @@ export const SubscribeNotification: MessageFns<SubscribeNotification, "socket_me
   },
 
   fromJSON(object: any): SubscribeNotification {
-    return { $type: SubscribeNotification.$type, tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
   },
 
   toJSON(message: SubscribeNotification): unknown {
@@ -3773,25 +3581,21 @@ export const SubscribeNotification: MessageFns<SubscribeNotification, "socket_me
     return obj;
   },
 
-  create(base?: DeepPartial<SubscribeNotification>): SubscribeNotification {
-    return SubscribeNotification.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<SubscribeNotification>, I>>(base?: I): SubscribeNotification {
+    return SubscribeNotification.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<SubscribeNotification>): SubscribeNotification {
+  fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(object: I): SubscribeNotification {
     const message = createBaseSubscribeNotification();
     message.tag = object.tag ?? 0;
     return message;
   },
 };
 
-messageTypeRegistry.set(SubscribeNotification.$type, SubscribeNotification);
-
 function createBaseUnsubscribeNotification(): UnsubscribeNotification {
-  return { $type: "socket_message.UnsubscribeNotification", tag: 0 };
+  return { tag: 0 };
 }
 
-export const UnsubscribeNotification: MessageFns<UnsubscribeNotification, "socket_message.UnsubscribeNotification"> = {
-  $type: "socket_message.UnsubscribeNotification" as const,
-
+export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
   encode(message: UnsubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.tag !== 0) {
       writer.uint32(8).int32(message.tag);
@@ -3824,7 +3628,7 @@ export const UnsubscribeNotification: MessageFns<UnsubscribeNotification, "socke
   },
 
   fromJSON(object: any): UnsubscribeNotification {
-    return { $type: UnsubscribeNotification.$type, tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
   },
 
   toJSON(message: UnsubscribeNotification): unknown {
@@ -3835,25 +3639,21 @@ export const UnsubscribeNotification: MessageFns<UnsubscribeNotification, "socke
     return obj;
   },
 
-  create(base?: DeepPartial<UnsubscribeNotification>): UnsubscribeNotification {
-    return UnsubscribeNotification.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(base?: I): UnsubscribeNotification {
+    return UnsubscribeNotification.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<UnsubscribeNotification>): UnsubscribeNotification {
+  fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(object: I): UnsubscribeNotification {
     const message = createBaseUnsubscribeNotification();
     message.tag = object.tag ?? 0;
     return message;
   },
 };
 
-messageTypeRegistry.set(UnsubscribeNotification.$type, UnsubscribeNotification);
-
 function createBasePingMsg(): PingMsg {
-  return { $type: "socket_message.PingMsg" };
+  return {};
 }
 
-export const PingMsg: MessageFns<PingMsg, "socket_message.PingMsg"> = {
-  $type: "socket_message.PingMsg" as const,
-
+export const PingMsg: MessageFns<PingMsg> = {
   encode(_: PingMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
@@ -3875,7 +3675,7 @@ export const PingMsg: MessageFns<PingMsg, "socket_message.PingMsg"> = {
   },
 
   fromJSON(_: any): PingMsg {
-    return { $type: PingMsg.$type };
+    return {};
   },
 
   toJSON(_: PingMsg): unknown {
@@ -3883,24 +3683,20 @@ export const PingMsg: MessageFns<PingMsg, "socket_message.PingMsg"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<PingMsg>): PingMsg {
-    return PingMsg.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<PingMsg>, I>>(base?: I): PingMsg {
+    return PingMsg.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<PingMsg>): PingMsg {
+  fromPartial<I extends Exact<DeepPartial<PingMsg>, I>>(_: I): PingMsg {
     const message = createBasePingMsg();
     return message;
   },
 };
 
-messageTypeRegistry.set(PingMsg.$type, PingMsg);
-
 function createBasePongMsg(): PongMsg {
-  return { $type: "socket_message.PongMsg" };
+  return {};
 }
 
-export const PongMsg: MessageFns<PongMsg, "socket_message.PongMsg"> = {
-  $type: "socket_message.PongMsg" as const,
-
+export const PongMsg: MessageFns<PongMsg> = {
   encode(_: PongMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
@@ -3922,7 +3718,7 @@ export const PongMsg: MessageFns<PongMsg, "socket_message.PongMsg"> = {
   },
 
   fromJSON(_: any): PongMsg {
-    return { $type: PongMsg.$type };
+    return {};
   },
 
   toJSON(_: PongMsg): unknown {
@@ -3930,20 +3726,17 @@ export const PongMsg: MessageFns<PongMsg, "socket_message.PongMsg"> = {
     return obj;
   },
 
-  create(base?: DeepPartial<PongMsg>): PongMsg {
-    return PongMsg.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<PongMsg>, I>>(base?: I): PongMsg {
+    return PongMsg.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<PongMsg>): PongMsg {
+  fromPartial<I extends Exact<DeepPartial<PongMsg>, I>>(_: I): PongMsg {
     const message = createBasePongMsg();
     return message;
   },
 };
 
-messageTypeRegistry.set(PongMsg.$type, PongMsg);
-
 function createBaseWebsocketMessage(): WebsocketMessage {
   return {
-    $type: "socket_message.WebsocketMessage",
     correlationRequest: undefined,
     correlationResponse: undefined,
     subNotif: undefined,
@@ -3971,9 +3764,7 @@ function createBaseWebsocketMessage(): WebsocketMessage {
   };
 }
 
-export const WebsocketMessage: MessageFns<WebsocketMessage, "socket_message.WebsocketMessage"> = {
-  $type: "socket_message.WebsocketMessage" as const,
-
+export const WebsocketMessage: MessageFns<WebsocketMessage> = {
   encode(message: WebsocketMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.correlationRequest !== undefined) {
       CorrelationRequest.encode(message.correlationRequest, writer.uint32(82).fork()).join();
@@ -4260,7 +4051,6 @@ export const WebsocketMessage: MessageFns<WebsocketMessage, "socket_message.Webs
 
   fromJSON(object: any): WebsocketMessage {
     return {
-      $type: WebsocketMessage.$type,
       correlationRequest: isSet(object.correlationRequest)
         ? CorrelationRequest.fromJSON(object.correlationRequest)
         : undefined,
@@ -4377,10 +4167,10 @@ export const WebsocketMessage: MessageFns<WebsocketMessage, "socket_message.Webs
     return obj;
   },
 
-  create(base?: DeepPartial<WebsocketMessage>): WebsocketMessage {
-    return WebsocketMessage.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<WebsocketMessage>, I>>(base?: I): WebsocketMessage {
+    return WebsocketMessage.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<WebsocketMessage>): WebsocketMessage {
+  fromPartial<I extends Exact<DeepPartial<WebsocketMessage>, I>>(object: I): WebsocketMessage {
     const message = createBaseWebsocketMessage();
     message.correlationRequest = (object.correlationRequest !== undefined && object.correlationRequest !== null)
       ? CorrelationRequest.fromPartial(object.correlationRequest)
@@ -4453,15 +4243,2206 @@ export const WebsocketMessage: MessageFns<WebsocketMessage, "socket_message.Webs
   },
 };
 
-messageTypeRegistry.set(WebsocketMessage.$type, WebsocketMessage);
+type ProtoMetaMessageOptions = {
+  options?: { [key: string]: any };
+  fields?: { [key: string]: { [key: string]: any } };
+  oneof?: { [key: string]: { [key: string]: any } };
+  nested?: { [key: string]: ProtoMetaMessageOptions };
+};
+
+export interface ProtoMetadata {
+  fileDescriptor: FileDescriptorProto;
+  references: { [key: string]: any };
+  dependencies?: ProtoMetadata[];
+  options?: {
+    options?: { [key: string]: any };
+    services?: {
+      [key: string]: { options?: { [key: string]: any }; methods?: { [key: string]: { [key: string]: any } } };
+    };
+    messages?: { [key: string]: ProtoMetaMessageOptions };
+    enums?: { [key: string]: { options?: { [key: string]: any }; values?: { [key: string]: { [key: string]: any } } } };
+  };
+}
+
+export const protoMetadata: ProtoMetadata = {
+  fileDescriptor: {
+    "name": "websocket_message.proto",
+    "package": "socket_message",
+    "dependency": [],
+    "publicDependency": [],
+    "weakDependency": [],
+    "optionDependency": [],
+    "messageType": [{
+      "name": "Vector",
+      "field": [{
+        "name": "x",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "x",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "y",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "y",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CDevice",
+      "field": [{
+        "name": "address",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "address",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "part_number",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "partNumber",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "name",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "name",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PinConfig",
+      "field": [{
+        "name": "pin",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pin",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mode",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "type",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "type",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "role",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "role",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "KnownNetworkItem",
+      "field": [{
+        "name": "ssid",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ssid",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "password",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "password",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "static_ip",
+        "number": 3,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "staticIp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "local_ip",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "localIp",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "subnet_mask",
+        "number": 5,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 1,
+        "jsonName": "subnetMask",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "gateway_ip",
+        "number": 6,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 2,
+        "jsonName": "gatewayIp",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "dns_ip_1",
+        "number": 7,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 3,
+        "jsonName": "dnsIp1",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "dns_ip_2",
+        "number": 8,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 4,
+        "jsonName": "dnsIp2",
+        "options": undefined,
+        "proto3Optional": true,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [
+        { "name": "_local_ip", "options": undefined },
+        { "name": "_subnet_mask", "options": undefined },
+        { "name": "_gateway_ip", "options": undefined },
+        { "name": "_dns_ip_1", "options": undefined },
+        { "name": "_dns_ip_2", "options": undefined },
+      ],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUData",
+      "field": [{
+        "name": "x",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "x",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "y",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "y",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "z",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "z",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "heading",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "heading",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "altitude",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "altitude",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "bmp_temp",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "bmpTemp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pressure",
+        "number": 7,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pressure",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "FeaturesDataResponse",
+      "field": [{
+        "name": "variant",
+        "number": 10,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "variant",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_built_target",
+        "number": 20,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareBuiltTarget",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_name",
+        "number": 30,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareName",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_version",
+        "number": 40,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "camera",
+        "number": 50,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "camera",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu",
+        "number": 60,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imu",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mag",
+        "number": 70,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mag",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "bmp",
+        "number": 80,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "bmp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sonar",
+        "number": 90,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sonar",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo",
+        "number": 100,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servo",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ws2812",
+        "number": 110,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ws2812",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mdns",
+        "number": 120,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mdns",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "embed_www",
+        "number": 130,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "embedWww",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "FeaturesDataRequest",
+      "field": [{
+        "name": "sonar_test",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sonarTest",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "CorrelationRequest",
+      "field": [{
+        "name": "correlation_id",
+        "number": 1,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "features_data_request",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.FeaturesDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "featuresDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan_data_request",
+        "number": 20,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScanDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate_execute",
+        "number": 30,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateExecute",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrateExecute",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "request", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "CorrelationResponse",
+      "field": [{
+        "name": "correlation_id",
+        "number": 1,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "status_code",
+        "number": 2,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "statusCode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "features_data_response",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.FeaturesDataResponse",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "featuresDataResponse",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan_data",
+        "number": 20,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScanData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate_data",
+        "number": 30,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrateData",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "response", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "StaticSystemInformation",
+      "field": [{
+        "name": "esp_platform",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "espPlatform",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_version",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_freq_mhz",
+        "number": 3,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuFreqMhz",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_type",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuType",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_rev",
+        "number": 5,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuRev",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_cores",
+        "number": 6,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuCores",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sketch_size",
+        "number": 7,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sketchSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_sketch_space",
+        "number": 8,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freeSketchSpace",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sdk_version",
+        "number": 9,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sdkVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "arduino_version",
+        "number": 10,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "arduinoVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_size",
+        "number": 11,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_speed",
+        "number": 12,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSpeed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_reset_reason",
+        "number": 13,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuResetReason",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateData",
+      "field": [{
+        "name": "success",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "success",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateExecute",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ModeData",
+      "field": [{
+        "name": "mode",
+        "number": 1,
+        "label": 1,
+        "type": 14,
+        "typeName": ".socket_message.ModesEnum",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ControllerInputData",
+      "field": [{
+        "name": "left",
+        "number": 1,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "left",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "right",
+        "number": 2,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "right",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "height",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "height",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "speed",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "speed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "s1",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "s1",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnalyticsData",
+      "field": [{
+        "name": "max_alloc_heap",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "maxAllocHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "psram_size",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "psramSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_psram",
+        "number": 3,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freePsram",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_heap",
+        "number": 4,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freeHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "total_heap",
+        "number": 5,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "totalHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "min_free_heap",
+        "number": 6,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "minFreeHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "core_temp",
+        "number": 7,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "coreTemp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "fs_total",
+        "number": 8,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "fsTotal",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "fs_used",
+        "number": 9,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "fsUsed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "uptime",
+        "number": 10,
+        "label": 1,
+        "type": 3,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "uptime",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu0_usage",
+        "number": 11,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpu0Usage",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu1_usage",
+        "number": 12,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpu1Usage",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_usage",
+        "number": 13,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuUsage",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoPWMData",
+      "field": [{
+        "name": "servo_id",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_pwm",
+        "number": 2,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoStateData",
+      "field": [{
+        "name": "active",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "active",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnglesData",
+      "field": [{
+        "name": "angles",
+        "number": 1,
+        "label": 3,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CScanData",
+      "field": [{
+        "name": "devices",
+        "number": 1,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.I2CDevice",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "devices",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CScanDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PeripheralSettingsData",
+      "field": [{
+        "name": "sda",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sda",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "scl",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "scl",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "frequency",
+        "number": 3,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "frequency",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pins",
+        "number": 4,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.PinConfig",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pins",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PeripheralSettingsDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WifiSettingsData",
+      "field": [{
+        "name": "hostname",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "hostname",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "priority_rssi",
+        "number": 2,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "priorityRssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "wifi_networks",
+        "number": 3,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.KnownNetworkItem",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "wifiNetworks",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "RSSIData",
+      "field": [{
+        "name": "rssi",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "DownloadOTAData",
+      "field": [{
+        "name": "status",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "status",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "progress",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "progress",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "error",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "error",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SonarData",
+      "field": [{
+        "name": "dummy_field",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "dummyField",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "HumanInputData",
+      "field": [{
+        "name": "left",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "left",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "right",
+        "number": 11,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "right",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "height",
+        "number": 20,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "height",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "speed",
+        "number": 21,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "speed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "s1",
+        "number": 22,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "s1",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SystemInformation",
+      "field": [{
+        "name": "analytics_data",
+        "number": 1,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analyticsData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "static_system_information",
+        "number": 2,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.StaticSystemInformation",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "staticSystemInformation",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WalkGaitData",
+      "field": [{
+        "name": "gait",
+        "number": 1,
+        "label": 1,
+        "type": 14,
+        "typeName": ".socket_message.WalkGaits",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "gait",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "KinematicData",
+      "field": [{
+        "name": "omega",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "omega",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "phi",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "phi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "psi",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "psi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "xm",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "xm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ym",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ym",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "zm",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "zm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SubscribeNotification",
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "UnsubscribeNotification",
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PingMsg",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PongMsg",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WebsocketMessage",
+      "field": [{
+        "name": "correlation_request",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.CorrelationRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "correlation_response",
+        "number": 11,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.CorrelationResponse",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationResponse",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sub_notif",
+        "number": 20,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.SubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "subNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "unsub_notif",
+        "number": 21,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.UnsubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "unsubNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pingmsg",
+        "number": 30,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PingMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pingmsg",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pongmsg",
+        "number": 31,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PongMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pongmsg",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu",
+        "number": 110,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imu",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate",
+        "number": 120,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrate",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate_execute",
+        "number": 121,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateExecute",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrateExecute",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mode",
+        "number": 130,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ModeData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "input",
+        "number": 140,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ControllerInputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "input",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "analytics",
+        "number": 150,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analytics",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "walk_gait",
+        "number": 160,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.WalkGaitData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "walkGait",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "angles",
+        "number": 170,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnglesData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan",
+        "number": 180,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScan",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan_data_request",
+        "number": 181,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScanDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "peripheral_settings",
+        "number": 190,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PeripheralSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "peripheral_settings_data_request",
+        "number": 191,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PeripheralSettingsDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettingsDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "kinematic_data",
+        "number": 200,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.KinematicData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "kinematicData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_pwm",
+        "number": 210,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ServoPWMData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_state",
+        "number": 211,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ServoStateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoState",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "wifi_settings",
+        "number": 240,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.WifiSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "wifiSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "human_input_data",
+        "number": 250,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.HumanInputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "humanInputData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "rssi",
+        "number": 260,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.RSSIData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "message", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
+    "enumType": [{
+      "name": "ModesEnum",
+      "value": [
+        { "name": "DEACTIVATED", "number": 0, "options": undefined },
+        { "name": "IDLE", "number": 1, "options": undefined },
+        { "name": "CALIBRATION", "number": 2, "options": undefined },
+        { "name": "REST", "number": 3, "options": undefined },
+        { "name": "STAND", "number": 4, "options": undefined },
+        { "name": "WALK", "number": 5, "options": undefined },
+      ],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WalkGaits",
+      "value": [{ "name": "TROT", "number": 0, "options": undefined }, {
+        "name": "CRAWL",
+        "number": 1,
+        "options": undefined,
+      }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
+    "service": [],
+    "extension": [],
+    "options": undefined,
+    "sourceCodeInfo": {
+      "location": [{
+        "path": [4, 4],
+        "span": [12, 0, 20, 1],
+        "leadingComments": " Individual message data types\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 34],
+        "span": [160, 0, 187, 1],
+        "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }],
+    },
+    "syntax": "proto3",
+    "edition": 0,
+  },
+  references: {
+    ".socket_message.ModesEnum": ModesEnum,
+    ".socket_message.WalkGaits": WalkGaits,
+    ".socket_message.Vector": Vector,
+    ".socket_message.I2CDevice": I2CDevice,
+    ".socket_message.PinConfig": PinConfig,
+    ".socket_message.KnownNetworkItem": KnownNetworkItem,
+    ".socket_message.IMUData": IMUData,
+    ".socket_message.FeaturesDataResponse": FeaturesDataResponse,
+    ".socket_message.FeaturesDataRequest": FeaturesDataRequest,
+    ".socket_message.CorrelationRequest": CorrelationRequest,
+    ".socket_message.CorrelationResponse": CorrelationResponse,
+    ".socket_message.StaticSystemInformation": StaticSystemInformation,
+    ".socket_message.IMUCalibrateData": IMUCalibrateData,
+    ".socket_message.IMUCalibrateExecute": IMUCalibrateExecute,
+    ".socket_message.ModeData": ModeData,
+    ".socket_message.ControllerInputData": ControllerInputData,
+    ".socket_message.AnalyticsData": AnalyticsData,
+    ".socket_message.ServoPWMData": ServoPWMData,
+    ".socket_message.ServoStateData": ServoStateData,
+    ".socket_message.AnglesData": AnglesData,
+    ".socket_message.I2CScanData": I2CScanData,
+    ".socket_message.I2CScanDataRequest": I2CScanDataRequest,
+    ".socket_message.PeripheralSettingsData": PeripheralSettingsData,
+    ".socket_message.PeripheralSettingsDataRequest": PeripheralSettingsDataRequest,
+    ".socket_message.WifiSettingsData": WifiSettingsData,
+    ".socket_message.RSSIData": RSSIData,
+    ".socket_message.DownloadOTAData": DownloadOTAData,
+    ".socket_message.SonarData": SonarData,
+    ".socket_message.HumanInputData": HumanInputData,
+    ".socket_message.SystemInformation": SystemInformation,
+    ".socket_message.WalkGaitData": WalkGaitData,
+    ".socket_message.KinematicData": KinematicData,
+    ".socket_message.SubscribeNotification": SubscribeNotification,
+    ".socket_message.UnsubscribeNotification": UnsubscribeNotification,
+    ".socket_message.PingMsg": PingMsg,
+    ".socket_message.PongMsg": PongMsg,
+    ".socket_message.WebsocketMessage": WebsocketMessage,
+  },
+  dependencies: [],
+};
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
 export type DeepPartial<T> = T extends Builtin ? T
   : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
   : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in Exclude<keyof T, "$type">]?: DeepPartial<T[K]> }
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(int64: { toString(): string }): number {
   const num = globalThis.Number(int64.toString());
@@ -4478,12 +6459,11 @@ function isSet(value: any): boolean {
   return value !== null && value !== undefined;
 }
 
-export interface MessageFns<T, V extends string> {
-  readonly $type: V;
+export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
   fromJSON(object: any): T;
   toJSON(message: T): unknown;
-  create(base?: DeepPartial<T>): T;
-  fromPartial(object: DeepPartial<T>): T;
+  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
+  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }

@@ -42,19 +42,20 @@ message FeaturesDataRequest { bool sonar_test = 1; }
 
 
 message CorrelationRequest {
-    uint32 correlation_id = 1; // Used for request-response correlation
+    uint32 correlation_id = 1;
     oneof request {
-        // NOTE: requests must have same tag id as correlating to the response type (currently not enforced in C, but will be, and tests will fail)
         FeaturesDataRequest features_data_request = 10;
+        I2CScanDataRequest i2c_scan_data_request = 20;
+        IMUCalibrateExecute imu_calibrate_execute = 30;
     }
-    
 }
 message CorrelationResponse {
-    uint32 correlation_id = 1; // Used for request-response correlation'
-    uint32 stauts_code = 2;
+    uint32 correlation_id = 1;
+    uint32 status_code = 2;
     oneof response {
-        // NOTE: responses must have same tag id as correlating to the request type (currently not enforced in C, but will be, and tests will fail)
         FeaturesDataResponse features_data_response = 10;
+        I2CScanData i2c_scan_data = 20;
+        IMUCalibrateData imu_calibrate_data = 30;
     }
 }
 
