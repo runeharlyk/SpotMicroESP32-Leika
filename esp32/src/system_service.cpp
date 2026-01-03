@@ -26,13 +26,6 @@ esp_err_t getStatus(PsychicRequest *request) {
     return response.send();
 }
 
-// esp_err_t getMetrics(PsychicRequest *request) {
-//     PsychicJsonResponse response = PsychicJsonResponse(request, false);
-//     JsonObject root = response.getRoot();
-//     metrics(root);
-//     return response.send();
-// }
-
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
     File root = ESP_FS.open(FS_CONFIG_DIRECTORY);
@@ -108,32 +101,6 @@ void status(JsonObject &root) {
     root["core_temp"] = temperatureRead();
     root["cpu_reset_reason"] = resetReason(esp_reset_reason());
     root["uptime"] = esp_timer_get_time() / 1000000;
-}
-
-void metrics(socket_message_WebsocketMessage *msg) {
-    msg->which_message = socket_message_WebsocketMessage_analytics_tag;
-
-    msg->message.analytics.uptime = esp_timer_get_time() / 1000000;
-    msg->message.analytics.free_heap = ESP.getFreeHeap();
-    msg->message.analytics.total_heap = ESP.getHeapSize();
-    msg->message.analytics.min_free_heap = ESP.getMinFreeHeap();
-    msg->message.analytics.max_alloc_heap = ESP.getMaxAllocHeap();
-    msg->message.analytics.fs_used = ESP_FS.usedBytes();
-    msg->message.analytics.fs_total = ESP_FS.totalBytes();
-    msg->message.analytics.core_temp = temperatureRead();
-}
-
-void emitMetrics(Websocket &socket) {
-    // if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
-
-    // TODO: redo -1 as static
-    socket.send_wsm_by_function(metrics, -1);
-
-    // JsonDocument doc;
-    // JsonObject root = doc.to<JsonObject>();
-    // system_service::metrics(root);
-    // JsonVariant data = doc.as<JsonVariant>();
-    // socket.emit(EVENT_ANALYTICS, data);
 }
 
 const char *resetReason(esp_reset_reason_t reason) {

@@ -54,8 +54,6 @@ void setupServer() {
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleRestart(request); });
     server.on("/api/system/sleep", HTTP_POST,
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleSleep(request); });
-    // server.on("/api/system/metrics", HTTP_GET,
-    //           [&](PsychicRequest *request) { return system_service::getMetrics(request); });
 #if USE_CAMERA
     server.on("/api/camera/still", HTTP_GET,
               [&](PsychicRequest *request) { return cameraService.cameraStill(request); });
