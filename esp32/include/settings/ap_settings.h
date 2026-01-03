@@ -2,7 +2,6 @@
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
-#include <utils/json_utils.h>
 #include <template/state_result.h>
 #include <string>
 
@@ -53,6 +52,12 @@
 
 enum APNetworkStatus { ACTIVE = 0, INACTIVE, LINGERING };
 
+inline uint32_t parseIPv4(const char *str) {
+    IPAddress ip;
+    ip.fromString(str);
+    return (uint32_t)ip;
+}
+
 class APSettings {
   public:
     uint8_t provisionMode;
@@ -79,9 +84,9 @@ class APSettings {
         root["channel"] = settings.channel;
         root["ssid_hidden"] = settings.ssidHidden;
         root["max_clients"] = settings.maxClients;
-        root["local_ip"] = settings.localIP.toString();
-        root["gateway_ip"] = settings.gatewayIP.toString();
-        root["subnet_mask"] = settings.subnetMask.toString();
+        root["local_ip"] = (uint32_t)(settings.localIP);
+        root["gateway_ip"] = (uint32_t)(settings.gatewayIP);
+        root["subnet_mask"] = (uint32_t)(settings.subnetMask);
     }
 
     static StateUpdateResult update(JsonVariant &root, APSettings &settings) {
@@ -99,9 +104,9 @@ class APSettings {
         newSettings.ssidHidden = root["ssid_hidden"] | FACTORY_AP_SSID_HIDDEN;
         newSettings.maxClients = root["max_clients"] | FACTORY_AP_MAX_CLIENTS;
 
-        JsonUtils::readIP(root, "local_ip", newSettings.localIP, FACTORY_AP_LOCAL_IP);
-        JsonUtils::readIP(root, "gateway_ip", newSettings.gatewayIP, FACTORY_AP_GATEWAY_IP);
-        JsonUtils::readIP(root, "subnet_mask", newSettings.subnetMask, FACTORY_AP_SUBNET_MASK);
+        newSettings.localIP = IPAddress(root["local_ip"] | parseIPv4(FACTORY_AP_LOCAL_IP));
+        newSettings.gatewayIP = IPAddress(root["gateway_ip"] | parseIPv4(FACTORY_AP_GATEWAY_IP));
+        newSettings.subnetMask = IPAddress(root["subnet_mask"] | parseIPv4(FACTORY_AP_SUBNET_MASK));
 
         if (newSettings == settings) {
             return StateUpdateResult::UNCHANGED;

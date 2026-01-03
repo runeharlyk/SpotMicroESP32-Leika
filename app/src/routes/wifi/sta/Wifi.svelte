@@ -12,6 +12,7 @@
     import InfoDialog from '$lib/components/InfoDialog.svelte'
     import { type KnownNetworkItem, type WifiSettings, type WifiStatus } from '$lib/types/models'
     import { api } from '$lib/api'
+    import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import {
         Cancel,
         Delete,
@@ -37,11 +38,19 @@
         ssid: '',
         password: '',
         static_ip_config: false,
-        local_ip: undefined,
-        subnet_mask: undefined,
-        gateway_ip: undefined,
-        dns_ip_1: undefined,
-        dns_ip_2: undefined
+        local_ip: 0,
+        subnet_mask: 0,
+        gateway_ip: 0,
+        dns_ip_1: 0,
+        dns_ip_2: 0
+    })
+
+    let ipDisplay = $state({
+        local_ip: '',
+        subnet_mask: '',
+        gateway_ip: '',
+        dns_ip_1: '',
+        dns_ip_2: ''
     })
 
     let static_ip_config = $state(false)
@@ -119,7 +128,6 @@
         event.preventDefault()
         let valid = true
 
-        // Validate SSID
         if (networkEditable.ssid.length < 3 || networkEditable.ssid.length > 32) {
             valid = false
             formErrors.ssid = true
@@ -130,49 +138,46 @@
         networkEditable.static_ip_config = static_ip_config
 
         if (networkEditable.static_ip_config) {
-            // RegEx for IPv4
-            const regexExp =
-                /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/
-
-            // Validate gateway IP
-            if (!regexExp.test(networkEditable.gateway_ip!)) {
+            if (!isValidIpString(ipDisplay.gateway_ip)) {
                 valid = false
                 formErrors.gateway_ip = true
             } else {
                 formErrors.gateway_ip = false
             }
 
-            // Validate Subnet Mask
-            if (!regexExp.test(networkEditable.subnet_mask!)) {
+            if (!isValidIpString(ipDisplay.subnet_mask)) {
                 valid = false
                 formErrors.subnet_mask = true
             } else {
                 formErrors.subnet_mask = false
             }
 
-            // Validate local IP
-            if (!regexExp.test(networkEditable.local_ip!)) {
+            if (!isValidIpString(ipDisplay.local_ip)) {
                 valid = false
                 formErrors.local_ip = true
             } else {
                 formErrors.local_ip = false
             }
 
-            // Validate DNS 1
-            if (!regexExp.test(networkEditable.dns_ip_1!)) {
+            if (!isValidIpString(ipDisplay.dns_ip_1)) {
                 valid = false
                 formErrors.dns_1 = true
             } else {
                 formErrors.dns_1 = false
             }
 
-            // Validate DNS 2
-            if (!regexExp.test(networkEditable.dns_ip_2!)) {
+            if (!isValidIpString(ipDisplay.dns_ip_2)) {
                 valid = false
                 formErrors.dns_2 = true
             } else {
                 formErrors.dns_2 = false
             }
+
+            networkEditable.local_ip = ipToUint32(ipDisplay.local_ip)
+            networkEditable.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
+            networkEditable.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
+            networkEditable.dns_ip_1 = ipToUint32(ipDisplay.dns_ip_1)
+            networkEditable.dns_ip_2 = ipToUint32(ipDisplay.dns_ip_2)
         } else {
             formErrors.local_ip = false
             formErrors.subnet_mask = false
@@ -180,7 +185,7 @@
             formErrors.dns_1 = false
             formErrors.dns_2 = false
         }
-        // Submit JSON to REST API
+
         if (valid) {
             if (newNetwork) {
                 dndNetworkList.push(networkEditable)
@@ -188,7 +193,7 @@
                 dndNetworkList.splice(dndNetworkList.indexOf(networkEditable), 1, networkEditable)
             }
             addNetwork()
-            dndNetworkList = [...dndNetworkList] //Trigger reactivity
+            dndNetworkList = [...dndNetworkList]
             showNetworkEditor = false
         }
     }
@@ -210,11 +215,18 @@
             ssid: '',
             password: '',
             static_ip_config: false,
-            local_ip: undefined,
-            subnet_mask: undefined,
-            gateway_ip: undefined,
-            dns_ip_1: undefined,
-            dns_ip_2: undefined
+            local_ip: 0,
+            subnet_mask: 0,
+            gateway_ip: 0,
+            dns_ip_1: 0,
+            dns_ip_2: 0
+        }
+        ipDisplay = {
+            local_ip: '',
+            subnet_mask: '',
+            gateway_ip: '',
+            dns_ip_1: '',
+            dns_ip_2: ''
         }
     }
 
@@ -222,6 +234,13 @@
         newNetwork = false
         showNetworkEditor = true
         networkEditable = dndNetworkList[index]
+        ipDisplay = {
+            local_ip: networkEditable.local_ip ? uint32ToIp(networkEditable.local_ip) : '',
+            subnet_mask: networkEditable.subnet_mask ? uint32ToIp(networkEditable.subnet_mask) : '',
+            gateway_ip: networkEditable.gateway_ip ? uint32ToIp(networkEditable.gateway_ip) : '',
+            dns_ip_1: networkEditable.dns_ip_1 ? uint32ToIp(networkEditable.dns_ip_1) : '',
+            dns_ip_2: networkEditable.dns_ip_2 ? uint32ToIp(networkEditable.dns_ip_2) : ''
+        }
     }
 
     function confirmDelete(index: number) {
@@ -300,7 +319,7 @@
                         <StatusItem
                             icon={Home}
                             title="IP Address"
-                            description={wifiStatus.local_ip}
+                            description={uint32ToIp(wifiStatus.local_ip)}
                         />
 
                         <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
@@ -343,16 +362,20 @@
                         <StatusItem
                             icon={Gateway}
                             title="Gateway IP"
-                            description={wifiStatus.gateway_ip}
+                            description={uint32ToIp(wifiStatus.gateway_ip)}
                         />
 
                         <StatusItem
                             icon={Subnet}
                             title="Subnet Mask"
-                            description={wifiStatus.subnet_mask}
+                            description={uint32ToIp(wifiStatus.subnet_mask)}
                         />
 
-                        <StatusItem icon={DNS} title="DNS" description={wifiStatus.dns_ip_1} />
+                        <StatusItem
+                            icon={DNS}
+                            title="DNS"
+                            description={uint32ToIp(wifiStatus.dns_ip_1)}
+                        />
                     </div>
                 {/if}
             {/if}
@@ -543,7 +566,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.local_ip}
+                                            bind:value={ipDisplay.local_ip}
                                             id="localIP"
                                             required
                                         />
@@ -572,7 +595,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.gateway_ip}
+                                            bind:value={ipDisplay.gateway_ip}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -599,7 +622,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.subnet_mask}
+                                            bind:value={ipDisplay.subnet_mask}
                                             required
                                         />
                                         <label class="label" for="subnet">
@@ -626,7 +649,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.dns_ip_1}
+                                            bind:value={ipDisplay.dns_ip_1}
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -651,7 +674,7 @@
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={networkEditable.dns_ip_2}
+                                            bind:value={ipDisplay.dns_ip_2}
                                             required
                                         />
                                         <label class="label" for="subnet">

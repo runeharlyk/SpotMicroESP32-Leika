@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <utils/json_utils.h>
 #include <template/state_result.h>
 #include <filesystem.h>
 #include <string>

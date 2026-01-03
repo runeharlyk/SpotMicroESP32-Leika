@@ -8,11 +8,18 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import type { ApSettings, ApStatus } from '$lib/types/models'
     import { api } from '$lib/api'
+    import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
 
     let apSettings: ApSettings | null = $state(null)
     let apStatus: ApStatus | null = $state(null)
+
+    let ipDisplay = $state({
+        local_ip: '',
+        gateway_ip: '',
+        subnet_mask: ''
+    })
 
     let formField: Record<string, unknown> = $state({})
 
@@ -33,6 +40,11 @@
             return
         }
         apSettings = result.inner
+        ipDisplay = {
+            local_ip: uint32ToIp(apSettings.local_ip),
+            gateway_ip: uint32ToIp(apSettings.gateway_ip),
+            subnet_mask: uint32ToIp(apSettings.subnet_mask)
+        }
         return apSettings
     }
 
@@ -90,7 +102,6 @@
         if (!apSettings) return
         let valid = true
 
-        // Validate SSID
         if (apSettings.ssid.length < 3 || apSettings.ssid.length > 32) {
             valid = false
             formErrors.ssid = true
@@ -98,7 +109,6 @@
             formErrors.ssid = false
         }
 
-        // Validate Channel
         let channel = Number(apSettings.channel)
         if (1 > channel || channel > 13) {
             valid = false
@@ -107,7 +117,6 @@
             formErrors.channel = false
         }
 
-        // Validate max_clients
         let maxClients = Number(apSettings.max_clients)
         if (1 > maxClients || maxClients > 8) {
             valid = false
@@ -116,36 +125,31 @@
             formErrors.max_clients = false
         }
 
-        // RegEx for IPv4
-        const regexExp =
-            /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/
-
-        // Validate gateway IP
-        if (!regexExp.test(apSettings.gateway_ip)) {
+        if (!isValidIpString(ipDisplay.gateway_ip)) {
             valid = false
             formErrors.gateway_ip = true
         } else {
             formErrors.gateway_ip = false
         }
 
-        // Validate Subnet Mask
-        if (!regexExp.test(apSettings.subnet_mask)) {
+        if (!isValidIpString(ipDisplay.subnet_mask)) {
             valid = false
             formErrors.subnet_mask = true
         } else {
             formErrors.subnet_mask = false
         }
 
-        // Validate local IP
-        if (!regexExp.test(apSettings.local_ip)) {
+        if (!isValidIpString(ipDisplay.local_ip)) {
             valid = false
             formErrors.local_ip = true
         } else {
             formErrors.local_ip = false
         }
 
-        // Submit JSON to REST API
         if (valid) {
+            apSettings.local_ip = ipToUint32(ipDisplay.local_ip)
+            apSettings.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
+            apSettings.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
             postAPSettings(apSettings)
         }
     }
@@ -174,7 +178,11 @@
                         description={apStatusDescription[apStatus.status]}
                     />
 
-                    <StatusItem icon={Home} title="IP Address" description={apStatus.ip_address} />
+                    <StatusItem
+                        icon={Home}
+                        title="IP Address"
+                        description={uint32ToIp(apStatus.ip_address)}
+                    />
 
                     <StatusItem icon={MAC} title="MAC Address" description={apStatus.mac_address} />
 
@@ -319,7 +327,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={apSettings.local_ip}
+                                bind:value={ipDisplay.local_ip}
                                 id="localIP"
                                 required
                             />
@@ -344,7 +352,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={apSettings.gateway_ip}
+                                bind:value={ipDisplay.gateway_ip}
                                 id="gateway"
                                 required
                             />
@@ -368,7 +376,7 @@
                                 minlength="7"
                                 maxlength="15"
                                 size="15"
-                                bind:value={apSettings.subnet_mask}
+                                bind:value={ipDisplay.subnet_mask}
                                 id="subnet"
                                 required
                             />

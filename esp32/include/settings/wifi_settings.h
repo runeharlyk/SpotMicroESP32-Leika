@@ -2,7 +2,6 @@
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
-#include <utils/json_utils.h>
 #include <template/state_result.h>
 #include <string>
 
@@ -40,11 +39,11 @@ typedef struct {
         json["password"] = password.c_str();
         json["static_ip_config"] = staticIPConfig;
         if (staticIPConfig) {
-            JsonUtils::writeIP(json, "local_ip", localIP);
-            JsonUtils::writeIP(json, "gateway_ip", gatewayIP);
-            JsonUtils::writeIP(json, "subnet_mask", subnetMask);
-            JsonUtils::writeIP(json, "dns_ip_1", dnsIP1);
-            JsonUtils::writeIP(json, "dns_ip_2", dnsIP2);
+            json["local_ip"] = (uint32_t)(localIP);
+            json["gateway_ip"] = (uint32_t)(gatewayIP);
+            json["subnet_mask"] = (uint32_t)(subnetMask);
+            json["dns_ip_1"] = (uint32_t)(dnsIP1);
+            json["dns_ip_2"] = (uint32_t)(dnsIP2);
         }
     }
 
@@ -59,11 +58,11 @@ typedef struct {
         password = newPassword;
         staticIPConfig = json["static_ip_config"] | false;
         if (staticIPConfig) {
-            JsonUtils::readIP(json, "local_ip", localIP);
-            JsonUtils::readIP(json, "gateway_ip", gatewayIP);
-            JsonUtils::readIP(json, "subnet_mask", subnetMask);
-            JsonUtils::readIP(json, "dns_ip_1", dnsIP1);
-            JsonUtils::readIP(json, "dns_ip_2", dnsIP2);
+            localIP = IPAddress(json["local_ip"] | 0u);
+            gatewayIP = IPAddress(json["gateway_ip"] | 0u);
+            subnetMask = IPAddress(json["subnet_mask"] | 0u);
+            dnsIP1 = IPAddress(json["dns_ip_1"] | 0u);
+            dnsIP2 = IPAddress(json["dns_ip_2"] | 0u);
             if (dnsIP1 == IPAddress(0, 0, 0, 0) && dnsIP2 != IPAddress(0, 0, 0, 0)) {
                 dnsIP1 = dnsIP2;
                 dnsIP2 = IPAddress(0, 0, 0, 0);

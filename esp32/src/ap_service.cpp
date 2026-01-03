@@ -21,7 +21,7 @@ esp_err_t APService::getStatus(PsychicRequest *request) {
 
 void APService::status(JsonObject &root) {
     root["status"] = getAPNetworkStatus();
-    root["ip_address"] = WiFi.softAPIP().toString();
+    root["ip_address"] = (uint32_t)(WiFi.softAPIP());
     root["mac_address"] = WiFi.softAPmacAddress();
     root["station_num"] = WiFi.softAPgetStationNum();
 }
