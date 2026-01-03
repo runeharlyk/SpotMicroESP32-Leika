@@ -5,5683 +5,6292 @@
 // source: websocket_message.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire'
-import type { FileDescriptorProto } from 'ts-proto-descriptors'
+import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import type { FileDescriptorProto } from "ts-proto-descriptors";
 
-export const protobufPackage = 'socket_message'
+export const protobufPackage = "socket_message";
 
 export enum ModesEnum {
-    DEACTIVATED = 0,
-    IDLE = 1,
-    CALIBRATION = 2,
-    REST = 3,
-    STAND = 4,
-    WALK = 5,
-    UNRECOGNIZED = -1
+  DEACTIVATED = 0,
+  IDLE = 1,
+  CALIBRATION = 2,
+  REST = 3,
+  STAND = 4,
+  WALK = 5,
+  UNRECOGNIZED = -1,
 }
 
 export function modesEnumFromJSON(object: any): ModesEnum {
-    switch (object) {
-        case 0:
-        case 'DEACTIVATED':
-            return ModesEnum.DEACTIVATED
-        case 1:
-        case 'IDLE':
-            return ModesEnum.IDLE
-        case 2:
-        case 'CALIBRATION':
-            return ModesEnum.CALIBRATION
-        case 3:
-        case 'REST':
-            return ModesEnum.REST
-        case 4:
-        case 'STAND':
-            return ModesEnum.STAND
-        case 5:
-        case 'WALK':
-            return ModesEnum.WALK
-        case -1:
-        case 'UNRECOGNIZED':
-        default:
-            return ModesEnum.UNRECOGNIZED
-    }
+  switch (object) {
+    case 0:
+    case "DEACTIVATED":
+      return ModesEnum.DEACTIVATED;
+    case 1:
+    case "IDLE":
+      return ModesEnum.IDLE;
+    case 2:
+    case "CALIBRATION":
+      return ModesEnum.CALIBRATION;
+    case 3:
+    case "REST":
+      return ModesEnum.REST;
+    case 4:
+    case "STAND":
+      return ModesEnum.STAND;
+    case 5:
+    case "WALK":
+      return ModesEnum.WALK;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ModesEnum.UNRECOGNIZED;
+  }
 }
 
 export function modesEnumToJSON(object: ModesEnum): string {
-    switch (object) {
-        case ModesEnum.DEACTIVATED:
-            return 'DEACTIVATED'
-        case ModesEnum.IDLE:
-            return 'IDLE'
-        case ModesEnum.CALIBRATION:
-            return 'CALIBRATION'
-        case ModesEnum.REST:
-            return 'REST'
-        case ModesEnum.STAND:
-            return 'STAND'
-        case ModesEnum.WALK:
-            return 'WALK'
-        case ModesEnum.UNRECOGNIZED:
-        default:
-            return 'UNRECOGNIZED'
-    }
+  switch (object) {
+    case ModesEnum.DEACTIVATED:
+      return "DEACTIVATED";
+    case ModesEnum.IDLE:
+      return "IDLE";
+    case ModesEnum.CALIBRATION:
+      return "CALIBRATION";
+    case ModesEnum.REST:
+      return "REST";
+    case ModesEnum.STAND:
+      return "STAND";
+    case ModesEnum.WALK:
+      return "WALK";
+    case ModesEnum.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
 }
 
 export enum WalkGaits {
-    TROT = 0,
-    CRAWL = 1,
-    UNRECOGNIZED = -1
+  TROT = 0,
+  CRAWL = 1,
+  UNRECOGNIZED = -1,
 }
 
 export function walkGaitsFromJSON(object: any): WalkGaits {
-    switch (object) {
-        case 0:
-        case 'TROT':
-            return WalkGaits.TROT
-        case 1:
-        case 'CRAWL':
-            return WalkGaits.CRAWL
-        case -1:
-        case 'UNRECOGNIZED':
-        default:
-            return WalkGaits.UNRECOGNIZED
-    }
+  switch (object) {
+    case 0:
+    case "TROT":
+      return WalkGaits.TROT;
+    case 1:
+    case "CRAWL":
+      return WalkGaits.CRAWL;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return WalkGaits.UNRECOGNIZED;
+  }
 }
 
 export function walkGaitsToJSON(object: WalkGaits): string {
-    switch (object) {
-        case WalkGaits.TROT:
-            return 'TROT'
-        case WalkGaits.CRAWL:
-            return 'CRAWL'
-        case WalkGaits.UNRECOGNIZED:
-        default:
-            return 'UNRECOGNIZED'
-    }
+  switch (object) {
+    case WalkGaits.TROT:
+      return "TROT";
+    case WalkGaits.CRAWL:
+      return "CRAWL";
+    case WalkGaits.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
 }
 
 export interface Vector {
-    x: number
-    y: number
+  x: number;
+  y: number;
 }
 
 export interface I2CDevice {
-    address: number
-    partNumber: string
-    name: string
+  address: number;
+  partNumber: string;
+  name: string;
 }
 
 export interface PinConfig {
-    pin: number
-    mode: string
-    type: string
-    role: string
+  pin: number;
+  mode: string;
+  type: string;
+  role: string;
 }
 
 export interface KnownNetworkItem {
-    ssid: string
-    password: string
-    staticIp: boolean
-    localIp?: string | undefined
-    subnetMask?: string | undefined
-    gatewayIp?: string | undefined
-    dnsIp1?: string | undefined
-    dnsIp2?: string | undefined
+  ssid: string;
+  password: string;
+  staticIp: boolean;
+  localIp?: string | undefined;
+  subnetMask?: string | undefined;
+  gatewayIp?: string | undefined;
+  dnsIp1?: string | undefined;
+  dnsIp2?: string | undefined;
 }
 
 /** Individual message data types */
 export interface IMUData {
-    x: number
-    y: number
-    z: number
-    heading: number
-    altitude: number
-    bmpTemp: number
-    pressure: number
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  altitude: number;
+  bmpTemp: number;
+  pressure: number;
+}
+
+export interface FeaturesDataResponse {
+  variant: string;
+  firmwareBuiltTarget: string;
+  firmwareName: string;
+  firmwareVersion: string;
+  camera: boolean;
+  imu: boolean;
+  mag: boolean;
+  bmp: boolean;
+  sonar: boolean;
+  servo: boolean;
+  ws2812: boolean;
+  mdns: boolean;
+  embedWww: boolean;
+}
+
+export interface FeaturesDataRequest {
+  sonarTest: boolean;
+}
+
+export interface CorrelationRequest {
+  /** Used for request-response correlation */
+  correlationId: number;
+  /** NOTE: requests must have same tag id as correlating to the response type (currently not enforced in C, but will be, and tests will fail) */
+  featuresDataRequest?: FeaturesDataRequest | undefined;
+}
+
+export interface CorrelationResponse {
+  /** Used for request-response correlation' */
+  correlationId: number;
+  stautsCode: number;
+  /** NOTE: responses must have same tag id as correlating to the request type (currently not enforced in C, but will be, and tests will fail) */
+  featuresDataResponse?: FeaturesDataResponse | undefined;
 }
 
 export interface StaticSystemInformation {
-    espPlatform: string
-    firmwareVersion: string
-    cpuFreqMhz: number
-    cpuType: string
-    cpuRev: number
-    cpuCores: number
-    sketchSize: number
-    freeSketchSpace: number
-    sdkVersion: string
-    arduinoVersion: string
-    flashChipSize: number
-    flashChipSpeed: number
-    cpuResetReason: string
+  espPlatform: string;
+  firmwareVersion: string;
+  cpuFreqMhz: number;
+  cpuType: string;
+  cpuRev: number;
+  cpuCores: number;
+  sketchSize: number;
+  freeSketchSpace: number;
+  sdkVersion: string;
+  arduinoVersion: string;
+  flashChipSize: number;
+  flashChipSpeed: number;
+  cpuResetReason: string;
 }
 
 export interface IMUCalibrateData {
-    success: boolean
+  success: boolean;
 }
 
-export interface IMUCalibrateExecute {}
+export interface IMUCalibrateExecute {
+}
 
 export interface ModeData {
-    mode: ModesEnum
+  mode: ModesEnum;
 }
 
 export interface ControllerInputData {
-    left: Vector | undefined
-    right: Vector | undefined
-    height: number
-    speed: number
-    s1: number
+  left: Vector | undefined;
+  right: Vector | undefined;
+  height: number;
+  speed: number;
+  s1: number;
 }
 
 export interface AnalyticsData {
-    maxAllocHeap: number
-    psramSize: number
-    freePsram: number
-    freeHeap: number
-    totalHeap: number
-    minFreeHeap: number
-    coreTemp: number
-    fsTotal: number
-    fsUsed: number
-    uptime: number
-    cpu0Usage: number
-    cpu1Usage: number
-    cpuUsage: number
+  maxAllocHeap: number;
+  psramSize: number;
+  freePsram: number;
+  freeHeap: number;
+  totalHeap: number;
+  minFreeHeap: number;
+  coreTemp: number;
+  fsTotal: number;
+  fsUsed: number;
+  uptime: number;
+  cpu0Usage: number;
+  cpu1Usage: number;
+  cpuUsage: number;
 }
 
 export interface ServoPWMData {
-    servoId: number
-    servoPwm: number
+  servoId: number;
+  servoPwm: number;
 }
 
 export interface ServoStateData {
-    active: boolean
+  active: boolean;
 }
 
 export interface AnglesData {
-    angles: number[]
+  angles: number[];
 }
 
 export interface I2CScanData {
-    devices: I2CDevice[]
+  devices: I2CDevice[];
 }
 
-export interface I2CScanDataRequest {}
+export interface I2CScanDataRequest {
+}
 
 export interface PeripheralSettingsData {
-    sda: number
-    scl: number
-    frequency: number
-    pins: PinConfig[]
+  sda: number;
+  scl: number;
+  frequency: number;
+  pins: PinConfig[];
 }
 
-export interface PeripheralSettingsDataRequest {}
+export interface PeripheralSettingsDataRequest {
+}
 
 export interface WifiSettingsData {
-    hostname: string
-    priorityRssi: boolean
-    wifiNetworks: KnownNetworkItem[]
+  hostname: string;
+  priorityRssi: boolean;
+  wifiNetworks: KnownNetworkItem[];
 }
 
 export interface RSSIData {
-    rssi: number
+  rssi: number;
 }
 
 export interface DownloadOTAData {
-    status: string
-    progress: number
-    error: string
+  status: string;
+  progress: number;
+  error: string;
 }
 
 export interface SonarData {
-    dummyField: string
+  dummyField: string;
 }
 
 export interface HumanInputData {
-    left: Vector | undefined
-    right: Vector | undefined
-    height: number
-    speed: number
-    s1: number
+  left: Vector | undefined;
+  right: Vector | undefined;
+  height: number;
+  speed: number;
+  s1: number;
 }
 
 export interface SystemInformation {
-    analyticsData: AnalyticsData | undefined
-    staticSystemInformation: StaticSystemInformation | undefined
+  analyticsData: AnalyticsData | undefined;
+  staticSystemInformation: StaticSystemInformation | undefined;
 }
 
 export interface WalkGaitData {
-    gait: WalkGaits
+  gait: WalkGaits;
 }
 
 export interface KinematicData {
-    omega: number
-    phi: number
-    psi: number
-    xm: number
-    ym: number
-    zm: number
+  omega: number;
+  phi: number;
+  psi: number;
+  xm: number;
+  ym: number;
+  zm: number;
 }
 
 export interface SubscribeNotification {
-    tag: number
+  tag: number;
 }
 
 export interface UnsubscribeNotification {
-    tag: number
+  tag: number;
 }
 
-export interface PingMsg {}
+export interface PingMsg {
+}
 
-export interface PongMsg {}
+export interface PongMsg {
+}
 
 /**
  * WebSocket message wrapper
  * Only ONE field will be set at a time (oneof ensures this)
  */
 export interface WebsocketMessage {
-    subNotif?: SubscribeNotification | undefined
-    unsubNotif?: UnsubscribeNotification | undefined
-    pingmsg?: PingMsg | undefined
-    pongmsg?: PongMsg | undefined
-    imu?: IMUData | undefined
-    imuCalibrate?: IMUCalibrateData | undefined
-    imuCalibrateExecute?: IMUCalibrateExecute | undefined
-    mode?: ModeData | undefined
-    input?: ControllerInputData | undefined
-    analytics?: AnalyticsData | undefined
-    angles?: AnglesData | undefined
-    i2cScan?: I2CScanData | undefined
-    i2cScanDataRequest?: I2CScanDataRequest | undefined
-    peripheralSettings?: PeripheralSettingsData | undefined
-    peripheralSettingsDataRequest?: PeripheralSettingsDataRequest | undefined
-    kinematicData?: KinematicData | undefined
-    wifiSettings?: WifiSettingsData | undefined
-    humanInputData?: HumanInputData | undefined
-    rssi?: RSSIData | undefined
+  correlationRequest?: CorrelationRequest | undefined;
+  correlationResponse?: CorrelationResponse | undefined;
+  subNotif?: SubscribeNotification | undefined;
+  unsubNotif?: UnsubscribeNotification | undefined;
+  pingmsg?: PingMsg | undefined;
+  pongmsg?: PongMsg | undefined;
+  imu?: IMUData | undefined;
+  imuCalibrate?: IMUCalibrateData | undefined;
+  imuCalibrateExecute?: IMUCalibrateExecute | undefined;
+  mode?: ModeData | undefined;
+  input?: ControllerInputData | undefined;
+  analytics?: AnalyticsData | undefined;
+  walkGait?: WalkGaitData | undefined;
+  angles?: AnglesData | undefined;
+  i2cScan?: I2CScanData | undefined;
+  i2cScanDataRequest?: I2CScanDataRequest | undefined;
+  peripheralSettings?: PeripheralSettingsData | undefined;
+  peripheralSettingsDataRequest?: PeripheralSettingsDataRequest | undefined;
+  kinematicData?: KinematicData | undefined;
+  wifiSettings?: WifiSettingsData | undefined;
+  humanInputData?: HumanInputData | undefined;
+  rssi?: RSSIData | undefined;
 }
 
 function createBaseVector(): Vector {
-    return { x: 0, y: 0 }
+  return { x: 0, y: 0 };
 }
 
 export const Vector: MessageFns<Vector> = {
-    encode(message: Vector, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.x !== 0) {
-            writer.uint32(13).float(message.x)
-        }
-        if (message.y !== 0) {
-            writer.uint32(21).float(message.y)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): Vector {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseVector()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 13) {
-                        break
-                    }
-
-                    message.x = reader.float()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 21) {
-                        break
-                    }
-
-                    message.y = reader.float()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): Vector {
-        return {
-            x: isSet(object.x) ? globalThis.Number(object.x) : 0,
-            y: isSet(object.y) ? globalThis.Number(object.y) : 0
-        }
-    },
-
-    toJSON(message: Vector): unknown {
-        const obj: any = {}
-        if (message.x !== 0) {
-            obj.x = message.x
-        }
-        if (message.y !== 0) {
-            obj.y = message.y
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<Vector>, I>>(base?: I): Vector {
-        return Vector.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<Vector>, I>>(object: I): Vector {
-        const message = createBaseVector()
-        message.x = object.x ?? 0
-        message.y = object.y ?? 0
-        return message
+  encode(message: Vector, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.x !== 0) {
+      writer.uint32(13).float(message.x);
     }
-}
+    if (message.y !== 0) {
+      writer.uint32(21).float(message.y);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Vector {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseVector();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 13) {
+            break;
+          }
+
+          message.x = reader.float();
+          continue;
+        }
+        case 2: {
+          if (tag !== 21) {
+            break;
+          }
+
+          message.y = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Vector {
+    return {
+      x: isSet(object.x) ? globalThis.Number(object.x) : 0,
+      y: isSet(object.y) ? globalThis.Number(object.y) : 0,
+    };
+  },
+
+  toJSON(message: Vector): unknown {
+    const obj: any = {};
+    if (message.x !== 0) {
+      obj.x = message.x;
+    }
+    if (message.y !== 0) {
+      obj.y = message.y;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Vector>, I>>(base?: I): Vector {
+    return Vector.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Vector>, I>>(object: I): Vector {
+    const message = createBaseVector();
+    message.x = object.x ?? 0;
+    message.y = object.y ?? 0;
+    return message;
+  },
+};
 
 function createBaseI2CDevice(): I2CDevice {
-    return { address: 0, partNumber: '', name: '' }
+  return { address: 0, partNumber: "", name: "" };
 }
 
 export const I2CDevice: MessageFns<I2CDevice> = {
-    encode(message: I2CDevice, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.address !== 0) {
-            writer.uint32(8).int32(message.address)
-        }
-        if (message.partNumber !== '') {
-            writer.uint32(18).string(message.partNumber)
-        }
-        if (message.name !== '') {
-            writer.uint32(26).string(message.name)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): I2CDevice {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseI2CDevice()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.address = reader.int32()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.partNumber = reader.string()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 26) {
-                        break
-                    }
-
-                    message.name = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): I2CDevice {
-        return {
-            address: isSet(object.address) ? globalThis.Number(object.address) : 0,
-            partNumber: isSet(object.partNumber) ? globalThis.String(object.partNumber) : '',
-            name: isSet(object.name) ? globalThis.String(object.name) : ''
-        }
-    },
-
-    toJSON(message: I2CDevice): unknown {
-        const obj: any = {}
-        if (message.address !== 0) {
-            obj.address = Math.round(message.address)
-        }
-        if (message.partNumber !== '') {
-            obj.partNumber = message.partNumber
-        }
-        if (message.name !== '') {
-            obj.name = message.name
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<I2CDevice>, I>>(base?: I): I2CDevice {
-        return I2CDevice.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<I2CDevice>, I>>(object: I): I2CDevice {
-        const message = createBaseI2CDevice()
-        message.address = object.address ?? 0
-        message.partNumber = object.partNumber ?? ''
-        message.name = object.name ?? ''
-        return message
+  encode(message: I2CDevice, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.address !== 0) {
+      writer.uint32(8).int32(message.address);
     }
-}
+    if (message.partNumber !== "") {
+      writer.uint32(18).string(message.partNumber);
+    }
+    if (message.name !== "") {
+      writer.uint32(26).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): I2CDevice {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseI2CDevice();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.address = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.partNumber = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): I2CDevice {
+    return {
+      address: isSet(object.address) ? globalThis.Number(object.address) : 0,
+      partNumber: isSet(object.partNumber) ? globalThis.String(object.partNumber) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+    };
+  },
+
+  toJSON(message: I2CDevice): unknown {
+    const obj: any = {};
+    if (message.address !== 0) {
+      obj.address = Math.round(message.address);
+    }
+    if (message.partNumber !== "") {
+      obj.partNumber = message.partNumber;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<I2CDevice>, I>>(base?: I): I2CDevice {
+    return I2CDevice.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<I2CDevice>, I>>(object: I): I2CDevice {
+    const message = createBaseI2CDevice();
+    message.address = object.address ?? 0;
+    message.partNumber = object.partNumber ?? "";
+    message.name = object.name ?? "";
+    return message;
+  },
+};
 
 function createBasePinConfig(): PinConfig {
-    return { pin: 0, mode: '', type: '', role: '' }
+  return { pin: 0, mode: "", type: "", role: "" };
 }
 
 export const PinConfig: MessageFns<PinConfig> = {
-    encode(message: PinConfig, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.pin !== 0) {
-            writer.uint32(8).int32(message.pin)
-        }
-        if (message.mode !== '') {
-            writer.uint32(18).string(message.mode)
-        }
-        if (message.type !== '') {
-            writer.uint32(26).string(message.type)
-        }
-        if (message.role !== '') {
-            writer.uint32(34).string(message.role)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): PinConfig {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBasePinConfig()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.pin = reader.int32()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.mode = reader.string()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 26) {
-                        break
-                    }
-
-                    message.type = reader.string()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 34) {
-                        break
-                    }
-
-                    message.role = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): PinConfig {
-        return {
-            pin: isSet(object.pin) ? globalThis.Number(object.pin) : 0,
-            mode: isSet(object.mode) ? globalThis.String(object.mode) : '',
-            type: isSet(object.type) ? globalThis.String(object.type) : '',
-            role: isSet(object.role) ? globalThis.String(object.role) : ''
-        }
-    },
-
-    toJSON(message: PinConfig): unknown {
-        const obj: any = {}
-        if (message.pin !== 0) {
-            obj.pin = Math.round(message.pin)
-        }
-        if (message.mode !== '') {
-            obj.mode = message.mode
-        }
-        if (message.type !== '') {
-            obj.type = message.type
-        }
-        if (message.role !== '') {
-            obj.role = message.role
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<PinConfig>, I>>(base?: I): PinConfig {
-        return PinConfig.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<PinConfig>, I>>(object: I): PinConfig {
-        const message = createBasePinConfig()
-        message.pin = object.pin ?? 0
-        message.mode = object.mode ?? ''
-        message.type = object.type ?? ''
-        message.role = object.role ?? ''
-        return message
+  encode(message: PinConfig, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.pin !== 0) {
+      writer.uint32(8).int32(message.pin);
     }
-}
+    if (message.mode !== "") {
+      writer.uint32(18).string(message.mode);
+    }
+    if (message.type !== "") {
+      writer.uint32(26).string(message.type);
+    }
+    if (message.role !== "") {
+      writer.uint32(34).string(message.role);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PinConfig {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePinConfig();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.pin = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.mode = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.type = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.role = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PinConfig {
+    return {
+      pin: isSet(object.pin) ? globalThis.Number(object.pin) : 0,
+      mode: isSet(object.mode) ? globalThis.String(object.mode) : "",
+      type: isSet(object.type) ? globalThis.String(object.type) : "",
+      role: isSet(object.role) ? globalThis.String(object.role) : "",
+    };
+  },
+
+  toJSON(message: PinConfig): unknown {
+    const obj: any = {};
+    if (message.pin !== 0) {
+      obj.pin = Math.round(message.pin);
+    }
+    if (message.mode !== "") {
+      obj.mode = message.mode;
+    }
+    if (message.type !== "") {
+      obj.type = message.type;
+    }
+    if (message.role !== "") {
+      obj.role = message.role;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PinConfig>, I>>(base?: I): PinConfig {
+    return PinConfig.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PinConfig>, I>>(object: I): PinConfig {
+    const message = createBasePinConfig();
+    message.pin = object.pin ?? 0;
+    message.mode = object.mode ?? "";
+    message.type = object.type ?? "";
+    message.role = object.role ?? "";
+    return message;
+  },
+};
 
 function createBaseKnownNetworkItem(): KnownNetworkItem {
-    return {
-        ssid: '',
-        password: '',
-        staticIp: false,
-        localIp: undefined,
-        subnetMask: undefined,
-        gatewayIp: undefined,
-        dnsIp1: undefined,
-        dnsIp2: undefined
-    }
+  return {
+    ssid: "",
+    password: "",
+    staticIp: false,
+    localIp: undefined,
+    subnetMask: undefined,
+    gatewayIp: undefined,
+    dnsIp1: undefined,
+    dnsIp2: undefined,
+  };
 }
 
 export const KnownNetworkItem: MessageFns<KnownNetworkItem> = {
-    encode(message: KnownNetworkItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.ssid !== '') {
-            writer.uint32(10).string(message.ssid)
-        }
-        if (message.password !== '') {
-            writer.uint32(18).string(message.password)
-        }
-        if (message.staticIp !== false) {
-            writer.uint32(24).bool(message.staticIp)
-        }
-        if (message.localIp !== undefined) {
-            writer.uint32(34).string(message.localIp)
-        }
-        if (message.subnetMask !== undefined) {
-            writer.uint32(42).string(message.subnetMask)
-        }
-        if (message.gatewayIp !== undefined) {
-            writer.uint32(50).string(message.gatewayIp)
-        }
-        if (message.dnsIp1 !== undefined) {
-            writer.uint32(58).string(message.dnsIp1)
-        }
-        if (message.dnsIp2 !== undefined) {
-            writer.uint32(66).string(message.dnsIp2)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): KnownNetworkItem {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseKnownNetworkItem()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.ssid = reader.string()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.password = reader.string()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 24) {
-                        break
-                    }
-
-                    message.staticIp = reader.bool()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 34) {
-                        break
-                    }
-
-                    message.localIp = reader.string()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 42) {
-                        break
-                    }
-
-                    message.subnetMask = reader.string()
-                    continue
-                }
-                case 6: {
-                    if (tag !== 50) {
-                        break
-                    }
-
-                    message.gatewayIp = reader.string()
-                    continue
-                }
-                case 7: {
-                    if (tag !== 58) {
-                        break
-                    }
-
-                    message.dnsIp1 = reader.string()
-                    continue
-                }
-                case 8: {
-                    if (tag !== 66) {
-                        break
-                    }
-
-                    message.dnsIp2 = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): KnownNetworkItem {
-        return {
-            ssid: isSet(object.ssid) ? globalThis.String(object.ssid) : '',
-            password: isSet(object.password) ? globalThis.String(object.password) : '',
-            staticIp: isSet(object.staticIp) ? globalThis.Boolean(object.staticIp) : false,
-            localIp: isSet(object.localIp) ? globalThis.String(object.localIp) : undefined,
-            subnetMask: isSet(object.subnetMask) ? globalThis.String(object.subnetMask) : undefined,
-            gatewayIp: isSet(object.gatewayIp) ? globalThis.String(object.gatewayIp) : undefined,
-            dnsIp1: isSet(object.dnsIp1) ? globalThis.String(object.dnsIp1) : undefined,
-            dnsIp2: isSet(object.dnsIp2) ? globalThis.String(object.dnsIp2) : undefined
-        }
-    },
-
-    toJSON(message: KnownNetworkItem): unknown {
-        const obj: any = {}
-        if (message.ssid !== '') {
-            obj.ssid = message.ssid
-        }
-        if (message.password !== '') {
-            obj.password = message.password
-        }
-        if (message.staticIp !== false) {
-            obj.staticIp = message.staticIp
-        }
-        if (message.localIp !== undefined) {
-            obj.localIp = message.localIp
-        }
-        if (message.subnetMask !== undefined) {
-            obj.subnetMask = message.subnetMask
-        }
-        if (message.gatewayIp !== undefined) {
-            obj.gatewayIp = message.gatewayIp
-        }
-        if (message.dnsIp1 !== undefined) {
-            obj.dnsIp1 = message.dnsIp1
-        }
-        if (message.dnsIp2 !== undefined) {
-            obj.dnsIp2 = message.dnsIp2
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(base?: I): KnownNetworkItem {
-        return KnownNetworkItem.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(object: I): KnownNetworkItem {
-        const message = createBaseKnownNetworkItem()
-        message.ssid = object.ssid ?? ''
-        message.password = object.password ?? ''
-        message.staticIp = object.staticIp ?? false
-        message.localIp = object.localIp ?? undefined
-        message.subnetMask = object.subnetMask ?? undefined
-        message.gatewayIp = object.gatewayIp ?? undefined
-        message.dnsIp1 = object.dnsIp1 ?? undefined
-        message.dnsIp2 = object.dnsIp2 ?? undefined
-        return message
+  encode(message: KnownNetworkItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ssid !== "") {
+      writer.uint32(10).string(message.ssid);
     }
-}
+    if (message.password !== "") {
+      writer.uint32(18).string(message.password);
+    }
+    if (message.staticIp !== false) {
+      writer.uint32(24).bool(message.staticIp);
+    }
+    if (message.localIp !== undefined) {
+      writer.uint32(34).string(message.localIp);
+    }
+    if (message.subnetMask !== undefined) {
+      writer.uint32(42).string(message.subnetMask);
+    }
+    if (message.gatewayIp !== undefined) {
+      writer.uint32(50).string(message.gatewayIp);
+    }
+    if (message.dnsIp1 !== undefined) {
+      writer.uint32(58).string(message.dnsIp1);
+    }
+    if (message.dnsIp2 !== undefined) {
+      writer.uint32(66).string(message.dnsIp2);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): KnownNetworkItem {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseKnownNetworkItem();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ssid = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.password = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.staticIp = reader.bool();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.localIp = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.subnetMask = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.gatewayIp = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.dnsIp1 = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.dnsIp2 = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): KnownNetworkItem {
+    return {
+      ssid: isSet(object.ssid) ? globalThis.String(object.ssid) : "",
+      password: isSet(object.password) ? globalThis.String(object.password) : "",
+      staticIp: isSet(object.staticIp) ? globalThis.Boolean(object.staticIp) : false,
+      localIp: isSet(object.localIp) ? globalThis.String(object.localIp) : undefined,
+      subnetMask: isSet(object.subnetMask) ? globalThis.String(object.subnetMask) : undefined,
+      gatewayIp: isSet(object.gatewayIp) ? globalThis.String(object.gatewayIp) : undefined,
+      dnsIp1: isSet(object.dnsIp1) ? globalThis.String(object.dnsIp1) : undefined,
+      dnsIp2: isSet(object.dnsIp2) ? globalThis.String(object.dnsIp2) : undefined,
+    };
+  },
+
+  toJSON(message: KnownNetworkItem): unknown {
+    const obj: any = {};
+    if (message.ssid !== "") {
+      obj.ssid = message.ssid;
+    }
+    if (message.password !== "") {
+      obj.password = message.password;
+    }
+    if (message.staticIp !== false) {
+      obj.staticIp = message.staticIp;
+    }
+    if (message.localIp !== undefined) {
+      obj.localIp = message.localIp;
+    }
+    if (message.subnetMask !== undefined) {
+      obj.subnetMask = message.subnetMask;
+    }
+    if (message.gatewayIp !== undefined) {
+      obj.gatewayIp = message.gatewayIp;
+    }
+    if (message.dnsIp1 !== undefined) {
+      obj.dnsIp1 = message.dnsIp1;
+    }
+    if (message.dnsIp2 !== undefined) {
+      obj.dnsIp2 = message.dnsIp2;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(base?: I): KnownNetworkItem {
+    return KnownNetworkItem.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<KnownNetworkItem>, I>>(object: I): KnownNetworkItem {
+    const message = createBaseKnownNetworkItem();
+    message.ssid = object.ssid ?? "";
+    message.password = object.password ?? "";
+    message.staticIp = object.staticIp ?? false;
+    message.localIp = object.localIp ?? undefined;
+    message.subnetMask = object.subnetMask ?? undefined;
+    message.gatewayIp = object.gatewayIp ?? undefined;
+    message.dnsIp1 = object.dnsIp1 ?? undefined;
+    message.dnsIp2 = object.dnsIp2 ?? undefined;
+    return message;
+  },
+};
 
 function createBaseIMUData(): IMUData {
-    return { x: 0, y: 0, z: 0, heading: 0, altitude: 0, bmpTemp: 0, pressure: 0 }
+  return { x: 0, y: 0, z: 0, heading: 0, altitude: 0, bmpTemp: 0, pressure: 0 };
 }
 
 export const IMUData: MessageFns<IMUData> = {
-    encode(message: IMUData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.x !== 0) {
-            writer.uint32(13).float(message.x)
-        }
-        if (message.y !== 0) {
-            writer.uint32(21).float(message.y)
-        }
-        if (message.z !== 0) {
-            writer.uint32(29).float(message.z)
-        }
-        if (message.heading !== 0) {
-            writer.uint32(37).float(message.heading)
-        }
-        if (message.altitude !== 0) {
-            writer.uint32(45).float(message.altitude)
-        }
-        if (message.bmpTemp !== 0) {
-            writer.uint32(53).float(message.bmpTemp)
-        }
-        if (message.pressure !== 0) {
-            writer.uint32(61).float(message.pressure)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): IMUData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseIMUData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 13) {
-                        break
-                    }
-
-                    message.x = reader.float()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 21) {
-                        break
-                    }
-
-                    message.y = reader.float()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 29) {
-                        break
-                    }
-
-                    message.z = reader.float()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 37) {
-                        break
-                    }
-
-                    message.heading = reader.float()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 45) {
-                        break
-                    }
-
-                    message.altitude = reader.float()
-                    continue
-                }
-                case 6: {
-                    if (tag !== 53) {
-                        break
-                    }
-
-                    message.bmpTemp = reader.float()
-                    continue
-                }
-                case 7: {
-                    if (tag !== 61) {
-                        break
-                    }
-
-                    message.pressure = reader.float()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): IMUData {
-        return {
-            x: isSet(object.x) ? globalThis.Number(object.x) : 0,
-            y: isSet(object.y) ? globalThis.Number(object.y) : 0,
-            z: isSet(object.z) ? globalThis.Number(object.z) : 0,
-            heading: isSet(object.heading) ? globalThis.Number(object.heading) : 0,
-            altitude: isSet(object.altitude) ? globalThis.Number(object.altitude) : 0,
-            bmpTemp: isSet(object.bmpTemp) ? globalThis.Number(object.bmpTemp) : 0,
-            pressure: isSet(object.pressure) ? globalThis.Number(object.pressure) : 0
-        }
-    },
-
-    toJSON(message: IMUData): unknown {
-        const obj: any = {}
-        if (message.x !== 0) {
-            obj.x = message.x
-        }
-        if (message.y !== 0) {
-            obj.y = message.y
-        }
-        if (message.z !== 0) {
-            obj.z = message.z
-        }
-        if (message.heading !== 0) {
-            obj.heading = message.heading
-        }
-        if (message.altitude !== 0) {
-            obj.altitude = message.altitude
-        }
-        if (message.bmpTemp !== 0) {
-            obj.bmpTemp = message.bmpTemp
-        }
-        if (message.pressure !== 0) {
-            obj.pressure = message.pressure
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<IMUData>, I>>(base?: I): IMUData {
-        return IMUData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<IMUData>, I>>(object: I): IMUData {
-        const message = createBaseIMUData()
-        message.x = object.x ?? 0
-        message.y = object.y ?? 0
-        message.z = object.z ?? 0
-        message.heading = object.heading ?? 0
-        message.altitude = object.altitude ?? 0
-        message.bmpTemp = object.bmpTemp ?? 0
-        message.pressure = object.pressure ?? 0
-        return message
+  encode(message: IMUData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.x !== 0) {
+      writer.uint32(13).float(message.x);
     }
+    if (message.y !== 0) {
+      writer.uint32(21).float(message.y);
+    }
+    if (message.z !== 0) {
+      writer.uint32(29).float(message.z);
+    }
+    if (message.heading !== 0) {
+      writer.uint32(37).float(message.heading);
+    }
+    if (message.altitude !== 0) {
+      writer.uint32(45).float(message.altitude);
+    }
+    if (message.bmpTemp !== 0) {
+      writer.uint32(53).float(message.bmpTemp);
+    }
+    if (message.pressure !== 0) {
+      writer.uint32(61).float(message.pressure);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): IMUData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIMUData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 13) {
+            break;
+          }
+
+          message.x = reader.float();
+          continue;
+        }
+        case 2: {
+          if (tag !== 21) {
+            break;
+          }
+
+          message.y = reader.float();
+          continue;
+        }
+        case 3: {
+          if (tag !== 29) {
+            break;
+          }
+
+          message.z = reader.float();
+          continue;
+        }
+        case 4: {
+          if (tag !== 37) {
+            break;
+          }
+
+          message.heading = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 45) {
+            break;
+          }
+
+          message.altitude = reader.float();
+          continue;
+        }
+        case 6: {
+          if (tag !== 53) {
+            break;
+          }
+
+          message.bmpTemp = reader.float();
+          continue;
+        }
+        case 7: {
+          if (tag !== 61) {
+            break;
+          }
+
+          message.pressure = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IMUData {
+    return {
+      x: isSet(object.x) ? globalThis.Number(object.x) : 0,
+      y: isSet(object.y) ? globalThis.Number(object.y) : 0,
+      z: isSet(object.z) ? globalThis.Number(object.z) : 0,
+      heading: isSet(object.heading) ? globalThis.Number(object.heading) : 0,
+      altitude: isSet(object.altitude) ? globalThis.Number(object.altitude) : 0,
+      bmpTemp: isSet(object.bmpTemp) ? globalThis.Number(object.bmpTemp) : 0,
+      pressure: isSet(object.pressure) ? globalThis.Number(object.pressure) : 0,
+    };
+  },
+
+  toJSON(message: IMUData): unknown {
+    const obj: any = {};
+    if (message.x !== 0) {
+      obj.x = message.x;
+    }
+    if (message.y !== 0) {
+      obj.y = message.y;
+    }
+    if (message.z !== 0) {
+      obj.z = message.z;
+    }
+    if (message.heading !== 0) {
+      obj.heading = message.heading;
+    }
+    if (message.altitude !== 0) {
+      obj.altitude = message.altitude;
+    }
+    if (message.bmpTemp !== 0) {
+      obj.bmpTemp = message.bmpTemp;
+    }
+    if (message.pressure !== 0) {
+      obj.pressure = message.pressure;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IMUData>, I>>(base?: I): IMUData {
+    return IMUData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<IMUData>, I>>(object: I): IMUData {
+    const message = createBaseIMUData();
+    message.x = object.x ?? 0;
+    message.y = object.y ?? 0;
+    message.z = object.z ?? 0;
+    message.heading = object.heading ?? 0;
+    message.altitude = object.altitude ?? 0;
+    message.bmpTemp = object.bmpTemp ?? 0;
+    message.pressure = object.pressure ?? 0;
+    return message;
+  },
+};
+
+function createBaseFeaturesDataResponse(): FeaturesDataResponse {
+  return {
+    variant: "",
+    firmwareBuiltTarget: "",
+    firmwareName: "",
+    firmwareVersion: "",
+    camera: false,
+    imu: false,
+    mag: false,
+    bmp: false,
+    sonar: false,
+    servo: false,
+    ws2812: false,
+    mdns: false,
+    embedWww: false,
+  };
 }
 
-function createBaseStaticSystemInformation(): StaticSystemInformation {
-    return {
-        espPlatform: '',
-        firmwareVersion: '',
-        cpuFreqMhz: 0,
-        cpuType: '',
-        cpuRev: 0,
-        cpuCores: 0,
-        sketchSize: 0,
-        freeSketchSpace: 0,
-        sdkVersion: '',
-        arduinoVersion: '',
-        flashChipSize: 0,
-        flashChipSpeed: 0,
-        cpuResetReason: ''
+export const FeaturesDataResponse: MessageFns<FeaturesDataResponse> = {
+  encode(message: FeaturesDataResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.variant !== "") {
+      writer.uint32(82).string(message.variant);
     }
+    if (message.firmwareBuiltTarget !== "") {
+      writer.uint32(162).string(message.firmwareBuiltTarget);
+    }
+    if (message.firmwareName !== "") {
+      writer.uint32(242).string(message.firmwareName);
+    }
+    if (message.firmwareVersion !== "") {
+      writer.uint32(322).string(message.firmwareVersion);
+    }
+    if (message.camera !== false) {
+      writer.uint32(400).bool(message.camera);
+    }
+    if (message.imu !== false) {
+      writer.uint32(480).bool(message.imu);
+    }
+    if (message.mag !== false) {
+      writer.uint32(560).bool(message.mag);
+    }
+    if (message.bmp !== false) {
+      writer.uint32(640).bool(message.bmp);
+    }
+    if (message.sonar !== false) {
+      writer.uint32(720).bool(message.sonar);
+    }
+    if (message.servo !== false) {
+      writer.uint32(800).bool(message.servo);
+    }
+    if (message.ws2812 !== false) {
+      writer.uint32(880).bool(message.ws2812);
+    }
+    if (message.mdns !== false) {
+      writer.uint32(960).bool(message.mdns);
+    }
+    if (message.embedWww !== false) {
+      writer.uint32(1040).bool(message.embedWww);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FeaturesDataResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFeaturesDataResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.variant = reader.string();
+          continue;
+        }
+        case 20: {
+          if (tag !== 162) {
+            break;
+          }
+
+          message.firmwareBuiltTarget = reader.string();
+          continue;
+        }
+        case 30: {
+          if (tag !== 242) {
+            break;
+          }
+
+          message.firmwareName = reader.string();
+          continue;
+        }
+        case 40: {
+          if (tag !== 322) {
+            break;
+          }
+
+          message.firmwareVersion = reader.string();
+          continue;
+        }
+        case 50: {
+          if (tag !== 400) {
+            break;
+          }
+
+          message.camera = reader.bool();
+          continue;
+        }
+        case 60: {
+          if (tag !== 480) {
+            break;
+          }
+
+          message.imu = reader.bool();
+          continue;
+        }
+        case 70: {
+          if (tag !== 560) {
+            break;
+          }
+
+          message.mag = reader.bool();
+          continue;
+        }
+        case 80: {
+          if (tag !== 640) {
+            break;
+          }
+
+          message.bmp = reader.bool();
+          continue;
+        }
+        case 90: {
+          if (tag !== 720) {
+            break;
+          }
+
+          message.sonar = reader.bool();
+          continue;
+        }
+        case 100: {
+          if (tag !== 800) {
+            break;
+          }
+
+          message.servo = reader.bool();
+          continue;
+        }
+        case 110: {
+          if (tag !== 880) {
+            break;
+          }
+
+          message.ws2812 = reader.bool();
+          continue;
+        }
+        case 120: {
+          if (tag !== 960) {
+            break;
+          }
+
+          message.mdns = reader.bool();
+          continue;
+        }
+        case 130: {
+          if (tag !== 1040) {
+            break;
+          }
+
+          message.embedWww = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FeaturesDataResponse {
+    return {
+      variant: isSet(object.variant) ? globalThis.String(object.variant) : "",
+      firmwareBuiltTarget: isSet(object.firmwareBuiltTarget) ? globalThis.String(object.firmwareBuiltTarget) : "",
+      firmwareName: isSet(object.firmwareName) ? globalThis.String(object.firmwareName) : "",
+      firmwareVersion: isSet(object.firmwareVersion) ? globalThis.String(object.firmwareVersion) : "",
+      camera: isSet(object.camera) ? globalThis.Boolean(object.camera) : false,
+      imu: isSet(object.imu) ? globalThis.Boolean(object.imu) : false,
+      mag: isSet(object.mag) ? globalThis.Boolean(object.mag) : false,
+      bmp: isSet(object.bmp) ? globalThis.Boolean(object.bmp) : false,
+      sonar: isSet(object.sonar) ? globalThis.Boolean(object.sonar) : false,
+      servo: isSet(object.servo) ? globalThis.Boolean(object.servo) : false,
+      ws2812: isSet(object.ws2812) ? globalThis.Boolean(object.ws2812) : false,
+      mdns: isSet(object.mdns) ? globalThis.Boolean(object.mdns) : false,
+      embedWww: isSet(object.embedWww) ? globalThis.Boolean(object.embedWww) : false,
+    };
+  },
+
+  toJSON(message: FeaturesDataResponse): unknown {
+    const obj: any = {};
+    if (message.variant !== "") {
+      obj.variant = message.variant;
+    }
+    if (message.firmwareBuiltTarget !== "") {
+      obj.firmwareBuiltTarget = message.firmwareBuiltTarget;
+    }
+    if (message.firmwareName !== "") {
+      obj.firmwareName = message.firmwareName;
+    }
+    if (message.firmwareVersion !== "") {
+      obj.firmwareVersion = message.firmwareVersion;
+    }
+    if (message.camera !== false) {
+      obj.camera = message.camera;
+    }
+    if (message.imu !== false) {
+      obj.imu = message.imu;
+    }
+    if (message.mag !== false) {
+      obj.mag = message.mag;
+    }
+    if (message.bmp !== false) {
+      obj.bmp = message.bmp;
+    }
+    if (message.sonar !== false) {
+      obj.sonar = message.sonar;
+    }
+    if (message.servo !== false) {
+      obj.servo = message.servo;
+    }
+    if (message.ws2812 !== false) {
+      obj.ws2812 = message.ws2812;
+    }
+    if (message.mdns !== false) {
+      obj.mdns = message.mdns;
+    }
+    if (message.embedWww !== false) {
+      obj.embedWww = message.embedWww;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FeaturesDataResponse>, I>>(base?: I): FeaturesDataResponse {
+    return FeaturesDataResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<FeaturesDataResponse>, I>>(object: I): FeaturesDataResponse {
+    const message = createBaseFeaturesDataResponse();
+    message.variant = object.variant ?? "";
+    message.firmwareBuiltTarget = object.firmwareBuiltTarget ?? "";
+    message.firmwareName = object.firmwareName ?? "";
+    message.firmwareVersion = object.firmwareVersion ?? "";
+    message.camera = object.camera ?? false;
+    message.imu = object.imu ?? false;
+    message.mag = object.mag ?? false;
+    message.bmp = object.bmp ?? false;
+    message.sonar = object.sonar ?? false;
+    message.servo = object.servo ?? false;
+    message.ws2812 = object.ws2812 ?? false;
+    message.mdns = object.mdns ?? false;
+    message.embedWww = object.embedWww ?? false;
+    return message;
+  },
+};
+
+function createBaseFeaturesDataRequest(): FeaturesDataRequest {
+  return { sonarTest: false };
+}
+
+export const FeaturesDataRequest: MessageFns<FeaturesDataRequest> = {
+  encode(message: FeaturesDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sonarTest !== false) {
+      writer.uint32(8).bool(message.sonarTest);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FeaturesDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFeaturesDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.sonarTest = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FeaturesDataRequest {
+    return { sonarTest: isSet(object.sonarTest) ? globalThis.Boolean(object.sonarTest) : false };
+  },
+
+  toJSON(message: FeaturesDataRequest): unknown {
+    const obj: any = {};
+    if (message.sonarTest !== false) {
+      obj.sonarTest = message.sonarTest;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FeaturesDataRequest>, I>>(base?: I): FeaturesDataRequest {
+    return FeaturesDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<FeaturesDataRequest>, I>>(object: I): FeaturesDataRequest {
+    const message = createBaseFeaturesDataRequest();
+    message.sonarTest = object.sonarTest ?? false;
+    return message;
+  },
+};
+
+function createBaseCorrelationRequest(): CorrelationRequest {
+  return { correlationId: 0, featuresDataRequest: undefined };
+}
+
+export const CorrelationRequest: MessageFns<CorrelationRequest> = {
+  encode(message: CorrelationRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.correlationId !== 0) {
+      writer.uint32(8).uint32(message.correlationId);
+    }
+    if (message.featuresDataRequest !== undefined) {
+      FeaturesDataRequest.encode(message.featuresDataRequest, writer.uint32(82).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CorrelationRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCorrelationRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.correlationId = reader.uint32();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.featuresDataRequest = FeaturesDataRequest.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CorrelationRequest {
+    return {
+      correlationId: isSet(object.correlationId) ? globalThis.Number(object.correlationId) : 0,
+      featuresDataRequest: isSet(object.featuresDataRequest)
+        ? FeaturesDataRequest.fromJSON(object.featuresDataRequest)
+        : undefined,
+    };
+  },
+
+  toJSON(message: CorrelationRequest): unknown {
+    const obj: any = {};
+    if (message.correlationId !== 0) {
+      obj.correlationId = Math.round(message.correlationId);
+    }
+    if (message.featuresDataRequest !== undefined) {
+      obj.featuresDataRequest = FeaturesDataRequest.toJSON(message.featuresDataRequest);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CorrelationRequest>, I>>(base?: I): CorrelationRequest {
+    return CorrelationRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CorrelationRequest>, I>>(object: I): CorrelationRequest {
+    const message = createBaseCorrelationRequest();
+    message.correlationId = object.correlationId ?? 0;
+    message.featuresDataRequest = (object.featuresDataRequest !== undefined && object.featuresDataRequest !== null)
+      ? FeaturesDataRequest.fromPartial(object.featuresDataRequest)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseCorrelationResponse(): CorrelationResponse {
+  return { correlationId: 0, stautsCode: 0, featuresDataResponse: undefined };
+}
+
+export const CorrelationResponse: MessageFns<CorrelationResponse> = {
+  encode(message: CorrelationResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.correlationId !== 0) {
+      writer.uint32(8).uint32(message.correlationId);
+    }
+    if (message.stautsCode !== 0) {
+      writer.uint32(16).uint32(message.stautsCode);
+    }
+    if (message.featuresDataResponse !== undefined) {
+      FeaturesDataResponse.encode(message.featuresDataResponse, writer.uint32(82).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CorrelationResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCorrelationResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.correlationId = reader.uint32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.stautsCode = reader.uint32();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.featuresDataResponse = FeaturesDataResponse.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CorrelationResponse {
+    return {
+      correlationId: isSet(object.correlationId) ? globalThis.Number(object.correlationId) : 0,
+      stautsCode: isSet(object.stautsCode) ? globalThis.Number(object.stautsCode) : 0,
+      featuresDataResponse: isSet(object.featuresDataResponse)
+        ? FeaturesDataResponse.fromJSON(object.featuresDataResponse)
+        : undefined,
+    };
+  },
+
+  toJSON(message: CorrelationResponse): unknown {
+    const obj: any = {};
+    if (message.correlationId !== 0) {
+      obj.correlationId = Math.round(message.correlationId);
+    }
+    if (message.stautsCode !== 0) {
+      obj.stautsCode = Math.round(message.stautsCode);
+    }
+    if (message.featuresDataResponse !== undefined) {
+      obj.featuresDataResponse = FeaturesDataResponse.toJSON(message.featuresDataResponse);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CorrelationResponse>, I>>(base?: I): CorrelationResponse {
+    return CorrelationResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CorrelationResponse>, I>>(object: I): CorrelationResponse {
+    const message = createBaseCorrelationResponse();
+    message.correlationId = object.correlationId ?? 0;
+    message.stautsCode = object.stautsCode ?? 0;
+    message.featuresDataResponse = (object.featuresDataResponse !== undefined && object.featuresDataResponse !== null)
+      ? FeaturesDataResponse.fromPartial(object.featuresDataResponse)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseStaticSystemInformation(): StaticSystemInformation {
+  return {
+    espPlatform: "",
+    firmwareVersion: "",
+    cpuFreqMhz: 0,
+    cpuType: "",
+    cpuRev: 0,
+    cpuCores: 0,
+    sketchSize: 0,
+    freeSketchSpace: 0,
+    sdkVersion: "",
+    arduinoVersion: "",
+    flashChipSize: 0,
+    flashChipSpeed: 0,
+    cpuResetReason: "",
+  };
 }
 
 export const StaticSystemInformation: MessageFns<StaticSystemInformation> = {
-    encode(
-        message: StaticSystemInformation,
-        writer: BinaryWriter = new BinaryWriter()
-    ): BinaryWriter {
-        if (message.espPlatform !== '') {
-            writer.uint32(10).string(message.espPlatform)
-        }
-        if (message.firmwareVersion !== '') {
-            writer.uint32(18).string(message.firmwareVersion)
-        }
-        if (message.cpuFreqMhz !== 0) {
-            writer.uint32(24).uint32(message.cpuFreqMhz)
-        }
-        if (message.cpuType !== '') {
-            writer.uint32(34).string(message.cpuType)
-        }
-        if (message.cpuRev !== 0) {
-            writer.uint32(40).int32(message.cpuRev)
-        }
-        if (message.cpuCores !== 0) {
-            writer.uint32(48).uint32(message.cpuCores)
-        }
-        if (message.sketchSize !== 0) {
-            writer.uint32(56).uint32(message.sketchSize)
-        }
-        if (message.freeSketchSpace !== 0) {
-            writer.uint32(64).uint32(message.freeSketchSpace)
-        }
-        if (message.sdkVersion !== '') {
-            writer.uint32(74).string(message.sdkVersion)
-        }
-        if (message.arduinoVersion !== '') {
-            writer.uint32(82).string(message.arduinoVersion)
-        }
-        if (message.flashChipSize !== 0) {
-            writer.uint32(88).uint32(message.flashChipSize)
-        }
-        if (message.flashChipSpeed !== 0) {
-            writer.uint32(96).uint32(message.flashChipSpeed)
-        }
-        if (message.cpuResetReason !== '') {
-            writer.uint32(106).string(message.cpuResetReason)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): StaticSystemInformation {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseStaticSystemInformation()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.espPlatform = reader.string()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.firmwareVersion = reader.string()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 24) {
-                        break
-                    }
-
-                    message.cpuFreqMhz = reader.uint32()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 34) {
-                        break
-                    }
-
-                    message.cpuType = reader.string()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 40) {
-                        break
-                    }
-
-                    message.cpuRev = reader.int32()
-                    continue
-                }
-                case 6: {
-                    if (tag !== 48) {
-                        break
-                    }
-
-                    message.cpuCores = reader.uint32()
-                    continue
-                }
-                case 7: {
-                    if (tag !== 56) {
-                        break
-                    }
-
-                    message.sketchSize = reader.uint32()
-                    continue
-                }
-                case 8: {
-                    if (tag !== 64) {
-                        break
-                    }
-
-                    message.freeSketchSpace = reader.uint32()
-                    continue
-                }
-                case 9: {
-                    if (tag !== 74) {
-                        break
-                    }
-
-                    message.sdkVersion = reader.string()
-                    continue
-                }
-                case 10: {
-                    if (tag !== 82) {
-                        break
-                    }
-
-                    message.arduinoVersion = reader.string()
-                    continue
-                }
-                case 11: {
-                    if (tag !== 88) {
-                        break
-                    }
-
-                    message.flashChipSize = reader.uint32()
-                    continue
-                }
-                case 12: {
-                    if (tag !== 96) {
-                        break
-                    }
-
-                    message.flashChipSpeed = reader.uint32()
-                    continue
-                }
-                case 13: {
-                    if (tag !== 106) {
-                        break
-                    }
-
-                    message.cpuResetReason = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): StaticSystemInformation {
-        return {
-            espPlatform: isSet(object.espPlatform) ? globalThis.String(object.espPlatform) : '',
-            firmwareVersion:
-                isSet(object.firmwareVersion) ? globalThis.String(object.firmwareVersion) : '',
-            cpuFreqMhz: isSet(object.cpuFreqMhz) ? globalThis.Number(object.cpuFreqMhz) : 0,
-            cpuType: isSet(object.cpuType) ? globalThis.String(object.cpuType) : '',
-            cpuRev: isSet(object.cpuRev) ? globalThis.Number(object.cpuRev) : 0,
-            cpuCores: isSet(object.cpuCores) ? globalThis.Number(object.cpuCores) : 0,
-            sketchSize: isSet(object.sketchSize) ? globalThis.Number(object.sketchSize) : 0,
-            freeSketchSpace:
-                isSet(object.freeSketchSpace) ? globalThis.Number(object.freeSketchSpace) : 0,
-            sdkVersion: isSet(object.sdkVersion) ? globalThis.String(object.sdkVersion) : '',
-            arduinoVersion:
-                isSet(object.arduinoVersion) ? globalThis.String(object.arduinoVersion) : '',
-            flashChipSize:
-                isSet(object.flashChipSize) ? globalThis.Number(object.flashChipSize) : 0,
-            flashChipSpeed:
-                isSet(object.flashChipSpeed) ? globalThis.Number(object.flashChipSpeed) : 0,
-            cpuResetReason:
-                isSet(object.cpuResetReason) ? globalThis.String(object.cpuResetReason) : ''
-        }
-    },
-
-    toJSON(message: StaticSystemInformation): unknown {
-        const obj: any = {}
-        if (message.espPlatform !== '') {
-            obj.espPlatform = message.espPlatform
-        }
-        if (message.firmwareVersion !== '') {
-            obj.firmwareVersion = message.firmwareVersion
-        }
-        if (message.cpuFreqMhz !== 0) {
-            obj.cpuFreqMhz = Math.round(message.cpuFreqMhz)
-        }
-        if (message.cpuType !== '') {
-            obj.cpuType = message.cpuType
-        }
-        if (message.cpuRev !== 0) {
-            obj.cpuRev = Math.round(message.cpuRev)
-        }
-        if (message.cpuCores !== 0) {
-            obj.cpuCores = Math.round(message.cpuCores)
-        }
-        if (message.sketchSize !== 0) {
-            obj.sketchSize = Math.round(message.sketchSize)
-        }
-        if (message.freeSketchSpace !== 0) {
-            obj.freeSketchSpace = Math.round(message.freeSketchSpace)
-        }
-        if (message.sdkVersion !== '') {
-            obj.sdkVersion = message.sdkVersion
-        }
-        if (message.arduinoVersion !== '') {
-            obj.arduinoVersion = message.arduinoVersion
-        }
-        if (message.flashChipSize !== 0) {
-            obj.flashChipSize = Math.round(message.flashChipSize)
-        }
-        if (message.flashChipSpeed !== 0) {
-            obj.flashChipSpeed = Math.round(message.flashChipSpeed)
-        }
-        if (message.cpuResetReason !== '') {
-            obj.cpuResetReason = message.cpuResetReason
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(
-        base?: I
-    ): StaticSystemInformation {
-        return StaticSystemInformation.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(
-        object: I
-    ): StaticSystemInformation {
-        const message = createBaseStaticSystemInformation()
-        message.espPlatform = object.espPlatform ?? ''
-        message.firmwareVersion = object.firmwareVersion ?? ''
-        message.cpuFreqMhz = object.cpuFreqMhz ?? 0
-        message.cpuType = object.cpuType ?? ''
-        message.cpuRev = object.cpuRev ?? 0
-        message.cpuCores = object.cpuCores ?? 0
-        message.sketchSize = object.sketchSize ?? 0
-        message.freeSketchSpace = object.freeSketchSpace ?? 0
-        message.sdkVersion = object.sdkVersion ?? ''
-        message.arduinoVersion = object.arduinoVersion ?? ''
-        message.flashChipSize = object.flashChipSize ?? 0
-        message.flashChipSpeed = object.flashChipSpeed ?? 0
-        message.cpuResetReason = object.cpuResetReason ?? ''
-        return message
+  encode(message: StaticSystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.espPlatform !== "") {
+      writer.uint32(10).string(message.espPlatform);
     }
-}
+    if (message.firmwareVersion !== "") {
+      writer.uint32(18).string(message.firmwareVersion);
+    }
+    if (message.cpuFreqMhz !== 0) {
+      writer.uint32(24).uint32(message.cpuFreqMhz);
+    }
+    if (message.cpuType !== "") {
+      writer.uint32(34).string(message.cpuType);
+    }
+    if (message.cpuRev !== 0) {
+      writer.uint32(40).int32(message.cpuRev);
+    }
+    if (message.cpuCores !== 0) {
+      writer.uint32(48).uint32(message.cpuCores);
+    }
+    if (message.sketchSize !== 0) {
+      writer.uint32(56).uint32(message.sketchSize);
+    }
+    if (message.freeSketchSpace !== 0) {
+      writer.uint32(64).uint32(message.freeSketchSpace);
+    }
+    if (message.sdkVersion !== "") {
+      writer.uint32(74).string(message.sdkVersion);
+    }
+    if (message.arduinoVersion !== "") {
+      writer.uint32(82).string(message.arduinoVersion);
+    }
+    if (message.flashChipSize !== 0) {
+      writer.uint32(88).uint32(message.flashChipSize);
+    }
+    if (message.flashChipSpeed !== 0) {
+      writer.uint32(96).uint32(message.flashChipSpeed);
+    }
+    if (message.cpuResetReason !== "") {
+      writer.uint32(106).string(message.cpuResetReason);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StaticSystemInformation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStaticSystemInformation();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.espPlatform = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.firmwareVersion = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.cpuFreqMhz = reader.uint32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.cpuType = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.cpuRev = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.cpuCores = reader.uint32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.sketchSize = reader.uint32();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.freeSketchSpace = reader.uint32();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.sdkVersion = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.arduinoVersion = reader.string();
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.flashChipSize = reader.uint32();
+          continue;
+        }
+        case 12: {
+          if (tag !== 96) {
+            break;
+          }
+
+          message.flashChipSpeed = reader.uint32();
+          continue;
+        }
+        case 13: {
+          if (tag !== 106) {
+            break;
+          }
+
+          message.cpuResetReason = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StaticSystemInformation {
+    return {
+      espPlatform: isSet(object.espPlatform) ? globalThis.String(object.espPlatform) : "",
+      firmwareVersion: isSet(object.firmwareVersion) ? globalThis.String(object.firmwareVersion) : "",
+      cpuFreqMhz: isSet(object.cpuFreqMhz) ? globalThis.Number(object.cpuFreqMhz) : 0,
+      cpuType: isSet(object.cpuType) ? globalThis.String(object.cpuType) : "",
+      cpuRev: isSet(object.cpuRev) ? globalThis.Number(object.cpuRev) : 0,
+      cpuCores: isSet(object.cpuCores) ? globalThis.Number(object.cpuCores) : 0,
+      sketchSize: isSet(object.sketchSize) ? globalThis.Number(object.sketchSize) : 0,
+      freeSketchSpace: isSet(object.freeSketchSpace) ? globalThis.Number(object.freeSketchSpace) : 0,
+      sdkVersion: isSet(object.sdkVersion) ? globalThis.String(object.sdkVersion) : "",
+      arduinoVersion: isSet(object.arduinoVersion) ? globalThis.String(object.arduinoVersion) : "",
+      flashChipSize: isSet(object.flashChipSize) ? globalThis.Number(object.flashChipSize) : 0,
+      flashChipSpeed: isSet(object.flashChipSpeed) ? globalThis.Number(object.flashChipSpeed) : 0,
+      cpuResetReason: isSet(object.cpuResetReason) ? globalThis.String(object.cpuResetReason) : "",
+    };
+  },
+
+  toJSON(message: StaticSystemInformation): unknown {
+    const obj: any = {};
+    if (message.espPlatform !== "") {
+      obj.espPlatform = message.espPlatform;
+    }
+    if (message.firmwareVersion !== "") {
+      obj.firmwareVersion = message.firmwareVersion;
+    }
+    if (message.cpuFreqMhz !== 0) {
+      obj.cpuFreqMhz = Math.round(message.cpuFreqMhz);
+    }
+    if (message.cpuType !== "") {
+      obj.cpuType = message.cpuType;
+    }
+    if (message.cpuRev !== 0) {
+      obj.cpuRev = Math.round(message.cpuRev);
+    }
+    if (message.cpuCores !== 0) {
+      obj.cpuCores = Math.round(message.cpuCores);
+    }
+    if (message.sketchSize !== 0) {
+      obj.sketchSize = Math.round(message.sketchSize);
+    }
+    if (message.freeSketchSpace !== 0) {
+      obj.freeSketchSpace = Math.round(message.freeSketchSpace);
+    }
+    if (message.sdkVersion !== "") {
+      obj.sdkVersion = message.sdkVersion;
+    }
+    if (message.arduinoVersion !== "") {
+      obj.arduinoVersion = message.arduinoVersion;
+    }
+    if (message.flashChipSize !== 0) {
+      obj.flashChipSize = Math.round(message.flashChipSize);
+    }
+    if (message.flashChipSpeed !== 0) {
+      obj.flashChipSpeed = Math.round(message.flashChipSpeed);
+    }
+    if (message.cpuResetReason !== "") {
+      obj.cpuResetReason = message.cpuResetReason;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(base?: I): StaticSystemInformation {
+    return StaticSystemInformation.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StaticSystemInformation>, I>>(object: I): StaticSystemInformation {
+    const message = createBaseStaticSystemInformation();
+    message.espPlatform = object.espPlatform ?? "";
+    message.firmwareVersion = object.firmwareVersion ?? "";
+    message.cpuFreqMhz = object.cpuFreqMhz ?? 0;
+    message.cpuType = object.cpuType ?? "";
+    message.cpuRev = object.cpuRev ?? 0;
+    message.cpuCores = object.cpuCores ?? 0;
+    message.sketchSize = object.sketchSize ?? 0;
+    message.freeSketchSpace = object.freeSketchSpace ?? 0;
+    message.sdkVersion = object.sdkVersion ?? "";
+    message.arduinoVersion = object.arduinoVersion ?? "";
+    message.flashChipSize = object.flashChipSize ?? 0;
+    message.flashChipSpeed = object.flashChipSpeed ?? 0;
+    message.cpuResetReason = object.cpuResetReason ?? "";
+    return message;
+  },
+};
 
 function createBaseIMUCalibrateData(): IMUCalibrateData {
-    return { success: false }
+  return { success: false };
 }
 
 export const IMUCalibrateData: MessageFns<IMUCalibrateData> = {
-    encode(message: IMUCalibrateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.success !== false) {
-            writer.uint32(8).bool(message.success)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): IMUCalibrateData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseIMUCalibrateData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.success = reader.bool()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): IMUCalibrateData {
-        return { success: isSet(object.success) ? globalThis.Boolean(object.success) : false }
-    },
-
-    toJSON(message: IMUCalibrateData): unknown {
-        const obj: any = {}
-        if (message.success !== false) {
-            obj.success = message.success
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(base?: I): IMUCalibrateData {
-        return IMUCalibrateData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(object: I): IMUCalibrateData {
-        const message = createBaseIMUCalibrateData()
-        message.success = object.success ?? false
-        return message
+  encode(message: IMUCalibrateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): IMUCalibrateData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIMUCalibrateData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IMUCalibrateData {
+    return { success: isSet(object.success) ? globalThis.Boolean(object.success) : false };
+  },
+
+  toJSON(message: IMUCalibrateData): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(base?: I): IMUCalibrateData {
+    return IMUCalibrateData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<IMUCalibrateData>, I>>(object: I): IMUCalibrateData {
+    const message = createBaseIMUCalibrateData();
+    message.success = object.success ?? false;
+    return message;
+  },
+};
 
 function createBaseIMUCalibrateExecute(): IMUCalibrateExecute {
-    return {}
+  return {};
 }
 
 export const IMUCalibrateExecute: MessageFns<IMUCalibrateExecute> = {
-    encode(_: IMUCalibrateExecute, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        return writer
-    },
+  encode(_: IMUCalibrateExecute, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
 
-    decode(input: BinaryReader | Uint8Array, length?: number): IMUCalibrateExecute {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseIMUCalibrateExecute()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(_: any): IMUCalibrateExecute {
-        return {}
-    },
-
-    toJSON(_: IMUCalibrateExecute): unknown {
-        const obj: any = {}
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(base?: I): IMUCalibrateExecute {
-        return IMUCalibrateExecute.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(_: I): IMUCalibrateExecute {
-        const message = createBaseIMUCalibrateExecute()
-        return message
+  decode(input: BinaryReader | Uint8Array, length?: number): IMUCalibrateExecute {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIMUCalibrateExecute();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
     }
-}
+    return message;
+  },
+
+  fromJSON(_: any): IMUCalibrateExecute {
+    return {};
+  },
+
+  toJSON(_: IMUCalibrateExecute): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(base?: I): IMUCalibrateExecute {
+    return IMUCalibrateExecute.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<IMUCalibrateExecute>, I>>(_: I): IMUCalibrateExecute {
+    const message = createBaseIMUCalibrateExecute();
+    return message;
+  },
+};
 
 function createBaseModeData(): ModeData {
-    return { mode: 0 }
+  return { mode: 0 };
 }
 
 export const ModeData: MessageFns<ModeData> = {
-    encode(message: ModeData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.mode !== 0) {
-            writer.uint32(8).int32(message.mode)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): ModeData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseModeData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.mode = reader.int32() as any
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): ModeData {
-        return { mode: isSet(object.mode) ? modesEnumFromJSON(object.mode) : 0 }
-    },
-
-    toJSON(message: ModeData): unknown {
-        const obj: any = {}
-        if (message.mode !== 0) {
-            obj.mode = modesEnumToJSON(message.mode)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<ModeData>, I>>(base?: I): ModeData {
-        return ModeData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<ModeData>, I>>(object: I): ModeData {
-        const message = createBaseModeData()
-        message.mode = object.mode ?? 0
-        return message
+  encode(message: ModeData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.mode !== 0) {
+      writer.uint32(8).int32(message.mode);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ModeData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseModeData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.mode = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ModeData {
+    return { mode: isSet(object.mode) ? modesEnumFromJSON(object.mode) : 0 };
+  },
+
+  toJSON(message: ModeData): unknown {
+    const obj: any = {};
+    if (message.mode !== 0) {
+      obj.mode = modesEnumToJSON(message.mode);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ModeData>, I>>(base?: I): ModeData {
+    return ModeData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ModeData>, I>>(object: I): ModeData {
+    const message = createBaseModeData();
+    message.mode = object.mode ?? 0;
+    return message;
+  },
+};
 
 function createBaseControllerInputData(): ControllerInputData {
-    return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 }
+  return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
 }
 
 export const ControllerInputData: MessageFns<ControllerInputData> = {
-    encode(message: ControllerInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.left !== undefined) {
-            Vector.encode(message.left, writer.uint32(10).fork()).join()
-        }
-        if (message.right !== undefined) {
-            Vector.encode(message.right, writer.uint32(18).fork()).join()
-        }
-        if (message.height !== 0) {
-            writer.uint32(29).float(message.height)
-        }
-        if (message.speed !== 0) {
-            writer.uint32(37).float(message.speed)
-        }
-        if (message.s1 !== 0) {
-            writer.uint32(45).float(message.s1)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): ControllerInputData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseControllerInputData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.left = Vector.decode(reader, reader.uint32())
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.right = Vector.decode(reader, reader.uint32())
-                    continue
-                }
-                case 3: {
-                    if (tag !== 29) {
-                        break
-                    }
-
-                    message.height = reader.float()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 37) {
-                        break
-                    }
-
-                    message.speed = reader.float()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 45) {
-                        break
-                    }
-
-                    message.s1 = reader.float()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): ControllerInputData {
-        return {
-            left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
-            right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
-            height: isSet(object.height) ? globalThis.Number(object.height) : 0,
-            speed: isSet(object.speed) ? globalThis.Number(object.speed) : 0,
-            s1: isSet(object.s1) ? globalThis.Number(object.s1) : 0
-        }
-    },
-
-    toJSON(message: ControllerInputData): unknown {
-        const obj: any = {}
-        if (message.left !== undefined) {
-            obj.left = Vector.toJSON(message.left)
-        }
-        if (message.right !== undefined) {
-            obj.right = Vector.toJSON(message.right)
-        }
-        if (message.height !== 0) {
-            obj.height = message.height
-        }
-        if (message.speed !== 0) {
-            obj.speed = message.speed
-        }
-        if (message.s1 !== 0) {
-            obj.s1 = message.s1
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<ControllerInputData>, I>>(base?: I): ControllerInputData {
-        return ControllerInputData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<ControllerInputData>, I>>(
-        object: I
-    ): ControllerInputData {
-        const message = createBaseControllerInputData()
-        message.left =
-            object.left !== undefined && object.left !== null ?
-                Vector.fromPartial(object.left)
-            :   undefined
-        message.right =
-            object.right !== undefined && object.right !== null ?
-                Vector.fromPartial(object.right)
-            :   undefined
-        message.height = object.height ?? 0
-        message.speed = object.speed ?? 0
-        message.s1 = object.s1 ?? 0
-        return message
+  encode(message: ControllerInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.left !== undefined) {
+      Vector.encode(message.left, writer.uint32(10).fork()).join();
     }
-}
+    if (message.right !== undefined) {
+      Vector.encode(message.right, writer.uint32(18).fork()).join();
+    }
+    if (message.height !== 0) {
+      writer.uint32(29).float(message.height);
+    }
+    if (message.speed !== 0) {
+      writer.uint32(37).float(message.speed);
+    }
+    if (message.s1 !== 0) {
+      writer.uint32(45).float(message.s1);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ControllerInputData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseControllerInputData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.left = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.right = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 3: {
+          if (tag !== 29) {
+            break;
+          }
+
+          message.height = reader.float();
+          continue;
+        }
+        case 4: {
+          if (tag !== 37) {
+            break;
+          }
+
+          message.speed = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 45) {
+            break;
+          }
+
+          message.s1 = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ControllerInputData {
+    return {
+      left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
+      right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      speed: isSet(object.speed) ? globalThis.Number(object.speed) : 0,
+      s1: isSet(object.s1) ? globalThis.Number(object.s1) : 0,
+    };
+  },
+
+  toJSON(message: ControllerInputData): unknown {
+    const obj: any = {};
+    if (message.left !== undefined) {
+      obj.left = Vector.toJSON(message.left);
+    }
+    if (message.right !== undefined) {
+      obj.right = Vector.toJSON(message.right);
+    }
+    if (message.height !== 0) {
+      obj.height = message.height;
+    }
+    if (message.speed !== 0) {
+      obj.speed = message.speed;
+    }
+    if (message.s1 !== 0) {
+      obj.s1 = message.s1;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ControllerInputData>, I>>(base?: I): ControllerInputData {
+    return ControllerInputData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ControllerInputData>, I>>(object: I): ControllerInputData {
+    const message = createBaseControllerInputData();
+    message.left = (object.left !== undefined && object.left !== null) ? Vector.fromPartial(object.left) : undefined;
+    message.right = (object.right !== undefined && object.right !== null)
+      ? Vector.fromPartial(object.right)
+      : undefined;
+    message.height = object.height ?? 0;
+    message.speed = object.speed ?? 0;
+    message.s1 = object.s1 ?? 0;
+    return message;
+  },
+};
 
 function createBaseAnalyticsData(): AnalyticsData {
-    return {
-        maxAllocHeap: 0,
-        psramSize: 0,
-        freePsram: 0,
-        freeHeap: 0,
-        totalHeap: 0,
-        minFreeHeap: 0,
-        coreTemp: 0,
-        fsTotal: 0,
-        fsUsed: 0,
-        uptime: 0,
-        cpu0Usage: 0,
-        cpu1Usage: 0,
-        cpuUsage: 0
-    }
+  return {
+    maxAllocHeap: 0,
+    psramSize: 0,
+    freePsram: 0,
+    freeHeap: 0,
+    totalHeap: 0,
+    minFreeHeap: 0,
+    coreTemp: 0,
+    fsTotal: 0,
+    fsUsed: 0,
+    uptime: 0,
+    cpu0Usage: 0,
+    cpu1Usage: 0,
+    cpuUsage: 0,
+  };
 }
 
 export const AnalyticsData: MessageFns<AnalyticsData> = {
-    encode(message: AnalyticsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.maxAllocHeap !== 0) {
-            writer.uint32(8).int32(message.maxAllocHeap)
-        }
-        if (message.psramSize !== 0) {
-            writer.uint32(16).int32(message.psramSize)
-        }
-        if (message.freePsram !== 0) {
-            writer.uint32(24).int32(message.freePsram)
-        }
-        if (message.freeHeap !== 0) {
-            writer.uint32(32).int32(message.freeHeap)
-        }
-        if (message.totalHeap !== 0) {
-            writer.uint32(40).int32(message.totalHeap)
-        }
-        if (message.minFreeHeap !== 0) {
-            writer.uint32(48).int32(message.minFreeHeap)
-        }
-        if (message.coreTemp !== 0) {
-            writer.uint32(61).float(message.coreTemp)
-        }
-        if (message.fsTotal !== 0) {
-            writer.uint32(64).int32(message.fsTotal)
-        }
-        if (message.fsUsed !== 0) {
-            writer.uint32(72).int32(message.fsUsed)
-        }
-        if (message.uptime !== 0) {
-            writer.uint32(80).int64(message.uptime)
-        }
-        if (message.cpu0Usage !== 0) {
-            writer.uint32(88).int32(message.cpu0Usage)
-        }
-        if (message.cpu1Usage !== 0) {
-            writer.uint32(96).int32(message.cpu1Usage)
-        }
-        if (message.cpuUsage !== 0) {
-            writer.uint32(104).int32(message.cpuUsage)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): AnalyticsData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseAnalyticsData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.maxAllocHeap = reader.int32()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 16) {
-                        break
-                    }
-
-                    message.psramSize = reader.int32()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 24) {
-                        break
-                    }
-
-                    message.freePsram = reader.int32()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 32) {
-                        break
-                    }
-
-                    message.freeHeap = reader.int32()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 40) {
-                        break
-                    }
-
-                    message.totalHeap = reader.int32()
-                    continue
-                }
-                case 6: {
-                    if (tag !== 48) {
-                        break
-                    }
-
-                    message.minFreeHeap = reader.int32()
-                    continue
-                }
-                case 7: {
-                    if (tag !== 61) {
-                        break
-                    }
-
-                    message.coreTemp = reader.float()
-                    continue
-                }
-                case 8: {
-                    if (tag !== 64) {
-                        break
-                    }
-
-                    message.fsTotal = reader.int32()
-                    continue
-                }
-                case 9: {
-                    if (tag !== 72) {
-                        break
-                    }
-
-                    message.fsUsed = reader.int32()
-                    continue
-                }
-                case 10: {
-                    if (tag !== 80) {
-                        break
-                    }
-
-                    message.uptime = longToNumber(reader.int64())
-                    continue
-                }
-                case 11: {
-                    if (tag !== 88) {
-                        break
-                    }
-
-                    message.cpu0Usage = reader.int32()
-                    continue
-                }
-                case 12: {
-                    if (tag !== 96) {
-                        break
-                    }
-
-                    message.cpu1Usage = reader.int32()
-                    continue
-                }
-                case 13: {
-                    if (tag !== 104) {
-                        break
-                    }
-
-                    message.cpuUsage = reader.int32()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): AnalyticsData {
-        return {
-            maxAllocHeap: isSet(object.maxAllocHeap) ? globalThis.Number(object.maxAllocHeap) : 0,
-            psramSize: isSet(object.psramSize) ? globalThis.Number(object.psramSize) : 0,
-            freePsram: isSet(object.freePsram) ? globalThis.Number(object.freePsram) : 0,
-            freeHeap: isSet(object.freeHeap) ? globalThis.Number(object.freeHeap) : 0,
-            totalHeap: isSet(object.totalHeap) ? globalThis.Number(object.totalHeap) : 0,
-            minFreeHeap: isSet(object.minFreeHeap) ? globalThis.Number(object.minFreeHeap) : 0,
-            coreTemp: isSet(object.coreTemp) ? globalThis.Number(object.coreTemp) : 0,
-            fsTotal: isSet(object.fsTotal) ? globalThis.Number(object.fsTotal) : 0,
-            fsUsed: isSet(object.fsUsed) ? globalThis.Number(object.fsUsed) : 0,
-            uptime: isSet(object.uptime) ? globalThis.Number(object.uptime) : 0,
-            cpu0Usage: isSet(object.cpu0Usage) ? globalThis.Number(object.cpu0Usage) : 0,
-            cpu1Usage: isSet(object.cpu1Usage) ? globalThis.Number(object.cpu1Usage) : 0,
-            cpuUsage: isSet(object.cpuUsage) ? globalThis.Number(object.cpuUsage) : 0
-        }
-    },
-
-    toJSON(message: AnalyticsData): unknown {
-        const obj: any = {}
-        if (message.maxAllocHeap !== 0) {
-            obj.maxAllocHeap = Math.round(message.maxAllocHeap)
-        }
-        if (message.psramSize !== 0) {
-            obj.psramSize = Math.round(message.psramSize)
-        }
-        if (message.freePsram !== 0) {
-            obj.freePsram = Math.round(message.freePsram)
-        }
-        if (message.freeHeap !== 0) {
-            obj.freeHeap = Math.round(message.freeHeap)
-        }
-        if (message.totalHeap !== 0) {
-            obj.totalHeap = Math.round(message.totalHeap)
-        }
-        if (message.minFreeHeap !== 0) {
-            obj.minFreeHeap = Math.round(message.minFreeHeap)
-        }
-        if (message.coreTemp !== 0) {
-            obj.coreTemp = message.coreTemp
-        }
-        if (message.fsTotal !== 0) {
-            obj.fsTotal = Math.round(message.fsTotal)
-        }
-        if (message.fsUsed !== 0) {
-            obj.fsUsed = Math.round(message.fsUsed)
-        }
-        if (message.uptime !== 0) {
-            obj.uptime = Math.round(message.uptime)
-        }
-        if (message.cpu0Usage !== 0) {
-            obj.cpu0Usage = Math.round(message.cpu0Usage)
-        }
-        if (message.cpu1Usage !== 0) {
-            obj.cpu1Usage = Math.round(message.cpu1Usage)
-        }
-        if (message.cpuUsage !== 0) {
-            obj.cpuUsage = Math.round(message.cpuUsage)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<AnalyticsData>, I>>(base?: I): AnalyticsData {
-        return AnalyticsData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<AnalyticsData>, I>>(object: I): AnalyticsData {
-        const message = createBaseAnalyticsData()
-        message.maxAllocHeap = object.maxAllocHeap ?? 0
-        message.psramSize = object.psramSize ?? 0
-        message.freePsram = object.freePsram ?? 0
-        message.freeHeap = object.freeHeap ?? 0
-        message.totalHeap = object.totalHeap ?? 0
-        message.minFreeHeap = object.minFreeHeap ?? 0
-        message.coreTemp = object.coreTemp ?? 0
-        message.fsTotal = object.fsTotal ?? 0
-        message.fsUsed = object.fsUsed ?? 0
-        message.uptime = object.uptime ?? 0
-        message.cpu0Usage = object.cpu0Usage ?? 0
-        message.cpu1Usage = object.cpu1Usage ?? 0
-        message.cpuUsage = object.cpuUsage ?? 0
-        return message
+  encode(message: AnalyticsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.maxAllocHeap !== 0) {
+      writer.uint32(8).int32(message.maxAllocHeap);
     }
-}
+    if (message.psramSize !== 0) {
+      writer.uint32(16).int32(message.psramSize);
+    }
+    if (message.freePsram !== 0) {
+      writer.uint32(24).int32(message.freePsram);
+    }
+    if (message.freeHeap !== 0) {
+      writer.uint32(32).int32(message.freeHeap);
+    }
+    if (message.totalHeap !== 0) {
+      writer.uint32(40).int32(message.totalHeap);
+    }
+    if (message.minFreeHeap !== 0) {
+      writer.uint32(48).int32(message.minFreeHeap);
+    }
+    if (message.coreTemp !== 0) {
+      writer.uint32(61).float(message.coreTemp);
+    }
+    if (message.fsTotal !== 0) {
+      writer.uint32(64).int32(message.fsTotal);
+    }
+    if (message.fsUsed !== 0) {
+      writer.uint32(72).int32(message.fsUsed);
+    }
+    if (message.uptime !== 0) {
+      writer.uint32(80).int64(message.uptime);
+    }
+    if (message.cpu0Usage !== 0) {
+      writer.uint32(88).int32(message.cpu0Usage);
+    }
+    if (message.cpu1Usage !== 0) {
+      writer.uint32(96).int32(message.cpu1Usage);
+    }
+    if (message.cpuUsage !== 0) {
+      writer.uint32(104).int32(message.cpuUsage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AnalyticsData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAnalyticsData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.maxAllocHeap = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.psramSize = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.freePsram = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.freeHeap = reader.int32();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.totalHeap = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.minFreeHeap = reader.int32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 61) {
+            break;
+          }
+
+          message.coreTemp = reader.float();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.fsTotal = reader.int32();
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+
+          message.fsUsed = reader.int32();
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.uptime = longToNumber(reader.int64());
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.cpu0Usage = reader.int32();
+          continue;
+        }
+        case 12: {
+          if (tag !== 96) {
+            break;
+          }
+
+          message.cpu1Usage = reader.int32();
+          continue;
+        }
+        case 13: {
+          if (tag !== 104) {
+            break;
+          }
+
+          message.cpuUsage = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AnalyticsData {
+    return {
+      maxAllocHeap: isSet(object.maxAllocHeap) ? globalThis.Number(object.maxAllocHeap) : 0,
+      psramSize: isSet(object.psramSize) ? globalThis.Number(object.psramSize) : 0,
+      freePsram: isSet(object.freePsram) ? globalThis.Number(object.freePsram) : 0,
+      freeHeap: isSet(object.freeHeap) ? globalThis.Number(object.freeHeap) : 0,
+      totalHeap: isSet(object.totalHeap) ? globalThis.Number(object.totalHeap) : 0,
+      minFreeHeap: isSet(object.minFreeHeap) ? globalThis.Number(object.minFreeHeap) : 0,
+      coreTemp: isSet(object.coreTemp) ? globalThis.Number(object.coreTemp) : 0,
+      fsTotal: isSet(object.fsTotal) ? globalThis.Number(object.fsTotal) : 0,
+      fsUsed: isSet(object.fsUsed) ? globalThis.Number(object.fsUsed) : 0,
+      uptime: isSet(object.uptime) ? globalThis.Number(object.uptime) : 0,
+      cpu0Usage: isSet(object.cpu0Usage) ? globalThis.Number(object.cpu0Usage) : 0,
+      cpu1Usage: isSet(object.cpu1Usage) ? globalThis.Number(object.cpu1Usage) : 0,
+      cpuUsage: isSet(object.cpuUsage) ? globalThis.Number(object.cpuUsage) : 0,
+    };
+  },
+
+  toJSON(message: AnalyticsData): unknown {
+    const obj: any = {};
+    if (message.maxAllocHeap !== 0) {
+      obj.maxAllocHeap = Math.round(message.maxAllocHeap);
+    }
+    if (message.psramSize !== 0) {
+      obj.psramSize = Math.round(message.psramSize);
+    }
+    if (message.freePsram !== 0) {
+      obj.freePsram = Math.round(message.freePsram);
+    }
+    if (message.freeHeap !== 0) {
+      obj.freeHeap = Math.round(message.freeHeap);
+    }
+    if (message.totalHeap !== 0) {
+      obj.totalHeap = Math.round(message.totalHeap);
+    }
+    if (message.minFreeHeap !== 0) {
+      obj.minFreeHeap = Math.round(message.minFreeHeap);
+    }
+    if (message.coreTemp !== 0) {
+      obj.coreTemp = message.coreTemp;
+    }
+    if (message.fsTotal !== 0) {
+      obj.fsTotal = Math.round(message.fsTotal);
+    }
+    if (message.fsUsed !== 0) {
+      obj.fsUsed = Math.round(message.fsUsed);
+    }
+    if (message.uptime !== 0) {
+      obj.uptime = Math.round(message.uptime);
+    }
+    if (message.cpu0Usage !== 0) {
+      obj.cpu0Usage = Math.round(message.cpu0Usage);
+    }
+    if (message.cpu1Usage !== 0) {
+      obj.cpu1Usage = Math.round(message.cpu1Usage);
+    }
+    if (message.cpuUsage !== 0) {
+      obj.cpuUsage = Math.round(message.cpuUsage);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AnalyticsData>, I>>(base?: I): AnalyticsData {
+    return AnalyticsData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AnalyticsData>, I>>(object: I): AnalyticsData {
+    const message = createBaseAnalyticsData();
+    message.maxAllocHeap = object.maxAllocHeap ?? 0;
+    message.psramSize = object.psramSize ?? 0;
+    message.freePsram = object.freePsram ?? 0;
+    message.freeHeap = object.freeHeap ?? 0;
+    message.totalHeap = object.totalHeap ?? 0;
+    message.minFreeHeap = object.minFreeHeap ?? 0;
+    message.coreTemp = object.coreTemp ?? 0;
+    message.fsTotal = object.fsTotal ?? 0;
+    message.fsUsed = object.fsUsed ?? 0;
+    message.uptime = object.uptime ?? 0;
+    message.cpu0Usage = object.cpu0Usage ?? 0;
+    message.cpu1Usage = object.cpu1Usage ?? 0;
+    message.cpuUsage = object.cpuUsage ?? 0;
+    return message;
+  },
+};
 
 function createBaseServoPWMData(): ServoPWMData {
-    return { servoId: 0, servoPwm: 0 }
+  return { servoId: 0, servoPwm: 0 };
 }
 
 export const ServoPWMData: MessageFns<ServoPWMData> = {
-    encode(message: ServoPWMData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.servoId !== 0) {
-            writer.uint32(8).int32(message.servoId)
-        }
-        if (message.servoPwm !== 0) {
-            writer.uint32(16).uint32(message.servoPwm)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): ServoPWMData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseServoPWMData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.servoId = reader.int32()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 16) {
-                        break
-                    }
-
-                    message.servoPwm = reader.uint32()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): ServoPWMData {
-        return {
-            servoId: isSet(object.servoId) ? globalThis.Number(object.servoId) : 0,
-            servoPwm: isSet(object.servoPwm) ? globalThis.Number(object.servoPwm) : 0
-        }
-    },
-
-    toJSON(message: ServoPWMData): unknown {
-        const obj: any = {}
-        if (message.servoId !== 0) {
-            obj.servoId = Math.round(message.servoId)
-        }
-        if (message.servoPwm !== 0) {
-            obj.servoPwm = Math.round(message.servoPwm)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<ServoPWMData>, I>>(base?: I): ServoPWMData {
-        return ServoPWMData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<ServoPWMData>, I>>(object: I): ServoPWMData {
-        const message = createBaseServoPWMData()
-        message.servoId = object.servoId ?? 0
-        message.servoPwm = object.servoPwm ?? 0
-        return message
+  encode(message: ServoPWMData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.servoId !== 0) {
+      writer.uint32(8).int32(message.servoId);
     }
-}
+    if (message.servoPwm !== 0) {
+      writer.uint32(16).uint32(message.servoPwm);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ServoPWMData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseServoPWMData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.servoId = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.servoPwm = reader.uint32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ServoPWMData {
+    return {
+      servoId: isSet(object.servoId) ? globalThis.Number(object.servoId) : 0,
+      servoPwm: isSet(object.servoPwm) ? globalThis.Number(object.servoPwm) : 0,
+    };
+  },
+
+  toJSON(message: ServoPWMData): unknown {
+    const obj: any = {};
+    if (message.servoId !== 0) {
+      obj.servoId = Math.round(message.servoId);
+    }
+    if (message.servoPwm !== 0) {
+      obj.servoPwm = Math.round(message.servoPwm);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ServoPWMData>, I>>(base?: I): ServoPWMData {
+    return ServoPWMData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ServoPWMData>, I>>(object: I): ServoPWMData {
+    const message = createBaseServoPWMData();
+    message.servoId = object.servoId ?? 0;
+    message.servoPwm = object.servoPwm ?? 0;
+    return message;
+  },
+};
 
 function createBaseServoStateData(): ServoStateData {
-    return { active: false }
+  return { active: false };
 }
 
 export const ServoStateData: MessageFns<ServoStateData> = {
-    encode(message: ServoStateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.active !== false) {
-            writer.uint32(8).bool(message.active)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): ServoStateData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseServoStateData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.active = reader.bool()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): ServoStateData {
-        return { active: isSet(object.active) ? globalThis.Boolean(object.active) : false }
-    },
-
-    toJSON(message: ServoStateData): unknown {
-        const obj: any = {}
-        if (message.active !== false) {
-            obj.active = message.active
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<ServoStateData>, I>>(base?: I): ServoStateData {
-        return ServoStateData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<ServoStateData>, I>>(object: I): ServoStateData {
-        const message = createBaseServoStateData()
-        message.active = object.active ?? false
-        return message
+  encode(message: ServoStateData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.active !== false) {
+      writer.uint32(8).bool(message.active);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ServoStateData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseServoStateData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.active = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ServoStateData {
+    return { active: isSet(object.active) ? globalThis.Boolean(object.active) : false };
+  },
+
+  toJSON(message: ServoStateData): unknown {
+    const obj: any = {};
+    if (message.active !== false) {
+      obj.active = message.active;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ServoStateData>, I>>(base?: I): ServoStateData {
+    return ServoStateData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ServoStateData>, I>>(object: I): ServoStateData {
+    const message = createBaseServoStateData();
+    message.active = object.active ?? false;
+    return message;
+  },
+};
 
 function createBaseAnglesData(): AnglesData {
-    return { angles: [] }
+  return { angles: [] };
 }
 
 export const AnglesData: MessageFns<AnglesData> = {
-    encode(message: AnglesData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        writer.uint32(10).fork()
-        for (const v of message.angles) {
-            writer.int32(v)
-        }
-        writer.join()
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): AnglesData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseAnglesData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag === 8) {
-                        message.angles.push(reader.int32())
-
-                        continue
-                    }
-
-                    if (tag === 10) {
-                        const end2 = reader.uint32() + reader.pos
-                        while (reader.pos < end2) {
-                            message.angles.push(reader.int32())
-                        }
-
-                        continue
-                    }
-
-                    break
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): AnglesData {
-        return {
-            angles:
-                globalThis.Array.isArray(object?.angles) ?
-                    object.angles.map((e: any) => globalThis.Number(e))
-                :   []
-        }
-    },
-
-    toJSON(message: AnglesData): unknown {
-        const obj: any = {}
-        if (message.angles?.length) {
-            obj.angles = message.angles.map(e => Math.round(e))
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<AnglesData>, I>>(base?: I): AnglesData {
-        return AnglesData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<AnglesData>, I>>(object: I): AnglesData {
-        const message = createBaseAnglesData()
-        message.angles = object.angles?.map(e => e) || []
-        return message
+  encode(message: AnglesData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    writer.uint32(10).fork();
+    for (const v of message.angles) {
+      writer.int32(v);
     }
-}
+    writer.join();
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AnglesData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAnglesData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag === 8) {
+            message.angles.push(reader.int32());
+
+            continue;
+          }
+
+          if (tag === 10) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.angles.push(reader.int32());
+            }
+
+            continue;
+          }
+
+          break;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AnglesData {
+    return {
+      angles: globalThis.Array.isArray(object?.angles) ? object.angles.map((e: any) => globalThis.Number(e)) : [],
+    };
+  },
+
+  toJSON(message: AnglesData): unknown {
+    const obj: any = {};
+    if (message.angles?.length) {
+      obj.angles = message.angles.map((e) => Math.round(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AnglesData>, I>>(base?: I): AnglesData {
+    return AnglesData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AnglesData>, I>>(object: I): AnglesData {
+    const message = createBaseAnglesData();
+    message.angles = object.angles?.map((e) => e) || [];
+    return message;
+  },
+};
 
 function createBaseI2CScanData(): I2CScanData {
-    return { devices: [] }
+  return { devices: [] };
 }
 
 export const I2CScanData: MessageFns<I2CScanData> = {
-    encode(message: I2CScanData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        for (const v of message.devices) {
-            I2CDevice.encode(v!, writer.uint32(10).fork()).join()
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): I2CScanData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseI2CScanData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.devices.push(I2CDevice.decode(reader, reader.uint32()))
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): I2CScanData {
-        return {
-            devices:
-                globalThis.Array.isArray(object?.devices) ?
-                    object.devices.map((e: any) => I2CDevice.fromJSON(e))
-                :   []
-        }
-    },
-
-    toJSON(message: I2CScanData): unknown {
-        const obj: any = {}
-        if (message.devices?.length) {
-            obj.devices = message.devices.map(e => I2CDevice.toJSON(e))
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<I2CScanData>, I>>(base?: I): I2CScanData {
-        return I2CScanData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<I2CScanData>, I>>(object: I): I2CScanData {
-        const message = createBaseI2CScanData()
-        message.devices = object.devices?.map(e => I2CDevice.fromPartial(e)) || []
-        return message
+  encode(message: I2CScanData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.devices) {
+      I2CDevice.encode(v!, writer.uint32(10).fork()).join();
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): I2CScanData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseI2CScanData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.devices.push(I2CDevice.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): I2CScanData {
+    return {
+      devices: globalThis.Array.isArray(object?.devices) ? object.devices.map((e: any) => I2CDevice.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: I2CScanData): unknown {
+    const obj: any = {};
+    if (message.devices?.length) {
+      obj.devices = message.devices.map((e) => I2CDevice.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<I2CScanData>, I>>(base?: I): I2CScanData {
+    return I2CScanData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<I2CScanData>, I>>(object: I): I2CScanData {
+    const message = createBaseI2CScanData();
+    message.devices = object.devices?.map((e) => I2CDevice.fromPartial(e)) || [];
+    return message;
+  },
+};
 
 function createBaseI2CScanDataRequest(): I2CScanDataRequest {
-    return {}
+  return {};
 }
 
 export const I2CScanDataRequest: MessageFns<I2CScanDataRequest> = {
-    encode(_: I2CScanDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        return writer
-    },
+  encode(_: I2CScanDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
 
-    decode(input: BinaryReader | Uint8Array, length?: number): I2CScanDataRequest {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseI2CScanDataRequest()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(_: any): I2CScanDataRequest {
-        return {}
-    },
-
-    toJSON(_: I2CScanDataRequest): unknown {
-        const obj: any = {}
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(base?: I): I2CScanDataRequest {
-        return I2CScanDataRequest.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(_: I): I2CScanDataRequest {
-        const message = createBaseI2CScanDataRequest()
-        return message
+  decode(input: BinaryReader | Uint8Array, length?: number): I2CScanDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseI2CScanDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
     }
-}
+    return message;
+  },
+
+  fromJSON(_: any): I2CScanDataRequest {
+    return {};
+  },
+
+  toJSON(_: I2CScanDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(base?: I): I2CScanDataRequest {
+    return I2CScanDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<I2CScanDataRequest>, I>>(_: I): I2CScanDataRequest {
+    const message = createBaseI2CScanDataRequest();
+    return message;
+  },
+};
 
 function createBasePeripheralSettingsData(): PeripheralSettingsData {
-    return { sda: 0, scl: 0, frequency: 0, pins: [] }
+  return { sda: 0, scl: 0, frequency: 0, pins: [] };
 }
 
 export const PeripheralSettingsData: MessageFns<PeripheralSettingsData> = {
-    encode(
-        message: PeripheralSettingsData,
-        writer: BinaryWriter = new BinaryWriter()
-    ): BinaryWriter {
-        if (message.sda !== 0) {
-            writer.uint32(8).int32(message.sda)
-        }
-        if (message.scl !== 0) {
-            writer.uint32(16).int32(message.scl)
-        }
-        if (message.frequency !== 0) {
-            writer.uint32(24).int32(message.frequency)
-        }
-        for (const v of message.pins) {
-            PinConfig.encode(v!, writer.uint32(34).fork()).join()
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): PeripheralSettingsData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBasePeripheralSettingsData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.sda = reader.int32()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 16) {
-                        break
-                    }
-
-                    message.scl = reader.int32()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 24) {
-                        break
-                    }
-
-                    message.frequency = reader.int32()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 34) {
-                        break
-                    }
-
-                    message.pins.push(PinConfig.decode(reader, reader.uint32()))
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): PeripheralSettingsData {
-        return {
-            sda: isSet(object.sda) ? globalThis.Number(object.sda) : 0,
-            scl: isSet(object.scl) ? globalThis.Number(object.scl) : 0,
-            frequency: isSet(object.frequency) ? globalThis.Number(object.frequency) : 0,
-            pins:
-                globalThis.Array.isArray(object?.pins) ?
-                    object.pins.map((e: any) => PinConfig.fromJSON(e))
-                :   []
-        }
-    },
-
-    toJSON(message: PeripheralSettingsData): unknown {
-        const obj: any = {}
-        if (message.sda !== 0) {
-            obj.sda = Math.round(message.sda)
-        }
-        if (message.scl !== 0) {
-            obj.scl = Math.round(message.scl)
-        }
-        if (message.frequency !== 0) {
-            obj.frequency = Math.round(message.frequency)
-        }
-        if (message.pins?.length) {
-            obj.pins = message.pins.map(e => PinConfig.toJSON(e))
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(
-        base?: I
-    ): PeripheralSettingsData {
-        return PeripheralSettingsData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(
-        object: I
-    ): PeripheralSettingsData {
-        const message = createBasePeripheralSettingsData()
-        message.sda = object.sda ?? 0
-        message.scl = object.scl ?? 0
-        message.frequency = object.frequency ?? 0
-        message.pins = object.pins?.map(e => PinConfig.fromPartial(e)) || []
-        return message
+  encode(message: PeripheralSettingsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sda !== 0) {
+      writer.uint32(8).int32(message.sda);
     }
-}
+    if (message.scl !== 0) {
+      writer.uint32(16).int32(message.scl);
+    }
+    if (message.frequency !== 0) {
+      writer.uint32(24).int32(message.frequency);
+    }
+    for (const v of message.pins) {
+      PinConfig.encode(v!, writer.uint32(34).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PeripheralSettingsData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePeripheralSettingsData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.sda = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.scl = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.frequency = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.pins.push(PinConfig.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PeripheralSettingsData {
+    return {
+      sda: isSet(object.sda) ? globalThis.Number(object.sda) : 0,
+      scl: isSet(object.scl) ? globalThis.Number(object.scl) : 0,
+      frequency: isSet(object.frequency) ? globalThis.Number(object.frequency) : 0,
+      pins: globalThis.Array.isArray(object?.pins) ? object.pins.map((e: any) => PinConfig.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: PeripheralSettingsData): unknown {
+    const obj: any = {};
+    if (message.sda !== 0) {
+      obj.sda = Math.round(message.sda);
+    }
+    if (message.scl !== 0) {
+      obj.scl = Math.round(message.scl);
+    }
+    if (message.frequency !== 0) {
+      obj.frequency = Math.round(message.frequency);
+    }
+    if (message.pins?.length) {
+      obj.pins = message.pins.map((e) => PinConfig.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(base?: I): PeripheralSettingsData {
+    return PeripheralSettingsData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PeripheralSettingsData>, I>>(object: I): PeripheralSettingsData {
+    const message = createBasePeripheralSettingsData();
+    message.sda = object.sda ?? 0;
+    message.scl = object.scl ?? 0;
+    message.frequency = object.frequency ?? 0;
+    message.pins = object.pins?.map((e) => PinConfig.fromPartial(e)) || [];
+    return message;
+  },
+};
 
 function createBasePeripheralSettingsDataRequest(): PeripheralSettingsDataRequest {
-    return {}
+  return {};
 }
 
 export const PeripheralSettingsDataRequest: MessageFns<PeripheralSettingsDataRequest> = {
-    encode(
-        _: PeripheralSettingsDataRequest,
-        writer: BinaryWriter = new BinaryWriter()
-    ): BinaryWriter {
-        return writer
-    },
+  encode(_: PeripheralSettingsDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
 
-    decode(input: BinaryReader | Uint8Array, length?: number): PeripheralSettingsDataRequest {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBasePeripheralSettingsDataRequest()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(_: any): PeripheralSettingsDataRequest {
-        return {}
-    },
-
-    toJSON(_: PeripheralSettingsDataRequest): unknown {
-        const obj: any = {}
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(
-        base?: I
-    ): PeripheralSettingsDataRequest {
-        return PeripheralSettingsDataRequest.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(
-        _: I
-    ): PeripheralSettingsDataRequest {
-        const message = createBasePeripheralSettingsDataRequest()
-        return message
+  decode(input: BinaryReader | Uint8Array, length?: number): PeripheralSettingsDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePeripheralSettingsDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
     }
-}
+    return message;
+  },
+
+  fromJSON(_: any): PeripheralSettingsDataRequest {
+    return {};
+  },
+
+  toJSON(_: PeripheralSettingsDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(base?: I): PeripheralSettingsDataRequest {
+    return PeripheralSettingsDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PeripheralSettingsDataRequest>, I>>(_: I): PeripheralSettingsDataRequest {
+    const message = createBasePeripheralSettingsDataRequest();
+    return message;
+  },
+};
 
 function createBaseWifiSettingsData(): WifiSettingsData {
-    return { hostname: '', priorityRssi: false, wifiNetworks: [] }
+  return { hostname: "", priorityRssi: false, wifiNetworks: [] };
 }
 
 export const WifiSettingsData: MessageFns<WifiSettingsData> = {
-    encode(message: WifiSettingsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.hostname !== '') {
-            writer.uint32(10).string(message.hostname)
-        }
-        if (message.priorityRssi !== false) {
-            writer.uint32(16).bool(message.priorityRssi)
-        }
-        for (const v of message.wifiNetworks) {
-            KnownNetworkItem.encode(v!, writer.uint32(26).fork()).join()
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): WifiSettingsData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseWifiSettingsData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.hostname = reader.string()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 16) {
-                        break
-                    }
-
-                    message.priorityRssi = reader.bool()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 26) {
-                        break
-                    }
-
-                    message.wifiNetworks.push(KnownNetworkItem.decode(reader, reader.uint32()))
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): WifiSettingsData {
-        return {
-            hostname: isSet(object.hostname) ? globalThis.String(object.hostname) : '',
-            priorityRssi:
-                isSet(object.priorityRssi) ? globalThis.Boolean(object.priorityRssi) : false,
-            wifiNetworks:
-                globalThis.Array.isArray(object?.wifiNetworks) ?
-                    object.wifiNetworks.map((e: any) => KnownNetworkItem.fromJSON(e))
-                :   []
-        }
-    },
-
-    toJSON(message: WifiSettingsData): unknown {
-        const obj: any = {}
-        if (message.hostname !== '') {
-            obj.hostname = message.hostname
-        }
-        if (message.priorityRssi !== false) {
-            obj.priorityRssi = message.priorityRssi
-        }
-        if (message.wifiNetworks?.length) {
-            obj.wifiNetworks = message.wifiNetworks.map(e => KnownNetworkItem.toJSON(e))
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<WifiSettingsData>, I>>(base?: I): WifiSettingsData {
-        return WifiSettingsData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<WifiSettingsData>, I>>(object: I): WifiSettingsData {
-        const message = createBaseWifiSettingsData()
-        message.hostname = object.hostname ?? ''
-        message.priorityRssi = object.priorityRssi ?? false
-        message.wifiNetworks = object.wifiNetworks?.map(e => KnownNetworkItem.fromPartial(e)) || []
-        return message
+  encode(message: WifiSettingsData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.hostname !== "") {
+      writer.uint32(10).string(message.hostname);
     }
-}
+    if (message.priorityRssi !== false) {
+      writer.uint32(16).bool(message.priorityRssi);
+    }
+    for (const v of message.wifiNetworks) {
+      KnownNetworkItem.encode(v!, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WifiSettingsData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWifiSettingsData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.hostname = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.priorityRssi = reader.bool();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.wifiNetworks.push(KnownNetworkItem.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WifiSettingsData {
+    return {
+      hostname: isSet(object.hostname) ? globalThis.String(object.hostname) : "",
+      priorityRssi: isSet(object.priorityRssi) ? globalThis.Boolean(object.priorityRssi) : false,
+      wifiNetworks: globalThis.Array.isArray(object?.wifiNetworks)
+        ? object.wifiNetworks.map((e: any) => KnownNetworkItem.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: WifiSettingsData): unknown {
+    const obj: any = {};
+    if (message.hostname !== "") {
+      obj.hostname = message.hostname;
+    }
+    if (message.priorityRssi !== false) {
+      obj.priorityRssi = message.priorityRssi;
+    }
+    if (message.wifiNetworks?.length) {
+      obj.wifiNetworks = message.wifiNetworks.map((e) => KnownNetworkItem.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<WifiSettingsData>, I>>(base?: I): WifiSettingsData {
+    return WifiSettingsData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<WifiSettingsData>, I>>(object: I): WifiSettingsData {
+    const message = createBaseWifiSettingsData();
+    message.hostname = object.hostname ?? "";
+    message.priorityRssi = object.priorityRssi ?? false;
+    message.wifiNetworks = object.wifiNetworks?.map((e) => KnownNetworkItem.fromPartial(e)) || [];
+    return message;
+  },
+};
 
 function createBaseRSSIData(): RSSIData {
-    return { rssi: 0 }
+  return { rssi: 0 };
 }
 
 export const RSSIData: MessageFns<RSSIData> = {
-    encode(message: RSSIData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.rssi !== 0) {
-            writer.uint32(8).int32(message.rssi)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): RSSIData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseRSSIData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.rssi = reader.int32()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): RSSIData {
-        return { rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0 }
-    },
-
-    toJSON(message: RSSIData): unknown {
-        const obj: any = {}
-        if (message.rssi !== 0) {
-            obj.rssi = Math.round(message.rssi)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<RSSIData>, I>>(base?: I): RSSIData {
-        return RSSIData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<RSSIData>, I>>(object: I): RSSIData {
-        const message = createBaseRSSIData()
-        message.rssi = object.rssi ?? 0
-        return message
+  encode(message: RSSIData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.rssi !== 0) {
+      writer.uint32(8).int32(message.rssi);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RSSIData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRSSIData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.rssi = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RSSIData {
+    return { rssi: isSet(object.rssi) ? globalThis.Number(object.rssi) : 0 };
+  },
+
+  toJSON(message: RSSIData): unknown {
+    const obj: any = {};
+    if (message.rssi !== 0) {
+      obj.rssi = Math.round(message.rssi);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RSSIData>, I>>(base?: I): RSSIData {
+    return RSSIData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RSSIData>, I>>(object: I): RSSIData {
+    const message = createBaseRSSIData();
+    message.rssi = object.rssi ?? 0;
+    return message;
+  },
+};
 
 function createBaseDownloadOTAData(): DownloadOTAData {
-    return { status: '', progress: 0, error: '' }
+  return { status: "", progress: 0, error: "" };
 }
 
 export const DownloadOTAData: MessageFns<DownloadOTAData> = {
-    encode(message: DownloadOTAData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.status !== '') {
-            writer.uint32(10).string(message.status)
-        }
-        if (message.progress !== 0) {
-            writer.uint32(16).int32(message.progress)
-        }
-        if (message.error !== '') {
-            writer.uint32(26).string(message.error)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): DownloadOTAData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseDownloadOTAData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.status = reader.string()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 16) {
-                        break
-                    }
-
-                    message.progress = reader.int32()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 26) {
-                        break
-                    }
-
-                    message.error = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): DownloadOTAData {
-        return {
-            status: isSet(object.status) ? globalThis.String(object.status) : '',
-            progress: isSet(object.progress) ? globalThis.Number(object.progress) : 0,
-            error: isSet(object.error) ? globalThis.String(object.error) : ''
-        }
-    },
-
-    toJSON(message: DownloadOTAData): unknown {
-        const obj: any = {}
-        if (message.status !== '') {
-            obj.status = message.status
-        }
-        if (message.progress !== 0) {
-            obj.progress = Math.round(message.progress)
-        }
-        if (message.error !== '') {
-            obj.error = message.error
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<DownloadOTAData>, I>>(base?: I): DownloadOTAData {
-        return DownloadOTAData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<DownloadOTAData>, I>>(object: I): DownloadOTAData {
-        const message = createBaseDownloadOTAData()
-        message.status = object.status ?? ''
-        message.progress = object.progress ?? 0
-        message.error = object.error ?? ''
-        return message
+  encode(message: DownloadOTAData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.status !== "") {
+      writer.uint32(10).string(message.status);
     }
-}
+    if (message.progress !== 0) {
+      writer.uint32(16).int32(message.progress);
+    }
+    if (message.error !== "") {
+      writer.uint32(26).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DownloadOTAData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDownloadOTAData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.status = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.progress = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DownloadOTAData {
+    return {
+      status: isSet(object.status) ? globalThis.String(object.status) : "",
+      progress: isSet(object.progress) ? globalThis.Number(object.progress) : 0,
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: DownloadOTAData): unknown {
+    const obj: any = {};
+    if (message.status !== "") {
+      obj.status = message.status;
+    }
+    if (message.progress !== 0) {
+      obj.progress = Math.round(message.progress);
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DownloadOTAData>, I>>(base?: I): DownloadOTAData {
+    return DownloadOTAData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DownloadOTAData>, I>>(object: I): DownloadOTAData {
+    const message = createBaseDownloadOTAData();
+    message.status = object.status ?? "";
+    message.progress = object.progress ?? 0;
+    message.error = object.error ?? "";
+    return message;
+  },
+};
 
 function createBaseSonarData(): SonarData {
-    return { dummyField: '' }
+  return { dummyField: "" };
 }
 
 export const SonarData: MessageFns<SonarData> = {
-    encode(message: SonarData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.dummyField !== '') {
-            writer.uint32(10).string(message.dummyField)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): SonarData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseSonarData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.dummyField = reader.string()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): SonarData {
-        return { dummyField: isSet(object.dummyField) ? globalThis.String(object.dummyField) : '' }
-    },
-
-    toJSON(message: SonarData): unknown {
-        const obj: any = {}
-        if (message.dummyField !== '') {
-            obj.dummyField = message.dummyField
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<SonarData>, I>>(base?: I): SonarData {
-        return SonarData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<SonarData>, I>>(object: I): SonarData {
-        const message = createBaseSonarData()
-        message.dummyField = object.dummyField ?? ''
-        return message
+  encode(message: SonarData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.dummyField !== "") {
+      writer.uint32(10).string(message.dummyField);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SonarData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSonarData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.dummyField = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SonarData {
+    return { dummyField: isSet(object.dummyField) ? globalThis.String(object.dummyField) : "" };
+  },
+
+  toJSON(message: SonarData): unknown {
+    const obj: any = {};
+    if (message.dummyField !== "") {
+      obj.dummyField = message.dummyField;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SonarData>, I>>(base?: I): SonarData {
+    return SonarData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SonarData>, I>>(object: I): SonarData {
+    const message = createBaseSonarData();
+    message.dummyField = object.dummyField ?? "";
+    return message;
+  },
+};
 
 function createBaseHumanInputData(): HumanInputData {
-    return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 }
+  return { left: undefined, right: undefined, height: 0, speed: 0, s1: 0 };
 }
 
 export const HumanInputData: MessageFns<HumanInputData> = {
-    encode(message: HumanInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.left !== undefined) {
-            Vector.encode(message.left, writer.uint32(82).fork()).join()
-        }
-        if (message.right !== undefined) {
-            Vector.encode(message.right, writer.uint32(90).fork()).join()
-        }
-        if (message.height !== 0) {
-            writer.uint32(165).float(message.height)
-        }
-        if (message.speed !== 0) {
-            writer.uint32(173).float(message.speed)
-        }
-        if (message.s1 !== 0) {
-            writer.uint32(181).float(message.s1)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): HumanInputData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseHumanInputData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 10: {
-                    if (tag !== 82) {
-                        break
-                    }
-
-                    message.left = Vector.decode(reader, reader.uint32())
-                    continue
-                }
-                case 11: {
-                    if (tag !== 90) {
-                        break
-                    }
-
-                    message.right = Vector.decode(reader, reader.uint32())
-                    continue
-                }
-                case 20: {
-                    if (tag !== 165) {
-                        break
-                    }
-
-                    message.height = reader.float()
-                    continue
-                }
-                case 21: {
-                    if (tag !== 173) {
-                        break
-                    }
-
-                    message.speed = reader.float()
-                    continue
-                }
-                case 22: {
-                    if (tag !== 181) {
-                        break
-                    }
-
-                    message.s1 = reader.float()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): HumanInputData {
-        return {
-            left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
-            right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
-            height: isSet(object.height) ? globalThis.Number(object.height) : 0,
-            speed: isSet(object.speed) ? globalThis.Number(object.speed) : 0,
-            s1: isSet(object.s1) ? globalThis.Number(object.s1) : 0
-        }
-    },
-
-    toJSON(message: HumanInputData): unknown {
-        const obj: any = {}
-        if (message.left !== undefined) {
-            obj.left = Vector.toJSON(message.left)
-        }
-        if (message.right !== undefined) {
-            obj.right = Vector.toJSON(message.right)
-        }
-        if (message.height !== 0) {
-            obj.height = message.height
-        }
-        if (message.speed !== 0) {
-            obj.speed = message.speed
-        }
-        if (message.s1 !== 0) {
-            obj.s1 = message.s1
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<HumanInputData>, I>>(base?: I): HumanInputData {
-        return HumanInputData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<HumanInputData>, I>>(object: I): HumanInputData {
-        const message = createBaseHumanInputData()
-        message.left =
-            object.left !== undefined && object.left !== null ?
-                Vector.fromPartial(object.left)
-            :   undefined
-        message.right =
-            object.right !== undefined && object.right !== null ?
-                Vector.fromPartial(object.right)
-            :   undefined
-        message.height = object.height ?? 0
-        message.speed = object.speed ?? 0
-        message.s1 = object.s1 ?? 0
-        return message
+  encode(message: HumanInputData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.left !== undefined) {
+      Vector.encode(message.left, writer.uint32(82).fork()).join();
     }
-}
+    if (message.right !== undefined) {
+      Vector.encode(message.right, writer.uint32(90).fork()).join();
+    }
+    if (message.height !== 0) {
+      writer.uint32(165).float(message.height);
+    }
+    if (message.speed !== 0) {
+      writer.uint32(173).float(message.speed);
+    }
+    if (message.s1 !== 0) {
+      writer.uint32(181).float(message.s1);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): HumanInputData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHumanInputData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.left = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.right = Vector.decode(reader, reader.uint32());
+          continue;
+        }
+        case 20: {
+          if (tag !== 165) {
+            break;
+          }
+
+          message.height = reader.float();
+          continue;
+        }
+        case 21: {
+          if (tag !== 173) {
+            break;
+          }
+
+          message.speed = reader.float();
+          continue;
+        }
+        case 22: {
+          if (tag !== 181) {
+            break;
+          }
+
+          message.s1 = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HumanInputData {
+    return {
+      left: isSet(object.left) ? Vector.fromJSON(object.left) : undefined,
+      right: isSet(object.right) ? Vector.fromJSON(object.right) : undefined,
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      speed: isSet(object.speed) ? globalThis.Number(object.speed) : 0,
+      s1: isSet(object.s1) ? globalThis.Number(object.s1) : 0,
+    };
+  },
+
+  toJSON(message: HumanInputData): unknown {
+    const obj: any = {};
+    if (message.left !== undefined) {
+      obj.left = Vector.toJSON(message.left);
+    }
+    if (message.right !== undefined) {
+      obj.right = Vector.toJSON(message.right);
+    }
+    if (message.height !== 0) {
+      obj.height = message.height;
+    }
+    if (message.speed !== 0) {
+      obj.speed = message.speed;
+    }
+    if (message.s1 !== 0) {
+      obj.s1 = message.s1;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HumanInputData>, I>>(base?: I): HumanInputData {
+    return HumanInputData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<HumanInputData>, I>>(object: I): HumanInputData {
+    const message = createBaseHumanInputData();
+    message.left = (object.left !== undefined && object.left !== null) ? Vector.fromPartial(object.left) : undefined;
+    message.right = (object.right !== undefined && object.right !== null)
+      ? Vector.fromPartial(object.right)
+      : undefined;
+    message.height = object.height ?? 0;
+    message.speed = object.speed ?? 0;
+    message.s1 = object.s1 ?? 0;
+    return message;
+  },
+};
 
 function createBaseSystemInformation(): SystemInformation {
-    return { analyticsData: undefined, staticSystemInformation: undefined }
+  return { analyticsData: undefined, staticSystemInformation: undefined };
 }
 
 export const SystemInformation: MessageFns<SystemInformation> = {
-    encode(message: SystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.analyticsData !== undefined) {
-            AnalyticsData.encode(message.analyticsData, writer.uint32(10).fork()).join()
-        }
-        if (message.staticSystemInformation !== undefined) {
-            StaticSystemInformation.encode(
-                message.staticSystemInformation,
-                writer.uint32(18).fork()
-            ).join()
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): SystemInformation {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseSystemInformation()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 10) {
-                        break
-                    }
-
-                    message.analyticsData = AnalyticsData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 2: {
-                    if (tag !== 18) {
-                        break
-                    }
-
-                    message.staticSystemInformation = StaticSystemInformation.decode(
-                        reader,
-                        reader.uint32()
-                    )
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): SystemInformation {
-        return {
-            analyticsData:
-                isSet(object.analyticsData) ?
-                    AnalyticsData.fromJSON(object.analyticsData)
-                :   undefined,
-            staticSystemInformation:
-                isSet(object.staticSystemInformation) ?
-                    StaticSystemInformation.fromJSON(object.staticSystemInformation)
-                :   undefined
-        }
-    },
-
-    toJSON(message: SystemInformation): unknown {
-        const obj: any = {}
-        if (message.analyticsData !== undefined) {
-            obj.analyticsData = AnalyticsData.toJSON(message.analyticsData)
-        }
-        if (message.staticSystemInformation !== undefined) {
-            obj.staticSystemInformation = StaticSystemInformation.toJSON(
-                message.staticSystemInformation
-            )
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<SystemInformation>, I>>(base?: I): SystemInformation {
-        return SystemInformation.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<SystemInformation>, I>>(object: I): SystemInformation {
-        const message = createBaseSystemInformation()
-        message.analyticsData =
-            object.analyticsData !== undefined && object.analyticsData !== null ?
-                AnalyticsData.fromPartial(object.analyticsData)
-            :   undefined
-        message.staticSystemInformation =
-            (
-                object.staticSystemInformation !== undefined &&
-                object.staticSystemInformation !== null
-            ) ?
-                StaticSystemInformation.fromPartial(object.staticSystemInformation)
-            :   undefined
-        return message
+  encode(message: SystemInformation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.analyticsData !== undefined) {
+      AnalyticsData.encode(message.analyticsData, writer.uint32(10).fork()).join();
     }
-}
+    if (message.staticSystemInformation !== undefined) {
+      StaticSystemInformation.encode(message.staticSystemInformation, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SystemInformation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSystemInformation();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.analyticsData = AnalyticsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.staticSystemInformation = StaticSystemInformation.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SystemInformation {
+    return {
+      analyticsData: isSet(object.analyticsData) ? AnalyticsData.fromJSON(object.analyticsData) : undefined,
+      staticSystemInformation: isSet(object.staticSystemInformation)
+        ? StaticSystemInformation.fromJSON(object.staticSystemInformation)
+        : undefined,
+    };
+  },
+
+  toJSON(message: SystemInformation): unknown {
+    const obj: any = {};
+    if (message.analyticsData !== undefined) {
+      obj.analyticsData = AnalyticsData.toJSON(message.analyticsData);
+    }
+    if (message.staticSystemInformation !== undefined) {
+      obj.staticSystemInformation = StaticSystemInformation.toJSON(message.staticSystemInformation);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SystemInformation>, I>>(base?: I): SystemInformation {
+    return SystemInformation.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SystemInformation>, I>>(object: I): SystemInformation {
+    const message = createBaseSystemInformation();
+    message.analyticsData = (object.analyticsData !== undefined && object.analyticsData !== null)
+      ? AnalyticsData.fromPartial(object.analyticsData)
+      : undefined;
+    message.staticSystemInformation =
+      (object.staticSystemInformation !== undefined && object.staticSystemInformation !== null)
+        ? StaticSystemInformation.fromPartial(object.staticSystemInformation)
+        : undefined;
+    return message;
+  },
+};
 
 function createBaseWalkGaitData(): WalkGaitData {
-    return { gait: 0 }
+  return { gait: 0 };
 }
 
 export const WalkGaitData: MessageFns<WalkGaitData> = {
-    encode(message: WalkGaitData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.gait !== 0) {
-            writer.uint32(8).int32(message.gait)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): WalkGaitData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseWalkGaitData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.gait = reader.int32() as any
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): WalkGaitData {
-        return { gait: isSet(object.gait) ? walkGaitsFromJSON(object.gait) : 0 }
-    },
-
-    toJSON(message: WalkGaitData): unknown {
-        const obj: any = {}
-        if (message.gait !== 0) {
-            obj.gait = walkGaitsToJSON(message.gait)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<WalkGaitData>, I>>(base?: I): WalkGaitData {
-        return WalkGaitData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<WalkGaitData>, I>>(object: I): WalkGaitData {
-        const message = createBaseWalkGaitData()
-        message.gait = object.gait ?? 0
-        return message
+  encode(message: WalkGaitData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.gait !== 0) {
+      writer.uint32(8).int32(message.gait);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WalkGaitData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWalkGaitData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.gait = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WalkGaitData {
+    return { gait: isSet(object.gait) ? walkGaitsFromJSON(object.gait) : 0 };
+  },
+
+  toJSON(message: WalkGaitData): unknown {
+    const obj: any = {};
+    if (message.gait !== 0) {
+      obj.gait = walkGaitsToJSON(message.gait);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<WalkGaitData>, I>>(base?: I): WalkGaitData {
+    return WalkGaitData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<WalkGaitData>, I>>(object: I): WalkGaitData {
+    const message = createBaseWalkGaitData();
+    message.gait = object.gait ?? 0;
+    return message;
+  },
+};
 
 function createBaseKinematicData(): KinematicData {
-    return { omega: 0, phi: 0, psi: 0, xm: 0, ym: 0, zm: 0 }
+  return { omega: 0, phi: 0, psi: 0, xm: 0, ym: 0, zm: 0 };
 }
 
 export const KinematicData: MessageFns<KinematicData> = {
-    encode(message: KinematicData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.omega !== 0) {
-            writer.uint32(13).float(message.omega)
-        }
-        if (message.phi !== 0) {
-            writer.uint32(21).float(message.phi)
-        }
-        if (message.psi !== 0) {
-            writer.uint32(29).float(message.psi)
-        }
-        if (message.xm !== 0) {
-            writer.uint32(37).float(message.xm)
-        }
-        if (message.ym !== 0) {
-            writer.uint32(45).float(message.ym)
-        }
-        if (message.zm !== 0) {
-            writer.uint32(53).float(message.zm)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): KinematicData {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseKinematicData()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 13) {
-                        break
-                    }
-
-                    message.omega = reader.float()
-                    continue
-                }
-                case 2: {
-                    if (tag !== 21) {
-                        break
-                    }
-
-                    message.phi = reader.float()
-                    continue
-                }
-                case 3: {
-                    if (tag !== 29) {
-                        break
-                    }
-
-                    message.psi = reader.float()
-                    continue
-                }
-                case 4: {
-                    if (tag !== 37) {
-                        break
-                    }
-
-                    message.xm = reader.float()
-                    continue
-                }
-                case 5: {
-                    if (tag !== 45) {
-                        break
-                    }
-
-                    message.ym = reader.float()
-                    continue
-                }
-                case 6: {
-                    if (tag !== 53) {
-                        break
-                    }
-
-                    message.zm = reader.float()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): KinematicData {
-        return {
-            omega: isSet(object.omega) ? globalThis.Number(object.omega) : 0,
-            phi: isSet(object.phi) ? globalThis.Number(object.phi) : 0,
-            psi: isSet(object.psi) ? globalThis.Number(object.psi) : 0,
-            xm: isSet(object.xm) ? globalThis.Number(object.xm) : 0,
-            ym: isSet(object.ym) ? globalThis.Number(object.ym) : 0,
-            zm: isSet(object.zm) ? globalThis.Number(object.zm) : 0
-        }
-    },
-
-    toJSON(message: KinematicData): unknown {
-        const obj: any = {}
-        if (message.omega !== 0) {
-            obj.omega = message.omega
-        }
-        if (message.phi !== 0) {
-            obj.phi = message.phi
-        }
-        if (message.psi !== 0) {
-            obj.psi = message.psi
-        }
-        if (message.xm !== 0) {
-            obj.xm = message.xm
-        }
-        if (message.ym !== 0) {
-            obj.ym = message.ym
-        }
-        if (message.zm !== 0) {
-            obj.zm = message.zm
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<KinematicData>, I>>(base?: I): KinematicData {
-        return KinematicData.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<KinematicData>, I>>(object: I): KinematicData {
-        const message = createBaseKinematicData()
-        message.omega = object.omega ?? 0
-        message.phi = object.phi ?? 0
-        message.psi = object.psi ?? 0
-        message.xm = object.xm ?? 0
-        message.ym = object.ym ?? 0
-        message.zm = object.zm ?? 0
-        return message
+  encode(message: KinematicData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.omega !== 0) {
+      writer.uint32(13).float(message.omega);
     }
-}
+    if (message.phi !== 0) {
+      writer.uint32(21).float(message.phi);
+    }
+    if (message.psi !== 0) {
+      writer.uint32(29).float(message.psi);
+    }
+    if (message.xm !== 0) {
+      writer.uint32(37).float(message.xm);
+    }
+    if (message.ym !== 0) {
+      writer.uint32(45).float(message.ym);
+    }
+    if (message.zm !== 0) {
+      writer.uint32(53).float(message.zm);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): KinematicData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseKinematicData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 13) {
+            break;
+          }
+
+          message.omega = reader.float();
+          continue;
+        }
+        case 2: {
+          if (tag !== 21) {
+            break;
+          }
+
+          message.phi = reader.float();
+          continue;
+        }
+        case 3: {
+          if (tag !== 29) {
+            break;
+          }
+
+          message.psi = reader.float();
+          continue;
+        }
+        case 4: {
+          if (tag !== 37) {
+            break;
+          }
+
+          message.xm = reader.float();
+          continue;
+        }
+        case 5: {
+          if (tag !== 45) {
+            break;
+          }
+
+          message.ym = reader.float();
+          continue;
+        }
+        case 6: {
+          if (tag !== 53) {
+            break;
+          }
+
+          message.zm = reader.float();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): KinematicData {
+    return {
+      omega: isSet(object.omega) ? globalThis.Number(object.omega) : 0,
+      phi: isSet(object.phi) ? globalThis.Number(object.phi) : 0,
+      psi: isSet(object.psi) ? globalThis.Number(object.psi) : 0,
+      xm: isSet(object.xm) ? globalThis.Number(object.xm) : 0,
+      ym: isSet(object.ym) ? globalThis.Number(object.ym) : 0,
+      zm: isSet(object.zm) ? globalThis.Number(object.zm) : 0,
+    };
+  },
+
+  toJSON(message: KinematicData): unknown {
+    const obj: any = {};
+    if (message.omega !== 0) {
+      obj.omega = message.omega;
+    }
+    if (message.phi !== 0) {
+      obj.phi = message.phi;
+    }
+    if (message.psi !== 0) {
+      obj.psi = message.psi;
+    }
+    if (message.xm !== 0) {
+      obj.xm = message.xm;
+    }
+    if (message.ym !== 0) {
+      obj.ym = message.ym;
+    }
+    if (message.zm !== 0) {
+      obj.zm = message.zm;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<KinematicData>, I>>(base?: I): KinematicData {
+    return KinematicData.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<KinematicData>, I>>(object: I): KinematicData {
+    const message = createBaseKinematicData();
+    message.omega = object.omega ?? 0;
+    message.phi = object.phi ?? 0;
+    message.psi = object.psi ?? 0;
+    message.xm = object.xm ?? 0;
+    message.ym = object.ym ?? 0;
+    message.zm = object.zm ?? 0;
+    return message;
+  },
+};
 
 function createBaseSubscribeNotification(): SubscribeNotification {
-    return { tag: 0 }
+  return { tag: 0 };
 }
 
 export const SubscribeNotification: MessageFns<SubscribeNotification> = {
-    encode(
-        message: SubscribeNotification,
-        writer: BinaryWriter = new BinaryWriter()
-    ): BinaryWriter {
-        if (message.tag !== 0) {
-            writer.uint32(8).int32(message.tag)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): SubscribeNotification {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseSubscribeNotification()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.tag = reader.int32()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): SubscribeNotification {
-        return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 }
-    },
-
-    toJSON(message: SubscribeNotification): unknown {
-        const obj: any = {}
-        if (message.tag !== 0) {
-            obj.tag = Math.round(message.tag)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<SubscribeNotification>, I>>(
-        base?: I
-    ): SubscribeNotification {
-        return SubscribeNotification.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(
-        object: I
-    ): SubscribeNotification {
-        const message = createBaseSubscribeNotification()
-        message.tag = object.tag ?? 0
-        return message
+  encode(message: SubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tag !== 0) {
+      writer.uint32(8).int32(message.tag);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SubscribeNotification {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubscribeNotification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.tag = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubscribeNotification {
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
+  },
+
+  toJSON(message: SubscribeNotification): unknown {
+    const obj: any = {};
+    if (message.tag !== 0) {
+      obj.tag = Math.round(message.tag);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubscribeNotification>, I>>(base?: I): SubscribeNotification {
+    return SubscribeNotification.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SubscribeNotification>, I>>(object: I): SubscribeNotification {
+    const message = createBaseSubscribeNotification();
+    message.tag = object.tag ?? 0;
+    return message;
+  },
+};
 
 function createBaseUnsubscribeNotification(): UnsubscribeNotification {
-    return { tag: 0 }
+  return { tag: 0 };
 }
 
 export const UnsubscribeNotification: MessageFns<UnsubscribeNotification> = {
-    encode(
-        message: UnsubscribeNotification,
-        writer: BinaryWriter = new BinaryWriter()
-    ): BinaryWriter {
-        if (message.tag !== 0) {
-            writer.uint32(8).int32(message.tag)
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): UnsubscribeNotification {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseUnsubscribeNotification()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 1: {
-                    if (tag !== 8) {
-                        break
-                    }
-
-                    message.tag = reader.int32()
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): UnsubscribeNotification {
-        return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 }
-    },
-
-    toJSON(message: UnsubscribeNotification): unknown {
-        const obj: any = {}
-        if (message.tag !== 0) {
-            obj.tag = Math.round(message.tag)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(
-        base?: I
-    ): UnsubscribeNotification {
-        return UnsubscribeNotification.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(
-        object: I
-    ): UnsubscribeNotification {
-        const message = createBaseUnsubscribeNotification()
-        message.tag = object.tag ?? 0
-        return message
+  encode(message: UnsubscribeNotification, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tag !== 0) {
+      writer.uint32(8).int32(message.tag);
     }
-}
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UnsubscribeNotification {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUnsubscribeNotification();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.tag = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UnsubscribeNotification {
+    return { tag: isSet(object.tag) ? globalThis.Number(object.tag) : 0 };
+  },
+
+  toJSON(message: UnsubscribeNotification): unknown {
+    const obj: any = {};
+    if (message.tag !== 0) {
+      obj.tag = Math.round(message.tag);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(base?: I): UnsubscribeNotification {
+    return UnsubscribeNotification.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnsubscribeNotification>, I>>(object: I): UnsubscribeNotification {
+    const message = createBaseUnsubscribeNotification();
+    message.tag = object.tag ?? 0;
+    return message;
+  },
+};
 
 function createBasePingMsg(): PingMsg {
-    return {}
+  return {};
 }
 
 export const PingMsg: MessageFns<PingMsg> = {
-    encode(_: PingMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        return writer
-    },
+  encode(_: PingMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
 
-    decode(input: BinaryReader | Uint8Array, length?: number): PingMsg {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBasePingMsg()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(_: any): PingMsg {
-        return {}
-    },
-
-    toJSON(_: PingMsg): unknown {
-        const obj: any = {}
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<PingMsg>, I>>(base?: I): PingMsg {
-        return PingMsg.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<PingMsg>, I>>(_: I): PingMsg {
-        const message = createBasePingMsg()
-        return message
+  decode(input: BinaryReader | Uint8Array, length?: number): PingMsg {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePingMsg();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
     }
-}
+    return message;
+  },
+
+  fromJSON(_: any): PingMsg {
+    return {};
+  },
+
+  toJSON(_: PingMsg): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PingMsg>, I>>(base?: I): PingMsg {
+    return PingMsg.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PingMsg>, I>>(_: I): PingMsg {
+    const message = createBasePingMsg();
+    return message;
+  },
+};
 
 function createBasePongMsg(): PongMsg {
-    return {}
+  return {};
 }
 
 export const PongMsg: MessageFns<PongMsg> = {
-    encode(_: PongMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        return writer
-    },
+  encode(_: PongMsg, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
 
-    decode(input: BinaryReader | Uint8Array, length?: number): PongMsg {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBasePongMsg()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(_: any): PongMsg {
-        return {}
-    },
-
-    toJSON(_: PongMsg): unknown {
-        const obj: any = {}
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<PongMsg>, I>>(base?: I): PongMsg {
-        return PongMsg.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<PongMsg>, I>>(_: I): PongMsg {
-        const message = createBasePongMsg()
-        return message
+  decode(input: BinaryReader | Uint8Array, length?: number): PongMsg {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePongMsg();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
     }
-}
+    return message;
+  },
+
+  fromJSON(_: any): PongMsg {
+    return {};
+  },
+
+  toJSON(_: PongMsg): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PongMsg>, I>>(base?: I): PongMsg {
+    return PongMsg.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PongMsg>, I>>(_: I): PongMsg {
+    const message = createBasePongMsg();
+    return message;
+  },
+};
 
 function createBaseWebsocketMessage(): WebsocketMessage {
-    return {
-        subNotif: undefined,
-        unsubNotif: undefined,
-        pingmsg: undefined,
-        pongmsg: undefined,
-        imu: undefined,
-        imuCalibrate: undefined,
-        imuCalibrateExecute: undefined,
-        mode: undefined,
-        input: undefined,
-        analytics: undefined,
-        angles: undefined,
-        i2cScan: undefined,
-        i2cScanDataRequest: undefined,
-        peripheralSettings: undefined,
-        peripheralSettingsDataRequest: undefined,
-        kinematicData: undefined,
-        wifiSettings: undefined,
-        humanInputData: undefined,
-        rssi: undefined
-    }
+  return {
+    correlationRequest: undefined,
+    correlationResponse: undefined,
+    subNotif: undefined,
+    unsubNotif: undefined,
+    pingmsg: undefined,
+    pongmsg: undefined,
+    imu: undefined,
+    imuCalibrate: undefined,
+    imuCalibrateExecute: undefined,
+    mode: undefined,
+    input: undefined,
+    analytics: undefined,
+    walkGait: undefined,
+    angles: undefined,
+    i2cScan: undefined,
+    i2cScanDataRequest: undefined,
+    peripheralSettings: undefined,
+    peripheralSettingsDataRequest: undefined,
+    kinematicData: undefined,
+    wifiSettings: undefined,
+    humanInputData: undefined,
+    rssi: undefined,
+  };
 }
 
 export const WebsocketMessage: MessageFns<WebsocketMessage> = {
-    encode(message: WebsocketMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-        if (message.subNotif !== undefined) {
-            SubscribeNotification.encode(message.subNotif, writer.uint32(162).fork()).join()
-        }
-        if (message.unsubNotif !== undefined) {
-            UnsubscribeNotification.encode(message.unsubNotif, writer.uint32(170).fork()).join()
-        }
-        if (message.pingmsg !== undefined) {
-            PingMsg.encode(message.pingmsg, writer.uint32(242).fork()).join()
-        }
-        if (message.pongmsg !== undefined) {
-            PongMsg.encode(message.pongmsg, writer.uint32(250).fork()).join()
-        }
-        if (message.imu !== undefined) {
-            IMUData.encode(message.imu, writer.uint32(882).fork()).join()
-        }
-        if (message.imuCalibrate !== undefined) {
-            IMUCalibrateData.encode(message.imuCalibrate, writer.uint32(962).fork()).join()
-        }
-        if (message.imuCalibrateExecute !== undefined) {
-            IMUCalibrateExecute.encode(
-                message.imuCalibrateExecute,
-                writer.uint32(970).fork()
-            ).join()
-        }
-        if (message.mode !== undefined) {
-            ModeData.encode(message.mode, writer.uint32(1042).fork()).join()
-        }
-        if (message.input !== undefined) {
-            ControllerInputData.encode(message.input, writer.uint32(1122).fork()).join()
-        }
-        if (message.analytics !== undefined) {
-            AnalyticsData.encode(message.analytics, writer.uint32(1202).fork()).join()
-        }
-        if (message.angles !== undefined) {
-            AnglesData.encode(message.angles, writer.uint32(1362).fork()).join()
-        }
-        if (message.i2cScan !== undefined) {
-            I2CScanData.encode(message.i2cScan, writer.uint32(1442).fork()).join()
-        }
-        if (message.i2cScanDataRequest !== undefined) {
-            I2CScanDataRequest.encode(message.i2cScanDataRequest, writer.uint32(1450).fork()).join()
-        }
-        if (message.peripheralSettings !== undefined) {
-            PeripheralSettingsData.encode(
-                message.peripheralSettings,
-                writer.uint32(1522).fork()
-            ).join()
-        }
-        if (message.peripheralSettingsDataRequest !== undefined) {
-            PeripheralSettingsDataRequest.encode(
-                message.peripheralSettingsDataRequest,
-                writer.uint32(1530).fork()
-            ).join()
-        }
-        if (message.kinematicData !== undefined) {
-            KinematicData.encode(message.kinematicData, writer.uint32(1602).fork()).join()
-        }
-        if (message.wifiSettings !== undefined) {
-            WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join()
-        }
-        if (message.humanInputData !== undefined) {
-            HumanInputData.encode(message.humanInputData, writer.uint32(2002).fork()).join()
-        }
-        if (message.rssi !== undefined) {
-            RSSIData.encode(message.rssi, writer.uint32(2082).fork()).join()
-        }
-        return writer
-    },
-
-    decode(input: BinaryReader | Uint8Array, length?: number): WebsocketMessage {
-        const reader = input instanceof BinaryReader ? input : new BinaryReader(input)
-        const end = length === undefined ? reader.len : reader.pos + length
-        const message = createBaseWebsocketMessage()
-        while (reader.pos < end) {
-            const tag = reader.uint32()
-            switch (tag >>> 3) {
-                case 20: {
-                    if (tag !== 162) {
-                        break
-                    }
-
-                    message.subNotif = SubscribeNotification.decode(reader, reader.uint32())
-                    continue
-                }
-                case 21: {
-                    if (tag !== 170) {
-                        break
-                    }
-
-                    message.unsubNotif = UnsubscribeNotification.decode(reader, reader.uint32())
-                    continue
-                }
-                case 30: {
-                    if (tag !== 242) {
-                        break
-                    }
-
-                    message.pingmsg = PingMsg.decode(reader, reader.uint32())
-                    continue
-                }
-                case 31: {
-                    if (tag !== 250) {
-                        break
-                    }
-
-                    message.pongmsg = PongMsg.decode(reader, reader.uint32())
-                    continue
-                }
-                case 110: {
-                    if (tag !== 882) {
-                        break
-                    }
-
-                    message.imu = IMUData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 120: {
-                    if (tag !== 962) {
-                        break
-                    }
-
-                    message.imuCalibrate = IMUCalibrateData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 121: {
-                    if (tag !== 970) {
-                        break
-                    }
-
-                    message.imuCalibrateExecute = IMUCalibrateExecute.decode(
-                        reader,
-                        reader.uint32()
-                    )
-                    continue
-                }
-                case 130: {
-                    if (tag !== 1042) {
-                        break
-                    }
-
-                    message.mode = ModeData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 140: {
-                    if (tag !== 1122) {
-                        break
-                    }
-
-                    message.input = ControllerInputData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 150: {
-                    if (tag !== 1202) {
-                        break
-                    }
-
-                    message.analytics = AnalyticsData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 170: {
-                    if (tag !== 1362) {
-                        break
-                    }
-
-                    message.angles = AnglesData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 180: {
-                    if (tag !== 1442) {
-                        break
-                    }
-
-                    message.i2cScan = I2CScanData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 181: {
-                    if (tag !== 1450) {
-                        break
-                    }
-
-                    message.i2cScanDataRequest = I2CScanDataRequest.decode(reader, reader.uint32())
-                    continue
-                }
-                case 190: {
-                    if (tag !== 1522) {
-                        break
-                    }
-
-                    message.peripheralSettings = PeripheralSettingsData.decode(
-                        reader,
-                        reader.uint32()
-                    )
-                    continue
-                }
-                case 191: {
-                    if (tag !== 1530) {
-                        break
-                    }
-
-                    message.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.decode(
-                        reader,
-                        reader.uint32()
-                    )
-                    continue
-                }
-                case 200: {
-                    if (tag !== 1602) {
-                        break
-                    }
-
-                    message.kinematicData = KinematicData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 240: {
-                    if (tag !== 1922) {
-                        break
-                    }
-
-                    message.wifiSettings = WifiSettingsData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 250: {
-                    if (tag !== 2002) {
-                        break
-                    }
-
-                    message.humanInputData = HumanInputData.decode(reader, reader.uint32())
-                    continue
-                }
-                case 260: {
-                    if (tag !== 2082) {
-                        break
-                    }
-
-                    message.rssi = RSSIData.decode(reader, reader.uint32())
-                    continue
-                }
-            }
-            if ((tag & 7) === 4 || tag === 0) {
-                break
-            }
-            reader.skip(tag & 7)
-        }
-        return message
-    },
-
-    fromJSON(object: any): WebsocketMessage {
-        return {
-            subNotif:
-                isSet(object.subNotif) ?
-                    SubscribeNotification.fromJSON(object.subNotif)
-                :   undefined,
-            unsubNotif:
-                isSet(object.unsubNotif) ?
-                    UnsubscribeNotification.fromJSON(object.unsubNotif)
-                :   undefined,
-            pingmsg: isSet(object.pingmsg) ? PingMsg.fromJSON(object.pingmsg) : undefined,
-            pongmsg: isSet(object.pongmsg) ? PongMsg.fromJSON(object.pongmsg) : undefined,
-            imu: isSet(object.imu) ? IMUData.fromJSON(object.imu) : undefined,
-            imuCalibrate:
-                isSet(object.imuCalibrate) ?
-                    IMUCalibrateData.fromJSON(object.imuCalibrate)
-                :   undefined,
-            imuCalibrateExecute:
-                isSet(object.imuCalibrateExecute) ?
-                    IMUCalibrateExecute.fromJSON(object.imuCalibrateExecute)
-                :   undefined,
-            mode: isSet(object.mode) ? ModeData.fromJSON(object.mode) : undefined,
-            input: isSet(object.input) ? ControllerInputData.fromJSON(object.input) : undefined,
-            analytics:
-                isSet(object.analytics) ? AnalyticsData.fromJSON(object.analytics) : undefined,
-            angles: isSet(object.angles) ? AnglesData.fromJSON(object.angles) : undefined,
-            i2cScan: isSet(object.i2cScan) ? I2CScanData.fromJSON(object.i2cScan) : undefined,
-            i2cScanDataRequest:
-                isSet(object.i2cScanDataRequest) ?
-                    I2CScanDataRequest.fromJSON(object.i2cScanDataRequest)
-                :   undefined,
-            peripheralSettings:
-                isSet(object.peripheralSettings) ?
-                    PeripheralSettingsData.fromJSON(object.peripheralSettings)
-                :   undefined,
-            peripheralSettingsDataRequest:
-                isSet(object.peripheralSettingsDataRequest) ?
-                    PeripheralSettingsDataRequest.fromJSON(object.peripheralSettingsDataRequest)
-                :   undefined,
-            kinematicData:
-                isSet(object.kinematicData) ?
-                    KinematicData.fromJSON(object.kinematicData)
-                :   undefined,
-            wifiSettings:
-                isSet(object.wifiSettings) ?
-                    WifiSettingsData.fromJSON(object.wifiSettings)
-                :   undefined,
-            humanInputData:
-                isSet(object.humanInputData) ?
-                    HumanInputData.fromJSON(object.humanInputData)
-                :   undefined,
-            rssi: isSet(object.rssi) ? RSSIData.fromJSON(object.rssi) : undefined
-        }
-    },
-
-    toJSON(message: WebsocketMessage): unknown {
-        const obj: any = {}
-        if (message.subNotif !== undefined) {
-            obj.subNotif = SubscribeNotification.toJSON(message.subNotif)
-        }
-        if (message.unsubNotif !== undefined) {
-            obj.unsubNotif = UnsubscribeNotification.toJSON(message.unsubNotif)
-        }
-        if (message.pingmsg !== undefined) {
-            obj.pingmsg = PingMsg.toJSON(message.pingmsg)
-        }
-        if (message.pongmsg !== undefined) {
-            obj.pongmsg = PongMsg.toJSON(message.pongmsg)
-        }
-        if (message.imu !== undefined) {
-            obj.imu = IMUData.toJSON(message.imu)
-        }
-        if (message.imuCalibrate !== undefined) {
-            obj.imuCalibrate = IMUCalibrateData.toJSON(message.imuCalibrate)
-        }
-        if (message.imuCalibrateExecute !== undefined) {
-            obj.imuCalibrateExecute = IMUCalibrateExecute.toJSON(message.imuCalibrateExecute)
-        }
-        if (message.mode !== undefined) {
-            obj.mode = ModeData.toJSON(message.mode)
-        }
-        if (message.input !== undefined) {
-            obj.input = ControllerInputData.toJSON(message.input)
-        }
-        if (message.analytics !== undefined) {
-            obj.analytics = AnalyticsData.toJSON(message.analytics)
-        }
-        if (message.angles !== undefined) {
-            obj.angles = AnglesData.toJSON(message.angles)
-        }
-        if (message.i2cScan !== undefined) {
-            obj.i2cScan = I2CScanData.toJSON(message.i2cScan)
-        }
-        if (message.i2cScanDataRequest !== undefined) {
-            obj.i2cScanDataRequest = I2CScanDataRequest.toJSON(message.i2cScanDataRequest)
-        }
-        if (message.peripheralSettings !== undefined) {
-            obj.peripheralSettings = PeripheralSettingsData.toJSON(message.peripheralSettings)
-        }
-        if (message.peripheralSettingsDataRequest !== undefined) {
-            obj.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.toJSON(
-                message.peripheralSettingsDataRequest
-            )
-        }
-        if (message.kinematicData !== undefined) {
-            obj.kinematicData = KinematicData.toJSON(message.kinematicData)
-        }
-        if (message.wifiSettings !== undefined) {
-            obj.wifiSettings = WifiSettingsData.toJSON(message.wifiSettings)
-        }
-        if (message.humanInputData !== undefined) {
-            obj.humanInputData = HumanInputData.toJSON(message.humanInputData)
-        }
-        if (message.rssi !== undefined) {
-            obj.rssi = RSSIData.toJSON(message.rssi)
-        }
-        return obj
-    },
-
-    create<I extends Exact<DeepPartial<WebsocketMessage>, I>>(base?: I): WebsocketMessage {
-        return WebsocketMessage.fromPartial(base ?? ({} as any))
-    },
-    fromPartial<I extends Exact<DeepPartial<WebsocketMessage>, I>>(object: I): WebsocketMessage {
-        const message = createBaseWebsocketMessage()
-        message.subNotif =
-            object.subNotif !== undefined && object.subNotif !== null ?
-                SubscribeNotification.fromPartial(object.subNotif)
-            :   undefined
-        message.unsubNotif =
-            object.unsubNotif !== undefined && object.unsubNotif !== null ?
-                UnsubscribeNotification.fromPartial(object.unsubNotif)
-            :   undefined
-        message.pingmsg =
-            object.pingmsg !== undefined && object.pingmsg !== null ?
-                PingMsg.fromPartial(object.pingmsg)
-            :   undefined
-        message.pongmsg =
-            object.pongmsg !== undefined && object.pongmsg !== null ?
-                PongMsg.fromPartial(object.pongmsg)
-            :   undefined
-        message.imu =
-            object.imu !== undefined && object.imu !== null ?
-                IMUData.fromPartial(object.imu)
-            :   undefined
-        message.imuCalibrate =
-            object.imuCalibrate !== undefined && object.imuCalibrate !== null ?
-                IMUCalibrateData.fromPartial(object.imuCalibrate)
-            :   undefined
-        message.imuCalibrateExecute =
-            object.imuCalibrateExecute !== undefined && object.imuCalibrateExecute !== null ?
-                IMUCalibrateExecute.fromPartial(object.imuCalibrateExecute)
-            :   undefined
-        message.mode =
-            object.mode !== undefined && object.mode !== null ?
-                ModeData.fromPartial(object.mode)
-            :   undefined
-        message.input =
-            object.input !== undefined && object.input !== null ?
-                ControllerInputData.fromPartial(object.input)
-            :   undefined
-        message.analytics =
-            object.analytics !== undefined && object.analytics !== null ?
-                AnalyticsData.fromPartial(object.analytics)
-            :   undefined
-        message.angles =
-            object.angles !== undefined && object.angles !== null ?
-                AnglesData.fromPartial(object.angles)
-            :   undefined
-        message.i2cScan =
-            object.i2cScan !== undefined && object.i2cScan !== null ?
-                I2CScanData.fromPartial(object.i2cScan)
-            :   undefined
-        message.i2cScanDataRequest =
-            object.i2cScanDataRequest !== undefined && object.i2cScanDataRequest !== null ?
-                I2CScanDataRequest.fromPartial(object.i2cScanDataRequest)
-            :   undefined
-        message.peripheralSettings =
-            object.peripheralSettings !== undefined && object.peripheralSettings !== null ?
-                PeripheralSettingsData.fromPartial(object.peripheralSettings)
-            :   undefined
-        message.peripheralSettingsDataRequest =
-            (
-                object.peripheralSettingsDataRequest !== undefined &&
-                object.peripheralSettingsDataRequest !== null
-            ) ?
-                PeripheralSettingsDataRequest.fromPartial(object.peripheralSettingsDataRequest)
-            :   undefined
-        message.kinematicData =
-            object.kinematicData !== undefined && object.kinematicData !== null ?
-                KinematicData.fromPartial(object.kinematicData)
-            :   undefined
-        message.wifiSettings =
-            object.wifiSettings !== undefined && object.wifiSettings !== null ?
-                WifiSettingsData.fromPartial(object.wifiSettings)
-            :   undefined
-        message.humanInputData =
-            object.humanInputData !== undefined && object.humanInputData !== null ?
-                HumanInputData.fromPartial(object.humanInputData)
-            :   undefined
-        message.rssi =
-            object.rssi !== undefined && object.rssi !== null ?
-                RSSIData.fromPartial(object.rssi)
-            :   undefined
-        return message
+  encode(message: WebsocketMessage, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.correlationRequest !== undefined) {
+      CorrelationRequest.encode(message.correlationRequest, writer.uint32(82).fork()).join();
     }
-}
+    if (message.correlationResponse !== undefined) {
+      CorrelationResponse.encode(message.correlationResponse, writer.uint32(90).fork()).join();
+    }
+    if (message.subNotif !== undefined) {
+      SubscribeNotification.encode(message.subNotif, writer.uint32(162).fork()).join();
+    }
+    if (message.unsubNotif !== undefined) {
+      UnsubscribeNotification.encode(message.unsubNotif, writer.uint32(170).fork()).join();
+    }
+    if (message.pingmsg !== undefined) {
+      PingMsg.encode(message.pingmsg, writer.uint32(242).fork()).join();
+    }
+    if (message.pongmsg !== undefined) {
+      PongMsg.encode(message.pongmsg, writer.uint32(250).fork()).join();
+    }
+    if (message.imu !== undefined) {
+      IMUData.encode(message.imu, writer.uint32(882).fork()).join();
+    }
+    if (message.imuCalibrate !== undefined) {
+      IMUCalibrateData.encode(message.imuCalibrate, writer.uint32(962).fork()).join();
+    }
+    if (message.imuCalibrateExecute !== undefined) {
+      IMUCalibrateExecute.encode(message.imuCalibrateExecute, writer.uint32(970).fork()).join();
+    }
+    if (message.mode !== undefined) {
+      ModeData.encode(message.mode, writer.uint32(1042).fork()).join();
+    }
+    if (message.input !== undefined) {
+      ControllerInputData.encode(message.input, writer.uint32(1122).fork()).join();
+    }
+    if (message.analytics !== undefined) {
+      AnalyticsData.encode(message.analytics, writer.uint32(1202).fork()).join();
+    }
+    if (message.walkGait !== undefined) {
+      WalkGaitData.encode(message.walkGait, writer.uint32(1282).fork()).join();
+    }
+    if (message.angles !== undefined) {
+      AnglesData.encode(message.angles, writer.uint32(1362).fork()).join();
+    }
+    if (message.i2cScan !== undefined) {
+      I2CScanData.encode(message.i2cScan, writer.uint32(1442).fork()).join();
+    }
+    if (message.i2cScanDataRequest !== undefined) {
+      I2CScanDataRequest.encode(message.i2cScanDataRequest, writer.uint32(1450).fork()).join();
+    }
+    if (message.peripheralSettings !== undefined) {
+      PeripheralSettingsData.encode(message.peripheralSettings, writer.uint32(1522).fork()).join();
+    }
+    if (message.peripheralSettingsDataRequest !== undefined) {
+      PeripheralSettingsDataRequest.encode(message.peripheralSettingsDataRequest, writer.uint32(1530).fork()).join();
+    }
+    if (message.kinematicData !== undefined) {
+      KinematicData.encode(message.kinematicData, writer.uint32(1602).fork()).join();
+    }
+    if (message.wifiSettings !== undefined) {
+      WifiSettingsData.encode(message.wifiSettings, writer.uint32(1922).fork()).join();
+    }
+    if (message.humanInputData !== undefined) {
+      HumanInputData.encode(message.humanInputData, writer.uint32(2002).fork()).join();
+    }
+    if (message.rssi !== undefined) {
+      RSSIData.encode(message.rssi, writer.uint32(2082).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WebsocketMessage {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWebsocketMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.correlationRequest = CorrelationRequest.decode(reader, reader.uint32());
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.correlationResponse = CorrelationResponse.decode(reader, reader.uint32());
+          continue;
+        }
+        case 20: {
+          if (tag !== 162) {
+            break;
+          }
+
+          message.subNotif = SubscribeNotification.decode(reader, reader.uint32());
+          continue;
+        }
+        case 21: {
+          if (tag !== 170) {
+            break;
+          }
+
+          message.unsubNotif = UnsubscribeNotification.decode(reader, reader.uint32());
+          continue;
+        }
+        case 30: {
+          if (tag !== 242) {
+            break;
+          }
+
+          message.pingmsg = PingMsg.decode(reader, reader.uint32());
+          continue;
+        }
+        case 31: {
+          if (tag !== 250) {
+            break;
+          }
+
+          message.pongmsg = PongMsg.decode(reader, reader.uint32());
+          continue;
+        }
+        case 110: {
+          if (tag !== 882) {
+            break;
+          }
+
+          message.imu = IMUData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 120: {
+          if (tag !== 962) {
+            break;
+          }
+
+          message.imuCalibrate = IMUCalibrateData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 121: {
+          if (tag !== 970) {
+            break;
+          }
+
+          message.imuCalibrateExecute = IMUCalibrateExecute.decode(reader, reader.uint32());
+          continue;
+        }
+        case 130: {
+          if (tag !== 1042) {
+            break;
+          }
+
+          message.mode = ModeData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 140: {
+          if (tag !== 1122) {
+            break;
+          }
+
+          message.input = ControllerInputData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 150: {
+          if (tag !== 1202) {
+            break;
+          }
+
+          message.analytics = AnalyticsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 160: {
+          if (tag !== 1282) {
+            break;
+          }
+
+          message.walkGait = WalkGaitData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 170: {
+          if (tag !== 1362) {
+            break;
+          }
+
+          message.angles = AnglesData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 180: {
+          if (tag !== 1442) {
+            break;
+          }
+
+          message.i2cScan = I2CScanData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 181: {
+          if (tag !== 1450) {
+            break;
+          }
+
+          message.i2cScanDataRequest = I2CScanDataRequest.decode(reader, reader.uint32());
+          continue;
+        }
+        case 190: {
+          if (tag !== 1522) {
+            break;
+          }
+
+          message.peripheralSettings = PeripheralSettingsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 191: {
+          if (tag !== 1530) {
+            break;
+          }
+
+          message.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.decode(reader, reader.uint32());
+          continue;
+        }
+        case 200: {
+          if (tag !== 1602) {
+            break;
+          }
+
+          message.kinematicData = KinematicData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 240: {
+          if (tag !== 1922) {
+            break;
+          }
+
+          message.wifiSettings = WifiSettingsData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 250: {
+          if (tag !== 2002) {
+            break;
+          }
+
+          message.humanInputData = HumanInputData.decode(reader, reader.uint32());
+          continue;
+        }
+        case 260: {
+          if (tag !== 2082) {
+            break;
+          }
+
+          message.rssi = RSSIData.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WebsocketMessage {
+    return {
+      correlationRequest: isSet(object.correlationRequest)
+        ? CorrelationRequest.fromJSON(object.correlationRequest)
+        : undefined,
+      correlationResponse: isSet(object.correlationResponse)
+        ? CorrelationResponse.fromJSON(object.correlationResponse)
+        : undefined,
+      subNotif: isSet(object.subNotif) ? SubscribeNotification.fromJSON(object.subNotif) : undefined,
+      unsubNotif: isSet(object.unsubNotif) ? UnsubscribeNotification.fromJSON(object.unsubNotif) : undefined,
+      pingmsg: isSet(object.pingmsg) ? PingMsg.fromJSON(object.pingmsg) : undefined,
+      pongmsg: isSet(object.pongmsg) ? PongMsg.fromJSON(object.pongmsg) : undefined,
+      imu: isSet(object.imu) ? IMUData.fromJSON(object.imu) : undefined,
+      imuCalibrate: isSet(object.imuCalibrate) ? IMUCalibrateData.fromJSON(object.imuCalibrate) : undefined,
+      imuCalibrateExecute: isSet(object.imuCalibrateExecute)
+        ? IMUCalibrateExecute.fromJSON(object.imuCalibrateExecute)
+        : undefined,
+      mode: isSet(object.mode) ? ModeData.fromJSON(object.mode) : undefined,
+      input: isSet(object.input) ? ControllerInputData.fromJSON(object.input) : undefined,
+      analytics: isSet(object.analytics) ? AnalyticsData.fromJSON(object.analytics) : undefined,
+      walkGait: isSet(object.walkGait) ? WalkGaitData.fromJSON(object.walkGait) : undefined,
+      angles: isSet(object.angles) ? AnglesData.fromJSON(object.angles) : undefined,
+      i2cScan: isSet(object.i2cScan) ? I2CScanData.fromJSON(object.i2cScan) : undefined,
+      i2cScanDataRequest: isSet(object.i2cScanDataRequest)
+        ? I2CScanDataRequest.fromJSON(object.i2cScanDataRequest)
+        : undefined,
+      peripheralSettings: isSet(object.peripheralSettings)
+        ? PeripheralSettingsData.fromJSON(object.peripheralSettings)
+        : undefined,
+      peripheralSettingsDataRequest: isSet(object.peripheralSettingsDataRequest)
+        ? PeripheralSettingsDataRequest.fromJSON(object.peripheralSettingsDataRequest)
+        : undefined,
+      kinematicData: isSet(object.kinematicData) ? KinematicData.fromJSON(object.kinematicData) : undefined,
+      wifiSettings: isSet(object.wifiSettings) ? WifiSettingsData.fromJSON(object.wifiSettings) : undefined,
+      humanInputData: isSet(object.humanInputData) ? HumanInputData.fromJSON(object.humanInputData) : undefined,
+      rssi: isSet(object.rssi) ? RSSIData.fromJSON(object.rssi) : undefined,
+    };
+  },
+
+  toJSON(message: WebsocketMessage): unknown {
+    const obj: any = {};
+    if (message.correlationRequest !== undefined) {
+      obj.correlationRequest = CorrelationRequest.toJSON(message.correlationRequest);
+    }
+    if (message.correlationResponse !== undefined) {
+      obj.correlationResponse = CorrelationResponse.toJSON(message.correlationResponse);
+    }
+    if (message.subNotif !== undefined) {
+      obj.subNotif = SubscribeNotification.toJSON(message.subNotif);
+    }
+    if (message.unsubNotif !== undefined) {
+      obj.unsubNotif = UnsubscribeNotification.toJSON(message.unsubNotif);
+    }
+    if (message.pingmsg !== undefined) {
+      obj.pingmsg = PingMsg.toJSON(message.pingmsg);
+    }
+    if (message.pongmsg !== undefined) {
+      obj.pongmsg = PongMsg.toJSON(message.pongmsg);
+    }
+    if (message.imu !== undefined) {
+      obj.imu = IMUData.toJSON(message.imu);
+    }
+    if (message.imuCalibrate !== undefined) {
+      obj.imuCalibrate = IMUCalibrateData.toJSON(message.imuCalibrate);
+    }
+    if (message.imuCalibrateExecute !== undefined) {
+      obj.imuCalibrateExecute = IMUCalibrateExecute.toJSON(message.imuCalibrateExecute);
+    }
+    if (message.mode !== undefined) {
+      obj.mode = ModeData.toJSON(message.mode);
+    }
+    if (message.input !== undefined) {
+      obj.input = ControllerInputData.toJSON(message.input);
+    }
+    if (message.analytics !== undefined) {
+      obj.analytics = AnalyticsData.toJSON(message.analytics);
+    }
+    if (message.walkGait !== undefined) {
+      obj.walkGait = WalkGaitData.toJSON(message.walkGait);
+    }
+    if (message.angles !== undefined) {
+      obj.angles = AnglesData.toJSON(message.angles);
+    }
+    if (message.i2cScan !== undefined) {
+      obj.i2cScan = I2CScanData.toJSON(message.i2cScan);
+    }
+    if (message.i2cScanDataRequest !== undefined) {
+      obj.i2cScanDataRequest = I2CScanDataRequest.toJSON(message.i2cScanDataRequest);
+    }
+    if (message.peripheralSettings !== undefined) {
+      obj.peripheralSettings = PeripheralSettingsData.toJSON(message.peripheralSettings);
+    }
+    if (message.peripheralSettingsDataRequest !== undefined) {
+      obj.peripheralSettingsDataRequest = PeripheralSettingsDataRequest.toJSON(message.peripheralSettingsDataRequest);
+    }
+    if (message.kinematicData !== undefined) {
+      obj.kinematicData = KinematicData.toJSON(message.kinematicData);
+    }
+    if (message.wifiSettings !== undefined) {
+      obj.wifiSettings = WifiSettingsData.toJSON(message.wifiSettings);
+    }
+    if (message.humanInputData !== undefined) {
+      obj.humanInputData = HumanInputData.toJSON(message.humanInputData);
+    }
+    if (message.rssi !== undefined) {
+      obj.rssi = RSSIData.toJSON(message.rssi);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<WebsocketMessage>, I>>(base?: I): WebsocketMessage {
+    return WebsocketMessage.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<WebsocketMessage>, I>>(object: I): WebsocketMessage {
+    const message = createBaseWebsocketMessage();
+    message.correlationRequest = (object.correlationRequest !== undefined && object.correlationRequest !== null)
+      ? CorrelationRequest.fromPartial(object.correlationRequest)
+      : undefined;
+    message.correlationResponse = (object.correlationResponse !== undefined && object.correlationResponse !== null)
+      ? CorrelationResponse.fromPartial(object.correlationResponse)
+      : undefined;
+    message.subNotif = (object.subNotif !== undefined && object.subNotif !== null)
+      ? SubscribeNotification.fromPartial(object.subNotif)
+      : undefined;
+    message.unsubNotif = (object.unsubNotif !== undefined && object.unsubNotif !== null)
+      ? UnsubscribeNotification.fromPartial(object.unsubNotif)
+      : undefined;
+    message.pingmsg = (object.pingmsg !== undefined && object.pingmsg !== null)
+      ? PingMsg.fromPartial(object.pingmsg)
+      : undefined;
+    message.pongmsg = (object.pongmsg !== undefined && object.pongmsg !== null)
+      ? PongMsg.fromPartial(object.pongmsg)
+      : undefined;
+    message.imu = (object.imu !== undefined && object.imu !== null) ? IMUData.fromPartial(object.imu) : undefined;
+    message.imuCalibrate = (object.imuCalibrate !== undefined && object.imuCalibrate !== null)
+      ? IMUCalibrateData.fromPartial(object.imuCalibrate)
+      : undefined;
+    message.imuCalibrateExecute = (object.imuCalibrateExecute !== undefined && object.imuCalibrateExecute !== null)
+      ? IMUCalibrateExecute.fromPartial(object.imuCalibrateExecute)
+      : undefined;
+    message.mode = (object.mode !== undefined && object.mode !== null) ? ModeData.fromPartial(object.mode) : undefined;
+    message.input = (object.input !== undefined && object.input !== null)
+      ? ControllerInputData.fromPartial(object.input)
+      : undefined;
+    message.analytics = (object.analytics !== undefined && object.analytics !== null)
+      ? AnalyticsData.fromPartial(object.analytics)
+      : undefined;
+    message.walkGait = (object.walkGait !== undefined && object.walkGait !== null)
+      ? WalkGaitData.fromPartial(object.walkGait)
+      : undefined;
+    message.angles = (object.angles !== undefined && object.angles !== null)
+      ? AnglesData.fromPartial(object.angles)
+      : undefined;
+    message.i2cScan = (object.i2cScan !== undefined && object.i2cScan !== null)
+      ? I2CScanData.fromPartial(object.i2cScan)
+      : undefined;
+    message.i2cScanDataRequest = (object.i2cScanDataRequest !== undefined && object.i2cScanDataRequest !== null)
+      ? I2CScanDataRequest.fromPartial(object.i2cScanDataRequest)
+      : undefined;
+    message.peripheralSettings = (object.peripheralSettings !== undefined && object.peripheralSettings !== null)
+      ? PeripheralSettingsData.fromPartial(object.peripheralSettings)
+      : undefined;
+    message.peripheralSettingsDataRequest =
+      (object.peripheralSettingsDataRequest !== undefined && object.peripheralSettingsDataRequest !== null)
+        ? PeripheralSettingsDataRequest.fromPartial(object.peripheralSettingsDataRequest)
+        : undefined;
+    message.kinematicData = (object.kinematicData !== undefined && object.kinematicData !== null)
+      ? KinematicData.fromPartial(object.kinematicData)
+      : undefined;
+    message.wifiSettings = (object.wifiSettings !== undefined && object.wifiSettings !== null)
+      ? WifiSettingsData.fromPartial(object.wifiSettings)
+      : undefined;
+    message.humanInputData = (object.humanInputData !== undefined && object.humanInputData !== null)
+      ? HumanInputData.fromPartial(object.humanInputData)
+      : undefined;
+    message.rssi = (object.rssi !== undefined && object.rssi !== null) ? RSSIData.fromPartial(object.rssi) : undefined;
+    return message;
+  },
+};
 
 type ProtoMetaMessageOptions = {
-    options?: { [key: string]: any }
-    fields?: { [key: string]: { [key: string]: any } }
-    oneof?: { [key: string]: { [key: string]: any } }
-    nested?: { [key: string]: ProtoMetaMessageOptions }
-}
+  options?: { [key: string]: any };
+  fields?: { [key: string]: { [key: string]: any } };
+  oneof?: { [key: string]: { [key: string]: any } };
+  nested?: { [key: string]: ProtoMetaMessageOptions };
+};
 
 export interface ProtoMetadata {
-    fileDescriptor: FileDescriptorProto
-    references: { [key: string]: any }
-    dependencies?: ProtoMetadata[]
-    options?: {
-        options?: { [key: string]: any }
-        services?: {
-            [key: string]: {
-                options?: { [key: string]: any }
-                methods?: { [key: string]: { [key: string]: any } }
-            }
-        }
-        messages?: { [key: string]: ProtoMetaMessageOptions }
-        enums?: {
-            [key: string]: {
-                options?: { [key: string]: any }
-                values?: { [key: string]: { [key: string]: any } }
-            }
-        }
-    }
+  fileDescriptor: FileDescriptorProto;
+  references: { [key: string]: any };
+  dependencies?: ProtoMetadata[];
+  options?: {
+    options?: { [key: string]: any };
+    services?: {
+      [key: string]: { options?: { [key: string]: any }; methods?: { [key: string]: { [key: string]: any } } };
+    };
+    messages?: { [key: string]: ProtoMetaMessageOptions };
+    enums?: { [key: string]: { options?: { [key: string]: any }; values?: { [key: string]: { [key: string]: any } } } };
+  };
 }
 
 export const protoMetadata: ProtoMetadata = {
-    fileDescriptor: {
-        name: 'websocket_message.proto',
-        package: 'socket_message',
-        dependency: [],
-        publicDependency: [],
-        weakDependency: [],
-        optionDependency: [],
-        messageType: [
-            {
-                name: 'Vector',
-                field: [
-                    {
-                        name: 'x',
-                        number: 1,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'x',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'y',
-                        number: 2,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'y',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'I2CDevice',
-                field: [
-                    {
-                        name: 'address',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'address',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'part_number',
-                        number: 2,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'partNumber',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'name',
-                        number: 3,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'name',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'PinConfig',
-                field: [
-                    {
-                        name: 'pin',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'pin',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'mode',
-                        number: 2,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'mode',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'type',
-                        number: 3,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'type',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'role',
-                        number: 4,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'role',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'KnownNetworkItem',
-                field: [
-                    {
-                        name: 'ssid',
-                        number: 1,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'ssid',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'password',
-                        number: 2,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'password',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'static_ip',
-                        number: 3,
-                        label: 1,
-                        type: 8,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'staticIp',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'local_ip',
-                        number: 4,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'localIp',
-                        options: undefined,
-                        proto3Optional: true
-                    },
-                    {
-                        name: 'subnet_mask',
-                        number: 5,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 1,
-                        jsonName: 'subnetMask',
-                        options: undefined,
-                        proto3Optional: true
-                    },
-                    {
-                        name: 'gateway_ip',
-                        number: 6,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 2,
-                        jsonName: 'gatewayIp',
-                        options: undefined,
-                        proto3Optional: true
-                    },
-                    {
-                        name: 'dns_ip_1',
-                        number: 7,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 3,
-                        jsonName: 'dnsIp1',
-                        options: undefined,
-                        proto3Optional: true
-                    },
-                    {
-                        name: 'dns_ip_2',
-                        number: 8,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 4,
-                        jsonName: 'dnsIp2',
-                        options: undefined,
-                        proto3Optional: true
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [
-                    { name: '_local_ip', options: undefined },
-                    { name: '_subnet_mask', options: undefined },
-                    { name: '_gateway_ip', options: undefined },
-                    { name: '_dns_ip_1', options: undefined },
-                    { name: '_dns_ip_2', options: undefined }
-                ],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'IMUData',
-                field: [
-                    {
-                        name: 'x',
-                        number: 1,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'x',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'y',
-                        number: 2,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'y',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'z',
-                        number: 3,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'z',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'heading',
-                        number: 4,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'heading',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'altitude',
-                        number: 5,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'altitude',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'bmp_temp',
-                        number: 6,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'bmpTemp',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'pressure',
-                        number: 7,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'pressure',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'StaticSystemInformation',
-                field: [
-                    {
-                        name: 'esp_platform',
-                        number: 1,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'espPlatform',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'firmware_version',
-                        number: 2,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'firmwareVersion',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_freq_mhz',
-                        number: 3,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuFreqMhz',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_type',
-                        number: 4,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuType',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_rev',
-                        number: 5,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuRev',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_cores',
-                        number: 6,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuCores',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'sketch_size',
-                        number: 7,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'sketchSize',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'free_sketch_space',
-                        number: 8,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'freeSketchSpace',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'sdk_version',
-                        number: 9,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'sdkVersion',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'arduino_version',
-                        number: 10,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'arduinoVersion',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'flash_chip_size',
-                        number: 11,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'flashChipSize',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'flash_chip_speed',
-                        number: 12,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'flashChipSpeed',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_reset_reason',
-                        number: 13,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuResetReason',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'IMUCalibrateData',
-                field: [
-                    {
-                        name: 'success',
-                        number: 1,
-                        label: 1,
-                        type: 8,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'success',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'IMUCalibrateExecute',
-                field: [],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'ModeData',
-                field: [
-                    {
-                        name: 'mode',
-                        number: 1,
-                        label: 1,
-                        type: 14,
-                        typeName: '.socket_message.ModesEnum',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'mode',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'ControllerInputData',
-                field: [
-                    {
-                        name: 'left',
-                        number: 1,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.Vector',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'left',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'right',
-                        number: 2,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.Vector',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'right',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'height',
-                        number: 3,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'height',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'speed',
-                        number: 4,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'speed',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 's1',
-                        number: 5,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 's1',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'AnalyticsData',
-                field: [
-                    {
-                        name: 'max_alloc_heap',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'maxAllocHeap',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'psram_size',
-                        number: 2,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'psramSize',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'free_psram',
-                        number: 3,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'freePsram',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'free_heap',
-                        number: 4,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'freeHeap',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'total_heap',
-                        number: 5,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'totalHeap',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'min_free_heap',
-                        number: 6,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'minFreeHeap',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'core_temp',
-                        number: 7,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'coreTemp',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'fs_total',
-                        number: 8,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'fsTotal',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'fs_used',
-                        number: 9,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'fsUsed',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'uptime',
-                        number: 10,
-                        label: 1,
-                        type: 3,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'uptime',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu0_usage',
-                        number: 11,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpu0Usage',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu1_usage',
-                        number: 12,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpu1Usage',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'cpu_usage',
-                        number: 13,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'cpuUsage',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'ServoPWMData',
-                field: [
-                    {
-                        name: 'servo_id',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'servoId',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'servo_pwm',
-                        number: 2,
-                        label: 1,
-                        type: 13,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'servoPwm',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'ServoStateData',
-                field: [
-                    {
-                        name: 'active',
-                        number: 1,
-                        label: 1,
-                        type: 8,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'active',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'AnglesData',
-                field: [
-                    {
-                        name: 'angles',
-                        number: 1,
-                        label: 3,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'angles',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'I2CScanData',
-                field: [
-                    {
-                        name: 'devices',
-                        number: 1,
-                        label: 3,
-                        type: 11,
-                        typeName: '.socket_message.I2CDevice',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'devices',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'I2CScanDataRequest',
-                field: [],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'PeripheralSettingsData',
-                field: [
-                    {
-                        name: 'sda',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'sda',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'scl',
-                        number: 2,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'scl',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'frequency',
-                        number: 3,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'frequency',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'pins',
-                        number: 4,
-                        label: 3,
-                        type: 11,
-                        typeName: '.socket_message.PinConfig',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'pins',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'PeripheralSettingsDataRequest',
-                field: [],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'WifiSettingsData',
-                field: [
-                    {
-                        name: 'hostname',
-                        number: 1,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'hostname',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'priority_rssi',
-                        number: 2,
-                        label: 1,
-                        type: 8,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'priorityRssi',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'wifi_networks',
-                        number: 3,
-                        label: 3,
-                        type: 11,
-                        typeName: '.socket_message.KnownNetworkItem',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'wifiNetworks',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'RSSIData',
-                field: [
-                    {
-                        name: 'rssi',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'rssi',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'DownloadOTAData',
-                field: [
-                    {
-                        name: 'status',
-                        number: 1,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'status',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'progress',
-                        number: 2,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'progress',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'error',
-                        number: 3,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'error',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'SonarData',
-                field: [
-                    {
-                        name: 'dummy_field',
-                        number: 1,
-                        label: 1,
-                        type: 9,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'dummyField',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'HumanInputData',
-                field: [
-                    {
-                        name: 'left',
-                        number: 10,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.Vector',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'left',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'right',
-                        number: 11,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.Vector',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'right',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'height',
-                        number: 20,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'height',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'speed',
-                        number: 21,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'speed',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 's1',
-                        number: 22,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 's1',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'SystemInformation',
-                field: [
-                    {
-                        name: 'analytics_data',
-                        number: 1,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.AnalyticsData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'analyticsData',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'static_system_information',
-                        number: 2,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.StaticSystemInformation',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'staticSystemInformation',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'WalkGaitData',
-                field: [
-                    {
-                        name: 'gait',
-                        number: 1,
-                        label: 1,
-                        type: 14,
-                        typeName: '.socket_message.WalkGaits',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'gait',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'KinematicData',
-                field: [
-                    {
-                        name: 'omega',
-                        number: 1,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'omega',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'phi',
-                        number: 2,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'phi',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'psi',
-                        number: 3,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'psi',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'xm',
-                        number: 4,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'xm',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'ym',
-                        number: 5,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'ym',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'zm',
-                        number: 6,
-                        label: 1,
-                        type: 2,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'zm',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'SubscribeNotification',
-                field: [
-                    {
-                        name: 'tag',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'tag',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'UnsubscribeNotification',
-                field: [
-                    {
-                        name: 'tag',
-                        number: 1,
-                        label: 1,
-                        type: 5,
-                        typeName: '',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'tag',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'PingMsg',
-                field: [],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'PongMsg',
-                field: [],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'WebsocketMessage',
-                field: [
-                    {
-                        name: 'sub_notif',
-                        number: 20,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.SubscribeNotification',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'subNotif',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'unsub_notif',
-                        number: 21,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.UnsubscribeNotification',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'unsubNotif',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'pingmsg',
-                        number: 30,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.PingMsg',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'pingmsg',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'pongmsg',
-                        number: 31,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.PongMsg',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'pongmsg',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'imu',
-                        number: 110,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.IMUData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'imu',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'imu_calibrate',
-                        number: 120,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.IMUCalibrateData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'imuCalibrate',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'imu_calibrate_execute',
-                        number: 121,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.IMUCalibrateExecute',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'imuCalibrateExecute',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'mode',
-                        number: 130,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.ModeData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'mode',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'input',
-                        number: 140,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.ControllerInputData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'input',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'analytics',
-                        number: 150,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.AnalyticsData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'analytics',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'angles',
-                        number: 170,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.AnglesData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'angles',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'i2c_scan',
-                        number: 180,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.I2CScanData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'i2cScan',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'i2c_scan_data_request',
-                        number: 181,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.I2CScanDataRequest',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'i2cScanDataRequest',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'peripheral_settings',
-                        number: 190,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.PeripheralSettingsData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'peripheralSettings',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'peripheral_settings_data_request',
-                        number: 191,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.PeripheralSettingsDataRequest',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'peripheralSettingsDataRequest',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'kinematic_data',
-                        number: 200,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.KinematicData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'kinematicData',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'wifi_settings',
-                        number: 240,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.WifiSettingsData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'wifiSettings',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'human_input_data',
-                        number: 250,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.HumanInputData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'humanInputData',
-                        options: undefined,
-                        proto3Optional: false
-                    },
-                    {
-                        name: 'rssi',
-                        number: 260,
-                        label: 1,
-                        type: 11,
-                        typeName: '.socket_message.RSSIData',
-                        extendee: '',
-                        defaultValue: '',
-                        oneofIndex: 0,
-                        jsonName: 'rssi',
-                        options: undefined,
-                        proto3Optional: false
-                    }
-                ],
-                extension: [],
-                nestedType: [],
-                enumType: [],
-                extensionRange: [],
-                oneofDecl: [{ name: 'message', options: undefined }],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            }
-        ],
-        enumType: [
-            {
-                name: 'ModesEnum',
-                value: [
-                    { name: 'DEACTIVATED', number: 0, options: undefined },
-                    { name: 'IDLE', number: 1, options: undefined },
-                    { name: 'CALIBRATION', number: 2, options: undefined },
-                    { name: 'REST', number: 3, options: undefined },
-                    { name: 'STAND', number: 4, options: undefined },
-                    { name: 'WALK', number: 5, options: undefined }
-                ],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            },
-            {
-                name: 'WalkGaits',
-                value: [
-                    { name: 'TROT', number: 0, options: undefined },
-                    {
-                        name: 'CRAWL',
-                        number: 1,
-                        options: undefined
-                    }
-                ],
-                options: undefined,
-                reservedRange: [],
-                reservedName: [],
-                visibility: 0
-            }
-        ],
-        service: [],
-        extension: [],
-        options: undefined,
-        sourceCodeInfo: {
-            location: [
-                {
-                    path: [4, 4],
-                    span: [12, 0, 20, 1],
-                    leadingComments: ' Individual message data types\n',
-                    trailingComments: '',
-                    leadingDetachedComments: []
-                },
-                {
-                    path: [4, 30],
-                    span: [121, 0, 143, 1],
-                    leadingComments:
-                        ' WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n',
-                    trailingComments: '',
-                    leadingDetachedComments: []
-                }
-            ]
-        },
-        syntax: 'proto3',
-        edition: 0
+  fileDescriptor: {
+    "name": "websocket_message.proto",
+    "package": "socket_message",
+    "dependency": [],
+    "publicDependency": [],
+    "weakDependency": [],
+    "optionDependency": [],
+    "messageType": [{
+      "name": "Vector",
+      "field": [{
+        "name": "x",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "x",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "y",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "y",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CDevice",
+      "field": [{
+        "name": "address",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "address",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "part_number",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "partNumber",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "name",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "name",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PinConfig",
+      "field": [{
+        "name": "pin",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pin",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mode",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "type",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "type",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "role",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "role",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "KnownNetworkItem",
+      "field": [{
+        "name": "ssid",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ssid",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "password",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "password",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "static_ip",
+        "number": 3,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "staticIp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "local_ip",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "localIp",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "subnet_mask",
+        "number": 5,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 1,
+        "jsonName": "subnetMask",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "gateway_ip",
+        "number": 6,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 2,
+        "jsonName": "gatewayIp",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "dns_ip_1",
+        "number": 7,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 3,
+        "jsonName": "dnsIp1",
+        "options": undefined,
+        "proto3Optional": true,
+      }, {
+        "name": "dns_ip_2",
+        "number": 8,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 4,
+        "jsonName": "dnsIp2",
+        "options": undefined,
+        "proto3Optional": true,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [
+        { "name": "_local_ip", "options": undefined },
+        { "name": "_subnet_mask", "options": undefined },
+        { "name": "_gateway_ip", "options": undefined },
+        { "name": "_dns_ip_1", "options": undefined },
+        { "name": "_dns_ip_2", "options": undefined },
+      ],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUData",
+      "field": [{
+        "name": "x",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "x",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "y",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "y",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "z",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "z",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "heading",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "heading",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "altitude",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "altitude",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "bmp_temp",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "bmpTemp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pressure",
+        "number": 7,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pressure",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "FeaturesDataResponse",
+      "field": [{
+        "name": "variant",
+        "number": 10,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "variant",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_built_target",
+        "number": 20,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareBuiltTarget",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_name",
+        "number": 30,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareName",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_version",
+        "number": 40,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "camera",
+        "number": 50,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "camera",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu",
+        "number": 60,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imu",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mag",
+        "number": 70,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mag",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "bmp",
+        "number": 80,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "bmp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sonar",
+        "number": 90,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sonar",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo",
+        "number": 100,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servo",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ws2812",
+        "number": 110,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ws2812",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mdns",
+        "number": 120,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mdns",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "embed_www",
+        "number": 130,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "embedWww",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "FeaturesDataRequest",
+      "field": [{
+        "name": "sonar_test",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sonarTest",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "CorrelationRequest",
+      "field": [{
+        "name": "correlation_id",
+        "number": 1,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "features_data_request",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.FeaturesDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "featuresDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "request", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "CorrelationResponse",
+      "field": [{
+        "name": "correlation_id",
+        "number": 1,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "stauts_code",
+        "number": 2,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "stautsCode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "features_data_response",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.FeaturesDataResponse",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "featuresDataResponse",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "response", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "StaticSystemInformation",
+      "field": [{
+        "name": "esp_platform",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "espPlatform",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "firmware_version",
+        "number": 2,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "firmwareVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_freq_mhz",
+        "number": 3,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuFreqMhz",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_type",
+        "number": 4,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuType",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_rev",
+        "number": 5,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuRev",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_cores",
+        "number": 6,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuCores",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sketch_size",
+        "number": 7,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sketchSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_sketch_space",
+        "number": 8,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freeSketchSpace",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sdk_version",
+        "number": 9,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sdkVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "arduino_version",
+        "number": 10,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "arduinoVersion",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_size",
+        "number": 11,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "flash_chip_speed",
+        "number": 12,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "flashChipSpeed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_reset_reason",
+        "number": 13,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuResetReason",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateData",
+      "field": [{
+        "name": "success",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "success",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "IMUCalibrateExecute",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ModeData",
+      "field": [{
+        "name": "mode",
+        "number": 1,
+        "label": 1,
+        "type": 14,
+        "typeName": ".socket_message.ModesEnum",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ControllerInputData",
+      "field": [{
+        "name": "left",
+        "number": 1,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "left",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "right",
+        "number": 2,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "right",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "height",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "height",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "speed",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "speed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "s1",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "s1",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnalyticsData",
+      "field": [{
+        "name": "max_alloc_heap",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "maxAllocHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "psram_size",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "psramSize",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_psram",
+        "number": 3,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freePsram",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "free_heap",
+        "number": 4,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "freeHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "total_heap",
+        "number": 5,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "totalHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "min_free_heap",
+        "number": 6,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "minFreeHeap",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "core_temp",
+        "number": 7,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "coreTemp",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "fs_total",
+        "number": 8,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "fsTotal",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "fs_used",
+        "number": 9,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "fsUsed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "uptime",
+        "number": 10,
+        "label": 1,
+        "type": 3,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "uptime",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu0_usage",
+        "number": 11,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpu0Usage",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu1_usage",
+        "number": 12,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpu1Usage",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "cpu_usage",
+        "number": 13,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "cpuUsage",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoPWMData",
+      "field": [{
+        "name": "servo_id",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoId",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "servo_pwm",
+        "number": 2,
+        "label": 1,
+        "type": 13,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "servoPwm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "ServoStateData",
+      "field": [{
+        "name": "active",
+        "number": 1,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "active",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "AnglesData",
+      "field": [{
+        "name": "angles",
+        "number": 1,
+        "label": 3,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CScanData",
+      "field": [{
+        "name": "devices",
+        "number": 1,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.I2CDevice",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "devices",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "I2CScanDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PeripheralSettingsData",
+      "field": [{
+        "name": "sda",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "sda",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "scl",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "scl",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "frequency",
+        "number": 3,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "frequency",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pins",
+        "number": 4,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.PinConfig",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pins",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PeripheralSettingsDataRequest",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WifiSettingsData",
+      "field": [{
+        "name": "hostname",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "hostname",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "priority_rssi",
+        "number": 2,
+        "label": 1,
+        "type": 8,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "priorityRssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "wifi_networks",
+        "number": 3,
+        "label": 3,
+        "type": 11,
+        "typeName": ".socket_message.KnownNetworkItem",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "wifiNetworks",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "RSSIData",
+      "field": [{
+        "name": "rssi",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "DownloadOTAData",
+      "field": [{
+        "name": "status",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "status",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "progress",
+        "number": 2,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "progress",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "error",
+        "number": 3,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "error",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SonarData",
+      "field": [{
+        "name": "dummy_field",
+        "number": 1,
+        "label": 1,
+        "type": 9,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "dummyField",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "HumanInputData",
+      "field": [{
+        "name": "left",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "left",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "right",
+        "number": 11,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.Vector",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "right",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "height",
+        "number": 20,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "height",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "speed",
+        "number": 21,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "speed",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "s1",
+        "number": 22,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "s1",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SystemInformation",
+      "field": [{
+        "name": "analytics_data",
+        "number": 1,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analyticsData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "static_system_information",
+        "number": 2,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.StaticSystemInformation",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "staticSystemInformation",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WalkGaitData",
+      "field": [{
+        "name": "gait",
+        "number": 1,
+        "label": 1,
+        "type": 14,
+        "typeName": ".socket_message.WalkGaits",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "gait",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "KinematicData",
+      "field": [{
+        "name": "omega",
+        "number": 1,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "omega",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "phi",
+        "number": 2,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "phi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "psi",
+        "number": 3,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "psi",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "xm",
+        "number": 4,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "xm",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "ym",
+        "number": 5,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "ym",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "zm",
+        "number": 6,
+        "label": 1,
+        "type": 2,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "zm",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "SubscribeNotification",
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "UnsubscribeNotification",
+      "field": [{
+        "name": "tag",
+        "number": 1,
+        "label": 1,
+        "type": 5,
+        "typeName": "",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "tag",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PingMsg",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "PongMsg",
+      "field": [],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WebsocketMessage",
+      "field": [{
+        "name": "correlation_request",
+        "number": 10,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.CorrelationRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "correlation_response",
+        "number": 11,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.CorrelationResponse",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "correlationResponse",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "sub_notif",
+        "number": 20,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.SubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "subNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "unsub_notif",
+        "number": 21,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.UnsubscribeNotification",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "unsubNotif",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pingmsg",
+        "number": 30,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PingMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pingmsg",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "pongmsg",
+        "number": 31,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PongMsg",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "pongmsg",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu",
+        "number": 110,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imu",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate",
+        "number": 120,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrate",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "imu_calibrate_execute",
+        "number": 121,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.IMUCalibrateExecute",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "imuCalibrateExecute",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "mode",
+        "number": 130,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ModeData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "mode",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "input",
+        "number": 140,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.ControllerInputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "input",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "analytics",
+        "number": 150,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnalyticsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "analytics",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "walk_gait",
+        "number": 160,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.WalkGaitData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "walkGait",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "angles",
+        "number": 170,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.AnglesData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "angles",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan",
+        "number": 180,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScan",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "i2c_scan_data_request",
+        "number": 181,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.I2CScanDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "i2cScanDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "peripheral_settings",
+        "number": 190,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PeripheralSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "peripheral_settings_data_request",
+        "number": 191,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.PeripheralSettingsDataRequest",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "peripheralSettingsDataRequest",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "kinematic_data",
+        "number": 200,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.KinematicData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "kinematicData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "wifi_settings",
+        "number": 240,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.WifiSettingsData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "wifiSettings",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "human_input_data",
+        "number": 250,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.HumanInputData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "humanInputData",
+        "options": undefined,
+        "proto3Optional": false,
+      }, {
+        "name": "rssi",
+        "number": 260,
+        "label": 1,
+        "type": 11,
+        "typeName": ".socket_message.RSSIData",
+        "extendee": "",
+        "defaultValue": "",
+        "oneofIndex": 0,
+        "jsonName": "rssi",
+        "options": undefined,
+        "proto3Optional": false,
+      }],
+      "extension": [],
+      "nestedType": [],
+      "enumType": [],
+      "extensionRange": [],
+      "oneofDecl": [{ "name": "message", "options": undefined }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
+    "enumType": [{
+      "name": "ModesEnum",
+      "value": [
+        { "name": "DEACTIVATED", "number": 0, "options": undefined },
+        { "name": "IDLE", "number": 1, "options": undefined },
+        { "name": "CALIBRATION", "number": 2, "options": undefined },
+        { "name": "REST", "number": 3, "options": undefined },
+        { "name": "STAND", "number": 4, "options": undefined },
+        { "name": "WALK", "number": 5, "options": undefined },
+      ],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }, {
+      "name": "WalkGaits",
+      "value": [{ "name": "TROT", "number": 0, "options": undefined }, {
+        "name": "CRAWL",
+        "number": 1,
+        "options": undefined,
+      }],
+      "options": undefined,
+      "reservedRange": [],
+      "reservedName": [],
+      "visibility": 0,
+    }],
+    "service": [],
+    "extension": [],
+    "options": undefined,
+    "sourceCodeInfo": {
+      "location": [{
+        "path": [4, 4],
+        "span": [12, 0, 20, 1],
+        "leadingComments": " Individual message data types\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 7, 2, 0],
+        "span": [44, 4, 30],
+        "leadingComments": "",
+        "trailingComments": " Used for request-response correlation\n",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 7, 2, 1],
+        "span": [47, 8, 55],
+        "leadingComments":
+          " NOTE: requests must have same tag id as correlating to the response type (currently not enforced in C, but will be, and tests will fail)\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 8, 2, 0],
+        "span": [52, 4, 30],
+        "leadingComments": "",
+        "trailingComments": " Used for request-response correlation'\n",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 8, 2, 2],
+        "span": [56, 8, 57],
+        "leadingComments":
+          " NOTE: responses must have same tag id as correlating to the request type (currently not enforced in C, but will be, and tests will fail)\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }, {
+        "path": [4, 34],
+        "span": [159, 0, 184, 1],
+        "leadingComments": " WebSocket message wrapper\n Only ONE field will be set at a time (oneof ensures this)\n",
+        "trailingComments": "",
+        "leadingDetachedComments": [],
+      }],
     },
-    references: {
-        '.socket_message.ModesEnum': ModesEnum,
-        '.socket_message.WalkGaits': WalkGaits,
-        '.socket_message.Vector': Vector,
-        '.socket_message.I2CDevice': I2CDevice,
-        '.socket_message.PinConfig': PinConfig,
-        '.socket_message.KnownNetworkItem': KnownNetworkItem,
-        '.socket_message.IMUData': IMUData,
-        '.socket_message.StaticSystemInformation': StaticSystemInformation,
-        '.socket_message.IMUCalibrateData': IMUCalibrateData,
-        '.socket_message.IMUCalibrateExecute': IMUCalibrateExecute,
-        '.socket_message.ModeData': ModeData,
-        '.socket_message.ControllerInputData': ControllerInputData,
-        '.socket_message.AnalyticsData': AnalyticsData,
-        '.socket_message.ServoPWMData': ServoPWMData,
-        '.socket_message.ServoStateData': ServoStateData,
-        '.socket_message.AnglesData': AnglesData,
-        '.socket_message.I2CScanData': I2CScanData,
-        '.socket_message.I2CScanDataRequest': I2CScanDataRequest,
-        '.socket_message.PeripheralSettingsData': PeripheralSettingsData,
-        '.socket_message.PeripheralSettingsDataRequest': PeripheralSettingsDataRequest,
-        '.socket_message.WifiSettingsData': WifiSettingsData,
-        '.socket_message.RSSIData': RSSIData,
-        '.socket_message.DownloadOTAData': DownloadOTAData,
-        '.socket_message.SonarData': SonarData,
-        '.socket_message.HumanInputData': HumanInputData,
-        '.socket_message.SystemInformation': SystemInformation,
-        '.socket_message.WalkGaitData': WalkGaitData,
-        '.socket_message.KinematicData': KinematicData,
-        '.socket_message.SubscribeNotification': SubscribeNotification,
-        '.socket_message.UnsubscribeNotification': UnsubscribeNotification,
-        '.socket_message.PingMsg': PingMsg,
-        '.socket_message.PongMsg': PongMsg,
-        '.socket_message.WebsocketMessage': WebsocketMessage
-    },
-    dependencies: []
-}
+    "syntax": "proto3",
+    "edition": 0,
+  },
+  references: {
+    ".socket_message.ModesEnum": ModesEnum,
+    ".socket_message.WalkGaits": WalkGaits,
+    ".socket_message.Vector": Vector,
+    ".socket_message.I2CDevice": I2CDevice,
+    ".socket_message.PinConfig": PinConfig,
+    ".socket_message.KnownNetworkItem": KnownNetworkItem,
+    ".socket_message.IMUData": IMUData,
+    ".socket_message.FeaturesDataResponse": FeaturesDataResponse,
+    ".socket_message.FeaturesDataRequest": FeaturesDataRequest,
+    ".socket_message.CorrelationRequest": CorrelationRequest,
+    ".socket_message.CorrelationResponse": CorrelationResponse,
+    ".socket_message.StaticSystemInformation": StaticSystemInformation,
+    ".socket_message.IMUCalibrateData": IMUCalibrateData,
+    ".socket_message.IMUCalibrateExecute": IMUCalibrateExecute,
+    ".socket_message.ModeData": ModeData,
+    ".socket_message.ControllerInputData": ControllerInputData,
+    ".socket_message.AnalyticsData": AnalyticsData,
+    ".socket_message.ServoPWMData": ServoPWMData,
+    ".socket_message.ServoStateData": ServoStateData,
+    ".socket_message.AnglesData": AnglesData,
+    ".socket_message.I2CScanData": I2CScanData,
+    ".socket_message.I2CScanDataRequest": I2CScanDataRequest,
+    ".socket_message.PeripheralSettingsData": PeripheralSettingsData,
+    ".socket_message.PeripheralSettingsDataRequest": PeripheralSettingsDataRequest,
+    ".socket_message.WifiSettingsData": WifiSettingsData,
+    ".socket_message.RSSIData": RSSIData,
+    ".socket_message.DownloadOTAData": DownloadOTAData,
+    ".socket_message.SonarData": SonarData,
+    ".socket_message.HumanInputData": HumanInputData,
+    ".socket_message.SystemInformation": SystemInformation,
+    ".socket_message.WalkGaitData": WalkGaitData,
+    ".socket_message.KinematicData": KinematicData,
+    ".socket_message.SubscribeNotification": SubscribeNotification,
+    ".socket_message.UnsubscribeNotification": UnsubscribeNotification,
+    ".socket_message.PingMsg": PingMsg,
+    ".socket_message.PongMsg": PongMsg,
+    ".socket_message.WebsocketMessage": WebsocketMessage,
+  },
+  dependencies: [],
+};
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined
+type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
-export type DeepPartial<T> =
-    T extends Builtin ? T
-    : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-    : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-    : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-    : Partial<T>
+export type DeepPartial<T> = T extends Builtin ? T
+  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
+  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+  : Partial<T>;
 
-type KeysOfUnion<T> = T extends T ? keyof T : never
-export type Exact<P, I extends P> =
-    P extends Builtin ? P
-    :   P & { [K in keyof P]: Exact<P[K], I[K]> } & {
-            [K in Exclude<keyof I, KeysOfUnion<P>>]: never
-        }
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
 
 function longToNumber(int64: { toString(): string }): number {
-    const num = globalThis.Number(int64.toString())
-    if (num > globalThis.Number.MAX_SAFE_INTEGER) {
-        throw new globalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER')
-    }
-    if (num < globalThis.Number.MIN_SAFE_INTEGER) {
-        throw new globalThis.Error('Value is smaller than Number.MIN_SAFE_INTEGER')
-    }
-    return num
+  const num = globalThis.Number(int64.toString());
+  if (num > globalThis.Number.MAX_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  if (num < globalThis.Number.MIN_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+  }
+  return num;
 }
 
 function isSet(value: any): boolean {
-    return value !== null && value !== undefined
+  return value !== null && value !== undefined;
 }
 
 export interface MessageFns<T> {
-    encode(message: T, writer?: BinaryWriter): BinaryWriter
-    decode(input: BinaryReader | Uint8Array, length?: number): T
-    fromJSON(object: any): T
-    toJSON(message: T): unknown
-    create<I extends Exact<DeepPartial<T>, I>>(base?: I): T
-    fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T
+  encode(message: T, writer?: BinaryWriter): BinaryWriter;
+  decode(input: BinaryReader | Uint8Array, length?: number): T;
+  fromJSON(object: any): T;
+  toJSON(message: T): unknown;
+  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
+  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }
