@@ -37,7 +37,7 @@ message FeaturesDataResponse {
     bool embed_www = 130;
 }
 
-message FeaturesDataRequest { bool sonar_test = 1; }
+message FeaturesDataRequest { }
 
 
 

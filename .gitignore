@@ -6,3 +6,5 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pio
+esp32/src/platform_shared
+app/src/lib/platform_shared
