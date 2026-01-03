@@ -18,7 +18,7 @@ void MotionService::setState(MotionState* newState) {
     }
 }
 
-void MotionService::handleInput(const socket_message_HumanInputData& data) {
+void MotionService::handleInput(const socket_message_ControllerData& data) {
     command.fromProto(data);
     if (state) state->handleCommand(command);
 }

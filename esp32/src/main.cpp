@@ -136,8 +136,8 @@ void setupServer() {
 }
 
 void setupEventSocket() {
-    socket.on<socket_message_HumanInputData>(
-        [&](const socket_message_HumanInputData &data, int clientId) { motionService.handleInput(data); });
+    socket.on<socket_message_ControllerData>(
+        [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
 
     socket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
         servoController.setMode(SERVO_CONTROL_STATE::ANGLE);

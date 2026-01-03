@@ -23,7 +23,7 @@ class MotionService {
 
     void handleAngles(const socket_message_AnglesData& data);
 
-    void handleInput(const socket_message_HumanInputData& data);
+    void handleInput(const socket_message_ControllerData& data);
 
     void handleWalkGait(const socket_message_WalkGaitData& data);
 
