@@ -3,6 +3,7 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <Wire.h>
+#include <map>
 
 #include <filesystem.h>
 #include <peripherals/peripherals.h>
@@ -150,18 +151,6 @@ void setupEventSocket() {
     socket.on<socket_message_AnglesData>(
         [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
 
-    socket.on<socket_message_I2CScanDataRequest>([&](const socket_message_I2CScanDataRequest &data, int clientId) {
-        peripherals.scanI2C();
-        socket_message_I2CScanData result = socket_message_I2CScanData_init_zero;
-        peripherals.getI2CScanProto(result);
-        socket.emit(result, clientId);
-    });
-
-    socket.on<socket_message_IMUCalibrateExecute>([&](const socket_message_IMUCalibrateExecute &data, int clientId) {
-        socket_message_IMUCalibrateData result = {.success = peripherals.calibrateIMU()};
-        socket.emit(result, clientId);
-    });
-
     socket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
         servoController.setServoPWM(data.servo_id, data.servo_pwm);
     });
@@ -170,29 +159,38 @@ void setupEventSocket() {
         data.active ? servoController.activate() : servoController.deactivate();
     });
 
+    using CorrelationHandler =
+        std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &)>;
+    static std::map<pb_size_t, CorrelationHandler> correlationHandlers = {
+        {socket_message_CorrelationRequest_features_data_request_tag,
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
+             feature_service::features_request(req.request.features_data_request, res.response.features_data_response);
+         }},
+        {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
+             peripherals.scanI2C();
+             peripherals.getI2CScanProto(res.response.i2c_scan_data);
+         }},
+        {socket_message_CorrelationRequest_imu_calibrate_execute_tag,
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
+             res.response.imu_calibrate_data.success = peripherals.calibrateIMU();
+         }},
+    };
+
     socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
-        printf("Received correlation request: %d\n", data.correlation_id);
-        // Temporarily hardcoded
-        switch (data.which_request) {
-            case socket_message_CorrelationRequest_features_data_request_tag: {
-                socket_message_CorrelationResponse res = socket_message_CorrelationResponse_init_default;
-                res.correlation_id = data.correlation_id;
-                res.stauts_code = 200;
-                res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
+        socket_message_CorrelationResponse res = socket_message_CorrelationResponse_init_default;
+        res.correlation_id = data.correlation_id;
+        res.status_code = 200;
 
-                feature_service::features_request(
-                    data.request.features_data_request,
-                    res.response.features_data_response
-                );
-
-                socket.emit(res, clientId);
-
-                break;
-            }
-            default: {
-                printf("WARNING: no tag found for correlation request: %d", data.which_request);
-                break;
-            }
+        auto it = correlationHandlers.find(data.which_request);
+        if (it != correlationHandlers.end()) {
+            it->second(data, res);
+            socket.emit(res, clientId);
+        } else {
+            printf("WARNING: no handler for correlation request: %d\n", data.which_request);
         }
     });
 }

@@ -8,111 +8,70 @@
 
 PB_BIND(socket_message_Vector, socket_message_Vector, AUTO)
 
-
 PB_BIND(socket_message_I2CDevice, socket_message_I2CDevice, AUTO)
-
 
 PB_BIND(socket_message_PinConfig, socket_message_PinConfig, AUTO)
 
-
 PB_BIND(socket_message_KnownNetworkItem, socket_message_KnownNetworkItem, AUTO)
-
 
 PB_BIND(socket_message_IMUData, socket_message_IMUData, AUTO)
 
-
 PB_BIND(socket_message_FeaturesDataResponse, socket_message_FeaturesDataResponse, 2)
-
 
 PB_BIND(socket_message_FeaturesDataRequest, socket_message_FeaturesDataRequest, AUTO)
 
-
 PB_BIND(socket_message_CorrelationRequest, socket_message_CorrelationRequest, AUTO)
 
-
-PB_BIND(socket_message_CorrelationResponse, socket_message_CorrelationResponse, AUTO)
-
+PB_BIND(socket_message_CorrelationResponse, socket_message_CorrelationResponse, 2)
 
 PB_BIND(socket_message_StaticSystemInformation, socket_message_StaticSystemInformation, AUTO)
 
-
 PB_BIND(socket_message_IMUCalibrateData, socket_message_IMUCalibrateData, AUTO)
-
 
 PB_BIND(socket_message_IMUCalibrateExecute, socket_message_IMUCalibrateExecute, AUTO)
 
-
 PB_BIND(socket_message_ModeData, socket_message_ModeData, AUTO)
-
 
 PB_BIND(socket_message_ControllerInputData, socket_message_ControllerInputData, AUTO)
 
-
 PB_BIND(socket_message_AnalyticsData, socket_message_AnalyticsData, AUTO)
-
 
 PB_BIND(socket_message_ServoPWMData, socket_message_ServoPWMData, AUTO)
 
-
 PB_BIND(socket_message_ServoStateData, socket_message_ServoStateData, AUTO)
-
 
 PB_BIND(socket_message_AnglesData, socket_message_AnglesData, AUTO)
 
-
 PB_BIND(socket_message_I2CScanData, socket_message_I2CScanData, 2)
-
 
 PB_BIND(socket_message_I2CScanDataRequest, socket_message_I2CScanDataRequest, AUTO)
 
-
 PB_BIND(socket_message_PeripheralSettingsData, socket_message_PeripheralSettingsData, 2)
-
 
 PB_BIND(socket_message_PeripheralSettingsDataRequest, socket_message_PeripheralSettingsDataRequest, AUTO)
 
-
 PB_BIND(socket_message_WifiSettingsData, socket_message_WifiSettingsData, 2)
-
 
 PB_BIND(socket_message_RSSIData, socket_message_RSSIData, AUTO)
 
-
 PB_BIND(socket_message_DownloadOTAData, socket_message_DownloadOTAData, AUTO)
-
 
 PB_BIND(socket_message_SonarData, socket_message_SonarData, AUTO)
 
-
 PB_BIND(socket_message_HumanInputData, socket_message_HumanInputData, AUTO)
-
 
 PB_BIND(socket_message_SystemInformation, socket_message_SystemInformation, 2)
 
-
 PB_BIND(socket_message_WalkGaitData, socket_message_WalkGaitData, AUTO)
-
 
 PB_BIND(socket_message_KinematicData, socket_message_KinematicData, AUTO)
 
-
 PB_BIND(socket_message_SubscribeNotification, socket_message_SubscribeNotification, AUTO)
-
 
 PB_BIND(socket_message_UnsubscribeNotification, socket_message_UnsubscribeNotification, AUTO)
 
-
 PB_BIND(socket_message_PingMsg, socket_message_PingMsg, AUTO)
-
 
 PB_BIND(socket_message_PongMsg, socket_message_PongMsg, AUTO)
 
-
 PB_BIND(socket_message_WebsocketMessage, socket_message_WebsocketMessage, 2)
-
-
-
-
-
-
-
