@@ -4,8 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "vite dev --host",
-        "build": "vite build",
-        "build:proto": "pnpm proto && vite build",
+        "build": "pnpm proto && vite build",
         "build:embedded": "cross-env VITE_USE_HOST_NAME=true vite build",
         "preview": "vite preview",
         "test": "pnpm run test:integration && pnpm run test:unit",
