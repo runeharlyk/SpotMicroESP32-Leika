@@ -40,7 +40,7 @@ typedef struct {
         strlcpy(proto.service, service.c_str(), sizeof(proto.service));
         strlcpy(proto.protocol, protocol.c_str(), sizeof(proto.protocol));
         proto.port = port;
-        proto.txt_records_count = std::min((pb_size_t)10, (pb_size_t)txtRecords.size());
+        proto.txt_records_count = std::min((pb_size_t)4, (pb_size_t)txtRecords.size());
         for (pb_size_t i = 0; i < proto.txt_records_count; i++) {
             txtRecords[i].toProto(proto.txt_records[i]);
         }
@@ -74,12 +74,12 @@ class MDNSSettings {
         strlcpy(proto.hostname, settings.hostname.c_str(), sizeof(proto.hostname));
         strlcpy(proto.instance, settings.instance.c_str(), sizeof(proto.instance));
 
-        proto.services_count = std::min((pb_size_t)10, (pb_size_t)settings.services.size());
+        proto.services_count = std::min((pb_size_t)4, (pb_size_t)settings.services.size());
         for (pb_size_t i = 0; i < proto.services_count; i++) {
             settings.services[i].toProto(proto.services[i]);
         }
 
-        proto.global_txt_records_count = std::min((pb_size_t)10, (pb_size_t)settings.globalTxtRecords.size());
+        proto.global_txt_records_count = std::min((pb_size_t)4, (pb_size_t)settings.globalTxtRecords.size());
         for (pb_size_t i = 0; i < proto.global_txt_records_count; i++) {
             settings.globalTxtRecords[i].toProto(proto.global_txt_records[i]);
         }

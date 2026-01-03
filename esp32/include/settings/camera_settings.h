@@ -105,4 +105,4 @@ class CameraSettings {
         return StateUpdateResult::CHANGED;
     };
 };
-}
+} // namespace Camera

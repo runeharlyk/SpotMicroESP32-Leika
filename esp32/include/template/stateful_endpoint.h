@@ -27,7 +27,7 @@ class StatefulHttpEndpoint {
         if (!request.decodeProto(proto, _fields)) {
             return request.reply(400);
         }
-        
+
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(proto, _stateUpdater);
 
         if (outcome == StateUpdateResult::ERROR)

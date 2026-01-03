@@ -1,7 +1,8 @@
 #include <wifi_service.h>
 
 WiFiService::WiFiService()
-    : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE, socket_message_WifiSettingsData_fields),
+    : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE,
+                   socket_message_WifiSettingsData_fields),
       endpoint(WiFiSettings::read, WiFiSettings::update, this, socket_message_WifiSettingsData_fields) {
     addUpdateHandler([&](const std::string& originId) { reconfigureWiFiConnection(); }, false);
 }
@@ -68,7 +69,7 @@ void WiFiService::setupMDNS(const char* hostname) {
 
 void WiFiService::getNetworks(socket_message_NetworkListData& proto) {
     int numNetworks = WiFi.scanComplete();
-    proto.networks_count = std::min(numNetworks, 20);
+    proto.networks_count = std::min(numNetworks, 12);
     for (int i = 0; i < (int)proto.networks_count; i++) {
         proto.networks[i].rssi = WiFi.RSSI(i);
         strlcpy(proto.networks[i].ssid, WiFi.SSID(i).c_str(), sizeof(proto.networks[i].ssid));

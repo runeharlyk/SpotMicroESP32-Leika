@@ -30,7 +30,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
     unsigned long _lastConnectionAttempt;
     bool _stopping;
 
-    constexpr static uint16_t reconnectDelay{10000};
+    constexpr static uint16_t reconnectDelay {10000};
 
   public:
     WiFiService();

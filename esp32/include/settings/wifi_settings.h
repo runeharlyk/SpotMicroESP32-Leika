@@ -78,7 +78,7 @@ typedef struct {
 } wifi_settings_t;
 
 inline wifi_settings_t createDefaultWiFiSettings() {
-    return wifi_settings_t{
+    return wifi_settings_t {
         .ssid = FACTORY_WIFI_SSID,
         .bssid = {0},
         .channel = -1,
@@ -98,7 +98,7 @@ class WiFiSettings {
     std::string hostname;
     bool priorityBySignalStrength;
     std::vector<wifi_settings_t> wifiSettings;
-    
+
     static void read(const WiFiSettings& settings, socket_message_WifiSettingsData& proto) {
         strlcpy(proto.hostname, settings.hostname.c_str(), sizeof(proto.hostname));
         proto.priority_rssi = settings.priorityBySignalStrength;
@@ -108,19 +108,19 @@ class WiFiSettings {
         }
         ESP_LOGV("WiFiSettings", "WiFi Settings read");
     }
-    
+
     static StateUpdateResult update(const socket_message_WifiSettingsData& proto, WiFiSettings& settings) {
         settings.hostname = strlen(proto.hostname) > 0 ? proto.hostname : FACTORY_WIFI_HOSTNAME;
         settings.priorityBySignalStrength = proto.priority_rssi;
         settings.wifiSettings.clear();
-        
+
         for (size_t i = 0; i < proto.wifi_networks_count && i < 8; i++) {
             wifi_settings_t newSettings;
             if (newSettings.fromProto(proto.wifi_networks[i])) {
                 settings.wifiSettings.push_back(newSettings);
             }
         }
-        
+
         if (settings.wifiSettings.empty() && std::string(FACTORY_WIFI_SSID).length() > 0) {
             ESP_LOGI("WiFiSettings", "No WiFi config found - using factory settings");
             settings.wifiSettings.push_back(createDefaultWiFiSettings());

@@ -74,7 +74,7 @@ esp_err_t MDNSService::getStatus(HttpRequest& request) {
 void MDNSService::getStatus(socket_message_MDNSStatusData& proto) {
     strlcpy(proto.hostname, state().hostname.c_str(), sizeof(proto.hostname));
     strlcpy(proto.instance, state().instance.c_str(), sizeof(proto.instance));
-    proto.services_count = std::min((pb_size_t)10, (pb_size_t)state().services.size());
+    proto.services_count = std::min((pb_size_t)4, (pb_size_t)state().services.size());
     for (pb_size_t i = 0; i < proto.services_count; i++) {
         state().services[i].toProto(proto.services[i]);
     }
@@ -92,7 +92,7 @@ esp_err_t MDNSService::queryServices(HttpRequest& request) {
     ESP_LOGI(TAG, "Found %d services", n);
 
     socket_message_MDNSQueryResponse response = socket_message_MDNSQueryResponse_init_zero;
-    response.services_count = std::min(n, 10);
+    response.services_count = std::min(n, 8);
 
     for (int i = 0; i < (int)response.services_count; i++) {
         strlcpy(response.services[i].hostname, MDNS.hostname(i).c_str(), sizeof(response.services[i].hostname));

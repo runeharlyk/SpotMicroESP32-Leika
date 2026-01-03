@@ -34,7 +34,7 @@ socket_message.APStatusData.mac_address max_size:18
 socket_message.NetworkInfo.ssid max_size:33
 socket_message.NetworkInfo.bssid max_size:18
 
-socket_message.NetworkListData.networks max_count:20
+socket_message.NetworkListData.networks max_count:12
 
 socket_message.NetworkStatusData.local_ip max_size:16
 socket_message.NetworkStatusData.mac_address max_size:18
@@ -45,39 +45,39 @@ socket_message.NetworkStatusData.gateway_ip max_size:16
 socket_message.NetworkStatusData.dns_ip_1 max_size:16
 socket_message.NetworkStatusData.dns_ip_2 max_size:16
 
-socket_message.MDNSTxtRecord.key max_size:32
-socket_message.MDNSTxtRecord.value max_size:64
+socket_message.MDNSTxtRecord.key max_size:24
+socket_message.MDNSTxtRecord.value max_size:48
 
-socket_message.MDNSServiceConfig.service max_size:32
+socket_message.MDNSServiceConfig.service max_size:16
 socket_message.MDNSServiceConfig.protocol max_size:8
-socket_message.MDNSServiceConfig.txt_records max_count:10
+socket_message.MDNSServiceConfig.txt_records max_count:4
 
-socket_message.MDNSSettingsData.hostname max_size:64
-socket_message.MDNSSettingsData.instance max_size:64
-socket_message.MDNSSettingsData.services max_count:10
-socket_message.MDNSSettingsData.global_txt_records max_count:10
+socket_message.MDNSSettingsData.hostname max_size:32
+socket_message.MDNSSettingsData.instance max_size:32
+socket_message.MDNSSettingsData.services max_count:4
+socket_message.MDNSSettingsData.global_txt_records max_count:4
 
-socket_message.MDNSStatusData.hostname max_size:64
-socket_message.MDNSStatusData.instance max_size:64
-socket_message.MDNSStatusData.services max_count:10
+socket_message.MDNSStatusData.hostname max_size:32
+socket_message.MDNSStatusData.instance max_size:32
+socket_message.MDNSStatusData.services max_count:4
 
-socket_message.MDNSQueryRequest.service max_size:32
+socket_message.MDNSQueryRequest.service max_size:16
 socket_message.MDNSQueryRequest.protocol max_size:8
 
-socket_message.MDNSQueryResult.hostname max_size:64
+socket_message.MDNSQueryResult.hostname max_size:32
 socket_message.MDNSQueryResult.address max_size:16
-socket_message.MDNSQueryResult.txt_records max_count:10
+socket_message.MDNSQueryResult.txt_records max_count:4
 
-socket_message.MDNSQueryResponse.services max_count:10
+socket_message.MDNSQueryResponse.services max_count:8
 
-socket_message.FileEntry.name max_size:64
-socket_message.FileListData.files max_count:32
-socket_message.FileListData.path max_size:128
-socket_message.FileDeleteRequest.file max_size:128
-socket_message.FileEditRequest.file max_size:128
-socket_message.FileEditRequest.content max_size:4096
-socket_message.FileMkdirRequest.path max_size:128
-socket_message.FileContentData.content max_size:4096
+socket_message.FileEntry.name max_size:48
+socket_message.FileListData.files max_count:24
+socket_message.FileListData.path max_size:96
+socket_message.FileDeleteRequest.file max_size:96
+socket_message.FileEditRequest.file max_size:96
+socket_message.FileEditRequest.content max_size:2048
+socket_message.FileMkdirRequest.path max_size:96
+socket_message.FileContentData.content max_size:2048
 
 socket_message.SystemStatusData.esp_platform max_size:32
 socket_message.SystemStatusData.firmware_version max_size:16

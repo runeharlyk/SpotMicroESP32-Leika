@@ -12,7 +12,7 @@
 class MDNSService : public StatefulService<MDNSSettings> {
   private:
     FSPersistence<MDNSSettings, socket_message_MDNSSettingsData> _persistence;
-    bool _started{false};
+    bool _started {false};
 
     void reconfigureMDNS();
     void startMDNS();

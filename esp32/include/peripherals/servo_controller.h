@@ -22,7 +22,8 @@ class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
         : endpoint(ServoSettings::read, ServoSettings::update, this, socket_message_ServoSettingsData_fields),
-          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE, socket_message_ServoSettingsData_fields) {}
+          _persistence(ServoSettings::read, ServoSettings::update, this, SERVO_SETTINGS_FILE,
+                       socket_message_ServoSettingsData_fields) {}
 
     void begin() {
         _persistence.readFromFS();
@@ -105,7 +106,7 @@ class ServoController : public StatefulService<ServoSettings> {
 
     SERVO_CONTROL_STATE control_state = SERVO_CONTROL_STATE::DEACTIVATED;
 
-    bool is_active{false};
+    bool is_active {false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };

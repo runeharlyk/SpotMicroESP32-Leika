@@ -101,7 +101,8 @@ class StatefulService {
     }
 
     template <typename ProtoT>
-    StateUpdateResult update(const ProtoT& proto, ProtoStateUpdater<T, ProtoT> stateUpdater, const std::string& originId) {
+    StateUpdateResult update(const ProtoT& proto, ProtoStateUpdater<T, ProtoT> stateUpdater,
+                             const std::string& originId) {
         lock();
         StateUpdateResult result = stateUpdater(proto, state_);
         unlock();
