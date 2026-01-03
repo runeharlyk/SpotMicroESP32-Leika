@@ -14,10 +14,10 @@ typedef struct {
 class ServoSettings {
   public:
     servo_settings_t servos[12] = {
-        {306, -1, 0, 2.2, "Servo1"}, {306, 1, -45, 2.1055555, "Servo2"},  {306, 1, 90, 1.96923, "Servo3"},
-        {306, -1, 0, 2.2, "Servo4"}, {306, -1, 45, 2.1055555, "Servo5"},  {306, -1, -90, 1.96923, "Servo6"},
-        {306, 1, 0, 2.2, "Servo7"},  {306, 1, -45, 2.1055555, "Servo8"},  {306, 1, 90, 1.96923, "Servo9"},
-        {306, 1, 0, 2.2, "Servo10"}, {306, -1, 45, 2.1055555, "Servo11"}, {306, -1, -90, 1.96923, "Servo12"}};
+        {306, -1, 0, 2, "Servo1"}, {306, 1, -45, 2, "Servo2"},  {306, 1, 90, 2, "Servo3"},
+        {306, -1, 0, 2, "Servo4"}, {306, -1, 45, 2, "Servo5"},  {306, -1, -90, 2, "Servo6"},
+        {306, 1, 0, 2, "Servo7"},  {306, 1, -45, 2, "Servo8"},  {306, 1, 90, 2, "Servo9"},
+        {306, 1, 0, 2, "Servo10"}, {306, -1, 45, 2, "Servo11"}, {306, -1, -90, 2, "Servo12"}};
 
     static void read(const ServoSettings& settings, socket_message_ServoSettingsData& proto) {
         proto.servos_count = 12;
