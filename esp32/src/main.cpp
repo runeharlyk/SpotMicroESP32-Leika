@@ -46,9 +46,6 @@ void setupServer() {
     server.config.max_uri_handlers = 50 + WWW_ASSETS_COUNT;
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
-    server.on("/api/features", feature_service::getFeatures);
-    server.on("/api/system/status", HTTP_GET,
-              [&](PsychicRequest *request) { return system_service::getStatus(request); });
     server.on("/api/system/reset", HTTP_POST,
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleReset(request); });
     server.on("/api/system/restart", HTTP_POST,
@@ -162,21 +159,32 @@ void setupEventSocket() {
     using CorrelationHandler =
         std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &)>;
     static std::map<pb_size_t, CorrelationHandler> correlationHandlers = {
-        {socket_message_CorrelationRequest_features_data_request_tag,
+        {socket_message_CorrelationRequest_features_data_request_tag, // Features data
          [](const auto &req, auto &res) {
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
              feature_service::features_request(req.request.features_data_request, res.response.features_data_response);
          }},
-        {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
+
+        {socket_message_CorrelationRequest_i2c_scan_data_request_tag, // i2c data
          [](const auto &req, auto &res) {
              res.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
              peripherals.scanI2C();
              peripherals.getI2CScanProto(res.response.i2c_scan_data);
          }},
-        {socket_message_CorrelationRequest_imu_calibrate_execute_tag,
+
+        {socket_message_CorrelationRequest_imu_calibrate_execute_tag, // Calibration request
          [](const auto &req, auto &res) {
              res.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
              res.response.imu_calibrate_data.success = peripherals.calibrateIMU();
+         }},
+
+         {socket_message_CorrelationRequest_system_information_request_tag, // All system information data
+         [](const auto &req, auto &res) {
+            res.which_response = socket_message_CorrelationResponse_system_information_response_tag;
+            res.response.system_information_response.has_analytics_data = true;
+            res.response.system_information_response.has_static_system_information = true;
+            system_service::getAnalytics(res.response.system_information_response.analytics_data);
+            system_service::getStaticSystemInformation(res.response.system_information_response.static_system_information);
          }},
     };
 

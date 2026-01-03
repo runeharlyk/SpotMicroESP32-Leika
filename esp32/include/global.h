@@ -4,23 +4,23 @@
 
 #if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
 #include "esp32/rom/rtc.h"
-#ifndef ESP_PLATFORM
-#define ESP_PLATFORM "ESP32"
+#ifndef ESP_PLATFORM_NAME
+#define ESP_PLATFORM_NAME "ESP32"
 #endif
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32/rom/rtc.h"
-#ifndef ESP_PLATFORM
-#define ESP_PLATFORM "ESP32-S2"
+#ifndef ESP_PLATFORM_NAME
+#define ESP_PLATFORM_NAME "ESP32-S2"
 #endif
 #elif CONFIG_IDF_TARGET_ESP32C3
 #include "esp32c3/rom/rtc.h"
-#ifndef ESP_PLATFORM
-#define ESP_PLATFORM "ESP32-C3"
+#ifndef ESP_PLATFORM_NAME
+#define ESP_PLATFORM_NAME "ESP32-C3"
 #endif
 #elif CONFIG_IDF_TARGET_ESP32S3
 #include "esp32s3/rom/rtc.h"
-#ifndef ESP_PLATFORM
-#define ESP_PLATFORM "ESP32-S3"
+#ifndef ESP_PLATFORM_NAME
+#define ESP_PLATFORM_NAME "ESP32-S3"
 #endif
 #else
 #error Target CONFIG_IDF_TARGET is not supported

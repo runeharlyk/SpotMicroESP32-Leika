@@ -19,6 +19,7 @@ message IMUData {
     float pressure = 7;
 }
 
+// FEATURE DATA
 message FeaturesDataResponse {
     string variant = 10;
     string firmware_built_target = 20;
@@ -38,12 +39,21 @@ message FeaturesDataResponse {
 
 message FeaturesDataRequest { }
 
+// SYSTEM INFORMATION
+
+message SystemInformationRequest { }
+message SystemInformationResponse {
+    AnalyticsData analytics_data = 1;
+    StaticSystemInformation static_system_information = 2;
+}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
         FeaturesDataRequest features_data_request = 10;
         I2CScanDataRequest i2c_scan_data_request = 20;
         IMUCalibrateExecute imu_calibrate_execute = 30;
+        SystemInformationRequest system_information_request = 40;
     }
 }
 
@@ -54,6 +64,7 @@ message CorrelationResponse {
         FeaturesDataResponse features_data_response = 10;
         I2CScanData i2c_scan_data = 20;
         IMUCalibrateData imu_calibrate_data = 30;
+        SystemInformationResponse system_information_response = 40;
     }
 }
 
