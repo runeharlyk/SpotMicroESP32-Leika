@@ -56,4 +56,5 @@ jobs:
         working-directory: ./app
 
       - name: Build Protocol Buffers (Typescript)
-        run: protoc --plugin="protoc-gen-ts_proto=./app/node_modules/.bin/protoc-gen-ts_proto" --ts_proto_out="./app/src/lib/platform_shared" --ts_proto_opt=outputSchema=true --proto_path "./platform_shared" ./platform_shared/websocket_message.proto ./platform_shared/rest_message.proto
+        run: pnpm proto
+        working-directory: ./app

@@ -6,5 +6,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pio
-esp32/src/platform_shared
-app/src/lib/platform_shared
+esp32/src/platform_shared/*
+!esp32/src/platform_shared/.gitkeep
+app/src/lib/platform_shared/*
+!app/src/lib/platform_shared/.gitkeep
