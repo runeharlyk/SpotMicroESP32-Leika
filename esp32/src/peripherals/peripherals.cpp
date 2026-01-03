@@ -52,18 +52,7 @@ void Peripherals::updatePins() {
     }
 }
 
-void Peripherals::getI2CResult(JsonVariant &root) {
-    char output[150];
-    root["sda"] = state().sda;
-    root["scl"] = state().scl;
-    JsonArray addresses = root["addresses"].to<JsonArray>();
-    for (auto &address : addressList) {
-        addresses.add(address);
-    }
-    ESP_LOGI("Peripherals", "Emitting I2C scan results: %d", addressList.size());
-}
-
-void Peripherals::getI2CResultProto(socket_message_I2CScanData &data) {
+void Peripherals::getI2CScanProto(socket_message_I2CScanData &data) {
     data.devices_count = 0;
     for (auto &address : addressList) {
         if (data.devices_count >= 16) break;
@@ -195,29 +184,6 @@ gesture_t Peripherals::takeGesture() {
 
 float Peripherals::leftDistance() { return _left_distance; }
 float Peripherals::rightDistance() { return _right_distance; }
-
-void Peripherals::getIMUResult(JsonVariant &root) {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    JsonVariant imu = root["imu"].to<JsonVariant>();
-    _imu.getResults(imu);
-#endif
-#if FT_ENABLED(USE_HMC5883)
-    JsonVariant mag = root["mag"].to<JsonVariant>();
-    _mag.getResults(mag);
-#endif
-#if FT_ENABLED(USE_BMP180)
-    JsonVariant bmp = root["bmp"].to<JsonVariant>();
-    _bmp.getResults(bmp);
-#endif
-}
-
-void Peripherals::getSonarResult(JsonVariant &root) {
-#if FT_ENABLED(USE_USS)
-    JsonArray array = root.to<JsonArray>();
-    array[0] = _left_distance;
-    array[1] = _right_distance;
-#endif
-}
 
 bool Peripherals::calibrateIMU() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)

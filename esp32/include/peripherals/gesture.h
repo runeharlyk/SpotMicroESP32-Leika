@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Wire.h>
-#include <ArduinoJson.h>
 
 enum gesture_t : uint16_t {
     eGestureNone = 0x0000,
@@ -21,16 +20,6 @@ enum orient_t : uint8_t { kRot0 = 0, kRot90, kRot180, kRot270 };
 struct GestureMsg {
     gesture_t gesture {eGestureNone};
     bool success {false};
-    friend void toJson(JsonVariant v, GestureMsg const& a) {
-        JsonArray arr = v.to<JsonArray>();
-        arr.add(static_cast<uint16_t>(a.gesture));
-        arr.add(a.success);
-    }
-    void fromJson(JsonVariantConst o) {
-        JsonArrayConst arr = o.as<JsonArrayConst>();
-        gesture = static_cast<gesture_t>(arr[0].as<uint16_t>());
-        success = arr[1].as<bool>();
-    }
 };
 
 class PAJ7620U2 {

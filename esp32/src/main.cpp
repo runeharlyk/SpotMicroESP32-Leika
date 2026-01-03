@@ -155,7 +155,7 @@ void setupEventSocket() {
     socket.on<socket_message_I2CScanDataRequest>([&](const socket_message_I2CScanDataRequest &data, int clientId) {
         peripherals.scanI2C();
         socket_message_I2CScanData result = socket_message_I2CScanData_init_zero;
-        peripherals.getI2CResultProto(result);
+        peripherals.getI2CScanProto(result);
         socket.emit(result, clientId);
     });
 

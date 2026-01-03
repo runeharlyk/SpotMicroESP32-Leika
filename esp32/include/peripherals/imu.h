@@ -1,9 +1,7 @@
 #pragma once
 
-#include <list>
 #include <SPI.h>
 #include <Wire.h>
-#include <ArduinoJson.h>
 #include <utils/math_utils.h>
 
 #if FT_ENABLED(USE_MPU6050)
@@ -16,30 +14,10 @@
 
 #include <peripherals/sensor.hpp>
 
-struct IMUAnglesMsg : public SensorMessageBase {
+struct IMUAnglesMsg {
     float rpy[3] {0, 0, 0};
     float temperature {-1};
     bool success {false};
-
-    void toJson(JsonVariant v) const override {
-        JsonArray arr = v.to<JsonArray>();
-        arr.add(rpy[0]);
-        arr.add(rpy[1]);
-        arr.add(rpy[2]);
-        arr.add(temperature);
-        arr.add(success);
-    }
-
-    void fromJson(JsonVariantConst v) override {
-        JsonArrayConst arr = v.as<JsonArrayConst>();
-        rpy[0] = arr[0] | -1.0f;
-        rpy[1] = arr[1] | -1.0f;
-        rpy[2] = arr[2] | -1.0f;
-        temperature = arr[3] | -1.0f;
-        success = arr[4] | false;
-    }
-
-    friend void toJson(JsonVariant v, IMUAnglesMsg const& a) { a.toJson(v); }
 };
 
 class IMU : public SensorBase<IMUAnglesMsg> {
