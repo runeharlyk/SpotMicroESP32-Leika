@@ -9,11 +9,7 @@
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
-    import {
-        IMUCalibrateData,
-        IMUCalibrateExecute,
-        IMUData
-    } from '$lib/platform_shared/websocket_message'
+    import { type IMUCalibrateData, IMUData } from '$lib/platform_shared/websocket_message'
 
     Chart.register(...registerables)
 
@@ -216,37 +212,31 @@
             )
         }
     }
-    const eventListeners: (() => void)[] = []
+    let unsubscribeImu: (() => void) | undefined
     onMount(() => {
-        eventListeners.push(
-            ...[
-                socket.on(IMUData, data => {
-                    console.log(data)
-                    imu.addData(data)
-                }),
-
-                socket.on(IMUCalibrateData, data => {
-                    isCalibrating = false
-                    calibrationResult = data
-                })
-            ]
-        )
+        unsubscribeImu = socket.on(IMUData, data => {
+            console.log(data)
+            imu.addData(data)
+        })
 
         initializeCharts()
         intervalId = setInterval(updateData, 200)
     })
 
     onDestroy(() => {
-        for (let offFunction of eventListeners) {
-            offFunction()
-        }
+        unsubscribeImu?.()
         clearInterval(intervalId)
     })
 
-    function startCalibration() {
+    async function startCalibration() {
         isCalibrating = true
         calibrationResult = null
-        socket.sendEvent(IMUCalibrateExecute, {})
+        try {
+            const response = await socket.request({ imuCalibrateExecute: {} })
+            calibrationResult = response.imuCalibrateData ?? null
+        } finally {
+            isCalibrating = false
+        }
     }
 </script>
 
