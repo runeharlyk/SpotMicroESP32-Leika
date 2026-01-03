@@ -168,7 +168,7 @@ function createWebSocket() {
         }
     }
 
-    function unsubscribe_event(event_type: SocketEvent, listener: (data: unknown) => void) {
+    function unsubscribeEvent(event_type: SocketEvent, listener: (data: unknown) => void) {
         const message_listeners_totag = event_listeners.get(event_type)
         if (!message_listeners_totag) return
 
@@ -180,7 +180,7 @@ function createWebSocket() {
         unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime)
     }
 
-    function sendEvent<T>(event: MessageFns<T>, data: T) {
+    function emit<T>(event: MessageFns<T>, data: T) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return
         const type = getNameFromMessageType(event)
         const wsm = Message.create() as Record<string, unknown>
@@ -221,7 +221,7 @@ function createWebSocket() {
         send(Message.create({ pingmsg: {} }))
     }
 
-    function sendRequest(
+    function request(
         data: CorrelationRequestData,
         resolve: (r: CorrelationResponse) => void,
         reject: (e: Error) => void
@@ -240,14 +240,14 @@ function createWebSocket() {
 
     function flushQueuedRequests() {
         for (const [, { data, resolve, reject }] of queued_requests) {
-            sendRequest(data, resolve, reject)
+            request(data, resolve, reject)
         }
         queued_requests.clear()
     }
 
     return {
         subscribe,
-        sendEvent,
+        emit,
         init,
         on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
             const tag = getTagFromMessageType(event_type)
@@ -272,13 +272,13 @@ function createWebSocket() {
             }
             listeners.add(listener)
             return () => {
-                unsubscribe_event(event_type, listener)
+                unsubscribeEvent(event_type, listener)
             }
         },
         request: (data: CorrelationRequestData): Promise<CorrelationResponse> => {
             return new Promise((resolve, reject) => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    sendRequest(data, resolve, reject)
+                    request(data, resolve, reject)
                 } else {
                     const key = getRequestKey(data)
                     const existing = queued_requests.get(key)

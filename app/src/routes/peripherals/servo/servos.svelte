@@ -12,16 +12,16 @@
     const throttler = new Throttler()
 
     const activateServo = () => {
-        socket.sendEvent(ServoStateData, ServoStateData.create({ active: true }))
+        socket.emit(ServoStateData, ServoStateData.create({ active: true }))
     }
 
     const deactivateServo = () => {
-        socket.sendEvent(ServoStateData, ServoStateData.create({ active: false }))
+        socket.emit(ServoStateData, ServoStateData.create({ active: false }))
     }
 
     const updatePWM = () => {
         throttler.throttle(() => {
-            socket.sendEvent(ServoPWMData, ServoPWMData.create({ servoId: servoId, servoPwm: pwm }))
+            socket.emit(ServoPWMData, ServoPWMData.create({ servoId: servoId, servoPwm: pwm }))
         }, 10)
     }
 

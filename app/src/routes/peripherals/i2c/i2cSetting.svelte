@@ -14,7 +14,7 @@
 
     onMount(() => {
         let unsub = socket.on(PeripheralSettingsData, handleSettings)
-        socket.sendEvent(PeripheralSettingsDataRequest, {})
+        socket.emit(PeripheralSettingsDataRequest, {})
         return unsub
     })
 
@@ -33,7 +33,7 @@
             },
             onConfirm: () => {
                 modals.close()
-                socket.sendEvent(PeripheralSettingsData, settings)
+                socket.emit(PeripheralSettingsData, settings)
             }
         })
     }

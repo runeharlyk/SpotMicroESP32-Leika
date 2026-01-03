@@ -47,15 +47,13 @@
 
         addEventListeners()
 
-        input.subscribe(data =>
-            throttler.throttle(() => socket.sendEvent(ControllerData, data), 100)
-        )
-        mode.subscribe(data => socket.sendEvent(ModeData, data))
-        walkGait.subscribe(data => socket.sendEvent(WalkGaitData, data))
+        input.subscribe(data => throttler.throttle(() => socket.emit(ControllerData, data), 100))
+        mode.subscribe(data => socket.emit(ModeData, data))
+        walkGait.subscribe(data => socket.emit(WalkGaitData, data))
         servoAnglesOut.subscribe(data =>
-            throttler.throttle(() => socket.sendEvent(AnglesData, data), 100)
+            throttler.throttle(() => socket.emit(AnglesData, data), 100)
         )
-        kinematicData.subscribe(data => socket.sendEvent(KinematicData, data))
+        kinematicData.subscribe(data => socket.emit(KinematicData, data))
     })
 
     onDestroy(() => {
