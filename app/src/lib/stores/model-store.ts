@@ -1,6 +1,6 @@
 import Kinematic from '$lib/kinematic'
 import {
-    HumanInputData,
+    ControllerData,
     KinematicData,
     ModeData,
     ModesEnum,
@@ -24,8 +24,8 @@ export const walkGait: Writable<WalkGaitData> = writable(
 
 export const kinematicData = writable(KinematicData.create())
 
-export const input: Writable<HumanInputData> = writable(
-    HumanInputData.create({
+export const input: Writable<ControllerData> = writable(
+    ControllerData.create({
         left: { x: 0, y: 0 },
         right: { x: 0, y: 0 },
         height: 0.7,

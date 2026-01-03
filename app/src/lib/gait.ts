@@ -1,7 +1,7 @@
 import { get } from 'svelte/store'
 import type { body_state_t } from './kinematic'
 import { currentKinematic } from './stores/featureFlags'
-import { HumanInputData, WalkGaits } from './platform_shared/message'
+import { ControllerData, WalkGaits } from './platform_shared/message'
 
 export interface gait_state_t {
     step_height: number
@@ -53,7 +53,7 @@ export abstract class GaitState {
     end() {
         console.log('Ending', this.name)
     }
-    step(body_state: body_state_t, command: HumanInputData, dt: number = 0.02) {
+    step(body_state: body_state_t, command: ControllerData, dt: number = 0.02) {
         this.map_command(command)
         this.body_state = body_state
         this.dt = dt / 1000
@@ -70,7 +70,7 @@ export abstract class GaitState {
         return body_state
     }
 
-    map_command(command: HumanInputData) {
+    map_command(command: ControllerData) {
         const kin = this.kinematic
         this.gait_state = {
             step_height: command.s1 * kin.max_step_height,
@@ -85,7 +85,7 @@ export abstract class GaitState {
 
 export class IdleState extends GaitState {
     protected name = 'Idle'
-    step(body_state: body_state_t, command: HumanInputData) {
+    step(body_state: body_state_t, command: ControllerData) {
         super.step(body_state, command)
         return body_state
     }
@@ -94,7 +94,7 @@ export class IdleState extends GaitState {
 export class CalibrationState extends GaitState {
     protected name = 'Calibration'
 
-    step(body_state: body_state_t, _command: HumanInputData) {
+    step(body_state: body_state_t, _command: ControllerData) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
@@ -110,7 +110,7 @@ export class CalibrationState extends GaitState {
 export class RestState extends GaitState {
     protected name = 'Rest'
 
-    step(body_state: body_state_t, _command: HumanInputData) {
+    step(body_state: body_state_t, _command: ControllerData) {
         super.step(body_state, _command)
         body_state.omega = 0
         body_state.phi = 0
@@ -126,7 +126,7 @@ export class RestState extends GaitState {
 export class StandState extends GaitState {
     protected name = 'Stand'
 
-    step(body_state: body_state_t, command: HumanInputData) {
+    step(body_state: body_state_t, command: ControllerData) {
         super.step(body_state, command)
         const kin = this.kinematic
         body_state.omega = 0
@@ -189,7 +189,7 @@ export class BezierState extends GaitState {
         super.end()
     }
 
-    step(body_state: body_state_t, command: HumanInputData, dt: number = 0.02) {
+    step(body_state: body_state_t, command: ControllerData, dt: number = 0.02) {
         super.step(body_state, command, dt)
         const kin = this.kinematic
         this.body_state.ym = kin.min_body_height + command.height * kin.body_height_range

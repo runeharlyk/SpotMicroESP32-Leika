@@ -23,7 +23,7 @@
     import {
         AnglesData,
         DownloadOTAData,
-        HumanInputData,
+        ControllerData,
         KinematicData,
         ModeData,
         RSSIData,
@@ -48,7 +48,7 @@
         addEventListeners()
 
         input.subscribe(data =>
-            throttler.throttle(() => socket.sendEvent(HumanInputData, data), 100)
+            throttler.throttle(() => socket.sendEvent(ControllerData, data), 100)
         )
         mode.subscribe(data => socket.sendEvent(ModeData, data))
         walkGait.subscribe(data => socket.sendEvent(WalkGaitData, data))

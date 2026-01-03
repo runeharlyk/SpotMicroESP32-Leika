@@ -139,7 +139,7 @@ message DownloadOTAData { string status = 1; int32 progress = 2; string error = 
 
 message SonarData { string dummy_field = 1; }
 
-message HumanInputData {
+message ControllerData {
     Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
 }
 
@@ -198,7 +198,7 @@ message Message {
         ServoPWMData servo_pwm = 210;
         ServoStateData servo_state = 211;
         WifiSettingsData wifi_settings = 240;
-        HumanInputData human_input_data = 250;
+        ControllerData controller_data = 250;
         RSSIData rssi = 260;
     }
 }
