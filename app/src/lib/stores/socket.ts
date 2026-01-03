@@ -9,6 +9,7 @@ import * as WebsocketMessages from '$lib/platform_shared/websocket_message'
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
 export const MESSAGE_KEY_TO_TAG = new Map<string, number>()
+export const MESSAGE_TAG_TO_KEY = new Map<number, string>()
 
 const websocketMessageType = websocket_md.fileDescriptor.messageType?.find(
     (msg: { name: string }) => msg.name === 'WebsocketMessage'
@@ -22,6 +23,7 @@ if (websocketMessageType?.field) {
                 MESSAGE_TYPE_TO_KEY.set(messageFns, field.jsonName)
                 MESSAGE_TYPE_TO_TAG.set(messageFns, field.number)
                 MESSAGE_KEY_TO_TAG.set(field.jsonName, field.number)
+                MESSAGE_TAG_TO_KEY.set(field.number, field.jsonName)
             }
         }
     }
@@ -74,7 +76,7 @@ function createWebSocket() {
     const message_listeners = new Map<number, Set<(data?: unknown) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
     const { subscribe, set } = writable(false)
-    const reconnectTimeoutTime = 5000
+    const reconnectTimeoutTime = 500000
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
     let reconnectTimeoutId: ReturnType<typeof setTimeout>
     let ws: WebSocket
@@ -107,7 +109,10 @@ function createWebSocket() {
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
             const { tag, msg } = decodeMessage(frame.data)
-            if (tag) message_listeners.get(tag)?.forEach(listener => listener(msg))
+            if (tag) {
+                const key = MESSAGE_TAG_TO_KEY.get(tag)!
+                message_listeners.get(tag)?.forEach(listener => listener(msg[key as keyof typeof msg]))
+            }
         }
         ws.onerror = ev => disconnect('error', ev)
         ws.onclose = ev => disconnect('close', ev)
