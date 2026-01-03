@@ -1,9 +1,9 @@
-import { api } from '$lib/api'
 import { notifications } from '$lib/components/toasts/notifications'
 import Kinematic from '$lib/kinematic'
 import { persistentStore } from '$lib/utilities'
 import { derived, type Writable } from 'svelte/store'
 import { resolve } from '$app/paths'
+import { socket } from '$lib/stores'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
 
@@ -11,12 +11,20 @@ export function useFeatureFlags() {
     if (!featureFlagsStore) {
         featureFlagsStore = persistentStore<Record<string, boolean | string>>('FeatureFlags', {})
 
-        api.get<Record<string, boolean>>('/api/features').then(result => {
-            if (result.isOk()) featureFlagsStore.set(result.inner)
-            else {
-                notifications.error('Feature flag could not be fetched', 2500)
-            }
-        })
+        socket
+            .request({ featuresDataRequest: {} })
+            .then(response => {
+                if (response.featuresDataResponse) {
+                    featureFlagsStore.set(
+                        response.featuresDataResponse as unknown as Record<string, boolean | string>
+                    )
+                } else {
+                    notifications.error('Feature flags could not be fetched', 2500)
+                }
+            })
+            .catch(() => {
+                notifications.error('Feature flags could not be fetched', 2500)
+            })
     }
 
     return featureFlagsStore
