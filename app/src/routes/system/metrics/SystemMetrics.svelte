@@ -24,14 +24,14 @@
         heapChart = new Chart(heapChartElement, {
             type: 'line',
             data: {
-                labels: $analytics.uptime,
+                labels: $analytics.map(datapoint => datapoint.uptime),
                 datasets: [
                     {
                         label: 'Used Heap',
                         borderColor: daisyColor('--color-primary'),
                         backgroundColor: daisyColor('--color-primary', 50),
                         borderWidth: 2,
-                        data: $analytics.used_heap,
+                        data: $analytics.map(datapoint => datapoint.totalHeap - datapoint.freeHeap),
                         fill: true,
                         yAxisID: 'y'
                     }
@@ -77,7 +77,7 @@
                         },
                         position: 'left',
                         min: 0,
-                        max: Math.round($analytics.total_heap[0]),
+                        max: Math.round($analytics[0]?.totalHeap ?? 0),
                         grid: { color: daisyColor('--color-base-content', 10) },
                         ticks: {
                             color: daisyColor('--color-base-content')
@@ -90,14 +90,14 @@
         filesystemChart = new Chart(filesystemChartElement, {
             type: 'line',
             data: {
-                labels: $analytics.uptime,
+                labels: $analytics.map(datapoint => datapoint.uptime),
                 datasets: [
                     {
                         label: 'File System Used',
                         borderColor: daisyColor('--color-primary'),
                         backgroundColor: daisyColor('--color-primary', 50),
                         borderWidth: 2,
-                        data: $analytics.fs_used,
+                        data: $analytics.map(datapoint => datapoint.fsUsed),
                         fill: true,
                         yAxisID: 'y'
                     }
@@ -143,7 +143,7 @@
                         },
                         position: 'left',
                         min: 0,
-                        max: Math.round($analytics.fs_total[0]),
+                        max: Math.round($analytics[0]?.fsTotal ?? 0),
                         grid: { color: daisyColor('--color-base-content', 10) },
                         ticks: {
                             color: daisyColor('--color-base-content')
@@ -156,14 +156,14 @@
         temperatureChart = new Chart(temperatureChartElement, {
             type: 'line',
             data: {
-                labels: $analytics.uptime,
+                labels: $analytics.map(datapoint => datapoint.uptime),
                 datasets: [
                     {
                         label: 'Core Temperature',
                         borderColor: daisyColor('--color-primary'),
                         backgroundColor: daisyColor('--color-primary', 50),
                         borderWidth: 2,
-                        data: $analytics.core_temp,
+                        data: $analytics.map(datapoint => datapoint.coreTemp),
                         yAxisID: 'y'
                     }
                 ]
@@ -222,18 +222,18 @@
     })
 
     function updateData() {
-        heapChart.data.labels = $analytics.uptime
-        heapChart.data.datasets[0].data = $analytics.used_heap
-        heapChart.options.scales!.y!.max = Math.ceil($analytics.total_heap[0])
+        heapChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
+        heapChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.totalHeap - datapoint.freeHeap)
+        heapChart.options.scales!.y!.max = Math.ceil($analytics[0]?.totalHeap ?? 0)
         heapChart.update('none')
 
-        filesystemChart.data.labels = $analytics.uptime
-        filesystemChart.data.datasets[0].data = $analytics.fs_used
-        heapChart.options.scales!.y!.max = Math.ceil($analytics.fs_total[0])
+        filesystemChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
+        filesystemChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.fsUsed)
+        heapChart.options.scales!.y!.max = Math.ceil($analytics[0]?.fsTotal ?? 0)
         filesystemChart.update('none')
 
-        temperatureChart.data.labels = $analytics.uptime
-        temperatureChart.data.datasets[0].data = $analytics.core_temp
+        temperatureChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
+        temperatureChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.coreTemp)
         temperatureChart.update('none')
     }
 </script>
