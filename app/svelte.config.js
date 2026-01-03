@@ -17,6 +17,9 @@ const config = {
         }),
         paths: {
             base: basePath
+        },
+        output: {
+            bundleStrategy: 'single'
         }
     }
 }
