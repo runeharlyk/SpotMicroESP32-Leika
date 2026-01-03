@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.2.0]
+
+### Added
+
+- Implemented cumulative robot displacement in the visualization [#161](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/161)
+- Adds gesture control [#157](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/157)
+- Stand mode imu compensation [#155](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/155)
+
+### Changed
+
+- Protobuf replacement for JSON and MsgPack communication between Svelte and ESP32 [#164](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/164)
+- Removed the used of Arduino strings [#160](https://github.com/runeharlyk/SpotMicroESP32-Leika/pull/160)
+
+## [0.1.0]
 
 ### Added
 
