@@ -38,6 +38,8 @@ export { default as FolderOpenOutline } from '~icons/mdi/folder-open-outline'
 export { default as TrashIcon } from '~icons/mdi/trash'
 export { default as RotateCcw } from '~icons/mdi/rotate-left'
 export { default as RotateCw } from '~icons/mdi/rotate-right'
+export { default as UploadIcon } from '~icons/mdi/upload'
+export { default as DownloadIcon } from '~icons/mdi/download'
 
 export { default as Down } from '~icons/tabler/chevron-down'
 export { default as Cancel } from '~icons/tabler/x'
