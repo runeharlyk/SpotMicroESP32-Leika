@@ -16,10 +16,9 @@ message File {
     uint32 size = 20;
 }
 
+// Represents a single directory entry (metadata only)
 message Directory {
-    string name = 10;
-    repeated File files = 20;
-    repeated Directory directories = 30;
+    string name = 1;
 }
 
 // Delete a file or directory
