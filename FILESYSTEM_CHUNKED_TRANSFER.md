@@ -156,6 +156,35 @@ await fileSystemClient.createDirectory('/new_folder')
 await fileSystemClient.deleteFile('/old_file.txt')
 ```
 
+## Build Integration
+
+### Protobuf Compilation
+
+After modifying [platform_shared/message.proto](platform_shared/message.proto), you must regenerate the protobuf code:
+
+**ESP32:**
+```bash
+python esp32/scripts/compile_protos.py
+```
+
+**Client (TypeScript):**
+```bash
+cd app && pnpm proto
+```
+
+**Or build the app (which automatically compiles protos):**
+```bash
+cd app && pnpm build
+```
+
+### PlatformIO Build
+
+The ESP32 implementation files are automatically included in the build:
+- [esp32/include/filesystem_ws.h](esp32/include/filesystem_ws.h)
+- [esp32/src/filesystem_ws.cpp](esp32/src/filesystem_ws.cpp)
+
+Make sure these files are in your source paths in `platformio.ini`.
+
 ## Configuration
 
 ### Maximum Chunk Size
