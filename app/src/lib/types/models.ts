@@ -109,11 +109,6 @@ export type CameraSettings = {
     hmirror: boolean
 }
 
-export type File = number
-
-export interface Directory {
-    [key: string]: File | Directory
-}
 
 export type Servo = {
     name: string

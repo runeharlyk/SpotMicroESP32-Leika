@@ -8,6 +8,35 @@ message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; 
 message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
 message KnownNetworkItem { string ssid = 1; string password = 2; bool static_ip = 3; uint32 local_ip = 4; uint32 subnet_mask = 5; uint32 gateway_ip = 6; uint32 dns_ip_1 = 7; uint32 dns_ip_2 = 8; }
 
+
+// ----- FILESYSTEM -----
+
+message File { string name = 10; } // Add permissions?
+message Directory {
+    string name = 10;
+    repeated File files = 20;
+    repeated Directory directories = 30;
+}
+enum FileRequestOptions {
+    DELETE = 0;
+    EDIT = 1;
+    MKDIR = 2;
+    GET = 3;
+    POST = 4;
+
+    START_UPLOAD = 10;
+}
+
+message FSDelete { string path = 1; }
+
+message FilesystemRequest {
+    oneof type {
+        
+    }
+}
+
+// ----- FILESYSTEM -----
+
 // Individual message data types
 message IMUData {
     float x = 1;
