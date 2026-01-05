@@ -45,6 +45,7 @@ APService apService;
 
 void setupServer() {
     server.config.max_uri_handlers = 50 + WWW_ASSETS_COUNT;
+    server.config.stack_size = 32768; // Increase from default 4KB to 32KB for large protobuf messages
     server.maxUploadSize = 1000000; // 1 MB;
     server.listen(80);
     server.on("/api/system/reset", HTTP_POST,
@@ -239,17 +240,21 @@ void setupEventSocket() {
     };
 
     socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
-        socket_message_CorrelationResponse res = socket_message_CorrelationResponse_init_default;
-        res.correlation_id = data.correlation_id;
-        res.status_code = 200;
+        // Allocate response on heap to avoid stack overflow (CorrelationResponse is very large)
+        auto res = new socket_message_CorrelationResponse();
+        *res = socket_message_CorrelationResponse_init_default;
+        res->correlation_id = data.correlation_id;
+        res->status_code = 200;
 
         auto it = correlationHandlers.find(data.which_request);
         if (it != correlationHandlers.end()) {
-            it->second(data, res);
-            socket.emit(res, clientId);
+            it->second(data, *res);
+            socket.emit(*res, clientId);
         } else {
             printf("WARNING: no handler for correlation request: %d\n", data.which_request);
         }
+
+        delete res;
     });
 }
 

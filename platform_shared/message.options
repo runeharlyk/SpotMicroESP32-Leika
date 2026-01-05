@@ -51,8 +51,8 @@ socket_message.FSMkdirResponse.error max_size:128
 
 socket_message.FSListRequest.path max_size:256
 socket_message.FSListResponse.error max_size:128
-socket_message.FSListResponse.files max_count:50
-socket_message.FSListResponse.directories max_count:50
+socket_message.FSListResponse.files max_count:20
+socket_message.FSListResponse.directories max_count:20
 
 socket_message.FSDownloadStartRequest.path max_size:256
 socket_message.FSDownloadStartResponse.error max_size:128

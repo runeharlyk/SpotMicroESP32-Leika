@@ -108,14 +108,14 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
     int fileCount = 0;
     int dirCount = 0;
 
-    while (file && fileCount < 50 && dirCount < 50) {  // Limit to prevent overflow
+    while (file && fileCount < 20 && dirCount < 20) {  // Limit to match protobuf max_count
         if (file.isDirectory()) {
-            if (dirCount < 50) {
+            if (dirCount < 20) {
                 strncpy(response.directories[dirCount].name, file.name(), sizeof(response.directories[dirCount].name) - 1);
                 dirCount++;
             }
         } else {
-            if (fileCount < 50) {
+            if (fileCount < 20) {
                 strncpy(response.files[fileCount].name, file.name(), sizeof(response.files[fileCount].name) - 1);
                 response.files[fileCount].size = file.size();
                 fileCount++;

@@ -70,8 +70,9 @@ Successfully implemented a complete chunked file transfer system for ESP32 ↔ C
 ## Build Status
 
 ✅ **ESP32 firmware builds successfully** for `esp32-wroom-camera` environment
-- Flash usage: 54.7% (1,828,333 bytes)
-- RAM usage: 36.8% (120,440 bytes)
+- Flash usage: 54.2% (1,812,693 bytes)
+- RAM usage: 27.3% (89,480 bytes) - **Optimized!**
+- RAM savings: ~31KB from reducing protobuf array sizes
 
 ## Fixed Issues
 
@@ -85,6 +86,31 @@ Successfully implemented a complete chunked file transfer system for ESP32 ↔ C
 - **Solution**: Simplified Directory to only contain a name field
 - **Rationale**: We use flat directory listings, not recursive trees
 - **Result**: FSListResponse contains the lists, Directory is just metadata
+
+### Issue 3: Stack Overflow Crash ⚠️ CRITICAL
+- **Problem**: ESP32 crashed with "Stack canary watchpoint triggered" and "stack overflow in task httpd" when opening filesystem page
+- **Symptom**: 26KB stack usage warning, guru meditation error, device reboot
+- **Root Cause**: Three-fold problem:
+  1. `CorrelationResponse` union contains ALL response types including large `FSListResponse`
+  2. Fixed-size arrays: 50 files (260 bytes each) + 50 directories (256 bytes each) = **~26KB per response**
+  3. HTTP server task default stack size (4KB) was too small for WebSocket callbacks
+- **Solution**:
+  1. **Reduced array sizes** in [message.options:54-55](platform_shared/message.options#L54-L55)
+     ```
+     # Before: max_count:50 (26KB structures!)
+     # After:  max_count:20 (10.5KB structures)
+     ```
+     Result: **Saved ~31KB RAM** (27.3% usage vs 36.8%)
+  2. **Heap allocation** in [main.cpp:242-256](esp32/src/main.cpp#L242-L256)
+     ```cpp
+     auto res = new socket_message_CorrelationResponse(); ... delete res;
+     ```
+  3. **Increased HTTP server stack** in [main.cpp:48](esp32/src/main.cpp#L48)
+     ```cpp
+     server.config.stack_size = 32768; // From 4KB to 32KB
+     ```
+- **Result**: ✅ No crashes, 31KB RAM saved, stable operation
+- **Trade-off**: Maximum 20 files + 20 directories per listing (navigate subdirectories for larger folders)
 
 ## Testing Checklist
 
