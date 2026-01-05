@@ -38,3 +38,38 @@ socket_message.FeaturesDataResponse.variant type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_version type:FT_POINTER
+
+# Filesystem message options
+socket_message.File.name max_size:256
+socket_message.Directory.name max_size:256
+
+socket_message.FSDeleteRequest.path max_size:256
+socket_message.FSDeleteResponse.error max_size:128
+
+socket_message.FSMkdirRequest.path max_size:256
+socket_message.FSMkdirResponse.error max_size:128
+
+socket_message.FSListRequest.path max_size:256
+socket_message.FSListResponse.error max_size:128
+socket_message.FSListResponse.files max_count:50
+socket_message.FSListResponse.directories max_count:50
+
+socket_message.FSDownloadStartRequest.path max_size:256
+socket_message.FSDownloadStartResponse.error max_size:128
+socket_message.FSDownloadStartResponse.transfer_id max_size:64
+
+socket_message.FSDownloadChunkRequest.transfer_id max_size:64
+socket_message.FSDownloadChunkResponse.transfer_id max_size:64
+socket_message.FSDownloadChunkResponse.data max_size:1024
+socket_message.FSDownloadChunkResponse.error max_size:128
+
+socket_message.FSUploadStartRequest.path max_size:256
+socket_message.FSUploadStartResponse.error max_size:128
+socket_message.FSUploadStartResponse.transfer_id max_size:64
+
+socket_message.FSUploadChunkRequest.transfer_id max_size:64
+socket_message.FSUploadChunkRequest.data max_size:1024
+socket_message.FSUploadChunkResponse.transfer_id max_size:64
+socket_message.FSUploadChunkResponse.error max_size:128
+
+socket_message.FSCancelTransferRequest.transfer_id max_size:64
