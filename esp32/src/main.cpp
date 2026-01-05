@@ -6,6 +6,7 @@
 #include <map>
 
 #include <filesystem.h>
+#include <filesystem_ws.h>
 #include <peripherals/peripherals.h>
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
@@ -186,6 +187,55 @@ void setupEventSocket() {
             system_service::getAnalytics(res.response.system_information_response.analytics_data);
             system_service::getStaticSystemInformation(res.response.system_information_response.static_system_information);
          }},
+
+        // Filesystem operations
+        {socket_message_CorrelationRequest_fs_delete_request_tag, // Delete file/directory
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_delete_response_tag;
+             res.response.fs_delete_response = FileSystemWS::fsHandler.handleDelete(req.request.fs_delete_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_mkdir_request_tag, // Create directory
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_mkdir_response_tag;
+             res.response.fs_mkdir_response = FileSystemWS::fsHandler.handleMkdir(req.request.fs_mkdir_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_list_request_tag, // List directory
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_list_response_tag;
+             res.response.fs_list_response = FileSystemWS::fsHandler.handleList(req.request.fs_list_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_download_start_request_tag, // Download start
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_download_start_response_tag;
+             res.response.fs_download_start_response = FileSystemWS::fsHandler.handleDownloadStart(req.request.fs_download_start_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_download_chunk_request_tag, // Download chunk
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_download_chunk_response_tag;
+             res.response.fs_download_chunk_response = FileSystemWS::fsHandler.handleDownloadChunk(req.request.fs_download_chunk_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_upload_start_request_tag, // Upload start
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_upload_start_response_tag;
+             res.response.fs_upload_start_response = FileSystemWS::fsHandler.handleUploadStart(req.request.fs_upload_start_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_upload_chunk_request_tag, // Upload chunk
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_upload_chunk_response_tag;
+             res.response.fs_upload_chunk_response = FileSystemWS::fsHandler.handleUploadChunk(req.request.fs_upload_chunk_request);
+         }},
+
+        {socket_message_CorrelationRequest_fs_cancel_transfer_request_tag, // Cancel transfer
+         [](const auto &req, auto &res) {
+             res.which_response = socket_message_CorrelationResponse_fs_cancel_transfer_response_tag;
+             res.response.fs_cancel_transfer_response = FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer_request);
+         }},
     };
 
     socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
@@ -261,6 +311,11 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
             socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
             socket.emit(rssi);
+        });
+
+        EXECUTE_EVERY_N_MS(60000, {
+            // Cleanup expired filesystem transfers
+            FileSystemWS::fsHandler.cleanupExpiredTransfers();
         });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
