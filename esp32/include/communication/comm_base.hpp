@@ -41,16 +41,27 @@ class CommAdapterBase {
         msg_.which_message = tag;
         MessageTraits<T>::assign(msg_, data);
 
-        pb_ostream_t stream = pb_ostream_from_buffer(buffer_, sizeof(buffer_));
+        size_t out_size;
+        pb_get_encoded_size(&out_size, socket_message_Message_fields, &msg_);
+        uint8_t *buffer = pb_heap_enc_buf;
+        if (out_size > sizeof(pb_heap_enc_buf)) { // It the encoded size exceeds our buffer size, we needs to malloc a buffer of a proper size
+            buffer = (uint8_t*) malloc(out_size);
+        }
+
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
             return;
         }
 
         if (clientId >= 0) {
-            send(buffer_, stream.bytes_written, clientId);
+            send(buffer, stream.bytes_written, clientId);
         } else {
-            sendToSubscribers(tag, buffer_, stream.bytes_written);
+            sendToSubscribers(tag, buffer, stream.bytes_written);
+        }
+
+        if (buffer != buffer) { // If we have malloced a buffer, free it now.
+            free(buffer);
         }
     }
 
@@ -99,7 +110,7 @@ class CommAdapterBase {
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
     socket_message_Message msg_ = socket_message_Message_init_zero;
-    uint8_t buffer_[PROTO_BUFFER_SIZE];
+    uint8_t pb_heap_enc_buf[PROTO_BUFFER_SIZE];
 
   private:
     void sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
