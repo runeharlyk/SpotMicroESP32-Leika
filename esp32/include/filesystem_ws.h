@@ -5,7 +5,8 @@
 #include <map>
 #include <string>
 
-#define FS_MAX_CHUNK_SIZE 1024
+// Make sure that this aligns with socket_message.FSDownloadChunkResponse.data max_size (and for the corresponsing request)
+#define FS_MAX_CHUNK_SIZE 2**14 // ~= 16 kb
 #define FS_TRANSFER_TIMEOUT 30000  // 30 seconds
 
 namespace FileSystemWS {

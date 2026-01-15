@@ -2,6 +2,7 @@
 #include <filesystem.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
+#include <esp_littlefs.h>
 
 static const char* TAG = "FileSystemWS";
 
@@ -307,6 +308,17 @@ socket_message_FSUploadChunkResponse FileSystemHandler::handleUploadChunk(const 
     TransferState& state = it->second;
     state.lastActivityTime = millis();
 
+    // Check available space before writing
+    size_t fs_total = 0, fs_used = 0;
+    esp_littlefs_info("spiffs", &fs_total, &fs_used);
+    size_t freeSpace = fs_total  - fs_used;
+    if (freeSpace < req.data.size + 4096) {  // 4KB safety margin
+        fs_up_response.success = false;
+        strncpy(fs_up_response.error, "Filesystem full", sizeof(fs_up_response.error) - 1);
+        state.file.close();
+        transfers_.erase(it);
+        return fs_up_response;
+    }
     // Write chunk data
     size_t bytesWritten = state.file.write(req.data.bytes, req.data.size);
     if (bytesWritten != req.data.size) {

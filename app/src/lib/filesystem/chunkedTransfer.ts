@@ -12,7 +12,7 @@ import type {
 	CorrelationResponse
 } from '$lib/platform_shared/message'
 
-const MAX_CHUNK_SIZE = 1024
+const MAX_CHUNK_SIZE = 2**14 // ~= 16 kb
 
 export interface FileInfo {
 	name: string
