@@ -43,6 +43,7 @@ class CommAdapterBase {
 
         pb_ostream_t stream = pb_ostream_from_buffer(buffer_, sizeof(buffer_));
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
+            ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
             return;
         }
 

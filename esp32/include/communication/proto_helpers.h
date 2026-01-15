@@ -6,7 +6,7 @@
 #include <functional>
 #include <map>
 
-#define PROTO_BUFFER_SIZE 512
+#define PROTO_BUFFER_SIZE 2048  // Increased for chunked file transfer responses
 
 template <typename T>
 struct MessageTraits;
