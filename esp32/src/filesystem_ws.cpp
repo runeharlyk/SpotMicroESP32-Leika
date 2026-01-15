@@ -291,17 +291,17 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
 }
 
 socket_message_FSUploadChunkResponse FileSystemHandler::handleUploadChunk(const socket_message_FSUploadChunkRequest& req) {
-    socket_message_FSUploadChunkResponse response = socket_message_FSUploadChunkResponse_init_zero;
+    socket_message_FSUploadChunkResponse fs_up_response = socket_message_FSUploadChunkResponse_init_zero;
 
     std::string transferId(req.transfer_id);
-    strncpy(response.transfer_id, transferId.c_str(), sizeof(response.transfer_id) - 1);
-    response.chunk_index = req.chunk_index;
+    strncpy(fs_up_response.transfer_id, transferId.c_str(), sizeof(fs_up_response.transfer_id) - 1);
+    fs_up_response.chunk_index = req.chunk_index;
 
     auto it = transfers_.find(transferId);
     if (it == transfers_.end()) {
-        response.success = false;
-        strncpy(response.error, "Invalid transfer ID", sizeof(response.error) - 1);
-        return response;
+        fs_up_response.success = false;
+        strncpy(fs_up_response.error, "Invalid transfer ID", sizeof(fs_up_response.error) - 1);
+        return fs_up_response;
     }
 
     TransferState& state = it->second;
@@ -310,16 +310,19 @@ socket_message_FSUploadChunkResponse FileSystemHandler::handleUploadChunk(const 
     // Write chunk data
     size_t bytesWritten = state.file.write(req.data.bytes, req.data.size);
     if (bytesWritten != req.data.size) {
-        response.success = false;
-        strncpy(response.error, "Failed to write chunk", sizeof(response.error) - 1);
+        fs_up_response.success = false;
+        strncpy(fs_up_response.error, "Failed to write chunk", sizeof(fs_up_response.error) - 1);
         state.file.close();
         transfers_.erase(it);
-        return response;
+        return fs_up_response;
     }
 
+    // Flush to ensure data is written
+    state.file.flush();
+
     state.chunksProcessed++;
-    response.success = true;
-    response.transfer_complete = req.is_last;
+    fs_up_response.success = true;
+    fs_up_response.transfer_complete = req.is_last;
 
     ESP_LOGI(TAG, "Upload chunk %u/%u: %u bytes", state.chunksProcessed, state.totalChunks, bytesWritten);
 
@@ -330,7 +333,7 @@ socket_message_FSUploadChunkResponse FileSystemHandler::handleUploadChunk(const 
         ESP_LOGI(TAG, "Upload completed: %s", state.path.c_str());
     }
 
-    return response;
+    return fs_up_response;
 }
 
 socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(const socket_message_FSCancelTransferRequest& req) {
