@@ -317,8 +317,11 @@ socket_message_FSUploadChunkResponse FileSystemHandler::handleUploadChunk(const 
         return fs_up_response;
     }
 
-    // Flush to ensure data is written
-    state.file.flush();
+    // Flush periodically to prevent LittleFS buffer issues (every 64 chunks = ~64KB with 1KB chunks)
+    if (state.chunksProcessed > 0 && state.chunksProcessed % 64 == 0) {
+        ESP_LOGI(TAG, "Flushing file at chunk %u", state.chunksProcessed);
+        state.file.flush();
+    }
 
     state.chunksProcessed++;
     fs_up_response.success = true;
