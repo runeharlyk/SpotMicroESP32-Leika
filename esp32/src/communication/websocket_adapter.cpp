@@ -34,7 +34,12 @@ void Websocket::send(const uint8_t* data, size_t len, int cid) {
     if (cid >= 0) {
         auto* client = socket_.getClient(cid);
         if (client) {
-            client->sendMessage(HTTPD_WS_TYPE_BINARY, data, len);
+            esp_err_t err = client->sendMessage(HTTPD_WS_TYPE_BINARY, data, len);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
+            }
+        } else {
+            ESP_LOGW(TAG, "Client %d not found for send", cid);
         }
     } else {
         socket_.sendAll(HTTPD_WS_TYPE_BINARY, data, len);
