@@ -53,69 +53,64 @@ message FSListResponse {
     repeated Directory directories = 4;
 }
 
-// Download from ESP (ESP -> Client)
-message FSDownloadStartRequest {
-    string path = 1;  // File path on ESP to download
+// ===== STREAMING DOWNLOAD (ESP -> Client) =====
+// Flow: Client sends FSDownloadRequest -> Server streams FSDownloadData chunks -> Server sends FSDownloadComplete
+
+message FSDownloadRequest {
+    string path = 1;           // File path on ESP to download
 }
 
-message FSDownloadStartResponse {
-    bool success = 1;
-    string error = 2;
-    uint32 file_size = 3;      // Total file size in bytes
-    uint32 chunk_size = 4;     // Size of each chunk (max 1024)
-    uint32 total_chunks = 5;   // Total number of chunks
-    string transfer_id = 6;    // Unique ID for this transfer
+message FSDownloadData {
+    string transfer_id = 1;    // Transfer identifier
+    uint32 chunk_index = 2;    // Which chunk this is (0-based)
+    bytes data = 3;            // Chunk data (up to 16KB)
 }
 
-message FSDownloadChunkRequest {
+message FSDownloadComplete {
     string transfer_id = 1;
-    uint32 chunk_index = 2;    // Which chunk to request (0-based)
+    bool success = 2;
+    string error = 3;          // Error message if failed
+    uint32 total_chunks = 4;   // Total chunks that were sent
+    uint32 file_size = 5;      // Total file size in bytes
 }
 
-message FSDownloadChunkResponse {
-    string transfer_id = 1;
-    uint32 chunk_index = 2;
-    bytes data = 3;            // Chunk data (max 1024 bytes)
-    bool is_last = 4;          // True if this is the last chunk
-    string error = 5;
-}
+// ===== STREAMING UPLOAD (Client -> ESP) =====
+// Flow: Client sends FSUploadStart -> Server responds with transfer_id -> Client streams FSUploadData chunks -> Server sends FSUploadComplete
 
-// Upload to ESP (Client -> ESP)
-message FSUploadStartRequest {
+message FSUploadStart {
     string path = 1;           // Destination path on ESP
     uint32 file_size = 2;      // Total file size in bytes
-    uint32 chunk_size = 3;     // Size of each chunk (max 1024)
+    uint32 total_chunks = 3;   // Total number of chunks to expect
 }
 
 message FSUploadStartResponse {
     bool success = 1;
     string error = 2;
     string transfer_id = 3;    // Unique ID for this transfer
-    uint32 max_chunk_size = 4; // Server's max chunk size (1024)
 }
 
-message FSUploadChunkRequest {
-    string transfer_id = 1;
+message FSUploadData {
+    string transfer_id = 1;    // Transfer identifier
     uint32 chunk_index = 2;    // Which chunk this is (0-based)
-    bytes data = 3;            // Chunk data (max 1024 bytes)
-    bool is_last = 4;          // True if this is the last chunk
+    bytes data = 3;            // Chunk data (up to 16KB)
 }
 
-message FSUploadChunkResponse {
+message FSUploadComplete {
     string transfer_id = 1;
-    uint32 chunk_index = 2;
-    bool success = 3;
-    string error = 4;
-    bool transfer_complete = 5; // True when all chunks received
+    bool success = 2;
+    string error = 3;          // Error message if failed
+    uint32 chunks_received = 4; // Number of chunks actually received
 }
 
-// Cancel transfer
-message FSCancelTransferRequest {
+// ===== TRANSFER CONTROL =====
+
+message FSCancelTransfer {
     string transfer_id = 1;
 }
 
 message FSCancelTransferResponse {
-    bool success = 1;
+    string transfer_id = 1;
+    bool success = 2;
 }
 
 // ----- FILESYSTEM -----
@@ -169,11 +164,9 @@ message CorrelationRequest {
         FSDeleteRequest fs_delete_request = 50;
         FSMkdirRequest fs_mkdir_request = 60;
         FSListRequest fs_list_request = 70;
-        FSDownloadStartRequest fs_download_start_request = 80;
-        FSDownloadChunkRequest fs_download_chunk_request = 90;
-        FSUploadStartRequest fs_upload_start_request = 100;
-        FSUploadChunkRequest fs_upload_chunk_request = 110;
-        FSCancelTransferRequest fs_cancel_transfer_request = 120;
+        FSDownloadRequest fs_download_request = 80;
+        FSUploadStart fs_upload_start = 100;
+        FSCancelTransfer fs_cancel_transfer = 120;
     }
 }
 
@@ -188,10 +181,7 @@ message CorrelationResponse {
         FSDeleteResponse fs_delete_response = 50;
         FSMkdirResponse fs_mkdir_response = 60;
         FSListResponse fs_list_response = 70;
-        FSDownloadStartResponse fs_download_start_response = 80;
-        FSDownloadChunkResponse fs_download_chunk_response = 90;
         FSUploadStartResponse fs_upload_start_response = 100;
-        FSUploadChunkResponse fs_upload_chunk_response = 110;
         FSCancelTransferResponse fs_cancel_transfer_response = 120;
     }
 }
@@ -321,6 +311,11 @@ message Message {
         UnsubscribeNotification unsub_notif = 21;
         PingMsg pingmsg = 30;
         PongMsg pongmsg = 31;
+        // Streaming file transfer messages (fire-and-forget, no correlation)
+        FSDownloadData fs_download_data = 40;
+        FSDownloadComplete fs_download_complete = 41;
+        FSUploadData fs_upload_data = 42;
+        FSUploadComplete fs_upload_complete = 43;
         IMUData imu = 110;
         IMUCalibrateData imu_calibrate = 120;
         IMUCalibrateExecute imu_calibrate_execute = 121;

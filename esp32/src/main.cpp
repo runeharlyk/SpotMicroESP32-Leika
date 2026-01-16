@@ -135,6 +135,22 @@ void setupServer() {
 }
 
 void setupEventSocket() {
+    // Set up filesystem handler callbacks for streaming transfers
+    FileSystemWS::fsHandler.setSendCallbacks(
+        // Send download data chunk
+        [](const socket_message_FSDownloadData& data, int clientId) {
+            socket.emit(data, clientId);
+        },
+        // Send download complete
+        [](const socket_message_FSDownloadComplete& complete, int clientId) {
+            socket.emit(complete, clientId);
+        },
+        // Send upload complete
+        [](const socket_message_FSUploadComplete& complete, int clientId) {
+            socket.emit(complete, clientId);
+        }
+    );
+
     socket.on<socket_message_ControllerData>(
         [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
 
@@ -158,30 +174,35 @@ void setupEventSocket() {
         data.active ? servoController.activate() : servoController.deactivate();
     });
 
+    // Handle streaming upload data (fire-and-forget from client)
+    socket.on<socket_message_FSUploadData>([&](const socket_message_FSUploadData &data, int clientId) {
+        FileSystemWS::fsHandler.handleUploadData(data);
+    });
+
     using CorrelationHandler =
-        std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &)>;
+        std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;
     static std::map<pb_size_t, CorrelationHandler> correlationHandlers = {
         {socket_message_CorrelationRequest_features_data_request_tag, // Features data
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
              feature_service::features_request(req.request.features_data_request, res.response.features_data_response);
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag, // i2c data
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
              peripherals.scanI2C();
              peripherals.getI2CScanProto(res.response.i2c_scan_data);
          }},
 
         {socket_message_CorrelationRequest_imu_calibrate_execute_tag, // Calibration request
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
              res.response.imu_calibrate_data.success = peripherals.calibrateIMU();
          }},
 
          {socket_message_CorrelationRequest_system_information_request_tag, // All system information data
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
             res.which_response = socket_message_CorrelationResponse_system_information_response_tag;
             res.response.system_information_response.has_analytics_data = true;
             res.response.system_information_response.has_static_system_information = true;
@@ -191,51 +212,42 @@ void setupEventSocket() {
 
         // Filesystem operations
         {socket_message_CorrelationRequest_fs_delete_request_tag, // Delete file/directory
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_fs_delete_response_tag;
              res.response.fs_delete_response = FileSystemWS::fsHandler.handleDelete(req.request.fs_delete_request);
          }},
 
         {socket_message_CorrelationRequest_fs_mkdir_request_tag, // Create directory
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_fs_mkdir_response_tag;
              res.response.fs_mkdir_response = FileSystemWS::fsHandler.handleMkdir(req.request.fs_mkdir_request);
          }},
 
         {socket_message_CorrelationRequest_fs_list_request_tag, // List directory
-         [](const auto &req, auto &res) {
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_fs_list_response_tag;
              res.response.fs_list_response = FileSystemWS::fsHandler.handleList(req.request.fs_list_request);
          }},
 
-        {socket_message_CorrelationRequest_fs_download_start_request_tag, // Download start
-         [](const auto &req, auto &res) {
-             res.which_response = socket_message_CorrelationResponse_fs_download_start_response_tag;
-             res.response.fs_download_start_response = FileSystemWS::fsHandler.handleDownloadStart(req.request.fs_download_start_request);
+        {socket_message_CorrelationRequest_fs_download_request_tag, // Streaming download (no response, streams data)
+         [](const auto &req, auto &res, int clientId) {
+             // Download is handled differently - it streams chunks directly
+             // No correlation response is sent; instead FSDownloadData/FSDownloadComplete are streamed
+             FileSystemWS::fsHandler.handleDownloadRequest(req.request.fs_download_request, clientId);
+             // Set status_code to 0 to indicate no response should be sent
+             res.status_code = 0;
          }},
 
-        {socket_message_CorrelationRequest_fs_download_chunk_request_tag, // Download chunk
-         [](const auto &req, auto &res) {
-             res.which_response = socket_message_CorrelationResponse_fs_download_chunk_response_tag;
-             res.response.fs_download_chunk_response = FileSystemWS::fsHandler.handleDownloadChunk(req.request.fs_download_chunk_request);
-         }},
-
-        {socket_message_CorrelationRequest_fs_upload_start_request_tag, // Upload start
-         [](const auto &req, auto &res) {
+        {socket_message_CorrelationRequest_fs_upload_start_tag, // Upload start
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_fs_upload_start_response_tag;
-             res.response.fs_upload_start_response = FileSystemWS::fsHandler.handleUploadStart(req.request.fs_upload_start_request);
+             res.response.fs_upload_start_response = FileSystemWS::fsHandler.handleUploadStart(req.request.fs_upload_start, clientId);
          }},
 
-        {socket_message_CorrelationRequest_fs_upload_chunk_request_tag, // Upload chunk
-         [](const auto &req, auto &res) {
-             res.which_response = socket_message_CorrelationResponse_fs_upload_chunk_response_tag;
-             res.response.fs_upload_chunk_response = FileSystemWS::fsHandler.handleUploadChunk(req.request.fs_upload_chunk_request);
-         }},
-
-        {socket_message_CorrelationRequest_fs_cancel_transfer_request_tag, // Cancel transfer
-         [](const auto &req, auto &res) {
+        {socket_message_CorrelationRequest_fs_cancel_transfer_tag, // Cancel transfer
+         [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_fs_cancel_transfer_response_tag;
-             res.response.fs_cancel_transfer_response = FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer_request);
+             res.response.fs_cancel_transfer_response = FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer);
          }},
     };
 
@@ -248,8 +260,11 @@ void setupEventSocket() {
 
         auto it = correlationHandlers.find(data.which_request);
         if (it != correlationHandlers.end()) {
-            it->second(data, *res);
-            socket.emit(*res, clientId);
+            it->second(data, *res, clientId);
+            // Only emit response if status_code is non-zero (streaming handlers set it to 0)
+            if (res->status_code != 0) {
+                socket.emit(*res, clientId);
+            }
         } else {
             printf("WARNING: no handler for correlation request: %d\n", data.which_request);
         }
