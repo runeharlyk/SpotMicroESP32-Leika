@@ -5,6 +5,7 @@ import type {
 	FSMkdirRequest,
 	FSListRequest,
 	FSDownloadRequest,
+	FSDownloadMetadata,
 	FSDownloadData,
 	FSDownloadComplete,
 	FSUploadStart,
@@ -70,6 +71,16 @@ interface ActiveUpload {
 export class FileSystemClient {
 	private activeDownloads = new Map<string, ActiveDownload>()
 	private activeUploads = new Map<string, ActiveUpload>()
+	private pendingDownloads = new Map<
+		string,
+		{
+			resolve: (result: { success: boolean; data?: Uint8Array; error?: string }) => void
+			reject: (error: Error) => void
+			onProgress?: ProgressCallback
+			timeoutId: ReturnType<typeof setTimeout>
+		}
+	>()
+	private metadataListenerCleanup: (() => void) | null = null
 	private downloadListenerCleanup: (() => void) | null = null
 	private completeListenerCleanup: (() => void) | null = null
 	private uploadCompleteListenerCleanup: (() => void) | null = null
@@ -80,6 +91,14 @@ export class FileSystemClient {
 	}
 
 	private setupListeners() {
+		// Listen for download metadata (sent first with file size)
+		this.metadataListenerCleanup = socket.on(
+			Messages.FSDownloadMetadata,
+			(metadata: FSDownloadMetadata) => {
+				this.handleDownloadMetadata(metadata)
+			}
+		)
+
 		// Listen for download data chunks
 		this.downloadListenerCleanup = socket.on(
 			Messages.FSDownloadData,
@@ -103,6 +122,51 @@ export class FileSystemClient {
 				this.handleUploadComplete(complete)
 			}
 		)
+	}
+
+	private handleDownloadMetadata(metadata: FSDownloadMetadata) {
+		// Find the pending download by path (we don't have transferId yet)
+		// The metadata arrives in response to a download request
+		const pending = this.pendingDownloads.values().next().value
+		if (!pending) {
+			console.warn(`Received download metadata but no pending download`)
+			return
+		}
+
+		// Clear initial timeout
+		clearTimeout(pending.timeoutId)
+
+		// Get the path from the pending downloads (first one)
+		const [path] = this.pendingDownloads.keys()
+		this.pendingDownloads.delete(path)
+
+		if (!metadata.success) {
+			pending.resolve({ success: false, error: metadata.error || 'Download failed' })
+			return
+		}
+
+		const transferId = metadata.transferId
+
+		// Now we know the exact file size - allocate properly sized buffer
+		const buffer = new Uint8Array(metadata.fileSize)
+
+		const download: ActiveDownload = {
+			path,
+			buffer,
+			fileSize: metadata.fileSize,
+			totalChunks: metadata.totalChunks,
+			chunksReceived: 0,
+			bytesReceived: 0,
+			resolve: pending.resolve,
+			reject: pending.reject,
+			onProgress: pending.onProgress,
+			timeoutId: setTimeout(() => {
+				this.activeDownloads.delete(transferId)
+				pending.reject(new Error('Download timeout'))
+			}, this.transferTimeout)
+		}
+
+		this.activeDownloads.set(transferId, download)
 	}
 
 	private handleDownloadData(data: FSDownloadData) {
@@ -244,80 +308,34 @@ export class FileSystemClient {
 
 	/**
 	 * Download a file from the ESP32 using streaming transfer
-	 * Server streams all chunks without waiting for ACKs
+	 * Server sends metadata first (with file size), then streams all chunks
 	 */
 	async downloadFile(
 		path: string,
 		onProgress?: ProgressCallback
 	): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
 		return new Promise((resolve, reject) => {
-			// Send download request - server will stream chunks back
+			// Send download request - server will send metadata first, then stream chunks
 			const request: FSDownloadRequest = { path }
 
-			// We need to set up tracking before sending the request
-			// The server will generate a transfer ID and include it in all responses
-			// We'll capture the first chunk to get the transfer ID
-
-			// Set up timeout for initial response
+			// Set up timeout for initial metadata response
 			const initialTimeout = setTimeout(() => {
-				reject(new Error('Download request timeout - no data received'))
+				this.pendingDownloads.delete(path)
+				reject(new Error('Download request timeout - no metadata received'))
 			}, this.transferTimeout)
 
-			// One-time listener for the first chunk to get transfer details
-			const firstChunkHandler = (data: FSDownloadData) => {
-				clearTimeout(initialTimeout)
+			// Track this pending download - will be converted to active when metadata arrives
+			this.pendingDownloads.set(path, {
+				resolve,
+				reject,
+				onProgress,
+				timeoutId: initialTimeout
+			})
 
-				// Now we have the real transfer ID
-				const transferId = data.transferId
-
-				// Estimate total size from first chunk (server sends file_size in complete message)
-				// For now, allocate a large buffer and resize later
-				const estimatedSize = 10 * 1024 * 1024 // 10MB max
-				const buffer = new Uint8Array(estimatedSize)
-
-				const download: ActiveDownload = {
-					path,
-					buffer,
-					fileSize: estimatedSize, // Will be updated on completion
-					totalChunks: Math.ceil(estimatedSize / MAX_CHUNK_SIZE),
-					chunksReceived: 0,
-					bytesReceived: 0,
-					resolve,
-					reject,
-					onProgress,
-					timeoutId: setTimeout(() => {
-						this.activeDownloads.delete(transferId)
-						reject(new Error('Download timeout'))
-					}, this.transferTimeout)
-				}
-
-				this.activeDownloads.set(transferId, download)
-
-				// Process this first chunk
-				this.handleDownloadData(data)
-
-				// Remove the first chunk handler - subsequent chunks go through normal listener
-				firstChunkCleanup()
-			}
-
-			// Error handler for if download fails immediately
-			const errorHandler = (complete: FSDownloadComplete) => {
-				if (!complete.success && !complete.transferId) {
-					clearTimeout(initialTimeout)
-					firstChunkCleanup()
-					errorCleanup()
-					resolve({ success: false, error: complete.error || 'Download failed' })
-				}
-			}
-
-			const firstChunkCleanup = socket.on(Messages.FSDownloadData, firstChunkHandler)
-			const errorCleanup = socket.on(Messages.FSDownloadComplete, errorHandler)
-
-			// Send the download request (no response expected, server streams data)
+			// Send the download request (server will respond with metadata, then stream data)
 			socket.request({ fsDownloadRequest: request }).catch((err) => {
 				clearTimeout(initialTimeout)
-				firstChunkCleanup()
-				errorCleanup()
+				this.pendingDownloads.delete(path)
 				reject(err)
 			})
 		})

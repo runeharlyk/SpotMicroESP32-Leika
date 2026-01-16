@@ -137,6 +137,10 @@ void setupServer() {
 void setupEventSocket() {
     // Set up filesystem handler callbacks for streaming transfers
     FileSystemWS::fsHandler.setSendCallbacks(
+        // Send download metadata (file size, total chunks)
+        [](const socket_message_FSDownloadMetadata& metadata, int clientId) {
+            socket.emit(metadata, clientId);
+        },
         // Send download data chunk
         [](const socket_message_FSDownloadData& data, int clientId) {
             socket.emit(data, clientId);

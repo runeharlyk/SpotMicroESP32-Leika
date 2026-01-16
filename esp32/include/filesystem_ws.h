@@ -37,6 +37,7 @@ struct UploadState {
 };
 
 // Callback type for sending messages to clients
+using SendMetadataCallback = std::function<void(const socket_message_FSDownloadMetadata&, int clientId)>;
 using SendCallback = std::function<void(const socket_message_FSDownloadData&, int clientId)>;
 using SendCompleteCallback = std::function<void(const socket_message_FSDownloadComplete&, int clientId)>;
 using SendUploadCompleteCallback = std::function<void(const socket_message_FSUploadComplete&, int clientId)>;
@@ -47,6 +48,7 @@ class FileSystemHandler {
 
     // Set callbacks for sending streaming data
     void setSendCallbacks(
+        SendMetadataCallback sendMetadata,
         SendCallback sendData,
         SendCompleteCallback sendComplete,
         SendUploadCompleteCallback sendUploadComplete
@@ -84,6 +86,7 @@ class FileSystemHandler {
     std::map<std::string, UploadState> uploads_;
     uint32_t transferIdCounter_;
 
+    SendMetadataCallback sendMetadataCallback_;
     SendCallback sendDataCallback_;
     SendCompleteCallback sendCompleteCallback_;
     SendUploadCompleteCallback sendUploadCompleteCallback_;

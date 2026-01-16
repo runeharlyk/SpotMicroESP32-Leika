@@ -43,6 +43,7 @@ DEFINE_MESSAGE_TRAITS(CorrelationRequest, correlation_request)
 DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
 
 // Streaming file transfer messages
+DEFINE_MESSAGE_TRAITS(FSDownloadMetadata, fs_download_metadata)
 DEFINE_MESSAGE_TRAITS(FSDownloadData, fs_download_data)
 DEFINE_MESSAGE_TRAITS(FSDownloadComplete, fs_download_complete)
 DEFINE_MESSAGE_TRAITS(FSUploadData, fs_upload_data)

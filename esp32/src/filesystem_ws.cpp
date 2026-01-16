@@ -13,10 +13,12 @@ FileSystemHandler fsHandler;
 FileSystemHandler::FileSystemHandler() : transferIdCounter_(0) {}
 
 void FileSystemHandler::setSendCallbacks(
+    SendMetadataCallback sendMetadata,
     SendCallback sendData,
     SendCompleteCallback sendComplete,
     SendUploadCompleteCallback sendUploadComplete
 ) {
+    sendMetadataCallback_ = sendMetadata;
     sendDataCallback_ = sendData;
     sendCompleteCallback_ = sendComplete;
     sendUploadCompleteCallback_ = sendUploadComplete;
@@ -208,22 +210,22 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
 
     // Validate file exists
     if (!ESP_FS.exists(path.c_str())) {
-        if (sendCompleteCallback_) {
-            socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-            complete.success = false;
-            strncpy(complete.error, "File not found", sizeof(complete.error) - 1);
-            sendCompleteCallback_(complete, clientId);
+        if (sendMetadataCallback_) {
+            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+            metadata.success = false;
+            strncpy(metadata.error, "File not found", sizeof(metadata.error) - 1);
+            sendMetadataCallback_(metadata, clientId);
         }
         return;
     }
 
     File file = ESP_FS.open(path.c_str(), "r");
     if (!file || file.isDirectory()) {
-        if (sendCompleteCallback_) {
-            socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-            complete.success = false;
-            strncpy(complete.error, "Cannot open file for reading", sizeof(complete.error) - 1);
-            sendCompleteCallback_(complete, clientId);
+        if (sendMetadataCallback_) {
+            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+            metadata.success = false;
+            strncpy(metadata.error, "Cannot open file for reading", sizeof(metadata.error) - 1);
+            sendMetadataCallback_(metadata, clientId);
         }
         return;
     }
@@ -234,6 +236,16 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     if (totalChunks == 0) totalChunks = 1; // Handle empty files
 
     std::string transferId = generateTransferId();
+
+    // Send metadata first so client knows exact file size and can allocate buffer
+    if (sendMetadataCallback_) {
+        socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+        strncpy(metadata.transfer_id, transferId.c_str(), sizeof(metadata.transfer_id) - 1);
+        metadata.success = true;
+        metadata.file_size = fileSize;
+        metadata.total_chunks = totalChunks;
+        sendMetadataCallback_(metadata, clientId);
+    }
 
     DownloadState state;
     state.path = path;
