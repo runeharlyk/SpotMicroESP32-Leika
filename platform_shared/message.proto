@@ -54,10 +54,18 @@ message FSListResponse {
 }
 
 // ===== STREAMING DOWNLOAD (ESP -> Client) =====
-// Flow: Client sends FSDownloadRequest -> Server streams FSDownloadData chunks -> Server sends FSDownloadComplete
+// Flow: Client sends FSDownloadRequest -> Server sends FSDownloadMetadata -> Server streams FSDownloadData chunks -> Server sends FSDownloadComplete
 
 message FSDownloadRequest {
     string path = 1;           // File path on ESP to download
+}
+
+message FSDownloadMetadata {
+    string transfer_id = 1;    // Transfer identifier
+    bool success = 2;          // True if file exists and is readable
+    string error = 3;          // Error message if failed
+    uint32 file_size = 4;      // Total file size in bytes
+    uint32 total_chunks = 5;   // Total number of chunks to expect
 }
 
 message FSDownloadData {
@@ -312,6 +320,7 @@ message Message {
         PingMsg pingmsg = 30;
         PongMsg pongmsg = 31;
         // Streaming file transfer messages (fire-and-forget, no correlation)
+        FSDownloadMetadata fs_download_metadata = 39;
         FSDownloadData fs_download_data = 40;
         FSDownloadComplete fs_download_complete = 41;
         FSUploadData fs_upload_data = 42;
