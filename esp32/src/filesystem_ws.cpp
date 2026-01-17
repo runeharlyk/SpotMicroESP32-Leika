@@ -230,6 +230,10 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
         return;
     }
 
+    // Set file buffer size large, so we use ram to read from
+    // Set buffer size so 1 mb (static) TODO: Check that there is enough ram to do this
+    file.setBufferSize(1000000);
+
     uint32_t fileSize = file.size();
     uint32_t chunkSize = FS_MAX_CHUNK_SIZE;
     uint32_t totalChunks = (fileSize + chunkSize - 1) / chunkSize;
@@ -463,6 +467,7 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
     }
 }
 
+// Note that the finalize upload takes a insane amount of time, as it is flushing from ram to an incredibly slow LittleFS SPIFFS (Tested to roughly 12 seconds for 1 mb file)
 void FileSystemHandler::finalizeUpload(const std::string& transferId, bool success, const std::string& error) {
     auto it = uploads_.find(transferId);
     if (it == uploads_.end()) {
