@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package socket_message;
+
+// ----- FILESYSTEM -----
+
+message File {
+    string name = 10;
+    uint32 size = 20;
+}
+
+// Represents a single directory entry (metadata only)
+message Directory {
+    string name = 1;
+}
+
+// Delete a file or directory
+message FSDeleteRequest {
+    string path = 1;
+}
+
+message FSDeleteResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// Create directory
+message FSMkdirRequest {
+    string path = 1;
+}
+
+message FSMkdirResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// List files/directories
+message FSListRequest {
+    string path = 1;
+}
+
+message FSListResponse {
+    bool success = 1;
+    string error = 2;
+    repeated File files = 3;
+    repeated Directory directories = 4;
+}
+
+// ===== STREAMING DOWNLOAD (ESP -> Client) =====
+// Flow: Client sends FSDownloadRequest -> Server sends FSDownloadMetadata -> Server streams FSDownloadData chunks -> Server sends FSDownloadComplete
+
+message FSDownloadRequest {
+    string path = 1;           // File path on ESP to download
+}
+
+message FSDownloadMetadata {
+    string transfer_id = 1;    // Transfer identifier
+    bool success = 2;          // True if file exists and is readable
+    string error = 3;          // Error message if failed
+    uint32 file_size = 4;      // Total file size in bytes
+    uint32 total_chunks = 5;   // Total number of chunks to expect
+}
+
+message FSDownloadData {
+    string transfer_id = 1;    // Transfer identifier
+    uint32 chunk_index = 2;    // Which chunk this is (0-based)
+    bytes data = 3;            // Chunk data (up to 16KB)
+}
+
+message FSDownloadComplete {
+    string transfer_id = 1;
+    bool success = 2;
+    string error = 3;          // Error message if failed
+    uint32 total_chunks = 4;   // Total chunks that were sent
+    uint32 file_size = 5;      // Total file size in bytes
+}
+
+// ===== STREAMING UPLOAD (Client -> ESP) =====
+// Flow: Client sends FSUploadStart -> Server responds with transfer_id -> Client streams FSUploadData chunks -> Server sends FSUploadComplete
+
+message FSUploadStart {
+    string path = 1;           // Destination path on ESP
+    uint32 file_size = 2;      // Total file size in bytes
+    uint32 total_chunks = 3;   // Total number of chunks to expect
+}
+
+message FSUploadStartResponse {
+    bool success = 1;
+    string error = 2;
+    string transfer_id = 3;    // Unique ID for this transfer
+}
+
+message FSUploadData {
+    string transfer_id = 1;    // Transfer identifier
+    uint32 chunk_index = 2;    // Which chunk this is (0-based)
+    bytes data = 3;            // Chunk data (up to 16KB)
+}
+
+message FSUploadComplete {
+    string transfer_id = 1;
+    bool success = 2;
+    string error = 3;          // Error message if failed
+    uint32 chunks_received = 4; // Number of chunks actually received
+}
+
+// ===== TRANSFER CONTROL =====
+
+message FSCancelTransfer {
+    string transfer_id = 1;
+}
+
+message FSCancelTransferResponse {
+    string transfer_id = 1;
+    bool success = 2;
+}

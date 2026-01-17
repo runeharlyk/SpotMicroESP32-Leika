@@ -7,6 +7,7 @@ import {
     type MessageFns
 } from '$lib/platform_shared/message'
 import * as Messages from '$lib/platform_shared/message'
+import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -20,6 +21,12 @@ type PendingRequest = {
     timeoutId: ReturnType<typeof setTimeout>
 }
 
+// Combine references from both message.proto and filesystem.proto
+const combinedReferences: Record<string, MessageFns<unknown>> = {
+    ...protoMetadata.references,
+    ...filesystemProtoMetadata.references
+}
+
 const MessageType = protoMetadata.fileDescriptor.messageType?.find(
     (msg: { name: string }) => msg.name === 'Message'
 )
@@ -27,7 +34,7 @@ const MessageType = protoMetadata.fileDescriptor.messageType?.find(
 if (MessageType?.field) {
     for (const field of MessageType.field) {
         if (field.typeName) {
-            const messageFns = protoMetadata.references[field.typeName]
+            const messageFns = combinedReferences[field.typeName]
             if (messageFns && field.jsonName && field.number) {
                 MESSAGE_TYPE_TO_KEY.set(messageFns, field.jsonName)
                 MESSAGE_TYPE_TO_TAG.set(messageFns, field.number)
