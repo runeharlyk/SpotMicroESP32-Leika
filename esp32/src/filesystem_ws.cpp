@@ -386,6 +386,10 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(
         return response;
     }
 
+    // Set file buffer size large, so we use ram to write to - and only flush when we need it (TODO: currently it is periodical)
+    // Set buffer size so 1 mb (static) TODO: Check that there is enough ram to do this
+    file.setBufferSize(1000000);
+
     std::string transferId = generateTransferId();
 
     UploadState state;
@@ -431,17 +435,6 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
         ESP_LOGW(TAG, "Upload chunk out of order: expected %u, got %u", state.chunksReceived, req.chunk_index);
         // For now, we'll accept it anyway and write sequentially
         // A more robust implementation would buffer out-of-order chunks
-    }
-
-    // Check available space before writing
-    size_t fs_total = 0, fs_used = 0;
-    esp_littlefs_info("spiffs", &fs_total, &fs_used);
-    size_t freeSpace = fs_total - fs_used;
-    if (freeSpace < req.data.size + 4096) {
-        state.hasError = true;
-        state.errorMessage = "Filesystem full";
-        finalizeUpload(transferId, false, state.errorMessage);
-        return;
     }
 
     // Write chunk data
