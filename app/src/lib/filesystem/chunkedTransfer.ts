@@ -1,5 +1,5 @@
 import { socket } from '$lib/stores/socket'
-import * as Messages from '$lib/platform_shared/message'
+import * as FSMessages from '$lib/platform_shared/filesystem'
 import type {
 	FSDeleteRequest,
 	FSMkdirRequest,
@@ -12,7 +12,7 @@ import type {
 	FSUploadData,
 	FSUploadComplete,
 	FSCancelTransfer
-} from '$lib/platform_shared/message'
+} from '$lib/platform_shared/filesystem'
 
 const MAX_CHUNK_SIZE = 2 ** 14 // ~= 16 kb
 
@@ -93,7 +93,7 @@ export class FileSystemClient {
 	private setupListeners() {
 		// Listen for download metadata (sent first with file size)
 		this.metadataListenerCleanup = socket.on(
-			Messages.FSDownloadMetadata,
+			FSMessages.FSDownloadMetadata,
 			(metadata: FSDownloadMetadata) => {
 				this.handleDownloadMetadata(metadata)
 			}
@@ -101,7 +101,7 @@ export class FileSystemClient {
 
 		// Listen for download data chunks
 		this.downloadListenerCleanup = socket.on(
-			Messages.FSDownloadData,
+			FSMessages.FSDownloadData,
 			(data: FSDownloadData) => {
 				this.handleDownloadData(data)
 			}
@@ -109,7 +109,7 @@ export class FileSystemClient {
 
 		// Listen for download completion
 		this.completeListenerCleanup = socket.on(
-			Messages.FSDownloadComplete,
+			FSMessages.FSDownloadComplete,
 			(complete: FSDownloadComplete) => {
 				this.handleDownloadComplete(complete)
 			}
@@ -117,7 +117,7 @@ export class FileSystemClient {
 
 		// Listen for upload completion
 		this.uploadCompleteListenerCleanup = socket.on(
-			Messages.FSUploadComplete,
+			FSMessages.FSUploadComplete,
 			(complete: FSUploadComplete) => {
 				this.handleUploadComplete(complete)
 			}
@@ -408,7 +408,7 @@ export class FileSystemClient {
 				}
 
 				// Send chunk as fire-and-forget message
-				socket.emit(Messages.FSUploadData, uploadData)
+				socket.emit(FSMessages.FSUploadData, uploadData)
 
 				upload.chunksSent++
 
