@@ -24,6 +24,7 @@ void FileSystemHandler::setSendCallbacks(
     sendUploadCompleteCallback_ = sendUploadComplete;
 }
 
+// This transfer is can be simplified, current "xfer" is just to distinguish a fs transfer id from any other, but relistically is just a waste of 5 bytes for every chunk sent
 std::string FileSystemHandler::generateTransferId() {
     return "xfer_" + std::to_string(millis()) + "_" + std::to_string(++transferIdCounter_);
 }
@@ -347,10 +348,6 @@ bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
     return true;
 }
 
-void FileSystemHandler::processPendingDownloads() {
-    // Process any pending downloads (in case we want non-blocking downloads)
-    // Currently downloads are synchronous in handleDownloadRequest
-}
 
 // ===== STREAMING UPLOAD =====
 
@@ -467,7 +464,7 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
     }
 }
 
-// Note that the finalize upload takes a insane amount of time, as it is flushing from ram to an incredibly slow LittleFS SPIFFS (Tested to roughly 12 seconds for 1 mb file)
+// Note that the finalize upload takes an insane amount of time, as it is flushing from ram to an incredibly slow LittleFS SPIFFS (Tested to roughly 12 seconds for 1 mb file)
 void FileSystemHandler::finalizeUpload(const std::string& transferId, bool success, const std::string& error) {
     auto it = uploads_.find(transferId);
     if (it == uploads_.end()) {
