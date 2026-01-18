@@ -60,7 +60,7 @@ class CommAdapterBase {
             sendToSubscribers(tag, buffer, stream.bytes_written);
         }
 
-        if (buffer != buffer) { // If we have malloced a buffer, free it now.
+        if (pb_heap_enc_buf != buffer) { // If we have malloced a buffer, free it now.
             free(buffer);
         }
     }
