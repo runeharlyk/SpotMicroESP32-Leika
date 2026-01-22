@@ -7,8 +7,8 @@
 #include <functional>
 
 // Make sure that this aligns with socket_message.FSDownloadData.data max_size (and for upload)
-#define FS_MAX_CHUNK_SIZE 16384 // ~= 16 kb
-#define FS_TRANSFER_TIMEOUT 30000  // 30 seconds
+#define FS_MAX_CHUNK_SIZE 16384   // ~= 16 kb
+#define FS_TRANSFER_TIMEOUT 30000 // 30 seconds
 
 namespace FileSystemWS {
 
@@ -82,24 +82,23 @@ class FileSystemHandler {
     void processPendingDownloads();
 
   private:
-    std::map<std::string, DownloadState> downloads_;
-    std::map<std::string, UploadState> uploads_;
+    std::map<uint32_t, DownloadState> downloads_;
+    std::map<uint32_t, UploadState> uploads_;
     uint32_t transferIdCounter_;
+
+    inline uint32_t generateTransferId() { return ++transferIdCounter_; }
 
     SendMetadataCallback sendMetadataCallback_;
     SendCallback sendDataCallback_;
     SendCompleteCallback sendCompleteCallback_;
     SendUploadCompleteCallback sendUploadCompleteCallback_;
 
-    std::string generateTransferId();
     void listDirectory(const std::string& path, socket_message_FSListResponse& response);
     bool deleteRecursive(const std::string& path);
 
-    // Send next chunk for a download
-    bool sendNextDownloadChunk(const std::string& transferId);
+    bool sendNextDownloadChunk(uint32_t transferId);
 
-    // Finalize upload and send completion message
-    void finalizeUpload(const std::string& transferId, bool success, const std::string& error = "");
+    void finalizeUpload(uint32_t transferId, bool success, const std::string& error = "");
 };
 
 extern FileSystemHandler fsHandler;

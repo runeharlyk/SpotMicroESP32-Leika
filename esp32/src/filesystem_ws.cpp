@@ -24,27 +24,20 @@ void FileSystemHandler::setSendCallbacks(
     sendUploadCompleteCallback_ = sendUploadComplete;
 }
 
-// This transfer is can be simplified, current "xfer" is just to distinguish a fs transfer id from any other, but relistically is just a waste of 5 bytes for every chunk sent
-std::string FileSystemHandler::generateTransferId() {
-    return "xfer_" + std::to_string(millis()) + "_" + std::to_string(++transferIdCounter_);
-}
-
 void FileSystemHandler::cleanupExpiredTransfers() {
     uint32_t now = millis();
 
-    // Cleanup expired downloads
     auto dlIt = downloads_.begin();
     while (dlIt != downloads_.end()) {
         if (now - dlIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT) {
             if (dlIt->second.file) {
                 dlIt->second.file.close();
             }
-            ESP_LOGW(TAG, "Download %s timed out", dlIt->first.c_str());
+            ESP_LOGW(TAG, "Download %u timed out", dlIt->first);
 
-            // Send error completion
             if (sendCompleteCallback_) {
                 socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-                strncpy(complete.transfer_id, dlIt->first.c_str(), sizeof(complete.transfer_id) - 1);
+                complete.transfer_id = dlIt->first;
                 complete.success = false;
                 strncpy(complete.error, "Transfer timed out", sizeof(complete.error) - 1);
                 complete.total_chunks = dlIt->second.chunksSent;
@@ -58,21 +51,18 @@ void FileSystemHandler::cleanupExpiredTransfers() {
         }
     }
 
-    // Cleanup expired uploads
     auto ulIt = uploads_.begin();
     while (ulIt != uploads_.end()) {
         if (now - ulIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT) {
             if (ulIt->second.file) {
                 ulIt->second.file.close();
             }
-            // Delete partial file
             ESP_FS.remove(ulIt->second.path.c_str());
-            ESP_LOGW(TAG, "Upload %s timed out, deleted partial file", ulIt->first.c_str());
+            ESP_LOGW(TAG, "Upload %u timed out, deleted partial file", ulIt->first);
 
-            // Send error completion
             if (sendUploadCompleteCallback_) {
                 socket_message_FSUploadComplete complete = socket_message_FSUploadComplete_init_zero;
-                strncpy(complete.transfer_id, ulIt->first.c_str(), sizeof(complete.transfer_id) - 1);
+                complete.transfer_id = ulIt->first;
                 complete.success = false;
                 strncpy(complete.error, "Transfer timed out", sizeof(complete.error) - 1);
                 complete.chunks_received = ulIt->second.chunksReceived;
@@ -163,7 +153,7 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
     int fileCount = 0;
     int dirCount = 0;
 
-    while (file && fileCount < 20 && dirCount < 20) {  // Limit to match protobuf max_count
+    while (file && fileCount < 20 && dirCount < 20) { // Limit to match protobuf max_count
         if (file.isDirectory()) {
             if (dirCount < 20) {
                 strncpy(response.directories[dirCount].name, file.name(), sizeof(response.directories[dirCount].name) - 1);
@@ -238,14 +228,13 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     uint32_t fileSize = file.size();
     uint32_t chunkSize = FS_MAX_CHUNK_SIZE;
     uint32_t totalChunks = (fileSize + chunkSize - 1) / chunkSize;
-    if (totalChunks == 0) totalChunks = 1; // Handle empty files
+    if (totalChunks == 0) totalChunks = 1;
 
-    std::string transferId = generateTransferId();
+    uint32_t transferId = generateTransferId();
 
-    // Send metadata first so client knows exact file size and can allocate buffer
     if (sendMetadataCallback_) {
         socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
-        strncpy(metadata.transfer_id, transferId.c_str(), sizeof(metadata.transfer_id) - 1);
+        metadata.transfer_id = transferId;
         metadata.success = true;
         metadata.file_size = fileSize;
         metadata.total_chunks = totalChunks;
@@ -264,8 +253,8 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
 
     downloads_[transferId] = state;
 
-    ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%s",
-             path.c_str(), fileSize, totalChunks, transferId.c_str());
+    ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u",
+             path.c_str(), fileSize, totalChunks, transferId);
 
     // Start streaming chunks immediately
     while (sendNextDownloadChunk(transferId)) {
@@ -274,7 +263,7 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     }
 }
 
-bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
+bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
     auto it = downloads_.find(transferId);
     if (it == downloads_.end()) {
         return false;
@@ -283,12 +272,10 @@ bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
     DownloadState& state = it->second;
     state.lastActivityTime = millis();
 
-    // Check if we're done
     if (state.chunksSent >= state.totalChunks) {
-        // Send completion message
         if (sendCompleteCallback_) {
             socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-            strncpy(complete.transfer_id, transferId.c_str(), sizeof(complete.transfer_id) - 1);
+            complete.transfer_id = transferId;
             complete.success = true;
             complete.total_chunks = state.totalChunks;
             complete.file_size = state.fileSize;
@@ -297,31 +284,27 @@ bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
 
         state.file.close();
         downloads_.erase(it);
-        ESP_LOGI(TAG, "Download completed: %s", transferId.c_str());
+        ESP_LOGI(TAG, "Download completed: %u", transferId);
         return false;
     }
 
-    // Allocate data struct on heap to avoid stack overflow (it contains 16KB buffer)
     auto data = new socket_message_FSDownloadData();
     memset(data, 0, sizeof(socket_message_FSDownloadData));
-    strncpy(data->transfer_id, transferId.c_str(), sizeof(data->transfer_id) - 1);
+    data->transfer_id = transferId;
     data->chunk_index = state.chunksSent;
 
-    // Calculate chunk size (last chunk might be smaller)
     uint32_t bytesToRead = state.chunkSize;
     uint32_t position = state.chunksSent * state.chunkSize;
     if (position + bytesToRead > state.fileSize) {
         bytesToRead = state.fileSize - position;
     }
 
-    // Read chunk data
     size_t bytesRead = state.file.read(data->data.bytes, bytesToRead);
     if (bytesRead == 0 && bytesToRead > 0) {
-        // Read error - send error completion
         delete data;
         if (sendCompleteCallback_) {
             socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-            strncpy(complete.transfer_id, transferId.c_str(), sizeof(complete.transfer_id) - 1);
+            complete.transfer_id = transferId;
             complete.success = false;
             strncpy(complete.error, "Failed to read file", sizeof(complete.error) - 1);
             complete.total_chunks = state.chunksSent;
@@ -331,12 +314,11 @@ bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
 
         state.file.close();
         downloads_.erase(it);
-        ESP_LOGE(TAG, "Download failed - read error: %s", transferId.c_str());
+        ESP_LOGE(TAG, "Download failed - read error: %u", transferId);
         return false;
     }
     data->data.size = bytesRead;
 
-    // Send chunk
     if (sendDataCallback_) {
         sendDataCallback_(*data, state.clientId);
     }
@@ -348,12 +330,10 @@ bool FileSystemHandler::sendNextDownloadChunk(const std::string& transferId) {
     return true;
 }
 
-
 // ===== STREAMING UPLOAD =====
 
-socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(
-    const socket_message_FSUploadStart& req, int clientId
-) {
+socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const socket_message_FSUploadStart& req,
+                                                                          int clientId) {
     socket_message_FSUploadStartResponse response = socket_message_FSUploadStartResponse_init_zero;
 
     std::string path(req.path);
@@ -363,7 +343,7 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
     size_t freeSpace = fs_total - fs_used;
-    if (freeSpace < req.file_size + 4096) {  // 4KB safety margin
+    if (freeSpace < req.file_size + 4096) { // 4KB safety margin
         response.success = false;
         strncpy(response.error, "Insufficient storage space", sizeof(response.error) - 1);
         return response;
@@ -387,11 +367,9 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(
         return response;
     }
 
-    // Set file buffer size large, so we use ram to write to - and only flush when we need it (TODO: currently it is periodical)
-    // Set buffer size so 1 mb (static) TODO: Check that there is enough ram to do this
     file.setBufferSize(1000000);
 
-    std::string transferId = generateTransferId();
+    uint32_t transferId = generateTransferId();
 
     UploadState state;
     state.path = path;
@@ -407,19 +385,19 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(
     uploads_[transferId] = state;
 
     response.success = true;
-    strncpy(response.transfer_id, transferId.c_str(), sizeof(response.transfer_id) - 1);
+    response.transfer_id = transferId;
 
-    ESP_LOGI(TAG, "Upload started: %s, id=%s", path.c_str(), transferId.c_str());
+    ESP_LOGI(TAG, "Upload started: %s, id=%u", path.c_str(), transferId);
 
     return response;
 }
 
 void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req) {
-    std::string transferId(req.transfer_id);
+    uint32_t transferId = req.transfer_id;
 
     auto it = uploads_.find(transferId);
     if (it == uploads_.end()) {
-        ESP_LOGW(TAG, "Upload data for unknown transfer: %s", transferId.c_str());
+        ESP_LOGW(TAG, "Upload data for unknown transfer: %u", transferId);
         return;
     }
 
@@ -464,8 +442,7 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
     }
 }
 
-// Note that the finalize upload takes an insane amount of time, as it is flushing from ram to an incredibly slow LittleFS SPIFFS (Tested to roughly 12 seconds for 1 mb file)
-void FileSystemHandler::finalizeUpload(const std::string& transferId, bool success, const std::string& error) {
+void FileSystemHandler::finalizeUpload(uint32_t transferId, bool success, const std::string& error) {
     auto it = uploads_.find(transferId);
     if (it == uploads_.end()) {
         return;
@@ -473,12 +450,10 @@ void FileSystemHandler::finalizeUpload(const std::string& transferId, bool succe
 
     UploadState& state = it->second;
 
-    // Close file
     if (state.file) {
         state.file.close();
     }
 
-    // Delete file on error
     if (!success) {
         ESP_FS.remove(state.path.c_str());
         ESP_LOGW(TAG, "Upload failed, deleted partial file: %s", state.path.c_str());
@@ -486,10 +461,9 @@ void FileSystemHandler::finalizeUpload(const std::string& transferId, bool succe
         ESP_LOGI(TAG, "Upload completed: %s (%u bytes)", state.path.c_str(), state.bytesReceived);
     }
 
-    // Send completion message
     if (sendUploadCompleteCallback_) {
         socket_message_FSUploadComplete complete = socket_message_FSUploadComplete_init_zero;
-        strncpy(complete.transfer_id, transferId.c_str(), sizeof(complete.transfer_id) - 1);
+        complete.transfer_id = transferId;
         complete.success = success;
         if (!error.empty()) {
             strncpy(complete.error, error.c_str(), sizeof(complete.error) - 1);
@@ -504,13 +478,11 @@ void FileSystemHandler::finalizeUpload(const std::string& transferId, bool succe
 // ===== TRANSFER CONTROL =====
 
 socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(
-    const socket_message_FSCancelTransfer& req
-) {
+    const socket_message_FSCancelTransfer& req) {
     socket_message_FSCancelTransferResponse response = socket_message_FSCancelTransferResponse_init_zero;
-    std::string transferId(req.transfer_id);
-    strncpy(response.transfer_id, transferId.c_str(), sizeof(response.transfer_id) - 1);
+    uint32_t transferId = req.transfer_id;
+    response.transfer_id = transferId;
 
-    // Check downloads
     auto dlIt = downloads_.find(transferId);
     if (dlIt != downloads_.end()) {
         if (dlIt->second.file) {
@@ -518,21 +490,19 @@ socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(
         }
         downloads_.erase(dlIt);
         response.success = true;
-        ESP_LOGI(TAG, "Download cancelled: %s", transferId.c_str());
+        ESP_LOGI(TAG, "Download cancelled: %u", transferId);
         return response;
     }
 
-    // Check uploads
     auto ulIt = uploads_.find(transferId);
     if (ulIt != uploads_.end()) {
         if (ulIt->second.file) {
             ulIt->second.file.close();
         }
-        // Delete partial upload file
         ESP_FS.remove(ulIt->second.path.c_str());
         uploads_.erase(ulIt);
         response.success = true;
-        ESP_LOGI(TAG, "Upload cancelled: %s", transferId.c_str());
+        ESP_LOGI(TAG, "Upload cancelled: %u", transferId);
         return response;
     }
 
