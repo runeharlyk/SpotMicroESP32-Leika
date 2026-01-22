@@ -43,9 +43,10 @@ class CommAdapterBase {
 
         size_t out_size;
         pb_get_encoded_size(&out_size, socket_message_Message_fields, &msg_);
-        uint8_t *buffer = pb_heap_enc_buf;
-        if (out_size > sizeof(pb_heap_enc_buf)) { // If the encoded size exceeds our buffer size, we needs to malloc a buffer of a proper size
-            buffer = (uint8_t*) malloc(out_size);
+        uint8_t* buffer = pb_heap_enc_buf;
+        if (out_size > sizeof(pb_heap_enc_buf)) { // If the encoded size exceeds our buffer size, we needs to malloc a
+                                                  // buffer of a proper size
+            buffer = (uint8_t*)malloc(out_size);
         }
 
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
@@ -60,7 +61,7 @@ class CommAdapterBase {
             sendToSubscribers(tag, buffer, stream.bytes_written);
         }
 
-        if (pb_heap_enc_buf != buffer) { // If we have malloced a buffer, free it now.
+        if (pb_heap_enc_buf != buffer) {
             free(buffer);
         }
     }

@@ -45,8 +45,8 @@ APService apService;
 
 void setupServer() {
     server.config.max_uri_handlers = 50 + WWW_ASSETS_COUNT;
-    server.config.stack_size = 32768; // Increase from default 4KB to 32KB for large protobuf messages
-    server.maxUploadSize = 1000000; // 1 MB;
+    server.config.stack_size = 32768; // 32KB
+    server.maxUploadSize = 1000000;   // 1 MB;
     server.listen(80);
     server.on("/api/system/reset", HTTP_POST,
               [&](PsychicRequest *request, JsonVariant &json) { return system_service::handleReset(request); });
@@ -135,25 +135,11 @@ void setupServer() {
 }
 
 void setupEventSocket() {
-    // Set up filesystem handler callbacks for streaming transfers
     FileSystemWS::fsHandler.setSendCallbacks(
-        // Send download metadata (file size, total chunks)
-        [](const socket_message_FSDownloadMetadata& metadata, int clientId) {
-            socket.emit(metadata, clientId);
-        },
-        // Send download data chunk
-        [](const socket_message_FSDownloadData& data, int clientId) {
-            socket.emit(data, clientId);
-        },
-        // Send download complete
-        [](const socket_message_FSDownloadComplete& complete, int clientId) {
-            socket.emit(complete, clientId);
-        },
-        // Send upload complete
-        [](const socket_message_FSUploadComplete& complete, int clientId) {
-            socket.emit(complete, clientId);
-        }
-    );
+        [](const socket_message_FSDownloadMetadata &metadata, int clientId) { socket.emit(metadata, clientId); },
+        [](const socket_message_FSDownloadData &data, int clientId) { socket.emit(data, clientId); },
+        [](const socket_message_FSDownloadComplete &complete, int clientId) { socket.emit(complete, clientId); },
+        [](const socket_message_FSUploadComplete &complete, int clientId) { socket.emit(complete, clientId); });
 
     socket.on<socket_message_ControllerData>(
         [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
@@ -178,7 +164,6 @@ void setupEventSocket() {
         data.active ? servoController.activate() : servoController.deactivate();
     });
 
-    // Handle streaming upload data (fire-and-forget from client)
     socket.on<socket_message_FSUploadData>([&](const socket_message_FSUploadData &data, int clientId) {
         FileSystemWS::fsHandler.handleUploadData(data);
     });
@@ -235,10 +220,7 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_fs_download_request_tag, // Streaming download (no response, streams data)
          [](const auto &req, auto &res, int clientId) {
-             // Download is handled differently - it streams chunks directly
-             // No correlation response is sent; instead FSDownloadData/FSDownloadComplete are streamed
              FileSystemWS::fsHandler.handleDownloadRequest(req.request.fs_download_request, clientId);
-             // Set status_code to 0 to indicate no response should be sent
              res.status_code = 0;
          }},
 
@@ -256,7 +238,6 @@ void setupEventSocket() {
     };
 
     socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
-        // Allocate response on heap to avoid stack overflow (CorrelationResponse is very large)
         auto res = new socket_message_CorrelationResponse();
         *res = socket_message_CorrelationResponse_init_default;
         res->correlation_id = data.correlation_id;
@@ -265,7 +246,6 @@ void setupEventSocket() {
         auto it = correlationHandlers.find(data.which_request);
         if (it != correlationHandlers.end()) {
             it->second(data, *res, clientId);
-            // Only emit response if status_code is non-zero (streaming handlers set it to 0)
             if (res->status_code != 0) {
                 socket.emit(*res, clientId);
             }
@@ -337,10 +317,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             socket.emit(rssi);
         });
 
-        EXECUTE_EVERY_N_MS(60000, {
-            // Cleanup expired filesystem transfers
-            FileSystemWS::fsHandler.cleanupExpiredTransfers();
-        });
+        EXECUTE_EVERY_N_MS(60000, { FileSystemWS::fsHandler.cleanupExpiredTransfers(); });
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
