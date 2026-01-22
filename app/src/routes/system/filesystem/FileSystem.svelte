@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Spinner from '$lib/components/Spinner.svelte'
-	import { fileSystemClient, type TransferProgress } from '$lib/filesystem/chunkedTransfer'
+	import { fileSystemClient } from '$lib/filesystem/chunkedTransfer'
+	import type { TransferProgress } from '$lib/types/models'
 	import { FolderIcon, Add, FileIcon, UploadIcon, DownloadIcon, TrashIcon } from '$lib/components/icons'
 	import { modals } from 'svelte-modals'
 	import NewFolderDialog from './NewFolderDialog.svelte'
