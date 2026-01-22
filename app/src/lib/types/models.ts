@@ -153,3 +153,37 @@ export interface MDNSStatus {
     services: MDNSService[]
     global_txt_records: MDNSTxtRecord[]
 }
+
+export interface Result {
+    success: boolean
+    error?: string
+}
+
+export interface DataResult extends Result {
+    data?: Uint8Array
+}
+
+export interface FileInfo {
+    name: string
+    size: number
+}
+
+export interface DirectoryInfo {
+    name: string
+}
+
+export interface ListResult extends Result {
+    files: FileInfo[]
+    directories: DirectoryInfo[]
+}
+
+export interface TransferProgress {
+    transferId: number
+    bytesTransferred: number
+    totalBytes: number
+    chunksCompleted: number
+    totalChunks: number
+    percentage: number
+}
+
+export type ProgressCallback = (progress: TransferProgress) => void

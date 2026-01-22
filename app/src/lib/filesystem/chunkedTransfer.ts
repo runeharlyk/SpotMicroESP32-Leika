@@ -13,78 +13,45 @@ import type {
 	FSUploadComplete,
 	FSCancelTransfer
 } from '$lib/platform_shared/filesystem'
+import type { Result, DataResult, ListResult, ProgressCallback } from '$lib/types/models'
 
-const MAX_CHUNK_SIZE = 2 ** 14 // ~= 16 kb
+const MAX_CHUNK_SIZE = 2 ** 14
 
-export interface FileInfo {
-	name: string
-	size: number
+type TimeoutId = ReturnType<typeof setTimeout>
+type CleanupFn = (() => void) | null
+
+interface TransferBase<T extends Result> {
+	resolve: (result: T) => void
+	reject: (error: Error) => void
+	onProgress?: ProgressCallback
+	timeoutId: TimeoutId
 }
 
-export interface DirectoryInfo {
-	name: string
-}
-
-export interface ListResult {
-	success: boolean
-	error?: string
-	files: FileInfo[]
-	directories: DirectoryInfo[]
-}
-
-export interface TransferProgress {
-	transferId: number
-	bytesTransferred: number
-	totalBytes: number
-	chunksCompleted: number
-	totalChunks: number
-	percentage: number
-}
-
-export type ProgressCallback = (progress: TransferProgress) => void
-
-// Active transfer tracking
-interface ActiveDownload {
+interface ActiveDownload extends TransferBase<DataResult> {
 	path: string
 	buffer: Uint8Array
 	fileSize: number
 	totalChunks: number
 	chunksReceived: number
 	bytesReceived: number
-	resolve: (result: { success: boolean; data?: Uint8Array; error?: string }) => void
-	reject: (error: Error) => void
-	onProgress?: ProgressCallback
-	timeoutId: ReturnType<typeof setTimeout>
 }
 
-interface ActiveUpload {
+interface ActiveUpload extends TransferBase<Result> {
 	path: string
 	transferId: number
 	totalChunks: number
 	chunksSent: number
-	resolve: (result: { success: boolean; error?: string }) => void
-	reject: (error: Error) => void
-	onProgress?: ProgressCallback
-	timeoutId: ReturnType<typeof setTimeout>
 }
 
 export class FileSystemClient {
 	private activeDownloads = new Map<number, ActiveDownload>()
 	private activeUploads = new Map<number, ActiveUpload>()
-	private pendingDownloads = new Map<
-		string,
-		{
-			resolve: (result: { success: boolean; data?: Uint8Array; error?: string }) => void
-			reject: (error: Error) => void
-			onProgress?: ProgressCallback
-			timeoutId: ReturnType<typeof setTimeout>
-		}
-	>()
-	private metadataListenerCleanup: (() => void) | null = null
-	private downloadListenerCleanup: (() => void) | null = null
-	private completeListenerCleanup: (() => void) | null = null
-	private uploadCompleteListenerCleanup: (() => void) | null = null
-	private transferTimeout = 60000 // 60 seconds timeout for transfers
+	private pendingDownloads = new Map<string, TransferBase<DataResult>>()
+	private metadataListenerCleanup: CleanupFn = null
+	private downloadListenerCleanup: CleanupFn = null
+	private completeListenerCleanup: CleanupFn = null
+	private uploadCompleteListenerCleanup: CleanupFn = null
+	private transferTimeout = 60000
 
 	constructor() {
 		this.setupListeners()
@@ -243,10 +210,8 @@ export class FileSystemClient {
 		}
 	}
 
-	/**
-	 * Delete a file or directory on the ESP32
-	 */
-	async deleteFile(path: string): Promise<{ success: boolean; error?: string }> {
+	/** Delete a file or directory on the ESP32 */
+	async deleteFile(path: string): Promise<Result> {
 		const request: FSDeleteRequest = { path }
 
 		const response = await socket.request({
@@ -263,10 +228,8 @@ export class FileSystemClient {
 		return { success: false, error: 'No response received' }
 	}
 
-	/**
-	 * Create a directory on the ESP32
-	 */
-	async createDirectory(path: string): Promise<{ success: boolean; error?: string }> {
+	/** Create a directory on the ESP32 */
+	async createDirectory(path: string): Promise<Result> {
 		const request: FSMkdirRequest = { path }
 
 		const response = await socket.request({
@@ -283,10 +246,8 @@ export class FileSystemClient {
 		return { success: false, error: 'No response received' }
 	}
 
-	/**
-	 * List files and directories at the given path
-	 */
-	async listDirectory(path: string = '/'): Promise<ListResult> {
+	/** List files and directories at the given path */
+	async listDirectory(path = '/'): Promise<ListResult> {
 		const request: FSListRequest = { path }
 
 		const response = await socket.request({
@@ -306,14 +267,8 @@ export class FileSystemClient {
 		return { success: false, error: 'No response received', files: [], directories: [] }
 	}
 
-	/**
-	 * Download a file from the ESP32 using streaming transfer
-	 * Server sends metadata first (with file size), then streams all chunks
-	 */
-	async downloadFile(
-		path: string,
-		onProgress?: ProgressCallback
-	): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+	/** Download a file from the ESP32 using streaming transfer */
+	async downloadFile(path: string, onProgress?: ProgressCallback): Promise<DataResult> {
 		return new Promise((resolve, reject) => {
 			// Send download request - server will send metadata first, then stream chunks
 			const request: FSDownloadRequest = { path }
@@ -341,15 +296,8 @@ export class FileSystemClient {
 		})
 	}
 
-	/**
-	 * Upload a file to the ESP32 using streaming transfer
-	 * Client sends all chunks without waiting for ACKs
-	 */
-	async uploadFile(
-		path: string,
-		data: Uint8Array,
-		onProgress?: ProgressCallback
-	): Promise<{ success: boolean; error?: string }> {
+	/** Upload a file to the ESP32 using streaming transfer */
+	async uploadFile(path: string, data: Uint8Array, onProgress?: ProgressCallback): Promise<Result> {
 		const fileSize = data.length
 		const chunkSize = MAX_CHUNK_SIZE
 		const totalChunks = Math.ceil(fileSize / chunkSize) || 1
@@ -430,10 +378,8 @@ export class FileSystemClient {
 		})
 	}
 
-	/**
-	 * Cancel an ongoing transfer
-	 */
-	async cancelTransfer(transferId: number): Promise<{ success: boolean }> {
+	/** Cancel an ongoing transfer */
+	async cancelTransfer(transferId: number): Promise<Pick<Result, 'success'>> {
 		const request: FSCancelTransfer = { transferId }
 
 		// Clean up local state
@@ -462,27 +408,23 @@ export class FileSystemClient {
 		return { success: false }
 	}
 
-	/**
-	 * Helper: Upload a File object from browser
-	 */
+	/** Upload a File object from browser */
 	async uploadFileFromBrowser(
 		destinationPath: string,
 		file: File,
 		onProgress?: ProgressCallback
-	): Promise<{ success: boolean; error?: string }> {
+	): Promise<Result> {
 		const arrayBuffer = await file.arrayBuffer()
 		const data = new Uint8Array(arrayBuffer)
 		return this.uploadFile(destinationPath, data, onProgress)
 	}
 
-	/**
-	 * Helper: Download a file and save it to browser
-	 */
+	/** Download a file and save it to browser */
 	async downloadFileAndSave(
 		path: string,
 		filename: string,
 		onProgress?: ProgressCallback
-	): Promise<{ success: boolean; error?: string }> {
+	): Promise<Result> {
 		const result = await this.downloadFile(path, onProgress)
 
 		if (!result.success || !result.data) {
@@ -503,9 +445,7 @@ export class FileSystemClient {
 		return { success: true }
 	}
 
-	/**
-	 * Cleanup listeners when no longer needed
-	 */
+	/** Cleanup listeners when no longer needed */
 	destroy() {
 		this.metadataListenerCleanup?.()
 		this.downloadListenerCleanup?.()

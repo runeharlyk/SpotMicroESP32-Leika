@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { fileSystemClient, type TransferProgress } from '$lib/filesystem/chunkedTransfer'
+    import { fileSystemClient } from '$lib/filesystem/chunkedTransfer'
+    import type { TransferProgress } from '$lib/types/models'
     import { onMount } from 'svelte'
 
     let currentPath = '/'

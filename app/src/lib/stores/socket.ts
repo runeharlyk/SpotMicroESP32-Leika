@@ -102,7 +102,7 @@ function createWebSocket() {
     >()
     const { subscribe, set } = writable(false)
     const reconnectTimeoutTime = 500000
-    const requestTimeoutTime = 30000  // 30 seconds for chunked file transfers
+    const requestTimeoutTime = 30000
     let correlationIdCounter = 0
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
     let reconnectTimeoutId: ReturnType<typeof setTimeout>
@@ -144,7 +144,6 @@ function createWebSocket() {
         ws.onmessage = frame => {
             resetUnresponsiveCheck()
 
-            // Reset all pending request timeouts when any message arrives (connection is alive)
             for (const [correlationId, pending] of pending_requests) {
                 clearTimeout(pending.timeoutId)
                 pending.timeoutId = setTimeout(() => {
