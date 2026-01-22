@@ -1,30 +1,25 @@
 #include "www_mount.hpp"
 
-static esp_err_t web_send(PsychicRequest* req, const WebAsset& asset) {
-    PsychicResponse resp(req);
-    resp.setCode(200);
-    resp.setContentType(asset.mime);
-    if (asset.gz) resp.addHeader("Content-Encoding", "gzip");
-    if (WWW_OPT.add_vary) resp.addHeader("Vary", "Accept-Encoding");
+static esp_err_t web_send(httpd_req_t* req, const WebAsset& asset) {
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_set_type(req, asset.mime);
+    if (asset.gz) httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+    if (WWW_OPT.add_vary) httpd_resp_set_hdr(req, "Vary", "Accept-Encoding");
+
     char cc[64];
     snprintf(cc, sizeof(cc), "public, immutable, max-age=%u", WWW_OPT.max_age);
-    resp.addHeader("Cache-Control", cc);
+    httpd_resp_set_hdr(req, "Cache-Control", cc);
+
     char et[34];
     snprintf(et, sizeof(et), "\"%08x\"", asset.etag);
-    resp.addHeader("ETag", et);
-    resp.setContent(asset.data, asset.len);
-    return resp.send();
+    httpd_resp_set_hdr(req, "ETag", et);
+
+    return httpd_resp_send(req, (const char*)asset.data, asset.len);
 }
 
-void mountStaticAssets(PsychicHttpServer& server) {
-    static uint8_t buf[sizeof(PsychicWebHandler) * WWW_ASSETS_COUNT];
+void mountStaticAssets(NativeServer& server) {
     for (size_t i = 0; i < WWW_ASSETS_COUNT; i++) {
         const WebAsset* a = &WWW_ASSETS[i];
-        auto* handle = new (&buf[i * sizeof(PsychicWebHandler)]) PsychicWebHandler();
-        handle->onRequest([a](PsychicRequest* req) { return web_send(req, *a); });
-        server.on(a->uri, HTTP_GET, handle);
-        if (strcmp(a->uri, WWW_OPT.default_uri) == 0) {
-            server.defaultEndpoint->setHandler(handle);
-        }
+        server.on(a->uri, HTTP_GET, [a](httpd_req_t* req) { return web_send(req, *a); });
     }
 }

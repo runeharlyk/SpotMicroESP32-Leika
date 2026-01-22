@@ -1,22 +1,23 @@
 #include "system_service.h"
+#include <communication/native_server.h>
 
 namespace system_service {
 
 static const char *TAG = "SystemService";
 
-esp_err_t handleReset(PsychicRequest *request) {
+esp_err_t handleReset(httpd_req_t *request) {
     reset();
-    return request->reply(200);
+    return NativeServer::sendOk(request);
 }
 
-esp_err_t handleRestart(PsychicRequest *request) {
+esp_err_t handleRestart(httpd_req_t *request) {
     restart();
-    return request->reply(200);
+    return NativeServer::sendOk(request);
 }
 
-esp_err_t handleSleep(PsychicRequest *request) {
+esp_err_t handleSleep(httpd_req_t *request) {
     sleep();
-    return request->reply(200);
+    return NativeServer::sendOk(request);
 }
 
 void reset() {

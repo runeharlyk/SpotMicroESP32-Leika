@@ -1,7 +1,9 @@
 #pragma once
 
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
+#include <ArduinoJson.h>
 #include <template/stateful_service.h>
+#include <communication/native_server.h>
 
 #include <functional>
 
@@ -20,29 +22,26 @@ class StatefulHttpEndpoint {
                          StatefulService<T> *statefulService)
         : _stateReader(stateReader), _stateUpdater(stateUpdater), _statefulService(statefulService) {}
 
-    esp_err_t handleStateUpdate(PsychicRequest *request, JsonVariant &json) {
+    esp_err_t handleStateUpdate(httpd_req_t *request, JsonVariant &json) {
         JsonVariant jsonObject = json.as<JsonVariant>();
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
 
-        if (outcome == StateUpdateResult::ERROR)
-            return request->reply(400);
-        else if ((outcome == StateUpdateResult::CHANGED)) {
-            // persist the changes to the FS
+        if (outcome == StateUpdateResult::ERROR) {
+            return NativeServer::sendError(request, 400, "Invalid state");
+        } else if ((outcome == StateUpdateResult::CHANGED)) {
             _statefulService->callUpdateHandlers(HTTP_ENDPOINT_ORIGIN_ID);
         }
 
-        PsychicJsonResponse response = PsychicJsonResponse(request, false);
-        jsonObject = response.getRoot();
-
-        _statefulService->read(jsonObject, _stateReader);
-
-        return response.send();
+        JsonDocument doc;
+        JsonVariant root = doc.to<JsonVariant>();
+        _statefulService->read(root, _stateReader);
+        return NativeServer::sendJson(request, 200, doc);
     }
 
-    esp_err_t getState(PsychicRequest *request) {
-        PsychicJsonResponse response = PsychicJsonResponse(request, false);
-        JsonVariant jsonObject = response.getRoot();
-        _statefulService->read(jsonObject, _stateReader);
-        return response.send();
+    esp_err_t getState(httpd_req_t *request) {
+        JsonDocument doc;
+        JsonVariant root = doc.to<JsonVariant>();
+        _statefulService->read(root, _stateReader);
+        return NativeServer::sendJson(request, 200, doc);
     }
 };

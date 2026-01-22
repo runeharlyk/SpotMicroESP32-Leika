@@ -1,4 +1,5 @@
 #include <mdns_service.h>
+#include <communication/native_server.h>
 
 static const char *TAG = "MDNSService";
 
@@ -64,11 +65,11 @@ void MDNSService::addServices() {
     }
 }
 
-esp_err_t MDNSService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
+esp_err_t MDNSService::getStatus(httpd_req_t *request) {
+    JsonDocument doc;
+    JsonVariant root = doc.to<JsonVariant>();
     getStatus(root);
-    return response.send();
+    return NativeServer::sendJson(request, 200, doc);
 }
 
 void MDNSService::getStatus(JsonVariant &root) {
@@ -76,12 +77,12 @@ void MDNSService::getStatus(JsonVariant &root) {
     root["started"] = _started;
 }
 
-esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json) {
+esp_err_t MDNSService::queryServices(httpd_req_t *request, JsonVariant &json) {
     std::string service = json["service"].as<std::string>();
     std::string proto = json["protocol"].as<std::string>();
 
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonVariant root = response.getRoot();
+    JsonDocument doc;
+    JsonVariant root = doc.to<JsonVariant>();
 
     ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
 
@@ -96,5 +97,5 @@ esp_err_t MDNSService::queryServices(PsychicRequest *request, JsonVariant &json)
         serviceObj["port"] = MDNS.port(i);
     }
 
-    return response.send();
+    return NativeServer::sendJson(request, 200, doc);
 }

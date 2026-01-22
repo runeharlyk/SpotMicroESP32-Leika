@@ -1,61 +1,52 @@
 #include <filesystem.h>
+#include <communication/native_server.h>
 
 static const char *TAG = "FileService";
 
 namespace FileSystem {
 
-PsychicUploadHandler *uploadHandler;
+esp_err_t getFiles(httpd_req_t *request) {
+    std::string files = listFiles("/");
+    httpd_resp_set_type(request, "application/json");
+    return httpd_resp_send(request, files.c_str(), files.length());
+}
 
-class Initializer {
-  public:
-    Initializer() {
-        uploadHandler = new PsychicUploadHandler();
-        uploadHandler->onUpload([](PsychicRequest *request, const String &filename, uint64_t index, uint8_t *data,
-                                   size_t len, bool last) -> esp_err_t {
-            return uploadFile(request, std::string(filename.c_str()), index, data, len, last);
-        });
-        uploadHandler->onRequest([](PsychicRequest *request) { return request->reply(200); });
+esp_err_t getConfigFile(httpd_req_t *request) {
+    const char *uri = request->uri;
+    std::string path = "/config" + std::string(uri).substr(11);
+    if (!ESP_FS.exists(path.c_str())) {
+        return NativeServer::sendError(request, 404, "File not found");
     }
-};
-
-static Initializer initializer;
-
-esp_err_t getFiles(PsychicRequest *request) { return request->reply(200, "application/json", listFiles("/").c_str()); }
-
-esp_err_t getConfigFile(PsychicRequest *request) {
-    String path = "/config" + request->uri().substring(11);
-    if (!ESP_FS.exists(path)) {
-        return request->reply(404, "text/plain", "File not found");
-    }
-    File file = ESP_FS.open(path, "r");
+    File file = ESP_FS.open(path.c_str(), "r");
     if (!file) {
-        return request->reply(500, "text/plain", "Failed to open file");
+        return NativeServer::sendError(request, 500, "Failed to open file");
     }
     String content = file.readString();
     file.close();
-    return request->reply(200, "application/json", content.c_str());
+    httpd_resp_set_type(request, "application/json");
+    return httpd_resp_send(request, content.c_str(), content.length());
 }
 
-esp_err_t handleDelete(PsychicRequest *request, JsonVariant &json) {
+esp_err_t handleDelete(httpd_req_t *request, JsonVariant &json) {
     if (json.is<JsonObject>()) {
         const char *filename = json["file"].as<const char *>();
         ESP_LOGI(TAG, "Deleting file: %s", filename);
-        return deleteFile(filename) ? request->reply(200) : request->reply(500);
+        return deleteFile(filename) ? NativeServer::sendOk(request)
+                                    : NativeServer::sendError(request, 500, "Delete failed");
     }
-    return request->reply(400);
+    return NativeServer::sendError(request, 400, "Invalid request");
 }
 
-esp_err_t handleEdit(PsychicRequest *request, JsonVariant &json) {
+esp_err_t handleEdit(httpd_req_t *request, JsonVariant &json) {
     if (json.is<JsonObject>()) {
         const char *filename = json["file"].as<const char *>();
         const char *content = json["content"].as<const char *>();
         ESP_LOGI(TAG, "Editing file: %s", filename);
-        return editFile(filename, content) ? request->reply(200) : request->reply(500);
+        return editFile(filename, content) ? NativeServer::sendOk(request)
+                                           : NativeServer::sendError(request, 500, "Edit failed");
     }
-    return request->reply(400);
+    return NativeServer::sendError(request, 400, "Invalid request");
 }
-
-/* Helpers */
 
 bool deleteFile(const char *filename) { return ESP_FS.remove(filename); }
 
@@ -89,28 +80,6 @@ std::string listFiles(const std::string &directory, bool isRoot) {
     return output;
 }
 
-esp_err_t uploadFile(PsychicRequest *request, const std::string &filename, uint64_t index, uint8_t *data, size_t len,
-                     bool last) {
-    File file;
-    std::string path = "/www/" + filename;
-    ESP_LOGI(TAG, "Writing %d/%d bytes to: %s\n", (int)index + (int)len, request->contentLength(), path.c_str());
-
-    if (last) ESP_LOGI(TAG, "%s is finished. Total bytes: %d\n", path.c_str(), (int)index + (int)len);
-
-    file = ESP_FS.open(path.c_str(), !index ? FILE_WRITE : FILE_APPEND);
-    if (!file) {
-        ESP_LOGE(TAG, "Failed to open file");
-        return ESP_FAIL;
-    }
-
-    if (!file.write(data, len)) {
-        ESP_LOGE(TAG, "Write failed");
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
 bool editFile(const char *filename, const char *content) {
     File file = ESP_FS.open(filename, FILE_WRITE);
     if (!file) return false;
@@ -120,10 +89,10 @@ bool editFile(const char *filename, const char *content) {
     return true;
 }
 
-esp_err_t mkdir(PsychicRequest *request, JsonVariant &json) {
+esp_err_t mkdir(httpd_req_t *request, JsonVariant &json) {
     const char *path = json["path"].as<const char *>();
     ESP_LOGI(TAG, "Creating directory: %s", path);
-    return ESP_FS.mkdir(path) ? request->reply(200) : request->reply(500);
+    return ESP_FS.mkdir(path) ? NativeServer::sendOk(request) : NativeServer::sendError(request, 500, "mkdir failed");
 }
 
 } // namespace FileSystem
