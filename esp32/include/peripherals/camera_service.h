@@ -1,9 +1,8 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 #include <WiFi.h>
-#include <async_worker.h>
 
 #include <features.h>
 #include <template/stateful_persistence.h>
@@ -31,8 +30,8 @@ class CameraService : public StatefulService<CameraSettings> {
 
     esp_err_t begin();
 
-    esp_err_t cameraStill(PsychicRequest *request);
-    esp_err_t cameraStream(PsychicRequest *request);
+    esp_err_t cameraStill(httpd_req_t *request);
+    esp_err_t cameraStream(httpd_req_t *request);
 
     StatefulHttpEndpoint<CameraSettings> endpoint;
 

@@ -1,4 +1,5 @@
 #include <ap_service.h>
+#include <communication/native_server.h>
 
 static const char *TAG = "APService";
 
@@ -12,11 +13,11 @@ APService::~APService() {}
 
 void APService::begin() { _persistence.readFromFS(); }
 
-esp_err_t APService::getStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t APService::getStatus(httpd_req_t *request) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     status(root);
-    return response.send();
+    return NativeServer::sendJson(request, 200, doc);
 }
 
 void APService::status(JsonObject &root) {
@@ -73,7 +74,7 @@ void APService::startAP() {
     WiFi.softAP(state().ssid.c_str(), state().password.c_str(), state().channel, state().ssidHidden,
                 state().maxClients);
 #if CONFIG_IDF_TARGET_ESP32C3
-    WiFi.setTxPower(WIFI_POWER_8_5dBm); // https://www.wemos.cc/en/latest/c3/c3_mini_1_0_0.html#about-wifi
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
 #endif
     if (!_dnsServer) {
         IPAddress apIp = WiFi.softAPIP();

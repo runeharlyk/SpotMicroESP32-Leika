@@ -1,3 +1,5 @@
+#pragma once
+
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
 #include <template/stateful_persistence.h>
@@ -16,14 +18,13 @@ class APService : public StatefulService<APSettings> {
     void loop();
     void recoveryMode();
 
-    esp_err_t getStatus(PsychicRequest *request);
+    esp_err_t getStatus(httpd_req_t *request);
     void status(JsonObject &root);
     APNetworkStatus getAPNetworkStatus();
 
     StatefulHttpEndpoint<APSettings> endpoint;
 
   private:
-    PsychicHttpServer *_server;
     FSPersistence<APSettings> _persistence;
 
     DNSServer *_dnsServer;

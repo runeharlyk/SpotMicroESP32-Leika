@@ -1,6 +1,7 @@
 #pragma once
 
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
+#include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
@@ -25,10 +26,10 @@ class MDNSService : public StatefulService<MDNSSettings> {
 
     void begin();
 
-    esp_err_t getStatus(PsychicRequest *request);
+    esp_err_t getStatus(httpd_req_t *request);
     void getStatus(JsonVariant &root);
 
-    static esp_err_t queryServices(PsychicRequest *request, JsonVariant &json);
+    static esp_err_t queryServices(httpd_req_t *request, JsonVariant &json);
 
     StatefulHttpEndpoint<MDNSSettings> endpoint;
 };

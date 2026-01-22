@@ -1,4 +1,5 @@
 #include <wifi_service.h>
+#include <communication/native_server.h>
 
 WiFiService::WiFiService()
     : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
@@ -38,25 +39,28 @@ void WiFiService::reconfigureWiFiConnection() {
 
 void WiFiService::loop() { EXECUTE_EVERY_N_MS(reconnectDelay, manageSTA()); }
 
-esp_err_t WiFiService::handleScan(PsychicRequest *request) {
+esp_err_t WiFiService::handleScan(httpd_req_t *request) {
     if (WiFi.scanComplete() != -1) {
         WiFi.scanDelete();
         WiFi.scanNetworks(true);
     }
-    return request->reply(202);
+    httpd_resp_set_status(request, "202 Accepted");
+    return httpd_resp_send(request, nullptr, 0);
 }
 
-esp_err_t WiFiService::getNetworks(PsychicRequest *request) {
+esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     int numNetworks = WiFi.scanComplete();
-    if (numNetworks == -1)
-        return request->reply(202);
-    else if (numNetworks < -1)
+    if (numNetworks == -1) {
+        httpd_resp_set_status(request, "202 Accepted");
+        return httpd_resp_send(request, nullptr, 0);
+    } else if (numNetworks < -1) {
         return handleScan(request);
+    }
 
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     getNetworks(root);
-    return response.send();
+    return NativeServer::sendJson(request, 200, doc);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -80,11 +84,11 @@ void WiFiService::getNetworks(JsonObject &root) {
     }
 }
 
-esp_err_t WiFiService::getNetworkStatus(PsychicRequest *request) {
-    PsychicJsonResponse response = PsychicJsonResponse(request, false);
-    JsonObject root = response.getRoot();
+esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
     getNetworkStatus(root);
-    return response.send();
+    return NativeServer::sendJson(request, 200, doc);
 }
 
 void WiFiService::getNetworkStatus(JsonObject &root) {
@@ -116,12 +120,10 @@ void WiFiService::manageSTA() {
 }
 
 void WiFiService::connectToWiFi() {
-    // reset availability flag for all stored networks
     for (auto &network : state().wifiSettings) {
         network.available = false;
     }
 
-    // scanning for available networks
     int scanResult = WiFi.scanNetworks();
     if (scanResult == WIFI_SCAN_FAILED) {
         ESP_LOGE("WiFiSettingsService", "WiFi scan failed.");
@@ -130,7 +132,6 @@ void WiFiService::connectToWiFi() {
     } else {
         ESP_LOGI("WiFiSettingsService", "%d networks found.", scanResult);
 
-        // find the best network to connect
         wifi_settings_t *bestNetwork = nullptr;
         int32_t bestNetworkDb = FACTORY_WIFI_RSSI_THRESHOLD;
 
@@ -178,19 +179,16 @@ void WiFiService::connectToWiFi() {
 
 void WiFiService::configureNetwork(wifi_settings_t &network) {
     if (network.staticIPConfig) {
-        // configure for static IP
         WiFi.config(network.localIP, network.gatewayIP, network.subnetMask, network.dnsIP1, network.dnsIP2);
     } else {
-        // configure for DHCP
         WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     }
     WiFi.setHostname(state().hostname.c_str());
 
-    // attempt to connect to the network
     WiFi.begin(network.ssid.c_str(), network.password.c_str());
 
 #if CONFIG_IDF_TARGET_ESP32C3
-    WiFi.setTxPower(WIFI_POWER_8_5dBm); // https://www.wemos.cc/en/latest/c3/c3_mini_1_0_0.html#about-wifi
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
 #endif
 }
 

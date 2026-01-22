@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <string>
@@ -43,9 +43,9 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     const char *getHostname() { return state().hostname.c_str(); }
 
-    static esp_err_t handleScan(PsychicRequest *request);
-    static esp_err_t getNetworks(PsychicRequest *request);
-    static esp_err_t getNetworkStatus(PsychicRequest *request);
+    static esp_err_t handleScan(httpd_req_t *request);
+    static esp_err_t getNetworks(httpd_req_t *request);
+    static esp_err_t getNetworkStatus(httpd_req_t *request);
 
     StatefulHttpEndpoint<WiFiSettings> endpoint;
 };

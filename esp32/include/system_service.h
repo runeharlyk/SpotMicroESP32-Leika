@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ESPmDNS.h>
-#include <PsychicHttp.h>
+#include <esp_http_server.h>
 #include <WiFi.h>
 #include <filesystem.h>
 #include <global.h>
@@ -13,9 +13,9 @@
 #include "platform_shared/message.pb.h"
 
 namespace system_service {
-esp_err_t handleReset(PsychicRequest *request);
-esp_err_t handleRestart(PsychicRequest *request);
-esp_err_t handleSleep(PsychicRequest *request);
+esp_err_t handleReset(httpd_req_t *request);
+esp_err_t handleRestart(httpd_req_t *request);
+esp_err_t handleSleep(httpd_req_t *request);
 
 void reset();
 void restart();

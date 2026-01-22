@@ -2,7 +2,6 @@
 #define ServoController_h
 
 #include <Adafruit_PWMServoDriver.h>
-#include <communication/websocket_adapter.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
