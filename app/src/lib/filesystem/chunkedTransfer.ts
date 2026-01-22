@@ -33,7 +33,7 @@ export interface ListResult {
 }
 
 export interface TransferProgress {
-	transferId: string
+	transferId: number
 	bytesTransferred: number
 	totalBytes: number
 	chunksCompleted: number
@@ -59,7 +59,7 @@ interface ActiveDownload {
 
 interface ActiveUpload {
 	path: string
-	transferId: string
+	transferId: number
 	totalChunks: number
 	chunksSent: number
 	resolve: (result: { success: boolean; error?: string }) => void
@@ -69,8 +69,8 @@ interface ActiveUpload {
 }
 
 export class FileSystemClient {
-	private activeDownloads = new Map<string, ActiveDownload>()
-	private activeUploads = new Map<string, ActiveUpload>()
+	private activeDownloads = new Map<number, ActiveDownload>()
+	private activeUploads = new Map<number, ActiveUpload>()
 	private pendingDownloads = new Map<
 		string,
 		{
@@ -433,7 +433,7 @@ export class FileSystemClient {
 	/**
 	 * Cancel an ongoing transfer
 	 */
-	async cancelTransfer(transferId: string): Promise<{ success: boolean }> {
+	async cancelTransfer(transferId: number): Promise<{ success: boolean }> {
 		const request: FSCancelTransfer = { transferId }
 
 		// Clean up local state
@@ -507,6 +507,7 @@ export class FileSystemClient {
 	 * Cleanup listeners when no longer needed
 	 */
 	destroy() {
+		this.metadataListenerCleanup?.()
 		this.downloadListenerCleanup?.()
 		this.completeListenerCleanup?.()
 		this.uploadCompleteListenerCleanup?.()

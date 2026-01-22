@@ -54,7 +54,7 @@ message FSDownloadRequest {
 }
 
 message FSDownloadMetadata {
-    string transfer_id = 1;    // Transfer identifier
+    uint32 transfer_id = 1;    // Transfer identifier
     bool success = 2;          // True if file exists and is readable
     string error = 3;          // Error message if failed
     uint32 file_size = 4;      // Total file size in bytes
@@ -62,13 +62,13 @@ message FSDownloadMetadata {
 }
 
 message FSDownloadData {
-    string transfer_id = 1;    // Transfer identifier
+    uint32 transfer_id = 1;    // Transfer identifier
     uint32 chunk_index = 2;    // Which chunk this is (0-based)
     bytes data = 3;            // Chunk data (up to 16KB)
 }
 
 message FSDownloadComplete {
-    string transfer_id = 1;
+    uint32 transfer_id = 1;
     bool success = 2;
     string error = 3;          // Error message if failed
     uint32 total_chunks = 4;   // Total chunks that were sent
@@ -87,17 +87,17 @@ message FSUploadStart {
 message FSUploadStartResponse {
     bool success = 1;
     string error = 2;
-    string transfer_id = 3;    // Unique ID for this transfer
+    uint32 transfer_id = 3;    // Unique ID for this transfer
 }
 
 message FSUploadData {
-    string transfer_id = 1;    // Transfer identifier
+    uint32 transfer_id = 1;    // Transfer identifier
     uint32 chunk_index = 2;    // Which chunk this is (0-based)
     bytes data = 3;            // Chunk data (up to 16KB)
 }
 
 message FSUploadComplete {
-    string transfer_id = 1;
+    uint32 transfer_id = 1;
     bool success = 2;
     string error = 3;          // Error message if failed
     uint32 chunks_received = 4; // Number of chunks actually received
@@ -106,10 +106,10 @@ message FSUploadComplete {
 // ===== TRANSFER CONTROL =====
 
 message FSCancelTransfer {
-    string transfer_id = 1;
+    uint32 transfer_id = 1;
 }
 
 message FSCancelTransferResponse {
-    string transfer_id = 1;
+    uint32 transfer_id = 1;
     bool success = 2;
 }

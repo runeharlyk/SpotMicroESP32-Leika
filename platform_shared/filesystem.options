@@ -15,22 +15,12 @@ socket_message.FSListResponse.directories max_count:20
 
 # Streaming download messages
 socket_message.FSDownloadRequest.path max_size:256
-socket_message.FSDownloadMetadata.transfer_id max_size:64
 socket_message.FSDownloadMetadata.error max_size:128
-socket_message.FSDownloadData.transfer_id max_size:64
 socket_message.FSDownloadData.data max_size:16384
-socket_message.FSDownloadComplete.transfer_id max_size:64
 socket_message.FSDownloadComplete.error max_size:128
 
 # Streaming upload messages
 socket_message.FSUploadStart.path max_size:256
 socket_message.FSUploadStartResponse.error max_size:128
-socket_message.FSUploadStartResponse.transfer_id max_size:64
-socket_message.FSUploadData.transfer_id max_size:64
 socket_message.FSUploadData.data max_size:16384
-socket_message.FSUploadComplete.transfer_id max_size:64
 socket_message.FSUploadComplete.error max_size:128
-
-# Transfer control
-socket_message.FSCancelTransfer.transfer_id max_size:64
-socket_message.FSCancelTransferResponse.transfer_id max_size:64
