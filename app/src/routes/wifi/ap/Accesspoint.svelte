@@ -24,7 +24,7 @@
     let formField: Record<string, unknown> = $state({})
 
     async function getAPStatus() {
-        const result = await api.get<ApStatus>('/api/wifi/ap/status')
+        const result = await api.get<ApStatus>('/api/ap/status')
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -34,7 +34,7 @@
     }
 
     async function getAPSettings() {
-        const result = await api.get<ApSettings>('/api/wifi/ap/settings')
+        const result = await api.get<ApSettings>('/api/ap/settings')
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
@@ -87,7 +87,7 @@
     })
 
     async function postAPSettings(data: ApSettings) {
-        const result = await api.post<ApSettings>('/api/wifi/ap/settings', data)
+        const result = await api.post<ApSettings>('/api/ap/settings', data)
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000)
             console.error('Error:', result.inner)
