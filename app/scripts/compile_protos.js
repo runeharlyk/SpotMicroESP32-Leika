@@ -17,7 +17,7 @@ const pluginPath =
         path.join(projectRoot, 'node_modules', '.bin', 'protoc-gen-ts_proto.cmd')
     :   path.join(projectRoot, 'node_modules', '.bin', 'protoc-gen-ts_proto')
 
-const protoFiles = ['filesystem.proto', 'message.proto']
+const protoFiles = ['filesystem.proto', 'message.proto', "api.proto"]
 
 const tsProtoOpts = ['useExactTypes=false', 'outputExtensions=true', 'outputSchema=true'].join(',')
 

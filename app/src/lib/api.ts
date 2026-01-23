@@ -1,6 +1,8 @@
 import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
 import { apiLocation } from './stores/location-store'
+import type { MessageFns } from './platform_shared/filesystem'
+import { Response } from './platform_shared/api'
 
 export const api = {
     get<TResponse>(endpoint: string, params?: RequestInit) {
@@ -59,6 +61,9 @@ async function sendRequest<TResponse>(
     const contentType = response.headers.get('Content-Type') ?? response.headers.get('Content-Type')
     if (contentType && contentType.includes('application/json')) {
         const data = await response.json()
+        return Ok.new(data as TResponse)
+    } else if (contentType && contentType.includes('application/x-protobuf')) {
+        let data: Response = Response.decode(await response.bytes());
         return Ok.new(data as TResponse)
     } else {
         // Handle empty object as response
