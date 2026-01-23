@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package api;
+
+// =============================================================================
+// AP (Access Point) Settings - shared data types
+// =============================================================================
+
+enum APProvisionMode {
+    AP_MODE_ALWAYS = 0;
+    AP_MODE_DISCONNECTED = 1;
+    AP_MODE_NEVER = 2;
+}
+
+enum APNetworkStatus {
+    AP_ACTIVE = 0;
+    AP_INACTIVE = 1;
+    AP_LINGERING = 2;
+}
+
+message APSettings {
+    APProvisionMode provision_mode = 1;
+    string ssid = 2;
+    string password = 3;
+    uint32 channel = 4;
+    bool ssid_hidden = 5;
+    uint32 max_clients = 6;
+    uint32 local_ip = 7;
+    uint32 gateway_ip = 8;
+    uint32 subnet_mask = 9;
+}
+
+message APStatus {
+    APNetworkStatus status = 1;
+    uint32 ip_address = 2;
+    string mac_address = 3;
+    uint32 station_num = 4;
+}
+
+// Empty request types for GET-like operations
+message APSettingsRequest {}
+message APStatusRequest {}
+
+// =============================================================================
+// REST API wrappers - used by HTTP endpoints
+// =============================================================================
+
+// Request wrapper for REST endpoints
+message Request {
+    oneof payload {
+        APSettings ap_settings = 10;
+        APSettingsRequest ap_settings_request = 11;
+        APStatusRequest ap_status_request = 12;
+        // Future types:
+        // MDNSSettings mdns_settings = 20;
+    }
+}
+
+// Response wrapper for REST endpoints
+message Response {
+    uint32 status_code = 1;
+
+    oneof payload {
+        APSettings ap_settings = 10;
+        APStatus ap_status = 11;
+        // Future types:
+        // MDNSSettings mdns_settings = 20;
+        // MDNSStatus mdns_status = 21;
+    }
+}
