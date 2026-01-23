@@ -2,6 +2,7 @@
 
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
+#include <template/stateful_proto_endpoint.h>
 #include <template/stateful_persistence.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
@@ -19,10 +20,13 @@ class APService : public StatefulService<APSettings> {
     void recoveryMode();
 
     esp_err_t getStatus(httpd_req_t *request);
+    esp_err_t getStatusProto(httpd_req_t *request);
     void status(JsonObject &root);
+    void statusProto(api_APStatus &proto);
     APNetworkStatus getAPNetworkStatus();
 
     StatefulHttpEndpoint<APSettings> endpoint;
+    StatefulProtoEndpoint<APSettings, api_APSettings> protoEndpoint;
 
   private:
     FSPersistence<APSettings> _persistence;

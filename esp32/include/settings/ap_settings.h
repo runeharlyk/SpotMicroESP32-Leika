@@ -3,7 +3,9 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/api.pb.h>
 #include <string>
+#include <cstring>
 
 #include <DNSServer.h>
 
@@ -107,6 +109,48 @@ class APSettings {
         newSettings.localIP = IPAddress(root["local_ip"] | parseIPv4(FACTORY_AP_LOCAL_IP));
         newSettings.gatewayIP = IPAddress(root["gateway_ip"] | parseIPv4(FACTORY_AP_GATEWAY_IP));
         newSettings.subnetMask = IPAddress(root["subnet_mask"] | parseIPv4(FACTORY_AP_SUBNET_MASK));
+
+        if (newSettings == settings) {
+            return StateUpdateResult::UNCHANGED;
+        }
+        settings = newSettings;
+        return StateUpdateResult::CHANGED;
+    }
+
+    /** Converts internal state to protobuf message */
+    static void readProto(const APSettings &settings, api_APSettings &proto) {
+        proto.provision_mode = static_cast<api_APProvisionMode>(settings.provisionMode);
+        strncpy(proto.ssid, settings.ssid.c_str(), sizeof(proto.ssid) - 1);
+        proto.ssid[sizeof(proto.ssid) - 1] = '\0';
+        strncpy(proto.password, settings.password.c_str(), sizeof(proto.password) - 1);
+        proto.password[sizeof(proto.password) - 1] = '\0';
+        proto.channel = settings.channel;
+        proto.ssid_hidden = settings.ssidHidden;
+        proto.max_clients = settings.maxClients;
+        proto.local_ip = static_cast<uint32_t>(settings.localIP);
+        proto.gateway_ip = static_cast<uint32_t>(settings.gatewayIP);
+        proto.subnet_mask = static_cast<uint32_t>(settings.subnetMask);
+    }
+
+    /** Converts incoming protobuf message to internal state */
+    static StateUpdateResult updateProto(const api_APSettings &proto, APSettings &settings) {
+        APSettings newSettings = {};
+        newSettings.provisionMode = static_cast<uint8_t>(proto.provision_mode);
+        switch (newSettings.provisionMode) {
+            case AP_MODE_ALWAYS:
+            case AP_MODE_DISCONNECTED:
+            case AP_MODE_NEVER: break;
+            default: newSettings.provisionMode = AP_MODE_DISCONNECTED;
+        }
+        newSettings.ssid = proto.ssid[0] ? proto.ssid : FACTORY_AP_SSID;
+        newSettings.password = proto.password[0] ? proto.password : FACTORY_AP_PASSWORD;
+        newSettings.channel = proto.channel ? proto.channel : FACTORY_AP_CHANNEL;
+        newSettings.ssidHidden = proto.ssid_hidden;
+        newSettings.maxClients = proto.max_clients ? proto.max_clients : FACTORY_AP_MAX_CLIENTS;
+
+        newSettings.localIP = proto.local_ip ? IPAddress(proto.local_ip) : IPAddress(parseIPv4(FACTORY_AP_LOCAL_IP));
+        newSettings.gatewayIP = proto.gateway_ip ? IPAddress(proto.gateway_ip) : IPAddress(parseIPv4(FACTORY_AP_GATEWAY_IP));
+        newSettings.subnetMask = proto.subnet_mask ? IPAddress(proto.subnet_mask) : IPAddress(parseIPv4(FACTORY_AP_SUBNET_MASK));
 
         if (newSettings == settings) {
             return StateUpdateResult::UNCHANGED;

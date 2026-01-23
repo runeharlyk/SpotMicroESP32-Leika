@@ -5,6 +5,9 @@ static const char *TAG = "APService";
 
 APService::APService()
     : endpoint(APSettings::read, APSettings::update, this),
+      protoEndpoint(APSettings::readProto, APSettings::updateProto, this,
+                    API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
+                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
       _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE) {
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
@@ -25,6 +28,23 @@ void APService::status(JsonObject &root) {
     root["ip_address"] = (uint32_t)(WiFi.softAPIP());
     root["mac_address"] = WiFi.softAPmacAddress();
     root["station_num"] = WiFi.softAPgetStationNum();
+}
+
+esp_err_t APService::getStatusProto(httpd_req_t *request) {
+    api_Response res = api_Response_init_zero;
+    res.status_code = 200;
+    res.which_payload = api_Response_ap_status_tag;
+    statusProto(res.payload.ap_status);
+    return NativeServer::sendProto(request, 200, res, api_Response_fields);
+}
+
+void APService::statusProto(api_APStatus &proto) {
+    proto.status = static_cast<api_APNetworkStatus>(getAPNetworkStatus());
+    proto.ip_address = static_cast<uint32_t>(WiFi.softAPIP());
+    String mac = WiFi.softAPmacAddress();
+    strncpy(proto.mac_address, mac.c_str(), sizeof(proto.mac_address) - 1);
+    proto.mac_address[sizeof(proto.mac_address) - 1] = '\0';
+    proto.station_num = WiFi.softAPgetStationNum();
 }
 
 APNetworkStatus APService::getAPNetworkStatus() {

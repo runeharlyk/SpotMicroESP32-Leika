@@ -6,9 +6,12 @@
 #include <string>
 #include <map>
 #include <ArduinoJson.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
 
 using HttpGetHandler = std::function<esp_err_t(httpd_req_t*)>;
 using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, JsonVariant&)>;
+using HttpRawHandler = std::function<esp_err_t(httpd_req_t*)>;
 using WsFrameHandler = std::function<esp_err_t(httpd_req_t*, httpd_ws_frame_t*)>;
 using WsOpenHandler = std::function<void(httpd_req_t*)>;
 using WsCloseHandler = std::function<void(int)>;
@@ -18,6 +21,7 @@ struct HttpRoute {
     httpd_method_t method;
     HttpGetHandler getHandler;
     HttpPostHandler postHandler;
+    HttpRawHandler rawHandler;  // For proto handlers that don't need JSON parsing
     bool isWebsocket;
 };
 
@@ -32,6 +36,7 @@ class WebServer {
 
     void on(const char* uri, httpd_method_t method, HttpGetHandler handler);
     void on(const char* uri, httpd_method_t method, HttpPostHandler handler);
+    void onRaw(const char* uri, httpd_method_t method, HttpRawHandler handler);
 
     void onWsFrame(WsFrameHandler handler);
     void onWsOpen(WsOpenHandler handler);
@@ -52,6 +57,44 @@ class WebServer {
     static esp_err_t sendJson(httpd_req_t* req, int status, JsonDocument& doc);
     static esp_err_t sendError(httpd_req_t* req, int status, const char* message);
     static esp_err_t sendOk(httpd_req_t* req);
+    static esp_err_t sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len);
+
+    template <typename T>
+    static esp_err_t sendProto(httpd_req_t* req, int status, const T& msg, const pb_msgdesc_t* fields) {
+        uint8_t buffer[1024];
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+        if (!pb_encode(&stream, fields, &msg)) {
+            return sendError(req, 500, "Failed to encode proto");
+        }
+        return sendProto(req, status, buffer, stream.bytes_written);
+    }
+
+    template <typename T>
+    static bool receiveProto(httpd_req_t* req, T& msg, const pb_msgdesc_t* fields) {
+        size_t contentLen = req->content_len;
+        if (contentLen == 0 || contentLen > 4096) {
+            return false;
+        }
+        uint8_t* buffer = (uint8_t*)malloc(contentLen);
+        if (!buffer) {
+            return false;
+        }
+        int received = 0;
+        int remaining = contentLen;
+        while (remaining > 0) {
+            int ret = httpd_req_recv(req, (char*)buffer + received, remaining);
+            if (ret <= 0) {
+                free(buffer);
+                return false;
+            }
+            received += ret;
+            remaining -= ret;
+        }
+        pb_istream_t stream = pb_istream_from_buffer(buffer, contentLen);
+        bool success = pb_decode(&stream, fields, &msg);
+        free(buffer);
+        return success;
+    }
 
   private:
     httpd_handle_t server_ = nullptr;

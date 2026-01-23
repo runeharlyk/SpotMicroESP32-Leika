@@ -72,6 +72,9 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
             if (route.getHandler) {
                 return route.getHandler(req);
             }
+            if (route.rawHandler) {
+                return route.rawHandler(req);
+            }
             if (route.postHandler) {
                 char* content = nullptr;
                 size_t contentLen = req->content_len;
@@ -187,6 +190,7 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handle
     route.method = method;
     route.getHandler = handler;
     route.postHandler = nullptr;
+    route.rawHandler = nullptr;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -201,6 +205,22 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handl
     route.method = method;
     route.getHandler = nullptr;
     route.postHandler = handler;
+    route.rawHandler = nullptr;
+    route.isWebsocket = false;
+    routes_.push_back(route);
+
+    if (server_) {
+        registerRoute(route);
+    }
+}
+
+void NativeServer::onRaw(const char* uri, httpd_method_t method, HttpRawHandler handler) {
+    HttpRoute route;
+    route.uri = uri;
+    route.method = method;
+    route.getHandler = nullptr;
+    route.postHandler = nullptr;
+    route.rawHandler = handler;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -226,6 +246,7 @@ void WebServer::registerWebsocket(const char* uri) {
     route.method = HTTP_GET;
     route.getHandler = nullptr;
     route.postHandler = nullptr;
+    route.rawHandler = nullptr;
     route.isWebsocket = true;
     routes_.push_back(route);
 
@@ -300,3 +321,13 @@ esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message
 }
 
 esp_err_t WebServer::sendOk(httpd_req_t* req) { return sendJson(req, 200, "{\"status\":\"ok\"}"); }
+
+esp_err_t WebServer::sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
+    httpd_resp_set_status(req, status == 200   ? "200 OK"
+                               : status == 400 ? "400 Bad Request"
+                               : status == 404 ? "404 Not Found"
+                               : status == 500 ? "500 Internal Server Error"
+                                               : "200 OK");
+    httpd_resp_set_type(req, "application/x-protobuf");
+    return httpd_resp_send(req, (const char*)data, len);
+}

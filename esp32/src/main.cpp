@@ -73,12 +73,12 @@ void setupServer() {
     server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
     server.on("/api/wifi/sta/status", HTTP_GET,
               [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
-
-    server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatus(request); });
-    server.on("/api/ap/settings", HTTP_GET, [&](httpd_req_t *request) { return apService.endpoint.getState(request); });
-    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return apService.endpoint.handleStateUpdate(request, json);
-    });
+	
+    server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
+    server.on("/api/ap/settings", HTTP_GET,
+                    [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
+    server.onRaw("/api/ap/settings", HTTP_POST,
+                       [&](httpd_req_t *request) { return apService.protoEndpoint.handleStateUpdate(request); });
 
     server.on("/api/peripherals", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
