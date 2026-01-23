@@ -6,14 +6,16 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
-    import type { ApSettings, ApStatus } from '$lib/types/models'
+    import { type ApSettings } from '$lib/types/models'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
+    import { APStatus, Response } from '$lib/platform_shared/api'
+    import { input } from '$lib/stores'
 
     let apSettings: ApSettings | null = $state(null)
-    let apStatus: ApStatus | null = $state(null)
+    let apStatus: APStatus | null = $state(null)
 
     let ipDisplay = $state({
         local_ip: '',
@@ -24,13 +26,13 @@
     let formField: Record<string, unknown> = $state({})
 
     async function getAPStatus() {
-        const result = await api.get<ApStatus>('/api/ap/status')
+        const result = await api.get<Response>('/api/ap/status')
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
-        apStatus = result.inner
-        return apStatus
+
+        apStatus = result.inner.apStatus!
     }
 
     async function getAPSettings() {
@@ -181,15 +183,15 @@
                     <StatusItem
                         icon={Home}
                         title="IP Address"
-                        description={uint32ToIp(apStatus.ip_address)}
+                        description={uint32ToIp(apStatus.ipAddress)}
                     />
 
-                    <StatusItem icon={MAC} title="MAC Address" description={apStatus.mac_address} />
+                    <StatusItem icon={MAC} title="MAC Address" description={apStatus.macAddress} />
 
                     <StatusItem
                         icon={Devices}
                         title="AP Clients"
-                        description={apStatus.station_num}
+                        description={apStatus.stationNum}
                     />
                 </div>
             {/if}

@@ -71,13 +71,6 @@ export type NetworkItem = {
     encryption_type: number
 }
 
-export type ApStatus = {
-    status: number
-    ip_address: number
-    mac_address: string
-    station_num: number
-}
-
 export type ApSettings = {
     provision_mode: number
     ssid: string
