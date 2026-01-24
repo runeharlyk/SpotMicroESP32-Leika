@@ -72,8 +72,45 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
             if (route.getHandler) {
                 return route.getHandler(req);
             }
-            if (route.rawHandler) {
-                return route.rawHandler(req);
+            if (route.protoHandler) {
+                size_t contentLen = req->content_len;
+                if (contentLen == 0 || contentLen > 4096) {
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
+                    return ESP_FAIL;
+                }
+
+                uint8_t* buffer = (uint8_t*)malloc(contentLen);
+                if (!buffer) {
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
+                    return ESP_FAIL;
+                }
+
+                int received = 0;
+                int remaining = contentLen;
+                while (remaining > 0) {
+                    int ret = httpd_req_recv(req, (char*)buffer + received, remaining);
+                    if (ret <= 0) {
+                        free(buffer);
+                        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                            httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request timeout");
+                        }
+                        return ESP_FAIL;
+                    }
+                    received += ret;
+                    remaining -= ret;
+                }
+
+                api_Request protoReq = api_Request_init_zero;
+                pb_istream_t stream = pb_istream_from_buffer(buffer, contentLen);
+                bool success = pb_decode(&stream, api_Request_fields, &protoReq);
+                free(buffer);
+
+                if (!success) {
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to decode protobuf");
+                    return ESP_FAIL;
+                }
+
+                return route.protoHandler(req, &protoReq);
             }
             if (route.postHandler) {
                 char* content = nullptr;
@@ -190,7 +227,7 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handle
     route.method = method;
     route.getHandler = handler;
     route.postHandler = nullptr;
-    route.rawHandler = nullptr;
+    route.protoHandler = nullptr;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -205,7 +242,7 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handl
     route.method = method;
     route.getHandler = nullptr;
     route.postHandler = handler;
-    route.rawHandler = nullptr;
+    route.protoHandler = nullptr;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -214,13 +251,13 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handl
     }
 }
 
-void NativeServer::onRaw(const char* uri, httpd_method_t method, HttpRawHandler handler) {
+void NativeServer::onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler) {
     HttpRoute route;
     route.uri = uri;
     route.method = method;
     route.getHandler = nullptr;
     route.postHandler = nullptr;
-    route.rawHandler = handler;
+    route.protoHandler = handler;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -246,7 +283,7 @@ void WebServer::registerWebsocket(const char* uri) {
     route.method = HTTP_GET;
     route.getHandler = nullptr;
     route.postHandler = nullptr;
-    route.rawHandler = nullptr;
+    route.protoHandler = nullptr;
     route.isWebsocket = true;
     routes_.push_back(route);
 
