@@ -58,27 +58,22 @@ class StatefulProtoEndpoint {
           _responseAssigner(responseAssigner) {}
 
     /**
-     * Handles POST requests: decodes Request, updates state, returns Response
+     * Handles POST requests: extracts payload from pre-decoded Request, updates state, returns Response
      */
-    esp_err_t handleStateUpdate(httpd_req_t* request) {
-        api_Request req = api_Request_init_zero;
-        if (!NativeServer::receiveProto(request, req, api_Request_fields)) {
-            return sendErrorResponse(request, 400, "Failed to decode request");
-        }
-
+    esp_err_t handleStateUpdate(httpd_req_t* httpReq, api_Request* protoReq) {
         ProtoT protoMsg = {};
-        if (!_requestExtractor(req, protoMsg)) {
-            return sendErrorResponse(request, 400, "Invalid request type");
+        if (!_requestExtractor(*protoReq, protoMsg)) {
+            return sendErrorResponse(httpReq, 400, "Invalid request type");
         }
 
         StateUpdateResult outcome = _statefulService->update(
             [this, &protoMsg](T& settings) { return _stateUpdater(protoMsg, settings); }, PROTO_ENDPOINT_ORIGIN_ID);
 
         if (outcome == StateUpdateResult::ERROR) {
-            return sendErrorResponse(request, 400, "Invalid state");
+            return sendErrorResponse(httpReq, 400, "Invalid state");
         }
 
-        return sendStateResponse(request, 200);
+        return sendStateResponse(httpReq, 200);
     }
 
     /**

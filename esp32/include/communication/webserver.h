@@ -8,10 +8,11 @@
 #include <ArduinoJson.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
+#include <platform_shared/api.pb.h>
 
 using HttpGetHandler = std::function<esp_err_t(httpd_req_t*)>;
 using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, JsonVariant&)>;
-using HttpRawHandler = std::function<esp_err_t(httpd_req_t*)>;
+using HttpProtoHandler = std::function<esp_err_t(httpd_req_t*, api_Request*)>;
 using WsFrameHandler = std::function<esp_err_t(httpd_req_t*, httpd_ws_frame_t*)>;
 using WsOpenHandler = std::function<void(httpd_req_t*)>;
 using WsCloseHandler = std::function<void(int)>;
@@ -21,7 +22,7 @@ struct HttpRoute {
     httpd_method_t method;
     HttpGetHandler getHandler;
     HttpPostHandler postHandler;
-    HttpRawHandler rawHandler;  // For proto handlers that don't need JSON parsing
+    HttpProtoHandler protoHandler;  // For proto handlers that don't need JSON parsing
     bool isWebsocket;
 };
 
@@ -36,7 +37,7 @@ class WebServer {
 
     void on(const char* uri, httpd_method_t method, HttpGetHandler handler);
     void on(const char* uri, httpd_method_t method, HttpPostHandler handler);
-    void onRaw(const char* uri, httpd_method_t method, HttpRawHandler handler);
+    void onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler);
 
     void onWsFrame(WsFrameHandler handler);
     void onWsOpen(WsOpenHandler handler);

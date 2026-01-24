@@ -77,8 +77,10 @@ void setupServer() {
     server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
     server.on("/api/ap/settings", HTTP_GET,
                     [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.onRaw("/api/ap/settings", HTTP_POST,
-                       [&](httpd_req_t *request) { return apService.protoEndpoint.handleStateUpdate(request); });
+    server.onProto("/api/ap/settings", HTTP_POST,
+                         [&](httpd_req_t *request, api_Request *protoReq) {
+                             return apService.protoEndpoint.handleStateUpdate(request, protoReq);
+                         });
 
     server.on("/api/peripherals", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
