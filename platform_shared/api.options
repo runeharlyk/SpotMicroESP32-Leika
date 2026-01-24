@@ -2,3 +2,5 @@ api.APSettings.ssid max_size:33
 api.APSettings.password max_size:64
 
 api.APStatus.mac_address max_size:18
+
+api.Response.error_message type:FT_POINTER

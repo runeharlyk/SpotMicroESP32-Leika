@@ -59,6 +59,7 @@ message Request {
 // Response wrapper for REST endpoints
 message Response {
     uint32 status_code = 1;
+    string error_message = 2;
 
     oneof payload {
         APSettings ap_settings = 10;

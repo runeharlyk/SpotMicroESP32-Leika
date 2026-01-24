@@ -105,6 +105,7 @@ class StatefulProtoEndpoint {
     esp_err_t sendErrorResponse(httpd_req_t* request, uint32_t statusCode, const char* message) {
         api_Response res = api_Response_init_zero;
         res.status_code = statusCode;
+        res.error_message = (char*)message;
         return NativeServer::sendProto(request, statusCode == 200 ? 200 : 400, res, api_Response_fields);
     }
 };
