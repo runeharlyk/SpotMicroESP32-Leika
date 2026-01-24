@@ -40,7 +40,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    nativeServer.config(50 + WWW_ASSETS_COUNT, 32768, 1000000);
+    nativeServer.config(50 + WWW_ASSETS_COUNT, 32768);
     nativeServer.listen(80);
 
     nativeServer.on("/api/system/reset", HTTP_POST,
