@@ -2,43 +2,48 @@
     import { api } from '$lib/api'
     import { onMount } from 'svelte'
     import { RotateCw, RotateCcw } from '$lib/components/icons'
+    import { Request, Response, type ServoSettings } from '$lib/platform_shared/api'
+    import { notifications } from '$lib/components/toasts/notifications'
+
     interface Props {
-        data?: Record<string, unknown>
+        servoSettings?: ServoSettings | null
         servoId?: number
         pwm?: number
     }
 
     let {
-        data = $bindable({
-            servos: []
-        }),
+        servoSettings = $bindable(null),
         pwm = $bindable(306),
         servoId = $bindable(0)
     }: Props = $props()
 
-    const updateValue = (event: Event, index: number, key: string) => {
-        data.servos[index][key] = Number((event.target as HTMLInputElement).value)
-    }
-
     const syncConfig = async () => {
-        await api.post('/api/servo/config', data)
+        if (!servoSettings) return
+        notifications.info("Uploading servo config...", 3000)
+        await api.post_proto<Response>('/api/servo/config', Request.create({ servoSettings }))
+        notifications.success('Servo config uploaded successfully', 3000)
     }
 
     const toggleDirection = async (index: number) => {
-        data.servos[index].direction = data.servos[index].direction === 1 ? -1 : 1
+        if (!servoSettings) return
+        servoSettings.servos[index].direction = servoSettings.servos[index].direction === 1 ? -1 : 1
         await syncConfig()
     }
 
     onMount(async () => {
-        const result = await api.get('/api/servo/config')
-        if (result.isOk()) {
-            data = result.inner
+        const result = await api.get<Response>('/api/servo/config')
+        if (result.isOk() && result.inner.servoSettings) {
+            servoSettings = result.inner.servoSettings
+        } else {
+            console.log("Failed to fetch servo config!")
+            console.log(result)
         }
     })
 
     const setCenterPWM = async () => {
+        if (!servoSettings) return
         console.log('setCenterPWM', servoId, pwm)
-        data.servos[servoId]['center_pwm'] = pwm
+        servoSettings.servos[servoId].centerPwm = pwm
         await syncConfig()
     }
 </script>
@@ -47,6 +52,7 @@
     <button class="btn btn-sm btn-primary" onclick={() => setCenterPWM()}>Set center pwm</button>
 </div>
 
+{#if servoSettings}
 <div class="overflow-x-auto">
     <table class="table table-xs">
         <thead>
@@ -59,16 +65,16 @@
             </tr>
         </thead>
         <tbody>
-            {#each data.servos as servo, index (index)}
+            {#each servoSettings.servos as servo, index (index)}
                 <tr class="hover:bg-base-200">
                     <td class="font-medium">Servo {index}</td>
                     <td>
                         <input
                             type="number"
                             class="input input-sm input-bordered w-20"
-                            value={servo.center_pwm}
+                            value={servo.centerPwm}
                             onblur={syncConfig}
-                            oninput={event => updateValue(event, index, 'center_pwm')}
+                            oninput={event => servo.centerPwm = Number((event.target as HTMLInputElement).value)}
                             min="80"
                             max="600"
                         />
@@ -78,9 +84,9 @@
                             type="number"
                             step="0.1"
                             class="input input-sm input-bordered w-20"
-                            value={servo.center_angle}
+                            value={servo.centerAngle}
                             onblur={syncConfig}
-                            oninput={event => updateValue(event, index, 'center_angle')}
+                            oninput={event => servo.centerAngle = Number((event.target as HTMLInputElement).value)}
                             min="-90"
                             max="90"
                         />
@@ -105,7 +111,7 @@
                             class="input input-sm input-bordered w-20"
                             value={servo.conversion}
                             onblur={syncConfig}
-                            oninput={event => updateValue(event, index, 'conversion')}
+                            oninput={event => servo.conversion = Number((event.target as HTMLInputElement).value)}
                             min="0"
                             max="10"
                         />
@@ -115,3 +121,4 @@
         </tbody>
     </table>
 </div>
+{/if}
