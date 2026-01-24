@@ -4,8 +4,6 @@ The software make use of a range of different libraries to enhance the functiona
 Up to date list can be seen in platformio.ini file.
 The libraries includes:
 
-- Esp32SvelteKit
-- PsychicHttp
 - ArduinoJson
 - Adafruit SSD1306
 - Adafruit GFX Library
