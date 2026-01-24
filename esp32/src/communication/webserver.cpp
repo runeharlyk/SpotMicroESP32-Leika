@@ -1,30 +1,30 @@
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 #include <esp_log.h>
 #include <cstring>
 #include <algorithm>
 
-static const char* TAG = "NativeServer";
+static const char* TAG = "WebServer";
 
-NativeServer nativeServer;
+WebServer server;
 
-NativeServer::NativeServer() {
+WebServer::WebServer() {
     config_ = HTTPD_DEFAULT_CONFIG();
     wsMutex_ = xSemaphoreCreateMutex();
 }
 
-NativeServer::~NativeServer() {
+WebServer::~WebServer() {
     stop();
     vSemaphoreDelete(wsMutex_);
 }
 
-void NativeServer::config(size_t maxUriHandlers, size_t stackSize) {
+void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.max_uri_handlers = maxUriHandlers;
     config_.stack_size = stackSize;
     config_.max_resp_headers = 16;
     config_.lru_purge_enable = true;
 }
 
-esp_err_t NativeServer::listen(uint16_t port) {
+esp_err_t WebServer::listen(uint16_t port) {
     config_.server_port = port;
     config_.ctrl_port = port + 32768;
 
@@ -38,23 +38,23 @@ esp_err_t NativeServer::listen(uint16_t port) {
     return ESP_OK;
 }
 
-void NativeServer::stop() {
+void WebServer::stop() {
     if (server_) {
         httpd_stop(server_);
         server_ = nullptr;
     }
 }
 
-void NativeServer::applyDefaultHeaders(httpd_req_t* req) {
+void WebServer::applyDefaultHeaders(httpd_req_t* req) {
     for (const auto& [key, value] : defaultHeaders_) {
         httpd_resp_set_hdr(req, key.c_str(), value.c_str());
     }
 }
 
-void NativeServer::addDefaultHeader(const char* key, const char* value) { defaultHeaders_[key] = value; }
+void WebServer::addDefaultHeader(const char* key, const char* value) { defaultHeaders_[key] = value; }
 
-esp_err_t NativeServer::httpHandler(httpd_req_t* req) {
-    NativeServer* self = static_cast<NativeServer*>(req->user_ctx);
+esp_err_t WebServer::httpHandler(httpd_req_t* req) {
+    WebServer* self = static_cast<WebServer*>(req->user_ctx);
     self->applyDefaultHeaders(req);
 
     for (const auto& route : self->routes_) {
@@ -120,8 +120,8 @@ esp_err_t NativeServer::httpHandler(httpd_req_t* req) {
     return ESP_FAIL;
 }
 
-esp_err_t NativeServer::wsHandler(httpd_req_t* req) {
-    NativeServer* self = static_cast<NativeServer*>(req->user_ctx);
+esp_err_t WebServer::wsHandler(httpd_req_t* req) {
+    WebServer* self = static_cast<WebServer*>(req->user_ctx);
 
     if (req->method == HTTP_GET) {
         int sockfd = httpd_req_to_sockfd(req);
@@ -181,7 +181,7 @@ esp_err_t NativeServer::wsHandler(httpd_req_t* req) {
     return result;
 }
 
-void NativeServer::on(const char* uri, httpd_method_t method, HttpGetHandler handler) {
+void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handler) {
     HttpRoute route;
     route.uri = uri;
     route.method = method;
@@ -195,7 +195,7 @@ void NativeServer::on(const char* uri, httpd_method_t method, HttpGetHandler han
     }
 }
 
-void NativeServer::on(const char* uri, httpd_method_t method, HttpPostHandler handler) {
+void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handler) {
     HttpRoute route;
     route.uri = uri;
     route.method = method;
@@ -209,7 +209,7 @@ void NativeServer::on(const char* uri, httpd_method_t method, HttpPostHandler ha
     }
 }
 
-esp_err_t NativeServer::registerRoute(const HttpRoute& route) {
+esp_err_t WebServer::registerRoute(const HttpRoute& route) {
     httpd_uri_t httpd_route = {.uri = route.uri.c_str(),
                                .method = route.method,
                                .handler = route.isWebsocket ? wsHandler : httpHandler,
@@ -220,7 +220,7 @@ esp_err_t NativeServer::registerRoute(const HttpRoute& route) {
     return httpd_register_uri_handler(server_, &httpd_route);
 }
 
-void NativeServer::registerWebsocket(const char* uri) {
+void WebServer::registerWebsocket(const char* uri) {
     HttpRoute route;
     route.uri = uri;
     route.method = HTTP_GET;
@@ -234,32 +234,32 @@ void NativeServer::registerWebsocket(const char* uri) {
     }
 }
 
-void NativeServer::onWsFrame(WsFrameHandler handler) { wsFrameHandler_ = handler; }
+void WebServer::onWsFrame(WsFrameHandler handler) { wsFrameHandler_ = handler; }
 
-void NativeServer::onWsOpen(WsOpenHandler handler) { wsOpenHandler_ = handler; }
+void WebServer::onWsOpen(WsOpenHandler handler) { wsOpenHandler_ = handler; }
 
-void NativeServer::onWsClose(WsCloseHandler handler) { wsCloseHandler_ = handler; }
+void WebServer::onWsClose(WsCloseHandler handler) { wsCloseHandler_ = handler; }
 
-void NativeServer::addWsClient(int sockfd) {
+void WebServer::addWsClient(int sockfd) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
     wsClients_.push_back(sockfd);
     xSemaphoreGive(wsMutex_);
 }
 
-void NativeServer::removeWsClient(int sockfd) {
+void WebServer::removeWsClient(int sockfd) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
     wsClients_.erase(std::remove(wsClients_.begin(), wsClients_.end(), sockfd), wsClients_.end());
     xSemaphoreGive(wsMutex_);
 }
 
-std::vector<int> NativeServer::getWsClients() {
+std::vector<int> WebServer::getWsClients() {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
     std::vector<int> clients = wsClients_;
     xSemaphoreGive(wsMutex_);
     return clients;
 }
 
-esp_err_t NativeServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
+esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     httpd_ws_frame_t frame = {.final = true,
                               .fragmented = false,
                               .type = HTTPD_WS_TYPE_BINARY,
@@ -268,7 +268,7 @@ esp_err_t NativeServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     return httpd_ws_send_frame_async(server_, sockfd, &frame);
 }
 
-esp_err_t NativeServer::wsSendAll(const uint8_t* data, size_t len) {
+esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
     for (int sockfd : wsClients_) {
         wsSend(sockfd, data, len);
@@ -277,7 +277,7 @@ esp_err_t NativeServer::wsSendAll(const uint8_t* data, size_t len) {
     return ESP_OK;
 }
 
-esp_err_t NativeServer::sendJson(httpd_req_t* req, int status, const char* json) {
+esp_err_t WebServer::sendJson(httpd_req_t* req, int status, const char* json) {
     httpd_resp_set_status(req, status == 200   ? "200 OK"
                                : status == 400 ? "400 Bad Request"
                                : status == 404 ? "404 Not Found"
@@ -287,16 +287,16 @@ esp_err_t NativeServer::sendJson(httpd_req_t* req, int status, const char* json)
     return httpd_resp_send(req, json, strlen(json));
 }
 
-esp_err_t NativeServer::sendJson(httpd_req_t* req, int status, JsonDocument& doc) {
+esp_err_t WebServer::sendJson(httpd_req_t* req, int status, JsonDocument& doc) {
     std::string json;
     serializeJson(doc, json);
     return sendJson(req, status, json.c_str());
 }
 
-esp_err_t NativeServer::sendError(httpd_req_t* req, int status, const char* message) {
+esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {
     JsonDocument doc;
     doc["error"] = message;
     return sendJson(req, status, doc);
 }
 
-esp_err_t NativeServer::sendOk(httpd_req_t* req) { return sendJson(req, 200, "{\"status\":\"ok\"}"); }
+esp_err_t WebServer::sendOk(httpd_req_t* req) { return sendJson(req, 200, "{\"status\":\"ok\"}"); }

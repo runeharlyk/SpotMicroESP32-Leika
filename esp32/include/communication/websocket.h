@@ -1,17 +1,17 @@
 #pragma once
 
 #include <Arduino.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 #include <communication/comm_base.hpp>
 
-class NativeWebsocket : public CommAdapterBase {
+class Websocket : public CommAdapterBase {
   public:
-    NativeWebsocket(NativeServer& server, const char* route = "/api/ws");
+    Websocket(WebServer& server, const char* route = "/api/ws");
 
     void begin() override;
 
   private:
-    NativeServer& server_;
+    WebServer& server_;
     const char* route_;
 
     void onWsOpen(httpd_req_t* req);

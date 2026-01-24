@@ -1,5 +1,5 @@
 #include "system_service.h"
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 namespace system_service {
 
@@ -7,17 +7,17 @@ static const char *TAG = "SystemService";
 
 esp_err_t handleReset(httpd_req_t *request) {
     reset();
-    return NativeServer::sendOk(request);
+    return WebServer::sendOk(request);
 }
 
 esp_err_t handleRestart(httpd_req_t *request) {
     restart();
-    return NativeServer::sendOk(request);
+    return WebServer::sendOk(request);
 }
 
 esp_err_t handleSleep(httpd_req_t *request) {
     sleep();
-    return NativeServer::sendOk(request);
+    return WebServer::sendOk(request);
 }
 
 void reset() {

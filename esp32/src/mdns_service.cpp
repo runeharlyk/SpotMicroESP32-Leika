@@ -1,5 +1,5 @@
 #include <mdns_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 static const char *TAG = "MDNSService";
 
@@ -69,7 +69,7 @@ esp_err_t MDNSService::getStatus(httpd_req_t *request) {
     JsonDocument doc;
     JsonVariant root = doc.to<JsonVariant>();
     getStatus(root);
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }
 
 void MDNSService::getStatus(JsonVariant &root) {
@@ -97,5 +97,5 @@ esp_err_t MDNSService::queryServices(httpd_req_t *request, JsonVariant &json) {
         serviceObj["port"] = MDNS.port(i);
     }
 
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }

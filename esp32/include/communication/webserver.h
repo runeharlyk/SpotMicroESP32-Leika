@@ -21,10 +21,10 @@ struct HttpRoute {
     bool isWebsocket;
 };
 
-class NativeServer {
+class WebServer {
   public:
-    NativeServer();
-    ~NativeServer();
+    WebServer();
+    ~WebServer();
 
     void config(size_t maxUriHandlers, size_t stackSize);
     esp_err_t listen(uint16_t port);
@@ -72,4 +72,4 @@ class NativeServer {
     esp_err_t registerRoute(const HttpRoute& route);
 };
 
-extern NativeServer nativeServer;
+extern WebServer server;

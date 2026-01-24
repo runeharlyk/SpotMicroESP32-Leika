@@ -10,8 +10,8 @@
 #include <peripherals/servo_controller.h>
 #include <peripherals/led_service.h>
 #include <peripherals/camera_service.h>
-#include <communication/native_server.h>
-#include <communication/native_websocket.h>
+#include <communication/webserver.h>
+#include <communication/websocket.h>
 #include <features.h>
 #include <motion.h>
 #include <wifi_service.h>
@@ -21,7 +21,7 @@
 
 #include <www_mount.hpp>
 
-NativeWebsocket socket {nativeServer, "/api/ws"};
+Websocket socket {server, "/api/ws"};
 
 Peripherals peripherals;
 ServoController servoController;
@@ -40,87 +40,83 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    nativeServer.config(50 + WWW_ASSETS_COUNT, 32768);
-    nativeServer.listen(80);
+    server.config(50 + WWW_ASSETS_COUNT, 32768);
+    server.listen(80);
 
-    nativeServer.on("/api/system/reset", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleReset(request); });
-    nativeServer.on("/api/system/restart", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleRestart(request); });
-    nativeServer.on("/api/system/sleep", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleSleep(request); });
+    server.on("/api/system/reset", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleReset(request); });
+    server.on("/api/system/restart", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleRestart(request); });
+    server.on("/api/system/sleep", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleSleep(request); });
 #if USE_CAMERA
-    nativeServer.on("/api/camera/still", HTTP_GET,
-                    [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
-    nativeServer.on("/api/camera/stream", HTTP_GET,
-                    [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
-    nativeServer.on("/api/camera/settings", HTTP_GET,
-                    [&](httpd_req_t *request) { return cameraService.endpoint.getState(request); });
-    nativeServer.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
+    server.on("/api/camera/stream", HTTP_GET,
+              [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
+    server.on("/api/camera/settings", HTTP_GET,
+              [&](httpd_req_t *request) { return cameraService.endpoint.getState(request); });
+    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return cameraService.endpoint.handleStateUpdate(request, json);
     });
 #endif
-    nativeServer.on("/api/servo/config", HTTP_GET,
-                    [&](httpd_req_t *request) { return servoController.endpoint.getState(request); });
-    nativeServer.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/servo/config", HTTP_GET,
+              [&](httpd_req_t *request) { return servoController.endpoint.getState(request); });
+    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return servoController.endpoint.handleStateUpdate(request, json);
     });
 
-    nativeServer.on("/api/wifi/sta/settings", HTTP_GET,
-                    [&](httpd_req_t *request) { return wifiService.endpoint.getState(request); });
-    nativeServer.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/wifi/sta/settings", HTTP_GET,
+              [&](httpd_req_t *request) { return wifiService.endpoint.getState(request); });
+    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return wifiService.endpoint.handleStateUpdate(request, json);
     });
-    nativeServer.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
-    nativeServer.on("/api/wifi/networks", HTTP_GET,
-                    [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
-    nativeServer.on("/api/wifi/sta/status", HTTP_GET,
-                    [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
+    server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
+    server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
+    server.on("/api/wifi/sta/status", HTTP_GET,
+              [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
 
-    nativeServer.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatus(request); });
-    nativeServer.on("/api/ap/settings", HTTP_GET,
-                    [&](httpd_req_t *request) { return apService.endpoint.getState(request); });
-    nativeServer.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatus(request); });
+    server.on("/api/ap/settings", HTTP_GET, [&](httpd_req_t *request) { return apService.endpoint.getState(request); });
+    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return apService.endpoint.handleStateUpdate(request, json);
     });
 
-    nativeServer.on("/api/peripherals", HTTP_GET,
-                    [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
-    nativeServer.on("/api/peripherals", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/peripherals", HTTP_GET,
+              [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
+    server.on("/api/peripherals", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return peripherals.endpoint.handleStateUpdate(request, json);
     });
 
 #if FT_ENABLED(USE_MDNS)
-    nativeServer.on("/api/mdns", HTTP_GET,
-                    [&](httpd_req_t *request) { return mdnsService.endpoint.getState(request); });
-    nativeServer.on("/api/mdns", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
+    server.on("/api/mdns", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.endpoint.getState(request); });
+    server.on("/api/mdns", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return mdnsService.endpoint.handleStateUpdate(request, json);
     });
-    nativeServer.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    nativeServer.on("/api/mdns/query", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
+    server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
+    server.on("/api/mdns/query", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
 #endif
 
-    nativeServer.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
-    nativeServer.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFiles(request); });
-    nativeServer.on("/api/files/delete", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleDelete(request, json); });
-    nativeServer.on("/api/files/edit", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleEdit(request, json); });
-    nativeServer.on("/api/files/mkdir", HTTP_POST,
-                    [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::mkdir(request, json); });
+    server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
+    server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFiles(request); });
+    server.on("/api/files/delete", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleDelete(request, json); });
+    server.on("/api/files/edit", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleEdit(request, json); });
+    server.on("/api/files/mkdir", HTTP_POST,
+              [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::mkdir(request, json); });
 #if EMBED_WEBAPP
-    mountStaticAssets(nativeServer);
+    mountStaticAssets(server);
 #endif
-    nativeServer.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
+    server.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
         httpd_resp_set_status(request, "200 OK");
         return httpd_resp_send(request, nullptr, 0);
     });
-    nativeServer.addDefaultHeader("Server", APP_NAME);
-    nativeServer.addDefaultHeader("Access-Control-Allow-Origin", "*");
-    nativeServer.addDefaultHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
-    nativeServer.addDefaultHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    nativeServer.addDefaultHeader("Access-Control-Max-Age", "86400");
+    server.addDefaultHeader("Server", APP_NAME);
+    server.addDefaultHeader("Access-Control-Allow-Origin", "*");
+    server.addDefaultHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
+    server.addDefaultHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.addDefaultHeader("Access-Control-Max-Age", "86400");
 }
 
 void setupEventSocket() {

@@ -1,5 +1,5 @@
 #include <ap_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 static const char *TAG = "APService";
 
@@ -17,7 +17,7 @@ esp_err_t APService::getStatus(httpd_req_t *request) {
     JsonDocument doc;
     JsonObject root = doc.to<JsonObject>();
     status(root);
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }
 
 void APService::status(JsonObject &root) {

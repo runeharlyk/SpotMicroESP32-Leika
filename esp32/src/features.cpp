@@ -1,5 +1,5 @@
 #include <features.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 namespace feature_service {
 
@@ -61,7 +61,7 @@ esp_err_t getFeatures(httpd_req_t* request) {
     JsonDocument doc;
     JsonObject root = doc.to<JsonObject>();
     features(root);
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }
 
 } // namespace feature_service

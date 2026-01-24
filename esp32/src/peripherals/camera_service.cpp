@@ -1,5 +1,5 @@
 #include <peripherals/camera_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 namespace Camera {
 
@@ -88,7 +88,7 @@ esp_err_t CameraService::cameraStill(httpd_req_t *request) {
     camera_fb_t *fb = safe_camera_fb_get();
     if (!fb) {
         ESP_LOGE(TAG, "Camera capture failed");
-        return NativeServer::sendError(request, 500, "Camera capture failed");
+        return WebServer::sendError(request, 500, "Camera capture failed");
     }
 
     httpd_resp_set_type(request, "image/jpeg");
