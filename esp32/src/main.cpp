@@ -42,6 +42,7 @@ void setupServer() {
     server.config(50 + WWW_ASSETS_COUNT, 32768);
     server.listen(80);
 
+    // TODO: REMAKE TO PROTO
     server.on("/api/system/reset", HTTP_POST,
               [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleReset(request); });
     server.on("/api/system/restart", HTTP_POST,
@@ -49,6 +50,7 @@ void setupServer() {
     server.on("/api/system/sleep", HTTP_POST,
               [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleSleep(request); });
 #if USE_CAMERA
+    // TODO: REMAKE TO PROTO
     server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
     server.on("/api/camera/stream", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
@@ -64,6 +66,7 @@ void setupServer() {
         return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 
+    // TODO: REMAKE TO PROTO
     server.on("/api/wifi/sta/settings", HTTP_GET,
               [&](httpd_req_t *request) { return wifiService.endpoint.getState(request); });
     server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
@@ -81,7 +84,8 @@ void setupServer() {
                          [&](httpd_req_t *request, api_Request *protoReq) {
                              return apService.protoEndpoint.handleStateUpdate(request, protoReq);
                          });
-
+    
+    // TODO: REMAKE TO PROTO
     server.on("/api/peripherals", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
     server.on("/api/peripherals", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
@@ -89,6 +93,7 @@ void setupServer() {
     });
 
 #if FT_ENABLED(USE_MDNS)
+    // TODO: REMAKE TO PROTO
     server.on("/api/mdns", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.endpoint.getState(request); });
     server.on("/api/mdns", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
         return mdnsService.endpoint.handleStateUpdate(request, json);
@@ -97,9 +102,10 @@ void setupServer() {
     server.on("/api/mdns/query", HTTP_POST,
               [&](httpd_req_t *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
 #endif
-
+    
+    // TODO: REMAKE TO PROTO
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
-    server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFiles(request); });
+    server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
     server.on("/api/files/delete", HTTP_POST,
               [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleDelete(request, json); });
     server.on("/api/files/edit", HTTP_POST,

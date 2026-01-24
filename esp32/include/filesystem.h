@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <string>
+#include <platform_shared/api.pb.h>
 
 #define ESP_FS LittleFS
 
@@ -17,10 +18,12 @@
 
 namespace FileSystem {
 
+void listFilesProto(const std::string &directory, api_FileEntry *entry);
 std::string listFiles(const std::string &directory, bool isRoot = true);
 bool deleteFile(const char *filename);
 bool editFile(const char *filename, const char *content);
 
+esp_err_t getFilesProto(httpd_req_t *request);
 esp_err_t getFiles(httpd_req_t *request);
 esp_err_t getConfigFile(httpd_req_t *request);
 esp_err_t handleDelete(httpd_req_t *request, JsonVariant &json);

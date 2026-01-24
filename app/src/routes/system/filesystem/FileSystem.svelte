@@ -6,8 +6,11 @@
 	import { modals } from 'svelte-modals'
 	import NewFolderDialog from './NewFolderDialog.svelte'
 	import NewFileDialog from './NewFileDialog.svelte'
+	import { api } from '$lib/api'
+	import type { Response, FileEntry } from '$lib/platform_shared/api'
 
 	let currentPath = $state('/')
+	let fileTree = $state<FileEntry | null>(null)
 	let files = $state<Array<{ name: string; size: number }>>([])
 	let directories = $state<Array<{ name: string }>>([])
 	let loading = $state(false)
@@ -22,22 +25,61 @@
 	let downloadProgress = $state<TransferProgress | null>(null)
 	let uploadInputRef: HTMLInputElement
 
-	async function loadDirectory(path: string = currentPath) {
+	function getNodeAtPath(root: FileEntry, path: string): FileEntry | null {
+		if (path === '/') return root
+		const parts = path.split('/').filter(Boolean)
+		let current = root
+		for (const part of parts) {
+			const child = current.children?.find((c) => c.name === part)
+			if (!child) return null
+			current = child
+		}
+		return current
+	}
+
+	function updateFilesAndDirectories(node: FileEntry | null) {
+		if (!node || !node.children) {
+			files = []
+			directories = []
+			return
+		}
+		files = node.children
+			.filter((c) => !c.isDirectory)
+			.map((c) => ({ name: c.name, size: c.size }))
+		directories = node.children
+			.filter((c) => c.isDirectory)
+			.map((c) => ({ name: c.name }))
+	}
+
+	async function loadFileTree() {
 		loading = true
 		error = ''
 		try {
-			const result = await fileSystemClient.listDirectory(path)
-			if (result.success) {
-				files = result.files
-				directories = result.directories
-				currentPath = path
+			const result = await api.get<Response>('/api/files')
+			if (result.isOk()) {
+				const response = result.inner
+				if (response.fileList && response.fileList.entries.length > 0) {
+					fileTree = response.fileList.entries[0]
+					updateFilesAndDirectories(getNodeAtPath(fileTree, currentPath))
+				} else {
+					error = response.errorMessage || 'Failed to load file tree'
+				}
 			} else {
-				error = result.error || 'Failed to load directory'
+				error = 'Failed to fetch file list'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unknown error'
 		} finally {
 			loading = false
+		}
+	}
+
+	async function loadDirectory(path: string = currentPath) {
+		currentPath = path
+		if (fileTree) {
+			updateFilesAndDirectories(getNodeAtPath(fileTree, path))
+		} else {
+			await loadFileTree()
 		}
 	}
 
@@ -94,7 +136,7 @@
 
 			if (result.success) {
 				isEditing = false
-				await loadDirectory() // Refresh to update file sizes
+				await loadFileTree() // Refresh to update file sizes
 			} else {
 				error = result.error || 'Failed to save file'
 			}
@@ -125,7 +167,7 @@
 			)
 
 			if (result.success) {
-				await loadDirectory()
+				await loadFileTree()
 			} else {
 				error = result.error || 'Upload failed'
 			}
@@ -173,7 +215,7 @@
 					selectedFile = ''
 					fileContent = ''
 				}
-				await loadDirectory()
+				await loadFileTree()
 			} else {
 				error = result.error || 'Delete failed'
 			}
@@ -191,7 +233,7 @@
 		try {
 			const result = await fileSystemClient.createDirectory(path)
 			if (result.success) {
-				await loadDirectory()
+				await loadFileTree()
 			} else {
 				error = result.error || 'Failed to create directory'
 			}
@@ -212,7 +254,7 @@
 
 			const result = await fileSystemClient.uploadFile(path, data)
 			if (result.success) {
-				await loadDirectory()
+				await loadFileTree()
 				await loadFileContent(fileName)
 			} else {
 				error = result.error || 'Failed to create file'
@@ -242,9 +284,9 @@
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 	}
 
-	// Load initial directory
+	// Load initial file tree
 	$effect(() => {
-		loadDirectory('/')
+		loadFileTree()
 	})
 </script>
 
