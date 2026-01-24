@@ -2,10 +2,13 @@
 
 #include <template/stateful_service.h>
 #include <template/stateful_proto_endpoint.h>
+#include <template/stateful_persistence_pb.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <WiFi.h>
 #include "esp_timer.h"
+
+#define AP_SETTINGS_FILE "/config/apSettings.pb"
 
 class APService : public StatefulService<APSettings> {
   public:
@@ -23,6 +26,7 @@ class APService : public StatefulService<APSettings> {
     StatefulProtoEndpoint<APSettings, api_APSettings> protoEndpoint;
 
   private:
+    FSPersistencePB<APSettings> _persistence;
     DNSServer *_dnsServer;
 
     volatile unsigned long _lastManaged;

@@ -6,13 +6,17 @@ static const char *TAG = "APService";
 APService::APService()
     : protoEndpoint(APSettings_read, APSettings_update, this,
                     API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
-                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)) {
+                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
+      _persistence(APSettings_read, APSettings_update, this,
+                   AP_SETTINGS_FILE, api_APSettings_fields, api_APSettings_size) {
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
 APService::~APService() {}
 
-void APService::begin() {}
+void APService::begin() {
+    _persistence.readFromFS();
+}
 
 esp_err_t APService::getStatusProto(httpd_req_t *request) {
     api_Response res = api_Response_init_zero;
