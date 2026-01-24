@@ -17,7 +17,7 @@ NativeServer::~NativeServer() {
     vSemaphoreDelete(wsMutex_);
 }
 
-void NativeServer::config(size_t maxUriHandlers, size_t stackSize, size_t maxUploadSize) {
+void NativeServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.max_uri_handlers = maxUriHandlers;
     config_.stack_size = stackSize;
     config_.max_resp_headers = 16;
@@ -252,7 +252,12 @@ void NativeServer::removeWsClient(int sockfd) {
     xSemaphoreGive(wsMutex_);
 }
 
-std::vector<int>& NativeServer::getWsClients() { return wsClients_; }
+std::vector<int> NativeServer::getWsClients() {
+    xSemaphoreTake(wsMutex_, portMAX_DELAY);
+    std::vector<int> clients = wsClients_;
+    xSemaphoreGive(wsMutex_);
+    return clients;
+}
 
 esp_err_t NativeServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     httpd_ws_frame_t frame = {.final = true,

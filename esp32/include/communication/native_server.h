@@ -26,7 +26,7 @@ class NativeServer {
     NativeServer();
     ~NativeServer();
 
-    void config(size_t maxUriHandlers, size_t stackSize, size_t maxUploadSize);
+    void config(size_t maxUriHandlers, size_t stackSize);
     esp_err_t listen(uint16_t port);
     void stop();
 
@@ -42,7 +42,7 @@ class NativeServer {
     esp_err_t wsSendAll(const uint8_t* data, size_t len);
     void addWsClient(int sockfd);
     void removeWsClient(int sockfd);
-    std::vector<int>& getWsClients();
+    std::vector<int> getWsClients();
 
     void addDefaultHeader(const char* key, const char* value);
 
