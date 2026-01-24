@@ -24,8 +24,10 @@ template <class T, class ProtoT>
 class StatefulProtoEndpoint {
   public:
     /** Converts internal state to protobuf message for responses */
+    // Formats are passed as referenced const (local variable) we want to read from, and a reference (proto) we write to
     using ProtoStateReader = std::function<void(const T&, ProtoT&)>;
     /** Converts incoming protobuf message to internal state */
+    // Formats are passed as referenced const (new object) we read from, and a reference to the local variable we  write to
     using ProtoStateUpdater = std::function<StateUpdateResult(const ProtoT&, T&)>;
     /** Extracts the specific proto type from Request oneof */
     using RequestExtractor = std::function<bool(const api_Request&, ProtoT&)>;

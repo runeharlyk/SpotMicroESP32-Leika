@@ -15,8 +15,9 @@
 template <class T>
 class FSPersistencePB {
   public:
+    // Formats are passed as referenced const (local variable) we want to read from, and a reference (proto) we write to
     using ProtoStateReader = std::function<void(const T&, T&)>;
-    // Formats are passed as referenced const (new object), and a reference to local variable we either want to read from or write to
+    // Formats are passed as referenced const (new object) we read from, and a reference to the local variable we  write to
     using ProtoStateUpdater = std::function<StateUpdateResult(const T&, T&)>;
 
     FSPersistencePB(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater,
