@@ -12,9 +12,9 @@
 
 #include <list>
 #include <SPI.h>
-#include <Wire.h>
 
 #include <NewPing.h>
+#include <peripherals/i2c_bus.h>
 #include <peripherals/imu.h>
 #include <peripherals/magnetometer.h>
 #include <peripherals/barometer.h>

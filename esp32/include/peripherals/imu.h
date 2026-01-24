@@ -1,18 +1,16 @@
 #pragma once
 
-#include <SPI.h>
-#include <Wire.h>
 #include <utils/math_utils.h>
+#include <features.h>
+#include <peripherals/sensor.hpp>
 
 #if FT_ENABLED(USE_MPU6050)
-#include <MPU6050_6Axis_MotionApps612.h>
+#include <peripherals/drivers/mpu6050.h>
 #endif
 
 #if FT_ENABLED(USE_BNO055)
-#include <Adafruit_BNO055.h>
+#include <peripherals/drivers/bno055.h>
 #endif
-
-#include <peripherals/sensor.hpp>
 
 struct IMUAnglesMsg {
     float rpy[3] {0, 0, 0};
@@ -24,41 +22,20 @@ class IMU : public SensorBase<IMUAnglesMsg> {
   public:
     bool initialize() override {
 #if FT_ENABLED(USE_MPU6050)
-        _imu.initialize();
-        _msg.success = _imu.testConnection();
+        _msg.success = _imu.begin();
         if (!_msg.success) {
-            ESP_LOGE("IMU", "MPU6050 connection test failed");
+            ESP_LOGE("IMU", "MPU6050 initialization failed");
             return false;
         }
-        devStatus = _imu.dmpInitialize();
-        if (devStatus == 0) {
-            _imu.setXGyroOffset(0);
-            _imu.setYGyroOffset(0);
-            _imu.setZGyroOffset(0);
-            _imu.setXAccelOffset(0);
-            _imu.setYAccelOffset(0);
-            _imu.setZAccelOffset(0);
-
-            _imu.setI2CMasterModeEnabled(false);
-            _imu.setI2CBypassEnabled(true);
-            _imu.setSleepEnabled(false);
-            _imu.setRate(1);
-            _imu.resetFIFO();
-            _imu.setDMPEnabled(true);
-
-            ESP_LOGI("IMU", "MPU6050 DMP initialized successfully");
-        } else {
-            ESP_LOGE("IMU", "DMP initialization failed (code %d)", devStatus);
-            _msg.success = false;
-        }
+        ESP_LOGI("IMU", "MPU6050 initialized successfully");
 #endif
 #if FT_ENABLED(USE_BNO055)
         _msg.success = _imu.begin();
         if (!_msg.success) {
-            ESP_LOGE("IMU", "BNO055 connection test failed");
+            ESP_LOGE("IMU", "BNO055 initialization failed");
             return false;
         }
-        _imu.setExtCrystalUse(true);
+        ESP_LOGI("IMU", "BNO055 initialized successfully");
 #endif
         return _msg.success;
     }
@@ -66,54 +43,37 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     bool update() override {
         if (!_msg.success) return false;
 #if FT_ENABLED(USE_MPU6050)
-        uint16_t fifoCount = _imu.getFIFOCount();
-        uint8_t intStatus = _imu.getIntStatus();
-
-        if (intStatus & 0x10) {
-            _imu.resetFIFO();
-            ESP_LOGW("IMU", "FIFO overflow, resetting");
-            return false;
-        }
-
-        if (_imu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-            _imu.dmpGetQuaternion(&q, fifoBuffer);
-            _imu.dmpGetGravity(&gravity, &q);
-            _imu.dmpGetYawPitchRoll(_msg.rpy, &q, &gravity);
-            return true;
-        }
-        return false;
+        if (!_imu.update()) return false;
+        _msg.rpy[0] = _imu.getYaw();
+        _msg.rpy[1] = _imu.getPitch();
+        _msg.rpy[2] = _imu.getRoll();
+        _msg.temperature = _imu.getTemperature();
 #endif
 #if FT_ENABLED(USE_BNO055)
-        sensors_event_t event;
-        _imu.getEvent(&event);
-        _msg.rpy[0] = event.orientation.x;
-        _msg.rpy[1] = event.orientation.y;
-        _msg.rpy[2] = event.orientation.z;
+        if (!_imu.update()) return false;
+        _msg.rpy[0] = _imu.getHeading();
+        _msg.rpy[1] = _imu.getPitch();
+        _msg.rpy[2] = _imu.getRoll();
 #endif
         return true;
     }
 
     float getTemperature() { return _msg.temperature; }
-
     float getAngleX() { return _msg.rpy[2]; }
-
     float getAngleY() { return _msg.rpy[1]; }
-
     float getAngleZ() { return _msg.rpy[0]; }
 
     bool calibrate() {
 #if FT_ENABLED(USE_MPU6050)
         if (!_msg.success) return false;
         ESP_LOGI("IMU", "Starting calibration...");
-        _imu.CalibrateGyro(6);
-        _imu.CalibrateAccel(6);
+        bool result = _imu.calibrate();
         ESP_LOGI("IMU", "Calibration complete");
-        return true;
+        return result;
 #elif FT_ENABLED(USE_BNO055)
         if (!_msg.success) return false;
         ESP_LOGI("IMU", "Starting calibration...");
-        adafruit_bno055_offsets_t offsets;
-        bool result = _imu.getSensorOffsets(offsets);
+        bool result = _imu.calibrate();
         ESP_LOGI("IMU", "Calibration complete");
         return result;
 #else
@@ -123,13 +83,9 @@ class IMU : public SensorBase<IMUAnglesMsg> {
 
   private:
 #if FT_ENABLED(USE_MPU6050)
-    MPU6050 _imu;
-    uint8_t devStatus {0};
-    Quaternion q;
-    uint8_t fifoBuffer[64];
-    VectorFloat gravity;
+    MPU6050Driver _imu;
 #endif
 #if FT_ENABLED(USE_BNO055)
-    Adafruit_BNO055 _imu {55, 0x29};
+    BNO055Driver _imu;
 #endif
 };

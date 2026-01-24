@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Wire.h>
+#include <peripherals/i2c_bus.h>
 
 enum gesture_t : uint16_t {
     eGestureNone = 0x0000,
@@ -24,10 +24,9 @@ struct GestureMsg {
 
 class PAJ7620U2 {
   public:
-    PAJ7620U2(TwoWire* w = &Wire, uint8_t addr = 0x73) : wire(w), dev(addr) {}
+    PAJ7620U2(uint8_t addr = 0x73) : dev(addr) {}
     int begin() {
         uint16_t id = 0;
-        wire->begin();
         selectBank(0x00);
         if (readReg(REG_PART_ID, &id, 2) != 2) return ERR_BUS;
         if (id != PART_ID) return ERR_IC;
@@ -74,21 +73,12 @@ class PAJ7620U2 {
     void selectBank(uint8_t b) { writeReg(REG_BANK_SEL, &b, 1); }
     void writeReg(uint8_t reg, const void* p, size_t n) {
         if (!p || !n) return;
-        const uint8_t* d = static_cast<const uint8_t*>(p);
-        wire->beginTransmission(dev);
-        wire->write(reg);
-        for (size_t i = 0; i < n; i++) wire->write(d[i]);
-        wire->endTransmission();
+        I2CBus::instance().writeReg(dev, reg, static_cast<const uint8_t*>(p), n);
     }
     uint8_t readReg(uint8_t reg, void* p, size_t n) {
         if (!p || !n) return 0;
-        uint8_t* d = static_cast<uint8_t*>(p);
-        wire->beginTransmission(dev);
-        wire->write(reg);
-        if (wire->endTransmission(false) != 0) return 0;
-        uint8_t r = wire->requestFrom(dev, static_cast<uint8_t>(n));
-        for (uint8_t i = 0; i < r; i++) d[i] = wire->read();
-        return r;
+        esp_err_t err = I2CBus::instance().readReg(dev, reg, static_cast<uint8_t*>(p), n);
+        return (err == ESP_OK) ? n : 0;
     }
 
     gesture_t mapGesture(gesture_t g) const {
@@ -118,7 +108,6 @@ class PAJ7620U2 {
         return g;
     }
 
-    TwoWire* wire;
     uint8_t dev;
     bool highRate = false;
     orient_t orient = kRot180;

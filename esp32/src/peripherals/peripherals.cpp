@@ -40,12 +40,13 @@ void Peripherals::update() {
 
 void Peripherals::updatePins() {
     if (i2c_active) {
-        Wire.end();
+        I2CBus::instance().end();
     }
 
     if (state().sda != -1 && state().scl != -1) {
-        Wire.begin(state().sda, state().scl, state().frequency);
-        i2c_active = true;
+        esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(state().sda),
+                                                 static_cast<gpio_num_t>(state().scl), state().frequency);
+        i2c_active = (err == ESP_OK);
     }
 }
 
@@ -60,15 +61,12 @@ void Peripherals::getI2CScanProto(socket_message_I2CScanData &data) {
 
 void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
     addressList.clear();
-    for (uint8_t address = lower; address < higher; address++) {
-        Wire.beginTransmission(address);
-        if (Wire.endTransmission() == 0) {
-            addressList.emplace_back(address);
-            ESP_LOGI("Peripherals", "I2C device found at address 0x%02X", address);
-        }
+    auto devices = I2CBus::instance().scan(lower, higher);
+    for (auto addr : devices) {
+        addressList.emplace_back(addr);
+        ESP_LOGI("Peripherals", "I2C device found at address 0x%02X", addr);
     }
-    uint8_t nDevices = addressList.size();
-    ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", nDevices);
+    ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", devices.size());
 }
 
 void Peripherals::getIMUProto(socket_message_IMUData &data) {

@@ -1,16 +1,13 @@
 #ifndef ServoController_h
 #define ServoController_h
 
-#include <Adafruit_PWMServoDriver.h>
+#include <peripherals/drivers/pca9685.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_service.h>
 #include <template/stateful_endpoint.h>
 #include <utils/math_utils.h>
 #include <settings/servo_settings.h>
 
-/*
- * Servo Settings
- */
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
 #endif
@@ -29,7 +26,6 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void begin() {
         _persistence.readFromFS();
-
         initializePCA();
     }
 
@@ -98,13 +94,13 @@ class ServoController : public StatefulService<ServoSettings> {
   private:
     void initializePCA() {
         _pca.begin();
-        _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
+        _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.sleep();
     }
     FSPersistence<ServoSettings> _persistence;
 
-    Adafruit_PWMServoDriver _pca;
+    PCA9685Driver _pca;
 
     SERVO_CONTROL_STATE control_state = SERVO_CONTROL_STATE::DEACTIVATED;
 

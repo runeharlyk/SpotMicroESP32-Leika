@@ -1,13 +1,8 @@
 #pragma once
 
-#include <SPI.h>
-#include <Wire.h>
 #include <utils/math_utils.h>
-
-#include <Adafruit_BMP085_U.h>
-#include <Adafruit_Sensor.h>
-
 #include <peripherals/sensor.hpp>
+#include <peripherals/drivers/bmp180.h>
 
 struct BarometerMsg {
     float pressure {-1};
@@ -20,29 +15,28 @@ class Barometer : public SensorBase<BarometerMsg> {
   public:
     bool initialize() override {
         _msg.success = _bmp.begin();
+        if (_msg.success) {
+            ESP_LOGI("BMP", "BMP180 initialized successfully");
+        } else {
+            ESP_LOGE("BMP", "BMP180 initialization failed");
+        }
         return _msg.success;
     }
 
     bool update() override {
         if (!_msg.success) return false;
-        _bmp.getTemperature(&_msg.temperature);
-        sensors_event_t event;
-        _bmp.getEvent(&event);
-        _msg.pressure = event.pressure;
-        _msg.altitude = _bmp.pressureToAltitude(seaLevelPressure, _msg.pressure);
+        if (!_bmp.update()) return false;
+        _msg.temperature = _bmp.getTemperature();
+        _msg.pressure = _bmp.getPressure();
+        _msg.altitude = _bmp.getAltitude();
         return true;
     }
 
     float getPressure() { return _msg.pressure; }
-
     float getAltitude() { return _msg.altitude; }
-
     float getTemperature() { return _msg.temperature; }
-
     bool active() { return _msg.success; }
 
   private:
-    Adafruit_BMP085_Unified _bmp {10085};
-
-    const float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
+    BMP180Driver _bmp;
 };
