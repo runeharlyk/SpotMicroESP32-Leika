@@ -6,15 +6,14 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
-    import { type ApSettings } from '$lib/types/models'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
-    import { APStatus, Response } from '$lib/platform_shared/api'
+    import { APSettings, APStatus, Request, Response } from '$lib/platform_shared/api'
     import { input } from '$lib/stores'
 
-    let apSettings: ApSettings | null = $state(null)
+    let apSettings: APSettings  | null = $state(null)
     let apStatus: APStatus | null = $state(null)
 
     let ipDisplay = $state({
@@ -36,16 +35,16 @@
     }
 
     async function getAPSettings() {
-        const result = await api.get<ApSettings>('/api/ap/settings')
+        const result = await api.get<Response>('/api/ap/settings')
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
-        apSettings = result.inner
+        apSettings = result.inner.apSettings!
         ipDisplay = {
-            local_ip: uint32ToIp(apSettings.local_ip),
-            gateway_ip: uint32ToIp(apSettings.gateway_ip),
-            subnet_mask: uint32ToIp(apSettings.subnet_mask)
+            local_ip: uint32ToIp(apSettings.localIp),
+            gateway_ip: uint32ToIp(apSettings.gatewayIp),
+            subnet_mask: uint32ToIp(apSettings.subnetMask)
         }
         return apSettings
     }
@@ -88,15 +87,21 @@
         subnet_mask: false
     })
 
-    async function postAPSettings(data: ApSettings) {
-        const result = await api.post<ApSettings>('/api/ap/settings', data)
+    async function postAPSettings(data: APSettings) {
+        const result = await api.post_proto<Response>('/api/ap/settings', Request.create({ apSettings: data }))
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000)
             console.error('Error:', result.inner)
             return
         }
+        if (result.inner.statusCode !== 200) {
+            notifications.error(result.inner.errorMessage || 'Failed to update settings', 3000)
+            return
+        }
+        if (result.inner.apSettings) {
+            apSettings = result.inner.apSettings
+        }
         notifications.success('Access Point settings updated.', 3000)
-        apSettings = result.inner
     }
 
     function handleSubmitAP(e: Event) {
@@ -119,7 +124,7 @@
             formErrors.channel = false
         }
 
-        let maxClients = Number(apSettings.max_clients)
+        let maxClients = Number(apSettings.maxClients)
         if (1 > maxClients || maxClients > 8) {
             valid = false
             formErrors.max_clients = true
@@ -149,9 +154,9 @@
         }
 
         if (valid) {
-            apSettings.local_ip = ipToUint32(ipDisplay.local_ip)
-            apSettings.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
-            apSettings.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
+            apSettings.localIp = ipToUint32(ipDisplay.local_ip)
+            apSettings.gatewayIp = ipToUint32(ipDisplay.gateway_ip)
+            apSettings.subnetMask = ipToUint32(ipDisplay.subnet_mask)
             postAPSettings(apSettings)
         }
     }
@@ -225,7 +230,7 @@
                             <select
                                 class="select select-bordered w-full"
                                 id="apmode"
-                                bind:value={apSettings.provision_mode}
+                                bind:value={apSettings.provisionMode}
                             >
                                 {#each provisionMode as mode (mode.id)}
                                     <option value={mode.id}>
@@ -305,7 +310,7 @@
                                 ) ?
                                     'border-error border-2'
                                 :   ''}"
-                                bind:value={apSettings.max_clients}
+                                bind:value={apSettings.maxClients}
                                 id="clients"
                                 required
                             />
@@ -393,7 +398,7 @@
                         <label class="label my-auto cursor-pointer justify-start gap-4">
                             <input
                                 type="checkbox"
-                                bind:checked={apSettings.ssid_hidden}
+                                bind:checked={apSettings.ssidHidden}
                                 class="checkbox checkbox-primary"
                             />
                             <span class="">Hide SSID</span>

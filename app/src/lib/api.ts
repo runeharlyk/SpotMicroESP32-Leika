@@ -2,7 +2,8 @@ import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
 import { apiLocation } from './stores/location-store'
 import type { MessageFns } from './platform_shared/filesystem'
-import { Response } from './platform_shared/api'
+import { Request, Response } from './platform_shared/api'
+import { BinaryWriter } from '@bufbuild/protobuf/wire'
 
 export const api = {
     get<TResponse>(endpoint: string, params?: RequestInit) {
@@ -11,6 +12,10 @@ export const api = {
 
     post<TResponse>(endpoint: string, data?: unknown) {
         return sendRequest<TResponse>(endpoint, 'POST', data)
+    },
+
+    post_proto<TResponse>(endpoint: string, data: Request) {
+        return sendRequest<TResponse>(endpoint, 'POST', Request.encode(data))
     },
 
     put<TResponse>(endpoint: string, data?: unknown) {
@@ -29,7 +34,11 @@ async function sendRequest<TResponse>(
     params?: RequestInit
 ): Promise<Result<TResponse, Error>> {
     endpoint = resolveUrl(endpoint)
-    const body = data !== null && typeof data !== 'undefined' ? JSON.stringify(data) : undefined
+
+    const isProtobuf = data instanceof BinaryWriter
+    const body = data !== null && typeof data !== 'undefined'
+        ? (isProtobuf ? data.finish() : JSON.stringify(data))
+        : undefined
 
     const request = {
         ...params,
@@ -38,7 +47,7 @@ async function sendRequest<TResponse>(
         headers: {
             ...params?.headers,
             Authorization: 'Basic',
-            'Content-Type': 'application/json'
+            'Content-Type': isProtobuf ? 'application/x-protobuf' : 'application/json'
         }
     }
 

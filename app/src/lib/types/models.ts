@@ -71,18 +71,6 @@ export type NetworkItem = {
     encryption_type: number
 }
 
-export type ApSettings = {
-    provision_mode: number
-    ssid: string
-    password: string
-    channel: number
-    ssid_hidden: boolean
-    max_clients: number
-    local_ip: number
-    gateway_ip: number
-    subnet_mask: number
-}
-
 export type Rssi = {
     rssi: number
     ssid: string
