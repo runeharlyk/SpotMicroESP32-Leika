@@ -6,4 +6,8 @@ api.APStatus.mac_address max_size:18
 api.Servo.name max_size:16
 api.ServoSettings.servos max_count:12
 
+api.FileEntry.name max_size:64
+api.FileEntry.children type:FT_POINTER
+api.FileList.entries type:FT_POINTER
+
 api.Response.error_message type:FT_POINTER

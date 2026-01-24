@@ -60,6 +60,23 @@ message ServoSettings {
 message ServoSettingsRequest {}
 
 // =============================================================================
+// File System - shared data types
+// =============================================================================
+
+message FileEntry {
+    string name = 1;
+    bool is_directory = 2;
+    uint32 size = 3;  // Only for files
+    repeated FileEntry children = 4;  // Only for directories
+}
+
+message FileList {
+    repeated FileEntry entries = 1;
+}
+
+message FileListRequest {}
+
+// =============================================================================
 // REST API wrappers - used by HTTP endpoints
 // =============================================================================
 
@@ -71,6 +88,7 @@ message Request {
         APStatusRequest ap_status_request = 12;
         ServoSettings servo_settings = 20;
         ServoSettingsRequest servo_settings_request = 21;
+        FileListRequest file_list_request = 30;
     }
 }
 
@@ -83,5 +101,6 @@ message Response {
         APSettings ap_settings = 10;
         APStatus ap_status = 11;
         ServoSettings servo_settings = 20;
+        FileList file_list = 30;
     }
 }
