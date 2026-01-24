@@ -3,7 +3,7 @@
 #include <esp_http_server.h>
 #include <ArduinoJson.h>
 #include <template/stateful_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 #include <functional>
 
@@ -27,7 +27,7 @@ class StatefulHttpEndpoint {
         StateUpdateResult outcome = _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
 
         if (outcome == StateUpdateResult::ERROR) {
-            return NativeServer::sendError(request, 400, "Invalid state");
+            return WebServer::sendError(request, 400, "Invalid state");
         } else if ((outcome == StateUpdateResult::CHANGED)) {
             _statefulService->callUpdateHandlers(HTTP_ENDPOINT_ORIGIN_ID);
         }
@@ -35,13 +35,13 @@ class StatefulHttpEndpoint {
         JsonDocument doc;
         JsonVariant root = doc.to<JsonVariant>();
         _statefulService->read(root, _stateReader);
-        return NativeServer::sendJson(request, 200, doc);
+        return WebServer::sendJson(request, 200, doc);
     }
 
     esp_err_t getState(httpd_req_t *request) {
         JsonDocument doc;
         JsonVariant root = doc.to<JsonVariant>();
         _statefulService->read(root, _stateReader);
-        return NativeServer::sendJson(request, 200, doc);
+        return WebServer::sendJson(request, 200, doc);
     }
 };

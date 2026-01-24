@@ -1,5 +1,5 @@
 #include <wifi_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 
 WiFiService::WiFiService()
     : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
@@ -60,7 +60,7 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     JsonDocument doc;
     JsonObject root = doc.to<JsonObject>();
     getNetworks(root);
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -88,7 +88,7 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
     JsonDocument doc;
     JsonObject root = doc.to<JsonObject>();
     getNetworkStatus(root);
-    return NativeServer::sendJson(request, 200, doc);
+    return WebServer::sendJson(request, 200, doc);
 }
 
 void WiFiService::getNetworkStatus(JsonObject &root) {

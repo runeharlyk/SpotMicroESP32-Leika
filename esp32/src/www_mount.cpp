@@ -17,7 +17,7 @@ static esp_err_t web_send(httpd_req_t* req, const WebAsset& asset) {
     return httpd_resp_send(req, (const char*)asset.data, asset.len);
 }
 
-void mountStaticAssets(NativeServer& server) {
+void mountStaticAssets(WebServer& server) {
     for (size_t i = 0; i < WWW_ASSETS_COUNT; i++) {
         const WebAsset* a = &WWW_ASSETS[i];
         server.on(a->uri, HTTP_GET, [a](httpd_req_t* req) { return web_send(req, *a); });
