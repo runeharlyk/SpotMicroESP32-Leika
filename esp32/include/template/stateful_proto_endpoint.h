@@ -2,7 +2,7 @@
 
 #include <esp_http_server.h>
 #include <template/stateful_service.h>
-#include <communication/native_server.h>
+#include <communication/webserver.h>
 #include <platform_shared/api.pb.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
@@ -95,7 +95,7 @@ class StatefulProtoEndpoint {
         _statefulService->read([this, &protoState](const T& settings) { _stateReader(settings, protoState); });
         _responseAssigner(res, protoState);
 
-        return NativeServer::sendProto(request, 200, res, api_Response_fields);
+        return WebServer::sendProto(request, 200, res, api_Response_fields);
     }
 
     /** Sends error wrapped in Response */
@@ -103,7 +103,7 @@ class StatefulProtoEndpoint {
         api_Response res = api_Response_init_zero;
         res.status_code = statusCode;
         res.error_message = (char*)message;
-        return NativeServer::sendProto(request, statusCode == 200 ? 200 : 400, res, api_Response_fields);
+        return WebServer::sendProto(request, statusCode == 200 ? 200 : 400, res, api_Response_fields);
     }
 };
 

@@ -251,7 +251,7 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handl
     }
 }
 
-void NativeServer::onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler) {
+void WebServer::onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler) {
     HttpRoute route;
     route.uri = uri;
     route.method = method;

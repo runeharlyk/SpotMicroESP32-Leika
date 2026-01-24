@@ -22,13 +22,15 @@ class FSPersistencePB {
 
     FSPersistencePB(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater,
                     StatefulService<T> *statefulService, const char *filePath,
-                    const pb_msgdesc_t *msgDescriptor, size_t maxSize)
+                    const pb_msgdesc_t *msgDescriptor, size_t maxSize,
+                    const T &defaultState)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
           _filePath(filePath),
           _msgDescriptor(msgDescriptor),
           _maxSize(maxSize),
+          _defaultState(defaultState),
           _updateHandlerId(0) {
         enableUpdateHandler();
     }
@@ -115,6 +117,7 @@ class FSPersistencePB {
     const char *_filePath;
     const pb_msgdesc_t *_msgDescriptor;
     size_t _maxSize;
+    T _defaultState;
     HandlerId _updateHandlerId;
 
     void mkdirs() {
@@ -127,9 +130,8 @@ class FSPersistencePB {
     }
 
   protected:
-    virtual void applyDefaults() {
-        T defaultState = {};
+    void applyDefaults() {
         _statefulService->updateWithoutPropagation(
-            [this, &defaultState](T &state) { return _stateUpdater(defaultState, state); });
+            [this](T &state) { return _stateUpdater(_defaultState, state); });
     }
 };
