@@ -16,6 +16,8 @@
 #define FACTORY_SERVO_OSCILLATOR_FREQUENCY 27000000
 #endif
 
+#define SERVO_SETTINGS_FILE "/config/servoSettings.pb"
+
 enum class SERVO_CONTROL_STATE { DEACTIVATED, PWM, ANGLE };
 
 using ServoSettings = api_ServoSettings;
