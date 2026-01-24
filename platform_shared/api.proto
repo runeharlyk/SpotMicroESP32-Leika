@@ -42,6 +42,24 @@ message APSettingsRequest {}
 message APStatusRequest {}
 
 // =============================================================================
+// Servo Settings - shared data types
+// =============================================================================
+
+message Servo {
+    float center_pwm = 1;
+    float direction = 2;
+    float center_angle = 3;
+    float conversion = 4;
+    string name = 5;
+}
+
+message ServoSettings {
+    repeated Servo servos = 1;  // max 12 servos
+}
+
+message ServoSettingsRequest {}
+
+// =============================================================================
 // REST API wrappers - used by HTTP endpoints
 // =============================================================================
 
@@ -51,8 +69,8 @@ message Request {
         APSettings ap_settings = 10;
         APSettingsRequest ap_settings_request = 11;
         APStatusRequest ap_status_request = 12;
-        // Future types:
-        // MDNSSettings mdns_settings = 20;
+        ServoSettings servo_settings = 20;
+        ServoSettingsRequest servo_settings_request = 21;
     }
 }
 
@@ -64,8 +82,6 @@ message Response {
     oneof payload {
         APSettings ap_settings = 10;
         APStatus ap_status = 11;
-        // Future types:
-        // MDNSSettings mdns_settings = 20;
-        // MDNSStatus mdns_status = 21;
+        ServoSettings servo_settings = 20;
     }
 }

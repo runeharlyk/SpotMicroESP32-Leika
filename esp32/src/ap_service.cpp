@@ -8,7 +8,8 @@ APService::APService()
                     API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
                     API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
       _persistence(APSettings_read, APSettings_update, this,
-                   AP_SETTINGS_FILE, api_APSettings_fields, api_APSettings_size) {
+                   AP_SETTINGS_FILE, api_APSettings_fields, api_APSettings_size,
+                   APSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
@@ -23,7 +24,7 @@ esp_err_t APService::getStatusProto(httpd_req_t *request) {
     res.status_code = 200;
     res.which_payload = api_Response_ap_status_tag;
     statusProto(res.payload.ap_status);
-    return NativeServer::sendProto(request, 200, res, api_Response_fields);
+    return WebServer::sendProto(request, 200, res, api_Response_fields);
 }
 
 void APService::statusProto(api_APStatus &proto) {

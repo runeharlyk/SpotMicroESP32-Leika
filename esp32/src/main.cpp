@@ -59,9 +59,9 @@ void setupServer() {
     });
 #endif
     server.on("/api/servo/config", HTTP_GET,
-              [&](httpd_req_t *request) { return servoController.endpoint.getState(request); });
-    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return servoController.endpoint.handleStateUpdate(request, json);
+              [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });
+    server.onProto("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 
     server.on("/api/wifi/sta/settings", HTTP_GET,

@@ -3,4 +3,7 @@ api.APSettings.password max_size:64
 
 api.APStatus.mac_address max_size:18
 
+api.Servo.name max_size:16
+api.ServoSettings.servos max_count:12
+
 api.Response.error_message type:FT_POINTER
