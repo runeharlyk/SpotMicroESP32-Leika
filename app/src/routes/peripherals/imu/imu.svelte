@@ -66,114 +66,120 @@
         const colors = getChartColors()
         const baseConfig = createBaseChartConfig(colors.background)
 
-        angleChart = new Chart(angleChartElement, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'x',
-                        borderColor: colors.primary,
-                        backgroundColor: colors.primary,
-                        borderWidth: 2,
-                        data: $imu.map(datapoint => datapoint.x),
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'y',
-                        borderColor: colors.secondary,
-                        backgroundColor: colors.secondary,
-                        borderWidth: 2,
-                        data: $imu.map(datapoint => datapoint.y),
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'z',
-                        borderColor: colors.accent,
-                        backgroundColor: colors.accent,
-                        borderWidth: 2,
-                        data: $imu.map(datapoint => datapoint.z),
-                        yAxisID: 'y'
-                    }
-                ]
-            },
-            options: {
-                ...baseConfig,
-                scales: {
-                    ...baseConfig.scales,
-                    y: {
-                        ...baseConfig.scales.y,
-                        title: {
-                            display: true,
-                            text: 'Angle [°]',
-                            color: colors.background,
-                            font: { size: 16, weight: 'bold' }
+        if (angleChartElement) {
+            angleChart = new Chart(angleChartElement, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'x',
+                            borderColor: colors.primary,
+                            backgroundColor: colors.primary,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.x),
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'y',
+                            borderColor: colors.secondary,
+                            backgroundColor: colors.secondary,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.y),
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'z',
+                            borderColor: colors.accent,
+                            backgroundColor: colors.accent,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.z),
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    ...baseConfig,
+                    scales: {
+                        ...baseConfig.scales,
+                        y: {
+                            ...baseConfig.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Angle [°]',
+                                color: colors.background,
+                                font: { size: 16, weight: 'bold' }
+                            }
                         }
                     }
                 }
-            }
-        })
+            })
+        }
 
-        tempChart = new Chart(tempChartElement, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'Barometer temperature',
-                        borderColor: colors.secondary,
-                        backgroundColor: colors.secondary,
-                        borderWidth: 2,
-                        data: $imu.map(datapoint => datapoint.bmpTemp),
-                        yAxisID: 'y'
-                    }
-                ]
-            },
-            options: {
-                ...baseConfig,
-                scales: {
-                    ...baseConfig.scales,
-                    y: {
-                        ...baseConfig.scales.y,
-                        title: {
-                            display: true,
-                            text: 'Temperature [C°]',
-                            color: colors.background,
-                            font: { size: 16, weight: 'bold' }
+        if (tempChartElement) {
+            tempChart = new Chart(tempChartElement, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Barometer temperature',
+                            borderColor: colors.secondary,
+                            backgroundColor: colors.secondary,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.bmpTemp),
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    ...baseConfig,
+                    scales: {
+                        ...baseConfig.scales,
+                        y: {
+                            ...baseConfig.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Temperature [C°]',
+                                color: colors.background,
+                                font: { size: 16, weight: 'bold' }
+                            }
                         }
                     }
                 }
-            }
-        })
+            })
+        }
 
-        altitudeChart = new Chart(altitudeChartElement, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'Altitude',
-                        borderColor: colors.primary,
-                        backgroundColor: colors.primary,
-                        borderWidth: 2,
-                        data: $imu.map(datapoint => datapoint.altitude),
-                        yAxisID: 'y'
-                    }
-                ]
-            },
-            options: {
-                ...baseConfig,
-                scales: {
-                    ...baseConfig.scales,
-                    y: {
-                        ...baseConfig.scales.y,
-                        title: {
-                            display: true,
-                            text: 'Altitude [M]',
-                            color: colors.background,
-                            font: { size: 16, weight: 'bold' }
+        if (altitudeChartElement) {
+            altitudeChart = new Chart(altitudeChartElement, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Altitude',
+                            borderColor: colors.primary,
+                            backgroundColor: colors.primary,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.altitude),
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    ...baseConfig,
+                    scales: {
+                        ...baseConfig.scales,
+                        y: {
+                            ...baseConfig.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Altitude [M]',
+                                color: colors.background,
+                                font: { size: 16, weight: 'bold' }
+                            }
                         }
                     }
                 }
-            }
-        })
+            })
+        }
     }
 
     const updateChartData = (chart: Chart, data: number[]) => {
@@ -185,7 +191,7 @@
     }
 
     const updateData = () => {
-        if ($features.imu) {
+        if ($features.imu && angleChart) {
             const x = $imu.map(datapoint => datapoint.x)
             const y = $imu.map(datapoint => datapoint.y)
             const z = $imu.map(datapoint => datapoint.z)
@@ -201,7 +207,7 @@
             angleChart.update('none')
         }
 
-        if ($features.bmp) {
+        if ($features.bmp && tempChart && altitudeChart) {
             updateChartData(
                 tempChart,
                 $imu.map(datapoint => datapoint.bmpTemp)

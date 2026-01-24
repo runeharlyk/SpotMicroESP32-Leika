@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
-#include <Wire.h>
 #include <map>
 
 #include <filesystem.h>
