@@ -42,13 +42,12 @@ void setupServer() {
     server.config(50 + WWW_ASSETS_COUNT, 32768);
     server.listen(80);
 
-    // TODO: REMAKE TO PROTO
-    server.on("/api/system/reset", HTTP_POST,
-              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleReset(request); });
-    server.on("/api/system/restart", HTTP_POST,
-              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleRestart(request); });
-    server.on("/api/system/sleep", HTTP_POST,
-              [&](httpd_req_t *request, JsonVariant &json) { return system_service::handleSleep(request); });
+    server.onProto("/api/system/reset", HTTP_POST,
+              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleReset(request); });
+    server.onProto("/api/system/restart", HTTP_POST,
+              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleRestart(request); });
+    server.onProto("/api/system/sleep", HTTP_POST,
+              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleSleep(request); });
 #if USE_CAMERA
     // TODO: REMAKE TO PROTO
     server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });

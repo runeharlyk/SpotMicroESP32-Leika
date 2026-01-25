@@ -69,6 +69,7 @@ class WebServer {
     static esp_err_t sendJson(httpd_req_t* req, int status, JsonDocument& doc);
     static esp_err_t sendError(httpd_req_t* req, int status, const char* message);
     static esp_err_t sendOk(httpd_req_t* req);
+    static esp_err_t sendOkProto(httpd_req_t* req);
     static esp_err_t sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len);
 
     template <typename T>

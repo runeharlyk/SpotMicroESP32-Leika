@@ -359,6 +359,8 @@ esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message
 
 esp_err_t WebServer::sendOk(httpd_req_t* req) { return sendJson(req, 200, "{\"status\":\"ok\"}"); }
 
+esp_err_t WebServer::sendOkProto(httpd_req_t* req) { return sendProto(req, 200, nullptr, 0); }
+
 esp_err_t WebServer::sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
     httpd_resp_set_status(req, status == 200   ? "200 OK"
                                : status == 400 ? "400 Bad Request"
