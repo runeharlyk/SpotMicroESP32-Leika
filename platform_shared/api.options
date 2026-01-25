@@ -11,3 +11,5 @@ api.FileEntry.children type:FT_POINTER
 api.FileList.entries type:FT_POINTER
 
 api.Response.error_message type:FT_POINTER
+
+api.FileDeleteRequest.path max_size:128

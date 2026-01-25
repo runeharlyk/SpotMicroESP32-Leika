@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package api;
 
+
+// Empty message for endpoints which only needs a status
+message EmptyMessage {}
+
 // =============================================================================
 // AP (Access Point) Settings - shared data types
 // =============================================================================
@@ -54,7 +58,7 @@ message Servo {
 }
 
 message ServoSettings {
-    repeated Servo servos = 1;  // max 12 servos
+    repeated Servo servos = 1; // max 12 servos
 }
 
 message ServoSettingsRequest {}
@@ -66,8 +70,8 @@ message ServoSettingsRequest {}
 message FileEntry {
     string name = 1;
     bool is_directory = 2;
-    uint32 size = 3;  // Only for files
-    repeated FileEntry children = 4;  // Only for directories
+    uint32 size = 3; // Only for files
+    repeated FileEntry children = 4; // Only for directories
 }
 
 message FileList {
@@ -75,6 +79,10 @@ message FileList {
 }
 
 message FileListRequest {}
+
+message FileDeleteRequest {
+    string path = 1;
+}
 
 // =============================================================================
 // REST API wrappers - used by HTTP endpoints
@@ -89,6 +97,7 @@ message Request {
         ServoSettings servo_settings = 20;
         ServoSettingsRequest servo_settings_request = 21;
         FileListRequest file_list_request = 30;
+        FileDeleteRequest file_delete_request = 31;
     }
 }
 
@@ -98,6 +107,7 @@ message Response {
     string error_message = 2;
 
     oneof payload {
+        EmptyMessage empty_message = 5;
         APSettings ap_settings = 10;
         APStatus ap_status = 11;
         ServoSettings servo_settings = 20;

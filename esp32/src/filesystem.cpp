@@ -111,13 +111,17 @@ esp_err_t getConfigFile(httpd_req_t *request) {
     return httpd_resp_send(request, content.c_str(), content.length());
 }
 
-esp_err_t handleDelete(httpd_req_t *request, JsonVariant &json) {
-    if (json.is<JsonObject>()) {
-        const char *filename = json["file"].as<const char *>();
-        ESP_LOGI(TAG, "Deleting file: %s", filename);
-        return deleteFile(filename) ? WebServer::sendOk(request) : WebServer::sendError(request, 500, "Delete failed");
+esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
+    ESP_LOGI(TAG, "Deleting file: %s", req.path);
+
+    api_Response res = api_Response_init_zero;
+    if (deleteFile(req.path)) {
+        res.status_code = 200;
+        res.which_payload = api_Response_empty_message_tag;
+        return WebServer::sendProto(request, 200, res, api_Response_fields);
+    } else {
+        return WebServer::sendError(request, 500, "Delete failed");
     }
-    return WebServer::sendError(request, 400, "Invalid request");
 }
 
 esp_err_t handleEdit(httpd_req_t *request, JsonVariant &json) {
