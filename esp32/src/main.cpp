@@ -106,8 +106,7 @@ void setupServer() {
     // TODO: REMAKE TO PROTO
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
-    server.on("/api/files/delete", HTTP_POST,
-              [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleDelete(request, json); });
+    PROTO_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
     server.on("/api/files/edit", HTTP_POST,
               [&](httpd_req_t *request, JsonVariant &json) { return FileSystem::handleEdit(request, json); });
     server.on("/api/files/mkdir", HTTP_POST,
