@@ -84,6 +84,15 @@ message FileDeleteRequest {
     string path = 1;
 }
 
+message FileEditRequest {
+    string path = 1;
+    bytes content = 2;
+}
+
+message FileMkdirRequest {
+    string path = 1;
+}
+
 // =============================================================================
 // REST API wrappers - used by HTTP endpoints
 // =============================================================================
@@ -98,6 +107,8 @@ message Request {
         ServoSettingsRequest servo_settings_request = 21;
         FileListRequest file_list_request = 30;
         FileDeleteRequest file_delete_request = 31;
+        FileEditRequest file_edit_request = 32;
+        FileMkdirRequest file_mkdir_request = 33;
     }
 }
 

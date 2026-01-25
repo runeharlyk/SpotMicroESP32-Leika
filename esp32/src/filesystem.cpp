@@ -124,15 +124,17 @@ esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
     }
 }
 
-esp_err_t handleEdit(httpd_req_t *request, JsonVariant &json) {
-    if (json.is<JsonObject>()) {
-        const char *filename = json["file"].as<const char *>();
-        const char *content = json["content"].as<const char *>();
-        ESP_LOGI(TAG, "Editing file: %s", filename);
-        return editFile(filename, content) ? WebServer::sendOk(request)
-                                           : WebServer::sendError(request, 500, "Edit failed");
+esp_err_t handleEdit(httpd_req_t *request, const api_FileEditRequest &req) {
+    ESP_LOGI(TAG, "Editing file: %s", req.path);
+
+    api_Response res = api_Response_init_zero;
+    if (editFile(req.path, req.content->bytes, req.content->size)) {
+        res.status_code = 200;
+        res.which_payload = api_Response_empty_message_tag;
+        return WebServer::sendProto(request, 200, res, api_Response_fields);
+    } else {
+        return WebServer::sendError(request, 500, "Edit failed");
     }
-    return WebServer::sendError(request, 400, "Invalid request");
 }
 
 bool deleteFile(const char *filename) { return ESP_FS.remove(filename); }
@@ -167,19 +169,26 @@ std::string listFiles(const std::string &directory, bool isRoot) {
     return output;
 }
 
-bool editFile(const char *filename, const char *content) {
+bool editFile(const char *filename, const uint8_t *content, size_t size) {
     File file = ESP_FS.open(filename, FILE_WRITE);
     if (!file) return false;
 
-    file.print(content);
+    file.write(content, size);
     file.close();
     return true;
 }
 
-esp_err_t mkdir(httpd_req_t *request, JsonVariant &json) {
-    const char *path = json["path"].as<const char *>();
-    ESP_LOGI(TAG, "Creating directory: %s", path);
-    return ESP_FS.mkdir(path) ? WebServer::sendOk(request) : WebServer::sendError(request, 500, "mkdir failed");
+esp_err_t mkdir(httpd_req_t *request, const api_FileMkdirRequest &req) {
+    ESP_LOGI(TAG, "Creating directory: %s", req.path);
+
+    api_Response res = api_Response_init_zero;
+    if (ESP_FS.mkdir(req.path)) {
+        res.status_code = 200;
+        res.which_payload = api_Response_empty_message_tag;
+        return WebServer::sendProto(request, 200, res, api_Response_fields);
+    } else {
+        return WebServer::sendError(request, 500, "mkdir failed");
+    }
 }
 
 } // namespace FileSystem
