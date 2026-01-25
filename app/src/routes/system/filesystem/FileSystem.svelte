@@ -6,6 +6,8 @@
 	import { modals } from 'svelte-modals'
 	import NewFolderDialog from './NewFolderDialog.svelte'
 	import NewFileDialog from './NewFileDialog.svelte'
+	import { api } from '$lib/api'
+	import type { Response } from '$lib/platform_shared/api'
 
 	let currentPath = $state('/')
 	let files = $state<Array<{ name: string; size: number }>>([])
@@ -87,16 +89,17 @@
 		error = ''
 		try {
 			const filePath = currentPath === '/' ? `/${selectedFile}` : `${currentPath}/${selectedFile}`
-			const encoder = new TextEncoder()
-			const data = encoder.encode(fileContent)
+			const content = new TextEncoder().encode(fileContent)
 
-			const result = await fileSystemClient.uploadFile(filePath, data)
+			const result = await api.post_proto<Response>('/api/files/edit', {
+				fileEditRequest: { path: filePath, content }
+			})
 
-			if (result.success) {
+			if (result.ok && result.value.statusCode === 200) {
 				isEditing = false
 				await loadDirectory() // Refresh to update file sizes
 			} else {
-				error = result.error || 'Failed to save file'
+				error = result.ok ? result.value.errorMessage || 'Failed to save file' : 'Failed to save file'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save file'
@@ -189,11 +192,14 @@
 		const path = currentPath === '/' ? `/${folderName}` : `${currentPath}/${folderName}`
 
 		try {
-			const result = await fileSystemClient.createDirectory(path)
-			if (result.success) {
+			const result = await api.post_proto<Response>('/api/files/mkdir', {
+				fileMkdirRequest: { path }
+			})
+
+			if (result.ok && result.value.statusCode === 200) {
 				await loadDirectory()
 			} else {
-				error = result.error || 'Failed to create directory'
+				error = result.ok ? result.value.errorMessage || 'Failed to create directory' : 'Failed to create directory'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Error creating directory'
@@ -207,15 +213,15 @@
 		const path = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`
 
 		try {
-			const encoder = new TextEncoder()
-			const data = encoder.encode('{}') // Default empty JSON
+			const result = await api.post_proto<Response>('/api/files/edit', {
+				fileEditRequest: { path, content: new Uint8Array(0) }
+			})
 
-			const result = await fileSystemClient.uploadFile(path, data)
-			if (result.success) {
+			if (result.ok && result.value.statusCode === 200) {
 				await loadDirectory()
 				await loadFileContent(fileName)
 			} else {
-				error = result.error || 'Failed to create file'
+				error = result.ok ? result.value.errorMessage || 'Failed to create file' : 'Failed to create file'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Error creating file'
