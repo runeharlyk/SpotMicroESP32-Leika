@@ -89,17 +89,15 @@
 		error = ''
 		try {
 			const filePath = currentPath === '/' ? `/${selectedFile}` : `${currentPath}/${selectedFile}`
-			const content = new TextEncoder().encode(fileContent)
+			const data = new TextEncoder().encode(fileContent)
 
-			const result = await api.post_proto<Response>('/api/files/edit', {
-				fileEditRequest: { path: filePath, content }
-			})
+			const result = await fileSystemClient.uploadFile(filePath, data)
 
-			if (result.ok && result.value.statusCode === 200) {
+			if (result.success) {
 				isEditing = false
 				await loadDirectory() // Refresh to update file sizes
 			} else {
-				error = result.ok ? result.value.errorMessage || 'Failed to save file' : 'Failed to save file'
+				error = result.error || 'Failed to save file'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save file'
@@ -196,10 +194,12 @@
 				fileMkdirRequest: { path }
 			})
 
-			if (result.ok && result.value.statusCode === 200) {
+			if (result.isOk() && result.inner.statusCode === 200) {
 				await loadDirectory()
+			} else if (result.isErr()) {
+				error = 'Failed to create directory'
 			} else {
-				error = result.ok ? result.value.errorMessage || 'Failed to create directory' : 'Failed to create directory'
+				error = result.inner.errorMessage || 'Failed to create directory'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Error creating directory'
@@ -213,15 +213,13 @@
 		const path = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`
 
 		try {
-			const result = await api.post_proto<Response>('/api/files/edit', {
-				fileEditRequest: { path, content: new Uint8Array(0) }
-			})
+			const result = await fileSystemClient.uploadFile(path, new Uint8Array(0))
 
-			if (result.ok && result.value.statusCode === 200) {
+			if (result.success) {
 				await loadDirectory()
 				await loadFileContent(fileName)
 			} else {
-				error = result.ok ? result.value.errorMessage || 'Failed to create file' : 'Failed to create file'
+				error = result.error || 'Failed to create file'
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Error creating file'
