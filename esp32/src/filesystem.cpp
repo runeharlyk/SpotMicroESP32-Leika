@@ -2,6 +2,7 @@
 #include <communication/webserver.h>
 #include <vector>
 #include <cstring>
+#include "utils/string_utils.hpp"
 
 static const char *TAG = "FileService";
 
@@ -107,7 +108,13 @@ esp_err_t getConfigFile(httpd_req_t *request) {
     }
     String content = file.readString();
     file.close();
-    httpd_resp_set_type(request, "application/json");
+    if (ends_with(path, ".pb")) {
+        httpd_resp_set_type(request, "application/x-protobuf");
+    } else if (ends_with(path, ".json")) {
+        httpd_resp_set_type(request, "application/json");
+    } else {
+        httpd_resp_set_type(request, "text/plain");
+    }
     return httpd_resp_send(request, content.c_str(), content.length());
 }
 
