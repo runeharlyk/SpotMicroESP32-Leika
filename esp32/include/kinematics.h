@@ -72,7 +72,7 @@ struct alignas(16) body_state_t {
             !IS_ALMOST_EQUAL(zm, other.zm)) {
             return false;
         }
-        return arrayEqual(feet, other.feet, 0.1f);
+        return arrayEqual(feet, other.feet, 0.001f);
     }
 };
 

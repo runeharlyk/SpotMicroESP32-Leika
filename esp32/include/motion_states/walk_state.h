@@ -115,14 +115,16 @@ class WalkState : public MotionState {
         target_gait_state.step_depth = KinConfig::default_step_depth;
     }
 
-    static inline bool isZero(float num) { return std::fabs(num) < 0.01; }
+    static inline bool isZero(float num) { return std::fabs(num) < 0.001; }
 
     void updatePhase(float dt) {
-        if (isZero(gait_state.step_x) && isZero(gait_state.step_z) && isZero(gait_state.step_angle)) {
+        const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
+        if (!moving) {
             phase_time = 0;
             return;
         }
-        phase_time = std::fmod(phase_time + dt * gait_state.step_velocity * speed_factor, 1.0f);
+        const float velocity = std::max(gait_state.step_velocity, 0.5f);
+        phase_time = std::fmod(phase_time + dt * velocity * speed_factor, 1.0f);
     }
 
     LegStates getLegStates() {
@@ -242,7 +244,7 @@ class WalkState : public MotionState {
         float angle = std::atan2(gait_state.step_z, step_length) * 2.0f;
         curve(length, angle, arg, phase, delta_pos);
 
-        length = gait_state.step_angle * 2.0f;
+        length = gait_state.step_angle * KinConfig::max_step_length;
         angle = yawArc(default_feet_pos[index], body_state.feet[index]);
         curve(length, angle, arg, phase, delta_rot);
 
@@ -275,7 +277,7 @@ class WalkState : public MotionState {
             point[1] += b * BEZIER_HEIGHTS[i] * *height;
             point[2] += b * BEZIER_STEPS[i] * length * Z_POLAR;
 
-            phase_power *= phase;
+            phase_power *= t;
             inv_phase_power /= one_minus_phase;
         }
     }
