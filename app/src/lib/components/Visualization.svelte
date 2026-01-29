@@ -254,41 +254,45 @@
         robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y))
 
         const cumulativeYaw = body_state.cumulative_yaw
-        const totalYaw = degToRad(-settings.phi) + cumulativeYaw
+        const headingYaw = degToRad(-settings.phi + $mpu.heading)
+        const totalYaw = headingYaw + cumulativeYaw
 
-        const cosYaw = Math.cos(totalYaw)
-        const sinYaw = Math.sin(totalYaw)
-        const rotatedXm = settings.xm * cosYaw - settings.zm * sinYaw
-        const rotatedZm = settings.xm * sinYaw + settings.zm * cosYaw
+        const cosTotal = Math.cos(totalYaw)
+        const sinTotal = Math.sin(totalYaw)
+        const rotatedXm = settings.xm * cosTotal - settings.zm * sinTotal
+        const rotatedZm = settings.xm * sinTotal + settings.zm * cosTotal
+
+        const cosHead = Math.cos(headingYaw)
+        const sinHead = Math.sin(headingYaw)
+        const rotatedCumX = body_state.cumulative_x * cosHead - body_state.cumulative_z * sinHead
+        const rotatedCumZ = body_state.cumulative_x * sinHead + body_state.cumulative_z * cosHead
 
         robot.position.x = smooth(
             robot.position.x,
-            (-rotatedZm - body_state.cumulative_z) * THREEJS_SCALE,
+            (-rotatedZm - rotatedCumZ) * THREEJS_SCALE,
             SMOOTH_AMOUNT
         )
         robot.position.z = smooth(
             robot.position.z,
-            (-rotatedXm - body_state.cumulative_x) * THREEJS_SCALE,
+            (-rotatedXm - rotatedCumX) * THREEJS_SCALE,
             SMOOTH_AMOUNT
         )
 
-        const basePitch = degToRad(-90)
+        const cosYaw = Math.cos(totalYaw)
+        const sinYaw = Math.sin(totalYaw)
         const cmdPitch = degToRad(settings.psi)
         const cmdRoll = degToRad(settings.omega)
-
-        const worldCmdPitch = cmdPitch * cosYaw - cmdRoll * sinYaw
-        const worldCmdRoll = cmdPitch * sinYaw + cmdRoll * cosYaw
-
-        const worldPitch = basePitch + worldCmdPitch + body_state.cumulative_pitch
-        const worldRoll = worldCmdRoll + body_state.cumulative_roll
+        const pitch =
+            degToRad(-90) + cmdPitch * cosYaw - cmdRoll * sinYaw + body_state.cumulative_pitch
+        const roll = cmdPitch * sinYaw + cmdRoll * cosYaw + body_state.cumulative_roll
 
         robot.rotation.z = smooth(
             robot.rotation.z,
             degToRad(-settings.phi + $mpu.heading + 90) + cumulativeYaw,
             SMOOTH_AMOUNT
         )
-        robot.rotation.y = smooth(robot.rotation.y, worldRoll, SMOOTH_AMOUNT)
-        robot.rotation.x = smooth(robot.rotation.x, worldPitch, SMOOTH_AMOUNT)
+        robot.rotation.y = smooth(robot.rotation.y, roll, SMOOTH_AMOUNT)
+        robot.rotation.x = smooth(robot.rotation.x, pitch, SMOOTH_AMOUNT)
     }
 
     const update_camera = (robot: URDFRobot) => {
