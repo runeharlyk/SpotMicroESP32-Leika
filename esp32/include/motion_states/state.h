@@ -17,9 +17,12 @@ class MotionState {
         body_state.ym = lerp(body_state.ym, target_body_state.ym, smoothing_factor);
         body_state.zm = lerp(body_state.zm, target_body_state.zm, smoothing_factor);
         body_state.phi = lerp(body_state.phi, target_body_state.phi, smoothing_factor);
-        body_state.psi = lerp(body_state.psi, target_body_state.psi - imuCompensate * psi_offset, smoothing_factor);
-        body_state.omega =
-            lerp(body_state.omega, target_body_state.omega - imuCompensate * omega_offset, smoothing_factor);
+        const float target_psi =
+            clamp(target_body_state.psi - imuCompensate * psi_offset, -KinConfig::max_pitch, KinConfig::max_pitch);
+        const float target_omega =
+            clamp(target_body_state.omega - imuCompensate * omega_offset, -KinConfig::max_roll, KinConfig::max_roll);
+        body_state.psi = lerp(body_state.psi, target_psi, smoothing_factor);
+        body_state.omega = lerp(body_state.omega, target_omega, smoothing_factor);
     }
 
     void updateFeet(body_state_t& body_state, const float smoothing_factor = default_smoothing_factor) {
@@ -29,9 +32,9 @@ class MotionState {
     }
 
   public:
-    void updateImuOffsets(const float omega_offset, const float psi_offset) {
-        this->omega_offset = omega_offset * RAD2DEG_F;
-        this->psi_offset = psi_offset * RAD2DEG_F;
+    void updateImuOffsets(const float new_omega, const float new_psi) {
+        omega_offset = new_omega * RAD_TO_DEG;
+        psi_offset = new_psi * RAD_TO_DEG;
     }
     virtual ~MotionState() {}
 

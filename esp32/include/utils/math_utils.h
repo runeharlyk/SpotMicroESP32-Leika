@@ -42,6 +42,10 @@
 
 inline float lerp(float start, float end, float t) { return (1 - t) * start + t * end; }
 
+inline float clamp(float value, float min_val, float max_val) {
+    return value < min_val ? min_val : (value > max_val ? max_val : value);
+}
+
 inline bool isEqual(float a, float b, float epsilon) { return std::fabs(a - b) < epsilon; }
 
 inline float round2(float value) { return (int)(value * 100 + 0.5) / 100.0; }
