@@ -22,6 +22,7 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.stack_size = stackSize;
     config_.max_resp_headers = 16;
     config_.lru_purge_enable = true;
+    config_.uri_match_fn = httpd_uri_match_wildcard;
 }
 
 esp_err_t WebServer::listen(uint16_t port) {
