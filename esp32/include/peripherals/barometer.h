@@ -13,7 +13,7 @@ struct BarometerMsg {
 
 class Barometer : public SensorBase<BarometerMsg> {
   public:
-    bool initialize(void* _) override {
+    bool initialize(void* _) {
         _msg.success = _bmp.begin();
         if (_msg.success) {
             ESP_LOGI("BMP", "BMP180 initialized successfully");
