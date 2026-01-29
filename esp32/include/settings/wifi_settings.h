@@ -1,9 +1,9 @@
 #pragma once
 
 #include <WiFi.h>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
-#include <string>
+#include <platform_shared/api.pb.h>
+#include <cstring>
 
 #ifndef FACTORY_WIFI_SSID
 #define FACTORY_WIFI_SSID ""
@@ -21,118 +21,39 @@
 #define FACTORY_WIFI_RSSI_THRESHOLD -80
 #endif
 
-typedef struct {
-    std::string ssid;
-    uint8_t bssid[6];
-    int32_t channel;
-    std::string password;
-    bool staticIPConfig;
-    IPAddress localIP;
-    IPAddress gatewayIP;
-    IPAddress subnetMask;
-    IPAddress dnsIP1;
-    IPAddress dnsIP2;
-    bool available;
+using WiFiNetwork = api_WifiNetwork;
+using WiFiSettings = api_WifiSettings;
 
-    void serialize(JsonVariant &json) const {
-        json["ssid"] = ssid.c_str();
-        json["password"] = password.c_str();
-        json["static_ip_config"] = staticIPConfig;
-        if (staticIPConfig) {
-            json["local_ip"] = (uint32_t)(localIP);
-            json["gateway_ip"] = (uint32_t)(gatewayIP);
-            json["subnet_mask"] = (uint32_t)(subnetMask);
-            json["dns_ip_1"] = (uint32_t)(dnsIP1);
-            json["dns_ip_2"] = (uint32_t)(dnsIP2);
-        }
-    }
-
-    bool deserialize(const JsonVariant &json) {
-        std::string newSsid = json["ssid"].as<std::string>();
-        std::string newPassword = json["password"].as<std::string>();
-        if (newSsid.length() < 1 || newSsid.length() > 31 || newPassword.length() > 64) {
-            ESP_LOGE("WiFiSettings", "SSID or password length is invalid");
-            return false;
-        }
-        ssid = newSsid;
-        password = newPassword;
-        staticIPConfig = json["static_ip_config"] | false;
-        if (staticIPConfig) {
-            localIP = IPAddress(json["local_ip"] | 0u);
-            gatewayIP = IPAddress(json["gateway_ip"] | 0u);
-            subnetMask = IPAddress(json["subnet_mask"] | 0u);
-            dnsIP1 = IPAddress(json["dns_ip_1"] | 0u);
-            dnsIP2 = IPAddress(json["dns_ip_2"] | 0u);
-            if (dnsIP1 == IPAddress(0, 0, 0, 0) && dnsIP2 != IPAddress(0, 0, 0, 0)) {
-                dnsIP1 = dnsIP2;
-                dnsIP2 = IPAddress(0, 0, 0, 0);
-            }
-            if (localIP == IPAddress(0, 0, 0, 0) || gatewayIP == IPAddress(0, 0, 0, 0) ||
-                subnetMask == IPAddress(0, 0, 0, 0)) {
-                staticIPConfig = false;
-                ESP_LOGW("WiFiSettings", "Invalid static IP configuration - falling back to DHCP");
-            }
-        }
-        available = false;
-        return true;
-    }
-
-} wifi_settings_t;
-
-inline wifi_settings_t createDefaultWiFiSettings() {
-    return wifi_settings_t {
-        .ssid = FACTORY_WIFI_SSID,
-        .bssid = {0},
-        .channel = -1,
-        .password = FACTORY_WIFI_PASSWORD,
-        .staticIPConfig = false,
-        .localIP = IPAddress(0, 0, 0, 0),
-        .gatewayIP = IPAddress(0, 0, 0, 0),
-        .subnetMask = IPAddress(0, 0, 0, 0),
-        .dnsIP1 = IPAddress(0, 0, 0, 0),
-        .dnsIP2 = IPAddress(0, 0, 0, 0),
-        .available = false,
-    };
+inline WiFiNetwork WiFiNetwork_defaults() {
+    WiFiNetwork network = api_WifiNetwork_init_zero;
+    strncpy(network.ssid, FACTORY_WIFI_SSID, sizeof(network.ssid) - 1);
+    strncpy(network.password, FACTORY_WIFI_PASSWORD, sizeof(network.password) - 1);
+    network.static_ip_config = false;
+    network.local_ip = 0;
+    network.gateway_ip = 0;
+    network.subnet_mask = 0;
+    network.dns_ip_1 = 0;
+    network.dns_ip_2 = 0;
+    return network;
 }
 
-class WiFiSettings {
-  public:
-    std::string hostname;
-    bool priorityBySignalStrength;
-    std::vector<wifi_settings_t> wifiSettings;
-    static void read(WiFiSettings &settings, JsonVariant &root) {
-        root["hostname"] = settings.hostname.c_str();
-        root["priority_RSSI"] = settings.priorityBySignalStrength;
-        JsonArray wifiNetworks = root["wifi_networks"].to<JsonArray>();
-        for (const auto &wifi : settings.wifiSettings) {
-            JsonVariant wifiNetwork = wifiNetworks.add<JsonVariant>();
-            wifi.serialize(wifiNetwork);
-        }
-        ESP_LOGV("WiFiSettings", "WiFi Settings read");
+inline WiFiSettings WiFiSettings_defaults() {
+    WiFiSettings settings = api_WifiSettings_init_zero;
+    strncpy(settings.hostname, FACTORY_WIFI_HOSTNAME, sizeof(settings.hostname) - 1);
+    settings.priority_rssi = true;
+    settings.wifi_networks_count = 0;
+    if (strlen(FACTORY_WIFI_SSID) > 0) {
+        settings.wifi_networks[0] = WiFiNetwork_defaults();
+        settings.wifi_networks_count = 1;
     }
-    static StateUpdateResult update(JsonVariant &root, WiFiSettings &settings) {
-        settings.hostname = root["hostname"] | FACTORY_WIFI_HOSTNAME;
-        settings.priorityBySignalStrength = root["priority_RSSI"] | true;
-        settings.wifiSettings.clear();
-        if (root["wifi_networks"].is<JsonArray>()) {
-            JsonArray wifiNetworks = root["wifi_networks"];
-            int networkCount = 0;
-            for (JsonVariant wifiNetwork : wifiNetworks) {
-                if (networkCount >= 5) {
-                    ESP_LOGE("WiFiSettings", "Too many wifi networks");
-                    break;
-                }
-                wifi_settings_t newSettings;
-                if (newSettings.deserialize(wifiNetwork)) {
-                    settings.wifiSettings.push_back(newSettings);
-                    networkCount++;
-                }
-            }
-        } else if (std::string(FACTORY_WIFI_SSID).length() > 0) {
-            ESP_LOGI("WiFiSettings", "No WiFi config found - using factory settings");
-            settings.wifiSettings.push_back(createDefaultWiFiSettings());
-        }
-        ESP_LOGV("WiFiSettings", "WiFi Settings updated");
-        return StateUpdateResult::CHANGED;
-    }
-};
+    return settings;
+}
+
+inline void WiFiSettings_read(const WiFiSettings &settings, WiFiSettings &proto) {
+    proto = settings;
+}
+
+inline StateUpdateResult WiFiSettings_update(const WiFiSettings &proto, WiFiSettings &settings) {
+    settings = proto;
+    return StateUpdateResult::CHANGED;
+}

@@ -18,3 +18,8 @@ api.FileEditRequest.path max_size:128
 api.FileEditRequest.content type:FT_POINTER
 
 api.FileMkdirRequest.path max_size:128
+
+api.WifiNetwork.ssid max_size:33
+api.WifiNetwork.password max_size:65
+api.WifiSettings.hostname max_size:33
+api.WifiSettings.wifi_networks max_count:5
