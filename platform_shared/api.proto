@@ -64,6 +64,29 @@ message ServoSettings {
 message ServoSettingsRequest {}
 
 // =============================================================================
+// WiFi STA Settings - shared data types
+// =============================================================================
+
+message WifiNetwork {
+    string ssid = 1;
+    string password = 2;
+    bool static_ip_config = 3;
+    uint32 local_ip = 4;
+    uint32 gateway_ip = 5;
+    uint32 subnet_mask = 6;
+    uint32 dns_ip_1 = 7;
+    uint32 dns_ip_2 = 8;
+}
+
+message WifiSettings {
+    string hostname = 1;
+    bool priority_rssi = 2;
+    repeated WifiNetwork wifi_networks = 3; // max 5 networks
+}
+
+message WifiSettingsRequest {}
+
+// =============================================================================
 // File System - shared data types
 // =============================================================================
 
@@ -109,6 +132,8 @@ message Request {
         FileDeleteRequest file_delete_request = 31;
         FileEditRequest file_edit_request = 32;
         FileMkdirRequest file_mkdir_request = 33;
+        WifiSettings wifi_settings = 40;
+        WifiSettingsRequest wifi_settings_request = 41;
     }
 }
 
@@ -123,5 +148,6 @@ message Response {
         APStatus ap_status = 11;
         ServoSettings servo_settings = 20;
         FileList file_list = 30;
+        WifiSettings wifi_settings = 40;
     }
 }

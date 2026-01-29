@@ -10,7 +10,8 @@
     import ScanNetworks from './Scan.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { type KnownNetworkItem, type WifiSettings, type WifiStatus } from '$lib/types/models'
+    import { type WifiStatus } from '$lib/types/models'
+    import { WifiSettings, WifiNetwork, Response, Request } from '$lib/platform_shared/api'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import {
@@ -34,26 +35,26 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
 
-    let networkEditable: KnownNetworkItem = $state({
+    let networkEditable: WifiNetwork = $state({
         ssid: '',
         password: '',
-        static_ip_config: false,
-        local_ip: 0,
-        subnet_mask: 0,
-        gateway_ip: 0,
-        dns_ip_1: 0,
-        dns_ip_2: 0
+        staticIpConfig: false,
+        localIp: 0,
+        subnetMask: 0,
+        gatewayIp: 0,
+        dnsIp1: 0,
+        dnsIp2: 0
     })
 
     let ipDisplay = $state({
-        local_ip: '',
-        subnet_mask: '',
-        gateway_ip: '',
-        dns_ip_1: '',
-        dns_ip_2: ''
+        localIp: '',
+        subnetMask: '',
+        gatewayIp: '',
+        dnsIp1: '',
+        dnsIp2: ''
     })
 
-    let static_ip_config = $state(false)
+    let staticIpConfig = $state(false)
 
     let newNetwork: boolean = $state(true)
     let showNetworkEditor: boolean = $state(false)
@@ -61,7 +62,7 @@
     let wifiStatus: WifiStatus | null = $state(null)
     let wifiSettings: WifiSettings | null = $state(null)
 
-    let dndNetworkList: KnownNetworkItem[] = $state([])
+    let dndNetworkList: WifiNetwork[] = $state([])
 
     let showWifiDetails = $state(false)
 
@@ -69,11 +70,11 @@
 
     let formErrors = $state({
         ssid: false,
-        local_ip: false,
-        gateway_ip: false,
-        subnet_mask: false,
-        dns_1: false,
-        dns_2: false
+        localIp: false,
+        gatewayIp: false,
+        subnetMask: false,
+        dnsIp1: false,
+        dnsIp2: false
     })
 
     let formErrorhostname = $state(false)
@@ -89,24 +90,30 @@
     }
 
     async function getWifiSettings() {
-        const result = await api.get<WifiSettings>('/api/wifi/sta/settings')
+        const result = await api.get<Response>('/api/wifi/sta/settings')
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return
         }
-        wifiSettings = result.inner
-        dndNetworkList = wifiSettings.wifi_networks
+        wifiSettings = result.inner.wifiSettings!
+        dndNetworkList = wifiSettings.wifiNetworks
         return wifiSettings
     }
 
     async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post<WifiSettings>('/api/wifi/sta/settings', data)
+        const result = await api.post_proto<Response>('/api/wifi/sta/settings', Request.create({ wifiSettings: data }))
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             notifications.error('User not authorized.', 3000)
             return
         }
-        wifiSettings = result.inner
+        if (result.inner.statusCode !== 200) {
+            notifications.error(result.inner.errorMessage || 'Failed to update settings', 3000)
+            return
+        }
+        if (result.inner.wifiSettings) {
+            wifiSettings = result.inner.wifiSettings
+        }
         notifications.success('Wi-Fi settings updated.', 3000)
     }
 
@@ -117,7 +124,7 @@
         } else {
             formErrorhostname = false
             // Update global wifiSettings object
-            wifiSettings.wifi_networks = dndNetworkList
+            wifiSettings.wifiNetworks = dndNetworkList
             // Post to REST API
             postWiFiSettings(wifiSettings)
             console.log(wifiSettings)
@@ -135,55 +142,55 @@
             formErrors.ssid = false
         }
 
-        networkEditable.static_ip_config = static_ip_config
+        networkEditable.staticIpConfig = staticIpConfig
 
-        if (networkEditable.static_ip_config) {
-            if (!isValidIpString(ipDisplay.gateway_ip)) {
+        if (networkEditable.staticIpConfig) {
+            if (!isValidIpString(ipDisplay.gatewayIp)) {
                 valid = false
-                formErrors.gateway_ip = true
+                formErrors.gatewayIp = true
             } else {
-                formErrors.gateway_ip = false
+                formErrors.gatewayIp = false
             }
 
-            if (!isValidIpString(ipDisplay.subnet_mask)) {
+            if (!isValidIpString(ipDisplay.subnetMask)) {
                 valid = false
-                formErrors.subnet_mask = true
+                formErrors.subnetMask = true
             } else {
-                formErrors.subnet_mask = false
+                formErrors.subnetMask = false
             }
 
-            if (!isValidIpString(ipDisplay.local_ip)) {
+            if (!isValidIpString(ipDisplay.localIp)) {
                 valid = false
-                formErrors.local_ip = true
+                formErrors.localIp = true
             } else {
-                formErrors.local_ip = false
+                formErrors.localIp = false
             }
 
-            if (!isValidIpString(ipDisplay.dns_ip_1)) {
+            if (!isValidIpString(ipDisplay.dnsIp1)) {
                 valid = false
-                formErrors.dns_1 = true
+                formErrors.dnsIp1 = true
             } else {
-                formErrors.dns_1 = false
+                formErrors.dnsIp1 = false
             }
 
-            if (!isValidIpString(ipDisplay.dns_ip_2)) {
+            if (!isValidIpString(ipDisplay.dnsIp2)) {
                 valid = false
-                formErrors.dns_2 = true
+                formErrors.dnsIp2 = true
             } else {
-                formErrors.dns_2 = false
+                formErrors.dnsIp2 = false
             }
 
-            networkEditable.local_ip = ipToUint32(ipDisplay.local_ip)
-            networkEditable.subnet_mask = ipToUint32(ipDisplay.subnet_mask)
-            networkEditable.gateway_ip = ipToUint32(ipDisplay.gateway_ip)
-            networkEditable.dns_ip_1 = ipToUint32(ipDisplay.dns_ip_1)
-            networkEditable.dns_ip_2 = ipToUint32(ipDisplay.dns_ip_2)
+            networkEditable.localIp = ipToUint32(ipDisplay.localIp)
+            networkEditable.subnetMask = ipToUint32(ipDisplay.subnetMask)
+            networkEditable.gatewayIp = ipToUint32(ipDisplay.gatewayIp)
+            networkEditable.dnsIp1 = ipToUint32(ipDisplay.dnsIp1)
+            networkEditable.dnsIp2 = ipToUint32(ipDisplay.dnsIp2)
         } else {
-            formErrors.local_ip = false
-            formErrors.subnet_mask = false
-            formErrors.gateway_ip = false
-            formErrors.dns_1 = false
-            formErrors.dns_2 = false
+            formErrors.localIp = false
+            formErrors.subnetMask = false
+            formErrors.gatewayIp = false
+            formErrors.dnsIp1 = false
+            formErrors.dnsIp2 = false
         }
 
         if (valid) {
@@ -195,6 +202,10 @@
             addNetwork()
             dndNetworkList = [...dndNetworkList]
             showNetworkEditor = false
+            if (wifiSettings) {
+                wifiSettings.wifiNetworks = dndNetworkList
+                postWiFiSettings(wifiSettings)
+            }
         }
     }
 
@@ -214,19 +225,19 @@
         networkEditable = {
             ssid: '',
             password: '',
-            static_ip_config: false,
-            local_ip: 0,
-            subnet_mask: 0,
-            gateway_ip: 0,
-            dns_ip_1: 0,
-            dns_ip_2: 0
+            staticIpConfig: false,
+            localIp: 0,
+            subnetMask: 0,
+            gatewayIp: 0,
+            dnsIp1: 0,
+            dnsIp2: 0
         }
         ipDisplay = {
-            local_ip: '',
-            subnet_mask: '',
-            gateway_ip: '',
-            dns_ip_1: '',
-            dns_ip_2: ''
+            localIp: '',
+            subnetMask: '',
+            gatewayIp: '',
+            dnsIp1: '',
+            dnsIp2: ''
         }
     }
 
@@ -235,11 +246,11 @@
         showNetworkEditor = true
         networkEditable = dndNetworkList[index]
         ipDisplay = {
-            local_ip: networkEditable.local_ip ? uint32ToIp(networkEditable.local_ip) : '',
-            subnet_mask: networkEditable.subnet_mask ? uint32ToIp(networkEditable.subnet_mask) : '',
-            gateway_ip: networkEditable.gateway_ip ? uint32ToIp(networkEditable.gateway_ip) : '',
-            dns_ip_1: networkEditable.dns_ip_1 ? uint32ToIp(networkEditable.dns_ip_1) : '',
-            dns_ip_2: networkEditable.dns_ip_2 ? uint32ToIp(networkEditable.dns_ip_2) : ''
+            localIp: networkEditable.localIp ? uint32ToIp(networkEditable.localIp) : '',
+            subnetMask: networkEditable.subnetMask ? uint32ToIp(networkEditable.subnetMask) : '',
+            gatewayIp: networkEditable.gatewayIp ? uint32ToIp(networkEditable.gatewayIp) : '',
+            dnsIp1: networkEditable.dnsIp1 ? uint32ToIp(networkEditable.dnsIp1) : '',
+            dnsIp2: networkEditable.dnsIp2 ? uint32ToIp(networkEditable.dnsIp2) : ''
         }
     }
 
@@ -492,7 +503,7 @@
                             >
                                 <input
                                     type="checkbox"
-                                    bind:checked={wifiSettings.priority_RSSI}
+                                    bind:checked={wifiSettings.priorityRssi}
                                     class="checkbox checkbox-primary sm:-mb-5"
                                 />
                                 <span class="sm:-mb-5">Connect to strongest WiFi</span>
@@ -541,13 +552,13 @@
                                 >
                                     <input
                                         type="checkbox"
-                                        bind:checked={static_ip_config}
+                                        bind:checked={staticIpConfig}
                                         class="checkbox checkbox-primary sm:-mb-5"
                                     />
                                     <span class="sm:-mb-5">Static IP Config?</span>
                                 </label>
                             </div>
-                            {#if static_ip_config}
+                            {#if staticIpConfig}
                                 <div
                                     class="grid w-full grid-cols-1 content-center gap-x-4 px-4 sm:grid-cols-2"
                                     transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -559,21 +570,21 @@
                                         <input
                                             type="text"
                                             class="input input-bordered w-full {(
-                                                formErrors.local_ip
+                                                formErrors.localIp
                                             ) ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.local_ip}
+                                            bind:value={ipDisplay.localIp}
                                             id="localIP"
                                             required
                                         />
                                         <label class="label" for="localIP">
                                             <span
                                                 class="label-text-alt text-error {(
-                                                    formErrors.local_ip
+                                                    formErrors.localIp
                                                 ) ?
                                                     ''
                                                 :   'hidden'}">Must be a valid IPv4 address</span
@@ -588,20 +599,20 @@
                                         <input
                                             type="text"
                                             class="input input-bordered w-full {(
-                                                formErrors.gateway_ip
+                                                formErrors.gatewayIp
                                             ) ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.gateway_ip}
+                                            bind:value={ipDisplay.gatewayIp}
                                             required
                                         />
                                         <label class="label" for="gateway">
                                             <span
                                                 class="label-text-alt text-error {(
-                                                    formErrors.gateway_ip
+                                                    formErrors.gatewayIp
                                                 ) ?
                                                     ''
                                                 :   'hidden'}">Must be a valid IPv4 address</span
@@ -615,20 +626,20 @@
                                         <input
                                             type="text"
                                             class="input input-bordered w-full {(
-                                                formErrors.subnet_mask
+                                                formErrors.subnetMask
                                             ) ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.subnet_mask}
+                                            bind:value={ipDisplay.subnetMask}
                                             required
                                         />
                                         <label class="label" for="subnet">
                                             <span
                                                 class="label-text-alt text-error {(
-                                                    formErrors.subnet_mask
+                                                    formErrors.subnetMask
                                                 ) ?
                                                     ''
                                                 :   'hidden'}"
@@ -643,18 +654,18 @@
                                         </label>
                                         <input
                                             type="text"
-                                            class="input input-bordered w-full {formErrors.dns_1 ?
+                                            class="input input-bordered w-full {formErrors.dnsIp1 ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.dns_ip_1}
+                                            bind:value={ipDisplay.dnsIp1}
                                             required
                                         />
                                         <label class="label" for="gateway">
                                             <span
-                                                class="label-text-alt text-error {formErrors.dns_1 ?
+                                                class="label-text-alt text-error {formErrors.dnsIp1 ?
                                                     ''
                                                 :   'hidden'}"
                                             >
@@ -668,18 +679,18 @@
                                         </label>
                                         <input
                                             type="text"
-                                            class="input input-bordered w-full {formErrors.dns_2 ?
+                                            class="input input-bordered w-full {formErrors.dnsIp2 ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
                                             maxlength="15"
                                             size="15"
-                                            bind:value={ipDisplay.dns_ip_2}
+                                            bind:value={ipDisplay.dnsIp2}
                                             required
                                         />
                                         <label class="label" for="subnet">
                                             <span
-                                                class="label-text-alt text-error {formErrors.dns_2 ?
+                                                class="label-text-alt text-error {formErrors.dnsIp2 ?
                                                     ''
                                                 :   'hidden'}"
                                             >

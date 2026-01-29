@@ -2,8 +2,11 @@
 #include <communication/webserver.h>
 
 WiFiService::WiFiService()
-    : _persistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
-      endpoint(WiFiSettings::read, WiFiSettings::update, this) {
+    : _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE,
+                   api_WifiSettings_fields, api_WifiSettings_size, WiFiSettings_defaults()),
+      protoEndpoint(WiFiSettings_read, WiFiSettings_update, this,
+                    API_REQUEST_EXTRACTOR(wifi_settings, api_WifiSettings),
+                    API_RESPONSE_ASSIGNER(wifi_settings, api_WifiSettings)) {
     addUpdateHandler([&](const std::string &originId) { reconfigureWiFiConnection(); }, false);
 }
 
@@ -25,8 +28,8 @@ void WiFiService::begin() {
     _persistence.readFromFS();
     reconfigureWiFiConnection();
 
-    if (state().wifiSettings.size() == 1) {
-        configureNetwork(state().wifiSettings[0]);
+    if (state().wifi_networks_count == 1) {
+        configureNetwork(state().wifi_networks[0]);
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
@@ -64,7 +67,7 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
-    MDNS.begin(state().hostname.c_str());
+    MDNS.begin(state().hostname);
     MDNS.setInstanceName(hostname);
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 80);
@@ -115,15 +118,11 @@ void WiFiService::getNetworkStatus(JsonObject &root) {
 }
 
 void WiFiService::manageSTA() {
-    if (WiFi.isConnected() || state().wifiSettings.empty()) return;
+    if (WiFi.isConnected() || state().wifi_networks_count == 0) return;
     if ((WiFi.getMode() & WIFI_STA) == 0) connectToWiFi();
 }
 
 void WiFiService::connectToWiFi() {
-    for (auto &network : state().wifiSettings) {
-        network.available = false;
-    }
-
     int scanResult = WiFi.scanNetworks();
     if (scanResult == WIFI_SCAN_FAILED) {
         ESP_LOGE("WiFiSettingsService", "WiFi scan failed.");
@@ -132,7 +131,7 @@ void WiFiService::connectToWiFi() {
     } else {
         ESP_LOGI("WiFiSettingsService", "%d networks found.", scanResult);
 
-        wifi_settings_t *bestNetwork = nullptr;
+        WiFiNetwork *bestNetwork = nullptr;
         int32_t bestNetworkDb = FACTORY_WIFI_RSSI_THRESHOLD;
 
         for (int i = 0; i < scanResult; ++i) {
@@ -144,10 +143,11 @@ void WiFiService::connectToWiFi() {
 
             WiFi.getNetworkInfo(i, ssid_scan, sec_scan, rssi_scan, BSSID_scan, chan_scan);
 
-            for (auto &network : state().wifiSettings) {
-                if (ssid_scan == network.ssid.c_str()) {
+            for (pb_size_t j = 0; j < state().wifi_networks_count; j++) {
+                WiFiNetwork &network = state().wifi_networks[j];
+                if (ssid_scan == network.ssid) {
                     if (rssi_scan >= FACTORY_WIFI_RSSI_THRESHOLD) {
-                        network.available = true;
+                        // Network is available
                     }
                     if (rssi_scan > bestNetworkDb) {
                         bestNetworkDb = rssi_scan;
@@ -157,18 +157,22 @@ void WiFiService::connectToWiFi() {
             }
         }
 
-        if (!state().priorityBySignalStrength) {
-            for (auto &network : state().wifiSettings) {
-                if (network.available == true) {
-                    ESP_LOGI("WiFiSettingsService", "Connecting to first available network: %s", network.ssid.c_str());
-                    configureNetwork(network);
-                    break;
+        if (!state().priority_rssi) {
+            for (pb_size_t j = 0; j < state().wifi_networks_count; j++) {
+                WiFiNetwork &network = state().wifi_networks[j];
+                // Check if this network was found in scan
+                for (int i = 0; i < scanResult; ++i) {
+                    if (WiFi.SSID(i) == network.ssid) {
+                        ESP_LOGI("WiFiSettingsService", "Connecting to first available network: %s", network.ssid);
+                        configureNetwork(network);
+                        WiFi.scanDelete();
+                        return;
+                    }
                 }
             }
-        } else if (state().priorityBySignalStrength && bestNetwork) {
-            ESP_LOGI("WiFiSettingsService", "Connecting to strongest network: %s", bestNetwork->ssid.c_str());
+        } else if (bestNetwork) {
+            ESP_LOGI("WiFiSettingsService", "Connecting to strongest network: %s", bestNetwork->ssid);
             configureNetwork(*bestNetwork);
-            WiFi.begin(bestNetwork->ssid.c_str(), bestNetwork->password.c_str());
         } else {
             ESP_LOGI("WiFiSettingsService", "No known networks found.");
         }
@@ -177,15 +181,16 @@ void WiFiService::connectToWiFi() {
     }
 }
 
-void WiFiService::configureNetwork(wifi_settings_t &network) {
-    if (network.staticIPConfig) {
-        WiFi.config(network.localIP, network.gatewayIP, network.subnetMask, network.dnsIP1, network.dnsIP2);
+void WiFiService::configureNetwork(WiFiNetwork &network) {
+    if (network.static_ip_config) {
+        WiFi.config(IPAddress(network.local_ip), IPAddress(network.gateway_ip),
+                    IPAddress(network.subnet_mask), IPAddress(network.dns_ip_1), IPAddress(network.dns_ip_2));
     } else {
         WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     }
-    WiFi.setHostname(state().hostname.c_str());
+    WiFi.setHostname(state().hostname);
 
-    WiFi.begin(network.ssid.c_str(), network.password.c_str());
+    WiFi.begin(network.ssid, network.password);
 
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(WIFI_POWER_8_5dBm);

@@ -65,11 +65,10 @@ void setupServer() {
         return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 
-    // TODO: REMAKE TO PROTO
     server.on("/api/wifi/sta/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.endpoint.getState(request); });
-    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return wifiService.endpoint.handleStateUpdate(request, json);
+              [&](httpd_req_t *request) { return wifiService.protoEndpoint.getState(request); });
+    server.onProto("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return wifiService.protoEndpoint.handleStateUpdate(request, protoReq);
     });
     server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
     server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
@@ -102,7 +101,6 @@ void setupServer() {
               [&](httpd_req_t *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
 #endif
     
-    // TODO: REMAKE TO PROTO
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
     PROTO_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
