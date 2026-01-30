@@ -1,11 +1,12 @@
 <script lang="ts">
     import SettingsCard from '$lib/components/SettingsCard.svelte'
+    import Compass from '$lib/components/Compass.svelte'
     import { imu } from '$lib/stores/imu'
     import { Chart, registerables } from 'chart.js'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
-    import { socket } from '$lib/stores'
+    import { socket, mpu } from '$lib/stores'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
 
@@ -21,10 +22,12 @@
     let angleChartElement: HTMLCanvasElement = $state()!
     let tempChartElement: HTMLCanvasElement = $state()!
     let altitudeChartElement: HTMLCanvasElement = $state()!
+    let headingChartElement: HTMLCanvasElement = $state()!
 
     let angleChart: Chart
     let tempChart: Chart
     let altitudeChart: Chart
+    let headingChart: Chart
 
     const getChartColors = () => {
         const style = getComputedStyle(document.body)
@@ -180,6 +183,41 @@
                 }
             })
         }
+
+        if (headingChartElement) {
+            headingChart = new Chart(headingChartElement, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Heading',
+                            borderColor: colors.accent,
+                            backgroundColor: colors.accent,
+                            borderWidth: 2,
+                            data: $imu.map(datapoint => datapoint.heading),
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    ...baseConfig,
+                    scales: {
+                        ...baseConfig.scales,
+                        y: {
+                            ...baseConfig.scales.y,
+                            min: 0,
+                            max: 360,
+                            title: {
+                                display: true,
+                                text: 'Heading [°]',
+                                color: colors.background,
+                                font: { size: 16, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            })
+        }
     }
 
     const updateChartData = (chart: Chart, data: number[]) => {
@@ -216,6 +254,17 @@
                 altitudeChart,
                 $imu.map(datapoint => datapoint.altitude)
             )
+        }
+
+        if ($features.mag && headingChart) {
+            const headingData = $imu.map(datapoint => datapoint.heading)
+            headingChart.data.labels = headingData
+            headingChart.data.datasets[0].data = headingData
+            headingChart.update('none')
+
+            if ($imu.length > 0) {
+                mpu.set({ heading: $imu[$imu.length - 1].heading })
+            }
         }
     }
     onMount(() => {
@@ -284,7 +333,23 @@
         </div>
     {/if}
 
+    {#if $features.mag}
+        <div class="divider">Magnetometer</div>
+        <div class="flex flex-col lg:flex-row gap-4 items-center">
+            <Compass heading={$mpu.heading} />
+            <div class="flex-1 w-full overflow-x-auto">
+                <div
+                    class="flex w-full flex-col space-y-1 h-60"
+                    transition:slide|local={{ duration: 300, easing: cubicOut }}
+                >
+                    <canvas bind:this={headingChartElement}></canvas>
+                </div>
+            </div>
+        </div>
+    {/if}
+
     {#if $features.bmp}
+        <div class="divider">Barometer</div>
         <div class="w-full overflow-x-auto">
             <div
                 class="flex w-full flex-col space-y-1 h-60"
