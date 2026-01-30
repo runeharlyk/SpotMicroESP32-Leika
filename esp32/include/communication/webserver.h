@@ -18,9 +18,9 @@ using WsOpenHandler = std::function<void(httpd_req_t*)>;
 using WsCloseHandler = std::function<void(int)>;
 
 // Macro to register a proto endpoint that extracts a specific payload type
-// Usage: PROTO_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete)
+// Usage: STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete)
 // Handler signature: esp_err_t handleDelete(httpd_req_t* req, const api_FileDeleteRequest& payload)
-#define PROTO_ENDPOINT(server_ref, uri, payload_type, handler) \
+#define STAITC_PROTO_POST_ENDPOINT(server_ref, uri, payload_type, handler) \
     (server_ref).onProto(uri, HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) { \
         if (protoReq->which_payload != api_Request_##payload_type##_tag) { \
             return WebServer::sendError(request, 400, "Invalid request payload"); \
