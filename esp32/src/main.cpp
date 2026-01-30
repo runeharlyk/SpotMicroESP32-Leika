@@ -82,7 +82,7 @@ void setupServer() {
                              return apService.protoEndpoint.handleStateUpdate(request, protoReq);
                          });
     
-    // TODO: REMAKE TO PROTO
+    // TODO: REMAKE TO PROTO - note: these are unused?
     server.on("/api/peripherals", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
     server.on("/api/peripherals", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
@@ -90,14 +90,16 @@ void setupServer() {
     });
 
 #if FT_ENABLED(USE_MDNS)
-    // TODO: REMAKE TO PROTO
-    server.on("/api/mdns", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.endpoint.getState(request); });
-    server.on("/api/mdns", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return mdnsService.endpoint.handleStateUpdate(request, json);
-    });
+    server.on("/api/mdns/settings", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
+    server.onProto("/api/mdns/settings", HTTP_POST,
+                   [&](httpd_req_t *request, api_Request *protoReq) {
+                       return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
+                   });
     server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    server.on("/api/mdns/query", HTTP_POST,
-              [&](httpd_req_t *request, JsonVariant &json) { return mdnsService.queryServices(request, json); });
+    server.onProto("/api/mdns/query", HTTP_POST,
+                   [&](httpd_req_t *request, api_Request *protoReq) {
+                       return mdnsService.queryServices(request, protoReq);
+                   });
 #endif
     
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });

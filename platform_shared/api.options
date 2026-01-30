@@ -23,3 +23,28 @@ api.WifiNetwork.ssid max_size:33
 api.WifiNetwork.password max_size:65
 api.WifiSettings.hostname max_size:33
 api.WifiSettings.wifi_networks max_count:5
+
+api.MDNSTxtRecord.key max_size:32
+api.MDNSTxtRecord.value max_size:64
+
+api.MDNSServiceDef.service max_size:16
+api.MDNSServiceDef.protocol max_size:8
+api.MDNSServiceDef.txt_records max_count:4
+
+api.MDNSSettings.hostname max_size:33
+api.MDNSSettings.instance max_size:64
+api.MDNSSettings.services max_count:4
+api.MDNSSettings.global_txt_records max_count:4
+
+api.MDNSStatus.hostname max_size:33
+api.MDNSStatus.instance max_size:64
+api.MDNSStatus.services max_count:4
+api.MDNSStatus.global_txt_records max_count:4
+
+api.MDNSQueryRequest.service max_size:16
+api.MDNSQueryRequest.protocol max_size:8
+
+api.MDNSQueryResult.name max_size:64
+api.MDNSQueryResult.ip max_size:46
+
+api.MDNSQueryResponse.services max_count:16

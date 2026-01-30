@@ -126,6 +126,55 @@ message CameraSettings {
 message CameraSettingsRequest {}
 
 // =============================================================================
+// mDNS Settings - shared data types
+// =============================================================================
+
+message MDNSTxtRecord {
+    string key = 1;
+    string value = 2;
+}
+
+message MDNSServiceDef {
+    string service = 1;
+    string protocol = 2;
+    uint32 port = 3;
+    repeated MDNSTxtRecord txt_records = 4;
+}
+
+message MDNSSettings {
+    string hostname = 1;
+    string instance = 2;
+    repeated MDNSServiceDef services = 3;
+    repeated MDNSTxtRecord global_txt_records = 4;
+}
+
+message MDNSStatus {
+    bool started = 1;
+    string hostname = 2;
+    string instance = 3;
+    repeated MDNSServiceDef services = 4;
+    repeated MDNSTxtRecord global_txt_records = 5;
+}
+
+message MDNSSettingsRequest {}
+message MDNSStatusRequest {}
+
+message MDNSQueryRequest {
+    string service = 1;
+    string protocol = 2;
+}
+
+message MDNSQueryResult {
+    string name = 1;
+    string ip = 2;
+    uint32 port = 3;
+}
+
+message MDNSQueryResponse {
+    repeated MDNSQueryResult services = 1;
+}
+
+// =============================================================================
 // File System - shared data types
 // =============================================================================
 
@@ -175,6 +224,10 @@ message Request {
         WifiSettingsRequest wifi_settings_request = 41;
         CameraSettings camera_settings = 50;
         CameraSettingsRequest camera_settings_request = 51;
+        MDNSSettings mdns_settings = 60;
+        MDNSSettingsRequest mdns_settings_request = 61;
+        MDNSStatusRequest mdns_status_request = 62;
+        MDNSQueryRequest mdns_query_request = 63;
     }
 }
 
@@ -191,5 +244,8 @@ message Response {
         FileList file_list = 30;
         WifiSettings wifi_settings = 40;
         CameraSettings camera_settings = 50;
+        MDNSSettings mdns_settings = 60;
+        MDNSStatus mdns_status = 61;
+        MDNSQueryResponse mdns_query_response = 62;
     }
 }

@@ -6,33 +6,46 @@
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
-    import type { MDNSStatus, MDNSServiceItem, MDNSServiceQuery } from '$lib/types/models'
+    import {
+        type MDNSStatus,
+        type MDNSQueryResult,
+        Request,
+        type Response as ProtoResponse
+    } from '$lib/platform_shared/api'
     import { compareIp } from '$lib/utilities'
 
-    let mdnsStatus: MDNSStatus | undefined = $state()
-    let services: MDNSServiceItem[] = $state([])
+    let mdnsStatus = $state<MDNSStatus | undefined>()
+    let services = $state<MDNSQueryResult[]>([])
     let isLoading = $state(false)
 
     const getMDNSStatus = async () => {
-        const result = await api.get<MDNSStatus>('/api/mdns/status')
+        const result = await api.get<ProtoResponse>('/api/mdns/status')
         if (result.isErr()) {
             console.error('Error:', result.inner)
             return
         }
-        mdnsStatus = result.inner
+        if (result.inner.mdnsStatus) {
+            mdnsStatus = result.inner.mdnsStatus
+        }
     }
 
     const queryMDNSServices = async () => {
         isLoading = true
-        const result = await api.post<MDNSServiceQuery>('/api/mdns/query', {
-            service: 'http',
-            protocol: 'tcp'
+        const request = Request.create({
+            mdnsQueryRequest: {
+                service: 'http',
+                protocol: 'tcp'
+            }
         })
+        const result = await api.post_proto<ProtoResponse>('/api/mdns/query', request)
         if (result.isErr()) {
             console.error('Error:', result.inner)
+            isLoading = false
             return
         }
-        services = result.inner.services.sort((a, b) => compareIp(a.ip, b.ip))
+        if (result.inner.mdnsQueryResponse) {
+            services = result.inner.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
+        }
         isLoading = false
     }
 

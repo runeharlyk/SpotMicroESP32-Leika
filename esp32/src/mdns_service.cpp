@@ -4,8 +4,12 @@
 static const char *TAG = "MDNSService";
 
 MDNSService::MDNSService()
-    : _persistence(MDNSSettings::read, MDNSSettings::update, this, MDNS_SETTINGS_FILE),
-      endpoint(MDNSSettings::read, MDNSSettings::update, this) {
+    : protoEndpoint(MDNSSettings_read, MDNSSettings_update, this,
+                    API_REQUEST_EXTRACTOR(mdns_settings, api_MDNSSettings),
+                    API_RESPONSE_ASSIGNER(mdns_settings, api_MDNSSettings)),
+      _persistence(MDNSSettings_read, MDNSSettings_update, this,
+                   MDNS_SETTINGS_FILE, api_MDNSSettings_fields, api_MDNSSettings_size,
+                   MDNSSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
 }
 
@@ -28,15 +32,15 @@ void MDNSService::reconfigureMDNS() {
 }
 
 void MDNSService::startMDNS() {
-    ESP_LOGV(TAG, "Starting MDNS with hostname: %s", state().hostname.c_str());
+    ESP_LOGV(TAG, "Starting MDNS with hostname: %s", state().hostname);
 
-    if (MDNS.begin(state().hostname.c_str())) {
+    if (MDNS.begin(state().hostname)) {
         _started = true;
-        MDNS.setInstanceName(state().instance.c_str());
+        MDNS.setInstanceName(state().instance);
 
         addServices();
 
-        ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname.c_str());
+        ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname);
     } else {
         _started = false;
         ESP_LOGE(TAG, "Failed to start MDNS");
@@ -50,52 +54,71 @@ void MDNSService::stopMDNS() {
 }
 
 void MDNSService::addServices() {
-    for (const auto &service : state().services) {
-        MDNS.addService(service.service.c_str(), service.protocol.c_str(), service.port);
+    for (size_t i = 0; i < state().services_count; i++) {
+        const auto &service = state().services[i];
+        MDNS.addService(service.service, service.protocol, service.port);
 
-        for (const auto &txt : service.txtRecords) {
-            MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
+        for (size_t j = 0; j < service.txt_records_count; j++) {
+            const auto &txt = service.txt_records[j];
+            MDNS.addServiceTxt(service.service, service.protocol, txt.key, txt.value);
         }
     }
 
-    for (const auto &txt : state().globalTxtRecords) {
-        for (const auto &service : state().services) {
-            MDNS.addServiceTxt(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(), txt.value.c_str());
+    for (size_t i = 0; i < state().global_txt_records_count; i++) {
+        const auto &txt = state().global_txt_records[i];
+        for (size_t j = 0; j < state().services_count; j++) {
+            const auto &service = state().services[j];
+            MDNS.addServiceTxt(service.service, service.protocol, txt.key, txt.value);
         }
     }
 }
 
 esp_err_t MDNSService::getStatus(httpd_req_t *request) {
-    JsonDocument doc;
-    JsonVariant root = doc.to<JsonVariant>();
-    getStatus(root);
-    return WebServer::sendJson(request, 200, doc);
-}
+    api_Response response = api_Response_init_zero;
+    response.which_payload = api_Response_mdns_status_tag;
 
-void MDNSService::getStatus(JsonVariant &root) {
-    state().read(state(), root);
-    root["started"] = _started;
-}
+    MDNSStatus &status = response.payload.mdns_status;
+    status.started = _started;
+    strncpy(status.hostname, state().hostname, sizeof(status.hostname) - 1);
+    strncpy(status.instance, state().instance, sizeof(status.instance) - 1);
 
-esp_err_t MDNSService::queryServices(httpd_req_t *request, JsonVariant &json) {
-    std::string service = json["service"].as<std::string>();
-    std::string proto = json["protocol"].as<std::string>();
-
-    JsonDocument doc;
-    JsonVariant root = doc.to<JsonVariant>();
-
-    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
-
-    int n = MDNS.queryService(service.c_str(), proto.c_str());
-    ESP_LOGI(TAG, "Found %d services", n);
-
-    JsonArray servicesArray = root["services"].to<JsonArray>();
-    for (int i = 0; i < n; i++) {
-        JsonVariant serviceObj = servicesArray.add<JsonVariant>();
-        serviceObj["name"] = MDNS.hostname(i);
-        serviceObj["ip"] = MDNS.IP(i);
-        serviceObj["port"] = MDNS.port(i);
+    status.services_count = state().services_count;
+    for (size_t i = 0; i < state().services_count; i++) {
+        status.services[i] = state().services[i];
     }
 
-    return WebServer::sendJson(request, 200, doc);
+    status.global_txt_records_count = state().global_txt_records_count;
+    for (size_t i = 0; i < state().global_txt_records_count; i++) {
+        status.global_txt_records[i] = state().global_txt_records[i];
+    }
+
+    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
+}
+
+esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq) {
+    if (protoReq->which_payload != api_Request_mdns_query_request_tag) {
+        return WebServer::sendError(request, 400, "Invalid request payload");
+    }
+
+    const api_MDNSQueryRequest &queryReq = protoReq->payload.mdns_query_request;
+    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", queryReq.service, queryReq.protocol);
+
+    int n = MDNS.queryService(queryReq.service, queryReq.protocol);
+    ESP_LOGI(TAG, "Found %d services", n);
+
+    api_Response response = api_Response_init_zero;
+    response.which_payload = api_Response_mdns_query_response_tag;
+    api_MDNSQueryResponse &queryResp = response.payload.mdns_query_response;
+
+    // Limit to max_count from options file (16)
+    size_t count = (n > 16) ? 16 : static_cast<size_t>(n);
+    queryResp.services_count = count;
+
+    for (size_t i = 0; i < count; i++) {
+        strncpy(queryResp.services[i].name, MDNS.hostname(i).c_str(), sizeof(queryResp.services[i].name) - 1);
+        strncpy(queryResp.services[i].ip, MDNS.IP(i).toString().c_str(), sizeof(queryResp.services[i].ip) - 1);
+        queryResp.services[i].port = MDNS.port(i);
+    }
+
+    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
 }
