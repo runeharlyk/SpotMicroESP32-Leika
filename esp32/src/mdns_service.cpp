@@ -92,7 +92,7 @@ esp_err_t MDNSService::getStatus(httpd_req_t *request) {
         status.global_txt_records[i] = state().global_txt_records[i];
     }
 
-    return WebServer::sendProto(request, 200, response, api_Response_fields);
+    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
 esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq) {
@@ -120,5 +120,5 @@ esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq
         queryResp.services[i].port = MDNS.port(i);
     }
 
-    return WebServer::sendProto(request, 200, response, api_Response_fields);
+    return WebServer::send(request, 200, response, api_Response_fields);
 }

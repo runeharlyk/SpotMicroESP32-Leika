@@ -24,7 +24,7 @@ esp_err_t APService::getStatusProto(httpd_req_t *request) {
     res.status_code = 200;
     res.which_payload = api_Response_ap_status_tag;
     statusProto(res.payload.ap_status);
-    return WebServer::sendProto(request, 200, res, api_Response_fields);
+    return WebServer::send(request, 200, res, api_Response_fields);
 }
 
 void APService::statusProto(api_APStatus &proto) {

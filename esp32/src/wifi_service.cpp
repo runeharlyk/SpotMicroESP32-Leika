@@ -51,7 +51,7 @@ esp_err_t WiFiService::handleScan(httpd_req_t *request) {
     api_Response response = api_Response_init_zero;
     response.status_code = 202;
     response.which_payload = api_Response_empty_message_tag;
-    return WebServer::sendProto(request, 202, response, api_Response_fields);
+    return WebServer::send(request, 202, response, api_Response_fields);
 }
 
 esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
@@ -61,7 +61,7 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
         api_Response response = api_Response_init_zero;
         response.status_code = 202;
         response.which_payload = api_Response_empty_message_tag;
-        return WebServer::sendProto(request, 202, response, api_Response_fields);
+        return WebServer::send(request, 202, response, api_Response_fields);
     } else if (numNetworks < -1) {
         return handleScan(request);
     }
@@ -86,7 +86,7 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     response.payload.wifi_network_list.networks = networks;
     response.payload.wifi_network_list.networks_count = count;
 
-    return WebServer::sendProto(request, 200, response, api_Response_fields);
+    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -125,7 +125,7 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
         }
     }
 
-    return WebServer::sendProto(request, 200, response, api_Response_fields);
+    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
 void WiFiService::manageSTA() {

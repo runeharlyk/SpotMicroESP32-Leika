@@ -41,27 +41,5 @@ void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_m
     fd_res.variant = const_cast<char*>(KINEMATICS_VARIANT_STR);
 }
 
-void features(JsonObject& root) {
-    root["camera"] = USE_CAMERA ? true : false;
-    root["imu"] = (USE_MPU6050 || USE_BNO055) ? true : false;
-    root["mag"] = (USE_HMC5883 || USE_BNO055) ? true : false;
-    root["bmp"] = USE_BMP180 ? true : false;
-    root["sonar"] = USE_USS ? true : false;
-    root["servo"] = USE_PCA9685 ? true : false;
-    root["ws2812"] = USE_WS2812 ? true : false;
-    root["mdns"] = USE_MDNS ? true : false;
-    root["embed_www"] = EMBED_WEBAPP ? true : false;
-    root["firmware_version"] = APP_VERSION;
-    root["firmware_name"] = APP_NAME;
-    root["firmware_built_target"] = BUILD_TARGET;
-    root["variant"] = KINEMATICS_VARIANT_STR;
-}
-
-esp_err_t getFeatures(httpd_req_t* request) {
-    JsonDocument doc;
-    JsonObject root = doc.to<JsonObject>();
-    features(root);
-    return WebServer::sendJson(request, 200, doc);
-}
 
 } // namespace feature_service

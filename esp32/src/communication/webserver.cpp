@@ -73,7 +73,7 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
             if (route.getHandler) {
                 return route.getHandler(req);
             }
-            if (route.protoHandler) {
+            if (route.postHandler) {
                 size_t contentLen = req->content_len;
                 if (contentLen == 0 || contentLen > 4096) {
                     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
@@ -111,48 +111,7 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
                     return ESP_FAIL;
                 }
 
-                return route.protoHandler(req, &protoReq);
-            }
-            if (route.postHandler) {
-                char* content = nullptr;
-                size_t contentLen = req->content_len;
-
-                if (contentLen > 0) {
-                    content = (char*)malloc(contentLen + 1);
-                    if (!content) {
-                        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
-                        return ESP_FAIL;
-                    }
-
-                    int received = 0;
-                    int remaining = contentLen;
-                    while (remaining > 0) {
-                        int ret = httpd_req_recv(req, content + received, remaining);
-                        if (ret <= 0) {
-                            free(content);
-                            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                                httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request timeout");
-                            }
-                            return ESP_FAIL;
-                        }
-                        received += ret;
-                        remaining -= ret;
-                    }
-                    content[contentLen] = '\0';
-                }
-
-                JsonDocument doc;
-                if (content && contentLen > 0) {
-                    DeserializationError error = deserializeJson(doc, content, contentLen);
-                    free(content);
-                    if (error) {
-                        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-                        return ESP_FAIL;
-                    }
-                }
-
-                JsonVariant json = doc.as<JsonVariant>();
-                return route.postHandler(req, json);
+                return route.postHandler(req, &protoReq);
             }
         }
     }
@@ -228,7 +187,6 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handle
     route.method = method;
     route.getHandler = handler;
     route.postHandler = nullptr;
-    route.protoHandler = nullptr;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -243,22 +201,6 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handl
     route.method = method;
     route.getHandler = nullptr;
     route.postHandler = handler;
-    route.protoHandler = nullptr;
-    route.isWebsocket = false;
-    routes_.push_back(route);
-
-    if (server_) {
-        registerRoute(route);
-    }
-}
-
-void WebServer::onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler) {
-    HttpRoute route;
-    route.uri = uri;
-    route.method = method;
-    route.getHandler = nullptr;
-    route.postHandler = nullptr;
-    route.protoHandler = handler;
     route.isWebsocket = false;
     routes_.push_back(route);
 
@@ -284,7 +226,6 @@ void WebServer::registerWebsocket(const char* uri) {
     route.method = HTTP_GET;
     route.getHandler = nullptr;
     route.postHandler = nullptr;
-    route.protoHandler = nullptr;
     route.isWebsocket = true;
     routes_.push_back(route);
 
@@ -336,33 +277,13 @@ esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
     return ESP_OK;
 }
 
-esp_err_t WebServer::sendJson(httpd_req_t* req, int status, const char* json) {
-    httpd_resp_set_status(req, status == 200   ? "200 OK"
-                               : status == 400 ? "400 Bad Request"
-                               : status == 404 ? "404 Not Found"
-                               : status == 500 ? "500 Internal Server Error"
-                                               : "200 OK");
-    httpd_resp_set_type(req, "application/json");
-    return httpd_resp_send(req, json, strlen(json));
-}
-
-esp_err_t WebServer::sendJson(httpd_req_t* req, int status, JsonDocument& doc) {
-    std::string json;
-    serializeJson(doc, json);
-    return sendJson(req, status, json.c_str());
-}
-
 esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {
-    JsonDocument doc;
-    doc["error"] = message;
-    return sendJson(req, status, doc);
+    return send(req, status, (uint8_t*) message, strlen(message));
 }
 
-esp_err_t WebServer::sendOk(httpd_req_t* req) { return sendJson(req, 200, "{\"status\":\"ok\"}"); }
+esp_err_t WebServer::sendOk(httpd_req_t* req) { return send(req, 200, nullptr, 0); }
 
-esp_err_t WebServer::sendOkProto(httpd_req_t* req) { return sendProto(req, 200, nullptr, 0); }
-
-esp_err_t WebServer::sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
+esp_err_t WebServer::send(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
     httpd_resp_set_status(req, status == 200   ? "200 OK"
                                : status == 202 ? "202 Accepted"
                                : status == 400 ? "400 Bad Request"
