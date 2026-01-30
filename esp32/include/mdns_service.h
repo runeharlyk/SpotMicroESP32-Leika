@@ -8,8 +8,6 @@
 #include <settings/mdns_settings.h>
 #include <utils/timing.h>
 
-#define MDNS_SETTINGS_FILE "/config/mdnsSettings.pb"
-
 class MDNSService : public StatefulService<MDNSSettings> {
   private:
     FSPersistencePB<MDNSSettings> _persistence;

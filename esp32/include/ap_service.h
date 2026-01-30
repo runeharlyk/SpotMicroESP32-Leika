@@ -8,8 +8,6 @@
 #include <WiFi.h>
 #include "esp_timer.h"
 
-#define AP_SETTINGS_FILE "/config/apSettings.pb"
-
 class APService : public StatefulService<APSettings> {
   public:
     APService();

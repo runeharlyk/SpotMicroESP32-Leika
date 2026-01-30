@@ -19,7 +19,6 @@ namespace Camera {
 #endif
 
 #define PART_BOUNDARY "frame"
-#define CAMERA_SETTINGS_FILE "/config/cameraSettings.pb"
 
 camera_fb_t *safe_camera_fb_get();
 sensor_t *safe_sensor_get();
