@@ -1,109 +1,58 @@
 #pragma once
 
-namespace Camera {
-
-#include <ArduinoJson.h>
 #include <template/state_result.h>
+#include <platform_shared/api.pb.h>
 #include <esp_camera.h>
 
-class CameraSettings {
-  public:
-    pixformat_t pixformat;
-    framesize_t framesize; // 0 - 10
-    uint8_t quality;       // 0 - 63
-    int8_t brightness;     //-2 - 2
-    int8_t contrast;       //-2 - 2
-    int8_t saturation;     //-2 - 2
-    int8_t sharpness;      //-2 - 2
-    uint8_t denoise;
-    gainceiling_t gainceiling;
-    uint8_t whitebal;
-    uint8_t special_effect; // 0 - 6
-    uint8_t wb_mode;        // 0 - 4
-    uint8_t awb;
-    uint8_t exposure_ctrl;
-    uint8_t awb_gain;
-    uint8_t gain_ctrl;
-    uint8_t aec;
-    uint8_t aec2;
-    int8_t ae_level;    //-2 - 2
-    uint16_t aec_value; // 0 - 1200
-    uint8_t agc;
-    uint8_t agc_gain; // 0 - 30
-    uint8_t bpc;
-    uint8_t wpc;
-    uint8_t raw_gma;
-    uint8_t lenc;
-    uint8_t hmirror;
-    uint8_t vflip;
-    uint8_t dcw;
-    uint8_t colorbar;
+namespace Camera {
 
-    static void read(CameraSettings &settings, JsonVariant &root) {
-        root["pixformat"] = settings.pixformat;
-        root["framesize"] = settings.framesize;
-        root["quality"] = settings.quality;
-        root["brightness"] = settings.brightness;
-        root["contrast"] = settings.contrast;
-        root["saturation"] = settings.saturation;
-        root["sharpness"] = settings.sharpness;
-        root["denoise"] = settings.denoise;
-        root["special_effect"] = settings.special_effect;
-        root["wb_mode"] = settings.wb_mode;
-        root["exposure_ctrl"] = settings.exposure_ctrl;
-        root["gain_ctrl"] = settings.gain_ctrl;
-        root["awb"] = settings.awb;
-        root["awb_gain"] = settings.awb_gain;
-        root["aec"] = settings.aec;
-        root["aec2"] = settings.aec2;
-        root["ae_level"] = settings.ae_level;
-        root["aec_value"] = settings.aec_value;
-        root["agc"] = settings.agc;
-        root["agc_gain"] = settings.agc_gain;
-        root["gainceiling"] = settings.gainceiling;
-        root["bpc"] = settings.bpc;
-        root["wpc"] = settings.wpc;
-        root["raw_gma"] = settings.raw_gma;
-        root["lenc"] = settings.lenc;
-        root["hmirror"] = settings.hmirror;
-        root["vflip"] = settings.vflip;
-        root["dcw"] = settings.dcw;
-        root["colorbar"] = settings.colorbar;
-    }
+// Use proto type directly as settings type
+using CameraSettings = api_CameraSettings;
 
-    static StateUpdateResult update(JsonVariant &root, CameraSettings &settings) {
-        settings.pixformat = root["pixformat"];
-        settings.framesize = root["framesize"];
-        settings.brightness = root["brightness"];
-        settings.contrast = root["contrast"];
-        settings.quality = root["quality"];
-        settings.contrast = root["contrast"];
-        settings.saturation = root["saturation"];
-        settings.sharpness = root["sharpness"];
-        settings.denoise = root["denoise"];
-        settings.exposure_ctrl = root["exposure_ctrl"];
-        settings.gain_ctrl = root["gain_ctrl"];
-        settings.special_effect = root["special_effect"];
-        settings.wb_mode = root["wb_mode"];
-        settings.awb = root["awb"];
-        settings.awb_gain = root["awb_gain"];
-        settings.aec = root["aec"];
-        settings.aec2 = root["aec2"];
-        settings.ae_level = root["ae_level"];
-        settings.aec_value = root["aec_value"];
-        settings.agc = root["agc"];
-        settings.agc_gain = root["agc_gain"];
-        settings.gainceiling = root["gainceiling"];
-        settings.bpc = root["bpc"];
-        settings.wpc = root["wpc"];
-        settings.raw_gma = root["raw_gma"];
-        settings.lenc = root["lenc"];
-        settings.hmirror = root["hmirror"];
-        settings.vflip = root["vflip"];
-        settings.dcw = root["dcw"];
-        settings.colorbar = root["colorbar"];
+// Default factory settings
+inline CameraSettings CameraSettings_defaults() {
+    CameraSettings settings = api_CameraSettings_init_zero;
+    settings.pixformat = PIXFORMAT_JPEG;
+    settings.framesize = FRAMESIZE_VGA;
+    settings.quality = 12;
+    settings.brightness = 0;
+    settings.contrast = 0;
+    settings.saturation = 0;
+    settings.sharpness = 0;
+    settings.denoise = 0;
+    settings.gainceiling = GAINCEILING_2X;
+    settings.whitebal = 1;
+    settings.special_effect = 0;
+    settings.wb_mode = 0;
+    settings.awb = 1;
+    settings.exposure_ctrl = 1;
+    settings.awb_gain = 1;
+    settings.gain_ctrl = 1;
+    settings.aec = 1;
+    settings.aec2 = 0;
+    settings.ae_level = 0;
+    settings.aec_value = 300;
+    settings.agc = 1;
+    settings.agc_gain = 0;
+    settings.bpc = 0;
+    settings.wpc = 1;
+    settings.raw_gma = 1;
+    settings.lenc = 1;
+    settings.hmirror = 0;
+    settings.vflip = 0;
+    settings.dcw = 1;
+    settings.colorbar = 0;
+    return settings;
+}
 
-        return StateUpdateResult::CHANGED;
-    };
-};
+// Proto read/update are identity functions since type is the same
+inline void CameraSettings_read(const CameraSettings& settings, CameraSettings& proto) {
+    proto = settings;
+}
+
+inline StateUpdateResult CameraSettings_update(const CameraSettings& proto, CameraSettings& settings) {
+    settings = proto;
+    return StateUpdateResult::CHANGED;
+}
+
 } // namespace Camera

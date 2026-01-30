@@ -31,8 +31,12 @@ sensor_t *safe_sensor_get() {
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
-    : endpoint(CameraSettings::read, CameraSettings::update, this),
-      _persistence(CameraSettings::read, CameraSettings::update, this, CAMERA_SETTINGS_FILE) {
+    : protoEndpoint(CameraSettings_read, CameraSettings_update, this,
+                    API_REQUEST_EXTRACTOR(camera_settings, api_CameraSettings),
+                    API_RESPONSE_ASSIGNER(camera_settings, api_CameraSettings)),
+      _persistence(CameraSettings_read, CameraSettings_update, this,
+                   CAMERA_SETTINGS_FILE, api_CameraSettings_fields, api_CameraSettings_size,
+                   CameraSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
 }
 
@@ -149,14 +153,14 @@ void CameraService::updateCamera() {
         safe_sensor_return();
         return;
     }
-    s->set_pixformat(s, state().pixformat);
-    s->set_framesize(s, state().framesize);
+    s->set_pixformat(s, static_cast<pixformat_t>(state().pixformat));
+    s->set_framesize(s, static_cast<framesize_t>(state().framesize));
     s->set_brightness(s, state().brightness);
     s->set_contrast(s, state().contrast);
     s->set_saturation(s, state().saturation);
     s->set_sharpness(s, state().sharpness);
     s->set_denoise(s, state().denoise);
-    s->set_gainceiling(s, state().gainceiling);
+    s->set_gainceiling(s, static_cast<gainceiling_t>(state().gainceiling));
     s->set_quality(s, state().quality);
     s->set_colorbar(s, state().colorbar);
     s->set_awb_gain(s, state().awb_gain);

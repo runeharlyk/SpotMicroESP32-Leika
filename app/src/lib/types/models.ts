@@ -76,21 +76,6 @@ export type Rssi = {
     ssid: string
 }
 
-export type CameraSettings = {
-    framesize: number
-    quality: number
-    brightness: number
-    contrast: number
-    saturation: number
-    sharpness: number
-    denoise: number
-    special_effect: number
-    wb_mode: number
-    vflip: boolean
-    hmirror: boolean
-}
-
-
 export type Servo = {
     name: string
     channel: number

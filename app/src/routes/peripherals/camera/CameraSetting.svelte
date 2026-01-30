@@ -1,38 +1,40 @@
 <script lang="ts">
     import { api } from '$lib/api'
     import Spinner from '$lib/components/Spinner.svelte'
-    import type { CameraSettings } from '$lib/types/models'
-    let settings: CameraSettings = $state({
-        brightness: 0,
-        contrast: 0,
-        framesize: 0,
-        vflip: false,
-        hmirror: false,
-        special_effect: 0,
-        quality: 0,
-        saturation: 0,
-        sharpness: 0,
-        denoise: 0,
-        wb_mode: 0
-    })
+    import { CameraSettings, Request, type Response as ProtoResponse } from '$lib/platform_shared/api'
+
+    let settings = $state<CameraSettings>(CameraSettings.create({}))
 
     const getCameraSettings = async () => {
-        const result = await api.get<CameraSettings>('/api/camera/settings')
+        const result = await api.get<ProtoResponse>('/api/camera/settings')
         if (result.isErr()) {
             console.error('An error occurred', result.inner)
             return
         }
-        settings = result.inner
+        if (result.inner.cameraSettings) {
+            settings = result.inner.cameraSettings
+        }
     }
 
     const updateCameraSettings = async () => {
-        const result = await api.post<CameraSettings>('/api/camera/settings', settings)
+        const request = Request.create({
+            cameraSettings: settings
+        })
+        const result = await api.post_proto<ProtoResponse>('/api/camera/settings', request)
         if (result.isErr()) {
             console.error('An error occurred', result.inner)
             return
         }
-        settings = result.inner
+        if (result.inner.cameraSettings) {
+            settings = result.inner.cameraSettings
+        }
     }
+
+    // Helper to convert number (0/1) to boolean for checkbox binding
+    const getVflip = () => settings.vflip !== 0
+    const setVflip = (value: boolean) => (settings.vflip = value ? 1 : 0)
+    const getHmirror = () => settings.hmirror !== 0
+    const setHmirror = (value: boolean) => (settings.hmirror = value ? 1 : 0)
 </script>
 
 {#await getCameraSettings()}
@@ -78,19 +80,29 @@
 
         <label class="cursor-pointer flex items-center justify-between">
             Vertical flip
-            <input type="checkbox" class="toggle" bind:checked={settings.vflip} />
+            <input
+                type="checkbox"
+                class="toggle"
+                checked={getVflip()}
+                onchange={(e) => setVflip(e.currentTarget.checked)}
+            />
         </label>
 
         <label class="cursor-pointer flex items-center justify-between">
             Horizontal flip
-            <input type="checkbox" class="toggle" bind:checked={settings.hmirror} />
+            <input
+                type="checkbox"
+                class="toggle"
+                checked={getHmirror()}
+                onchange={(e) => setHmirror(e.currentTarget.checked)}
+            />
         </label>
 
         <label for="special_effect" class="flex items-center">
             <span class="basis-1/2">Special Effect</span>
             <select
                 class="select select-bordered select-sm w-full max-w-xs"
-                bind:value={settings.special_effect}
+                bind:value={settings.specialEffect}
             >
                 <option value={0}>No effect</option>
                 <option value={1}>Negative</option>

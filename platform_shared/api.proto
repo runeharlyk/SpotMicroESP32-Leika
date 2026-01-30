@@ -87,6 +87,45 @@ message WifiSettings {
 message WifiSettingsRequest {}
 
 // =============================================================================
+// Camera Settings - shared data types
+// =============================================================================
+
+message CameraSettings {
+    uint32 pixformat = 1;
+    uint32 framesize = 2;       // 0-10
+    uint32 quality = 3;         // 0-63
+    int32 brightness = 4;       // -2 to 2
+    int32 contrast = 5;         // -2 to 2
+    int32 saturation = 6;       // -2 to 2
+    int32 sharpness = 7;        // -2 to 2
+    uint32 denoise = 8;
+    uint32 gainceiling = 9;
+    uint32 whitebal = 10;
+    uint32 special_effect = 11; // 0-6
+    uint32 wb_mode = 12;        // 0-4
+    uint32 awb = 13;
+    uint32 exposure_ctrl = 14;
+    uint32 awb_gain = 15;
+    uint32 gain_ctrl = 16;
+    uint32 aec = 17;
+    uint32 aec2 = 18;
+    int32 ae_level = 19;        // -2 to 2
+    uint32 aec_value = 20;      // 0-1200
+    uint32 agc = 21;
+    uint32 agc_gain = 22;       // 0-30
+    uint32 bpc = 23;
+    uint32 wpc = 24;
+    uint32 raw_gma = 25;
+    uint32 lenc = 26;
+    uint32 hmirror = 27;
+    uint32 vflip = 28;
+    uint32 dcw = 29;
+    uint32 colorbar = 30;
+}
+
+message CameraSettingsRequest {}
+
+// =============================================================================
 // File System - shared data types
 // =============================================================================
 
@@ -134,6 +173,8 @@ message Request {
         FileMkdirRequest file_mkdir_request = 33;
         WifiSettings wifi_settings = 40;
         WifiSettingsRequest wifi_settings_request = 41;
+        CameraSettings camera_settings = 50;
+        CameraSettingsRequest camera_settings_request = 51;
     }
 }
 
@@ -149,5 +190,6 @@ message Response {
         ServoSettings servo_settings = 20;
         FileList file_list = 30;
         WifiSettings wifi_settings = 40;
+        CameraSettings camera_settings = 50;
     }
 }

@@ -2,7 +2,7 @@ import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
 import { apiLocation } from './stores/location-store'
 import type { MessageFns } from './platform_shared/filesystem'
-import { Request, Response } from './platform_shared/api'
+import { Request, Response as ProtoResponse } from './platform_shared/api'
 import { BinaryWriter } from '@bufbuild/protobuf/wire'
 
 export const api = {
@@ -72,7 +72,7 @@ async function sendRequest<TResponse>(
         const data = await response.json()
         return Ok.new(data as TResponse)
     } else if (contentType && contentType.includes('application/x-protobuf')) {
-        let data: Response = Response.decode(await response.bytes());
+        let data: ProtoResponse = ProtoResponse.decode(await response.bytes());
         return Ok.new(data as TResponse)
     } else {
         // Handle empty object as response
