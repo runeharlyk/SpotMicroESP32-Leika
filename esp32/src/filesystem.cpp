@@ -84,7 +84,7 @@ esp_err_t getFilesProto(httpd_req_t *request) {
     allocatedEntries.push_back(res.payload.file_list.entries);
     res.payload.file_list.entries[0] = rootEntry;
 
-    esp_err_t result = WebServer::sendProto(request, 200, res, api_Response_fields);
+    esp_err_t result = WebServer::send(request, 200, res, api_Response_fields);
 
     freeAllocatedEntries();  // Clean up after sending
     return result;
@@ -125,7 +125,7 @@ esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
     if (deleteFile(req.path)) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
-        return WebServer::sendProto(request, 200, res, api_Response_fields);
+        return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Delete failed");
     }
@@ -138,7 +138,7 @@ esp_err_t handleEdit(httpd_req_t *request, const api_FileEditRequest &req) {
     if (editFile(req.path, req.content->bytes, req.content->size)) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
-        return WebServer::sendProto(request, 200, res, api_Response_fields);
+        return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Edit failed");
     }
@@ -192,7 +192,7 @@ esp_err_t mkdir(httpd_req_t *request, const api_FileMkdirRequest &req) {
     if (ESP_FS.mkdir(req.path)) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
-        return WebServer::sendProto(request, 200, res, api_Response_fields);
+        return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "mkdir failed");
     }

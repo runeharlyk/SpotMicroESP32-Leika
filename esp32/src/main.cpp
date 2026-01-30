@@ -42,11 +42,11 @@ void setupServer() {
     server.config(50 + WWW_ASSETS_COUNT, 32768);
     server.listen(80);
 
-    server.onProto("/api/system/reset", HTTP_POST,
+    server.on("/api/system/reset", HTTP_POST,
               [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleReset(request); });
-    server.onProto("/api/system/restart", HTTP_POST,
+    server.on("/api/system/restart", HTTP_POST,
               [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleRestart(request); });
-    server.onProto("/api/system/sleep", HTTP_POST,
+    server.on("/api/system/sleep", HTTP_POST,
               [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleSleep(request); });
 #if USE_CAMERA
     server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
@@ -54,19 +54,19 @@ void setupServer() {
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
     server.on("/api/camera/settings", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
-    server.onProto("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
         return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 #endif
     server.on("/api/servo/config", HTTP_GET,
               [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });
-    server.onProto("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
         return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 
     server.on("/api/wifi/sta/settings", HTTP_GET,
               [&](httpd_req_t *request) { return wifiService.protoEndpoint.getState(request); });
-    server.onProto("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
         return wifiService.protoEndpoint.handleStateUpdate(request, protoReq);
     });
     server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
@@ -77,26 +77,26 @@ void setupServer() {
     server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
     server.on("/api/ap/settings", HTTP_GET,
                     [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.onProto("/api/ap/settings", HTTP_POST,
+    server.on("/api/ap/settings", HTTP_POST,
                          [&](httpd_req_t *request, api_Request *protoReq) {
                              return apService.protoEndpoint.handleStateUpdate(request, protoReq);
                          });
     
     server.on("/api/peripherals/settings", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
-    server.onProto("/api/peripherals/settings", HTTP_POST,
+    server.on("/api/peripherals/settings", HTTP_POST,
                    [&](httpd_req_t *request, api_Request *protoReq) {
                        return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
                    });
 
 #if FT_ENABLED(USE_MDNS)
     server.on("/api/mdns/settings", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
-    server.onProto("/api/mdns/settings", HTTP_POST,
+    server.on("/api/mdns/settings", HTTP_POST,
                    [&](httpd_req_t *request, api_Request *protoReq) {
                        return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
                    });
     server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    server.onProto("/api/mdns/query", HTTP_POST,
+    server.on("/api/mdns/query", HTTP_POST,
                    [&](httpd_req_t *request, api_Request *protoReq) {
                        return mdnsService.queryServices(request, protoReq);
                    });

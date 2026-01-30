@@ -95,7 +95,7 @@ class StatefulProtoEndpoint {
         _statefulService->read([this, &protoState](const T& settings) { _stateReader(settings, protoState); });
         _responseAssigner(res, protoState);
 
-        return WebServer::sendProto(request, 200, res, api_Response_fields);
+        return WebServer::send(request, 200, res, api_Response_fields);
     }
 
     /** Sends error wrapped in Response */
@@ -103,7 +103,7 @@ class StatefulProtoEndpoint {
         api_Response res = api_Response_init_zero;
         res.status_code = statusCode;
         res.error_message = (char*)message;
-        return WebServer::sendProto(request, statusCode == 200 ? 200 : 400, res, api_Response_fields);
+        return WebServer::send(request, statusCode == 200 ? 200 : 400, res, api_Response_fields);
     }
 };
 

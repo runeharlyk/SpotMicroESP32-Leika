@@ -5,14 +5,13 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <ArduinoJson.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <platform_shared/api.pb.h>
+#include <semphr.h>
 
 using HttpGetHandler = std::function<esp_err_t(httpd_req_t*)>;
-using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, JsonVariant&)>;
-using HttpProtoHandler = std::function<esp_err_t(httpd_req_t*, api_Request*)>;
+using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, api_Request*)>;
 using WsFrameHandler = std::function<esp_err_t(httpd_req_t*, httpd_ws_frame_t*)>;
 using WsOpenHandler = std::function<void(httpd_req_t*)>;
 using WsCloseHandler = std::function<void(int)>;
@@ -21,7 +20,7 @@ using WsCloseHandler = std::function<void(int)>;
 // Usage: STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete)
 // Handler signature: esp_err_t handleDelete(httpd_req_t* req, const api_FileDeleteRequest& payload)
 #define STAITC_PROTO_POST_ENDPOINT(server_ref, uri, payload_type, handler) \
-    (server_ref).onProto(uri, HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) { \
+    (server_ref).on(uri, HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) { \
         if (protoReq->which_payload != api_Request_##payload_type##_tag) { \
             return WebServer::sendError(request, 400, "Invalid request payload"); \
         } \
@@ -33,7 +32,6 @@ struct HttpRoute {
     httpd_method_t method;
     HttpGetHandler getHandler;
     HttpPostHandler postHandler;
-    HttpProtoHandler protoHandler;  // For proto handlers that don't need JSON parsing
     bool isWebsocket;
 };
 
@@ -48,7 +46,6 @@ class WebServer {
 
     void on(const char* uri, httpd_method_t method, HttpGetHandler handler);
     void on(const char* uri, httpd_method_t method, HttpPostHandler handler);
-    void onProto(const char* uri, httpd_method_t method, HttpProtoHandler handler);
 
     void onWsFrame(WsFrameHandler handler);
     void onWsOpen(WsOpenHandler handler);
@@ -65,15 +62,12 @@ class WebServer {
 
     httpd_handle_t getHandle() { return server_; }
 
-    static esp_err_t sendJson(httpd_req_t* req, int status, const char* json);
-    static esp_err_t sendJson(httpd_req_t* req, int status, JsonDocument& doc);
     static esp_err_t sendError(httpd_req_t* req, int status, const char* message);
     static esp_err_t sendOk(httpd_req_t* req);
-    static esp_err_t sendOkProto(httpd_req_t* req);
-    static esp_err_t sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len);
+    static esp_err_t send(httpd_req_t* req, int status, const uint8_t* data, size_t len);
 
     template <typename T>
-    static esp_err_t sendProto(httpd_req_t* req, int status, const T& msg, const pb_msgdesc_t* fields) {
+    static esp_err_t send(httpd_req_t* req, int status, const T& msg, const pb_msgdesc_t* fields) {
         size_t size = 0;
         if (!pb_get_encoded_size(&size, fields, &msg)) {
             return sendError(req, 500, "Failed to calculate proto size");
@@ -90,7 +84,7 @@ class WebServer {
             return sendError(req, 500, "Failed to encode proto");
         }
 
-        esp_err_t result = sendProto(req, status, buffer, stream.bytes_written);
+        esp_err_t result = send(req, status, buffer, stream.bytes_written);
         free(buffer);
         return result;
     }

@@ -7,17 +7,17 @@ static const char *TAG = "SystemService";
 
 esp_err_t handleReset(httpd_req_t *request) {
     reset();
-    return WebServer::sendOkProto(request);
+    return WebServer::sendOk(request);
 }
 
 esp_err_t handleRestart(httpd_req_t *request) {
     restart();
-    return WebServer::sendOkProto(request);
+    return WebServer::sendOk(request);
 }
 
 esp_err_t handleSleep(httpd_req_t *request) {
     sleep();
-    return WebServer::sendOkProto(request);
+    return WebServer::sendOk(request);
 }
 
 void reset() {

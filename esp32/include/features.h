@@ -65,10 +65,6 @@ namespace feature_service {
 
 void printFeatureConfiguration();
 
-void features(JsonObject& root);
-
 void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res);
-
-esp_err_t getFeatures(httpd_req_t* request);
 
 } // namespace feature_service

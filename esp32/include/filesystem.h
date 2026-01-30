@@ -9,7 +9,7 @@
 #define ESP_FS LittleFS
 
 #define FS_CONFIG_DIRECTORY "/config"
-#define DEVICE_CONFIG_FILE "/config/peripheral.json"'
+#define DEVICE_CONFIG_FILE "/config/peripheral.json"
 #define CAMERA_SETTINGS_FILE "/config/cameraSettings.pb"
 #define AP_SETTINGS_FILE "/config/apSettings.pb"
 #define MDNS_SETTINGS_FILE "/config/mdnsSettings.pb"
