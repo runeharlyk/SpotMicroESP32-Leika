@@ -288,18 +288,24 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         apService.loop();
 
         EXECUTE_EVERY_N_MS(2000, {
-            socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
-            system_service::getAnalytics(analytics);
-            socket.emit(analytics);
+            if (socket.hasSubscribers(socket_message_Message_analytics_tag)) {
+                socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
+                system_service::getAnalytics(analytics);
+                socket.emit(analytics);
+            }
         });
 
-        EXECUTE_EVERY_N_MS(500, {
-            socket_message_IMUData imu = socket_message_IMUData_init_zero;
-            peripherals.getIMUProto(imu);
-            socket.emit(imu);
+        EXECUTE_EVERY_N_MS(100, {
+            if (socket.hasSubscribers(socket_message_Message_imu_tag)) {
+                socket_message_IMUData imu = socket_message_IMUData_init_zero;
+                peripherals.getIMUProto(imu);
+                socket.emit(imu);
+            }
 
-            socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
-            socket.emit(rssi);
+            if (socket.hasSubscribers(socket_message_Message_rssi_tag)) {
+                socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
+                socket.emit(rssi);
+            }
         });
 
         EXECUTE_EVERY_N_MS(60000, { FileSystemWS::fsHandler.cleanupExpiredTransfers(); });
