@@ -10,6 +10,8 @@
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
 
+#define PERIPHERAL_SETTINGS_FILE "/config/peripheralSettings.pb"
+
 #include <list>
 
 #include <NewPing.h>
