@@ -3,14 +3,14 @@
     import { fly } from 'svelte/transition'
     import { onMount, onDestroy } from 'svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import type { NetworkItem, NetworkList } from '$lib/types/models'
+    import { type WifiNetworkScan, type Response as ProtoResponse } from '$lib/platform_shared/api'
     import { api } from '$lib/api'
     import { AP, Network, Reload, Cancel } from '$lib/components/icons'
     import { modals, exitBeforeEnter, type ModalProps } from 'svelte-modals'
 
     let { isOpen, storeNetwork }: ModalProps = $props()
 
-    const encryptionType = [
+    const encryptionTypes = [
         'Open',
         'WEP',
         'WPA PSK',
@@ -22,7 +22,7 @@
         'WAPI PSK'
     ]
 
-    let listOfNetworks: NetworkItem[] = $state([])
+    let listOfNetworks = $state<WifiNetworkScan[]>([])
 
     let scanActive = $state(false)
 
@@ -38,13 +38,14 @@
     }
 
     async function pollingResults() {
-        const result = await api.get<NetworkList>('/api/wifi/networks')
+        const result = await api.get<ProtoResponse>('/api/wifi/networks')
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return false
         }
-        let response = result.inner
-        listOfNetworks = response.networks
+        if (result.inner.wifiNetworkList) {
+            listOfNetworks = result.inner.wifiNetworkList.networks
+        }
         scanActive = false
         if (listOfNetworks.length) {
             clearInterval(pollingId)
@@ -106,7 +107,7 @@
                                     <div>
                                         <div class="font-bold">{network.ssid}</div>
                                         <div class="text-sm opacity-75">
-                                            Security: {encryptionType[network.encryption_type]},
+                                            Security: {encryptionTypes[network.encryptionType]},
                                             Channel: {network.channel}
                                         </div>
                                     </div>

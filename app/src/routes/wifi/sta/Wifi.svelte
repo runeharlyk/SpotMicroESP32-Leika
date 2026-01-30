@@ -10,8 +10,13 @@
     import ScanNetworks from './Scan.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { type WifiStatus } from '$lib/types/models'
-    import { WifiSettings, WifiNetwork, Response, Request } from '$lib/platform_shared/api'
+    import {
+        type WifiStatus,
+        type WifiSettings,
+        type WifiNetwork,
+        type Response as ProtoResponse,
+        Request
+    } from '$lib/platform_shared/api'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import {
@@ -80,17 +85,19 @@
     let formErrorhostname = $state(false)
 
     async function getWifiStatus() {
-        const result = await api.get<WifiStatus>('/api/wifi/sta/status')
+        const result = await api.get<ProtoResponse>('/api/wifi/sta/status')
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return
         }
-        wifiStatus = result.inner
+        if (result.inner.wifiStatus) {
+            wifiStatus = result.inner.wifiStatus
+        }
         return wifiStatus
     }
 
     async function getWifiSettings() {
-        const result = await api.get<Response>('/api/wifi/sta/settings')
+        const result = await api.get<ProtoResponse>('/api/wifi/sta/settings')
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             return
@@ -101,7 +108,7 @@
     }
 
     async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post_proto<Response>('/api/wifi/sta/settings', Request.create({ wifiSettings: data }))
+        const result = await api.post_proto<ProtoResponse>('/api/wifi/sta/settings', Request.create({ wifiSettings: data }))
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             notifications.error('User not authorized.', 3000)
@@ -330,7 +337,7 @@
                         <StatusItem
                             icon={Home}
                             title="IP Address"
-                            description={uint32ToIp(wifiStatus.local_ip)}
+                            description={uint32ToIp(wifiStatus.localIp)}
                         />
 
                         <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
@@ -361,7 +368,7 @@
                         <StatusItem
                             icon={MAC}
                             title="MAC Address"
-                            description={wifiStatus.mac_address}
+                            description={wifiStatus.macAddress}
                         />
 
                         <StatusItem
@@ -373,19 +380,19 @@
                         <StatusItem
                             icon={Gateway}
                             title="Gateway IP"
-                            description={uint32ToIp(wifiStatus.gateway_ip)}
+                            description={uint32ToIp(wifiStatus.gatewayIp)}
                         />
 
                         <StatusItem
                             icon={Subnet}
                             title="Subnet Mask"
-                            description={uint32ToIp(wifiStatus.subnet_mask)}
+                            description={uint32ToIp(wifiStatus.subnetMask)}
                         />
 
                         <StatusItem
                             icon={DNS}
                             title="DNS"
-                            description={uint32ToIp(wifiStatus.dns_ip_1)}
+                            description={uint32ToIp(wifiStatus.dnsIp1)}
                         />
                     </div>
                 {/if}

@@ -60,10 +60,23 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
         return handleScan(request);
     }
 
-    JsonDocument doc;
-    JsonObject root = doc.to<JsonObject>();
-    getNetworks(root);
-    return WebServer::sendJson(request, 200, doc);
+    api_Response response = api_Response_init_zero;
+    response.which_payload = api_Response_wifi_network_list_tag;
+    api_WifiNetworkList &networkList = response.payload.wifi_network_list;
+
+    // Limit to max_count from options file (20)
+    size_t count = (numNetworks > 20) ? 20 : static_cast<size_t>(numNetworks);
+    networkList.networks_count = count;
+
+    for (size_t i = 0; i < count; i++) {
+        networkList.networks[i].rssi = WiFi.RSSI(i);
+        strncpy(networkList.networks[i].ssid, WiFi.SSID(i).c_str(), sizeof(networkList.networks[i].ssid) - 1);
+        strncpy(networkList.networks[i].bssid, WiFi.BSSIDstr(i).c_str(), sizeof(networkList.networks[i].bssid) - 1);
+        networkList.networks[i].channel = WiFi.channel(i);
+        networkList.networks[i].encryption_type = static_cast<uint32_t>(WiFi.encryptionType(i));
+    }
+
+    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -74,47 +87,35 @@ void WiFiService::setupMDNS(const char *hostname) {
     MDNS.addServiceTxt("http", "tcp", "Firmware Version", APP_VERSION);
 }
 
-void WiFiService::getNetworks(JsonObject &root) {
-    JsonArray networks = root["networks"].to<JsonArray>();
-    int numNetworks = WiFi.scanComplete();
-    for (int i = 0; i < numNetworks; i++) {
-        JsonObject network = networks.add<JsonObject>();
-        network["rssi"] = WiFi.RSSI(i);
-        network["ssid"] = WiFi.SSID(i);
-        network["bssid"] = WiFi.BSSIDstr(i);
-        network["channel"] = WiFi.channel(i);
-        network["encryption_type"] = (uint8_t)WiFi.encryptionType(i);
-    }
-}
-
 esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
-    JsonDocument doc;
-    JsonObject root = doc.to<JsonObject>();
-    getNetworkStatus(root);
-    return WebServer::sendJson(request, 200, doc);
-}
+    api_Response response = api_Response_init_zero;
+    response.which_payload = api_Response_wifi_status_tag;
+    api_WifiStatus &wifiStatus = response.payload.wifi_status;
 
-void WiFiService::getNetworkStatus(JsonObject &root) {
     wl_status_t status = WiFi.status();
-    root["status"] = (uint8_t)status;
+    wifiStatus.status = static_cast<uint32_t>(status);
+
     if (status == WL_CONNECTED) {
-        root["local_ip"] = (uint32_t)(WiFi.localIP());
-        root["mac_address"] = WiFi.macAddress();
-        root["rssi"] = WiFi.RSSI();
-        root["ssid"] = WiFi.SSID();
-        root["bssid"] = WiFi.BSSIDstr();
-        root["channel"] = WiFi.channel();
-        root["subnet_mask"] = (uint32_t)(WiFi.subnetMask());
-        root["gateway_ip"] = (uint32_t)(WiFi.gatewayIP());
+        wifiStatus.local_ip = static_cast<uint32_t>(WiFi.localIP());
+        strncpy(wifiStatus.mac_address, WiFi.macAddress().c_str(), sizeof(wifiStatus.mac_address) - 1);
+        wifiStatus.rssi = WiFi.RSSI();
+        strncpy(wifiStatus.ssid, WiFi.SSID().c_str(), sizeof(wifiStatus.ssid) - 1);
+        strncpy(wifiStatus.bssid, WiFi.BSSIDstr().c_str(), sizeof(wifiStatus.bssid) - 1);
+        wifiStatus.channel = WiFi.channel();
+        wifiStatus.subnet_mask = static_cast<uint32_t>(WiFi.subnetMask());
+        wifiStatus.gateway_ip = static_cast<uint32_t>(WiFi.gatewayIP());
+
         IPAddress dnsIP1 = WiFi.dnsIP(0);
         IPAddress dnsIP2 = WiFi.dnsIP(1);
         if (dnsIP1 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_1"] = (uint32_t)(dnsIP1);
+            wifiStatus.dns_ip_1 = static_cast<uint32_t>(dnsIP1);
         }
         if (dnsIP2 != IPAddress(0, 0, 0, 0)) {
-            root["dns_ip_2"] = (uint32_t)(dnsIP2);
+            wifiStatus.dns_ip_2 = static_cast<uint32_t>(dnsIP2);
         }
     }
+
+    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
 }
 
 void WiFiService::manageSTA() {
