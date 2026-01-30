@@ -30,8 +30,8 @@ void printFeatureConfiguration() {
 
 void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res) {
     fd_res.camera = USE_CAMERA ? true : false;
-    fd_res.imu = (USE_MPU6050 || USE_BNO055) ? true : false;
-    fd_res.mag = (USE_HMC5883 || USE_BNO055) ? true : false;
+    fd_res.imu = (USE_MPU6050 || USE_BNO055 || USE_ICM20948) ? true : false;
+    fd_res.mag = (USE_HMC5883 || USE_BNO055 || USE_ICM20948) ? true : false;
     fd_res.bmp = USE_BMP180 ? true : false;
     fd_res.sonar = USE_USS ? true : false;
     fd_res.servo = USE_PCA9685 ? true : false;
