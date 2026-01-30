@@ -49,14 +49,13 @@ void setupServer() {
     server.onProto("/api/system/sleep", HTTP_POST,
               [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleSleep(request); });
 #if USE_CAMERA
-    // TODO: REMAKE TO PROTO
     server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
     server.on("/api/camera/stream", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
     server.on("/api/camera/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.endpoint.getState(request); });
-    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return cameraService.endpoint.handleStateUpdate(request, json);
+              [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
+    server.onProto("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
     });
 #endif
     server.on("/api/servo/config", HTTP_GET,
