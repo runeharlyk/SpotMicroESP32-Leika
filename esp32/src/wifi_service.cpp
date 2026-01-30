@@ -60,23 +60,26 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
         return handleScan(request);
     }
 
-    api_Response response = api_Response_init_zero;
-    response.which_payload = api_Response_wifi_network_list_tag;
-    api_WifiNetworkList &networkList = response.payload.wifi_network_list;
-
-    // Limit to max_count from options file (20)
+    // Limit to 20 networks max
     size_t count = (numNetworks > 20) ? 20 : static_cast<size_t>(numNetworks);
-    networkList.networks_count = count;
+
+    // Allocate networks array on stack (pointer type in proto)
+    api_WifiNetworkScan networks[20] = {};
 
     for (size_t i = 0; i < count; i++) {
-        networkList.networks[i].rssi = WiFi.RSSI(i);
-        strncpy(networkList.networks[i].ssid, WiFi.SSID(i).c_str(), sizeof(networkList.networks[i].ssid) - 1);
-        strncpy(networkList.networks[i].bssid, WiFi.BSSIDstr(i).c_str(), sizeof(networkList.networks[i].bssid) - 1);
-        networkList.networks[i].channel = WiFi.channel(i);
-        networkList.networks[i].encryption_type = static_cast<uint32_t>(WiFi.encryptionType(i));
+        networks[i].rssi = WiFi.RSSI(i);
+        strncpy(networks[i].ssid, WiFi.SSID(i).c_str(), sizeof(networks[i].ssid) - 1);
+        strncpy(networks[i].bssid, WiFi.BSSIDstr(i).c_str(), sizeof(networks[i].bssid) - 1);
+        networks[i].channel = WiFi.channel(i);
+        networks[i].encryption_type = static_cast<uint32_t>(WiFi.encryptionType(i));
     }
 
-    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
+    api_Response response = api_Response_init_zero;
+    response.which_payload = api_Response_wifi_network_list_tag;
+    response.payload.wifi_network_list.networks = networks;
+    response.payload.wifi_network_list.networks_count = count;
+
+    return WebServer::sendProto(request, 200, response, api_Response_fields);
 }
 
 void WiFiService::setupMDNS(const char *hostname) {
@@ -115,7 +118,7 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
         }
     }
 
-    return WebServer::sendProto(request, 200, api_Response_fields, &response, api_Response_size);
+    return WebServer::sendProto(request, 200, response, api_Response_fields);
 }
 
 void WiFiService::manageSTA() {

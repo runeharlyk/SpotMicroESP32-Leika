@@ -26,7 +26,7 @@ api.WifiSettings.wifi_networks max_count:5
 
 api.WifiNetworkScan.ssid max_size:33
 api.WifiNetworkScan.bssid max_size:18
-api.WifiNetworkList.networks max_count:20
+api.WifiNetworkList.networks type:FT_POINTER
 
 api.WifiStatus.mac_address max_size:18
 api.WifiStatus.ssid max_size:33
