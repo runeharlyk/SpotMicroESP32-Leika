@@ -39,3 +39,16 @@
         name##_count = 0;                                                    \
         last_time = esp_timer_get_time() / 1000;                             \
     }
+
+#define WARN_IF_SLOW(name, period_ms)                                                                    \
+    static uint64_t name##_slow_count = 0;                                                               \
+    static uint64_t name##_slow_last_time = 0;                                                           \
+    name##_slow_count++;                                                                                 \
+    if (esp_timer_get_time() / 1000 - name##_slow_last_time >= 1000) {                                   \
+        uint64_t expected_hz = 1000 / (period_ms);                                                       \
+        if (name##_slow_count < expected_hz) {                                                           \
+            ESP_LOGW("Timing", "%s: %llu Hz (expected %llu Hz)", #name, name##_slow_count, expected_hz); \
+        }                                                                                                \
+        name##_slow_count = 0;                                                                           \
+        name##_slow_last_time = esp_timer_get_time() / 1000;                                             \
+    }

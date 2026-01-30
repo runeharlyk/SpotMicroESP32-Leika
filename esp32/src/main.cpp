@@ -253,7 +253,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     peripherals.calibrateIMU();
 
     for (;;) {
-        CALLS_PER_SECOND(SpotControlLoopEntry);
+        WARN_IF_SLOW(SpotControlLoopEntry, 5);
         peripherals.update();
         motionService.update(&peripherals);
         servoController.setAngles(motionService.getAngles());
