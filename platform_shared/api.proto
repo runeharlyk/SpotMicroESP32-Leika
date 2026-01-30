@@ -175,6 +175,26 @@ message MDNSQueryResponse {
 }
 
 // =============================================================================
+// Peripheral Settings - I2C configuration
+// =============================================================================
+
+message PinConfig {
+    int32 pin = 1;
+    string mode = 2;
+    string type = 3;
+    string role = 4;
+}
+
+message PeripheralSettings {
+    int32 sda = 1;
+    int32 scl = 2;
+    int32 frequency = 3;
+    repeated PinConfig pins = 4;
+}
+
+message PeripheralSettingsRequest {}
+
+// =============================================================================
 // File System - shared data types
 // =============================================================================
 
@@ -228,6 +248,8 @@ message Request {
         MDNSSettingsRequest mdns_settings_request = 61;
         MDNSStatusRequest mdns_status_request = 62;
         MDNSQueryRequest mdns_query_request = 63;
+        PeripheralSettings peripheral_settings = 70;
+        PeripheralSettingsRequest peripheral_settings_request = 71;
     }
 }
 
@@ -247,5 +269,6 @@ message Response {
         MDNSSettings mdns_settings = 60;
         MDNSStatus mdns_status = 61;
         MDNSQueryResponse mdns_query_response = 62;
+        PeripheralSettings peripheral_settings = 70;
     }
 }

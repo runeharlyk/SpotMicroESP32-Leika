@@ -48,3 +48,9 @@ api.MDNSQueryResult.name max_size:64
 api.MDNSQueryResult.ip max_size:46
 
 api.MDNSQueryResponse.services max_count:16
+
+api.PinConfig.mode max_size:16
+api.PinConfig.type max_size:16
+api.PinConfig.role max_size:16
+
+api.PeripheralSettings.pins max_count:32

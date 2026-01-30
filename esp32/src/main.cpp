@@ -82,12 +82,12 @@ void setupServer() {
                              return apService.protoEndpoint.handleStateUpdate(request, protoReq);
                          });
     
-    // TODO: REMAKE TO PROTO - note: these are unused?
-    server.on("/api/peripherals", HTTP_GET,
-              [&](httpd_req_t *request) { return peripherals.endpoint.getState(request); });
-    server.on("/api/peripherals", HTTP_POST, [&](httpd_req_t *request, JsonVariant &json) {
-        return peripherals.endpoint.handleStateUpdate(request, json);
-    });
+    server.on("/api/peripherals/settings", HTTP_GET,
+              [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
+    server.onProto("/api/peripherals/settings", HTTP_POST,
+                   [&](httpd_req_t *request, api_Request *protoReq) {
+                       return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
+                   });
 
 #if FT_ENABLED(USE_MDNS)
     server.on("/api/mdns/settings", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
