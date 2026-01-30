@@ -1,9 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
-#include <string>
+#include <platform_shared/api.pb.h>
 
 /*
  * I2C software connection
@@ -18,33 +16,26 @@
 #define I2C_FREQUENCY 1000000UL
 #endif
 
-class PinConfig {
-  public:
-    int pin;
-    std::string mode;
-    std::string type;
-    std::string role;
+// Use proto types directly
+using PinConfig = api_PinConfig;
+using PeripheralsConfiguration = api_PeripheralSettings;
 
-    PinConfig(int p, std::string m, std::string t, std::string r) : pin(p), mode(m), type(t), role(r) {}
-};
+// Default factory settings
+inline PeripheralsConfiguration PeripheralsConfiguration_defaults() {
+    PeripheralsConfiguration settings = api_PeripheralSettings_init_zero;
+    settings.sda = SDA_PIN;
+    settings.scl = SCL_PIN;
+    settings.frequency = I2C_FREQUENCY;
+    settings.pins_count = 0;
+    return settings;
+}
 
-class PeripheralsConfiguration {
-  public:
-    int sda = SDA_PIN;
-    int scl = SCL_PIN;
-    long frequency = I2C_FREQUENCY;
-    std::vector<PinConfig> pins;
+// Proto read/update are identity functions since type is the same
+inline void PeripheralsConfiguration_read(const PeripheralsConfiguration& settings, PeripheralsConfiguration& proto) {
+    proto = settings;
+}
 
-    static void read(PeripheralsConfiguration &settings, JsonVariant &root) {
-        root["sda"] = settings.sda;
-        root["scl"] = settings.scl;
-        root["frequency"] = settings.frequency;
-    }
-
-    static StateUpdateResult update(JsonVariant &root, PeripheralsConfiguration &settings) {
-        settings.sda = root["sda"] | SDA_PIN;
-        settings.scl = root["scl"] | SCL_PIN;
-        settings.frequency = root["frequency"] | I2C_FREQUENCY;
-        return StateUpdateResult::CHANGED;
-    };
-};
+inline StateUpdateResult PeripheralsConfiguration_update(const PeripheralsConfiguration& proto, PeripheralsConfiguration& settings) {
+    settings = proto;
+    return StateUpdateResult::CHANGED;
+}

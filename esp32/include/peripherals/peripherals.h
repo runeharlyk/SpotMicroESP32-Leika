@@ -1,14 +1,16 @@
 #pragma once
 
-#include <template/stateful_persistence.h>
+#include <template/stateful_persistence_pb.h>
 #include <template/stateful_service.h>
+#include <template/stateful_proto_endpoint.h>
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
 #include <features.h>
 #include <settings/peripherals_settings.h>
-#include <template/stateful_endpoint.h>
 #include <platform_shared/message.pb.h>
+
+#define PERIPHERAL_SETTINGS_FILE "/config/peripheralSettings.pb"
 
 #include <list>
 
@@ -64,10 +66,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
-    StatefulHttpEndpoint<PeripheralsConfiguration> endpoint;
+    StatefulProtoEndpoint<PeripheralsConfiguration, api_PeripheralSettings> protoEndpoint;
 
   private:
-    FSPersistence<PeripheralsConfiguration> _persistence;
+    FSPersistencePB<PeripheralsConfiguration> _persistence;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

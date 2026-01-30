@@ -1,25 +1,31 @@
 <script lang="ts">
     import { Cancel, Edit, EditOff, Power } from '$lib/components/icons'
-    import { socket } from '$lib/stores'
+    import { api } from '$lib/api'
     import { onMount } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import {
-        PeripheralSettingsData,
-        PeripheralSettingsDataRequest
-    } from '$lib/platform_shared/message'
+        type PeripheralSettings,
+        Request,
+        type Response as ProtoResponse
+    } from '$lib/platform_shared/api'
 
-    let settings: PeripheralSettingsData | null = $state(null)
+    let settings = $state<PeripheralSettings | null>(null)
     let isEditing = $state(false)
 
     onMount(() => {
-        let unsub = socket.on(PeripheralSettingsData, handleSettings)
-        socket.emit(PeripheralSettingsDataRequest, {})
-        return unsub
+        getPeripheralSettings()
     })
 
-    const handleSettings = (data: PeripheralSettingsData) => {
-        settings = data
+    const getPeripheralSettings = async () => {
+        const result = await api.get<ProtoResponse>('/api/peripherals/settings')
+        if (result.isErr()) {
+            console.error('Error:', result.inner)
+            return
+        }
+        if (result.inner.peripheralSettings) {
+            settings = result.inner.peripheralSettings
+        }
     }
 
     const handleSave = () => {
@@ -31,9 +37,21 @@
                 cancel: { label: 'Cancel', icon: Cancel },
                 confirm: { label: 'Confirm', icon: Power }
             },
-            onConfirm: () => {
+            onConfirm: async () => {
                 modals.close()
-                socket.emit(PeripheralSettingsData, settings)
+                if (!settings) return
+                const request = Request.create({
+                    peripheralSettings: settings
+                })
+                const result = await api.post_proto<ProtoResponse>('/api/peripherals/settings', request)
+                if (result.isErr()) {
+                    console.error('Error:', result.inner)
+                    return
+                }
+                if (result.inner.peripheralSettings) {
+                    settings = result.inner.peripheralSettings
+                }
+                isEditing = false
             }
         })
     }
