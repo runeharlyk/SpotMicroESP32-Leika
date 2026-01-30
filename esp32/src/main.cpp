@@ -315,8 +315,6 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 }
 
 void setup() {
-    Serial.begin(115200);
-
     ESP_FS.begin();
 
     ESP_LOGI("main", "Booting robot");

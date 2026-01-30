@@ -3,6 +3,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <esp_littlefs.h>
+#include <esp_timer.h>
 
 static const char* TAG = "FileSystemWS";
 
@@ -12,12 +13,9 @@ FileSystemHandler fsHandler;
 
 FileSystemHandler::FileSystemHandler() : transferIdCounter_(0) {}
 
-void FileSystemHandler::setSendCallbacks(
-    SendMetadataCallback sendMetadata,
-    SendCallback sendData,
-    SendCompleteCallback sendComplete,
-    SendUploadCompleteCallback sendUploadComplete
-) {
+void FileSystemHandler::setSendCallbacks(SendMetadataCallback sendMetadata, SendCallback sendData,
+                                         SendCompleteCallback sendComplete,
+                                         SendUploadCompleteCallback sendUploadComplete) {
     sendMetadataCallback_ = sendMetadata;
     sendDataCallback_ = sendData;
     sendCompleteCallback_ = sendComplete;
@@ -25,11 +23,11 @@ void FileSystemHandler::setSendCallbacks(
 }
 
 void FileSystemHandler::cleanupExpiredTransfers() {
-    uint32_t now = millis();
+    uint32_t now = esp_timer_get_time() / 1000;
 
     auto dlIt = downloads_.begin();
     while (dlIt != downloads_.end()) {
-        if (now - dlIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT) {
+        if (now - dlIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT_MS) {
             if (dlIt->second.file) {
                 dlIt->second.file.close();
             }
@@ -53,7 +51,7 @@ void FileSystemHandler::cleanupExpiredTransfers() {
 
     auto ulIt = uploads_.begin();
     while (ulIt != uploads_.end()) {
-        if (now - ulIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT) {
+        if (now - ulIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT_MS) {
             if (ulIt->second.file) {
                 ulIt->second.file.close();
             }
@@ -156,7 +154,8 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
     while (file && fileCount < 20 && dirCount < 20) { // Limit to match protobuf max_count
         if (file.isDirectory()) {
             if (dirCount < 20) {
-                strncpy(response.directories[dirCount].name, file.name(), sizeof(response.directories[dirCount].name) - 1);
+                strncpy(response.directories[dirCount].name, file.name(),
+                        sizeof(response.directories[dirCount].name) - 1);
                 dirCount++;
             }
         } else {
@@ -248,13 +247,12 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     state.chunkSize = chunkSize;
     state.totalChunks = totalChunks;
     state.chunksSent = 0;
-    state.lastActivityTime = millis();
+    state.lastActivityTime = esp_timer_get_time() / 1000;
     state.clientId = clientId;
 
     downloads_[transferId] = state;
 
-    ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u",
-             path.c_str(), fileSize, totalChunks, transferId);
+    ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u", path.c_str(), fileSize, totalChunks, transferId);
 
     // Start streaming chunks immediately
     while (sendNextDownloadChunk(transferId)) {
@@ -270,7 +268,7 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
     }
 
     DownloadState& state = it->second;
-    state.lastActivityTime = millis();
+    state.lastActivityTime = esp_timer_get_time() / 1000;
 
     if (state.chunksSent >= state.totalChunks) {
         if (sendCompleteCallback_) {
@@ -378,7 +376,7 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
     state.totalChunks = req.total_chunks;
     state.chunksReceived = 0;
     state.bytesReceived = 0;
-    state.lastActivityTime = millis();
+    state.lastActivityTime = esp_timer_get_time() / 1000;
     state.clientId = clientId;
     state.hasError = false;
 
@@ -402,7 +400,7 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
     }
 
     UploadState& state = it->second;
-    state.lastActivityTime = millis();
+    state.lastActivityTime = esp_timer_get_time() / 1000;
 
     // Skip if we already have an error
     if (state.hasError) {

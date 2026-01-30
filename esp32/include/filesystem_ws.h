@@ -7,8 +7,8 @@
 #include <functional>
 
 // Make sure that this aligns with socket_message.FSDownloadData.data max_size (and for upload)
-#define FS_MAX_CHUNK_SIZE 16384   // ~= 16 kb
-#define FS_TRANSFER_TIMEOUT 30000 // 30 seconds
+#define FS_MAX_CHUNK_SIZE 16384      // ~= 16 kb
+#define FS_TRANSFER_TIMEOUT_MS 30000 // 30 seconds
 
 namespace FileSystemWS {
 
@@ -47,12 +47,8 @@ class FileSystemHandler {
     FileSystemHandler();
 
     // Set callbacks for sending streaming data
-    void setSendCallbacks(
-        SendMetadataCallback sendMetadata,
-        SendCallback sendData,
-        SendCompleteCallback sendComplete,
-        SendUploadCompleteCallback sendUploadComplete
-    );
+    void setSendCallbacks(SendMetadataCallback sendMetadata, SendCallback sendData, SendCompleteCallback sendComplete,
+                          SendUploadCompleteCallback sendUploadComplete);
 
     // Delete file/directory
     socket_message_FSDeleteResponse handleDelete(const socket_message_FSDeleteRequest& req);

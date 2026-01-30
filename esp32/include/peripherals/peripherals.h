@@ -11,7 +11,6 @@
 #include <platform_shared/message.pb.h>
 
 #include <list>
-#include <SPI.h>
 
 #include <NewPing.h>
 #include <peripherals/i2c_bus.h>
