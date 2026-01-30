@@ -8,7 +8,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <platform_shared/api.pb.h>
-#include <semphr.h>
+#include <freertos/semphr.h>
 
 using HttpGetHandler = std::function<esp_err_t(httpd_req_t*)>;
 using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, api_Request*)>;
