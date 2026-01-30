@@ -74,12 +74,25 @@ class WebServer {
 
     template <typename T>
     static esp_err_t sendProto(httpd_req_t* req, int status, const T& msg, const pb_msgdesc_t* fields) {
-        uint8_t buffer[1024];
-        pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+        size_t size = 0;
+        if (!pb_get_encoded_size(&size, fields, &msg)) {
+            return sendError(req, 500, "Failed to calculate proto size");
+        }
+
+        uint8_t* buffer = (uint8_t*)malloc(size);
+        if (!buffer) {
+            return sendError(req, 500, "Failed to allocate memory for proto");
+        }
+
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer, size);
         if (!pb_encode(&stream, fields, &msg)) {
+            free(buffer);
             return sendError(req, 500, "Failed to encode proto");
         }
-        return sendProto(req, status, buffer, stream.bytes_written);
+
+        esp_err_t result = sendProto(req, status, buffer, stream.bytes_written);
+        free(buffer);
+        return result;
     }
 
     template <typename T>
