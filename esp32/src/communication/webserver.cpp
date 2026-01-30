@@ -364,6 +364,7 @@ esp_err_t WebServer::sendOkProto(httpd_req_t* req) { return sendProto(req, 200, 
 
 esp_err_t WebServer::sendProto(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
     httpd_resp_set_status(req, status == 200   ? "200 OK"
+                               : status == 202 ? "202 Accepted"
                                : status == 400 ? "400 Bad Request"
                                : status == 404 ? "404 Not Found"
                                : status == 500 ? "500 Internal Server Error"
