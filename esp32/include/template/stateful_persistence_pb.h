@@ -46,15 +46,19 @@ class FSPersistencePB {
                 file.close();
 
                 if (bytesRead == fileSize) {
-                    T protoMsg = {};
+                    // Allocate on heap to avoid stack overflow with large proto messages
+                    T *protoMsg = new T();
+                    *protoMsg = {};
                     pb_istream_t stream = pb_istream_from_buffer(buffer, bytesRead);
 
-                    if (pb_decode(&stream, _msgDescriptor, &protoMsg)) {
+                    if (pb_decode(&stream, _msgDescriptor, protoMsg)) {
                         _statefulService->updateWithoutPropagation(
-                            [this, &protoMsg](T &state) { return _stateUpdater(protoMsg, state); });
+                            [this, protoMsg](T &state) { return _stateUpdater(*protoMsg, state); });
+                        delete protoMsg;
                         delete[] buffer;
                         return;
                     }
+                    delete protoMsg;
                 }
                 delete[] buffer;
             } else {
@@ -70,10 +74,13 @@ class FSPersistencePB {
         uint8_t *buffer = new uint8_t[_maxSize];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, _maxSize);
 
-        T protoMsg = {};
-        _statefulService->read([this, &protoMsg](const T &state) { _stateReader(state, protoMsg); });
+        // Allocate on heap to avoid stack overflow with large proto messages
+        T *protoMsg = new T();
+        *protoMsg = {};
+        _statefulService->read([this, protoMsg](const T &state) { _stateReader(state, *protoMsg); });
 
-        bool encodeSuccess = pb_encode(&stream, _msgDescriptor, &protoMsg);
+        bool encodeSuccess = pb_encode(&stream, _msgDescriptor, protoMsg);
+        delete protoMsg;
 
         if (!encodeSuccess) {
             delete[] buffer;
