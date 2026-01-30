@@ -104,9 +104,9 @@ void setupServer() {
     
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
-    PROTO_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
-    PROTO_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
-    PROTO_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
+    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
+    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
+    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
 #if EMBED_WEBAPP
     mountStaticAssets(server);
 #endif
