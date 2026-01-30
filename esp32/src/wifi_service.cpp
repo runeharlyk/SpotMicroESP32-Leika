@@ -47,15 +47,21 @@ esp_err_t WiFiService::handleScan(httpd_req_t *request) {
         WiFi.scanDelete();
         WiFi.scanNetworks(true);
     }
-    httpd_resp_set_status(request, "202 Accepted");
-    return httpd_resp_send(request, nullptr, 0);
+    // Return 202 with empty_message payload (no pointer fields to encode)
+    api_Response response = api_Response_init_zero;
+    response.status_code = 202;
+    response.which_payload = api_Response_empty_message_tag;
+    return WebServer::sendProto(request, 202, response, api_Response_fields);
 }
 
 esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     int numNetworks = WiFi.scanComplete();
     if (numNetworks == -1) {
-        httpd_resp_set_status(request, "202 Accepted");
-        return httpd_resp_send(request, nullptr, 0);
+        // Scan in progress - return 202 with empty_message payload
+        api_Response response = api_Response_init_zero;
+        response.status_code = 202;
+        response.which_payload = api_Response_empty_message_tag;
+        return WebServer::sendProto(request, 202, response, api_Response_fields);
     } else if (numNetworks < -1) {
         return handleScan(request);
     }
@@ -75,6 +81,7 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     }
 
     api_Response response = api_Response_init_zero;
+    response.status_code = 200;
     response.which_payload = api_Response_wifi_network_list_tag;
     response.payload.wifi_network_list.networks = networks;
     response.payload.wifi_network_list.networks_count = count;

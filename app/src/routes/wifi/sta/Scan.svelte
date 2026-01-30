@@ -39,19 +39,20 @@
 
     async function pollingResults() {
         const result = await api.get<ProtoResponse>('/api/wifi/networks')
-        if (result.isErr()) {
+        if (result.isErr() || !result.inner) {
             console.error(`Error occurred while fetching: `, result.inner)
             return false
         }
-        if (result.inner.wifiNetworkList) {
-            listOfNetworks = result.inner.wifiNetworkList.networks
-        }
-        scanActive = false
-        if (listOfNetworks.length) {
+        // Check if scan is complete (status 200 means we have results)
+        if (result.inner.statusCode === 200 && result.inner.wifiNetworkList) {
+            listOfNetworks = result.inner.wifiNetworkList.networks ?? []
+            scanActive = false
             clearInterval(pollingId)
             pollingId = 0
+            return listOfNetworks.length
         }
-        return listOfNetworks.length
+        // Still scanning (status 202)
+        return 0
     }
 
     onMount(() => {
