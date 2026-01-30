@@ -9,7 +9,14 @@
 #define ESP_FS LittleFS
 
 #define FS_CONFIG_DIRECTORY "/config"
-#define DEVICE_CONFIG_FILE "/config/peripheral.json"
+#define DEVICE_CONFIG_FILE "/config/peripheral.json"'
+#define CAMERA_SETTINGS_FILE "/config/cameraSettings.pb"
+#define AP_SETTINGS_FILE "/config/apSettings.pb"
+#define MDNS_SETTINGS_FILE "/config/mdnsSettings.pb"
+#define WIFI_SETTINGS_FILE "/config/wifiSettings.pb"
+#define PERIPHERAL_SETTINGS_FILE "/config/peripheralSettings.pb"
+#define SERVO_SETTINGS_FILE "/config/servoSettings.pb"
+
 
 namespace FileSystem {
 

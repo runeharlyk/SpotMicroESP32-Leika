@@ -12,8 +12,6 @@
 #include <template/stateful_proto_endpoint.h>
 #include <settings/wifi_settings.h>
 
-#define WIFI_SETTINGS_FILE "/config/wifiSettings.pb"
-
 class WiFiService : public StatefulService<WiFiSettings> {
   private:
     void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
