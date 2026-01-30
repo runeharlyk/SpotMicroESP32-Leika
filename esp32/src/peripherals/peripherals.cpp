@@ -77,6 +77,8 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
 #endif
 #if FT_ENABLED(USE_HMC5883)
     data.heading = _mag.getHeading();
+#elif FT_ENABLED(USE_MPU6050)
+    data.heading = _imu.getAngleZ();
 #endif
 #if FT_ENABLED(USE_BMP180)
     data.altitude = _bmp.getAltitude();
