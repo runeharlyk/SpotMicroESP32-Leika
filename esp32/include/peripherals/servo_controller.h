@@ -24,12 +24,12 @@ inline ServoSettings ServoSettings_defaults() {
     ServoSettings settings = {};
     settings.servos_count = 12;
     const api_Servo defaults[12] = {
-        {306, -1, 0, 2.2f, "Servo1"},   {306, 1, -45, 2.1055555f, "Servo2"},
-        {306, 1, 90, 1.96923f, "Servo3"}, {306, -1, 0, 2.2f, "Servo4"},
-        {306, -1, 45, 2.1055555f, "Servo5"}, {306, -1, -90, 1.96923f, "Servo6"},
-        {306, 1, 0, 2.2f, "Servo7"},   {306, 1, -45, 2.1055555f, "Servo8"},
-        {306, 1, 90, 1.96923f, "Servo9"}, {306, 1, 0, 2.2f, "Servo10"},
-        {306, -1, 45, 2.1055555f, "Servo11"}, {306, -1, -90, 1.96923f, "Servo12"}
+        {306, -1, 0, 2.0f, "Servo1"},   {306, 1, -45, 2.0f, "Servo2"},
+        {306, 1, 90, 2.0f, "Servo3"}, {306, -1, 0, 2.0f, "Servo4"},
+        {306, -1, 45, 2.0f, "Servo5"}, {306, -1, -90, 2.0f, "Servo6"},
+        {306, 1, 0, 2.0f, "Servo7"},   {306, 1, -45, 2.0f, "Servo8"},
+        {306, 1, 90, 2.0f, "Servo9"}, {306, 1, 0, 2.0f, "Servo10"},
+        {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}
     };
     for (int i = 0; i < 12; i++) {
         settings.servos[i] = defaults[i];
