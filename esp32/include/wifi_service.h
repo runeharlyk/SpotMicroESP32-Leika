@@ -3,7 +3,6 @@
 #include <esp_http_server.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <ArduinoJson.h>
 #include <string>
 
 #include <filesystem.h>
@@ -17,8 +16,6 @@
 
 class WiFiService : public StatefulService<WiFiSettings> {
   private:
-    static void getNetworks(JsonObject &root);
-    static void getNetworkStatus(JsonObject &root);
     void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
     void onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info);
     static void onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info);

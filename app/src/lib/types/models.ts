@@ -17,37 +17,6 @@ export enum MessageTopic {
     rssi = 'rssi'
 }
 
-export type WifiStatus = {
-    status: number
-    local_ip: number
-    mac_address: string
-    rssi: number
-    ssid: string
-    bssid: string
-    channel: number
-    subnet_mask: number
-    gateway_ip: number
-    dns_ip_1: number
-    dns_ip_2?: number
-}
-
-export type KnownNetworkItem = {
-    ssid: string
-    password: string
-    static_ip_config: boolean
-    local_ip?: number
-    subnet_mask?: number
-    gateway_ip?: number
-    dns_ip_1?: number
-    dns_ip_2?: number
-}
-
-export type WifiSettings = {
-    hostname: string
-    priority_RSSI: boolean
-    wifi_networks: KnownNetworkItem[]
-}
-
 export type vector = { x: number; y: number }
 
 export type GithubRelease = {
@@ -57,18 +26,6 @@ export type GithubRelease = {
         name: string
         browser_download_url: string
     }>
-}
-
-export type NetworkList = {
-    networks: NetworkItem[]
-}
-
-export type NetworkItem = {
-    rssi: number
-    ssid: string
-    bssid: string
-    channel: number
-    encryption_type: number
 }
 
 export type Rssi = {
