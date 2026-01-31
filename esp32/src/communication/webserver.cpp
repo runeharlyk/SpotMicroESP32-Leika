@@ -268,6 +268,15 @@ esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
     esp_err_t ret = httpd_ws_send_frame_async(server_, sockfd, &frame);
     xSemaphoreGive(wsMutex_);
+
+    if (ret != ESP_OK) {
+        if (httpd_ws_get_fd_info(server_, sockfd) != HTTPD_WS_CLIENT_WEBSOCKET) {
+        ESP_LOGW(TAG, "Removing disconnected client %d", sockfd);
+        removeWsClient(sockfd);
+            return ESP_ERR_INVALID_STATE;
+        } 
+    }
+
     return ret;
 }
 

@@ -343,7 +343,8 @@ export class FileSystemClient {
 
 			this.activeUploads.set(transferId, upload)
 
-			// Stream all chunks without waiting for ACKs
+			// Stream chunks one at a time, waiting for each to be sent
+			;(async () => {
 			for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
 				const offset = chunkIndex * chunkSize
 				const end = Math.min(offset + chunkSize, fileSize)
@@ -355,12 +356,12 @@ export class FileSystemClient {
 					data: chunkData
 				}
 
-				// Send chunk as fire-and-forget message
-				socket.emit(FSMessages.FSUploadData, uploadData)
+				// Wait for chunk to be sent before continuing
+				await socket.emit(FSMessages.FSUploadData, uploadData)
 
 				upload.chunksSent++
 
-				// Report progress
+				// Report progress after chunk is actually sent
 				if (onProgress) {
 					onProgress({
 						transferId,
@@ -375,6 +376,7 @@ export class FileSystemClient {
 
 			// All chunks sent - now wait for completion message from server
 			// The timeout will handle if server doesn't respond
+			})()
 		})
 	}
 
