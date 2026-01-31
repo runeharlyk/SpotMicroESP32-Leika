@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ESPmDNS.h>
+#include <mdns.h>
 #include <esp_http_server.h>
-#include <WiFi.h>
+#include <wifi/wifi_idf.h>
 #include <filesystem.h>
 #include <global.h>
 #include <esp_timer.h>

@@ -316,8 +316,7 @@ class MPU6050Driver {
             i += chunkSize;
             address += chunkSize;
 
-            if (address == 0 || address >= 256) {
-                address = 0;
+            if (address == 0) {
                 bank++;
                 setMemoryBank(bank);
             }

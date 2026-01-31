@@ -7,11 +7,11 @@ static esp_err_t web_send(httpd_req_t* req, const WebAsset& asset) {
     if (WWW_OPT.add_vary) httpd_resp_set_hdr(req, "Vary", "Accept-Encoding");
 
     char cc[64];
-    snprintf(cc, sizeof(cc), "public, immutable, max-age=%u", WWW_OPT.max_age);
+    snprintf(cc, sizeof(cc), "public, immutable, max-age=%lu", (unsigned long)WWW_OPT.max_age);
     httpd_resp_set_hdr(req, "Cache-Control", cc);
 
     char et[34];
-    snprintf(et, sizeof(et), "\"%08x\"", asset.etag);
+    snprintf(et, sizeof(et), "\"%08lx\"", (unsigned long)asset.etag);
     httpd_resp_set_hdr(req, "ETag", et);
 
     return httpd_resp_send(req, (const char*)asset.data, asset.len);

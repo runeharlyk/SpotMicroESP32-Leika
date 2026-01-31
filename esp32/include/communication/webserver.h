@@ -1,6 +1,13 @@
 #pragma once
 
+#ifndef CONFIG_HTTPD_WS_SUPPORT
+#define CONFIG_HTTPD_WS_SUPPORT 1
+#endif
+
 #include <esp_http_server.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <functional>
 #include <vector>
 #include <string>

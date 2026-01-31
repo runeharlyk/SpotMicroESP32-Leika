@@ -1,7 +1,6 @@
 #pragma once
 
 #include <esp_http_server.h>
-#include <WiFi.h>
 
 #include <features.h>
 #include <template/stateful_service.h>

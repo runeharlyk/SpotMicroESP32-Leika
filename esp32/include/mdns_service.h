@@ -1,7 +1,8 @@
 #pragma once
 
 #include <esp_http_server.h>
-#include <ESPmDNS.h>
+#include <ArduinoJson.h>
+#include <mdns.h>
 #include <template/stateful_service.h>
 #include <template/stateful_proto_endpoint.h>
 #include <template/stateful_persistence_pb.h>

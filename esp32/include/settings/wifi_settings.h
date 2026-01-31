@@ -1,6 +1,7 @@
 #pragma once
 
-#include <WiFi.h>
+#include <wifi/wifi_idf.h>
+#include <ArduinoJson.h>
 #include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <cstring>

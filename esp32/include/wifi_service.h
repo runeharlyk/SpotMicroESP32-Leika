@@ -1,8 +1,8 @@
 #pragma once
 
 #include <esp_http_server.h>
-#include <WiFi.h>
-#include <ESPmDNS.h>
+#include <wifi/wifi_idf.h>
+#include <mdns.h>
 #include <string>
 
 #include <filesystem.h>
@@ -12,11 +12,17 @@
 #include <template/stateful_proto_endpoint.h>
 #include <settings/wifi_settings.h>
 
+#define WIFI_EVENT_STA_DISCONNECTED_IDF WIFI_EVENT_STA_DISCONNECTED
+#define WIFI_EVENT_STA_STOP_IDF WIFI_EVENT_STA_STOP
+#define IP_EVENT_STA_GOT_IP_IDF 1000
+
 class WiFiService : public StatefulService<WiFiSettings> {
   private:
-    void onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
-    void onStationModeStop(WiFiEvent_t event, WiFiEventInfo_t info);
-    static void onStationModeGotIP(WiFiEvent_t event, WiFiEventInfo_t info);
+    static void getNetworks(JsonObject &root);
+    static void getNetworkStatus(JsonObject &root);
+    void onStationModeDisconnected(int32_t event, void *event_data);
+    void onStationModeStop(int32_t event, void *event_data);
+    static void onStationModeGotIP(int32_t event, void *event_data);
 
     FSPersistencePB<WiFiSettings> _persistence;
 

@@ -5,8 +5,10 @@
 #include <template/stateful_persistence_pb.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
-#include <WiFi.h>
-#include "esp_timer.h"
+#include <wifi/wifi_idf.h>
+#include <wifi/dns_server.h>
+#include <esp_timer.h>
+#include <string>
 
 class APService : public StatefulService<APSettings> {
   public:
@@ -28,8 +30,8 @@ class APService : public StatefulService<APSettings> {
     DNSServer *_dnsServer;
 
     volatile unsigned long _lastManaged;
-    volatile boolean _reconfigureAp;
-    volatile boolean _recoveryMode = false;
+    volatile bool _reconfigureAp;
+    volatile bool _recoveryMode = false;
 
     void reconfigureAP();
     void manageAP();

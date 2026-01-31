@@ -2,6 +2,8 @@
 
 #include <kinematics.h>
 #include <message_types.h>
+#include <utils/math_utils.h>
+#include <cstring>
 
 class MotionState {
   protected:
@@ -26,15 +28,15 @@ class MotionState {
     }
 
     void updateFeet(body_state_t& body_state, const float smoothing_factor = default_smoothing_factor) {
-        if (target_body_state.feet != body_state.feet) {
+        if (std::memcmp(target_body_state.feet, body_state.feet, sizeof(body_state.feet)) != 0) {
             body_state.updateFeet(target_body_state.feet);
         }
     }
 
   public:
     void updateImuOffsets(const float new_omega, const float new_psi) {
-        omega_offset = new_omega * RAD_TO_DEG;
-        psi_offset = new_psi * RAD_TO_DEG;
+        omega_offset = RAD_TO_DEG_F(new_omega);
+        psi_offset = RAD_TO_DEG_F(new_psi);
     }
     virtual ~MotionState() {}
 

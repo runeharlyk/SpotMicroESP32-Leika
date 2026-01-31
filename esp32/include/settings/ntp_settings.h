@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <template/state_result.h>
 #include <ArduinoJson.h>
 #include <string>

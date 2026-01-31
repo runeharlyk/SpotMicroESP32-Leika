@@ -10,15 +10,38 @@ APService::APService()
       _persistence(APSettings_read, APSettings_update, this,
                    AP_SETTINGS_FILE, api_APSettings_fields, api_APSettings_size,
                    APSettings_defaults()) {
+    : endpoint(APSettings::read, APSettings::update, this),
+      _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE),
+      _dnsServer(nullptr),
+      _lastManaged(0),
+      _reconfigureAp(false),
+      _recoveryMode(false) {
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
-APService::~APService() {}
+APService::~APService() {
+    if (_dnsServer) {
+        delete _dnsServer;
+        _dnsServer = nullptr;
+    }
+}
 
 void APService::begin() {
     _persistence.readFromFS();
 }
 
+void APService::status(JsonObject &root) {
+    root["status"] = getAPNetworkStatus();
+    root["ip_address"] = (uint32_t)(WiFi.softAPIP());
+    root["mac_address"] = WiFi.softAPmacAddress().c_str();
+    root["station_num"] = WiFi.softAPgetStationNum();
+}
+
+APNetworkStatus APService::getAPNetworkStatus() {
+    wifi_mode_t currentWiFiMode = WiFi.getMode();
+    bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
+    if (apActive && state().provisionMode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
+        return APNetworkStatus::LINGERING;
 esp_err_t APService::getStatusProto(httpd_req_t *request) {
     api_Response res = api_Response_init_zero;
     res.status_code = 200;
@@ -64,13 +87,13 @@ void APService::loop() {
 }
 
 void APService::manageAP() {
-    WiFiMode_t currentWiFiMode = WiFi.getMode();
-    if (state().provision_mode == AP_MODE_ALWAYS ||
-        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
-        if (_reconfigureAp || currentWiFiMode == WIFI_OFF || currentWiFiMode == WIFI_STA) {
+    wifi_mode_t currentWiFiMode = WiFi.getMode();
+    if (state().provisionMode == AP_MODE_ALWAYS ||
+        (state().provisionMode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
+        if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }
-    } else if ((currentWiFiMode == WIFI_AP || currentWiFiMode == WIFI_AP_STA) &&
+    } else if ((currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA) &&
                (_reconfigureAp || !WiFi.softAPgetStationNum())) {
         stopAP();
     }
@@ -82,7 +105,7 @@ void APService::startAP() {
     WiFi.softAPConfig(IPAddress(state().local_ip), IPAddress(state().gateway_ip), IPAddress(state().subnet_mask));
     WiFi.softAP(state().ssid, state().password, state().channel, state().ssid_hidden, state().max_clients);
 #if CONFIG_IDF_TARGET_ESP32C3
-    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    WiFi.setTxPower(8);
 #endif
     if (!_dnsServer) {
         IPAddress apIp = WiFi.softAPIP();
@@ -103,8 +126,4 @@ void APService::stopAP() {
     WiFi.softAPdisconnect(true);
 }
 
-void APService::handleDNS() {
-    if (_dnsServer) {
-        _dnsServer->processNextRequest();
-    }
-}
+void APService::handleDNS() {}

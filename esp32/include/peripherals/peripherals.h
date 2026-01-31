@@ -12,7 +12,9 @@
 
 #include <list>
 
+#if FT_ENABLED(USE_USS)
 #include <NewPing.h>
+#endif
 #include <peripherals/i2c_bus.h>
 #include <peripherals/imu.h>
 #include <peripherals/magnetometer.h>

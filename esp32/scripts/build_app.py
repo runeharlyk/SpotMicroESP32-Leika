@@ -114,7 +114,7 @@ def write_header():
 
     with open(output_file, "w", newline="\n") as f:
         f.write("#pragma once\n")
-        f.write("#include <Arduino.h>\n\n")
+        f.write("#include <compat/pgmspace.h>\n\n")
         f.write(
             "struct WebAsset { const char* uri; const char* mime; const uint8_t* data; uint32_t len; uint32_t etag; uint8_t gz; };\n")
         f.write(

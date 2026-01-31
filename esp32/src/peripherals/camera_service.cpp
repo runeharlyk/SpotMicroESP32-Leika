@@ -1,5 +1,6 @@
 #include <peripherals/camera_service.h>
 #include <communication/webserver.h>
+#include <esp_heap_caps.h>
 
 namespace Camera {
 
@@ -66,7 +67,7 @@ esp_err_t CameraService::begin() {
     camera_config.xclk_freq_hz = 20000000;
     camera_config.pixel_format = PIXFORMAT_JPEG;
 
-    if (psramFound()) {
+    if (heap_caps_get_total_size(MALLOC_CAP_SPIRAM) > 0) {
         camera_config.frame_size = FRAMESIZE_SVGA;
         camera_config.jpeg_quality = 10;
         camera_config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -78,7 +79,7 @@ esp_err_t CameraService::begin() {
         camera_config.fb_count = 1;
     }
 
-    log_i("Initializing camera");
+    ESP_LOGI(TAG, "Initializing camera");
     esp_err_t err = esp_camera_init(&camera_config);
     if (err == ESP_OK)
         ESP_LOGI(TAG, "Camera probe successful");
