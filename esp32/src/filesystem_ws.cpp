@@ -276,7 +276,7 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u", path.c_str(), fileSize, totalChunks, transferId);
 
     while (sendNextDownloadChunk(transferId)) {
-        vTaskDelay(pdMS_TO_TICKS(5));  // Give network time to send (5 ms)
+        taskYIELD();
     }
 }
 
