@@ -17,25 +17,6 @@
 #define IP_EVENT_STA_GOT_IP_IDF 1000
 
 class WiFiService : public StatefulService<WiFiSettings> {
-  private:
-    static void getNetworks(JsonObject &root);
-    static void getNetworkStatus(JsonObject &root);
-    void onStationModeDisconnected(int32_t event, void *event_data);
-    void onStationModeStop(int32_t event, void *event_data);
-    static void onStationModeGotIP(int32_t event, void *event_data);
-
-    FSPersistencePB<WiFiSettings> _persistence;
-
-    void reconfigureWiFiConnection();
-    void manageSTA();
-    void connectToWiFi();
-    void configureNetwork(WiFiNetwork &network);
-
-    unsigned long _lastConnectionAttempt;
-    bool _stopping;
-
-    constexpr static uint16_t reconnectDelay {10000};
-
   public:
     WiFiService();
     ~WiFiService();
@@ -52,4 +33,21 @@ class WiFiService : public StatefulService<WiFiSettings> {
     static esp_err_t getNetworkStatus(httpd_req_t *request);
 
     StatefulProtoEndpoint<WiFiSettings, api_WifiSettings> protoEndpoint;
+
+  private:
+    void onStationModeDisconnected(int32_t event, void *event_data);
+    void onStationModeStop(int32_t event, void *event_data);
+    static void onStationModeGotIP(int32_t event, void *event_data);
+
+    FSPersistencePB<WiFiSettings> _persistence;
+
+    void reconfigureWiFiConnection();
+    void manageSTA();
+    void connectToWiFi();
+    void configureNetwork(WiFiNetwork &network);
+
+    unsigned long _lastConnectionAttempt;
+    bool _stopping;
+
+    constexpr static uint16_t reconnectDelay {10000};
 };
