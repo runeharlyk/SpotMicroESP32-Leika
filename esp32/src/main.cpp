@@ -42,7 +42,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config(50 + WWW_ASSETS_COUNT, 32768);
+    server.config(50 + WWW_ASSETS_COUNT, 16384);
     server.listen(80);
 
     server.on("/api/system/reset", HTTP_POST,
@@ -107,8 +107,10 @@ void setupServer() {
     STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
     STAITC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
     STAITC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
+    wsSocket.begin();
 #if EMBED_WEBAPP
     mountStaticAssets(server);
+    mountSpaFallback(server);
 #endif
     server.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
         httpd_resp_set_status(request, "200 OK");
@@ -286,8 +288,6 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 #endif
 
     setupServer();
-
-    wsSocket.begin();
     setupEventSocket();
 
     ESP_LOGI("main", "Service task started");

@@ -184,6 +184,7 @@ bool WiFiClass::begin(const char* ssid, const char* password, int32_t channel, c
     wifi_mode_t currentMode = getMode();
     if (currentMode == WIFI_MODE_NULL || currentMode == WIFI_MODE_AP) {
         mode(currentMode == WIFI_MODE_AP ? WIFI_MODE_APSTA : WIFI_MODE_STA);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
     wifi_config_t wifi_config = {};
@@ -370,6 +371,7 @@ int16_t WiFiClass::scanNetworks(bool async) {
     wifi_mode_t currentMode = getMode();
     if (currentMode == WIFI_MODE_NULL || currentMode == WIFI_MODE_AP) {
         mode(currentMode == WIFI_MODE_AP ? WIFI_MODE_APSTA : WIFI_MODE_STA);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
     _scanStatus = -1;
