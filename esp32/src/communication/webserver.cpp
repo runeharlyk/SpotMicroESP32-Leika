@@ -278,7 +278,7 @@ esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
 }
 
 esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {
-    return send(req, status, (uint8_t*) message, strlen(message));
+    return send(req, status, (uint8_t*)message, strlen(message));
 }
 
 esp_err_t WebServer::sendOk(httpd_req_t* req) { return send(req, 200, nullptr, 0); }

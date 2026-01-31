@@ -1,7 +1,6 @@
 #pragma once
 
 #include <esp_http_server.h>
-#include <ArduinoJson.h>
 #include <esp_littlefs.h>
 #include <esp_vfs.h>
 #include <dirent.h>
@@ -12,40 +11,28 @@
 
 #define MOUNT_POINT "/littlefs"
 
-#define FS_CONFIG_DIRECTORY "/config"
-#define DEVICE_CONFIG_FILE "/config/peripheral.json"
-#define CAMERA_SETTINGS_FILE "/config/cameraSettings.pb"
-#define AP_SETTINGS_FILE "/config/apSettings.pb"
-#define MDNS_SETTINGS_FILE "/config/mdnsSettings.pb"
-#define WIFI_SETTINGS_FILE "/config/wifiSettings.pb"
-#define PERIPHERAL_SETTINGS_FILE "/config/peripheralSettings.pb"
-#define SERVO_SETTINGS_FILE "/config/servoSettings.pb"
-
-
-namespace FileSystem {
-
-void listFilesProto(const std::string &directory, api_FileEntry *entry);
-std::string listFiles(const std::string &directory, bool isRoot = true);
-bool deleteFile(const char *filename);
-bool editFile(const char *filename, const uint8_t *content, size_t size);
-#define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.json"
-#define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.json"
 #define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
-#define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.json"
-#define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.json"
-#define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.json"
-#define MDNS_SETTINGS_FILE MOUNT_POINT "/config/mdnsSettings.json"
+#define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.pb"
+#define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.pb"
+#define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.pb"
+#define MDNS_SETTINGS_FILE MOUNT_POINT "/config/mdnsSettings.pb"
+#define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.pb"
+#define PERIPHERAL_SETTINGS_FILE MOUNT_POINT "/config/peripheralSettings.pb"
+#define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.pb"
 
 namespace FileSystem {
 
 bool init();
 
+void listFilesProto(const std::string &directory, api_FileEntry *entry);
 std::string listFiles(const std::string &directory, bool isRoot = true);
 bool deleteFile(const char *filename);
+bool editFile(const char *filename, const uint8_t *content, size_t size);
 bool editFile(const char *filename, const char *content);
 bool fileExists(const char *filename);
 std::string readFile(const char *filename);
 bool writeFile(const char *filename, const char *content);
+bool writeFile(const char *filename, const uint8_t *content, size_t size);
 bool mkdirRecursive(const char *path);
 
 esp_err_t getFilesProto(httpd_req_t *request);

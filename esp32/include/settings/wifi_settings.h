@@ -1,7 +1,6 @@
 #pragma once
 
 #include <wifi/wifi_idf.h>
-#include <ArduinoJson.h>
 #include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <cstring>
@@ -50,9 +49,7 @@ inline WiFiSettings WiFiSettings_defaults() {
     return settings;
 }
 
-inline void WiFiSettings_read(const WiFiSettings &settings, WiFiSettings &proto) {
-    proto = settings;
-}
+inline void WiFiSettings_read(const WiFiSettings &settings, WiFiSettings &proto) { proto = settings; }
 
 inline StateUpdateResult WiFiSettings_update(const WiFiSettings &proto, WiFiSettings &settings) {
     settings = proto;

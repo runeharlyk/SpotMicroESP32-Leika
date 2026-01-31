@@ -8,7 +8,7 @@
 #include <esp_sleep.h>
 #include <soc/soc.h>
 
-#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
 #include <driver/temperature_sensor.h>
 
 static float temperatureRead() {
@@ -16,7 +16,11 @@ static float temperatureRead() {
     static bool initialized = false;
 
     if (!initialized) {
-        temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
+        temperature_sensor_config_t temp_sensor_config = {
+            .range_min = -10,
+            .range_max = 80,
+            .clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
+        };
         if (temperature_sensor_install(&temp_sensor_config, &temp_sensor) == ESP_OK) {
             temperature_sensor_enable(temp_sensor);
             initialized = true;

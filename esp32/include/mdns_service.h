@@ -1,7 +1,6 @@
 #pragma once
 
 #include <esp_http_server.h>
-#include <ArduinoJson.h>
 #include <mdns.h>
 #include <template/stateful_service.h>
 #include <template/stateful_proto_endpoint.h>
@@ -10,15 +9,6 @@
 #include <utils/timing.h>
 
 class MDNSService : public StatefulService<MDNSSettings> {
-  private:
-    FSPersistencePB<MDNSSettings> _persistence;
-    bool _started {false};
-
-    void reconfigureMDNS();
-    void startMDNS();
-    void stopMDNS();
-    void addServices();
-
   public:
     MDNSService();
     ~MDNSService();
@@ -29,4 +19,13 @@ class MDNSService : public StatefulService<MDNSSettings> {
     esp_err_t queryServices(httpd_req_t *request, api_Request *protoReq);
 
     StatefulProtoEndpoint<MDNSSettings, api_MDNSSettings> protoEndpoint;
+
+  private:
+    FSPersistencePB<MDNSSettings> _persistence;
+    bool _started {false};
+
+    void reconfigureMDNS();
+    void startMDNS();
+    void stopMDNS();
+    void addServices();
 };

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ArduinoJson.h>
-
 #include <list>
 #include <functional>
 #include <freertos/FreeRTOS.h>
@@ -10,19 +8,13 @@
 
 #include <template/state_result.h>
 
-template <typename T>
-using JsonStateUpdater = std::function<StateUpdateResult(JsonVariant &root, T &settings)>;
-
-template <typename T>
-using JsonStateReader = std::function<void(T &settings, JsonVariant &root)>;
-
 using HandlerId = size_t;
 using StateUpdateCallback = std::function<void(const std::string &originId)>;
 using StateHookCallback = std::function<void(const std::string &originId, StateUpdateResult &result)>;
 
 class HandlerBase {
   protected:
-    static inline HandlerId nextId_ = 1; // Start from 1, 0 is invalid
+    static inline HandlerId nextId_ = 1;
     HandlerId id_;
     bool allowRemove_;
 
@@ -98,31 +90,16 @@ class StatefulService {
         return result;
     }
 
-    StateUpdateResult update(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater, const std::string &originId) {
-        lock();
-        StateUpdateResult result = stateUpdater(jsonObject, state_);
-        unlock();
-        notifyStateChange(originId, result);
-        return result;
-    }
-
-    StateUpdateResult updateWithoutPropagation(JsonVariant &jsonObject, JsonStateUpdater<T> stateUpdater) {
-        lock();
-        StateUpdateResult result = stateUpdater(jsonObject, state_);
-        unlock();
-        return result;
-    }
-
     void read(std::function<void(T &)> stateReader) {
         lock();
         stateReader(state_);
         unlock();
     }
 
-    void read(JsonVariant &jsonObject, JsonStateReader<T> stateReader) {
-        lock();
-        stateReader(state_, jsonObject);
-        unlock();
+    void read(std::function<void(const T &)> stateReader) const {
+        const_cast<StatefulService *>(this)->lock();
+        stateReader(state_);
+        const_cast<StatefulService *>(this)->unlock();
     }
 
     void callUpdateHandlers(const std::string &originId) {

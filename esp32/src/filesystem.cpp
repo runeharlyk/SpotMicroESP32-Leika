@@ -4,13 +4,14 @@
 #include <cstring>
 #include "utils/string_utils.hpp"
 #include <esp_log.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
 
 static const char *TAG = "FileSystem";
 
 namespace FileSystem {
 
-// Storage for dynamically allocated FileEntry arrays
-static std::vector<api_FileEntry*> allocatedEntries;
+static std::vector<api_FileEntry *> allocatedEntries;
 
 static void freeAllocatedEntries() {
     for (auto ptr : allocatedEntries) {
@@ -19,67 +20,81 @@ static void freeAllocatedEntries() {
     allocatedEntries.clear();
 }
 
-void listFilesProto(const std::string &directory, api_FileEntry *entry) {
-    File root = ESP_FS.open(directory.find("/") == 0 ? directory.c_str() : ("/" + directory).c_str());
-    if (!root.isDirectory()) {
+static void listFilesProtoRecursive(const std::string &directory, api_FileEntry *entry) {
+    DIR *dir = opendir(directory.c_str());
+    if (!dir) {
         entry->children_count = 0;
         entry->children = nullptr;
         return;
     }
 
-    // First pass: count children
-    std::vector<File> files;
-    File file = root.openNextFile();
-    while (file) {
-        files.push_back(file);
-        file = root.openNextFile();
-    }
+    std::vector<std::string> names;
+    std::vector<bool> isDirs;
+    std::vector<size_t> sizes;
 
-    if (files.empty()) {
+    struct dirent *d;
+    while ((d = readdir(dir)) != nullptr) {
+        if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0) continue;
+        std::string fullPath = directory + "/" + d->d_name;
+        struct stat st;
+        if (stat(fullPath.c_str(), &st) == 0) {
+            names.push_back(d->d_name);
+            isDirs.push_back(S_ISDIR(st.st_mode));
+            sizes.push_back(st.st_size);
+        }
+    }
+    closedir(dir);
+
+    if (names.empty()) {
         entry->children_count = 0;
         entry->children = nullptr;
         return;
     }
 
-    // Allocate children array
-    entry->children_count = files.size();
-    entry->children = new api_FileEntry[files.size()];
+    entry->children_count = names.size();
+    entry->children = new api_FileEntry[names.size()];
     allocatedEntries.push_back(entry->children);
 
-    // Fill children
-    for (size_t i = 0; i < files.size(); i++) {
+    for (size_t i = 0; i < names.size(); i++) {
         api_FileEntry &child = entry->children[i];
         memset(&child, 0, sizeof(child));
 
-        std::string name = std::string(files[i].name());
-        strncpy(child.name, name.c_str(), sizeof(child.name) - 1);
+        strncpy(child.name, names[i].c_str(), sizeof(child.name) - 1);
         child.name[sizeof(child.name) - 1] = '\0';
 
-        child.is_directory = files[i].isDirectory();
+        child.is_directory = isDirs[i];
         if (child.is_directory) {
-            listFilesProto(name, &child);
+            std::string childPath = directory + "/" + names[i];
+            listFilesProtoRecursive(childPath, &child);
         } else {
-            child.size = files[i].size();
+            child.size = sizes[i];
             child.children_count = 0;
             child.children = nullptr;
         }
     }
 }
 
+void listFilesProto(const std::string &directory, api_FileEntry *entry) {
+    std::string path = directory;
+    if (path.empty() || path[0] != '/') {
+        path = "/" + directory;
+    }
+    std::string fullPath = std::string(MOUNT_POINT) + path;
+    listFilesProtoRecursive(fullPath, entry);
+}
+
 esp_err_t getFilesProto(httpd_req_t *request) {
-    freeAllocatedEntries();  // Clean up any previous allocations
+    freeAllocatedEntries();
 
     api_Response res = api_Response_init_zero;
     res.status_code = 200;
     res.which_payload = api_Response_file_list_tag;
 
-    // Create root entry
     api_FileEntry rootEntry = api_FileEntry_init_zero;
     strncpy(rootEntry.name, "root", sizeof(rootEntry.name) - 1);
     rootEntry.is_directory = true;
-    listFilesProto("/", &rootEntry);
+    listFilesProtoRecursive(MOUNT_POINT, &rootEntry);
 
-    // Allocate entries array for FileList
     res.payload.file_list.entries_count = 1;
     res.payload.file_list.entries = new api_FileEntry[1];
     allocatedEntries.push_back(res.payload.file_list.entries);
@@ -87,8 +102,10 @@ esp_err_t getFilesProto(httpd_req_t *request) {
 
     esp_err_t result = WebServer::send(request, 200, res, api_Response_fields);
 
-    freeAllocatedEntries();  // Clean up after sending
+    freeAllocatedEntries();
     return result;
+}
+
 bool init() {
     esp_vfs_littlefs_conf_t conf = {
         .base_path = MOUNT_POINT,
@@ -157,6 +174,19 @@ bool writeFile(const char *filename, const char *content) {
     return written == len;
 }
 
+bool writeFile(const char *filename, const uint8_t *content, size_t size) {
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        ESP_LOGE(TAG, "Failed to open file for writing: %s", filename);
+        return false;
+    }
+
+    size_t written = fwrite(content, 1, size, f);
+    fclose(f);
+
+    return written == size;
+}
+
 bool mkdirRecursive(const char *path) {
     char tmp[256];
     char *p = nullptr;
@@ -211,8 +241,7 @@ esp_err_t getConfigFile(httpd_req_t *request) {
     if (content.empty()) {
         return WebServer::sendError(request, 500, "Failed to read file");
     }
-    String content = file.readString();
-    file.close();
+
     if (ends_with(path, ".pb")) {
         httpd_resp_set_type(request, "application/x-protobuf");
     } else if (ends_with(path, ".json")) {
@@ -224,48 +253,30 @@ esp_err_t getConfigFile(httpd_req_t *request) {
 }
 
 esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
-    ESP_LOGI(TAG, "Deleting file: %s", req.path);
+    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    ESP_LOGI(TAG, "Deleting file: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
-    if (deleteFile(req.path)) {
+    if (deleteFile(fullPath.c_str())) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
         return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Delete failed");
-
-    httpd_resp_set_type(request, "application/json");
-    return httpd_resp_send(request, content.c_str(), content.length());
-}
-
-esp_err_t handleDelete(httpd_req_t *request, JsonVariant &json) {
-    if (json.is<JsonObject>()) {
-        const char *filename = json["file"].as<const char *>();
-        std::string fullPath = std::string(MOUNT_POINT) + filename;
-        ESP_LOGI(TAG, "Deleting file: %s", fullPath.c_str());
-        return deleteFile(fullPath.c_str()) ? WebServer::sendOk(request)
-                                            : WebServer::sendError(request, 500, "Delete failed");
     }
 }
 
 esp_err_t handleEdit(httpd_req_t *request, const api_FileEditRequest &req) {
-    ESP_LOGI(TAG, "Editing file: %s", req.path);
+    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    ESP_LOGI(TAG, "Editing file: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
-    if (editFile(req.path, req.content->bytes, req.content->size)) {
+    if (editFile(fullPath.c_str(), req.content->bytes, req.content->size)) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
         return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Edit failed");
-esp_err_t handleEdit(httpd_req_t *request, JsonVariant &json) {
-    if (json.is<JsonObject>()) {
-        const char *filename = json["file"].as<const char *>();
-        const char *content = json["content"].as<const char *>();
-        std::string fullPath = std::string(MOUNT_POINT) + filename;
-        ESP_LOGI(TAG, "Editing file: %s", fullPath.c_str());
-        return editFile(fullPath.c_str(), content) ? WebServer::sendOk(request)
-                                                   : WebServer::sendError(request, 500, "Edit failed");
     }
 }
 
@@ -310,34 +321,22 @@ std::string listFiles(const std::string &directory, bool isRoot) {
     return output;
 }
 
-bool editFile(const char *filename, const uint8_t *content, size_t size) {
-    File file = ESP_FS.open(filename, FILE_WRITE);
-    if (!file) return false;
+bool editFile(const char *filename, const uint8_t *content, size_t size) { return writeFile(filename, content, size); }
 
-    file.write(content, size);
-    file.close();
-    return true;
-}
+bool editFile(const char *filename, const char *content) { return writeFile(filename, content); }
 
 esp_err_t mkdir(httpd_req_t *request, const api_FileMkdirRequest &req) {
-    ESP_LOGI(TAG, "Creating directory: %s", req.path);
+    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    ESP_LOGI(TAG, "Creating directory: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
-    if (ESP_FS.mkdir(req.path)) {
+    if (mkdirRecursive(fullPath.c_str())) {
         res.status_code = 200;
         res.which_payload = api_Response_empty_message_tag;
         return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "mkdir failed");
     }
-bool editFile(const char *filename, const char *content) { return writeFile(filename, content); }
-
-esp_err_t mkdir(httpd_req_t *request, JsonVariant &json) {
-    const char *path = json["path"].as<const char *>();
-    std::string fullPath = std::string(MOUNT_POINT) + path;
-    ESP_LOGI(TAG, "Creating directory: %s", fullPath.c_str());
-    return mkdirRecursive(fullPath.c_str()) ? WebServer::sendOk(request)
-                                            : WebServer::sendError(request, 500, "mkdir failed");
 }
 
 } // namespace FileSystem

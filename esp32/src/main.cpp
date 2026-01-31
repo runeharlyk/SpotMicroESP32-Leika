@@ -76,35 +76,32 @@ void setupServer() {
     server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
     server.on("/api/wifi/sta/status", HTTP_GET,
               [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
-	
+
     server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
     server.on("/api/ap/settings", HTTP_GET,
-                    [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.on("/api/ap/settings", HTTP_POST,
-                         [&](httpd_req_t *request, api_Request *protoReq) {
-                             return apService.protoEndpoint.handleStateUpdate(request, protoReq);
-                         });
-    
+              [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
+    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return apService.protoEndpoint.handleStateUpdate(request, protoReq);
+    });
+
     server.on("/api/peripherals/settings", HTTP_GET,
               [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
-    server.on("/api/peripherals/settings", HTTP_POST,
-                   [&](httpd_req_t *request, api_Request *protoReq) {
-                       return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
-                   });
+    server.on("/api/peripherals/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
+    });
 
 #if FT_ENABLED(USE_MDNS)
-    server.on("/api/mdns/settings", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
-    server.on("/api/mdns/settings", HTTP_POST,
-                   [&](httpd_req_t *request, api_Request *protoReq) {
-                       return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
-                   });
+    server.on("/api/mdns/settings", HTTP_GET,
+              [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
+    server.on("/api/mdns/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
+    });
     server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    server.on("/api/mdns/query", HTTP_POST,
-                   [&](httpd_req_t *request, api_Request *protoReq) {
-                       return mdnsService.queryServices(request, protoReq);
-                   });
+    server.on("/api/mdns/query", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
+        return mdnsService.queryServices(request, protoReq);
+    });
 #endif
-    
+
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
     STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
@@ -277,6 +274,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 
+    WiFi.init();
     wifiService.begin();
     mdns_init();
     mdns_hostname_set(APP_NAME);

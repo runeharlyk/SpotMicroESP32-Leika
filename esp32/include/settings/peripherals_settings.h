@@ -7,10 +7,10 @@
  * I2C software connection
  */
 #ifndef SDA_PIN
-#define SDA_PIN SDA
+#define SDA_PIN 21
 #endif
 #ifndef SCL_PIN
-#define SCL_PIN SCL
+#define SCL_PIN 22
 #endif
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 1000000UL
@@ -35,7 +35,8 @@ inline void PeripheralsConfiguration_read(const PeripheralsConfiguration& settin
     proto = settings;
 }
 
-inline StateUpdateResult PeripheralsConfiguration_update(const PeripheralsConfiguration& proto, PeripheralsConfiguration& settings) {
+inline StateUpdateResult PeripheralsConfiguration_update(const PeripheralsConfiguration& proto,
+                                                         PeripheralsConfiguration& settings) {
     settings = proto;
     return StateUpdateResult::CHANGED;
 }

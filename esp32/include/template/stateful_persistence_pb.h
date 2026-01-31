@@ -1,29 +1,24 @@
 #pragma once
 
-#include <FS.h>
 #include <template/stateful_service.h>
 #include <template/state_result.h>
 #include <filesystem.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
+#include <cstdio>
+#include <sys/stat.h>
+#include <esp_log.h>
 
-/**
- * Protobuf-based filesystem persistence for StatefulService.
- *
- * @tparam T The state type (should be a nanopb-generated struct like api_APSettings)
- */
+static const char *TAG_PERSISTENCE = "FSPersistencePB";
+
 template <class T>
 class FSPersistencePB {
   public:
-    // Formats are passed as referenced const (local variable) we want to read from, and a reference (proto) we write to
-    using ProtoStateReader = std::function<void(const T&, T&)>;
-    // Formats are passed as referenced const (new object) we read from, and a reference to the local variable we  write to
-    using ProtoStateUpdater = std::function<StateUpdateResult(const T&, T&)>;
+    using ProtoStateReader = std::function<void(const T &, T &)>;
+    using ProtoStateUpdater = std::function<StateUpdateResult(const T &, T &)>;
 
-    FSPersistencePB(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater,
-                    StatefulService<T> *statefulService, const char *filePath,
-                    const pb_msgdesc_t *msgDescriptor, size_t maxSize,
-                    const T &defaultState)
+    FSPersistencePB(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater, StatefulService<T> *statefulService,
+                    const char *filePath, const pb_msgdesc_t *msgDescriptor, size_t maxSize, const T &defaultState)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
@@ -36,17 +31,19 @@ class FSPersistencePB {
     }
 
     void readFromFS() {
-        File file = _fs->open(_filePath, "r");
+        FILE *file = fopen(_filePath, "rb");
 
         if (file) {
-            size_t fileSize = file.size();
+            fseek(file, 0, SEEK_END);
+            size_t fileSize = ftell(file);
+            fseek(file, 0, SEEK_SET);
+
             if (fileSize > 0 && fileSize <= _maxSize) {
                 uint8_t *buffer = new uint8_t[fileSize];
-                size_t bytesRead = file.read(buffer, fileSize);
-                file.close();
+                size_t bytesRead = fread(buffer, 1, fileSize, file);
+                fclose(file);
 
                 if (bytesRead == fileSize) {
-                    // Allocate on heap to avoid stack overflow with large proto messages
                     T *protoMsg = new T();
                     *protoMsg = {};
                     pb_istream_t stream = pb_istream_from_buffer(buffer, bytesRead);
@@ -62,7 +59,7 @@ class FSPersistencePB {
                 }
                 delete[] buffer;
             } else {
-                file.close();
+                fclose(file);
             }
         }
 
@@ -74,7 +71,6 @@ class FSPersistencePB {
         uint8_t *buffer = new uint8_t[_maxSize];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, _maxSize);
 
-        // Allocate on heap to avoid stack overflow with large proto messages
         T *protoMsg = new T();
         *protoMsg = {};
         _statefulService->read([this, protoMsg](const T &state) { _stateReader(state, *protoMsg); });
@@ -89,14 +85,15 @@ class FSPersistencePB {
 
         mkdirs();
 
-        File file = _fs->open(_filePath, "w");
+        FILE *file = fopen(_filePath, "wb");
         if (!file) {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to open file for writing: %s", _filePath);
             delete[] buffer;
             return false;
         }
 
-        size_t written = file.write(buffer, stream.bytes_written);
-        file.close();
+        size_t written = fwrite(buffer, 1, stream.bytes_written, file);
+        fclose(file);
         delete[] buffer;
 
         return written == stream.bytes_written;
@@ -111,8 +108,7 @@ class FSPersistencePB {
 
     void enableUpdateHandler() {
         if (!_updateHandlerId) {
-            _updateHandlerId = _statefulService->addUpdateHandler(
-                [&](const std::string &originId) { writeToFS(); });
+            _updateHandlerId = _statefulService->addUpdateHandler([&](const std::string &originId) { writeToFS(); });
         }
     }
 
@@ -120,7 +116,6 @@ class FSPersistencePB {
     ProtoStateReader _stateReader;
     ProtoStateUpdater _stateUpdater;
     StatefulService<T> *_statefulService;
-    FS *_fs{&ESP_FS};
     const char *_filePath;
     const pb_msgdesc_t *_msgDescriptor;
     size_t _maxSize;
@@ -132,13 +127,15 @@ class FSPersistencePB {
         size_t index = 0;
         while ((index = path.find('/', index + 1)) != std::string::npos) {
             std::string segment = path.substr(0, index);
-            if (!_fs->exists(segment.c_str())) _fs->mkdir(segment.c_str());
+            struct stat st;
+            if (stat(segment.c_str(), &st) != 0) {
+                FileSystem::mkdirRecursive(segment.c_str());
+            }
         }
     }
 
   protected:
     void applyDefaults() {
-        _statefulService->updateWithoutPropagation(
-            [this](T &state) { return _stateUpdater(_defaultState, state); });
+        _statefulService->updateWithoutPropagation([this](T &state) { return _stateUpdater(_defaultState, state); });
     }
 };

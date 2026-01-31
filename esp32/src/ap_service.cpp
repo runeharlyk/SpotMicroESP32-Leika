@@ -4,14 +4,10 @@
 static const char *TAG = "APService";
 
 APService::APService()
-    : protoEndpoint(APSettings_read, APSettings_update, this,
-                    API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
+    : protoEndpoint(APSettings_read, APSettings_update, this, API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
                     API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
-      _persistence(APSettings_read, APSettings_update, this,
-                   AP_SETTINGS_FILE, api_APSettings_fields, api_APSettings_size,
-                   APSettings_defaults()) {
-    : endpoint(APSettings::read, APSettings::update, this),
-      _persistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE),
+      _persistence(APSettings_read, APSettings_update, this, AP_SETTINGS_FILE, api_APSettings_fields,
+                   api_APSettings_size, APSettings_defaults()),
       _dnsServer(nullptr),
       _lastManaged(0),
       _reconfigureAp(false),
@@ -26,22 +22,8 @@ APService::~APService() {
     }
 }
 
-void APService::begin() {
-    _persistence.readFromFS();
-}
+void APService::begin() { _persistence.readFromFS(); }
 
-void APService::status(JsonObject &root) {
-    root["status"] = getAPNetworkStatus();
-    root["ip_address"] = (uint32_t)(WiFi.softAPIP());
-    root["mac_address"] = WiFi.softAPmacAddress().c_str();
-    root["station_num"] = WiFi.softAPgetStationNum();
-}
-
-APNetworkStatus APService::getAPNetworkStatus() {
-    wifi_mode_t currentWiFiMode = WiFi.getMode();
-    bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
-    if (apActive && state().provisionMode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
-        return APNetworkStatus::LINGERING;
 esp_err_t APService::getStatusProto(httpd_req_t *request) {
     api_Response res = api_Response_init_zero;
     res.status_code = 200;
@@ -53,15 +35,15 @@ esp_err_t APService::getStatusProto(httpd_req_t *request) {
 void APService::statusProto(api_APStatus &proto) {
     proto.status = getAPNetworkStatus();
     proto.ip_address = static_cast<uint32_t>(WiFi.softAPIP());
-    String mac = WiFi.softAPmacAddress();
+    std::string mac = WiFi.softAPmacAddress();
     strncpy(proto.mac_address, mac.c_str(), sizeof(proto.mac_address) - 1);
     proto.mac_address[sizeof(proto.mac_address) - 1] = '\0';
     proto.station_num = WiFi.softAPgetStationNum();
 }
 
 APNetworkStatus APService::getAPNetworkStatus() {
-    WiFiMode_t currentWiFiMode = WiFi.getMode();
-    bool apActive = currentWiFiMode == WIFI_AP || currentWiFiMode == WIFI_AP_STA;
+    wifi_mode_t currentWiFiMode = WiFi.getMode();
+    bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
     if (apActive && state().provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
         return LINGERING;
     }
@@ -88,8 +70,8 @@ void APService::loop() {
 
 void APService::manageAP() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
-    if (state().provisionMode == AP_MODE_ALWAYS ||
-        (state().provisionMode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
+    if (state().provision_mode == AP_MODE_ALWAYS ||
+        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
         if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }
