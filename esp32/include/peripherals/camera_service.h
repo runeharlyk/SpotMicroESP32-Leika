@@ -5,7 +5,7 @@
 #include <features.h>
 #include <template/stateful_service.h>
 #include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence_pb.h>
+#include <template/stateful_persistence.h>
 
 #include <settings/camera_settings.h>
 

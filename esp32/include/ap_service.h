@@ -2,7 +2,7 @@
 
 #include <template/stateful_service.h>
 #include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence_pb.h>
+#include <template/stateful_persistence.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <wifi/wifi_idf.h>

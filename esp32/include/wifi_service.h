@@ -8,7 +8,7 @@
 #include <filesystem.h>
 #include <utils/timing.h>
 #include <template/stateful_service.h>
-#include <template/stateful_persistence_pb.h>
+#include <template/stateful_persistence.h>
 #include <template/stateful_proto_endpoint.h>
 #include <settings/wifi_settings.h>
 

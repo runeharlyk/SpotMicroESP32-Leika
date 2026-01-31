@@ -2,7 +2,7 @@
 #define ServoController_h
 
 #include <peripherals/drivers/pca9685.h>
-#include <template/stateful_persistence_pb.h>
+#include <template/stateful_persistence.h>
 #include <template/stateful_proto_endpoint.h>
 #include <template/stateful_service.h>
 #include <utils/math_utils.h>
@@ -24,22 +24,17 @@ inline ServoSettings ServoSettings_defaults() {
     ServoSettings settings = {};
     settings.servos_count = 12;
     const api_Servo defaults[12] = {
-        {306, -1, 0, 2.0f, "Servo1"},   {306, 1, -45, 2.0f, "Servo2"},
-        {306, 1, 90, 2.0f, "Servo3"}, {306, -1, 0, 2.0f, "Servo4"},
-        {306, -1, 45, 2.0f, "Servo5"}, {306, -1, -90, 2.0f, "Servo6"},
-        {306, 1, 0, 2.0f, "Servo7"},   {306, 1, -45, 2.0f, "Servo8"},
-        {306, 1, 90, 2.0f, "Servo9"}, {306, 1, 0, 2.0f, "Servo10"},
-        {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}
-    };
+        {306, -1, 0, 2.0f, "Servo1"}, {306, 1, -45, 2.0f, "Servo2"},  {306, 1, 90, 2.0f, "Servo3"},
+        {306, -1, 0, 2.0f, "Servo4"}, {306, -1, 45, 2.0f, "Servo5"},  {306, -1, -90, 2.0f, "Servo6"},
+        {306, 1, 0, 2.0f, "Servo7"},  {306, 1, -45, 2.0f, "Servo8"},  {306, 1, 90, 2.0f, "Servo9"},
+        {306, 1, 0, 2.0f, "Servo10"}, {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}};
     for (int i = 0; i < 12; i++) {
         settings.servos[i] = defaults[i];
     }
     return settings;
 }
 
-inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) {
-    proto = settings;
-}
+inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) { proto = settings; }
 
 inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoSettings &settings) {
     settings = proto;
@@ -52,9 +47,8 @@ class ServoController : public StatefulService<ServoSettings> {
         : protoEndpoint(ServoSettings_read, ServoSettings_update, this,
                         API_REQUEST_EXTRACTOR(servo_settings, ServoSettings),
                         API_RESPONSE_ASSIGNER(servo_settings, ServoSettings)),
-          _persistence(ServoSettings_read, ServoSettings_update, this,
-                       SERVO_SETTINGS_FILE, api_ServoSettings_fields, api_ServoSettings_size,
-                       ServoSettings_defaults()) {}
+          _persistence(ServoSettings_read, ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
+                       api_ServoSettings_size, ServoSettings_defaults()) {}
 
     void begin() {
         _persistence.readFromFS();

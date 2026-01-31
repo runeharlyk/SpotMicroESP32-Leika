@@ -1,35 +1,65 @@
-#ifndef FSPersistence_h
-#define FSPersistence_h
+#pragma once
 
 #include <template/stateful_service.h>
+#include <template/state_result.h>
 #include <filesystem.h>
-#include <ArduinoJson.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
 #include <cstdio>
 #include <sys/stat.h>
+#include <esp_log.h>
+
+static const char *TAG_PERSISTENCE = "FSPersistencePB";
 
 template <class T>
-class FSPersistence {
+class FSPersistencePB {
   public:
-    FSPersistence(JsonStateReader<T> stateReader, JsonStateUpdater<T> stateUpdater, StatefulService<T> *statefulService,
-                  const char *filePath)
+    using ProtoStateReader = std::function<void(const T &, T &)>;
+    using ProtoStateUpdater = std::function<StateUpdateResult(const T &, T &)>;
+
+    FSPersistencePB(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater, StatefulService<T> *statefulService,
+                    const char *filePath, const pb_msgdesc_t *msgDescriptor, size_t maxSize, const T &defaultState)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
           _filePath(filePath),
+          _msgDescriptor(msgDescriptor),
+          _maxSize(maxSize),
+          _defaultState(defaultState),
           _updateHandlerId(0) {
         enableUpdateHandler();
     }
 
     void readFromFS() {
-        std::string content = FileSystem::readFile(_filePath);
+        FILE *file = fopen(_filePath, "rb");
 
-        if (!content.empty()) {
-            JsonDocument jsonDocument;
-            DeserializationError error = deserializeJson(jsonDocument, content);
-            if (error == DeserializationError::Ok) {
-                JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
-                _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
-                return;
+        if (file) {
+            fseek(file, 0, SEEK_END);
+            size_t fileSize = ftell(file);
+            fseek(file, 0, SEEK_SET);
+
+            if (fileSize > 0 && fileSize <= _maxSize) {
+                uint8_t *buffer = new uint8_t[fileSize];
+                size_t bytesRead = fread(buffer, 1, fileSize, file);
+                fclose(file);
+
+                if (bytesRead == fileSize) {
+                    T *protoMsg = new T();
+                    *protoMsg = {};
+                    pb_istream_t stream = pb_istream_from_buffer(buffer, bytesRead);
+
+                    if (pb_decode(&stream, _msgDescriptor, protoMsg)) {
+                        _statefulService->updateWithoutPropagation(
+                            [this, protoMsg](T &state) { return _stateUpdater(*protoMsg, state); });
+                        delete protoMsg;
+                        delete[] buffer;
+                        return;
+                    }
+                    delete protoMsg;
+                }
+                delete[] buffer;
+            } else {
+                fclose(file);
             }
         }
 
@@ -38,16 +68,35 @@ class FSPersistence {
     }
 
     bool writeToFS() {
-        JsonDocument jsonDocument;
-        JsonVariant jsonObject = jsonDocument.to<JsonVariant>();
-        _statefulService->read(jsonObject, _stateReader);
+        uint8_t *buffer = new uint8_t[_maxSize];
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer, _maxSize);
+
+        T *protoMsg = new T();
+        *protoMsg = {};
+        _statefulService->read([this, protoMsg](const T &state) { _stateReader(state, *protoMsg); });
+
+        bool encodeSuccess = pb_encode(&stream, _msgDescriptor, protoMsg);
+        delete protoMsg;
+
+        if (!encodeSuccess) {
+            delete[] buffer;
+            return false;
+        }
 
         mkdirs();
 
-        std::string content;
-        serializeJson(jsonDocument, content);
+        FILE *file = fopen(_filePath, "wb");
+        if (!file) {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to open file for writing: %s", _filePath);
+            delete[] buffer;
+            return false;
+        }
 
-        return FileSystem::writeFile(_filePath, content.c_str());
+        size_t written = fwrite(buffer, 1, stream.bytes_written, file);
+        fclose(file);
+        delete[] buffer;
+
+        return written == stream.bytes_written;
     }
 
     void disableUpdateHandler() {
@@ -64,11 +113,13 @@ class FSPersistence {
     }
 
   private:
-    JsonStateReader<T> _stateReader;
-    JsonStateUpdater<T> _stateUpdater;
+    ProtoStateReader _stateReader;
+    ProtoStateUpdater _stateUpdater;
     StatefulService<T> *_statefulService;
     const char *_filePath;
-    size_t _bufferSize;
+    const pb_msgdesc_t *_msgDescriptor;
+    size_t _maxSize;
+    T _defaultState;
     HandlerId _updateHandlerId;
 
     void mkdirs() {
@@ -84,11 +135,7 @@ class FSPersistence {
     }
 
   protected:
-    virtual void applyDefaults() {
-        JsonDocument jsonDocument;
-        JsonVariant jsonObject = jsonDocument.as<JsonVariant>();
-        _statefulService->updateWithoutPropagation(jsonObject, _stateUpdater);
+    void applyDefaults() {
+        _statefulService->updateWithoutPropagation([this](T &state) { return _stateUpdater(_defaultState, state); });
     }
 };
-
-#endif
