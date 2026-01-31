@@ -10,7 +10,7 @@ managed_components/
 dependencies.lock
 sdkconfig
 sdkconfig.*
-!esp32/sdkconfig.defaults
+!sdkconfig.defaults
 esp32/src/platform_shared/*
 !esp32/src/platform_shared/.gitkeep
 app/src/lib/platform_shared/*
