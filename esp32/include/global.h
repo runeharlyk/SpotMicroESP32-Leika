@@ -36,3 +36,16 @@
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 100000UL
 #endif
+
+// Optional SD card mounting via SDMMC (1-bit mode for ESP32-S3-CAM)
+// Pin definitions - override in build flags if needed
+#ifndef SD_CMD_PIN
+#define SD_CMD_PIN GPIO_NUM_38
+#endif
+#ifndef SD_CLK_PIN
+#define SD_CLK_PIN GPIO_NUM_39
+#endif
+#ifndef SD_DATA_PIN
+#define SD_DATA_PIN GPIO_NUM_40
+#endif
+
