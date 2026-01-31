@@ -52,3 +52,10 @@ template void EventBus::notifyGlobalListeners<socket_message_IMUData>(const sock
 template void EventBus::notifyGlobalListeners<socket_message_ControllerData>(const socket_message_ControllerData&,
                                                                              const char*);
 template void EventBus::notifyGlobalListeners<socket_message_ModeData>(const socket_message_ModeData&, const char*);
+template void EventBus::notifyGlobalListeners<socket_message_AnglesData>(const socket_message_AnglesData&, const char*);
+template void EventBus::notifyGlobalListeners<socket_message_WalkGaitData>(const socket_message_WalkGaitData&,
+                                                                           const char*);
+template void EventBus::notifyGlobalListeners<socket_message_ServoStateData>(const socket_message_ServoStateData&,
+                                                                             const char*);
+template void EventBus::notifyGlobalListeners<socket_message_ServoPWMData>(const socket_message_ServoPWMData&,
+                                                                           const char*);

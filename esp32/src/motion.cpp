@@ -1,6 +1,23 @@
 #include <motion.h>
 
-void MotionService::begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
+void MotionService::begin() {
+    body_state.updateFeet(KinConfig::default_feet_positions);
+    subscribeToEvents();
+}
+
+void MotionService::subscribeToEvents() {
+    controllerHandle_ = EventBus::subscribe<socket_message_ControllerData>(
+        [this](const socket_message_ControllerData& data) { handleInput(data); });
+
+    modeHandle_ =
+        EventBus::subscribe<socket_message_ModeData>([this](const socket_message_ModeData& data) { handleMode(data); });
+
+    anglesHandle_ = EventBus::subscribe<socket_message_AnglesData>(
+        [this](const socket_message_AnglesData& data) { handleAngles(data); });
+
+    walkGaitHandle_ = EventBus::subscribe<socket_message_WalkGaitData>(
+        [this](const socket_message_WalkGaitData& data) { handleWalkGait(data); });
+}
 
 void MotionService::handleAngles(const socket_message_AnglesData& data) {
     for (int i = 0; i < 12 && i < data.angles_count; i++) {
@@ -41,6 +58,7 @@ void MotionService::handleMode(const socket_message_ModeData& data) {
         case MOTION_STATE::DEACTIVATED: setState(nullptr); break;
         default: setState(nullptr); break;
     }
+    if (modeChangeCallback_) modeChangeCallback_(isActive());
 }
 
 void MotionService::handleGestures(const gesture_t ges) {

@@ -13,7 +13,10 @@ const char* eventTypeName(EventType type) {
         case EventType::IMU_DATA: return "IMU_DATA";
         case EventType::MOTION_COMMAND: return "MOTION_COMMAND";
         case EventType::MOTION_MODE: return "MOTION_MODE";
+        case EventType::MOTION_ANGLES: return "MOTION_ANGLES";
+        case EventType::MOTION_WALK_GAIT: return "MOTION_WALK_GAIT";
         case EventType::SERVO_STATE: return "SERVO_STATE";
+        case EventType::SERVO_PWM: return "SERVO_PWM";
         case EventType::SYSTEM_BOOT: return "SYSTEM_BOOT";
         case EventType::STORAGE_HYDRATION_COMPLETE: return "STORAGE_HYDRATION_COMPLETE";
         default: return "UNKNOWN";

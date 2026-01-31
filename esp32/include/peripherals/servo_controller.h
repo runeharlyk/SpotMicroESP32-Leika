@@ -5,6 +5,7 @@
 #include <event_bus/event_bus.h>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
+#include <platform_shared/message.pb.h>
 #include <esp_http_server.h>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
@@ -40,6 +41,12 @@ class ServoController {
     void begin() {
         _settingsHandle = EventBus::subscribe<api_ServoSettings>(
             [this](const api_ServoSettings &settings) { onSettingsChanged(settings); });
+
+        _pwmHandle = EventBus::subscribe<socket_message_ServoPWMData>(
+            [this](const socket_message_ServoPWMData &data) { setServoPWM(data.servo_id, data.servo_pwm); });
+
+        _stateHandle = EventBus::subscribe<socket_message_ServoStateData>(
+            [this](const socket_message_ServoStateData &data) { data.active ? activate() : deactivate(); });
 
         api_ServoSettings initialSettings;
         if (EventBus::peek(initialSettings)) {
@@ -125,6 +132,8 @@ class ServoController {
 
     api_ServoSettings _settings = ServoSettings_defaults();
     EventBus::Handle<api_ServoSettings> _settingsHandle;
+    EventBus::Handle<socket_message_ServoPWMData> _pwmHandle;
+    EventBus::Handle<socket_message_ServoStateData> _stateHandle;
 
     PCA9685Driver _pca;
 

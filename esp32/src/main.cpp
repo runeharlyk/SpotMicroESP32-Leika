@@ -132,31 +132,17 @@ void setupEventSocket() {
         [](const socket_message_FSDownloadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); },
         [](const socket_message_FSUploadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); });
 
-    wsSocket.on<socket_message_ControllerData>(
-        [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
-
-    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
-        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
-        motionService.handleMode(data);
-        motionService.isActive() ? servoController.activate() : servoController.deactivate();
-    });
-
-    wsSocket.on<socket_message_WalkGaitData>(
-        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.handleWalkGait(data); });
-
-    wsSocket.on<socket_message_AnglesData>(
-        [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
-
-    wsSocket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
-        servoController.setServoPWM(data.servo_id, data.servo_pwm);
-    });
-
-    wsSocket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
-        data.active ? servoController.activate() : servoController.deactivate();
-    });
+    wsSocket.onPublish<socket_message_ControllerData>();
+    wsSocket.onPublish<socket_message_ModeData>();
+    wsSocket.onPublish<socket_message_WalkGaitData>();
+    wsSocket.onPublish<socket_message_AnglesData>();
+    wsSocket.onPublish<socket_message_ServoPWMData>();
+    wsSocket.onPublish<socket_message_ServoStateData>();
 
     wsSocket.on<socket_message_FSUploadData>(
         [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
+
+    wsSocket.bridgeFromEventBus<socket_message_IMUData>(100);
 
     using CorrelationHandler =
         std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;
@@ -257,6 +243,10 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     peripherals.begin();
     servoController.begin();
     motionService.begin();
+    motionService.setModeChangeCallback([](bool active) {
+        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+        active ? servoController.activate() : servoController.deactivate();
+    });
 #if FT_ENABLED(USE_WS2812)
     ledService.begin();
 #endif
@@ -310,11 +300,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         });
 
         EXECUTE_EVERY_N_MS(100, {
-            if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
-                socket_message_IMUData imu = socket_message_IMUData_init_zero;
-                peripherals.getIMUProto(imu);
-                wsSocket.emit(imu);
-            }
+            socket_message_IMUData imu = socket_message_IMUData_init_zero;
+            peripherals.getIMUProto(imu);
+            EventBus::publish(imu);
 
             if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};

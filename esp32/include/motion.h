@@ -14,12 +14,17 @@
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
 #include <message_types.h>
+#include <event_bus/event_bus.h>
 
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
 class MotionService {
   public:
+    using ModeChangeCallback = std::function<void(bool active)>;
+
     void begin();
+
+    void setModeChangeCallback(ModeChangeCallback callback) { modeChangeCallback_ = callback; }
 
     void handleAngles(const socket_message_AnglesData& data);
 
@@ -42,6 +47,8 @@ class MotionService {
     inline bool isActive() { return state != nullptr; }
 
   private:
+    void subscribeToEvents();
+
     Kinematics kinematics;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
@@ -62,6 +69,13 @@ class MotionService {
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
     int64_t lastUpdate = esp_timer_get_time();
+
+    ModeChangeCallback modeChangeCallback_;
+
+    EventBus::Handle<socket_message_ControllerData> controllerHandle_;
+    EventBus::Handle<socket_message_ModeData> modeHandle_;
+    EventBus::Handle<socket_message_AnglesData> anglesHandle_;
+    EventBus::Handle<socket_message_WalkGaitData> walkGaitHandle_;
 };
 
 #endif
