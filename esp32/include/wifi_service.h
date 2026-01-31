@@ -25,6 +25,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void loop();
 
     void setupMDNS(const char *hostname);
+    void selectNetwork(uint32_t index);
 
     const char *getHostname() { return state().hostname; }
 
@@ -43,7 +44,6 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     void reconfigureWiFiConnection();
     void manageSTA();
-    void connectToWiFi();
     void configureNetwork(WiFiNetwork &network);
 
     unsigned long _lastConnectionAttempt;

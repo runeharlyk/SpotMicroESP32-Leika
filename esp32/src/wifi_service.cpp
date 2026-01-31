@@ -27,11 +27,29 @@ void WiFiService::begin() {
 
     _persistence.readFromFS();
     _lastConnectionAttempt = 0;
+
+    if (state().wifi_networks_count >= 1) {
+        WiFi.mode(WIFI_MODE_STA);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        uint32_t idx = state().selected_network;
+        if (idx >= state().wifi_networks_count) idx = 0;
+        configureNetwork(state().wifi_networks[idx]);
+    }
 }
 
 void WiFiService::reconfigureWiFiConnection() {
     _lastConnectionAttempt = 0;
     if (WiFi.disconnect(true)) _stopping = true;
+}
+
+void WiFiService::selectNetwork(uint32_t index) {
+    if (index >= state().wifi_networks_count) return;
+    updateWithoutPropagation([&](WiFiSettings &settings) {
+        settings.selected_network = index;
+        return StateUpdateResult::CHANGED;
+    });
+    _persistence.writeToFS();
+    reconfigureWiFiConnection();
 }
 
 void WiFiService::loop() { EXECUTE_EVERY_N_MS(reconnectDelay, manageSTA()); }
@@ -137,8 +155,10 @@ void WiFiService::manageSTA() {
 
     if (!attempted && state().wifi_networks_count > 0) {
         attempted = true;
-        ESP_LOGI(TAG, "Connecting to: %s", state().wifi_networks[0].ssid);
-        configureNetwork(state().wifi_networks[0]);
+        uint32_t idx = state().selected_network;
+        if (idx >= state().wifi_networks_count) idx = 0;
+        ESP_LOGI(TAG, "Connecting to: %s", state().wifi_networks[idx].ssid);
+        configureNetwork(state().wifi_networks[idx]);
     }
 }
 

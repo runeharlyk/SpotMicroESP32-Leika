@@ -42,6 +42,7 @@ inline WiFiSettings WiFiSettings_defaults() {
     strncpy(settings.hostname, FACTORY_WIFI_HOSTNAME, sizeof(settings.hostname) - 1);
     settings.priority_rssi = true;
     settings.wifi_networks_count = 0;
+    settings.selected_network = 0;
     if (strlen(FACTORY_WIFI_SSID) > 0) {
         settings.wifi_networks[0] = WiFiNetwork_defaults();
         settings.wifi_networks_count = 1;
