@@ -1,6 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>
+#include <esp_heap_caps.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
 #include <mdns.h>
@@ -42,6 +43,8 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
+    ESP_LOGI("Main", "Free heap before server: %lu, largest block: %lu",
+             esp_get_free_heap_size(), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     server.config(50 + WWW_ASSETS_COUNT, 16384);
     server.listen(80);
 

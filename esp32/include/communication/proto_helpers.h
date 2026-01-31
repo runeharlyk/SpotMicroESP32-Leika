@@ -3,6 +3,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <platform_shared/message.pb.h>
+#include <esp_log.h>
 #include <functional>
 #include <map>
 
@@ -71,32 +72,48 @@ class ProtoDecoder {
     bool decode(const uint8_t* data, size_t len, int clientId) {
         pb_istream_t stream = pb_istream_from_buffer(data, len);
 
-        if (!pb_decode(&stream, socket_message_Message_fields, &msg_)) {
+        // Reset message before decoding (nanopb will malloc FT_POINTER fields)
+        msg_ = socket_message_Message_init_zero;
+
+        bool success = pb_decode(&stream, socket_message_Message_fields, &msg_);
+
+        if (!success) {
+            ESP_LOGE("ProtoHelpers", "Decode failed: %s (len=%u)", PB_GET_ERROR(&stream), len);
+            pb_release(socket_message_Message_fields, &msg_);
             return false;
         }
 
+        bool handled = false;
         switch (msg_.which_message) {
             case socket_message_Message_sub_notif_tag:
                 if (subscribeHandler_) subscribeHandler_(msg_.message.sub_notif.tag, clientId);
-                return true;
+                handled = true;
+                break;
 
             case socket_message_Message_unsub_notif_tag:
                 if (unsubscribeHandler_) unsubscribeHandler_(msg_.message.unsub_notif.tag, clientId);
-                return true;
+                handled = true;
+                break;
 
             case socket_message_Message_pingmsg_tag:
                 if (pingHandler_) pingHandler_(clientId);
-                return true;
+                handled = true;
+                break;
 
             default: {
                 auto it = handlers_.find(msg_.which_message);
                 if (it != handlers_.end()) {
                     it->second(clientId);
-                    return true;
+                    handled = true;
                 }
-                return false;
+                break;
             }
         }
+
+        // Free any malloc'd FT_POINTER fields
+        pb_release(socket_message_Message_fields, &msg_);
+
+        return handled;
     }
 
   private:

@@ -153,6 +153,8 @@ function createWebSocket() {
             }
 
             const { tag, msg } = decodeMessage(frame.data)
+            const key: keyof Message = (MESSAGE_TAG_TO_KEY.get(tag) ?? "") as keyof Message;
+            console.log(key + ": ", msg[key])
             if (msg.correlationResponse) {
                 const pending = pending_requests.get(msg.correlationResponse.correlationId)
                 if (pending) {

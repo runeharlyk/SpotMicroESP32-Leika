@@ -7,7 +7,7 @@
 #include <functional>
 #include <cstdio>
 
-#define FS_MAX_CHUNK_SIZE 16384
+#define FS_MAX_CHUNK_SIZE (1024*64)
 #define FS_TRANSFER_TIMEOUT_MS 30000
 
 namespace FileSystemWS {

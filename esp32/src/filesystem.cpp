@@ -6,6 +6,9 @@
 #include <esp_log.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
+#include "esp_vfs_fat.h"
+#include <sdmmc_cmd.h>
+#include <driver/sdmmc_host.h>
 
 static const char *TAG = "FileSystem";
 
@@ -79,7 +82,7 @@ void listFilesProto(const std::string &directory, api_FileEntry *entry) {
     if (path.empty() || path[0] != '/') {
         path = "/" + directory;
     }
-    std::string fullPath = std::string(MOUNT_POINT) + path;
+    std::string fullPath = path;
     listFilesProtoRecursive(fullPath, entry);
 }
 
@@ -108,7 +111,7 @@ esp_err_t getFilesProto(httpd_req_t *request) {
 
 bool init() {
     esp_vfs_littlefs_conf_t conf = {
-        .base_path = MOUNT_POINT,
+        .base_path = LITTLEFS_MOUNT_POINT,
         .partition_label = "spiffs",
         .format_if_mount_failed = true,
         .dont_mount = false,
@@ -133,6 +136,51 @@ bool init() {
     }
 
     mkdirRecursive(FS_CONFIG_DIRECTORY);
+
+
+    // Optional SD card mounting via SDMMC (1-bit mode for ESP32-S3-CAM)
+    // Pin definitions - override in build flags if needed
+#ifndef SD_CMD_PIN
+#define SD_CMD_PIN GPIO_NUM_38
+#endif
+#ifndef SD_CLK_PIN
+#define SD_CLK_PIN GPIO_NUM_39
+#endif
+#ifndef SD_DATA_PIN
+#define SD_DATA_PIN GPIO_NUM_40
+#endif
+
+    esp_vfs_fat_sdmmc_mount_config_t sd_mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 4,
+        .allocation_unit_size = 16 * 1024,
+    };
+
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    host.flags = SDMMC_HOST_FLAG_1BIT;  // Use 1-bit mode
+    host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    slot_config.width = 1;  // 1-bit mode
+    slot_config.clk = SD_CLK_PIN;
+    slot_config.cmd = SD_CMD_PIN;
+    slot_config.d0 = SD_DATA_PIN;
+    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+
+    sdmmc_card_t *card = nullptr;
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(SD_MOUNT_POINT, &host, &slot_config, &sd_mount_config, &card);
+    if (err != ESP_OK) {
+        if (err == ESP_FAIL) {
+            ESP_LOGW(TAG, "Failed to mount SD card filesystem");
+        } else {
+            ESP_LOGW(TAG, "SD card not present or failed to initialize (%s)", esp_err_to_name(err));
+        }
+        // Don't fail - SD card is optional
+    } else {
+        ESP_LOGI(TAG, "SD card mounted at %s", SD_MOUNT_POINT);
+        ESP_LOGI(TAG, "SD card: %s, %lluMB", card->cid.name,
+                 ((uint64_t)card->csd.capacity) * card->csd.sector_size / (1024 * 1024));
+    }
 
     return true;
 }
@@ -231,7 +279,7 @@ esp_err_t getFiles(httpd_req_t *request) {
 
 esp_err_t getConfigFile(httpd_req_t *request) {
     const char *uri = request->uri;
-    std::string path = std::string(MOUNT_POINT) + "/config" + std::string(uri).substr(11);
+    std::string path = std::string(LITTLEFS_MOUNT_POINT) + "/config" + std::string(uri).substr(11);
 
     if (!fileExists(path.c_str())) {
         return WebServer::sendError(request, 404, "File not found");
@@ -253,7 +301,7 @@ esp_err_t getConfigFile(httpd_req_t *request) {
 }
 
 esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
-    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    std::string fullPath = req.path;
     ESP_LOGI(TAG, "Deleting file: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
@@ -267,7 +315,7 @@ esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
 }
 
 esp_err_t handleEdit(httpd_req_t *request, const api_FileEditRequest &req) {
-    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    std::string fullPath = req.path;
     ESP_LOGI(TAG, "Editing file: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
@@ -326,7 +374,7 @@ bool editFile(const char *filename, const uint8_t *content, size_t size) { retur
 bool editFile(const char *filename, const char *content) { return writeFile(filename, content); }
 
 esp_err_t mkdir(httpd_req_t *request, const api_FileMkdirRequest &req) {
-    std::string fullPath = std::string(MOUNT_POINT) + req.path;
+    std::string fullPath = req.path;
     ESP_LOGI(TAG, "Creating directory: %s", fullPath.c_str());
 
     api_Response res = api_Response_init_zero;
