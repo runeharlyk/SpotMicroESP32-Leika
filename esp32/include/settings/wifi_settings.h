@@ -1,7 +1,6 @@
 #pragma once
 
 #include <wifi/wifi_idf.h>
-#include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <cstring>
 
@@ -48,11 +47,4 @@ inline WiFiSettings WiFiSettings_defaults() {
         settings.wifi_networks_count = 1;
     }
     return settings;
-}
-
-inline void WiFiSettings_read(const WiFiSettings &settings, WiFiSettings &proto) { proto = settings; }
-
-inline StateUpdateResult WiFiSettings_update(const WiFiSettings &proto, WiFiSettings &settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
 }

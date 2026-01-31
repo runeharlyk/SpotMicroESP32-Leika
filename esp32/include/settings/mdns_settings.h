@@ -1,6 +1,5 @@
 #pragma once
 
-#include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <string>
 #include <cstring>
@@ -44,14 +43,4 @@ inline MDNSSettings MDNSSettings_defaults() {
     strncpy(settings.global_txt_records[0].value, APP_VERSION, sizeof(settings.global_txt_records[0].value) - 1);
 
     return settings;
-}
-
-// Proto read/update are identity functions since type is the same
-inline void MDNSSettings_read(const MDNSSettings& settings, MDNSSettings& proto) {
-    proto = settings;
-}
-
-inline StateUpdateResult MDNSSettings_update(const MDNSSettings& proto, MDNSSettings& settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
 }

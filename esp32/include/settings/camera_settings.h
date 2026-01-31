@@ -1,6 +1,5 @@
 #pragma once
 
-#include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <esp_camera.h>
 
@@ -43,16 +42,6 @@ inline CameraSettings CameraSettings_defaults() {
     settings.dcw = 1;
     settings.colorbar = 0;
     return settings;
-}
-
-// Proto read/update are identity functions since type is the same
-inline void CameraSettings_read(const CameraSettings& settings, CameraSettings& proto) {
-    proto = settings;
-}
-
-inline StateUpdateResult CameraSettings_update(const CameraSettings& proto, CameraSettings& settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
 }
 
 } // namespace Camera
