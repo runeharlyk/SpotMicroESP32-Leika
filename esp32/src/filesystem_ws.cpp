@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <cstring>
+#include <cerrno>
 
 static const char* TAG = "FileSystemWS";
 
@@ -80,7 +81,7 @@ void FileSystemHandler::cleanupExpiredTransfers() {
 socket_message_FSDeleteResponse FileSystemHandler::handleDelete(const socket_message_FSDeleteRequest& req) {
     socket_message_FSDeleteResponse response = socket_message_FSDeleteResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT) + req.path;
+    std::string path = req.path;
     ESP_LOGI(TAG, "Delete request: %s", path.c_str());
 
     struct stat st;
@@ -129,7 +130,7 @@ bool FileSystemHandler::deleteRecursive(const std::string& path) {
 socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_message_FSMkdirRequest& req) {
     socket_message_FSMkdirResponse response = socket_message_FSMkdirResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT) + req.path;
+    std::string path = req.path;
     ESP_LOGI(TAG, "Mkdir request: %s", path.c_str());
 
     struct stat st;
@@ -150,6 +151,15 @@ socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_messa
 }
 
 void FileSystemHandler::listDirectory(const std::string& path, socket_message_FSListResponse& response) {
+
+    // Root "/" is virtual - list mount points instead
+    if (strcmp(path.c_str(), "/") == 0) {
+        strncpy(response.directories[0].name, LITTLEFS_MOUNT_POINT + 1, sizeof(response.directories[0].name) - 1);
+        strncpy(response.directories[1].name, SD_MOUNT_POINT + 1, sizeof(response.directories[1].name) - 1);
+        response.directories_count = 2;
+        return;
+    }
+
     DIR* dir = opendir(path.c_str());
     if (!dir) {
         return;
@@ -191,15 +201,13 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
 socket_message_FSListResponse FileSystemHandler::handleList(const socket_message_FSListRequest& req) {
     socket_message_FSListResponse response = socket_message_FSListResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT);
-    if (strlen(req.path) > 0 && req.path[0] != '\0') {
-        path += req.path;
-    }
+    std::string path = req.path;
 
     ESP_LOGI(TAG, "List request: %s", path.c_str());
 
     struct stat st;
-    if (stat(path.c_str(), &st) != 0) {
+    // Make sure that path exists, or that it is a root listing
+    if (strcmp(path.c_str(), "/") != 0 && stat(path.c_str(), &st) != 0) {
         response.success = false;
         strncpy(response.error, "Path not found", sizeof(response.error) - 1);
         return response;
@@ -212,7 +220,7 @@ socket_message_FSListResponse FileSystemHandler::handleList(const socket_message
 }
 
 void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadRequest& req, int clientId) {
-    std::string path = std::string(MOUNT_POINT) + req.path;
+    std::string path = req.path;
     ESP_LOGI(TAG, "Download request: %s", path.c_str());
 
     struct stat st;
@@ -268,7 +276,7 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
     ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u", path.c_str(), fileSize, totalChunks, transferId);
 
     while (sendNextDownloadChunk(transferId)) {
-        taskYIELD();
+        vTaskDelay(pdMS_TO_TICKS(5));  // Give network time to send (5 ms)
     }
 }
 
@@ -308,8 +316,28 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         bytesToRead = state.fileSize - position;
     }
 
-    size_t bytesRead = fread(data->data.bytes, 1, bytesToRead, state.file);
+    // Allocate buffer for FT_POINTER data field
+    data->data = (pb_bytes_array_t*)malloc(PB_BYTES_ARRAY_T_ALLOCSIZE(bytesToRead));
+    if (!data->data) {
+        delete data;
+        if (sendCompleteCallback_) {
+            socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
+            complete.transfer_id = transferId;
+            complete.success = false;
+            strncpy(complete.error, "Memory allocation failed", sizeof(complete.error) - 1);
+            complete.total_chunks = state.chunksSent;
+            complete.file_size = state.fileSize;
+            sendCompleteCallback_(complete, state.clientId);
+        }
+        fclose(state.file);
+        downloads_.erase(it);
+        ESP_LOGE(TAG, "Download failed - memory allocation: %u", transferId);
+        return false;
+    }
+
+    size_t bytesRead = fread(data->data->bytes, 1, bytesToRead, state.file);
     if (bytesRead == 0 && bytesToRead > 0) {
+        free(data->data);
         delete data;
         if (sendCompleteCallback_) {
             socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
@@ -326,12 +354,13 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         ESP_LOGE(TAG, "Download failed - read error: %u", transferId);
         return false;
     }
-    data->data.size = bytesRead;
+    data->data->size = bytesRead;
 
     if (sendDataCallback_) {
         sendDataCallback_(*data, state.clientId);
     }
 
+    free(data->data);
     delete data;
     state.chunksSent++;
     ESP_LOGD(TAG, "Download chunk %u/%u sent: %u bytes", state.chunksSent, state.totalChunks, bytesRead);
@@ -343,17 +372,22 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
                                                                           int clientId) {
     socket_message_FSUploadStartResponse response = socket_message_FSUploadStartResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT) + req.path;
+    std::string path = req.path;
     ESP_LOGI(TAG, "Upload start request: %s, size=%u, chunks=%u", path.c_str(), req.file_size, req.total_chunks);
 
-    size_t fs_total = 0, fs_used = 0;
-    esp_littlefs_info("spiffs", &fs_total, &fs_used);
-    size_t freeSpace = fs_total - fs_used;
-    if (freeSpace < req.file_size + 4096) {
-        response.success = false;
-        strncpy(response.error, "Insufficient storage space", sizeof(response.error) - 1);
-        return response;
+    // Check available space on the target filesystem
+    if (path.find(SD_MOUNT_POINT) != 0) {
+        // LittleFS path
+        size_t fs_total = 0, fs_used = 0;
+        esp_littlefs_info("spiffs", &fs_total, &fs_used);
+        size_t freeSpace = fs_total - fs_used;
+        if (freeSpace < req.file_size + 4096) {
+            response.success = false;
+            strncpy(response.error, "Insufficient storage space", sizeof(response.error) - 1);
+            return response;
+        }
     }
+    // TODO: SD card space check skipped - FAT doesn't have a simple API for this
 
     size_t lastSlash = path.find_last_of('/');
     if (lastSlash != std::string::npos && lastSlash > 0) {
@@ -368,8 +402,9 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
 
     FILE* file = fopen(path.c_str(), "wb");
     if (!file) {
+        ESP_LOGE(TAG, "fopen failed for '%s': %s (errno=%d)", path.c_str(), strerror(errno), errno);
         response.success = false;
-        strncpy(response.error, "Cannot open file for writing", sizeof(response.error) - 1);
+        snprintf(response.error, sizeof(response.error) - 1, "Cannot open file: %s", strerror(errno));
         return response;
     }
 
@@ -416,8 +451,15 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
         ESP_LOGW(TAG, "Upload chunk out of order: expected %u, got %u", state.chunksReceived, req.chunk_index);
     }
 
-    size_t bytesWritten = fwrite(req.data.bytes, 1, req.data.size, state.file);
-    if (bytesWritten != req.data.size) {
+    if (!req.data || req.data->size == 0) {
+        state.hasError = true;
+        state.errorMessage = "Empty or invalid data chunk";
+        finalizeUpload(transferId, false, state.errorMessage);
+        return;
+    }
+
+    size_t bytesWritten = fwrite(req.data->bytes, 1, req.data->size, state.file);
+    if (bytesWritten != req.data->size) {
         state.hasError = true;
         state.errorMessage = "Failed to write chunk";
         finalizeUpload(transferId, false, state.errorMessage);

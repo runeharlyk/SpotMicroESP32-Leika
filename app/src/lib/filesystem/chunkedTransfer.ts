@@ -15,7 +15,7 @@ import type {
 } from '$lib/platform_shared/filesystem'
 import type { Result, DataResult, ListResult, ProgressCallback } from '$lib/types/models'
 
-const MAX_CHUNK_SIZE = 2 ** 14
+const MAX_CHUNK_SIZE = 1024 * 64 // 64KB - must match ESP32 FS_MAX_CHUNK_SIZE
 
 type TimeoutId = ReturnType<typeof setTimeout>
 type CleanupFn = (() => void) | null
@@ -51,7 +51,7 @@ export class FileSystemClient {
 	private downloadListenerCleanup: CleanupFn = null
 	private completeListenerCleanup: CleanupFn = null
 	private uploadCompleteListenerCleanup: CleanupFn = null
-	private transferTimeout = 60000
+	private transferTimeout = 300000
 
 	constructor() {
 		this.setupListeners()

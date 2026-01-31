@@ -9,16 +9,18 @@
 #include <cstdio>
 #include <platform_shared/api.pb.h>
 
-#define MOUNT_POINT "/littlefs"
+#define MOUNT_POINT "/"
+#define LITTLEFS_MOUNT_POINT "/littlefs"
+#define SD_MOUNT_POINT "/sdcard"
 
-#define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
-#define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.pb"
-#define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.pb"
-#define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.pb"
-#define MDNS_SETTINGS_FILE MOUNT_POINT "/config/mdnsSettings.pb"
-#define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.pb"
-#define PERIPHERAL_SETTINGS_FILE MOUNT_POINT "/config/peripheralSettings.pb"
-#define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.pb"
+#define FS_CONFIG_DIRECTORY LITTLEFS_MOUNT_POINT "/config"
+#define DEVICE_CONFIG_FILE LITTLEFS_MOUNT_POINT "/config/peripheral.pb"
+#define CAMERA_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/cameraSettings.pb"
+#define AP_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/apSettings.pb"
+#define MDNS_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/mdnsSettings.pb"
+#define WIFI_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/wifiSettings.pb"
+#define PERIPHERAL_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/peripheralSettings.pb"
+#define SERVO_SETTINGS_FILE LITTLEFS_MOUNT_POINT "/config/servoSettings.pb"
 
 namespace FileSystem {
 
