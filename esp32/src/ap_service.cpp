@@ -1,19 +1,7 @@
 #include <ap_service.h>
 #include <communication/webserver.h>
 
-static const char *TAG = "APService";
-
-APService::APService()
-    : protoEndpoint(APSettings_read, APSettings_update, this, API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
-                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
-      _persistence(APSettings_read, APSettings_update, this, AP_SETTINGS_FILE, api_APSettings_fields,
-                   api_APSettings_size, APSettings_defaults()),
-      _dnsServer(nullptr),
-      _lastManaged(0),
-      _reconfigureAp(false),
-      _recoveryMode(false) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
-}
+APService::APService() : _dnsServer(nullptr), _lastManaged(0), _reconfigureAp(false), _recoveryMode(false) {}
 
 APService::~APService() {
     if (_dnsServer) {
@@ -22,7 +10,30 @@ APService::~APService() {
     }
 }
 
-void APService::begin() { _persistence.readFromFS(); }
+void APService::begin() {
+    _settingsHandle =
+        EventBus::subscribe<api_APSettings>([this](const api_APSettings &settings) { onSettingsChanged(settings); });
+
+    api_APSettings initialSettings;
+    if (EventBus::peek(initialSettings)) {
+        onSettingsChanged(initialSettings);
+    }
+}
+
+void APService::onSettingsChanged(const api_APSettings &newSettings) {
+    strncpy(_settings.ssid, newSettings.ssid, sizeof(_settings.ssid) - 1);
+    _settings.ssid[sizeof(_settings.ssid) - 1] = '\0';
+    strncpy(_settings.password, newSettings.password, sizeof(_settings.password) - 1);
+    _settings.password[sizeof(_settings.password) - 1] = '\0';
+    _settings.local_ip = newSettings.local_ip;
+    _settings.gateway_ip = newSettings.gateway_ip;
+    _settings.subnet_mask = newSettings.subnet_mask;
+    _settings.channel = newSettings.channel;
+    _settings.ssid_hidden = newSettings.ssid_hidden;
+    _settings.max_clients = newSettings.max_clients;
+    _settings.provision_mode = newSettings.provision_mode;
+    reconfigureAP();
+}
 
 esp_err_t APService::getStatusProto(httpd_req_t *request) {
     api_Response res = api_Response_init_zero;
@@ -44,7 +55,7 @@ void APService::statusProto(api_APStatus &proto) {
 APNetworkStatus APService::getAPNetworkStatus() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
     bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
-    if (apActive && state().provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
+    if (apActive && _settings.provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
         return LINGERING;
     }
     return apActive ? ACTIVE : INACTIVE;
@@ -70,8 +81,8 @@ void APService::loop() {
 
 void APService::manageAP() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
-    if (state().provision_mode == AP_MODE_ALWAYS ||
-        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
+    if (_settings.provision_mode == AP_MODE_ALWAYS ||
+        (_settings.provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
         if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }
@@ -83,9 +94,9 @@ void APService::manageAP() {
 }
 
 void APService::startAP() {
-    ESP_LOGI(TAG, "Starting software access point: %s", state().ssid);
-    WiFi.softAPConfig(IPAddress(state().local_ip), IPAddress(state().gateway_ip), IPAddress(state().subnet_mask));
-    WiFi.softAP(state().ssid, state().password, state().channel, state().ssid_hidden, state().max_clients);
+    ESP_LOGI(TAG, "Starting software access point: %s", _settings.ssid);
+    WiFi.softAPConfig(IPAddress(_settings.local_ip), IPAddress(_settings.gateway_ip), IPAddress(_settings.subnet_mask));
+    WiFi.softAP(_settings.ssid, _settings.password, _settings.channel, _settings.ssid_hidden, _settings.max_clients);
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(8);
 #endif
@@ -109,3 +120,24 @@ void APService::stopAP() {
 }
 
 void APService::handleDNS() {}
+
+esp_err_t APService::getSettings(httpd_req_t *request) {
+    api_Response response = api_Response_init_zero;
+    response.status_code = 200;
+    response.which_payload = api_Response_ap_settings_tag;
+    response.payload.ap_settings = _settings;
+    return WebServer::send(request, 200, response, api_Response_fields);
+}
+
+esp_err_t APService::updateSettings(httpd_req_t *request, api_Request *protoReq) {
+    if (protoReq->which_payload != api_Request_ap_settings_tag) {
+        return ESP_FAIL;
+    }
+
+    EventBus::publish(protoReq->payload.ap_settings, "HTTPEndpoint");
+
+    api_Response response = api_Response_init_zero;
+    response.status_code = 200;
+    response.which_payload = api_Response_empty_message_tag;
+    return WebServer::send(request, 200, response, api_Response_fields);
+}

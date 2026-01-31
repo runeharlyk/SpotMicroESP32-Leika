@@ -1,16 +1,15 @@
 #pragma once
 
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence_pb.h>
+#include <event_bus/event_bus.h>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <wifi/wifi_idf.h>
 #include <wifi/dns_server.h>
 #include <esp_timer.h>
+#include <esp_http_server.h>
 #include <string>
 
-class APService : public StatefulService<APSettings> {
+class APService {
   public:
     APService();
     ~APService();
@@ -23,10 +22,16 @@ class APService : public StatefulService<APSettings> {
     void statusProto(api_APStatus &proto);
     APNetworkStatus getAPNetworkStatus();
 
-    StatefulProtoEndpoint<APSettings, api_APSettings> protoEndpoint;
+    esp_err_t getSettings(httpd_req_t *request);
+    esp_err_t updateSettings(httpd_req_t *request, api_Request *protoReq);
 
   private:
-    FSPersistencePB<APSettings> _persistence;
+    static constexpr const char *TAG = "APService";
+
+    void onSettingsChanged(const api_APSettings &newSettings);
+
+    APSettings _settings = APSettings_defaults();
+    EventBus::Handle<api_APSettings> _settingsHandle;
     DNSServer *_dnsServer;
 
     volatile unsigned long _lastManaged;

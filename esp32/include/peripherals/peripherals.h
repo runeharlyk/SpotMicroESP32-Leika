@@ -1,14 +1,13 @@
 #pragma once
 
-#include <template/stateful_persistence_pb.h>
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
+#include <event_bus/event_bus.h>
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
 #include <features.h>
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
+#include <esp_http_server.h>
 
 #include <list>
 
@@ -26,7 +25,7 @@
  */
 #define MAX_DISTANCE 200
 
-class Peripherals : public StatefulService<PeripheralsConfiguration> {
+class Peripherals {
   public:
     Peripherals();
 
@@ -42,7 +41,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void getIMUProto(socket_message_IMUData &data);
     void getSettingsProto(socket_message_PeripheralSettingsData &data);
 
-    /* IMU FUNCTIONS */
     bool readImu();
 
     bool readMag();
@@ -66,10 +64,16 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
-    StatefulProtoEndpoint<PeripheralsConfiguration, api_PeripheralSettings> protoEndpoint;
+    esp_err_t getSettings(httpd_req_t *request);
+    esp_err_t updateSettings(httpd_req_t *request, api_Request *protoReq);
 
   private:
-    FSPersistencePB<PeripheralsConfiguration> _persistence;
+    static constexpr const char *TAG = "Peripherals";
+
+    void onSettingsChanged(const api_PeripheralSettings &newSettings);
+
+    PeripheralsConfiguration _settings = PeripheralsConfiguration_defaults();
+    EventBus::Handle<api_PeripheralSettings> _settingsHandle;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

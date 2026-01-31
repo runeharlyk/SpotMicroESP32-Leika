@@ -1,18 +1,7 @@
 #include <wifi_service.h>
 #include <communication/webserver.h>
 
-static const char *TAG = "WiFiService";
-
-WiFiService::WiFiService()
-    : protoEndpoint(WiFiSettings_read, WiFiSettings_update, this,
-                    API_REQUEST_EXTRACTOR(wifi_settings, api_WifiSettings),
-                    API_RESPONSE_ASSIGNER(wifi_settings, api_WifiSettings)),
-      _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE, api_WifiSettings_fields,
-                   api_WifiSettings_size, WiFiSettings_defaults()),
-      _lastConnectionAttempt(0),
-      _stopping(false) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureWiFiConnection(); }, false);
-}
+WiFiService::WiFiService() : _initialized(false), _lastConnectionAttempt(0), _stopping(false) {}
 
 WiFiService::~WiFiService() {}
 
@@ -25,15 +14,41 @@ void WiFiService::begin() {
     WiFi.onEvent([this](int32_t event, void *data) { this->onStationModeStop(event, data); }, WIFI_EVENT_STA_STOP);
     WiFi.onEvent(onStationModeGotIP, IP_EVENT_STA_GOT_IP_IDF);
 
-    _persistence.readFromFS();
-    _lastConnectionAttempt = 0;
+    _settingsHandle = EventBus::subscribe<api_WifiSettings>(
+        [this](const api_WifiSettings &settings) { onSettingsChanged(settings); });
 
-    if (state().wifi_networks_count >= 1) {
-        WiFi.mode(WIFI_MODE_STA);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        uint32_t idx = state().selected_network;
-        if (idx >= state().wifi_networks_count) idx = 0;
-        configureNetwork(state().wifi_networks[idx]);
+    api_WifiSettings initialSettings;
+    if (EventBus::peek(initialSettings)) {
+        ESP_LOGI(TAG, "Applying initial WiFi settings from storage");
+        onSettingsChanged(initialSettings);
+    } else {
+        ESP_LOGW(TAG, "No WiFi settings found, using defaults");
+    }
+}
+
+void WiFiService::onSettingsChanged(const api_WifiSettings &newSettings) {
+    api_WifiSettings oldSettings = getSettings();
+
+    bool needsReconnect = _initialized && (strcmp(oldSettings.hostname, newSettings.hostname) != 0 ||
+                                           oldSettings.selected_network != newSettings.selected_network ||
+                                           oldSettings.wifi_networks_count != newSettings.wifi_networks_count);
+
+    if (!_initialized) {
+        _initialized = true;
+        _lastConnectionAttempt = 0;
+
+        ESP_LOGI(TAG, "Initializing WiFi with loaded settings");
+
+        if (newSettings.wifi_networks_count >= 1) {
+            WiFi.mode(WIFI_MODE_STA);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+            uint32_t idx = newSettings.selected_network;
+            if (idx >= newSettings.wifi_networks_count) idx = 0;
+            configureNetwork(newSettings.wifi_networks[idx]);
+        }
+    } else if (needsReconnect) {
+        ESP_LOGI(TAG, "Settings changed, reconnecting");
+        reconfigureWiFiConnection();
     }
 }
 
@@ -43,12 +58,12 @@ void WiFiService::reconfigureWiFiConnection() {
 }
 
 void WiFiService::selectNetwork(uint32_t index) {
-    if (index >= state().wifi_networks_count) return;
-    updateWithoutPropagation([&](WiFiSettings &settings) {
-        settings.selected_network = index;
-        return StateUpdateResult::CHANGED;
-    });
-    _persistence.writeToFS();
+    api_WifiSettings settings = getSettings();
+    if (index >= settings.wifi_networks_count) return;
+
+    settings.selected_network = index;
+    EventBus::publish(settings, "WiFiService");
+
     reconfigureWiFiConnection();
 }
 
@@ -99,7 +114,8 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
 
 void WiFiService::setupMDNS(const char *hostname) {
     mdns_init();
-    mdns_hostname_set(state().hostname);
+    api_WifiSettings settings = getSettings();
+    mdns_hostname_set(settings.hostname);
     mdns_instance_name_set(hostname);
     mdns_service_add(nullptr, "_http", "_tcp", 80, nullptr, 0);
     mdns_service_add(nullptr, "_ws", "_tcp", 80, nullptr, 0);
@@ -138,7 +154,8 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
 }
 
 void WiFiService::manageSTA() {
-    if (WiFi.isConnected() || state().wifi_networks_count == 0) return;
+    api_WifiSettings settings = getSettings();
+    if (WiFi.isConnected() || settings.wifi_networks_count == 0) return;
     wifi_mode_t mode = WiFi.getMode();
     if (mode == WIFI_MODE_NULL || mode == WIFI_MODE_AP) return;
 
@@ -153,23 +170,24 @@ void WiFiService::manageSTA() {
     uint32_t now = esp_timer_get_time() / 1000;
     if (now - startTime < 3000) return;
 
-    if (!attempted && state().wifi_networks_count > 0) {
+    if (!attempted && settings.wifi_networks_count > 0) {
         attempted = true;
-        uint32_t idx = state().selected_network;
-        if (idx >= state().wifi_networks_count) idx = 0;
-        ESP_LOGI(TAG, "Connecting to: %s", state().wifi_networks[idx].ssid);
-        configureNetwork(state().wifi_networks[idx]);
+        uint32_t idx = settings.selected_network;
+        if (idx >= settings.wifi_networks_count) idx = 0;
+        ESP_LOGI(TAG, "Connecting to: %s", settings.wifi_networks[idx].ssid);
+        configureNetwork(settings.wifi_networks[idx]);
     }
 }
 
-void WiFiService::configureNetwork(WiFiNetwork &network) {
+void WiFiService::configureNetwork(const WiFiNetwork &network) {
     if (network.static_ip_config) {
         WiFi.config(IPAddress(network.local_ip), IPAddress(network.gateway_ip), IPAddress(network.subnet_mask),
                     IPAddress(network.dns_ip_1), IPAddress(network.dns_ip_2));
     } else {
         WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     }
-    WiFi.setHostname(state().hostname);
+    api_WifiSettings settings = getSettings();
+    WiFi.setHostname(settings.hostname);
     WiFi.begin(network.ssid, network.password);
 
 #if CONFIG_IDF_TARGET_ESP32C3

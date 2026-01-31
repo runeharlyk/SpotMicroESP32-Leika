@@ -20,6 +20,8 @@
 #include <ap_service.h>
 #include <mdns_service.h>
 #include <system_service.h>
+#include <consumers/event_storage_manager.h>
+#include <event_bus/rest_endpoints.h>
 
 #include <www_mount.hpp>
 
@@ -42,7 +44,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config(50 + WWW_ASSETS_COUNT, 16384);
+    server.config(50 + WWW_ASSETS_COUNT, 12288);
     server.listen(80);
 
     server.on("/api/system/reset", HTTP_POST,
@@ -56,21 +58,21 @@ void setupServer() {
     server.on("/api/camera/stream", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
     server.on("/api/camera/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
-    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return CameraSettingsEndpoint::getSettings(request); });
+    server.on("/api/camera/settings", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return CameraSettingsEndpoint::updateSettings(request, protoReq);
     });
 #endif
     server.on("/api/servo/config", HTTP_GET,
-              [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });
-    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return ServoSettingsEndpoint::getSettings(request); });
+    server.on("/api/servo/config", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return ServoSettingsEndpoint::updateSettings(request, protoReq);
     });
 
     server.on("/api/wifi/sta/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.protoEndpoint.getState(request); });
-    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return wifiService.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return WiFiSettingsEndpoint::getSettings(request); });
+    server.on("/api/wifi/sta/settings", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return WiFiSettingsEndpoint::updateSettings(request, protoReq);
     });
     server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
     server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
@@ -79,22 +81,22 @@ void setupServer() {
 
     server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
     server.on("/api/ap/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return apService.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return APSettingsEndpoint::getSettings(request); });
+    server.on("/api/ap/settings", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return APSettingsEndpoint::updateSettings(request, protoReq);
     });
 
     server.on("/api/peripherals/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
-    server.on("/api/peripherals/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return PeripheralSettingsEndpoint::getSettings(request); });
+    server.on("/api/peripherals/settings", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return PeripheralSettingsEndpoint::updateSettings(request, protoReq);
     });
 
 #if FT_ENABLED(USE_MDNS)
     server.on("/api/mdns/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
-    server.on("/api/mdns/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
+              [](httpd_req_t *request) { return MDNSSettingsEndpoint::getSettings(request); });
+    server.on("/api/mdns/settings", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        return MDNSSettingsEndpoint::updateSettings(request, protoReq);
     });
     server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
     server.on("/api/mdns/query", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
@@ -275,6 +277,10 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
+
+    static EventStorageManager storageManager;
+    storageManager.initialize();
+    ESP_LOGI("main", "Event storage initialized, settings loaded and published");
 
     WiFi.init();
     wifiService.begin();

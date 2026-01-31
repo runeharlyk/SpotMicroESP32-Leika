@@ -5,6 +5,7 @@ idf_component_register(
         "peripherals"
         "wifi"
         "platform_shared"
+        "event_bus"
         "../../submodules/nanopb"
     INCLUDE_DIRS 
         "../include"

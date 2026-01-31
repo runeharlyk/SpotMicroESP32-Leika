@@ -2,11 +2,10 @@
 #define ServoController_h
 
 #include <peripherals/drivers/pca9685.h>
-#include <template/stateful_persistence_pb.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_service.h>
+#include <event_bus/event_bus.h>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
+#include <esp_http_server.h>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
@@ -24,42 +23,33 @@ inline ServoSettings ServoSettings_defaults() {
     ServoSettings settings = {};
     settings.servos_count = 12;
     const api_Servo defaults[12] = {
-        {306, -1, 0, 2.0f, "Servo1"},   {306, 1, -45, 2.0f, "Servo2"},
-        {306, 1, 90, 2.0f, "Servo3"}, {306, -1, 0, 2.0f, "Servo4"},
-        {306, -1, 45, 2.0f, "Servo5"}, {306, -1, -90, 2.0f, "Servo6"},
-        {306, 1, 0, 2.0f, "Servo7"},   {306, 1, -45, 2.0f, "Servo8"},
-        {306, 1, 90, 2.0f, "Servo9"}, {306, 1, 0, 2.0f, "Servo10"},
-        {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}
-    };
+        {306, -1, 0, 2.0f, "Servo1"}, {306, 1, -45, 2.0f, "Servo2"},  {306, 1, 90, 2.0f, "Servo3"},
+        {306, -1, 0, 2.0f, "Servo4"}, {306, -1, 45, 2.0f, "Servo5"},  {306, -1, -90, 2.0f, "Servo6"},
+        {306, 1, 0, 2.0f, "Servo7"},  {306, 1, -45, 2.0f, "Servo8"},  {306, 1, 90, 2.0f, "Servo9"},
+        {306, 1, 0, 2.0f, "Servo10"}, {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}};
     for (int i = 0; i < 12; i++) {
         settings.servos[i] = defaults[i];
     }
     return settings;
 }
 
-inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) {
-    proto = settings;
-}
-
-inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoSettings &settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
-}
-
-class ServoController : public StatefulService<ServoSettings> {
+class ServoController {
   public:
-    ServoController()
-        : protoEndpoint(ServoSettings_read, ServoSettings_update, this,
-                        API_REQUEST_EXTRACTOR(servo_settings, ServoSettings),
-                        API_RESPONSE_ASSIGNER(servo_settings, ServoSettings)),
-          _persistence(ServoSettings_read, ServoSettings_update, this,
-                       SERVO_SETTINGS_FILE, api_ServoSettings_fields, api_ServoSettings_size,
-                       ServoSettings_defaults()) {}
+    ServoController() {}
 
     void begin() {
-        _persistence.readFromFS();
+        _settingsHandle = EventBus::subscribe<api_ServoSettings>(
+            [this](const api_ServoSettings &settings) { onSettingsChanged(settings); });
+
+        api_ServoSettings initialSettings;
+        if (EventBus::peek(initialSettings)) {
+            onSettingsChanged(initialSettings);
+        }
         initializePCA();
     }
+
+    esp_err_t getSettings(httpd_req_t *request);
+    esp_err_t updateSettings(httpd_req_t *request, api_Request *protoReq);
 
     void pcaWrite(int index, int value) {
         if (value < 0 || value > 4096) {
@@ -109,7 +99,7 @@ class ServoController : public StatefulService<ServoSettings> {
         uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.1);
-            auto &servo = state().servos[i];
+            auto &servo = _settings.servos[i];
             float angle = servo.direction * angles[i] + servo.center_angle;
             uint16_t pwm = angle * servo.conversion + servo.center_pwm;
             pwms[i] = pwm = std::clamp<uint16_t>(pwm, 125, 600);
@@ -121,16 +111,20 @@ class ServoController : public StatefulService<ServoSettings> {
         if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
     }
 
-    StatefulProtoEndpoint<ServoSettings, ServoSettings> protoEndpoint;
-
   private:
+    static constexpr const char *TAG = "ServoController";
+
+    void onSettingsChanged(const api_ServoSettings &newSettings) { _settings = newSettings; }
+
     void initializePCA() {
         _pca.begin();
         _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.sleep();
     }
-    FSPersistencePB<ServoSettings> _persistence;
+
+    api_ServoSettings _settings = ServoSettings_defaults();
+    EventBus::Handle<api_ServoSettings> _settingsHandle;
 
     PCA9685Driver _pca;
 

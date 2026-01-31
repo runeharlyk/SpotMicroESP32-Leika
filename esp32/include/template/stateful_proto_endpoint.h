@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <esp_http_server.h>
 #include <template/stateful_service.h>
 #include <communication/webserver.h>
@@ -27,7 +28,8 @@ class StatefulProtoEndpoint {
     // Formats are passed as referenced const (local variable) we want to read from, and a reference (proto) we write to
     using ProtoStateReader = std::function<void(const T&, ProtoT&)>;
     /** Converts incoming protobuf message to internal state */
-    // Formats are passed as referenced const (new object) we read from, and a reference to the local variable we  write to
+    // Formats are passed as referenced const (new object) we read from, and a reference to the local variable we  write
+    // to
     using ProtoStateUpdater = std::function<StateUpdateResult(const ProtoT&, T&)>;
     /** Extracts the specific proto type from Request oneof */
     using RequestExtractor = std::function<bool(const api_Request&, ProtoT&)>;
@@ -51,8 +53,8 @@ class StatefulProtoEndpoint {
      * @param responseAssigner Assigns specific type to Response oneof
      */
     StatefulProtoEndpoint(ProtoStateReader stateReader, ProtoStateUpdater stateUpdater,
-                          StatefulService<T>* statefulService,
-                          RequestExtractor requestExtractor, ResponseAssigner responseAssigner)
+                          StatefulService<T>* statefulService, RequestExtractor requestExtractor,
+                          ResponseAssigner responseAssigner)
         : _stateReader(stateReader),
           _stateUpdater(stateUpdater),
           _statefulService(statefulService),
@@ -81,9 +83,7 @@ class StatefulProtoEndpoint {
     /**
      * Handles GET requests: reads current state and returns it as Response
      */
-    esp_err_t getState(httpd_req_t* request) {
-        return sendStateResponse(request, 200);
-    }
+    esp_err_t getState(httpd_req_t* request) { return sendStateResponse(request, 200); }
 
   private:
     /** Sends current state wrapped in Response */
@@ -115,21 +115,21 @@ class StatefulProtoEndpoint {
  * Creates a request extractor lambda for a specific payload type
  * Usage: API_REQUEST_EXTRACTOR(ap_settings, api_APSettings)
  */
-#define API_REQUEST_EXTRACTOR(field_name, proto_type)                              \
-    [](const api_Request& req, proto_type& out) -> bool {                          \
-        if (req.which_payload == api_Request_##field_name##_tag) {                 \
-            out = req.payload.field_name;                                          \
-            return true;                                                           \
-        }                                                                          \
-        return false;                                                              \
+#define API_REQUEST_EXTRACTOR(field_name, proto_type)              \
+    [](const api_Request& req, proto_type& out) -> bool {          \
+        if (req.which_payload == api_Request_##field_name##_tag) { \
+            out = req.payload.field_name;                          \
+            return true;                                           \
+        }                                                          \
+        return false;                                              \
     }
 
 /**
  * Creates a response assigner lambda for a specific payload type
  * Usage: API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)
  */
-#define API_RESPONSE_ASSIGNER(field_name, proto_type)                              \
-    [](api_Response& res, const proto_type& data) {                                \
-        res.which_payload = api_Response_##field_name##_tag;                       \
-        res.payload.field_name = data;                                             \
+#define API_RESPONSE_ASSIGNER(field_name, proto_type)        \
+    [](api_Response& res, const proto_type& data) {          \
+        res.which_payload = api_Response_##field_name##_tag; \
+        res.payload.field_name = data;                       \
     }

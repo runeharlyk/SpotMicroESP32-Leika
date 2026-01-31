@@ -4,8 +4,6 @@
 
 namespace Camera {
 
-static const char *const TAG = "CameraService";
-
 static constexpr const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static constexpr const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static constexpr const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
@@ -31,18 +29,16 @@ sensor_t *safe_sensor_get() {
 
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
-CameraService::CameraService()
-    : protoEndpoint(CameraSettings_read, CameraSettings_update, this,
-                    API_REQUEST_EXTRACTOR(camera_settings, api_CameraSettings),
-                    API_RESPONSE_ASSIGNER(camera_settings, api_CameraSettings)),
-      _persistence(CameraSettings_read, CameraSettings_update, this,
-                   CAMERA_SETTINGS_FILE, api_CameraSettings_fields, api_CameraSettings_size,
-                   CameraSettings_defaults()) {
-    addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
-}
+CameraService::CameraService() {}
 
 esp_err_t CameraService::begin() {
-    _persistence.readFromFS();
+    _settingsHandle = EventBus::subscribe<api_CameraSettings>(
+        [this](const api_CameraSettings &settings) { onSettingsChanged(settings); });
+
+    api_CameraSettings initialSettings;
+    if (EventBus::peek(initialSettings)) {
+        onSettingsChanged(initialSettings);
+    }
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;
@@ -146,39 +142,65 @@ esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     return ESP_OK;
 }
 
+void CameraService::onSettingsChanged(const api_CameraSettings &newSettings) {
+    _settings = newSettings;
+    updateCamera();
+}
+
 void CameraService::updateCamera() {
-    ESP_LOGI("CameraSettings", "Updating camera settings");
+    ESP_LOGI(TAG, "Updating camera settings");
     sensor_t *s = safe_sensor_get();
     if (!s) {
-        ESP_LOGE("CameraSettings", "Failed to update camera settings");
+        ESP_LOGE(TAG, "Failed to update camera settings");
         safe_sensor_return();
         return;
     }
-    s->set_pixformat(s, static_cast<pixformat_t>(state().pixformat));
-    s->set_framesize(s, static_cast<framesize_t>(state().framesize));
-    s->set_brightness(s, state().brightness);
-    s->set_contrast(s, state().contrast);
-    s->set_saturation(s, state().saturation);
-    s->set_sharpness(s, state().sharpness);
-    s->set_denoise(s, state().denoise);
-    s->set_gainceiling(s, static_cast<gainceiling_t>(state().gainceiling));
-    s->set_quality(s, state().quality);
-    s->set_colorbar(s, state().colorbar);
-    s->set_awb_gain(s, state().awb_gain);
-    s->set_wb_mode(s, state().wb_mode);
-    s->set_aec2(s, state().aec2);
-    s->set_ae_level(s, state().ae_level);
-    s->set_aec_value(s, state().aec_value);
-    s->set_agc_gain(s, state().agc_gain);
-    s->set_bpc(s, state().bpc);
-    s->set_wpc(s, state().wpc);
-    s->set_special_effect(s, state().special_effect);
-    s->set_raw_gma(s, state().raw_gma);
-    s->set_lenc(s, state().lenc);
-    s->set_hmirror(s, state().hmirror);
-    s->set_vflip(s, state().vflip);
-    s->set_dcw(s, state().dcw);
+    s->set_pixformat(s, static_cast<pixformat_t>(_settings.pixformat));
+    s->set_framesize(s, static_cast<framesize_t>(_settings.framesize));
+    s->set_brightness(s, _settings.brightness);
+    s->set_contrast(s, _settings.contrast);
+    s->set_saturation(s, _settings.saturation);
+    s->set_sharpness(s, _settings.sharpness);
+    s->set_denoise(s, _settings.denoise);
+    s->set_gainceiling(s, static_cast<gainceiling_t>(_settings.gainceiling));
+    s->set_quality(s, _settings.quality);
+    s->set_colorbar(s, _settings.colorbar);
+    s->set_awb_gain(s, _settings.awb_gain);
+    s->set_wb_mode(s, _settings.wb_mode);
+    s->set_aec2(s, _settings.aec2);
+    s->set_ae_level(s, _settings.ae_level);
+    s->set_aec_value(s, _settings.aec_value);
+    s->set_agc_gain(s, _settings.agc_gain);
+    s->set_bpc(s, _settings.bpc);
+    s->set_wpc(s, _settings.wpc);
+    s->set_special_effect(s, _settings.special_effect);
+    s->set_raw_gma(s, _settings.raw_gma);
+    s->set_lenc(s, _settings.lenc);
+    s->set_hmirror(s, _settings.hmirror);
+    s->set_vflip(s, _settings.vflip);
+    s->set_dcw(s, _settings.dcw);
     safe_sensor_return();
+}
+
+esp_err_t CameraService::getSettings(httpd_req_t *request) {
+    api_Response response = api_Response_init_zero;
+    response.status_code = 200;
+    response.which_payload = api_Response_camera_settings_tag;
+    response.payload.camera_settings = _settings;
+    return WebServer::send(request, 200, response, api_Response_fields);
+}
+
+esp_err_t CameraService::updateSettings(httpd_req_t *request, api_Request *protoReq) {
+    if (protoReq->which_payload != api_Request_camera_settings_tag) {
+        return ESP_FAIL;
+    }
+
+    EventBus::publish(protoReq->payload.camera_settings, "HTTPEndpoint");
+
+    api_Response response = api_Response_init_zero;
+    response.status_code = 200;
+    response.which_payload = api_Response_empty_message_tag;
+    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
 } // namespace Camera
