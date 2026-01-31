@@ -265,7 +265,10 @@ esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
                               .type = HTTPD_WS_TYPE_BINARY,
                               .payload = const_cast<uint8_t*>(data),
                               .len = len};
-    return httpd_ws_send_frame_async(server_, sockfd, &frame);
+    xSemaphoreTake(wsMutex_, portMAX_DELAY);
+    esp_err_t ret = httpd_ws_send_frame_async(server_, sockfd, &frame);
+    xSemaphoreGive(wsMutex_);
+    return ret;
 }
 
 esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
