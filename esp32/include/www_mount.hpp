@@ -3,3 +3,4 @@
 #include "WWWData.h"
 
 void mountStaticAssets(WebServer& s);
+void mountSpaFallback(WebServer& s);

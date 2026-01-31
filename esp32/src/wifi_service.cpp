@@ -27,12 +27,6 @@ void WiFiService::begin() {
 
     _persistence.readFromFS();
     _lastConnectionAttempt = 0;
-
-    if (state().wifi_networks_count >= 1) {
-        WiFi.mode(WIFI_MODE_STA);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        configureNetwork(state().wifi_networks[0]);
-    }
 }
 
 void WiFiService::reconfigureWiFiConnection() {
@@ -127,65 +121,24 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
 
 void WiFiService::manageSTA() {
     if (WiFi.isConnected() || state().wifi_networks_count == 0) return;
-    if ((WiFi.getMode() & WIFI_MODE_STA) == 0) {
-        WiFi.mode(WIFI_MODE_STA);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+    wifi_mode_t mode = WiFi.getMode();
+    if (mode == WIFI_MODE_NULL || mode == WIFI_MODE_AP) return;
+
+    static uint32_t startTime = 0;
+    static bool attempted = false;
+
+    if (startTime == 0) {
+        startTime = esp_timer_get_time() / 1000;
+        return;
     }
-    connectToWiFi();
-}
 
-void WiFiService::connectToWiFi() {
-    int scanResult = WiFi.scanNetworks();
-    if (scanResult < 0) {
-        ESP_LOGE(TAG, "WiFi scan failed.");
-    } else if (scanResult == 0) {
-        ESP_LOGI(TAG, "No networks found.");
-    } else {
-        ESP_LOGI(TAG, "%d networks found.", scanResult);
+    uint32_t now = esp_timer_get_time() / 1000;
+    if (now - startTime < 3000) return;
 
-        WiFiNetwork *bestNetwork = nullptr;
-        int32_t bestNetworkDb = FACTORY_WIFI_RSSI_THRESHOLD;
-
-        for (int i = 0; i < scanResult; ++i) {
-            std::string ssid_scan;
-            int32_t rssi_scan;
-            uint8_t sec_scan;
-            uint8_t *BSSID_scan;
-            int32_t chan_scan;
-
-            WiFi.getNetworkInfo(i, ssid_scan, sec_scan, rssi_scan, BSSID_scan, chan_scan);
-
-            for (pb_size_t j = 0; j < state().wifi_networks_count; j++) {
-                WiFiNetwork &network = state().wifi_networks[j];
-                if (ssid_scan == network.ssid) {
-                    if (rssi_scan > bestNetworkDb) {
-                        bestNetworkDb = rssi_scan;
-                        bestNetwork = &network;
-                    }
-                }
-            }
-        }
-
-        if (!state().priority_rssi) {
-            for (pb_size_t j = 0; j < state().wifi_networks_count; j++) {
-                WiFiNetwork &network = state().wifi_networks[j];
-                for (int i = 0; i < scanResult; ++i) {
-                    if (WiFi.SSID(i) == network.ssid) {
-                        ESP_LOGI(TAG, "Connecting to first available network: %s", network.ssid);
-                        configureNetwork(network);
-                        WiFi.scanDelete();
-                        return;
-                    }
-                }
-            }
-        } else if (bestNetwork) {
-            ESP_LOGI(TAG, "Connecting to strongest network: %s", bestNetwork->ssid);
-            configureNetwork(*bestNetwork);
-        } else {
-            ESP_LOGI(TAG, "No known networks found.");
-        }
-
-        WiFi.scanDelete();
+    if (!attempted && state().wifi_networks_count > 0) {
+        attempted = true;
+        ESP_LOGI(TAG, "Connecting to: %s", state().wifi_networks[0].ssid);
+        configureNetwork(state().wifi_networks[0]);
     }
 }
 

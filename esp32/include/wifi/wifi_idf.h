@@ -6,6 +6,7 @@
 #include <esp_log.h>
 #include <nvs_flash.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <freertos/event_groups.h>
 #include <utils/ip_address.h>
 #include <string>
