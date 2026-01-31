@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include <cstdint>
 #include <communication/webserver.h>
 #include <communication/comm_base.hpp>
 

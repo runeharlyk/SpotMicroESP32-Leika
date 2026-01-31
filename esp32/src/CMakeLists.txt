@@ -1,0 +1,26 @@
+idf_component_register(
+    SRC_DIRS 
+        "."
+        "communication"
+        "peripherals"
+        "wifi"
+        "platform_shared"
+        "../../submodules/nanopb"
+    INCLUDE_DIRS 
+        "../include"
+        "../../submodules/nanopb"
+    REQUIRES
+        driver
+        esp_http_server
+        nvs_flash
+        esp_wifi
+        esp_event
+        esp_netif
+        mdns
+        esp_timer
+        esp_psram
+        spi_flash
+        littlefs
+        esp32-camera
+        esp-dsp
+)

@@ -1,5 +1,6 @@
 #include <mdns_service.h>
 #include <communication/webserver.h>
+#include <esp_netif.h>
 
 static const char *TAG = "MDNSService";
 
@@ -42,14 +43,35 @@ void MDNSService::startMDNS() {
 
         ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname);
     } else {
+    esp_err_t err = mdns_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize MDNS: %s", esp_err_to_name(err));
         _started = false;
-        ESP_LOGE(TAG, "Failed to start MDNS");
+        return;
     }
+
+    err = mdns_hostname_set(state().hostname.c_str());
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set MDNS hostname: %s", esp_err_to_name(err));
+        mdns_free();
+        _started = false;
+        return;
+    }
+
+    err = mdns_instance_name_set(state().instance.c_str());
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to set MDNS instance name: %s", esp_err_to_name(err));
+    }
+
+    _started = true;
+    addServices();
+
+    ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname.c_str());
 }
 
 void MDNSService::stopMDNS() {
     ESP_LOGV(TAG, "Stopping MDNS");
-    MDNS.end();
+    mdns_free();
     _started = false;
 }
 
@@ -69,6 +91,24 @@ void MDNSService::addServices() {
         for (size_t j = 0; j < state().services_count; j++) {
             const auto &service = state().services[j];
             MDNS.addServiceTxt(service.service, service.protocol, txt.key, txt.value);
+    for (const auto &service : state().services) {
+        esp_err_t err =
+            mdns_service_add(nullptr, service.service.c_str(), service.protocol.c_str(), service.port, nullptr, 0);
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to add service %s: %s", service.service.c_str(), esp_err_to_name(err));
+            continue;
+        }
+
+        for (const auto &txt : service.txtRecords) {
+            mdns_service_txt_item_set(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(),
+                                      txt.value.c_str());
+        }
+    }
+
+    for (const auto &txt : state().globalTxtRecords) {
+        for (const auto &service : state().services) {
+            mdns_service_txt_item_set(service.service.c_str(), service.protocol.c_str(), txt.key.c_str(),
+                                      txt.value.c_str());
         }
     }
 }
@@ -121,4 +161,50 @@ esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq
     }
 
     return WebServer::send(request, 200, response, api_Response_fields);
+esp_err_t MDNSService::queryServices(httpd_req_t *request, JsonVariant &json) {
+    std::string service = json["service"].as<std::string>();
+    std::string proto = json["protocol"].as<std::string>();
+
+    JsonDocument doc;
+    JsonVariant root = doc.to<JsonVariant>();
+
+    ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", service.c_str(), proto.c_str());
+
+    mdns_result_t *results = nullptr;
+    esp_err_t err = mdns_query_ptr(service.c_str(), proto.c_str(), 3000, 20, &results);
+
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "MDNS query failed: %s", esp_err_to_name(err));
+        root["services"] = JsonArray();
+        return WebServer::sendJson(request, 200, doc);
+    }
+
+    int count = 0;
+    mdns_result_t *r = results;
+    while (r) {
+        count++;
+        r = r->next;
+    }
+
+    ESP_LOGI(TAG, "Found %d services", count);
+
+    JsonArray servicesArray = root["services"].to<JsonArray>();
+    r = results;
+    while (r) {
+        JsonVariant serviceObj = servicesArray.add<JsonVariant>();
+        if (r->hostname) {
+            serviceObj["name"] = r->hostname;
+        }
+        if (r->addr) {
+            char ip_str[16];
+            esp_ip4addr_ntoa(&r->addr->addr.u_addr.ip4, ip_str, sizeof(ip_str));
+            serviceObj["ip"] = ip_str;
+        }
+        serviceObj["port"] = r->port;
+        r = r->next;
+    }
+
+    mdns_query_results_free(results);
+
+    return WebServer::sendJson(request, 200, doc);
 }

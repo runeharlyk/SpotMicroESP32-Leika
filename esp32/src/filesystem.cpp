@@ -3,8 +3,9 @@
 #include <vector>
 #include <cstring>
 #include "utils/string_utils.hpp"
+#include <esp_log.h>
 
-static const char *TAG = "FileService";
+static const char *TAG = "FileSystem";
 
 namespace FileSystem {
 
@@ -88,23 +89,127 @@ esp_err_t getFilesProto(httpd_req_t *request) {
 
     freeAllocatedEntries();  // Clean up after sending
     return result;
+bool init() {
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = MOUNT_POINT,
+        .partition_label = "spiffs",
+        .format_if_mount_failed = true,
+        .dont_mount = false,
+    };
+
+    esp_err_t ret = esp_vfs_littlefs_register(&conf);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "Failed to mount or format filesystem");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(TAG, "Failed to find LittleFS partition");
+        } else {
+            ESP_LOGE(TAG, "Failed to initialize LittleFS (%s)", esp_err_to_name(ret));
+        }
+        return false;
+    }
+
+    size_t total = 0, used = 0;
+    ret = esp_littlefs_info("spiffs", &total, &used);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+
+    mkdirRecursive(FS_CONFIG_DIRECTORY);
+
+    return true;
+}
+
+bool fileExists(const char *filename) {
+    struct stat st;
+    return stat(filename, &st) == 0;
+}
+
+std::string readFile(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        return "";
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::string content;
+    content.resize(size);
+    fread(&content[0], 1, size, f);
+    fclose(f);
+
+    return content;
+}
+
+bool writeFile(const char *filename, const char *content) {
+    FILE *f = fopen(filename, "w");
+    if (!f) {
+        ESP_LOGE(TAG, "Failed to open file for writing: %s", filename);
+        return false;
+    }
+
+    size_t len = strlen(content);
+    size_t written = fwrite(content, 1, len, f);
+    fclose(f);
+
+    return written == len;
+}
+
+bool mkdirRecursive(const char *path) {
+    char tmp[256];
+    char *p = nullptr;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = 0;
+    }
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            struct stat st;
+            if (stat(tmp, &st) != 0) {
+                if (::mkdir(tmp, 0755) != 0) {
+                    ESP_LOGE(TAG, "Failed to create directory: %s", tmp);
+                    return false;
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    struct stat st;
+    if (stat(tmp, &st) != 0) {
+        if (::mkdir(tmp, 0755) != 0) {
+            ESP_LOGE(TAG, "Failed to create directory: %s", tmp);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 esp_err_t getFiles(httpd_req_t *request) {
-    std::string files = listFiles("/");
+    std::string files = listFiles(MOUNT_POINT);
     httpd_resp_set_type(request, "application/json");
     return httpd_resp_send(request, files.c_str(), files.length());
 }
 
 esp_err_t getConfigFile(httpd_req_t *request) {
     const char *uri = request->uri;
-    std::string path = "/config" + std::string(uri).substr(11);
-    if (!ESP_FS.exists(path.c_str())) {
+    std::string path = std::string(MOUNT_POINT) + "/config" + std::string(uri).substr(11);
+
+    if (!fileExists(path.c_str())) {
         return WebServer::sendError(request, 404, "File not found");
     }
-    File file = ESP_FS.open(path.c_str(), "r");
-    if (!file) {
-        return WebServer::sendError(request, 500, "Failed to open file");
+
+    std::string content = readFile(path.c_str());
+    if (content.empty()) {
+        return WebServer::sendError(request, 500, "Failed to read file");
     }
     String content = file.readString();
     file.close();
@@ -128,6 +233,18 @@ esp_err_t handleDelete(httpd_req_t *request, const api_FileDeleteRequest &req) {
         return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Delete failed");
+
+    httpd_resp_set_type(request, "application/json");
+    return httpd_resp_send(request, content.c_str(), content.length());
+}
+
+esp_err_t handleDelete(httpd_req_t *request, JsonVariant &json) {
+    if (json.is<JsonObject>()) {
+        const char *filename = json["file"].as<const char *>();
+        std::string fullPath = std::string(MOUNT_POINT) + filename;
+        ESP_LOGI(TAG, "Deleting file: %s", fullPath.c_str());
+        return deleteFile(fullPath.c_str()) ? WebServer::sendOk(request)
+                                            : WebServer::sendError(request, 500, "Delete failed");
     }
 }
 
@@ -141,34 +258,51 @@ esp_err_t handleEdit(httpd_req_t *request, const api_FileEditRequest &req) {
         return WebServer::send(request, 200, res, api_Response_fields);
     } else {
         return WebServer::sendError(request, 500, "Edit failed");
+esp_err_t handleEdit(httpd_req_t *request, JsonVariant &json) {
+    if (json.is<JsonObject>()) {
+        const char *filename = json["file"].as<const char *>();
+        const char *content = json["content"].as<const char *>();
+        std::string fullPath = std::string(MOUNT_POINT) + filename;
+        ESP_LOGI(TAG, "Editing file: %s", fullPath.c_str());
+        return editFile(fullPath.c_str(), content) ? WebServer::sendOk(request)
+                                                   : WebServer::sendError(request, 500, "Edit failed");
     }
 }
 
-bool deleteFile(const char *filename) { return ESP_FS.remove(filename); }
+bool deleteFile(const char *filename) { return remove(filename) == 0; }
 
 std::string listFiles(const std::string &directory, bool isRoot) {
-    File root = ESP_FS.open(directory.find("/") == 0 ? directory.c_str() : ("/" + directory).c_str());
-    if (!root.isDirectory()) return "{}";
-
-    File file = root.openNextFile();
-    if (!file) {
+    DIR *dir = opendir(directory.c_str());
+    if (!dir) {
         return isRoot ? "{ \"root\": {} }" : "{}";
     }
 
     std::string output = isRoot ? "{ \"root\": {" : "{";
+    bool first = true;
 
-    while (file) {
-        std::string name = std::string(file.name());
-        if (file.isDirectory()) {
-            output += "\"" + name + "\": " + listFiles(name, false);
-        } else {
-            output += "\"" + name + "\": " + std::to_string(file.size());
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
         }
 
-        File next = root.openNextFile();
-        if (next) output += ", ";
-        file = next;
+        if (!first) {
+            output += ", ";
+        }
+        first = false;
+
+        std::string fullPath = directory + "/" + entry->d_name;
+        struct stat st;
+        if (stat(fullPath.c_str(), &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                output += "\"" + std::string(entry->d_name) + "\": " + listFiles(fullPath, false);
+            } else {
+                output += "\"" + std::string(entry->d_name) + "\": " + std::to_string(st.st_size);
+            }
+        }
     }
+
+    closedir(dir);
 
     output += "}";
     if (isRoot) output += "}";
@@ -196,6 +330,14 @@ esp_err_t mkdir(httpd_req_t *request, const api_FileMkdirRequest &req) {
     } else {
         return WebServer::sendError(request, 500, "mkdir failed");
     }
+bool editFile(const char *filename, const char *content) { return writeFile(filename, content); }
+
+esp_err_t mkdir(httpd_req_t *request, JsonVariant &json) {
+    const char *path = json["path"].as<const char *>();
+    std::string fullPath = std::string(MOUNT_POINT) + path;
+    ESP_LOGI(TAG, "Creating directory: %s", fullPath.c_str());
+    return mkdirRecursive(fullPath.c_str()) ? WebServer::sendOk(request)
+                                            : WebServer::sendError(request, 500, "mkdir failed");
 }
 
 } // namespace FileSystem

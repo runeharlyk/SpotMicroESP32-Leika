@@ -1,14 +1,15 @@
 #pragma once
 
-#include <esp32-hal.h>
+#include <sdkconfig.h>
+#include <esp_system.h>
 
-#if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
+#if CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/rtc.h"
 #ifndef ESP_PLATFORM_NAME
 #define ESP_PLATFORM_NAME "ESP32"
 #endif
 #elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32/rom/rtc.h"
+#include "esp32s2/rom/rtc.h"
 #ifndef ESP_PLATFORM_NAME
 #define ESP_PLATFORM_NAME "ESP32-S2"
 #endif
@@ -26,23 +27,11 @@
 #error Target CONFIG_IDF_TARGET is not supported
 #endif
 
-#ifndef ARDUINO_VERSION
-#ifndef STRINGIFY
-#define STRINGIFY(s) #s
-#endif
-#define ARDUINO_VERSION_STR(major, minor, patch) "v" STRINGIFY(major) "." STRINGIFY(minor) "." STRINGIFY(patch)
-#define ARDUINO_VERSION \
-    ARDUINO_VERSION_STR(ESP_ARDUINO_VERSION_MAJOR, ESP_ARDUINO_VERSION_MINOR, ESP_ARDUINO_VERSION_PATCH)
-#endif
-
-/*
- * I2C software connection
- */
 #ifndef SDA_PIN
-#define SDA_PIN SDA
+#define SDA_PIN 21
 #endif
 #ifndef SCL_PIN
-#define SCL_PIN SCL
+#define SCL_PIN 22
 #endif
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 100000UL

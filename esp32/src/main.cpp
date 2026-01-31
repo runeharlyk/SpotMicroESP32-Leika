@@ -1,6 +1,9 @@
-#include <Arduino.h>
-#include <ESPmDNS.h>
-#include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_log.h>
+#include <nvs_flash.h>
+#include <wifi/wifi_idf.h>
+#include <mdns.h>
 #include <map>
 
 #include <filesystem.h>
@@ -20,7 +23,7 @@
 
 #include <www_mount.hpp>
 
-Websocket socket {server, "/api/ws"};
+Websocket wsSocket {server, "/api/ws"};
 
 Peripherals peripherals;
 ServoController servoController;
@@ -123,35 +126,35 @@ void setupServer() {
 
 void setupEventSocket() {
     FileSystemWS::fsHandler.setSendCallbacks(
-        [](const socket_message_FSDownloadMetadata &metadata, int clientId) { socket.emit(metadata, clientId); },
-        [](const socket_message_FSDownloadData &data, int clientId) { socket.emit(data, clientId); },
-        [](const socket_message_FSDownloadComplete &complete, int clientId) { socket.emit(complete, clientId); },
-        [](const socket_message_FSUploadComplete &complete, int clientId) { socket.emit(complete, clientId); });
+        [](const socket_message_FSDownloadMetadata &metadata, int clientId) { wsSocket.emit(metadata, clientId); },
+        [](const socket_message_FSDownloadData &data, int clientId) { wsSocket.emit(data, clientId); },
+        [](const socket_message_FSDownloadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); },
+        [](const socket_message_FSUploadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); });
 
-    socket.on<socket_message_ControllerData>(
+    wsSocket.on<socket_message_ControllerData>(
         [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
 
-    socket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
+    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
         servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
         motionService.handleMode(data);
         motionService.isActive() ? servoController.activate() : servoController.deactivate();
     });
 
-    socket.on<socket_message_WalkGaitData>(
+    wsSocket.on<socket_message_WalkGaitData>(
         [&](const socket_message_WalkGaitData &data, int clientId) { motionService.handleWalkGait(data); });
 
-    socket.on<socket_message_AnglesData>(
+    wsSocket.on<socket_message_AnglesData>(
         [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
 
-    socket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
+    wsSocket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
         servoController.setServoPWM(data.servo_id, data.servo_pwm);
     });
 
-    socket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
+    wsSocket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
         data.active ? servoController.activate() : servoController.deactivate();
     });
 
-    socket.on<socket_message_FSUploadData>(
+    wsSocket.on<socket_message_FSUploadData>(
         [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
 
     using CorrelationHandler =
@@ -225,7 +228,7 @@ void setupEventSocket() {
          }},
     };
 
-    socket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
+    wsSocket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
         auto res = new socket_message_CorrelationResponse();
         *res = socket_message_CorrelationResponse_init_default;
         res->correlation_id = data.correlation_id;
@@ -235,7 +238,7 @@ void setupEventSocket() {
         if (it != correlationHandlers.end()) {
             it->second(data, *res, clientId);
             if (res->status_code != 0) {
-                socket.emit(*res, clientId);
+                wsSocket.emit(*res, clientId);
             }
         } else {
             printf("WARNING: no handler for correlation request: %d\n", data.which_request);
@@ -248,15 +251,18 @@ void setupEventSocket() {
 void IRAM_ATTR SpotControlLoopEntry(void *) {
     ESP_LOGI("main", "Control task starting");
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = 5 / portTICK_PERIOD_MS;
+    const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
     peripherals.begin();
     servoController.begin();
     motionService.begin();
+#if FT_ENABLED(USE_WS2812)
+    ledService.begin();
+#endif
     peripherals.calibrateIMU();
 
     for (;;) {
-        WARN_IF_SLOW(SpotControlLoopEntry, 5);
+        WARN_IF_SLOW(SpotControlLoopEntry, 10);
         peripherals.update();
         motionService.update(&peripherals);
         servoController.setAngles(motionService.getAngles());
@@ -272,8 +278,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 
     wifiService.begin();
-    MDNS.begin(APP_NAME);
-    MDNS.setInstanceName(APP_NAME);
+    mdns_init();
+    mdns_hostname_set(APP_NAME);
+    mdns_instance_name_set(APP_NAME);
     apService.begin();
 
 #if FT_ENABLED(USE_CAMERA)
@@ -282,7 +289,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     setupServer();
 
-    socket.begin();
+    wsSocket.begin();
     setupEventSocket();
 
     ESP_LOGI("main", "Service task started");
@@ -291,23 +298,23 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         apService.loop();
 
         EXECUTE_EVERY_N_MS(2000, {
-            if (socket.hasSubscribers(socket_message_Message_analytics_tag)) {
+            if (wsSocket.hasSubscribers(socket_message_Message_analytics_tag)) {
                 socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
                 system_service::getAnalytics(analytics);
-                socket.emit(analytics);
+                wsSocket.emit(analytics);
             }
         });
 
         EXECUTE_EVERY_N_MS(100, {
-            if (socket.hasSubscribers(socket_message_Message_imu_tag)) {
+            if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);
-                socket.emit(imu);
+                wsSocket.emit(imu);
             }
 
-            if (socket.hasSubscribers(socket_message_Message_rssi_tag)) {
+            if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
-                socket.emit(rssi);
+                wsSocket.emit(rssi);
             }
         });
 
@@ -317,18 +324,23 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     }
 }
 
-void setup() {
-    ESP_FS.begin();
+extern "C" void app_main(void) {
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    FileSystem::init();
 
     ESP_LOGI("main", "Booting robot");
 
     feature_service::printFeatureConfiguration();
 
-    xTaskCreate(serviceLoopEntry, "Service task", 4096, nullptr, 2, nullptr);
+    xTaskCreate(serviceLoopEntry, "Service task", 8192, nullptr, 2, nullptr);
 
-    xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 4096, nullptr, 5, nullptr, 1);
+    xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 8192, nullptr, 5, nullptr, 1);
 
     ESP_LOGI("main", "Finished booting");
 }
-
-void loop() { vTaskDelete(nullptr); }

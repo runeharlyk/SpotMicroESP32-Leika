@@ -2,11 +2,15 @@
 
 #include <esp_http_server.h>
 #include <ArduinoJson.h>
-#include <LittleFS.h>
+#include <esp_littlefs.h>
+#include <esp_vfs.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <string>
+#include <cstdio>
 #include <platform_shared/api.pb.h>
 
-#define ESP_FS LittleFS
+#define MOUNT_POINT "/littlefs"
 
 #define FS_CONFIG_DIRECTORY "/config"
 #define DEVICE_CONFIG_FILE "/config/peripheral.json"
@@ -24,6 +28,25 @@ void listFilesProto(const std::string &directory, api_FileEntry *entry);
 std::string listFiles(const std::string &directory, bool isRoot = true);
 bool deleteFile(const char *filename);
 bool editFile(const char *filename, const uint8_t *content, size_t size);
+#define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.json"
+#define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.json"
+#define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
+#define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.json"
+#define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.json"
+#define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.json"
+#define MDNS_SETTINGS_FILE MOUNT_POINT "/config/mdnsSettings.json"
+
+namespace FileSystem {
+
+bool init();
+
+std::string listFiles(const std::string &directory, bool isRoot = true);
+bool deleteFile(const char *filename);
+bool editFile(const char *filename, const char *content);
+bool fileExists(const char *filename);
+std::string readFile(const char *filename);
+bool writeFile(const char *filename, const char *content);
+bool mkdirRecursive(const char *path);
 
 esp_err_t getFilesProto(httpd_req_t *request);
 esp_err_t getFiles(httpd_req_t *request);

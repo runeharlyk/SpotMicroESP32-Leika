@@ -1,5 +1,39 @@
 #include "system_service.h"
 #include <communication/webserver.h>
+#include <dirent.h>
+#include <esp_chip_info.h>
+#include <esp_flash.h>
+#include <esp_ota_ops.h>
+#include <esp_system.h>
+#include <esp_sleep.h>
+#include <soc/soc.h>
+
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+#include <driver/temperature_sensor.h>
+
+static float temperatureRead() {
+    static temperature_sensor_handle_t temp_sensor = nullptr;
+    static bool initialized = false;
+
+    if (!initialized) {
+        temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
+        if (temperature_sensor_install(&temp_sensor_config, &temp_sensor) == ESP_OK) {
+            temperature_sensor_enable(temp_sensor);
+            initialized = true;
+        }
+    }
+
+    if (initialized && temp_sensor) {
+        float temp = 0;
+        if (temperature_sensor_get_celsius(temp_sensor, &temp) == ESP_OK) {
+            return temp;
+        }
+    }
+    return 0.0f;
+}
+#else
+static inline float temperatureRead() { return 0.0f; }
+#endif
 
 namespace system_service {
 
@@ -22,12 +56,15 @@ esp_err_t handleSleep(httpd_req_t *request) {
 
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
-    File root = ESP_FS.open(FS_CONFIG_DIRECTORY);
-    File file;
-    while (file = root.openNextFile()) {
-        std::string path = file.path();
-        file.close();
-        ESP_FS.remove(path.c_str());
+    DIR *dir = opendir(FS_CONFIG_DIRECTORY);
+    if (dir) {
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+            std::string path = std::string(FS_CONFIG_DIRECTORY) + "/" + entry->d_name;
+            remove(path.c_str());
+        }
+        closedir(dir);
     }
     restart();
 }
@@ -37,11 +74,11 @@ void restart() {
         [](void *pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
-                MDNS.end();
+                mdns_free();
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 WiFi.disconnect(true);
                 vTaskDelay(500 / portTICK_PERIOD_MS);
-                ESP.restart();
+                esp_restart();
             }
         },
         "Restart task", 4096, nullptr, 10, nullptr);
@@ -52,7 +89,7 @@ void sleep() {
         [](void *pvParameters) {
             for (;;) {
                 vTaskDelay(250 / portTICK_PERIOD_MS);
-                MDNS.end();
+                mdns_free();
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 WiFi.disconnect(true);
                 vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -72,22 +109,97 @@ void sleep() {
     ESP_LOGI(TAG, "Setting device to sleep");
 }
 
+static const char *getChipModel() {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    switch (chip_info.model) {
+        case CHIP_ESP32: return "ESP32";
+        case CHIP_ESP32S2: return "ESP32-S2";
+        case CHIP_ESP32S3: return "ESP32-S3";
+        case CHIP_ESP32C3: return "ESP32-C3";
+        case CHIP_ESP32C2: return "ESP32-C2";
+        case CHIP_ESP32C6: return "ESP32-C6";
+        case CHIP_ESP32H2: return "ESP32-H2";
+        default: return "Unknown";
+    }
+}
+
+static uint32_t getCpuFreqMHz() { return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ; }
+
+static uint8_t getChipCores() {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    return chip_info.cores;
+}
+
+static uint8_t getChipRevision() {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    return chip_info.revision;
+}
+
+static uint32_t getFlashChipSize() {
+    uint32_t size = 0;
+    esp_flash_get_size(NULL, &size);
+    return size;
+}
+
+static uint32_t getFlashChipSpeed() {
+#if defined(CONFIG_ESPTOOLPY_FLASHFREQ_120M)
+    return 120000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_80M)
+    return 80000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_64M)
+    return 64000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_60M)
+    return 60000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_48M)
+    return 48000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_40M)
+    return 40000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_30M)
+    return 30000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_26M)
+    return 26000000;
+#elif defined(CONFIG_ESPTOOLPY_FLASHFREQ_20M)
+    return 20000000;
+#else
+    return 80000000;
+#endif
+}
+
+static uint32_t getSketchSize() {
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    if (running) {
+        return running->size;
+    }
+    return 0;
+}
+
+static uint32_t getFreeSketchSpace() {
+    const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
+    if (next) {
+        return next->size;
+    }
+    return 0;
+}
+
 void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
     info.esp_platform = (char *)ESP_PLATFORM_NAME;
     info.firmware_version = APP_VERSION;
-    info.cpu_freq_mhz = ESP.getCpuFreqMHz();
-    info.cpu_type = (char *)ESP.getChipModel();
-    info.cpu_rev = ESP.getChipRevision();
-    info.cpu_cores = ESP.getChipCores();
-    info.sketch_size = ESP.getSketchSize();
-    info.free_sketch_space = ESP.getFreeSketchSpace();
-    info.sdk_version = (char *)ESP.getSdkVersion();
-    info.arduino_version = ARDUINO_VERSION;
-    info.flash_chip_size = ESP.getFlashChipSize();
-    info.flash_chip_speed = ESP.getFlashChipSpeed();
+    info.cpu_freq_mhz = getCpuFreqMHz();
+    info.cpu_type = (char *)getChipModel();
+    info.cpu_rev = getChipRevision();
+    info.cpu_cores = getChipCores();
+    info.sketch_size = getSketchSize();
+    info.free_sketch_space = getFreeSketchSpace();
+    info.sdk_version = (char *)esp_get_idf_version();
+    info.arduino_version = "";
+    info.flash_chip_size = getFlashChipSize();
+    info.flash_chip_speed = getFlashChipSpeed();
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
 }
 

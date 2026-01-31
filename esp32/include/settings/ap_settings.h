@@ -1,11 +1,11 @@
 #pragma once
 
-#include <WiFi.h>
+#include <wifi/wifi_idf.h>
+#include <wifi/dns_server.h>
+#include <ArduinoJson.h>
 #include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <cstring>
-
-#include <DNSServer.h>
 
 #ifndef FACTORY_AP_PROVISION_MODE
 #define FACTORY_AP_PROVISION_MODE api_APProvisionMode_AP_MODE_DISCONNECTED
