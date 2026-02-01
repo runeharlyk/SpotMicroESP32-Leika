@@ -16,17 +16,18 @@
         }                                                                                         \
     } while (0)
 
-#define TIME_IT(code)                                                                       \
+    // Note: name must be a valid variable name too
+#define TIME_IT(code, name)                                                                       \
     {                                                                                       \
-        uint64_t time_it_start = esp_timer_get_time();                                      \
+        uint64_t time_it_start##name = esp_timer_get_time();                                      \
         code;                                                                               \
-        uint64_t time_it_elapsed = esp_timer_get_time() - time_it_start;                    \
-        if (time_it_elapsed < 1000) {                                                       \
-            ESP_LOGI("Time It", "Time elapsed: %llu microseconds", time_it_elapsed);        \
-        } else if (time_it_elapsed < 1000000) {                                             \
-            ESP_LOGI("Time It", "Time elapsed: %llu milliseconds", time_it_elapsed / 1000); \
+        uint64_t time_it_elapsed##name = esp_timer_get_time() - time_it_start##name;                    \
+        if (time_it_elapsed##name < 1000) {                                                       \
+            ESP_LOGI("Time It - " #name, "Time elapsed: %llu microseconds", time_it_elapsed##name);        \
+        } else if (time_it_elapsed##name < 1000000) {                                             \
+            ESP_LOGI("Time It - " #name, "Time elapsed: %llu milliseconds", time_it_elapsed##name / 1000); \
         } else {                                                                            \
-            ESP_LOGI("Time It", "Time elapsed: %.2f seconds", time_it_elapsed / 1000000.0); \
+            ESP_LOGI("Time It - " #name, "Time elapsed: %.2f seconds", time_it_elapsed##name / 1000000.0); \
         }                                                                                   \
     }
 
