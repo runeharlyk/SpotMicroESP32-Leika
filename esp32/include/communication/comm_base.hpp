@@ -64,6 +64,8 @@ class CommAdapterBase {
 
         if (clientId < 0 && !hasSubscribers(tag)) return;
 
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+
         msg_.which_message = tag;
         MessageTraits<T>::assign(msg_, data);
 
@@ -77,18 +79,22 @@ class CommAdapterBase {
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
+            xSemaphoreGive(mutex_);
+            if (pb_heap_enc_buf != buffer) free(buffer);
             return;
         }
 
         if (clientId >= 0) {
             send(buffer, stream.bytes_written, clientId);
         } else {
-            sendToSubscribers(tag, buffer, stream.bytes_written);
+            sendToSubscribersLocked(tag, buffer, stream.bytes_written);
         }
 
         if (pb_heap_enc_buf != buffer) {
             free(buffer);
         }
+
+        xSemaphoreGive(mutex_);
     }
 
   protected:
@@ -151,11 +157,9 @@ class CommAdapterBase {
     std::vector<std::unique_ptr<EventBusHandleBase>> eventBusHandles_;
 
   private:
-    void sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
-        xSemaphoreTake(mutex_, portMAX_DELAY);
+    void sendToSubscribersLocked(int32_t tag, const uint8_t* data, size_t len) {
         for (int cid : client_subscriptions_[tag]) {
             send(data, len, cid);
         }
-        xSemaphoreGive(mutex_);
     }
 };

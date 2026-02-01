@@ -36,10 +36,28 @@ REGISTER_SETTINGS_TYPE(api_PeripheralSettings, EventType::PERIPHERAL_SETTINGS)
 REGISTER_SETTINGS_TYPE(api_ServoSettings, EventType::SERVO_SETTINGS)
 REGISTER_SETTINGS_TYPE(api_CameraSettings, EventType::CAMERA_SETTINGS)
 
-REGISTER_EVENT_TYPE(socket_message_IMUData, EventType::IMU_DATA)
-REGISTER_EVENT_TYPE(socket_message_ControllerData, EventType::MOTION_COMMAND)
-REGISTER_EVENT_TYPE(socket_message_ModeData, EventType::MOTION_MODE)
-REGISTER_EVENT_TYPE(socket_message_AnglesData, EventType::MOTION_ANGLES)
-REGISTER_EVENT_TYPE(socket_message_WalkGaitData, EventType::MOTION_WALK_GAIT)
-REGISTER_EVENT_TYPE(socket_message_ServoStateData, EventType::SERVO_STATE)
-REGISTER_EVENT_TYPE(socket_message_ServoPWMData, EventType::SERVO_PWM)
+#define REGISTER_COMMAND_TYPE(MsgType, EventTypeValue) \
+    REGISTER_EVENT_TYPE(MsgType, EventTypeValue)       \
+    template <>                                        \
+    struct EventBusConfig<MsgType> {                   \
+        static constexpr size_t QueueDepth = 1;        \
+        static constexpr size_t MaxSubs = 3;           \
+        static constexpr size_t BatchSize = 1;         \
+    };
+
+#define REGISTER_STREAM_TYPE(MsgType, EventTypeValue) \
+    REGISTER_EVENT_TYPE(MsgType, EventTypeValue)      \
+    template <>                                       \
+    struct EventBusConfig<MsgType> {                  \
+        static constexpr size_t QueueDepth = 4;       \
+        static constexpr size_t MaxSubs = 3;          \
+        static constexpr size_t BatchSize = 4;        \
+    };
+
+REGISTER_STREAM_TYPE(socket_message_IMUData, EventType::IMU_DATA)
+REGISTER_COMMAND_TYPE(socket_message_ControllerData, EventType::MOTION_COMMAND)
+REGISTER_COMMAND_TYPE(socket_message_ModeData, EventType::MOTION_MODE)
+REGISTER_COMMAND_TYPE(socket_message_AnglesData, EventType::MOTION_ANGLES)
+REGISTER_COMMAND_TYPE(socket_message_WalkGaitData, EventType::MOTION_WALK_GAIT)
+REGISTER_COMMAND_TYPE(socket_message_ServoStateData, EventType::SERVO_STATE)
+REGISTER_COMMAND_TYPE(socket_message_ServoPWMData, EventType::SERVO_PWM)
