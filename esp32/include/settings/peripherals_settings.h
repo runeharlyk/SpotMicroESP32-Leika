@@ -1,16 +1,26 @@
 #pragma once
 
 #include <template/state_result.h>
+#include <sdkconfig.h>
 #include <platform_shared/api.pb.h>
 
 /*
  * I2C software connection
  */
+#if CONFIG_IDF_TARGET_ESP32P4
+#ifndef SDA_PIN
+#define SDA_PIN 7
+#endif
+#ifndef SCL_PIN
+#define SCL_PIN 8
+#endif
+#else
 #ifndef SDA_PIN
 #define SDA_PIN 21
 #endif
 #ifndef SCL_PIN
 #define SCL_PIN 22
+#endif
 #endif
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 1000000UL

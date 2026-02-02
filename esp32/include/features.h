@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sdkconfig.h>
 #include <wifi/wifi_idf.h>
 #include <esp_http_server.h>
 #include "platform_shared/message.pb.h"

@@ -1,6 +1,7 @@
 #ifndef LEDService_h
 #define LEDService_h
 
+#include <sdkconfig.h>
 #include <driver/rmt_tx.h>
 #include <led_strip.h>
 #include <led_strip_rmt.h>
@@ -9,7 +10,11 @@
 #include <esp_log.h>
 
 #ifndef WS2812_PIN
+#if CONFIG_IDF_TARGET_ESP32P4
+#define WS2812_PIN 27
+#else
 #define WS2812_PIN 12
+#endif
 #endif
 
 #ifndef WS2812_NUM_LEDS

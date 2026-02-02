@@ -13,7 +13,7 @@
     },
     "editor.tabSize": 4,
     "editor.detectIndentation": false,
-    "cmake.sourceDirectory": "C:/data/repos/Hardware/Spot Micro - Leika/.pio/libdeps/esp32cam/esp32-camera",
+    "cmake.sourceDirectory": "C:/data/repos/Hardware/Spot_Micro_Leika",
     "cSpell.words": [
       "Adafruit",
       "IRAM",

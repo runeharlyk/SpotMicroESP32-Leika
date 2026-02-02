@@ -8,7 +8,8 @@
 #include <esp_sleep.h>
 #include <soc/soc.h>
 
-#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
+#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || \
+    CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32P4
 #include <driver/temperature_sensor.h>
 
 static float temperatureRead() {
@@ -100,7 +101,7 @@ void sleep() {
 
                 uint64_t bitmask = (uint64_t)1 << (WAKEUP_PIN_NUMBER);
 
-#ifdef CONFIG_IDF_TARGET_ESP32C3
+#if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32P4
                 esp_deep_sleep_enable_gpio_wakeup(bitmask, (esp_deepsleep_gpio_wake_up_mode_t)WAKEUP_SIGNAL);
 #else
                 esp_sleep_enable_ext1_wakeup(bitmask, (esp_sleep_ext1_wakeup_mode_t)WAKEUP_SIGNAL);
@@ -124,6 +125,7 @@ static const char *getChipModel() {
         case CHIP_ESP32C2: return "ESP32-C2";
         case CHIP_ESP32C6: return "ESP32-C6";
         case CHIP_ESP32H2: return "ESP32-H2";
+        case CHIP_ESP32P4: return "ESP32-P4";
         default: return "Unknown";
     }
 }
