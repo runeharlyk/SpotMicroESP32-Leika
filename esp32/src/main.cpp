@@ -21,6 +21,10 @@
 #include <mdns_service.h>
 #include <system_service.h>
 
+#if CONFIG_IDF_TARGET_ESP32P4
+#include <esp_hosted.h>
+#endif
+
 #include <www_mount.hpp>
 
 Websocket wsSocket {server, "/api/ws"};
@@ -275,6 +279,21 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
+#if CONFIG_IDF_TARGET_ESP32P4
+    ESP_LOGI("main", "Initializing ESP-Hosted for C6 coprocessor WiFi...");
+    int ret = esp_hosted_init();
+    if (ret != 0) {
+        ESP_LOGE("main", "ESP-Hosted init failed: %d", ret);
+    } else {
+        ESP_LOGI("main", "ESP-Hosted initialized, connecting to C6...");
+        ret = esp_hosted_connect_to_slave();
+        if (ret != 0) {
+            ESP_LOGW("main", "ESP-Hosted connect failed: %d - WiFi may not work", ret);
+        } else {
+            ESP_LOGI("main", "ESP-Hosted link established with C6");
+        }
+    }
+#endif
 
     WiFi.init();
     wifiService.begin();
@@ -291,6 +310,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     setupEventSocket();
 
     ESP_LOGI("main", "Service task started");
+
     for (;;) {
         wifiService.loop();
         apService.loop();

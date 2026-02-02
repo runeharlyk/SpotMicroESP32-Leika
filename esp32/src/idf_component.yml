@@ -16,3 +16,16 @@ dependencies:
     
   espressif/esp32-camera:
     version: "^2.0.0"
+    rules:
+      - if: "idf_version >=5.0.0"
+      - if: "target not in [esp32p4]"
+      
+  espressif/esp_wifi_remote:
+    version: ">=0.3.0"
+    rules:
+      - if: "target in [esp32p4]"
+      
+  espressif/esp_hosted:
+    version: ">=0.0.6"
+    rules:
+      - if: "target in [esp32p4]"

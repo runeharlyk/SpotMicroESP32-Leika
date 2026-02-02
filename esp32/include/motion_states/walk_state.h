@@ -2,6 +2,7 @@
 
 #include <motion_states/state.h>
 #include <utils/math_utils.h>
+#include <algorithm>
 #include <array>
 #include <functional>
 

@@ -1,15 +1,20 @@
 #pragma once
 
-#include <template/state_result.h>
+#include <sdkconfig.h>
 #include <platform_shared/api.pb.h>
+
+#if !CONFIG_IDF_TARGET_ESP32P4
 #include <esp_camera.h>
+#else
+#define PIXFORMAT_JPEG 0
+#define FRAMESIZE_VGA 0
+#define GAINCEILING_2X 0
+#endif
 
 namespace Camera {
 
-// Use proto type directly as settings type
 using CameraSettings = api_CameraSettings;
 
-// Default factory settings
 inline CameraSettings CameraSettings_defaults() {
     CameraSettings settings = api_CameraSettings_init_zero;
     settings.pixformat = PIXFORMAT_JPEG;

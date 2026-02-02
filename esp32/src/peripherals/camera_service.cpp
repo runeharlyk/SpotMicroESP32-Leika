@@ -5,6 +5,7 @@
 namespace Camera {
 
 static const char *const TAG = "CameraService";
+#if USE_CAMERA && !CONFIG_IDF_TARGET_ESP32P4
 
 static constexpr const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static constexpr const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
@@ -35,9 +36,8 @@ CameraService::CameraService()
     : protoEndpoint(CameraSettings_read, CameraSettings_update, this,
                     API_REQUEST_EXTRACTOR(camera_settings, api_CameraSettings),
                     API_RESPONSE_ASSIGNER(camera_settings, api_CameraSettings)),
-      _persistence(CameraSettings_read, CameraSettings_update, this,
-                   CAMERA_SETTINGS_FILE, api_CameraSettings_fields, api_CameraSettings_size,
-                   CameraSettings_defaults()) {
+      _persistence(CameraSettings_read, CameraSettings_update, this, CAMERA_SETTINGS_FILE, api_CameraSettings_fields,
+                   api_CameraSettings_size, CameraSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
 }
 
@@ -46,7 +46,6 @@ esp_err_t CameraService::begin() {
     camera_config_t camera_config;
     camera_config.ledc_channel = LEDC_CHANNEL_0;
     camera_config.ledc_timer = LEDC_TIMER_0;
-#if FT_ENABLED(USE_CAMERA)
     camera_config.pin_d0 = Y2_GPIO_NUM;
     camera_config.pin_d1 = Y3_GPIO_NUM;
     camera_config.pin_d2 = Y4_GPIO_NUM;
@@ -63,7 +62,6 @@ esp_err_t CameraService::begin() {
     camera_config.pin_sccb_scl = SIOC_GPIO_NUM;
     camera_config.pin_pwdn = PWDN_GPIO_NUM;
     camera_config.pin_reset = RESET_GPIO_NUM;
-#endif
     camera_config.xclk_freq_hz = 20000000;
     camera_config.pixel_format = PIXFORMAT_JPEG;
 
@@ -180,5 +178,22 @@ void CameraService::updateCamera() {
     s->set_dcw(s, state().dcw);
     safe_sensor_return();
 }
+
+#else
+
+camera_fb_t *safe_camera_fb_get() { return nullptr; }
+sensor_t *safe_sensor_get() { return nullptr; }
+void safe_sensor_return() {}
+
+CameraService::CameraService() {}
+esp_err_t CameraService::begin() { return ESP_ERR_NOT_SUPPORTED; }
+esp_err_t CameraService::cameraStill(httpd_req_t *request) {
+    return WebServer::sendError(request, 501, "Camera not supported on this platform");
+}
+esp_err_t CameraService::cameraStream(httpd_req_t *request) {
+    return WebServer::sendError(request, 501, "Camera not supported on this platform");
+}
+
+#endif
 
 } // namespace Camera
