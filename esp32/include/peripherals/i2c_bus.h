@@ -1,11 +1,12 @@
 #pragma once
 
-#include <driver/i2c.h>
+#include <driver/i2c_master.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <functional>
 #include <vector>
+#include <cstring>
 
 class I2CBus {
   public:
@@ -24,30 +25,17 @@ class I2CBus {
         _scl = scl;
         _freq = freq;
 
-        i2c_config_t conf = {};
-        conf.mode = I2C_MODE_MASTER;
-        conf.sda_io_num = sda;
-        conf.scl_io_num = scl;
-        conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-        conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-        conf.master.clk_speed = freq;
+        i2c_master_bus_config_t bus_cfg = {};
+        bus_cfg.i2c_port = port;
+        bus_cfg.sda_io_num = sda;
+        bus_cfg.scl_io_num = scl;
+        bus_cfg.clk_source = I2C_CLK_SRC_DEFAULT;
+        bus_cfg.glitch_ignore_cnt = 7;
+        bus_cfg.flags.enable_internal_pullup = true;
 
-        esp_err_t err = i2c_param_config(_port, &conf);
+        esp_err_t err = i2c_new_master_bus(&bus_cfg, &_bus);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "i2c_param_config failed: %s", esp_err_to_name(err));
-            return err;
-        }
-
-        err = i2c_driver_install(_port, I2C_MODE_MASTER, 0, 0, 0);
-        if (err == ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(TAG, "I2C driver already installed for port %d, reconfiguring", _port);
-            i2c_driver_delete(_port);
-            err = i2c_param_config(_port, &conf);
-            if (err != ESP_OK) return err;
-            err = i2c_driver_install(_port, I2C_MODE_MASTER, 0, 0, 0);
-        }
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "i2c_driver_install failed: %s", esp_err_to_name(err));
+            ESP_LOGE(TAG, "i2c_new_master_bus failed: %s", esp_err_to_name(err));
             return err;
         }
 
@@ -57,73 +45,51 @@ class I2CBus {
 
     void end() {
         if (_initialized) {
-            i2c_driver_delete(_port);
+            if (_dev) {
+                i2c_master_bus_rm_device(_dev);
+                _dev = NULL;
+                _dev_addr = 0xFF;
+            }
+            i2c_del_master_bus(_bus);
+            _bus = NULL;
             _initialized = false;
         }
     }
 
     bool isInitialized() const { return _initialized; }
 
+    i2c_master_bus_handle_t busHandle() const { return _bus; }
+
     esp_err_t writeBytes(uint8_t addr, const uint8_t* data, size_t len) {
         if (!_initialized) return ESP_ERR_INVALID_STATE;
-
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
-        if (len > 0 && data != nullptr) {
-            i2c_master_write(cmd, data, len, true);
-        }
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(_port, cmd, pdMS_TO_TICKS(100));
-        i2c_cmd_link_delete(cmd);
-        return ret;
+        esp_err_t err = ensureDevice(addr);
+        if (err != ESP_OK) return err;
+        return i2c_master_transmit(_dev, data, len, pdMS_TO_TICKS(100));
     }
 
     esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
         if (!_initialized) return ESP_ERR_INVALID_STATE;
+        esp_err_t err = ensureDevice(addr);
+        if (err != ESP_OK) return err;
 
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_write_byte(cmd, reg, true);
+        uint8_t buf[len + 1];
+        buf[0] = reg;
         if (len > 0 && data != nullptr) {
-            i2c_master_write(cmd, data, len, true);
+            memcpy(buf + 1, data, len);
         }
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(_port, cmd, pdMS_TO_TICKS(100));
-        i2c_cmd_link_delete(cmd);
-        return ret;
+        return i2c_master_transmit(_dev, buf, len + 1, pdMS_TO_TICKS(100));
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
         if (!_initialized) return ESP_ERR_INVALID_STATE;
-
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_write_byte(cmd, reg, true);
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_READ, true);
-        if (len > 1) {
-            i2c_master_read(cmd, data, len - 1, I2C_MASTER_ACK);
-        }
-        i2c_master_read_byte(cmd, data + len - 1, I2C_MASTER_NACK);
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(_port, cmd, pdMS_TO_TICKS(100));
-        i2c_cmd_link_delete(cmd);
-        return ret;
+        esp_err_t err = ensureDevice(addr);
+        if (err != ESP_OK) return err;
+        return i2c_master_transmit_receive(_dev, &reg, 1, data, len, pdMS_TO_TICKS(100));
     }
 
     bool probe(uint8_t addr) {
         if (!_initialized) return false;
-
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(_port, cmd, pdMS_TO_TICKS(50));
-        i2c_cmd_link_delete(cmd);
-        return ret == ESP_OK;
+        return i2c_master_probe(_bus, addr, pdMS_TO_TICKS(50)) == ESP_OK;
     }
 
     std::vector<uint8_t> scan(uint8_t lower = 1, uint8_t upper = 127) {
@@ -157,4 +123,23 @@ class I2CBus {
     gpio_num_t _scl = GPIO_NUM_NC;
     uint32_t _freq = 100000;
     bool _initialized = false;
+
+    i2c_master_bus_handle_t _bus = NULL;
+    i2c_master_dev_handle_t _dev = NULL;
+    uint8_t _dev_addr = 0xFF;
+
+    esp_err_t ensureDevice(uint8_t addr) {
+        if (_dev && _dev_addr == addr) return ESP_OK;
+        if (_dev) {
+            i2c_master_bus_rm_device(_dev);
+            _dev = NULL;
+        }
+        i2c_device_config_t dev_cfg = {};
+        dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+        dev_cfg.device_address = addr;
+        dev_cfg.scl_speed_hz = _freq;
+        esp_err_t err = i2c_master_bus_add_device(_bus, &dev_cfg, &_dev);
+        if (err == ESP_OK) _dev_addr = addr;
+        return err;
+    }
 };
