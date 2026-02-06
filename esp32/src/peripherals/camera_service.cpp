@@ -183,7 +183,6 @@ void CameraService::updateCamera() {
 }
 
 #elif USE_CSI_CAMERA
-
 }
 
 extern "C" {
@@ -197,6 +196,9 @@ extern "C" {
 #include "esp_cam_sensor.h"
 #include "ov5647.h"
 #include "esp_ldo_regulator.h"
+#include "driver/isp_demosaic.h"
+#include "driver/isp_bf.h"
+#include "driver/isp_sharpen.h"
 }
 
 #include <peripherals/i2c_bus.h>
@@ -237,67 +239,89 @@ namespace Camera {
 #define CSI_JPEG_QUALITY 80
 #endif
 
-static SemaphoreHandle_t s_cam_mutex = NULL;
-static SemaphoreHandle_t s_frame_done = NULL;
+#define NUM_FRAME_BUFS 2
+static constexpr size_t CACHE_LINE_SIZE = 64;
+#define ALIGN_UP(n, a) (((n) + ((a) - 1)) & ~((a) - 1))
+
 static esp_cam_ctlr_handle_t s_cam_handle = NULL;
 static isp_proc_handle_t s_isp_proc = NULL;
 static jpeg_encoder_handle_t s_jpeg_enc = NULL;
 
-static uint8_t *s_frame_buf = NULL;
+static uint8_t *s_frame_bufs[NUM_FRAME_BUFS] = {};
 static size_t s_frame_buf_size = 0;
-static uint8_t *s_jpeg_buf = NULL;
-static size_t s_jpeg_buf_size = 0;
+static uint8_t *s_jpeg_bufs[NUM_FRAME_BUFS] = {};
+static size_t s_jpeg_buf_alloc = 0;
+
 static bool s_cam_initialized = false;
+static uint16_t s_frame_hres = MIPI_CSI_HRES;
+static uint16_t s_frame_vres = MIPI_CSI_VRES;
+
+static SemaphoreHandle_t s_frame_done = NULL;
+static SemaphoreHandle_t s_jpeg_lock = NULL;
+static SemaphoreHandle_t s_jpeg_ready = NULL;
+static TaskHandle_t s_capture_task = NULL;
+static volatile bool s_capture_running = false;
+
+static int s_write_idx = 0;
+static int s_ready_idx = -1;
+static size_t s_ready_jpeg_len = 0;
+
+static uint8_t *s_send_buf = NULL;
+static size_t s_send_buf_size = 0;
 
 static bool on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data) {
-    if (trans->buffer != s_frame_buf) return false;
     BaseType_t woken = pdFALSE;
     xSemaphoreGiveFromISR(s_frame_done, &woken);
     return (woken == pdTRUE);
 }
 
-static bool capture_and_encode(uint8_t **jpeg_out, size_t *jpeg_len) {
-    if (!s_cam_initialized) return false;
+static void capture_task_fn(void *arg) {
+    while (s_capture_running) {
+        int idx = s_write_idx;
 
-    esp_cam_ctlr_trans_t trans = {};
-    trans.buffer = s_frame_buf;
-    trans.buflen = s_frame_buf_size;
+        esp_cam_ctlr_trans_t trans = {};
+        trans.buffer = s_frame_bufs[idx];
+        trans.buflen = s_frame_buf_size;
 
-    esp_err_t err = esp_cam_ctlr_receive(s_cam_handle, &trans, 2000);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Frame capture failed: %s", esp_err_to_name(err));
-        return false;
+        if (esp_cam_ctlr_receive(s_cam_handle, &trans, 2000) != ESP_OK) {
+            vTaskDelay(pdMS_TO_TICKS(5));
+            continue;
+        }
+
+        if (xSemaphoreTake(s_frame_done, pdMS_TO_TICKS(2000)) != pdTRUE) {
+            continue;
+        }
+
+        jpeg_encode_cfg_t enc_cfg = {};
+        enc_cfg.src_type = JPEG_ENCODE_IN_FORMAT_RGB565;
+        enc_cfg.sub_sample = JPEG_DOWN_SAMPLING_YUV420;
+        enc_cfg.image_quality = CSI_JPEG_QUALITY;
+        enc_cfg.width = s_frame_hres;
+        enc_cfg.height = s_frame_vres;
+
+        uint32_t out_size = 0;
+        esp_err_t err = jpeg_encoder_process(s_jpeg_enc, &enc_cfg, s_frame_bufs[idx], trans.received_size,
+                                             s_jpeg_bufs[idx], s_jpeg_buf_alloc, &out_size);
+        if (err != ESP_OK) {
+            continue;
+        }
+
+        xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
+        s_ready_idx = idx;
+        s_ready_jpeg_len = out_size;
+        xSemaphoreGive(s_jpeg_lock);
+
+        s_write_idx = (idx + 1) % NUM_FRAME_BUFS;
+
+        xSemaphoreGive(s_jpeg_ready);
     }
-
-    if (xSemaphoreTake(s_frame_done, pdMS_TO_TICKS(2000)) != pdTRUE) {
-        ESP_LOGE(TAG, "Frame receive timed out");
-        return false;
-    }
-
-    jpeg_encode_cfg_t enc_cfg = {};
-    enc_cfg.src_type = JPEG_ENCODE_IN_FORMAT_RGB565;
-    enc_cfg.sub_sample = JPEG_DOWN_SAMPLING_YUV422;
-    enc_cfg.image_quality = CSI_JPEG_QUALITY;
-    enc_cfg.width = MIPI_CSI_HRES;
-    enc_cfg.height = MIPI_CSI_VRES;
-
-    uint32_t out_size = 0;
-    err = jpeg_encoder_process(s_jpeg_enc, &enc_cfg,
-                               s_frame_buf, trans.received_size,
-                               s_jpeg_buf, s_jpeg_buf_size, &out_size);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "JPEG encode failed: %s", esp_err_to_name(err));
-        return false;
-    }
-
-    *jpeg_out = s_jpeg_buf;
-    *jpeg_len = out_size;
-    return true;
+    vTaskDelete(NULL);
 }
 
 CameraService::CameraService() {
-    s_cam_mutex = xSemaphoreCreateMutex();
     s_frame_done = xSemaphoreCreateBinary();
+    s_jpeg_lock = xSemaphoreCreateMutex();
+    s_jpeg_ready = xSemaphoreCreateBinary();
 }
 
 esp_err_t CameraService::begin() {
@@ -353,25 +377,54 @@ esp_err_t CameraService::begin() {
         return err;
     }
 
-    bool format_set = false;
+    const esp_cam_sensor_format_t *selected_format = NULL;
+    uint32_t best_area = 0;
     for (uint32_t i = 0; i < fmt_array.count; i++) {
-        if (fmt_array.format_array[i].width == MIPI_CSI_HRES &&
-            fmt_array.format_array[i].height == MIPI_CSI_VRES) {
-            err = esp_cam_sensor_set_format(cam_sensor, &fmt_array.format_array[i]);
-            if (err == ESP_OK) {
-                ESP_LOGI(TAG, "Sensor format set: %dx%d",
-                         MIPI_CSI_HRES, MIPI_CSI_VRES);
-                format_set = true;
-                break;
+        const auto &f = fmt_array.format_array[i];
+        ESP_LOGI(TAG, "Sensor format[%u]: %dx%d mipi_clk=%uHz lanes=%d", (unsigned)i, f.width, f.height,
+                 (unsigned)f.mipi_info.mipi_clk, f.mipi_info.lane_num);
+    }
+    for (uint32_t i = 0; i < fmt_array.count; i++) {
+        const uint16_t w = fmt_array.format_array[i].width;
+        const uint16_t h = fmt_array.format_array[i].height;
+        if (w <= MIPI_CSI_HRES && h <= MIPI_CSI_VRES) {
+            const uint32_t area = (uint32_t)w * (uint32_t)h;
+            if (!selected_format || area > best_area) {
+                selected_format = &fmt_array.format_array[i];
+                best_area = area;
             }
         }
     }
-    if (!format_set && fmt_array.count > 0) {
-        err = esp_cam_sensor_set_format(cam_sensor, &fmt_array.format_array[0]);
-        if (err == ESP_OK) {
-            ESP_LOGW(TAG, "Using fallback sensor format: %dx%d",
-                     fmt_array.format_array[0].width, fmt_array.format_array[0].height);
+    if (!selected_format && fmt_array.count > 0) {
+        uint32_t min_area = UINT32_MAX;
+        for (uint32_t i = 0; i < fmt_array.count; i++) {
+            const uint32_t area =
+                (uint32_t)fmt_array.format_array[i].width * (uint32_t)fmt_array.format_array[i].height;
+            if (area < min_area) {
+                selected_format = &fmt_array.format_array[i];
+                min_area = area;
+            }
         }
+    }
+    if (!selected_format) {
+        ESP_LOGE(TAG, "No sensor formats available");
+        return ESP_FAIL;
+    }
+
+    err = esp_cam_sensor_set_format(cam_sensor, selected_format);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set sensor format: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    s_frame_hres = selected_format->width;
+    s_frame_vres = selected_format->height;
+    ESP_LOGI(TAG, "Sensor format set: %dx%d", s_frame_hres, s_frame_vres);
+
+    esp_cam_sensor_format_t cur_fmt = {};
+    if (esp_cam_sensor_get_format(cam_sensor, &cur_fmt) == ESP_OK) {
+        ESP_LOGI(TAG, "Active format: %dx%d, mipi_clk=%uHz, lanes=%d", cur_fmt.width, cur_fmt.height,
+                 (unsigned)cur_fmt.mipi_info.mipi_clk, cur_fmt.mipi_info.lane_num);
     }
 
     int stream_on = 1;
@@ -389,9 +442,9 @@ esp_err_t CameraService::begin() {
     isp_cfg.output_data_color_type = ISP_COLOR_RGB565;
     isp_cfg.has_line_start_packet = false;
     isp_cfg.has_line_end_packet = false;
-    isp_cfg.h_res = MIPI_CSI_HRES;
-    isp_cfg.v_res = MIPI_CSI_VRES;
-    isp_cfg.bayer_order = COLOR_RAW_ELEMENT_ORDER_BGGR;
+    isp_cfg.h_res = s_frame_hres;
+    isp_cfg.v_res = s_frame_vres;
+    isp_cfg.bayer_order = COLOR_RAW_ELEMENT_ORDER_GBRG;
 
     err = esp_isp_new_processor(&isp_cfg, &s_isp_proc);
     if (err != ESP_OK) {
@@ -405,16 +458,43 @@ esp_err_t CameraService::begin() {
         return err;
     }
 
+    esp_isp_demosaic_config_t demosaic_cfg = {};
+    demosaic_cfg.grad_ratio.val = 16;
+    demosaic_cfg.padding_mode = ISP_DEMOSAIC_EDGE_PADDING_MODE_SRND_DATA;
+    esp_isp_demosaic_configure(s_isp_proc, &demosaic_cfg);
+    esp_isp_demosaic_enable(s_isp_proc);
+
+    esp_isp_bf_config_t bf_cfg = {};
+    bf_cfg.denoising_level = 10;
+    bf_cfg.padding_mode = ISP_BF_EDGE_PADDING_MODE_SRND_DATA;
+    uint8_t bf_tpl[ISP_BF_TEMPLATE_X_NUMS][ISP_BF_TEMPLATE_Y_NUMS] = {{1, 2, 1}, {2, 4, 2}, {1, 2, 1}};
+    memcpy(bf_cfg.bf_template, bf_tpl, sizeof(bf_tpl));
+    esp_isp_bf_configure(s_isp_proc, &bf_cfg);
+    esp_isp_bf_enable(s_isp_proc);
+
+    esp_isp_sharpen_config_t sharp_cfg = {};
+    sharp_cfg.h_thresh = 255;
+    sharp_cfg.l_thresh = 20;
+    sharp_cfg.padding_mode = ISP_SHARPEN_EDGE_PADDING_MODE_SRND_DATA;
+    uint8_t sharp_m[ISP_SHARPEN_TEMPLATE_X_NUMS][ISP_SHARPEN_TEMPLATE_Y_NUMS] = {{1, 2, 1}, {2, 4, 2}, {1, 2, 1}};
+    memcpy(sharp_cfg.sharpen_template, sharp_m, sizeof(sharp_m));
+    sharp_cfg.h_freq_coeff.integer = 1;
+    sharp_cfg.h_freq_coeff.decimal = 0;
+    sharp_cfg.m_freq_coeff.integer = 1;
+    sharp_cfg.m_freq_coeff.decimal = 0;
+    esp_isp_sharpen_configure(s_isp_proc, &sharp_cfg);
+    esp_isp_sharpen_enable(s_isp_proc);
+
     esp_cam_ctlr_csi_config_t csi_cfg = {};
     csi_cfg.ctlr_id = 0;
-    csi_cfg.h_res = MIPI_CSI_HRES;
-    csi_cfg.v_res = MIPI_CSI_VRES;
+    csi_cfg.h_res = s_frame_hres;
+    csi_cfg.v_res = s_frame_vres;
     csi_cfg.lane_bit_rate_mbps = MIPI_CSI_LANE_BITRATE_MBPS;
     csi_cfg.input_data_color_type = CAM_CTLR_COLOR_RAW8;
     csi_cfg.output_data_color_type = CAM_CTLR_COLOR_RGB565;
     csi_cfg.data_lane_num = MIPI_CSI_DATA_LANES;
     csi_cfg.byte_swap_en = false;
-    csi_cfg.queue_items = 1;
+    csi_cfg.queue_items = NUM_FRAME_BUFS;
 
     err = esp_cam_new_csi_ctlr(&csi_cfg, &s_cam_handle);
     if (err != ESP_OK) {
@@ -430,27 +510,36 @@ esp_err_t CameraService::begin() {
         return err;
     }
 
-    static constexpr size_t CACHE_LINE_SIZE = 64;
-    s_frame_buf_size = MIPI_CSI_HRES * MIPI_CSI_VRES * 2;
-    s_frame_buf_size = (s_frame_buf_size + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1);
-    s_frame_buf = (uint8_t *)heap_caps_aligned_alloc(CACHE_LINE_SIZE, s_frame_buf_size, MALLOC_CAP_SPIRAM);
-    if (!s_frame_buf) {
-        ESP_LOGE(TAG, "Failed to allocate frame buffer (%d bytes)", (int)s_frame_buf_size);
-        return ESP_ERR_NO_MEM;
+    s_frame_buf_size = ALIGN_UP((size_t)s_frame_hres * s_frame_vres * 2, CACHE_LINE_SIZE);
+    for (int i = 0; i < NUM_FRAME_BUFS; i++) {
+        s_frame_bufs[i] = (uint8_t *)heap_caps_aligned_alloc(CACHE_LINE_SIZE, s_frame_buf_size, MALLOC_CAP_SPIRAM);
+        if (!s_frame_bufs[i]) {
+            ESP_LOGE(TAG, "Failed to allocate frame buffer %d (%d bytes)", i, (int)s_frame_buf_size);
+            return ESP_ERR_NO_MEM;
+        }
     }
 
     jpeg_encode_memory_alloc_cfg_t jpeg_mem_cfg = {};
     jpeg_mem_cfg.buffer_direction = JPEG_ENC_ALLOC_OUTPUT_BUFFER;
-    s_jpeg_buf = (uint8_t *)jpeg_alloc_encoder_mem(
-        MIPI_CSI_HRES * MIPI_CSI_VRES, &jpeg_mem_cfg, &s_jpeg_buf_size);
-    if (!s_jpeg_buf) {
-        ESP_LOGE(TAG, "Failed to allocate JPEG buffer");
+    for (int i = 0; i < NUM_FRAME_BUFS; i++) {
+        size_t alloc_sz = 0;
+        s_jpeg_bufs[i] = (uint8_t *)jpeg_alloc_encoder_mem(s_frame_hres * s_frame_vres, &jpeg_mem_cfg, &alloc_sz);
+        if (!s_jpeg_bufs[i]) {
+            ESP_LOGE(TAG, "Failed to allocate JPEG buffer %d", i);
+            return ESP_ERR_NO_MEM;
+        }
+        if (i == 0) s_jpeg_buf_alloc = alloc_sz;
+    }
+
+    s_send_buf_size = s_jpeg_buf_alloc;
+    s_send_buf = (uint8_t *)heap_caps_aligned_alloc(CACHE_LINE_SIZE, s_send_buf_size, MALLOC_CAP_SPIRAM);
+    if (!s_send_buf) {
+        ESP_LOGE(TAG, "Failed to allocate send buffer");
         return ESP_ERR_NO_MEM;
     }
 
     jpeg_encode_engine_cfg_t enc_eng_cfg = {};
-    enc_eng_cfg.timeout_ms = 40;
-
+    enc_eng_cfg.timeout_ms = 500;
     err = jpeg_new_encoder_engine(&enc_eng_cfg, &s_jpeg_enc);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "JPEG encoder init failed: %s", esp_err_to_name(err));
@@ -470,8 +559,12 @@ esp_err_t CameraService::begin() {
     }
 
     s_cam_initialized = true;
-    ESP_LOGI(TAG, "MIPI-CSI camera initialized (%dx%d, %d-lane, %d Mbps)",
-             MIPI_CSI_HRES, MIPI_CSI_VRES, MIPI_CSI_DATA_LANES, MIPI_CSI_LANE_BITRATE_MBPS);
+
+    s_capture_running = true;
+    xTaskCreatePinnedToCore(capture_task_fn, "csi_cap", 4096, NULL, 6, &s_capture_task, 1);
+
+    ESP_LOGI(TAG, "MIPI-CSI camera initialized (%dx%d, %d-lane, %d Mbps)", s_frame_hres, s_frame_vres,
+             MIPI_CSI_DATA_LANES, MIPI_CSI_LANE_BITRATE_MBPS);
     return ESP_OK;
 }
 
@@ -480,22 +573,24 @@ esp_err_t CameraService::cameraStill(httpd_req_t *request) {
         return WebServer::sendError(request, 503, "Camera not initialized");
     }
 
-    xSemaphoreTake(s_cam_mutex, portMAX_DELAY);
+    if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) {
+        return WebServer::sendError(request, 500, "Camera capture timed out");
+    }
 
-    uint8_t *jpeg_buf = NULL;
-    size_t jpeg_len = 0;
+    xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
+    size_t len = s_ready_jpeg_len;
+    if (s_ready_idx >= 0 && len > 0) {
+        memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], len);
+    }
+    xSemaphoreGive(s_jpeg_lock);
 
-    if (!capture_and_encode(&jpeg_buf, &jpeg_len)) {
-        xSemaphoreGive(s_cam_mutex);
-        return WebServer::sendError(request, 500, "Camera capture failed");
+    if (len == 0) {
+        return WebServer::sendError(request, 500, "No frame available");
     }
 
     httpd_resp_set_type(request, "image/jpeg");
     httpd_resp_set_hdr(request, "Content-Disposition", "inline; filename=capture.jpg");
-    esp_err_t res = httpd_resp_send(request, (const char *)jpeg_buf, jpeg_len);
-
-    xSemaphoreGive(s_cam_mutex);
-    return res;
+    return httpd_resp_send(request, (const char *)s_send_buf, len);
 }
 
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
@@ -509,24 +604,23 @@ esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     esp_err_t res = ESP_OK;
 
     while (res == ESP_OK) {
-        xSemaphoreTake(s_cam_mutex, portMAX_DELAY);
-
-        uint8_t *jpeg_buf = NULL;
-        size_t jpeg_len = 0;
-
-        if (!capture_and_encode(&jpeg_buf, &jpeg_len)) {
-            xSemaphoreGive(s_cam_mutex);
+        if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) {
             break;
         }
 
+        xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
+        size_t jpeg_len = s_ready_jpeg_len;
+        if (s_ready_idx >= 0 && jpeg_len > 0) {
+            memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], jpeg_len);
+        }
+        xSemaphoreGive(s_jpeg_lock);
+
+        if (jpeg_len == 0) continue;
+
         size_t hlen = snprintf(part_buf, 64, _STREAM_PART, (unsigned int)jpeg_len);
         res = httpd_resp_send_chunk(request, part_buf, hlen);
-        if (res == ESP_OK) res = httpd_resp_send_chunk(request, (const char *)jpeg_buf, jpeg_len);
+        if (res == ESP_OK) res = httpd_resp_send_chunk(request, (const char *)s_send_buf, jpeg_len);
         if (res == ESP_OK) res = httpd_resp_send_chunk(request, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-
-        xSemaphoreGive(s_cam_mutex);
-
-        vTaskDelay(pdMS_TO_TICKS(30));
     }
 
     ESP_LOGI(TAG, "Stream ended");
