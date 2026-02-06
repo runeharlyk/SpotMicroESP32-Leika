@@ -59,11 +59,13 @@ void setupServer() {
     server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
     server.on("/api/camera/stream", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
+#if USE_DVP_CAMERA
     server.on("/api/camera/settings", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
     server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
         return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
     });
+#endif
 #endif
     server.on("/api/servo/config", HTTP_GET,
               [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });

@@ -11,26 +11,22 @@
 
 namespace Camera {
 
-#if USE_CAMERA && !CONFIG_IDF_TARGET_ESP32P4
+#define USE_DVP_CAMERA (USE_CAMERA && !CONFIG_IDF_TARGET_ESP32P4)
+#define USE_CSI_CAMERA (USE_CAMERA && CONFIG_IDF_TARGET_ESP32P4)
+
+#if USE_DVP_CAMERA
 #include <esp_camera.h>
 #include <peripherals/camera_pins.h>
-#else
-typedef struct {
-    uint8_t *buf;
-    size_t len;
-} camera_fb_t;
-typedef struct {
-} sensor_t;
-#endif
-
-#define PART_BOUNDARY "frame"
 
 camera_fb_t *safe_camera_fb_get();
 sensor_t *safe_sensor_get();
 void safe_sensor_return();
+#endif
+
+#define PART_BOUNDARY "frame"
 
 class CameraService
-#if USE_CAMERA && !CONFIG_IDF_TARGET_ESP32P4
+#if USE_DVP_CAMERA
     : public StatefulService<CameraSettings>
 #endif
 {
@@ -42,7 +38,7 @@ class CameraService
     esp_err_t cameraStill(httpd_req_t *request);
     esp_err_t cameraStream(httpd_req_t *request);
 
-#if USE_CAMERA && !CONFIG_IDF_TARGET_ESP32P4
+#if USE_DVP_CAMERA
     StatefulProtoEndpoint<CameraSettings, api_CameraSettings> protoEndpoint;
 
   private:
