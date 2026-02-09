@@ -20,6 +20,10 @@
 #include <ap_service.h>
 #include <mdns_service.h>
 #include <system_service.h>
+#include <eventbus.hpp>
+#include <event_storage_manager.hpp>
+#include <event_types.h>
+#include <settings/camera_settings.h>
 
 #if CONFIG_IDF_TARGET_ESP32P4
 #include <esp_hosted.h>
@@ -44,75 +48,36 @@ MDNSService mdnsService;
 
 WiFiService wifiService;
 APService apService;
+EventStorageManager storageManager;
+
+static SubscriptionHandle modeHandle;
 
 void setupServer() {
     server.config(50 + WWW_ASSETS_COUNT, 16384);
     server.listen(80);
 
-    server.on("/api/system/reset", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleReset(request); });
-    server.on("/api/system/restart", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleRestart(request); });
-    server.on("/api/system/sleep", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleSleep(request); });
-#if USE_CAMERA
-    server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
-    server.on("/api/camera/stream", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
-#if USE_DVP_CAMERA
-    server.on("/api/camera/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
-    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-#endif
-#endif
-    server.on("/api/servo/config", HTTP_GET,
-              [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });
-    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
-    server.on("/api/wifi/sta/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.protoEndpoint.getState(request); });
-    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return wifiService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-    server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
-    server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
-    server.on("/api/wifi/sta/status", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
-
-    server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
-    server.on("/api/ap/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return apService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
-    server.on("/api/peripherals/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
-    server.on("/api/peripherals/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
+    PROTO_ROUTE(server, "/api/servo/config", servo_settings, ServoSettings);
+    PROTO_ROUTE(server, "/api/wifi/sta/settings", wifi_settings, WiFiSettings);
+    PROTO_ROUTE(server, "/api/ap/settings", ap_settings, APSettings);
+    PROTO_ROUTE(server, "/api/peripherals/settings", peripheral_settings, PeripheralsConfiguration);
 #if FT_ENABLED(USE_MDNS)
-    server.on("/api/mdns/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
-    server.on("/api/mdns/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-    server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    server.on("/api/mdns/query", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return mdnsService.queryServices(request, protoReq);
-    });
+    PROTO_ROUTE(server, "/api/mdns/settings", mdns_settings, MDNSSettings);
+#endif
+#if FT_ENABLED(USE_CAMERA) && USE_DVP_CAMERA
+    PROTO_ROUTE(server, "/api/camera/settings", camera_settings, Camera::CameraSettings);
 #endif
 
-    server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
-    server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
+    system_service::registerRoutes(server);
+    wifiService.registerRoutes(server);
+    apService.registerRoutes(server);
+#if FT_ENABLED(USE_MDNS)
+    mdnsService.registerRoutes(server);
+#endif
+#if FT_ENABLED(USE_CAMERA)
+    cameraService.registerRoutes(server);
+#endif
+    FileSystem::registerRoutes(server);
+
     wsSocket.begin();
 #if EMBED_WEBAPP
     mountStaticAssets(server);
@@ -136,31 +101,21 @@ void setupEventSocket() {
         [](const socket_message_FSDownloadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); },
         [](const socket_message_FSUploadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); });
 
-    wsSocket.on<socket_message_ControllerData>(
-        [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
+    wsSocket.forward<socket_message_ControllerData>();
+    wsSocket.forward<socket_message_ModeData>();
+    wsSocket.forward<socket_message_WalkGaitData>();
+    wsSocket.forward<socket_message_AnglesData>();
+    wsSocket.forward<socket_message_ServoPWMData>();
+    wsSocket.forward<socket_message_ServoStateData>();
+    wsSocket.forward<socket_message_FSUploadData>();
 
-    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
+    modeHandle = EventBus::instance().subscribe<socket_message_ModeData>([&](const socket_message_ModeData &data) {
         servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
         motionService.handleMode(data);
         motionService.isActive() ? servoController.activate() : servoController.deactivate();
     });
 
-    wsSocket.on<socket_message_WalkGaitData>(
-        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.handleWalkGait(data); });
-
-    wsSocket.on<socket_message_AnglesData>(
-        [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
-
-    wsSocket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
-        servoController.setServoPWM(data.servo_id, data.servo_pwm);
-    });
-
-    wsSocket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
-        data.active ? servoController.activate() : servoController.deactivate();
-    });
-
-    wsSocket.on<socket_message_FSUploadData>(
-        [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
+    FileSystemWS::fsHandler.begin();
 
     using CorrelationHandler =
         std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;
@@ -353,6 +308,7 @@ extern "C" void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     FileSystem::init();
+    storageManager.initialize();
 
     ESP_LOGI("main", "Booting robot");
 
@@ -361,6 +317,8 @@ extern "C" void app_main(void) {
     xTaskCreate(serviceLoopEntry, "Service task", 8192, nullptr, 2, nullptr);
 
     xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 8192, nullptr, 5, nullptr, 1);
+
+    EventBus::instance().publish(SystemReadyEvent {});
 
     ESP_LOGI("main", "Finished booting");
 }

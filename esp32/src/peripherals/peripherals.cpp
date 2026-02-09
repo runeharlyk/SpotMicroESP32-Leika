@@ -1,18 +1,14 @@
 #include <peripherals/peripherals.h>
 
-Peripherals::Peripherals()
-    : protoEndpoint(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this,
-                    API_REQUEST_EXTRACTOR(peripheral_settings, api_PeripheralSettings),
-                    API_RESPONSE_ASSIGNER(peripheral_settings, api_PeripheralSettings)),
-      _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this,
-                   PERIPHERAL_SETTINGS_FILE, api_PeripheralSettings_fields, api_PeripheralSettings_size,
-                   PeripheralsConfiguration_defaults()) {
-    _accessMutex = xSemaphoreCreateMutex();
-    addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
-}
+Peripherals::Peripherals() { _accessMutex = xSemaphoreCreateMutex(); }
 
 void Peripherals::begin() {
-    _persistence.readFromFS();
+    _settings = EventBus::instance().peek<PeripheralsConfiguration>();
+    _settingsHandle =
+        EventBus::instance().subscribe<PeripheralsConfiguration>([this](const PeripheralsConfiguration &s) {
+            _settings = s;
+            updatePins();
+        });
 
     updatePins();
 
@@ -47,9 +43,9 @@ void Peripherals::updatePins() {
         I2CBus::instance().end();
     }
 
-    if (state().sda != -1 && state().scl != -1) {
-        esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(state().sda),
-                                                 static_cast<gpio_num_t>(state().scl), state().frequency);
+    if (_settings.sda != -1 && _settings.scl != -1) {
+        esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(_settings.sda),
+                                                 static_cast<gpio_num_t>(_settings.scl), _settings.frequency);
         i2c_active = (err == ESP_OK);
     }
 }
@@ -92,13 +88,12 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
 }
 
 void Peripherals::getSettingsProto(socket_message_PeripheralSettingsData &data) {
-    data.sda = state().sda;
-    data.scl = state().scl;
-    data.frequency = state().frequency;
+    data.sda = _settings.sda;
+    data.scl = _settings.scl;
+    data.frequency = _settings.frequency;
     data.pins_count = 0;
 }
 
-/* IMU FUNCTIONS */
 bool Peripherals::readImu() {
     bool updated = false;
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)

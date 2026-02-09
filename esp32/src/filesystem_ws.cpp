@@ -16,6 +16,11 @@ FileSystemHandler fsHandler;
 
 FileSystemHandler::FileSystemHandler() : transferIdCounter_(0) {}
 
+void FileSystemHandler::begin() {
+    uploadHandle_ = EventBus::instance().subscribe<socket_message_FSUploadData>(
+        [this](const socket_message_FSUploadData& data) { handleUploadData(data); });
+}
+
 void FileSystemHandler::setSendCallbacks(SendMetadataCallback sendMetadata, SendCallback sendData,
                                          SendCompleteCallback sendComplete,
                                          SendUploadCompleteCallback sendUploadComplete) {

@@ -2,13 +2,13 @@
 
 #include <esp_http_server.h>
 #include <mdns.h>
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence.h>
+#include <eventbus.hpp>
 #include <settings/mdns_settings.h>
 #include <utils/timing.h>
 
-class MDNSService : public StatefulService<MDNSSettings> {
+class WebServer;
+
+class MDNSService {
   public:
     MDNSService();
     ~MDNSService();
@@ -18,10 +18,11 @@ class MDNSService : public StatefulService<MDNSSettings> {
     esp_err_t getStatus(httpd_req_t *request);
     esp_err_t queryServices(httpd_req_t *request, api_Request *protoReq);
 
-    StatefulProtoEndpoint<MDNSSettings, api_MDNSSettings> protoEndpoint;
+    void registerRoutes(WebServer &server);
 
   private:
-    FSPersistencePB<MDNSSettings> _persistence;
+    MDNSSettings _settings {};
+    SubscriptionHandle _settingsHandle;
     bool _started {false};
 
     void reconfigureMDNS();

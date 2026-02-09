@@ -59,6 +59,15 @@ esp_err_t handleSleep(httpd_req_t *request) {
     return WebServer::sendOk(request);
 }
 
+void registerRoutes(WebServer &s) {
+    s.on("/api/system/reset", HTTP_POST,
+         [](httpd_req_t *request, api_Request *protoReq) { return handleReset(request); });
+    s.on("/api/system/restart", HTTP_POST,
+         [](httpd_req_t *request, api_Request *protoReq) { return handleRestart(request); });
+    s.on("/api/system/sleep", HTTP_POST,
+         [](httpd_req_t *request, api_Request *protoReq) { return handleSleep(request); });
+}
+
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
     DIR *dir = opendir(FS_CONFIG_DIRECTORY);

@@ -3,11 +3,11 @@
 #include <esp_http_server.h>
 
 #include <features.h>
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence.h>
+#include <eventbus.hpp>
 
 #include <settings/camera_settings.h>
+
+class WebServer;
 
 namespace Camera {
 
@@ -25,11 +25,7 @@ void safe_sensor_return();
 
 #define PART_BOUNDARY "frame"
 
-class CameraService
-#if USE_DVP_CAMERA
-    : public StatefulService<CameraSettings>
-#endif
-{
+class CameraService {
   public:
     CameraService();
 
@@ -38,11 +34,12 @@ class CameraService
     esp_err_t cameraStill(httpd_req_t *request);
     esp_err_t cameraStream(httpd_req_t *request);
 
-#if USE_DVP_CAMERA
-    StatefulProtoEndpoint<CameraSettings, api_CameraSettings> protoEndpoint;
+    void registerRoutes(WebServer &server);
 
+#if USE_DVP_CAMERA
   private:
-    FSPersistencePB<CameraSettings> _persistence;
+    CameraSettings _settings {};
+    SubscriptionHandle _settingsHandle;
     void updateCamera();
 #endif
 };

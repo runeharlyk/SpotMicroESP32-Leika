@@ -3,17 +3,7 @@
 
 static const char *TAG = "APService";
 
-APService::APService()
-    : protoEndpoint(APSettings_read, APSettings_update, this, API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
-                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
-      _persistence(APSettings_read, APSettings_update, this, AP_SETTINGS_FILE, api_APSettings_fields,
-                   api_APSettings_size, APSettings_defaults()),
-      _dnsServer(nullptr),
-      _lastManaged(0),
-      _reconfigureAp(false),
-      _recoveryMode(false) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
-}
+APService::APService() : _dnsServer(nullptr), _lastManaged(0), _reconfigureAp(false), _recoveryMode(false) {}
 
 APService::~APService() {
     if (_dnsServer) {
@@ -22,7 +12,17 @@ APService::~APService() {
     }
 }
 
-void APService::begin() { _persistence.readFromFS(); }
+void APService::begin() {
+    _settings = EventBus::instance().peek<APSettings>();
+    _settingsHandle = EventBus::instance().subscribe<APSettings>([this](const APSettings &s) {
+        _settings = s;
+        reconfigureAP();
+    });
+}
+
+void APService::registerRoutes(WebServer &s) {
+    s.on("/api/ap/status", HTTP_GET, [this](httpd_req_t *request) { return getStatusProto(request); });
+}
 
 esp_err_t APService::getStatusProto(httpd_req_t *request) {
     api_Response res = api_Response_init_zero;
@@ -44,7 +44,7 @@ void APService::statusProto(api_APStatus &proto) {
 APNetworkStatus APService::getAPNetworkStatus() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
     bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
-    if (apActive && state().provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
+    if (apActive && _settings.provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
         return LINGERING;
     }
     return apActive ? ACTIVE : INACTIVE;
@@ -70,8 +70,8 @@ void APService::loop() {
 
 void APService::manageAP() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
-    if (state().provision_mode == AP_MODE_ALWAYS ||
-        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
+    if (_settings.provision_mode == AP_MODE_ALWAYS ||
+        (_settings.provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
         if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }
@@ -83,9 +83,9 @@ void APService::manageAP() {
 }
 
 void APService::startAP() {
-    ESP_LOGI(TAG, "Starting software access point: %s", state().ssid);
-    WiFi.softAPConfig(IPAddress(state().local_ip), IPAddress(state().gateway_ip), IPAddress(state().subnet_mask));
-    WiFi.softAP(state().ssid, state().password, state().channel, state().ssid_hidden, state().max_clients);
+    ESP_LOGI(TAG, "Starting software access point: %s", _settings.ssid);
+    WiFi.softAPConfig(IPAddress(_settings.local_ip), IPAddress(_settings.gateway_ip), IPAddress(_settings.subnet_mask));
+    WiFi.softAP(_settings.ssid, _settings.password, _settings.channel, _settings.ssid_hidden, _settings.max_clients);
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(8);
 #endif

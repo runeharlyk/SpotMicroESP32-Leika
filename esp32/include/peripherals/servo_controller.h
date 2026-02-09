@@ -2,11 +2,10 @@
 #define ServoController_h
 
 #include <peripherals/drivers/pca9685.h>
-#include <template/stateful_persistence.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_service.h>
+#include <eventbus.hpp>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
+#include <platform_shared/message.pb.h>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
@@ -34,25 +33,18 @@ inline ServoSettings ServoSettings_defaults() {
     return settings;
 }
 
-inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) { proto = settings; }
-
-inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoSettings &settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
-}
-
-class ServoController : public StatefulService<ServoSettings> {
+class ServoController {
   public:
-    ServoController()
-        : protoEndpoint(ServoSettings_read, ServoSettings_update, this,
-                        API_REQUEST_EXTRACTOR(servo_settings, ServoSettings),
-                        API_RESPONSE_ASSIGNER(servo_settings, ServoSettings)),
-          _persistence(ServoSettings_read, ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
-                       api_ServoSettings_size, ServoSettings_defaults()) {}
-
     void begin() {
-        _persistence.readFromFS();
+        _settings = EventBus::instance().peek<ServoSettings>();
         initializePCA();
+
+        _settingsHandle =
+            EventBus::instance().subscribe<ServoSettings>([this](const ServoSettings& s) { _settings = s; });
+        servoPwmHandle_ = EventBus::instance().subscribe<socket_message_ServoPWMData>(
+            [this](const socket_message_ServoPWMData& data) { setServoPWM(data.servo_id, data.servo_pwm); });
+        servoStateHandle_ = EventBus::instance().subscribe<socket_message_ServoStateData>(
+            [this](const socket_message_ServoStateData& data) { data.active ? activate() : deactivate(); });
     }
 
     void pcaWrite(int index, int value) {
@@ -103,7 +95,7 @@ class ServoController : public StatefulService<ServoSettings> {
         uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.1);
-            auto &servo = state().servos[i];
+            auto& servo = _settings.servos[i];
             float angle = servo.direction * angles[i] + servo.center_angle;
             uint16_t pwm = angle * servo.conversion + servo.center_pwm;
             pwms[i] = pwm = std::clamp<uint16_t>(pwm, 125, 600);
@@ -115,8 +107,6 @@ class ServoController : public StatefulService<ServoSettings> {
         if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
     }
 
-    StatefulProtoEndpoint<ServoSettings, ServoSettings> protoEndpoint;
-
   private:
     void initializePCA() {
         _pca.begin();
@@ -124,8 +114,8 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
         _pca.sleep();
     }
-    FSPersistencePB<ServoSettings> _persistence;
 
+    ServoSettings _settings {};
     PCA9685Driver _pca;
 
     SERVO_CONTROL_STATE control_state = SERVO_CONTROL_STATE::DEACTIVATED;
@@ -133,6 +123,10 @@ class ServoController : public StatefulService<ServoSettings> {
     bool is_active {false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+
+    SubscriptionHandle _settingsHandle;
+    SubscriptionHandle servoPwmHandle_;
+    SubscriptionHandle servoStateHandle_;
 };
 
 #endif

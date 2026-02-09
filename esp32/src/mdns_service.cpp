@@ -4,14 +4,7 @@
 
 static const char *TAG = "MDNSService";
 
-MDNSService::MDNSService()
-    : protoEndpoint(MDNSSettings_read, MDNSSettings_update, this,
-                    API_REQUEST_EXTRACTOR(mdns_settings, api_MDNSSettings),
-                    API_RESPONSE_ASSIGNER(mdns_settings, api_MDNSSettings)),
-      _persistence(MDNSSettings_read, MDNSSettings_update, this, MDNS_SETTINGS_FILE, api_MDNSSettings_fields,
-                   api_MDNSSettings_size, MDNSSettings_defaults()) {
-    addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
-}
+MDNSService::MDNSService() {}
 
 MDNSService::~MDNSService() {
     if (_started) {
@@ -19,8 +12,18 @@ MDNSService::~MDNSService() {
     }
 }
 
+void MDNSService::registerRoutes(WebServer &s) {
+    s.on("/api/mdns/status", HTTP_GET, [this](httpd_req_t *request) { return getStatus(request); });
+    s.on("/api/mdns/query", HTTP_POST,
+         [this](httpd_req_t *request, api_Request *protoReq) { return queryServices(request, protoReq); });
+}
+
 void MDNSService::begin() {
-    _persistence.readFromFS();
+    _settings = EventBus::instance().peek<MDNSSettings>();
+    _settingsHandle = EventBus::instance().subscribe<MDNSSettings>([this](const MDNSSettings &s) {
+        _settings = s;
+        reconfigureMDNS();
+    });
     startMDNS();
 }
 
@@ -32,7 +35,7 @@ void MDNSService::reconfigureMDNS() {
 }
 
 void MDNSService::startMDNS() {
-    ESP_LOGV(TAG, "Starting MDNS with hostname: %s", state().hostname);
+    ESP_LOGV(TAG, "Starting MDNS with hostname: %s", _settings.hostname);
 
     esp_err_t err = mdns_init();
     if (err != ESP_OK) {
@@ -41,7 +44,7 @@ void MDNSService::startMDNS() {
         return;
     }
 
-    err = mdns_hostname_set(state().hostname);
+    err = mdns_hostname_set(_settings.hostname);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set MDNS hostname: %s", esp_err_to_name(err));
         mdns_free();
@@ -49,7 +52,7 @@ void MDNSService::startMDNS() {
         return;
     }
 
-    err = mdns_instance_name_set(state().instance);
+    err = mdns_instance_name_set(_settings.instance);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to set MDNS instance name: %s", esp_err_to_name(err));
     }
@@ -57,7 +60,7 @@ void MDNSService::startMDNS() {
     _started = true;
     addServices();
 
-    ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", state().hostname);
+    ESP_LOGI(TAG, "MDNS started successfully with hostname: %s", _settings.hostname);
 }
 
 void MDNSService::stopMDNS() {
@@ -67,8 +70,8 @@ void MDNSService::stopMDNS() {
 }
 
 void MDNSService::addServices() {
-    for (size_t i = 0; i < state().services_count; i++) {
-        const auto &service = state().services[i];
+    for (size_t i = 0; i < _settings.services_count; i++) {
+        const auto &service = _settings.services[i];
         esp_err_t err = mdns_service_add(nullptr, service.service, service.protocol, service.port, nullptr, 0);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Failed to add service %s: %s", service.service, esp_err_to_name(err));
@@ -81,10 +84,10 @@ void MDNSService::addServices() {
         }
     }
 
-    for (size_t i = 0; i < state().global_txt_records_count; i++) {
-        const auto &txt = state().global_txt_records[i];
-        for (size_t j = 0; j < state().services_count; j++) {
-            const auto &service = state().services[j];
+    for (size_t i = 0; i < _settings.global_txt_records_count; i++) {
+        const auto &txt = _settings.global_txt_records[i];
+        for (size_t j = 0; j < _settings.services_count; j++) {
+            const auto &service = _settings.services[j];
             mdns_service_txt_item_set(service.service, service.protocol, txt.key, txt.value);
         }
     }
@@ -96,17 +99,17 @@ esp_err_t MDNSService::getStatus(httpd_req_t *request) {
 
     MDNSStatus &status = response.payload.mdns_status;
     status.started = _started;
-    strncpy(status.hostname, state().hostname, sizeof(status.hostname) - 1);
-    strncpy(status.instance, state().instance, sizeof(status.instance) - 1);
+    strncpy(status.hostname, _settings.hostname, sizeof(status.hostname) - 1);
+    strncpy(status.instance, _settings.instance, sizeof(status.instance) - 1);
 
-    status.services_count = state().services_count;
-    for (size_t i = 0; i < state().services_count; i++) {
-        status.services[i] = state().services[i];
+    status.services_count = _settings.services_count;
+    for (size_t i = 0; i < _settings.services_count; i++) {
+        status.services[i] = _settings.services[i];
     }
 
-    status.global_txt_records_count = state().global_txt_records_count;
-    for (size_t i = 0; i < state().global_txt_records_count; i++) {
-        status.global_txt_records[i] = state().global_txt_records[i];
+    status.global_txt_records_count = _settings.global_txt_records_count;
+    for (size_t i = 0; i < _settings.global_txt_records_count; i++) {
+        status.global_txt_records[i] = _settings.global_txt_records[i];
     }
 
     return WebServer::send(request, 200, response, api_Response_fields);

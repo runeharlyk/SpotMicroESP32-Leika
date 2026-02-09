@@ -11,6 +11,29 @@ static const char *TAG = "FileSystem";
 
 namespace FileSystem {
 
+void registerRoutes(WebServer &s) {
+    s.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return getConfigFile(request); });
+    s.on("/api/files", HTTP_GET, [](httpd_req_t *request) { return getFilesProto(request); });
+    s.on("/api/files/delete", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        if (protoReq->which_payload != api_Request_file_delete_request_tag) {
+            return WebServer::sendError(request, 400, "Invalid request payload");
+        }
+        return handleDelete(request, protoReq->payload.file_delete_request);
+    });
+    s.on("/api/files/edit", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        if (protoReq->which_payload != api_Request_file_edit_request_tag) {
+            return WebServer::sendError(request, 400, "Invalid request payload");
+        }
+        return handleEdit(request, protoReq->payload.file_edit_request);
+    });
+    s.on("/api/files/mkdir", HTTP_POST, [](httpd_req_t *request, api_Request *protoReq) {
+        if (protoReq->which_payload != api_Request_file_mkdir_request_tag) {
+            return WebServer::sendError(request, 400, "Invalid request payload");
+        }
+        return mkdir(request, protoReq->payload.file_mkdir_request);
+    });
+}
+
 static std::vector<api_FileEntry *> allocatedEntries;
 
 static void freeAllocatedEntries() {

@@ -12,10 +12,14 @@
 
 #include "platform_shared/message.pb.h"
 
+class WebServer;
+
 namespace system_service {
 esp_err_t handleReset(httpd_req_t *request);
 esp_err_t handleRestart(httpd_req_t *request);
 esp_err_t handleSleep(httpd_req_t *request);
+
+void registerRoutes(WebServer &server);
 
 void reset();
 void restart();

@@ -14,6 +14,7 @@
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
 #include <message_types.h>
+#include <eventbus.hpp>
 
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
@@ -62,6 +63,10 @@ class MotionService {
     float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
     int64_t lastUpdate = esp_timer_get_time();
+
+    SubscriptionHandle controllerHandle_;
+    SubscriptionHandle walkGaitHandle_;
+    SubscriptionHandle anglesHandle_;
 };
 
 #endif

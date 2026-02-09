@@ -1,6 +1,15 @@
 #include <motion.h>
 
-void MotionService::begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
+void MotionService::begin() {
+    body_state.updateFeet(KinConfig::default_feet_positions);
+
+    controllerHandle_ = EventBus::instance().subscribe<socket_message_ControllerData>(
+        [this](const socket_message_ControllerData& data) { handleInput(data); });
+    walkGaitHandle_ = EventBus::instance().subscribe<socket_message_WalkGaitData>(
+        [this](const socket_message_WalkGaitData& data) { handleWalkGait(data); });
+    anglesHandle_ = EventBus::instance().subscribe<socket_message_AnglesData>(
+        [this](const socket_message_AnglesData& data) { handleAngles(data); });
+}
 
 void MotionService::handleAngles(const socket_message_AnglesData& data) {
     for (int i = 0; i < 12 && i < data.angles_count; i++) {

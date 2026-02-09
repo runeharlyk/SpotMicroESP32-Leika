@@ -1,8 +1,6 @@
 #pragma once
 
-#include <template/stateful_persistence.h>
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
+#include <eventbus.hpp>
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
@@ -21,12 +19,9 @@
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
 
-/*
- * Ultrasonic Sensor Settings
- */
 #define MAX_DISTANCE 200
 
-class Peripherals : public StatefulService<PeripheralsConfiguration> {
+class Peripherals {
   public:
     Peripherals();
 
@@ -42,21 +37,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void getIMUProto(socket_message_IMUData &data);
     void getSettingsProto(socket_message_PeripheralSettingsData &data);
 
-    /* IMU FUNCTIONS */
     bool readImu();
-
     bool readMag();
-
     bool readBMP();
-
     bool readGesture();
-
     void readSonar();
 
     float angleX();
-
     float angleY();
-
     float angleZ();
 
     gesture_t takeGesture();
@@ -66,14 +54,12 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
-    StatefulProtoEndpoint<PeripheralsConfiguration, api_PeripheralSettings> protoEndpoint;
-
   private:
-    FSPersistencePB<PeripheralsConfiguration> _persistence;
+    PeripheralsConfiguration _settings {};
+    SubscriptionHandle _settingsHandle;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
-
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)

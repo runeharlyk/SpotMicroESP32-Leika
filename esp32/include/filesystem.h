@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <platform_shared/api.pb.h>
 
+class WebServer;
+
 #define MOUNT_POINT "/littlefs"
 
 #define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
@@ -34,6 +36,8 @@ std::string readFile(const char *filename);
 bool writeFile(const char *filename, const char *content);
 bool writeFile(const char *filename, const uint8_t *content, size_t size);
 bool mkdirRecursive(const char *path);
+
+void registerRoutes(WebServer &server);
 
 esp_err_t getFilesProto(httpd_req_t *request);
 esp_err_t getFiles(httpd_req_t *request);

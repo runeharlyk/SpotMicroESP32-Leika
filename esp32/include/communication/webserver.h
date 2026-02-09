@@ -15,7 +15,7 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <platform_shared/api.pb.h>
-#include <freertos/semphr.h>
+#include <eventbus.hpp>
 
 using HttpGetHandler = std::function<esp_err_t(httpd_req_t*)>;
 using HttpPostHandler = std::function<esp_err_t(httpd_req_t*, api_Request*)>;
@@ -23,16 +23,21 @@ using WsFrameHandler = std::function<esp_err_t(httpd_req_t*, httpd_ws_frame_t*)>
 using WsOpenHandler = std::function<void(httpd_req_t*)>;
 using WsCloseHandler = std::function<void(int)>;
 
-// Macro to register a proto endpoint that extracts a specific payload type
-// Usage: STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete)
-// Handler signature: esp_err_t handleDelete(httpd_req_t* req, const api_FileDeleteRequest& payload)
-#define STAITC_PROTO_POST_ENDPOINT(server_ref, uri, payload_type, handler) \
-    (server_ref).on(uri, HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) { \
-        if (protoReq->which_payload != api_Request_##payload_type##_tag) { \
-            return WebServer::sendError(request, 400, "Invalid request payload"); \
-        } \
-        return handler(request, protoReq->payload.payload_type); \
-    })
+#define PROTO_ROUTE(server_ref, uri, field_name, proto_type)               \
+    (server_ref)                                                           \
+        .protoRoute<proto_type>(                                           \
+            uri,                                                           \
+            [](const api_Request& req, proto_type& out) -> bool {          \
+                if (req.which_payload == api_Request_##field_name##_tag) { \
+                    out = req.payload.field_name;                          \
+                    return true;                                           \
+                }                                                          \
+                return false;                                              \
+            },                                                             \
+            [](api_Response& res, const proto_type& data) {                \
+                res.which_payload = api_Response_##field_name##_tag;       \
+                res.payload.field_name = data;                             \
+            })
 
 struct HttpRoute {
     std::string uri;
@@ -53,6 +58,36 @@ class WebServer {
 
     void on(const char* uri, httpd_method_t method, HttpGetHandler handler);
     void on(const char* uri, httpd_method_t method, HttpPostHandler handler);
+
+    template <typename ProtoT>
+    void protoRoute(const char* uri, std::function<bool(const api_Request&, ProtoT&)> extractor,
+                    std::function<void(api_Response&, const ProtoT&)> assigner) {
+        on(uri, HTTP_GET, [assigner](httpd_req_t* req) {
+            auto* res = new api_Response();
+            *res = api_Response_init_zero;
+            res->status_code = 200;
+            ProtoT current = EventBus::instance().peek<ProtoT>();
+            assigner(*res, current);
+            esp_err_t ret = WebServer::send(req, 200, *res, api_Response_fields);
+            delete res;
+            return ret;
+        });
+        on(uri, HTTP_POST, [extractor, assigner](httpd_req_t* req, api_Request* protoReq) {
+            ProtoT msg = {};
+            if (!extractor(*protoReq, msg)) {
+                return sendError(req, 400, "Invalid request type");
+            }
+            EventBus::instance().publish(msg);
+            auto* res = new api_Response();
+            *res = api_Response_init_zero;
+            res->status_code = 200;
+            ProtoT current = EventBus::instance().peek<ProtoT>();
+            assigner(*res, current);
+            esp_err_t ret = WebServer::send(req, 200, *res, api_Response_fields);
+            delete res;
+            return ret;
+        });
+    }
 
     void onWsFrame(WsFrameHandler handler);
     void onWsOpen(WsOpenHandler handler);

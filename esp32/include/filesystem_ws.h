@@ -1,6 +1,7 @@
 #pragma once
 
 #include <platform_shared/message.pb.h>
+#include <eventbus.hpp>
 #include <filesystem.h>
 #include <map>
 #include <string>
@@ -45,6 +46,7 @@ class FileSystemHandler {
   public:
     FileSystemHandler();
 
+    void begin();
     void setSendCallbacks(SendMetadataCallback sendMetadata, SendCallback sendData, SendCompleteCallback sendComplete,
                           SendUploadCompleteCallback sendUploadComplete);
 
@@ -74,6 +76,8 @@ class FileSystemHandler {
     bool deleteRecursive(const std::string& path);
     bool sendNextDownloadChunk(uint32_t transferId);
     void finalizeUpload(uint32_t transferId, bool success, const std::string& error = "");
+
+    SubscriptionHandle uploadHandle_;
 };
 
 extern FileSystemHandler fsHandler;

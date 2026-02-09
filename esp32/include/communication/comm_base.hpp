@@ -8,6 +8,7 @@
 #include <map>
 #include <type_traits>
 #include <communication/proto_helpers.h>
+#include <eventbus.hpp>
 
 class CommAdapterBase {
   public:
@@ -36,6 +37,11 @@ class CommAdapterBase {
     }
 
     template <typename T>
+    void forward() {
+        decoder_.on<T>([](const T& data, int) { EventBus::instance().publish(data); });
+    }
+
+    template <typename T>
     void emit(const T& data, int clientId = -1) {
         constexpr pb_size_t tag = MessageTraits<T>::tag;
 
@@ -47,8 +53,7 @@ class CommAdapterBase {
         size_t out_size;
         pb_get_encoded_size(&out_size, socket_message_Message_fields, &msg_);
         uint8_t* buffer = pb_heap_enc_buf;
-        if (out_size > sizeof(pb_heap_enc_buf)) { // If the encoded size exceeds our buffer size, we needs to malloc a
-                                                  // buffer of a proper size
+        if (out_size > sizeof(pb_heap_enc_buf)) {
             buffer = (uint8_t*)malloc(out_size);
         }
 

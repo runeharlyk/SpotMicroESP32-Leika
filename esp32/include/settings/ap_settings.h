@@ -2,7 +2,6 @@
 
 #include <wifi/wifi_idf.h>
 #include <wifi/dns_server.h>
-#include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <cstring>
 
@@ -74,11 +73,4 @@ inline APSettings APSettings_defaults() {
     settings.gateway_ip = parseIPv4(FACTORY_AP_GATEWAY_IP);
     settings.subnet_mask = parseIPv4(FACTORY_AP_SUBNET_MASK);
     return settings;
-}
-
-inline void APSettings_read(const APSettings &settings, APSettings &proto) { proto = settings; }
-
-inline StateUpdateResult APSettings_update(const APSettings &proto, APSettings &settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
 }

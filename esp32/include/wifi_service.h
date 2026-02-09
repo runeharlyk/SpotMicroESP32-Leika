@@ -7,16 +7,16 @@
 
 #include <filesystem.h>
 #include <utils/timing.h>
-#include <template/stateful_service.h>
-#include <template/stateful_persistence.h>
-#include <template/stateful_proto_endpoint.h>
+#include <eventbus.hpp>
 #include <settings/wifi_settings.h>
+
+class WebServer;
 
 #define WIFI_EVENT_STA_DISCONNECTED_IDF WIFI_EVENT_STA_DISCONNECTED
 #define WIFI_EVENT_STA_STOP_IDF WIFI_EVENT_STA_STOP
 #define IP_EVENT_STA_GOT_IP_IDF 1000
 
-class WiFiService : public StatefulService<WiFiSettings> {
+class WiFiService {
   public:
     WiFiService();
     ~WiFiService();
@@ -27,20 +27,21 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void setupMDNS(const char *hostname);
     void selectNetwork(uint32_t index);
 
-    const char *getHostname() { return state().hostname; }
+    const char *getHostname() { return _settings.hostname; }
 
     static esp_err_t handleScan(httpd_req_t *request);
     static esp_err_t getNetworks(httpd_req_t *request);
     static esp_err_t getNetworkStatus(httpd_req_t *request);
 
-    StatefulProtoEndpoint<WiFiSettings, api_WifiSettings> protoEndpoint;
+    void registerRoutes(WebServer &server);
 
   private:
     void onStationModeDisconnected(int32_t event, void *event_data);
     void onStationModeStop(int32_t event, void *event_data);
     static void onStationModeGotIP(int32_t event, void *event_data);
 
-    FSPersistencePB<WiFiSettings> _persistence;
+    WiFiSettings _settings {};
+    SubscriptionHandle _settingsHandle;
 
     void reconfigureWiFiConnection();
     void manageSTA();

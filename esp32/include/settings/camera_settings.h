@@ -50,14 +50,4 @@ inline CameraSettings CameraSettings_defaults() {
     return settings;
 }
 
-// Proto read/update are identity functions since type is the same
-inline void CameraSettings_read(const CameraSettings& settings, CameraSettings& proto) {
-    proto = settings;
-}
-
-inline StateUpdateResult CameraSettings_update(const CameraSettings& proto, CameraSettings& settings) {
-    settings = proto;
-    return StateUpdateResult::CHANGED;
-}
-
 } // namespace Camera

@@ -1,4 +1,3 @@
-#include <template/state_result.h>
 #include <ArduinoJson.h>
 #include <string>
 
@@ -32,11 +31,10 @@ class NTPSettings {
         root["tz_format"] = settings.tzFormat.c_str();
     }
 
-    static StateUpdateResult update(JsonVariant &root, NTPSettings &settings) {
+    static void update(JsonVariant &root, NTPSettings &settings) {
         settings.enabled = root["enabled"] | FACTORY_NTP_ENABLED;
         settings.server = root["server"] | FACTORY_NTP_SERVER;
         settings.tzLabel = root["tz_label"] | FACTORY_NTP_TIME_ZONE_LABEL;
         settings.tzFormat = root["tz_format"] | FACTORY_NTP_TIME_ZONE_FORMAT;
-        return StateUpdateResult::CHANGED;
     }
 };

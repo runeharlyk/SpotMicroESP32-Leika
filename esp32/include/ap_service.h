@@ -1,8 +1,7 @@
 #pragma once
 
-#include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
-#include <template/stateful_persistence.h>
+#include <esp_http_server.h>
+#include <eventbus.hpp>
 #include <settings/ap_settings.h>
 #include <utils/timing.h>
 #include <wifi/wifi_idf.h>
@@ -10,7 +9,9 @@
 #include <esp_timer.h>
 #include <string>
 
-class APService : public StatefulService<APSettings> {
+class WebServer;
+
+class APService {
   public:
     APService();
     ~APService();
@@ -23,10 +24,11 @@ class APService : public StatefulService<APSettings> {
     void statusProto(api_APStatus &proto);
     APNetworkStatus getAPNetworkStatus();
 
-    StatefulProtoEndpoint<APSettings, api_APSettings> protoEndpoint;
+    void registerRoutes(WebServer &server);
 
   private:
-    FSPersistencePB<APSettings> _persistence;
+    APSettings _settings {};
+    SubscriptionHandle _settingsHandle;
     DNSServer *_dnsServer;
 
     volatile unsigned long _lastManaged;
