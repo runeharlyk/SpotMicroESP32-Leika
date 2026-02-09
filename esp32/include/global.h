@@ -38,6 +38,9 @@
 #error Target CONFIG_IDF_TARGET is not supported
 #endif
 
+/*
+ * I2C software connection
+ */
 #if CONFIG_IDF_TARGET_ESP32P4
 #ifndef SDA_PIN
 #define SDA_PIN 7
@@ -53,7 +56,6 @@
 #define SCL_PIN 22
 #endif
 #endif
-
 #ifndef I2C_FREQUENCY
-#define I2C_FREQUENCY 100000UL
+#define I2C_FREQUENCY 1000000UL
 #endif
