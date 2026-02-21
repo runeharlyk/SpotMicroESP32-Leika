@@ -198,27 +198,12 @@ function createWebSocket() {
         unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime)
     }
 
-    function emit<T>(event: MessageFns<T>, data: T): Promise<void> {
-        return new Promise((resolve) => {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                resolve()
-                return
-            }
-            const type = getNameFromMessageType(event)
-            const wsm = Message.create() as Record<string, unknown>
-            wsm[type] = data
-            send(wsm as Message)
-
-            // Wait for buffer to flush before resolving
-            const checkBuffer = () => {
-                if (!ws || ws.bufferedAmount === 0) {
-                    resolve()
-                } else {
-                    setTimeout(checkBuffer, 5)
-                }
-            }
-            checkBuffer()
-        })
+    function emit<T>(event: MessageFns<T>, data: T) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return
+        const type = getNameFromMessageType(event)
+        const wsm = Message.create() as Record<string, unknown>
+        wsm[type] = data
+        send(wsm as Message)
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
