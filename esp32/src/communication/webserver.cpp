@@ -2,6 +2,7 @@
 #include <esp_log.h>
 #include <cstring>
 #include <algorithm>
+#include <utils/timing.h>
 
 static const char* TAG = "WebServer";
 
@@ -121,6 +122,10 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
 }
 
 esp_err_t WebServer::wsHandler(httpd_req_t* req) {
+    esp_err_t result;
+    httpd_ws_frame_t frame;
+    esp_err_t ret;
+    TIME_IT(
     WebServer* self = static_cast<WebServer*>(req->user_ctx);
 
     if (req->method == HTTP_GET) {
@@ -133,17 +138,21 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
         return ESP_OK;
     }
 
-    httpd_ws_frame_t frame;
+    
     memset(&frame, 0, sizeof(httpd_ws_frame_t));
     frame.type = HTTPD_WS_TYPE_BINARY;
 
-    esp_err_t ret = httpd_ws_recv_frame(req, &frame, 0);
+    
+    TIME_IT(
+    ret = httpd_ws_recv_frame(req, &frame, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get frame len: %s", esp_err_to_name(ret));
         return ret;
     }
+    , FRAME_LEN)
 
     if (frame.len > 0) {
+        TIME_IT(
         frame.payload = (uint8_t*)malloc(frame.len);
         if (!frame.payload) {
             ESP_LOGE(TAG, "Failed to allocate frame payload");
@@ -156,6 +165,7 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
             free(frame.payload);
             return ret;
         }
+        , FRAME_RECEIVE)
     }
 
     if (frame.type == HTTPD_WS_TYPE_CLOSE) {
@@ -169,15 +179,18 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
         return ESP_OK;
     }
 
-    esp_err_t result = ESP_OK;
+    result = ESP_OK;
     if (self->wsFrameHandler_) {
+        TIME_IT(
         result = self->wsFrameHandler_(req, &frame);
+        , FRAME_HANDLER)
     }
 
     if (frame.payload) {
         free(frame.payload);
     }
 
+    , WS_HANDLER)
     return result;
 }
 

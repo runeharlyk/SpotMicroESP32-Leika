@@ -157,7 +157,7 @@ void setupEventSocket() {
     });
 
     wsSocket.on<socket_message_FSUploadData>(
-        [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
+        [&](const socket_message_FSUploadData &data, int clientId) { TIME_IT(FileSystemWS::fsHandler.handleUploadData(data), handle_upload) });
 
     using CorrelationHandler =
         std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;

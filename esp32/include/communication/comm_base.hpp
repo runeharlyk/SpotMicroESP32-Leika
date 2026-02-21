@@ -8,6 +8,7 @@
 #include <map>
 #include <type_traits>
 #include <communication/proto_helpers.h>
+#include <utils/timing.h>
 
 class CommAdapterBase {
   public:
@@ -96,9 +97,11 @@ class CommAdapterBase {
     }
 
     void handleIncoming(const uint8_t* data, size_t len, int cid) {
+        TIME_IT(
         if (!decoder_.decode(data, len, cid)) {
             ESP_LOGE("ProtoComm", "Failed to decode incoming message from client %d", cid);
         }
+        , INCOMING_DECODE)
     }
 
     void sendPong(int cid) {

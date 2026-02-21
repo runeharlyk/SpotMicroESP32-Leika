@@ -24,8 +24,26 @@ void Websocket::onWsClose(int sockfd) {
 }
 
 esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
+    // Handle PING - respond with PONG
+    if (frame->type == HTTPD_WS_TYPE_PING) {
+        httpd_ws_frame_t pong = {
+            .final = true,
+            .fragmented = false,
+            .type = HTTPD_WS_TYPE_PONG,
+            .payload = frame->payload,
+            .len = frame->len
+        };
+        return httpd_ws_send_frame(req, &pong);
+    }
+
+    // Ignore PONG frames
+    if (frame->type == HTTPD_WS_TYPE_PONG) {
+        return ESP_OK;
+    }
+
+    // Ignore other non-binary frames
     if (frame->type != HTTPD_WS_TYPE_BINARY) {
-        ESP_LOGW(TAG, "Expected binary frame, got type %d", frame->type);
+        ESP_LOGD(TAG, "Ignoring frame type %d", frame->type);
         return ESP_OK;
     }
 
