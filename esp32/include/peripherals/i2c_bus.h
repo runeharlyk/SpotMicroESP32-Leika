@@ -31,7 +31,11 @@ class I2CBus {
         bus_cfg.scl_io_num = scl;
         bus_cfg.clk_source = I2C_CLK_SRC_DEFAULT;
         bus_cfg.glitch_ignore_cnt = 7;
+#if CONFIG_IDF_TARGET_ESP32P4
+        bus_cfg.flags.enable_internal_pullup = false;
+#else
         bus_cfg.flags.enable_internal_pullup = true;
+#endif
 
         esp_err_t err = i2c_new_master_bus(&bus_cfg, &_bus);
         if (err != ESP_OK) {
@@ -64,7 +68,7 @@ class I2CBus {
         if (!_initialized) return ESP_ERR_INVALID_STATE;
         esp_err_t err = ensureDevice(addr);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit(_dev, data, len, pdMS_TO_TICKS(100));
+        return i2c_master_transmit(_dev, data, len, pdMS_TO_TICKS(200));
     }
 
     esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
@@ -77,19 +81,19 @@ class I2CBus {
         if (len > 0 && data != nullptr) {
             memcpy(buf + 1, data, len);
         }
-        return i2c_master_transmit(_dev, buf, len + 1, pdMS_TO_TICKS(100));
+        return i2c_master_transmit(_dev, buf, len + 1, pdMS_TO_TICKS(200));
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
         if (!_initialized) return ESP_ERR_INVALID_STATE;
         esp_err_t err = ensureDevice(addr);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit_receive(_dev, &reg, 1, data, len, pdMS_TO_TICKS(100));
+        return i2c_master_transmit_receive(_dev, &reg, 1, data, len, pdMS_TO_TICKS(200));
     }
 
     bool probe(uint8_t addr) {
         if (!_initialized) return false;
-        return i2c_master_probe(_bus, addr, pdMS_TO_TICKS(50)) == ESP_OK;
+        return i2c_master_probe(_bus, addr, pdMS_TO_TICKS(200)) == ESP_OK;
     }
 
     std::vector<uint8_t> scan(uint8_t lower = 1, uint8_t upper = 127) {
