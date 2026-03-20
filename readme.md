@@ -245,7 +245,7 @@ Complete build instructions are available in the documentation:
 **Build and flash:**
 
 ```bash
-git clone https://github.com/runeharlyk/SpotMicroESP32-Leika
+git clone --recurse-submodules https://github.com/runeharlyk/SpotMicroESP32-Leika
 cd SpotMicroESP32-Leika
 
 cd app
