@@ -262,8 +262,9 @@
         const rotatedXm = settings.xm * cosTotal - settings.zm * sinTotal
         const rotatedZm = settings.xm * sinTotal + settings.zm * cosTotal
 
-        const cosHead = Math.cos(headingYaw)
-        const sinHead = Math.sin(headingYaw)
+        const mpuHeadingRad = degToRad($mpu.heading)
+        const cosHead = Math.cos(mpuHeadingRad)
+        const sinHead = Math.sin(mpuHeadingRad)
         const rotatedCumX = body_state.cumulative_x * cosHead - body_state.cumulative_z * sinHead
         const rotatedCumZ = body_state.cumulative_x * sinHead + body_state.cumulative_z * cosHead
 
