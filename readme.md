@@ -143,8 +143,8 @@ A PyBullet-based physics simulation is available for algorithm development and r
 
 ```bash
 cd simulation
-pip install -r requirements.txt
-python play.py
+uv sync
+uv run play.py
 ```
 
 Features:
@@ -264,8 +264,8 @@ To experiment with the simulation environments without hardware:
 
 ```bash
 cd simulation
-pip install -r requirements.txt
-python play.py
+uv sync
+uv run play.py
 ```
 
 For development workflows and contribution guidelines, see [docs/6_developing.md](docs/6_developing.md) and [docs/7_contributing.md](docs/7_contributing.md).

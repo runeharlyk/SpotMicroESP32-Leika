@@ -1,0 +1,21 @@
+[project]
+name = "simulation-leika"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "gymnasium>=1.2.3",
+    "matplotlib>=3.10.9",
+    "msgpack>=1.1.2",
+    "numpy>=2.4.4",
+    "onnx>=1.21.0",
+    "onnxruntime>=1.26.0",
+    "pybullet>=3.2.7",
+    "stable-baselines3[extra]>=2.0.0",
+    "tensorboard>=2.20.0",
+    "tensorflow>=2.21.0",
+    "torch>=2.11.0",
+    "tqdm>=4.67.3",
+    "websockets>=16.0",
+]
