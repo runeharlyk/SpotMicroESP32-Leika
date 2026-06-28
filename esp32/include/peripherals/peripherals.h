@@ -95,6 +95,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     float _left_distance {MAX_DISTANCE};
     float _right_distance {MAX_DISTANCE};
 
-    std::list<uint8_t> addressList;
-    bool i2c_active = false;
+    std::list<uint8_t> _address_list;
+    bool _i2c_active = false;
 };

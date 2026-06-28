@@ -110,9 +110,9 @@ void setupServer() {
 
     server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
     server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
-    STAITC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
+    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
+    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
+    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
     wsSocket.begin();
 #if EMBED_WEBAPP
     mountStaticAssets(server);

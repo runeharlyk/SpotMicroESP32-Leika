@@ -4,9 +4,8 @@ Peripherals::Peripherals()
     : protoEndpoint(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this,
                     API_REQUEST_EXTRACTOR(peripheral_settings, api_PeripheralSettings),
                     API_RESPONSE_ASSIGNER(peripheral_settings, api_PeripheralSettings)),
-      _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this,
-                   PERIPHERAL_SETTINGS_FILE, api_PeripheralSettings_fields, api_PeripheralSettings_size,
-                   PeripheralsConfiguration_defaults()) {
+      _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, PERIPHERAL_SETTINGS_FILE,
+                   api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()) {
     _accessMutex = xSemaphoreCreateMutex();
     addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
 }
@@ -17,16 +16,16 @@ void Peripherals::begin() {
     updatePins();
 
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    if (!_imu.initialize()) ESP_LOGE("IMUService", "IMU initialize failed");
+    if (!_imu.initialize()) ESP_LOGE("Peripherals", "IMU initialize failed");
 #endif
 #if FT_ENABLED(USE_HMC5883)
-    if (!_mag.initialize()) ESP_LOGE("IMUService", "MAG initialize failed");
+    if (!_mag.initialize()) ESP_LOGE("Peripherals", "Magnetometer initialize failed");
 #endif
 #if FT_ENABLED(USE_BMP180)
-    if (!_bmp.initialize()) ESP_LOGE("IMUService", "BMP initialize failed");
+    if (!_bmp.initialize()) ESP_LOGE("Peripherals", "Barometer initialize failed");
 #endif
 #if FT_ENABLED(USE_PAJ7620U2)
-    if (!_gesture.initialize()) ESP_LOGE("IMUService", "Gesture initialize failed");
+    if (!_gesture.initialize()) ESP_LOGE("Peripherals", "Gesture sensor initialize failed");
 #endif
 #if FT_ENABLED(USE_USS)
     _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
@@ -43,20 +42,20 @@ void Peripherals::update() {
 }
 
 void Peripherals::updatePins() {
-    if (i2c_active) {
+    if (_i2c_active) {
         I2CBus::instance().end();
     }
 
     if (state().sda != -1 && state().scl != -1) {
         esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(state().sda),
                                                  static_cast<gpio_num_t>(state().scl), state().frequency);
-        i2c_active = (err == ESP_OK);
+        _i2c_active = (err == ESP_OK);
     }
 }
 
 void Peripherals::getI2CScanProto(socket_message_I2CScanData &data) {
     data.devices_count = 0;
-    for (auto &address : addressList) {
+    for (auto &address : _address_list) {
         if (data.devices_count >= 16) break;
         data.devices[data.devices_count].address = address;
         data.devices_count++;
@@ -64,10 +63,10 @@ void Peripherals::getI2CScanProto(socket_message_I2CScanData &data) {
 }
 
 void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
-    addressList.clear();
+    _address_list.clear();
     auto devices = I2CBus::instance().scan(lower, higher);
     for (auto addr : devices) {
-        addressList.emplace_back(addr);
+        _address_list.emplace_back(addr);
         ESP_LOGI("Peripherals", "I2C device found at address 0x%02X", addr);
     }
     ESP_LOGI("Peripherals", "Scan complete - Found %d device(s)", devices.size());
