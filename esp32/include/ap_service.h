@@ -9,6 +9,7 @@
 #include <wifi/dns_server.h>
 #include <esp_timer.h>
 #include <string>
+#include <memory>
 
 class APService : public StatefulService<APSettings> {
   public:
@@ -27,7 +28,7 @@ class APService : public StatefulService<APSettings> {
 
   private:
     FSPersistencePB<APSettings> _persistence;
-    DNSServer *_dnsServer;
+    std::unique_ptr<DNSServer> _dnsServer;
 
     volatile unsigned long _lastManaged;
     volatile bool _reconfigureAp;

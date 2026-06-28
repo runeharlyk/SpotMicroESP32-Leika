@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <sys/stat.h>
 #include <esp_log.h>
+#include <vector>
 
 static const char *TAG_PERSISTENCE = "FSPersistencePB";
 
@@ -39,25 +40,20 @@ class FSPersistencePB {
             fseek(file, 0, SEEK_SET);
 
             if (fileSize > 0 && fileSize <= _maxSize) {
-                uint8_t *buffer = new uint8_t[fileSize];
-                size_t bytesRead = fread(buffer, 1, fileSize, file);
+                std::vector<uint8_t> buffer(fileSize);
+                size_t bytesRead = fread(buffer.data(), 1, fileSize, file);
                 fclose(file);
 
                 if (bytesRead == fileSize) {
-                    T *protoMsg = new T();
-                    *protoMsg = {};
-                    pb_istream_t stream = pb_istream_from_buffer(buffer, bytesRead);
+                    T protoMsg = {};
+                    pb_istream_t stream = pb_istream_from_buffer(buffer.data(), bytesRead);
 
-                    if (pb_decode(&stream, _msgDescriptor, protoMsg)) {
+                    if (pb_decode(&stream, _msgDescriptor, &protoMsg)) {
                         _statefulService->updateWithoutPropagation(
-                            [this, protoMsg](T &state) { return _stateUpdater(*protoMsg, state); });
-                        delete protoMsg;
-                        delete[] buffer;
+                            [this, &protoMsg](T &state) { return _stateUpdater(protoMsg, state); });
                         return;
                     }
-                    delete protoMsg;
                 }
-                delete[] buffer;
             } else {
                 fclose(file);
             }
@@ -68,18 +64,13 @@ class FSPersistencePB {
     }
 
     bool writeToFS() {
-        uint8_t *buffer = new uint8_t[_maxSize];
-        pb_ostream_t stream = pb_ostream_from_buffer(buffer, _maxSize);
+        std::vector<uint8_t> buffer(_maxSize);
+        pb_ostream_t stream = pb_ostream_from_buffer(buffer.data(), _maxSize);
 
-        T *protoMsg = new T();
-        *protoMsg = {};
-        _statefulService->read([this, protoMsg](const T &state) { _stateReader(state, *protoMsg); });
+        T protoMsg = {};
+        _statefulService->read([this, &protoMsg](const T &state) { _stateReader(state, protoMsg); });
 
-        bool encodeSuccess = pb_encode(&stream, _msgDescriptor, protoMsg);
-        delete protoMsg;
-
-        if (!encodeSuccess) {
-            delete[] buffer;
+        if (!pb_encode(&stream, _msgDescriptor, &protoMsg)) {
             return false;
         }
 
@@ -88,13 +79,11 @@ class FSPersistencePB {
         FILE *file = fopen(_filePath, "wb");
         if (!file) {
             ESP_LOGE(TAG_PERSISTENCE, "Failed to open file for writing: %s", _filePath);
-            delete[] buffer;
             return false;
         }
 
-        size_t written = fwrite(buffer, 1, stream.bytes_written, file);
+        size_t written = fwrite(buffer.data(), 1, stream.bytes_written, file);
         fclose(file);
-        delete[] buffer;
 
         return written == stream.bytes_written;
     }

@@ -1,6 +1,7 @@
 #include <filesystem.h>
 #include <communication/webserver.h>
 #include <vector>
+#include <memory>
 #include <cstring>
 #include "utils/string_utils.hpp"
 #include <esp_log.h>
@@ -11,14 +12,9 @@ static const char *TAG = "FileSystem";
 
 namespace FileSystem {
 
-static std::vector<api_FileEntry *> allocatedEntries;
+static std::vector<std::unique_ptr<api_FileEntry[]>> allocatedEntries;
 
-static void freeAllocatedEntries() {
-    for (auto ptr : allocatedEntries) {
-        delete[] ptr;
-    }
-    allocatedEntries.clear();
-}
+static void freeAllocatedEntries() { allocatedEntries.clear(); }
 
 static void listFilesProtoRecursive(const std::string &directory, api_FileEntry *entry) {
     DIR *dir = opendir(directory.c_str());
@@ -52,8 +48,9 @@ static void listFilesProtoRecursive(const std::string &directory, api_FileEntry 
     }
 
     entry->children_count = names.size();
-    entry->children = new api_FileEntry[names.size()];
-    allocatedEntries.push_back(entry->children);
+    auto children = std::make_unique<api_FileEntry[]>(names.size());
+    entry->children = children.get();
+    allocatedEntries.push_back(std::move(children));
 
     for (size_t i = 0; i < names.size(); i++) {
         api_FileEntry &child = entry->children[i];
@@ -96,8 +93,9 @@ esp_err_t getFilesProto(httpd_req_t *request) {
     listFilesProtoRecursive(MOUNT_POINT, &rootEntry);
 
     res.payload.file_list.entries_count = 1;
-    res.payload.file_list.entries = new api_FileEntry[1];
-    allocatedEntries.push_back(res.payload.file_list.entries);
+    auto entries = std::make_unique<api_FileEntry[]>(1);
+    res.payload.file_list.entries = entries.get();
+    allocatedEntries.push_back(std::move(entries));
     res.payload.file_list.entries[0] = rootEntry;
 
     esp_err_t result = WebServer::send(request, 200, res, api_Response_fields);

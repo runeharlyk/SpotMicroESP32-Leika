@@ -15,12 +15,7 @@ APService::APService()
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
-APService::~APService() {
-    if (_dnsServer) {
-        delete _dnsServer;
-        _dnsServer = nullptr;
-    }
-}
+APService::~APService() = default;
 
 void APService::begin() { _persistence.readFromFS(); }
 
@@ -92,7 +87,7 @@ void APService::startAP() {
     if (!_dnsServer) {
         IPAddress apIp = WiFi.softAPIP();
         ESP_LOGI(TAG, "Starting captive portal on %s", apIp.toString().c_str());
-        _dnsServer = new DNSServer;
+        _dnsServer = std::make_unique<DNSServer>();
         _dnsServer->start(DNS_PORT, "*", apIp);
     }
 }
@@ -101,8 +96,7 @@ void APService::stopAP() {
     if (_dnsServer) {
         ESP_LOGI(TAG, "Stopping captive portal");
         _dnsServer->stop();
-        delete _dnsServer;
-        _dnsServer = nullptr;
+        _dnsServer.reset();
     }
     ESP_LOGI(TAG, "Stopping AP");
     WiFi.softAPdisconnect(true);

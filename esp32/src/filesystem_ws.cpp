@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <cstring>
+#include <memory>
 
 static const char* TAG = "FileSystemWS";
 
@@ -297,8 +298,8 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         return false;
     }
 
-    auto data = new socket_message_FSDownloadData();
-    memset(data, 0, sizeof(socket_message_FSDownloadData));
+    auto data = std::make_unique<socket_message_FSDownloadData>();
+    memset(data.get(), 0, sizeof(socket_message_FSDownloadData));
     data->transfer_id = transferId;
     data->chunk_index = state.chunksSent;
 
@@ -310,7 +311,6 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
 
     size_t bytesRead = fread(data->data.bytes, 1, bytesToRead, state.file);
     if (bytesRead == 0 && bytesToRead > 0) {
-        delete data;
         if (sendCompleteCallback_) {
             socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
             complete.transfer_id = transferId;
@@ -332,7 +332,6 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         sendDataCallback_(*data, state.clientId);
     }
 
-    delete data;
     state.chunksSent++;
     ESP_LOGD(TAG, "Download chunk %u/%u sent: %u bytes", state.chunksSent, state.totalChunks, bytesRead);
 
