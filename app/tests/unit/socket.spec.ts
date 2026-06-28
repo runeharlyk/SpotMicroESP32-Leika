@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { get } from 'svelte/store'
 import { WebSocketServer } from 'ws'
 import { decodeMessage, MESSAGE_KEY_TO_TAG, socket } from '../../src/lib/stores/socket'
+import { telemetry } from '../../src/lib/stores/telemetry'
 import { IMUData, PingMsg, PongMsg, Message } from '../../src/lib/platform_shared/message'
 
 // Helper function to create encoded WebSocket messages
@@ -54,7 +56,7 @@ describe.sequential('WebSocket Integration Tests', () => {
     })
 
     it('should receive and decode IMU data from server', async () => {
-        let receivedIMUData: IMUData = null
+        let receivedIMUData: IMUData | null = null
 
         // Subscribe to IMU messages before connecting
         const unsubscribe = socket.on(IMUData, data => {
@@ -85,15 +87,19 @@ describe.sequential('WebSocket Integration Tests', () => {
             })
         })
 
-        expect(receivedIMUData).toBeDefined()
+        // Cast resets the control-flow type: TS otherwise narrows a let only assigned inside a
+        // callback to its initial `null` at this synchronous read.
+        const received = receivedIMUData as IMUData | null
+        expect(received).not.toBeNull()
+        if (!received) throw new Error('Expected IMU data to be received')
 
-        expect(receivedIMUData.x).toBe(3.25)
-        expect(receivedIMUData.y).toBe(2.5)
-        expect(receivedIMUData.z).toBe(1.75)
-        expect(receivedIMUData.heading).toBe(10)
-        expect(receivedIMUData.altitude).toBe(11)
-        expect(receivedIMUData.bmpTemp).toBe(22)
-        expect(receivedIMUData.pressure).toBe(23)
+        expect(received.x).toBe(3.25)
+        expect(received.y).toBe(2.5)
+        expect(received.z).toBe(1.75)
+        expect(received.heading).toBe(10)
+        expect(received.altitude).toBe(11)
+        expect(received.bmpTemp).toBe(22)
+        expect(received.pressure).toBe(23)
 
         unsubscribe()
     })
@@ -200,6 +206,29 @@ describe.sequential('WebSocket Integration Tests', () => {
                 }
             }, 150)
         })
+    })
+
+    it('measures round-trip latency when the server answers a ping with a pong', async () => {
+        socket.init(`ws://localhost:${TEST_PORT}`)
+
+        await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('No ping received from client')), 3000)
+
+            wss.on('connection', ws => {
+                ws.on('message', (data: Buffer) => {
+                    if (data.length === 0) return
+                    const decoded = Message.decode(new Uint8Array(data))
+                    if (decoded.pingmsg !== undefined) {
+                        // Echo a pong so the client can compute round-trip time.
+                        ws.send(Message.encode(Message.create({ pongmsg: {} })).finish())
+                        clearTimeout(timeout)
+                        setTimeout(resolve, 100) // let the client process the pong
+                    }
+                })
+            })
+        })
+
+        expect(get(telemetry).latency).toBeGreaterThanOrEqual(0)
     })
 })
 

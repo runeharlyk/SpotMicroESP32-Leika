@@ -1,13 +1,10 @@
 import { persistentStore } from '$lib/utilities'
 import { get, type Writable } from 'svelte/store'
-
-import Visualization from '$lib/components/Visualization.svelte'
-import Stream from '$lib/components/Stream.svelte'
-import ChartWidget from '$lib/components/widget/ChartWidget.svelte'
+import type { WidgetComponentName } from './widget-components'
 
 export interface WidgetConfig {
     id: string | number
-    component: keyof typeof WidgetComponents
+    component: WidgetComponentName
     props?: Record<string, unknown>
 }
 
@@ -21,12 +18,6 @@ export interface WidgetContainerConfig {
 export const isWidgetConfig = (
     widget: WidgetConfig | WidgetContainerConfig
 ): widget is WidgetConfig => 'component' in widget
-
-export const WidgetComponents = {
-    Visualization,
-    Stream,
-    ChartWidget
-}
 
 interface View {
     name: string

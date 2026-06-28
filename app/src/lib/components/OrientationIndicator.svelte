@@ -47,9 +47,12 @@
     const updateOrientation = () => {
         if (!cube) return
 
-        const y = -$imu.x[$imu.x.length - 1] || 0
-        const x = $imu.y[$imu.y.length - 1] || 0
-        const z = -$imu.z[$imu.z.length - 1] || 0
+        const latest = $imu[$imu.length - 1]
+        if (!latest) return
+
+        const y = -latest.x
+        const x = latest.y
+        const z = -latest.z
 
         targetRotation.set(
             THREE.MathUtils.degToRad(x),
@@ -60,9 +63,11 @@
 
     onMount(() => {
         initThreeJS()
+        imu.listen()
     })
 
     onDestroy(() => {
+        imu.stop()
         sceneBuilder?.renderer?.dispose()
     })
 

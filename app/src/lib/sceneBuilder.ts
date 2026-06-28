@@ -20,12 +20,14 @@ import {
     Group,
     MeshBasicMaterial,
     RepeatWrapping,
+    type Material,
     type Object3D
 } from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
 import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader'
+// @ts-expect-error - urdf-loader ships this submodule without type declarations
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
 
 export const addScene = () => new Scene()
@@ -55,7 +57,7 @@ export default class SceneBuilder {
     public camera!: PerspectiveCamera
     public ground!: Mesh
     public renderer!: WebGLRenderer
-    public orbit: OrbitControls
+    public orbit!: OrbitControls
     public callback: (() => void) | undefined
     public gridHelper!: GridHelper
     public model!: URDFRobot
@@ -63,7 +65,7 @@ export default class SceneBuilder {
     private fog!: FogExp2
     private isLoaded: boolean = false
     public isDragging: boolean = false
-    transformControl: TransformControls
+    transformControl!: TransformControls
     public modelGroup!: Group
 
     constructor() {
@@ -245,18 +247,19 @@ export default class SceneBuilder {
     highlightLinkGeometry = (m: URDFMimicJoint, revert: boolean, material: MeshPhongMaterial) => {
         const traverse = (c: Object3D) => {
             if (c.type === 'Mesh') {
+                const mesh = c as Mesh & { __origMaterial?: Material | Material[] }
                 if (revert) {
-                    c.material = c.__origMaterial
-                    delete c.__origMaterial
+                    if (mesh.__origMaterial) mesh.material = mesh.__origMaterial
+                    delete mesh.__origMaterial
                 } else {
-                    c.__origMaterial = c.material
-                    c.material = material
+                    mesh.__origMaterial = mesh.material
+                    mesh.material = material
                 }
             }
 
-            if (c === m || !this.isJoint(c)) {
+            if (c === m || !this.isJoint(c as unknown as URDFJoint)) {
                 for (let i = 0; i < c.children.length; i++) {
-                    const child = c.children[i]
+                    const child = c.children[i] as Object3D & { isURDFCollider?: boolean }
                     if (!child.isURDFCollider) {
                         traverse(c.children[i])
                     }
@@ -268,12 +271,13 @@ export default class SceneBuilder {
 
     public addTransformControls = (model: Object3D) => {
         this.transformControl = new TransformControls(this.camera, this.renderer.domElement)
-        this.transformControl.addEventListener('dragging-changed', (event: { value: boolean }) => {
+        this.transformControl.addEventListener('dragging-changed', (event: { value: unknown }) => {
             this.orbit.enabled = !event.value
             this.isDragging = !event.value
         })
         this.transformControl.attach(model)
-        this.scene.add(this.transformControl)
+        // three r169+: TransformControls is no longer an Object3D; add its helper to the scene.
+        this.scene.add(this.transformControl.getHelper())
         this.transformControl.setMode('rotate')
         return this
     }

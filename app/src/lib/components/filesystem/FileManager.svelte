@@ -125,17 +125,17 @@
         <div class="flex gap-2">
             <button
                 class="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700"
-                on:click={handleCreateDirectory}>New Folder</button
+                onclick={handleCreateDirectory}>New Folder</button
             >
             <label
                 class="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700"
             >
                 Upload File
-                <input type="file" on:change={handleFileUpload} class="hidden" />
+                <input type="file" onchange={handleFileUpload} class="hidden" />
             </label>
             <button
                 class="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700"
-                on:click={loadDirectory}>Refresh</button
+                onclick={loadDirectory}>Refresh</button
             >
         </div>
     </div>
@@ -181,25 +181,27 @@
             <div class="text-center p-8 text-gray-500">Loading...</div>
         {:else}
             {#if currentPath !== '/'}
-                <div
-                    class="flex items-center p-3 border-b border-gray-100 gap-2 bg-gray-50 cursor-pointer"
-                    on:click={() => navigateTo('/')}
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 border-b border-gray-100 bg-gray-50 p-3 text-left cursor-pointer"
+                    onclick={() => navigateTo('/')}
                 >
                     <span class="text-2xl">📁</span>
                     <span class="flex-1 hover:underline">..</span>
-                </div>
+                </button>
             {/if}
 
             {#each directories as dir}
                 <div class="flex items-center p-3 border-b border-gray-100 gap-2 bg-gray-50">
                     <span class="text-2xl">📁</span>
-                    <span
-                        class="flex-1 cursor-pointer hover:underline"
-                        on:click={() => navigateTo(currentPath + '/' + dir.name)}>{dir.name}</span
+                    <button
+                        type="button"
+                        class="flex-1 cursor-pointer text-left hover:underline"
+                        onclick={() => navigateTo(currentPath + '/' + dir.name)}>{dir.name}</button
                     >
                     <button
                         class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                        on:click={() => handleDelete(dir.name, true)}>Delete</button
+                        onclick={() => handleDelete(dir.name, true)}>Delete</button
                     >
                 </div>
             {/each}
@@ -211,11 +213,11 @@
                     <span class="text-gray-500 text-sm">{formatBytes(file.size)}</span>
                     <button
                         class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                        on:click={() => handleDownload(file.name)}>Download</button
+                        onclick={() => handleDownload(file.name)}>Download</button
                     >
                     <button
                         class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                        on:click={() => handleDelete(file.name, false)}>Delete</button
+                        onclick={() => handleDelete(file.name, false)}>Delete</button
                     >
                 </div>
             {/each}

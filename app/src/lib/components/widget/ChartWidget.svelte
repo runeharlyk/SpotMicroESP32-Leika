@@ -1,12 +1,13 @@
 <script lang="ts">
     import { daisyColor } from '$lib/utilities'
-    import { Chart, registerables } from 'chart.js'
-    import { onMount } from 'svelte'
+    import { Chart } from '$lib/utilities/chart'
+    import { onMount, onDestroy } from 'svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
 
     let chartElement: HTMLCanvasElement
     let chart: Chart<'line', number[], number>
+    let refreshIntervalId: ReturnType<typeof setInterval>
 
     interface Props {
         label: string
@@ -15,8 +16,6 @@
     }
 
     let { label, data, title }: Props = $props()
-
-    Chart.register(...registerables)
 
     onMount(() => {
         chart = new Chart(chartElement, {
@@ -85,10 +84,16 @@
             }
         })
 
-        setInterval(() => {
+        refreshIntervalId = setInterval(() => {
             chart.data.labels = data
             chart.data.datasets[0].data = data
+            chart.update('none')
         }, 500)
+    })
+
+    onDestroy(() => {
+        clearInterval(refreshIntervalId)
+        chart?.destroy()
     })
 </script>
 

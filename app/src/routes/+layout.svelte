@@ -27,7 +27,6 @@
         KinematicData,
         ModeData,
         RSSIData,
-        SonarData,
         WalkGaitData
     } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
@@ -77,7 +76,6 @@
                 eventListeners.push(
                     socket.on(DownloadOTAData, data => telemetry.setDownloadOTA(data))
                 )
-            if (data?.sonar) eventListeners.push(socket.on(SonarData, data => console.log(data)))
         })
     }
 
@@ -90,6 +88,7 @@
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
         telemetry.setRSSI(RSSIData.create({ rssi: 0 }))
+        input.update(data => ({ ...data, left: { x: 0, y: 0 }, right: { x: 0, y: 0 } }))
     }
 
     const handleError = (data: unknown) => console.error(data)

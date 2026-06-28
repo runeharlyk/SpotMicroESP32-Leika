@@ -55,8 +55,8 @@ async function sendRequest<TResponse>(
 
     try {
         response = await fetch(endpoint, request)
-    } catch {
-        return Err.new(new Error(), 'An error has occurred')
+    } catch (e) {
+        return Err.new(e instanceof Error ? e : new Error(String(e)), 'Network request failed')
     }
 
     const isResponseOk = response.status >= 200 && response.status < 400
@@ -67,7 +67,7 @@ async function sendRequest<TResponse>(
         return Err.new(new ApiError(response), 'An error has occurred')
     }
 
-    const contentType = response.headers.get('Content-Type') ?? response.headers.get('Content-Type')
+    const contentType = response.headers.get('Content-Type')
     if (contentType && contentType.includes('application/json')) {
         const data = await response.json()
         return Ok.new(data as TResponse)

@@ -1,10 +1,7 @@
 <script lang="ts">
     import WidgetContainer from './WidgetContainer.svelte'
-    import {
-        WidgetComponents,
-        type WidgetContainerConfig,
-        isWidgetConfig
-    } from '$lib/stores/application'
+    import { type WidgetContainerConfig, isWidgetConfig } from '$lib/stores/application'
+    import { WidgetComponents } from '$lib/stores/widget-components'
     import Widget from './Widget.svelte'
 
     interface Props {
@@ -25,7 +22,8 @@
             <Widget>
                 {#if isWidgetConfig(widget)}
                     {@const SvelteComponent = WidgetComponents[widget.component]}
-                    <SvelteComponent {...widget.props} />
+                    <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -- props are heterogeneous across dynamically-selected widgets -->
+                    <SvelteComponent {...(widget.props as any)} />
                 {:else if widget.widgets}
                     <WidgetContainer container={widget} />
                 {/if}

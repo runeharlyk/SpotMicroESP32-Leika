@@ -8,6 +8,7 @@ import {
 } from '$lib/platform_shared/message'
 import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
+import { telemetry } from './telemetry'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -101,11 +102,17 @@ function createWebSocket() {
         }
     >()
     const { subscribe, set } = writable(false)
-    const reconnectTimeoutTime = 500000
+    const reconnectBaseDelay = 1000
+    const reconnectMaxDelay = 10000
+    const pingIntervalTime = 4000
+    const unresponsiveTimeoutTime = 12000
     const requestTimeoutTime = 30000
+    let reconnectAttempts = 0
+    let lastPingSentAt = 0
     let correlationIdCounter = 0
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
     let reconnectTimeoutId: ReturnType<typeof setTimeout>
+    let pingIntervalId: ReturnType<typeof setInterval>
     let ws: WebSocket
     let socketUrl: string | URL
 
@@ -126,17 +133,24 @@ function createWebSocket() {
         set(false)
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
+        clearInterval(pingIntervalId)
         event_listeners.get(reason)?.forEach(listener => listener(event))
-        reconnectTimeoutId = setTimeout(connect, reconnectTimeoutTime)
+        const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
+        reconnectAttempts++
+        reconnectTimeoutId = setTimeout(connect, delay)
     }
 
     function connect() {
         ws = new WebSocket(socketUrl)
         ws.binaryType = 'arraybuffer'
         ws.onopen = ev => {
+            reconnectAttempts = 0
             ping()
             set(true)
             clearTimeout(reconnectTimeoutId)
+            clearInterval(pingIntervalId)
+            pingIntervalId = setInterval(ping, pingIntervalTime)
+            resetUnresponsiveCheck()
             resubscribeAll()
             flushQueuedRequests()
             event_listeners.get('open')?.forEach(listener => listener(ev))
@@ -153,6 +167,10 @@ function createWebSocket() {
             }
 
             const { tag, msg } = decodeMessage(frame.data)
+            if (msg.pongmsg !== undefined) {
+                if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
+                return
+            }
             if (msg.correlationResponse) {
                 const pending = pending_requests.get(msg.correlationResponse.correlationId)
                 if (pending) {
@@ -193,7 +211,10 @@ function createWebSocket() {
 
     function resetUnresponsiveCheck() {
         clearTimeout(unresponsiveTimeoutId)
-        unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), reconnectTimeoutTime)
+        unresponsiveTimeoutId = setTimeout(
+            () => disconnect('unresponsive'),
+            unresponsiveTimeoutTime
+        )
     }
 
     function emit<T>(event: MessageFns<T>, data: T) {
@@ -234,6 +255,7 @@ function createWebSocket() {
     }
 
     function ping() {
+        lastPingSentAt = Date.now()
         send(Message.create({ pingmsg: {} }))
     }
 

@@ -2,7 +2,7 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import Compass from '$lib/components/Compass.svelte'
     import { imu } from '$lib/stores/imu'
-    import { Chart, registerables } from 'chart.js'
+    import { Chart } from '$lib/utilities/chart'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
@@ -11,8 +11,6 @@
     import { Rotate3d } from '$lib/components/icons'
 
     import { type IMUCalibrateData } from '$lib/platform_shared/message'
-
-    Chart.register(...registerables)
 
     const features = useFeatureFlags()
     let intervalId: ReturnType<typeof setInterval> | number

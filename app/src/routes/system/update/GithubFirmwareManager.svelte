@@ -13,6 +13,7 @@
     import { api } from '$lib/api'
     import { useFeatureFlags } from '$lib/stores'
     import { Error, Cancel, Check, CloudDown, Github, Prerelease } from '$lib/components/icons'
+    import type { GithubRelease } from '$lib/types/models'
 
     const features = useFeatureFlags()
 
@@ -26,12 +27,9 @@
         })
         if (result.isErr()) {
             console.error('Error:', result.inner)
-            return
+            return [] as GithubRelease[]
         }
-        return result.inner as {
-            tag_name: string
-            assets: Array<{ name: string; browser_download_url: string }>
-        }
+        return result.inner as GithubRelease[]
     }
 
     async function postGithubDownload(url: string) {
@@ -49,7 +47,7 @@
             // check if the asset is of type *.bin
             if (
                 assets[i].name.includes('.bin') &&
-                assets[i].name.includes($features.firmware_built_target)
+                assets[i].name.includes($features.firmware_built_target as string)
             ) {
                 url = assets[i].browser_download_url
             }

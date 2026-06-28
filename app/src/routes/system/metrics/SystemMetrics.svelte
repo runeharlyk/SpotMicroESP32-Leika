@@ -3,13 +3,11 @@
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
-    import { Chart, registerables } from 'chart.js'
+    import { Chart } from '$lib/utilities/chart'
 
     import { daisyColor } from '$lib/utilities'
     import { analytics } from '$lib/stores/analytics'
     import { Metrics } from '$lib/components/icons'
-
-    Chart.register(...registerables)
 
     let heapChartElement: HTMLCanvasElement
     let heapChart: Chart

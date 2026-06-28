@@ -5,7 +5,7 @@
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import GithubUpdateDialog from '$lib/components/GithubUpdateDialog.svelte'
     import { compareVersions } from 'compare-versions'
-    import { onMount } from 'svelte'
+    import { onMount, onDestroy } from 'svelte'
     import { api } from '$lib/api'
     import type { GithubRelease } from '$lib/types/models'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
@@ -69,12 +69,16 @@
         }
     }
 
+    let pollIntervalId: ReturnType<typeof setInterval>
+
     onMount(async () => {
         if ($features.download_firmware) {
             await getGithubAPI()
-            setInterval(async () => await getGithubAPI(), 60 * 60 * 1000) // once per hour
+            pollIntervalId = setInterval(async () => await getGithubAPI(), 60 * 60 * 1000) // once per hour
         }
     })
+
+    onDestroy(() => clearInterval(pollIntervalId))
 
     function confirmGithubUpdate(url: string) {
         modals.open(ConfirmDialog, {

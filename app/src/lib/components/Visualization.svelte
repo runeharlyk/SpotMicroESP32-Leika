@@ -21,7 +21,7 @@
         walkGait,
         kinematicData
     } from '$lib/stores'
-    import { populateModelCache, getToeWorldPositions } from '$lib/utilities'
+    import { populateModelCache, getToeWorldPositions } from '$lib/utilities/model-utilities'
     import SceneBuilder from '$lib/sceneBuilder'
     import { lerp, degToRad } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
