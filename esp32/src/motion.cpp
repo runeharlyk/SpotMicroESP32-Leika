@@ -23,6 +23,12 @@ void MotionService::handleInput(const socket_message_ControllerData& data) {
     if (state) state->handleCommand(command);
 }
 
+void MotionService::onControlLinkLost() {
+    command.lx = command.ly = command.rx = command.ry = command.s = 0;
+    if (state) state->handleCommand(command);
+    ESP_LOGW("MotionService", "Control link lost — locomotion stopped");
+}
+
 void MotionService::handleWalkGait(const socket_message_WalkGaitData& data) {
     ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(data.gait));
     if (data.gait == socket_message_WalkGaits_TROT)

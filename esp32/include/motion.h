@@ -25,6 +25,8 @@ class MotionService {
 
     void handleInput(const socket_message_ControllerData& data);
 
+    void onControlLinkLost();
+
     void handleWalkGait(const socket_message_WalkGaitData& data);
 
     void handleMode(const socket_message_ModeData& data);
