@@ -56,7 +56,7 @@
             <text x="100" y="190" text-anchor="middle" class="fill-current text-sm font-bold">S</text>
             <text x="20" y="105" text-anchor="middle" class="fill-current text-sm font-bold">W</text>
 
-            {#each ticks as tick}
+            {#each ticks as tick (tick)}
                 <line
                     x1={100 + 85 * Math.sin((tick * Math.PI) / 180)}
                     y1={100 - 85 * Math.cos((tick * Math.PI) / 180)}

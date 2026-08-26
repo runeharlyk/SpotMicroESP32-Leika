@@ -191,7 +191,7 @@
                 </button>
             {/if}
 
-            {#each directories as dir}
+            {#each directories as dir (dir.name)}
                 <div class="flex items-center p-3 border-b border-gray-100 gap-2 bg-gray-50">
                     <span class="text-2xl">📁</span>
                     <button
@@ -206,7 +206,7 @@
                 </div>
             {/each}
 
-            {#each files as file}
+            {#each files as file (file.name)}
                 <div class="flex items-center p-3 border-b border-gray-100 gap-2 last:border-b-0">
                     <span class="text-2xl">📄</span>
                     <span class="flex-1">{file.name}</span>
