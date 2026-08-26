@@ -29,7 +29,6 @@
         "@types/ws": "^8.18.1",
         "@typescript-eslint/eslint-plugin": "^8.46.0",
         "@typescript-eslint/parser": "^8.46.0",
-        "autoprefixer": "^10.4.21",
         "eslint": "^9.37.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.12.4",
@@ -54,7 +53,6 @@
     "dependencies": {
         "@bufbuild/protobuf": "^2.10.2",
         "@niku/vite-env-caster": "^1.1.2",
-        "@sveltejs/adapter-auto": "^6.1.1",
         "@tailwindcss/vite": "^4.1.14",
         "chart.js": "^4.5.0",
         "compare-versions": "^6.1.1",
