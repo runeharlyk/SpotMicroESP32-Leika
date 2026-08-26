@@ -30,6 +30,18 @@
 
     <ThemeButton />
 
+    {#if $telemetry.latency >= 0}
+        <div class="tooltip tooltip-left hidden sm:block" data-tip="WebSocket round-trip latency">
+            <span
+                class="px-1 font-mono text-xs {$telemetry.latency < 100 ? 'text-success'
+                : $telemetry.latency < 300 ? 'text-warning'
+                : 'text-error'}"
+            >
+                {$telemetry.latency} ms
+            </span>
+        </div>
+    {/if}
+
     <RssiIndicator rssi={$telemetry.rssi.rssi} />
 
     <SleepButton />
