@@ -12,7 +12,6 @@
     default: true;
     --color-primary: #00bfff;
     --color-secondary: #3c00ff;
-    --base-content: white;
 }
 
 @plugin "daisyui/theme" {
@@ -20,7 +19,6 @@
     prefersdark: true;
     --color-primary: #00bfff;
     --color-secondary: #3c00ff;
-    --base-content: oklch(0.3 0.012 256);
 }
 
 button {
