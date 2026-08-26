@@ -1,4 +1,5 @@
 export { default as Connection } from '~icons/mdi/connection'
+export { default as Bluetooth } from '~icons/mdi/bluetooth'
 export { default as Users } from '~icons/mdi/users'
 export { default as Settings } from '~icons/mdi/settings'
 export { default as MdiController } from '~icons/mdi/controller'
