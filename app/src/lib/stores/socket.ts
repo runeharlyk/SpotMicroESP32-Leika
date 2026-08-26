@@ -8,6 +8,7 @@ import {
 } from '$lib/platform_shared/message'
 import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
+import { protoMetadata as robotCoreProtoMetadata } from '$lib/platform_shared/robot_core'
 import { telemetry } from './telemetry'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
@@ -22,10 +23,12 @@ type PendingRequest = {
     timeoutId: ReturnType<typeof setTimeout>
 }
 
-// Combine references from both message.proto and filesystem.proto
+// Every proto file contributing types to the Message envelope; a missing one silently
+// drops those types from the maps below.
 const combinedReferences: Record<string, MessageFns<unknown>> = {
     ...protoMetadata.references,
-    ...filesystemProtoMetadata.references
+    ...filesystemProtoMetadata.references,
+    ...robotCoreProtoMetadata.references
 }
 
 const MessageType = protoMetadata.fileDescriptor.messageType?.find(
@@ -99,6 +102,7 @@ function createWebSocket() {
             data: CorrelationRequestData
             resolve: (r: CorrelationResponse) => void
             reject: (e: Error) => void
+            timeoutId: ReturnType<typeof setTimeout>
         }
     >()
     const { subscribe, set } = writable(false)
@@ -277,7 +281,8 @@ function createWebSocket() {
     }
 
     function flushQueuedRequests() {
-        for (const [, { data, resolve, reject }] of queued_requests) {
+        for (const [, { data, resolve, reject, timeoutId }] of queued_requests) {
+            clearTimeout(timeoutId)
             request(data, resolve, reject)
         }
         queued_requests.clear()
@@ -321,9 +326,16 @@ function createWebSocket() {
                     const key = getRequestKey(data)
                     const existing = queued_requests.get(key)
                     if (existing) {
+                        clearTimeout(existing.timeoutId)
                         existing.reject(new Error('Request superseded by newer request'))
                     }
-                    queued_requests.set(key, { data, resolve, reject })
+                    // A queued request must expire too, or a request issued while disconnected
+                    // never settles and its caller waits forever.
+                    const timeoutId = setTimeout(() => {
+                        queued_requests.delete(key)
+                        reject(new Error(`Request timeout while disconnected (${key})`))
+                    }, requestTimeoutTime)
+                    queued_requests.set(key, { data, resolve, reject, timeoutId })
                 }
             })
         }
