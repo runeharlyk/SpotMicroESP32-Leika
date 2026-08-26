@@ -71,7 +71,7 @@ async function sendRequest<TResponse>(
         const data = await response.json()
         return Ok.new(data as TResponse)
     } else if (contentType && contentType.includes('application/x-protobuf')) {
-        let data: ProtoResponse = ProtoResponse.decode(await response.bytes());
+        const data: ProtoResponse = ProtoResponse.decode(await response.bytes())
         return Ok.new(data as TResponse)
     } else {
         // Handle empty object as response
