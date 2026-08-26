@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
+    import { get } from 'svelte/store'
     import { page } from '$app/state'
     import { Modals, modals } from 'svelte-modals'
     import Toast from '$lib/components/toasts/Toast.svelte'
@@ -45,6 +46,7 @@
         socket.init(`ws://${ws}/api/ws`)
 
         addEventListeners()
+        document.addEventListener('visibilitychange', handleVisibilityChange)
 
         input.subscribe(data => throttler.throttle(() => socket.emit(ControllerData, data), 100))
         mode.subscribe(data => socket.emit(ModeData, data))
@@ -57,6 +59,7 @@
 
     onDestroy(() => {
         removeEventListeners()
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
     })
 
     const eventListeners: (() => void)[] = []
@@ -85,10 +88,26 @@
 
     const handleOpen = () => notifications.success('Connection to device established', 5000)
 
+    const stopped = (data: ControllerData) => ({
+        ...data,
+        left: { x: 0, y: 0 },
+        right: { x: 0, y: 0 }
+    })
+
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
         telemetry.setRSSI(RSSIData.create({ rssi: 0 }))
-        input.update(data => ({ ...data, left: { x: 0, y: 0 }, right: { x: 0, y: 0 } }))
+        input.update(stopped)
+    }
+
+    // A backgrounded tab stops driving the input store, so the robot would hold the last commanded
+    // gait. Emit the neutral command directly: the throttled path defers into a timer the browser
+    // also throttles, and drops the call outright if a send is already pending.
+    const handleVisibilityChange = () => {
+        if (!document.hidden) return
+        const neutral = stopped(get(input))
+        input.set(neutral)
+        socket.emit(ControllerData, neutral)
     }
 
     const handleError = (data: unknown) => console.error(data)
