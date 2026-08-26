@@ -429,8 +429,8 @@ const yawArc = (default_foot_pos: number[], current_foot_pos: number[]): number 
     const foot_dir = Math.atan2(default_foot_pos[2], default_foot_pos[0])
     const offsets = [
         current_foot_pos[0] - default_foot_pos[0],
-        current_foot_pos[2] - default_foot_pos[2],
-        current_foot_pos[1] - default_foot_pos[1]
+        current_foot_pos[1] - default_foot_pos[1],
+        current_foot_pos[2] - default_foot_pos[2]
     ]
     const offset_mag = Math.sqrt(offsets[0] ** 2 + offsets[2] ** 2)
     const offset_mod = Math.atan2(offset_mag, foot_mag)
