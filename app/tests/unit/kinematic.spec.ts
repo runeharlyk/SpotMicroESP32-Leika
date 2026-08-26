@@ -21,6 +21,12 @@ function stance(kin: Kinematic, overrides: Partial<body_state_t> = {}): body_sta
         ym: kin.default_body_height,
         zm: 0,
         feet: kin.getDefaultFeetPos(),
+        cumulative_x: 0,
+        cumulative_y: 0,
+        cumulative_z: 0,
+        cumulative_roll: 0,
+        cumulative_pitch: 0,
+        cumulative_yaw: 0,
         ...overrides
     }
 }
