@@ -3,7 +3,13 @@ import { get } from 'svelte/store'
 import { WebSocketServer } from 'ws'
 import { decodeMessage, MESSAGE_KEY_TO_TAG, socket } from '../../src/lib/stores/socket'
 import { telemetry } from '../../src/lib/stores/telemetry'
-import { IMUData, PingMsg, PongMsg, Message } from '../../src/lib/platform_shared/message'
+import {
+    IMUData,
+    PingMsg,
+    PongMsg,
+    Message,
+    type MessageFns
+} from '../../src/lib/platform_shared/message'
 
 // Helper function to create encoded WebSocket messages
 function createEncodedMessage(messageType: 'imu' | 'rssi' | 'mode', data: unknown): Uint8Array {
@@ -105,7 +111,7 @@ describe.sequential('WebSocket Integration Tests', () => {
     })
 
     it('should send IMU data from client to server using emit', async () => {
-        let serverReceivedData: any = null
+        const received: { data?: Message } = {}
 
         // Connect socket
         socket.init(`ws://localhost:${TEST_PORT}`)
@@ -136,7 +142,7 @@ describe.sequential('WebSocket Integration Tests', () => {
 
                         // Only resolve if we got actual IMU data
                         if (decoded.imu) {
-                            serverReceivedData = decoded
+                            received.data = decoded
                             clearTimeout(timeout)
                             resolve()
                         } else {
@@ -169,16 +175,16 @@ describe.sequential('WebSocket Integration Tests', () => {
         })
 
         // Verify server received the data
-        expect(serverReceivedData).toBeDefined()
-        expect(serverReceivedData?.imu).toBeDefined()
+        expect(received.data).toBeDefined()
+        expect(received.data?.imu).toBeDefined()
 
-        expect(serverReceivedData?.imu.x).toBe(3.25)
-        expect(serverReceivedData?.imu.y).toBe(2.5)
-        expect(serverReceivedData?.imu.z).toBe(1.75)
-        expect(serverReceivedData?.imu.heading).toBe(10)
-        expect(serverReceivedData?.imu.altitude).toBe(11)
-        expect(serverReceivedData?.imu.bmpTemp).toBe(22)
-        expect(serverReceivedData?.imu.pressure).toBe(23)
+        expect(received.data?.imu?.x).toBe(3.25)
+        expect(received.data?.imu?.y).toBe(2.5)
+        expect(received.data?.imu?.z).toBe(1.75)
+        expect(received.data?.imu?.heading).toBe(10)
+        expect(received.data?.imu?.altitude).toBe(11)
+        expect(received.data?.imu?.bmpTemp).toBe(22)
+        expect(received.data?.imu?.pressure).toBe(23)
     })
 
     it('should fail to serialize data on emit', async () => {
@@ -196,7 +202,7 @@ describe.sequential('WebSocket Integration Tests', () => {
                 // Send any invalid message type
                 const wsm = Message.create()
                 try {
-                    socket.emit(Message as any, wsm)
+                    socket.emit(Message as unknown as MessageFns<Message>, wsm)
                     clearTimeout(timeout)
                     reject(new Error('Expected emit to throw, but it did not'))
                 } catch (e) {
@@ -212,7 +218,10 @@ describe.sequential('WebSocket Integration Tests', () => {
         socket.init(`ws://localhost:${TEST_PORT}`)
 
         await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('No ping received from client')), 3000)
+            const timeout = setTimeout(
+                () => reject(new Error('No ping received from client')),
+                3000
+            )
 
             wss.on('connection', ws => {
                 ws.on('message', (data: Buffer) => {
