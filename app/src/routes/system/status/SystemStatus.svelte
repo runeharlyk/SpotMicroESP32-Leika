@@ -39,15 +39,12 @@
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
-        socket.request({ systemInformationRequest: {} }).then(response => {
-            if (response.systemInformationResponse) {
-                systemInformation = response.systemInformationResponse
-                return systemInformation
-            } else {
-                throw new TypeError('System Information not found in reponse')
-            }
-        })
-        return
+        const response = await socket.request({ systemInformationRequest: {} })
+        if (!response.systemInformationResponse) {
+            throw new TypeError('System information not found in response')
+        }
+        systemInformation = response.systemInformationResponse
+        return systemInformation
     }
 
     const postFactoryReset = async () => await api.post('/api/system/reset')
@@ -265,6 +262,10 @@
                     />
                 </div>
             {/if}
+        {:catch error}
+            <div class="alert alert-error" role="alert">
+                Could not read system status: {error.message}
+            </div>
         {/await}
     </div>
 
