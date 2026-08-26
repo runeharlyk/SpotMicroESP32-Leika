@@ -134,11 +134,37 @@
             walkPlanner.set_mode(gait.gait)
         })
         if (panel) createPanel()
+        observeCanvas()
     })
 
     onDestroy(() => {
         gui_panel?.destroy()
+        disconnectObservers.forEach(disconnect => disconnect())
     })
+
+    const disconnectObservers: (() => void)[] = []
+
+    // Track the canvas itself rather than the window: the parent can resize without the window
+    // doing so, and rendering a scene that is scrolled out of view is pure battery drain on the
+    // phone driving the robot.
+    const observeCanvas = () => {
+        const parent = canvas.parentElement
+        if (!parent) return
+
+        const resize = new ResizeObserver(() => sceneManager.fillParent())
+        resize.observe(parent)
+
+        const visibility = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) sceneManager.startRenderLoop()
+            else sceneManager.stopRenderLoop()
+        })
+        visibility.observe(canvas)
+
+        disconnectObservers.push(
+            () => resize.disconnect(),
+            () => visibility.disconnect()
+        )
+    }
 
     const updateAnglesFromStore = (angles: AnglesData) => {
         if (sceneManager.isDragging) return
@@ -368,7 +394,5 @@
         updateTargetPosition()
     }
 </script>
-
-<svelte:window onresize={sceneManager.fillParent} />
 
 <canvas bind:this={canvas}></canvas>

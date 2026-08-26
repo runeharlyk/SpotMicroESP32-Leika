@@ -213,6 +213,11 @@ export default class SceneBuilder {
         return this
     }
 
+    public stopRenderLoop = () => {
+        this.renderer.setAnimationLoop(null)
+        return this
+    }
+
     public addArrowHelper = (options?: arrowOptions) => {
         const dir = new Vector3(
             options?.direction.x ?? 0,
