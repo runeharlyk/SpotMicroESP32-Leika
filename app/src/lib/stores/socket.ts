@@ -10,6 +10,9 @@ import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
 import { protoMetadata as robotCoreProtoMetadata } from '$lib/platform_shared/robot_core'
 import { telemetry } from './telemetry'
+import type { ITransport, TransportCloseReason } from '$lib/transport/transport.interface'
+import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
+import { createBleTransport } from '$lib/transport/ble-adapter'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -117,8 +120,11 @@ function createWebSocket() {
     let unresponsiveTimeoutId: ReturnType<typeof setTimeout>
     let reconnectTimeoutId: ReturnType<typeof setTimeout>
     let pingIntervalId: ReturnType<typeof setInterval>
-    let ws: WebSocket
+    let transport: ITransport | undefined
     let socketUrl: string | URL
+    const activeTransport = writable<ITransport['kind'] | null>(null)
+
+    const isOpen = () => transport?.isConnected() === true
 
     function getRequestKey(data: CorrelationRequestData): string {
         return (
@@ -132,34 +138,56 @@ function createWebSocket() {
         connect()
     }
 
-    function disconnect(reason: SocketEvent, event?: Event) {
-        ws.close()
+    /**
+     * Web Bluetooth needs a user gesture, so this is called from a click rather than on mount.
+     * BLE carries the same protobuf envelope as the WebSocket (robot_comm_ble attaches to the same
+     * broker), but only messages that fit in one ATT frame.
+     */
+    async function connectBluetooth() {
+        clearTimeout(reconnectTimeoutId)
+        transport?.close()
+        transport = createBleTransport(handlers)
+        try {
+            await transport.connect()
+        } catch (error) {
+            // Pairing was cancelled or failed. Fall back to WiFi, or a dead BLE transport would be
+            // left in place, whose canAutoReconnect: false also suppresses the WebSocket retry.
+            if (socketUrl) connect()
+            throw error
+        }
+    }
+
+    function disconnect(reason: SocketEvent, event?: unknown) {
+        transport?.close()
         set(false)
+        activeTransport.set(null)
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
         clearInterval(pingIntervalId)
         event_listeners.get(reason)?.forEach(listener => listener(event))
+        // Re-pairing a BLE device requires a user gesture, so only WiFi redials itself.
+        if (transport && !transport.canAutoReconnect) return
         const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
         reconnectAttempts++
         reconnectTimeoutId = setTimeout(connect, delay)
     }
 
-    function connect() {
-        ws = new WebSocket(socketUrl)
-        ws.binaryType = 'arraybuffer'
-        ws.onopen = ev => {
+    const handlers = {
+        onOpen: () => {
             reconnectAttempts = 0
-            ping()
             set(true)
+            activeTransport.set(transport?.kind ?? null)
+            ping()
             clearTimeout(reconnectTimeoutId)
             clearInterval(pingIntervalId)
             pingIntervalId = setInterval(ping, pingIntervalTime)
             resetUnresponsiveCheck()
             resubscribeAll()
             flushQueuedRequests()
-            event_listeners.get('open')?.forEach(listener => listener(ev))
-        }
-        ws.onmessage = frame => {
+            event_listeners.get('open')?.forEach(listener => listener(undefined))
+        },
+        onClose: (reason: TransportCloseReason, event?: unknown) => disconnect(reason, event),
+        onData: (data: ArrayBuffer) => {
             resetUnresponsiveCheck()
 
             for (const [correlationId, pending] of pending_requests) {
@@ -170,7 +198,7 @@ function createWebSocket() {
                 }, requestTimeoutTime)
             }
 
-            const { tag, msg } = decodeMessage(frame.data)
+            const { tag, msg } = decodeMessage(data)
             if (msg.pongmsg !== undefined) {
                 if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
                 return
@@ -191,8 +219,11 @@ function createWebSocket() {
                     ?.forEach(listener => listener(msg[key as keyof typeof msg]))
             }
         }
-        ws.onerror = ev => disconnect('error', ev)
-        ws.onclose = ev => disconnect('close', ev)
+    }
+
+    function connect() {
+        transport = createWebSocketTransport(socketUrl, handlers)
+        transport.connect()
     }
 
     function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
@@ -222,7 +253,7 @@ function createWebSocket() {
     }
 
     function emit<T>(event: MessageFns<T>, data: T) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return
+        if (!isOpen()) return
         const type = getNameFromMessageType(event)
         const wsm = Message.create() as Record<string, unknown>
         wsm[type] = data
@@ -230,7 +261,7 @@ function createWebSocket() {
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return
+        if (!isOpen()) return
         const unsub_msg = Messages.UnsubscribeNotification.create({
             tag: getTagFromMessageType(event_type)
         })
@@ -238,7 +269,7 @@ function createWebSocket() {
     }
 
     function subscribeToEvent<T>(event_type: MessageFns<T>) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return
+        if (!isOpen()) return
         const sub_msg = Messages.SubscribeNotification.create({
             tag: getTagFromMessageType(event_type)
         })
@@ -253,9 +284,9 @@ function createWebSocket() {
     }
 
     function send(data: Message) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return
+        if (!isOpen()) return
         const encoded = encodeMessage(data)
-        ws.send(encoded)
+        transport?.send(encoded)
     }
 
     function ping() {
@@ -292,6 +323,8 @@ function createWebSocket() {
         subscribe,
         emit,
         init,
+        connectBluetooth,
+        transport: { subscribe: activeTransport.subscribe },
         on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
             const tag = getTagFromMessageType(event_type)
 
@@ -320,7 +353,7 @@ function createWebSocket() {
         },
         request: (data: CorrelationRequestData): Promise<CorrelationResponse> => {
             return new Promise((resolve, reject) => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
+                if (isOpen()) {
                     request(data, resolve, reject)
                 } else {
                     const key = getRequestKey(data)

@@ -59,6 +59,13 @@ describe.sequential('WebSocket Integration Tests', () => {
         })()
 
         expect(isConnected).toBe(true)
+
+        // The transport the message layer ended up on, which the status bar reports to the user.
+        let kind: string | null = null
+        socket.transport.subscribe(value => {
+            kind = value
+        })()
+        expect(kind).toBe('websocket')
     })
 
     it('should receive and decode IMU data from server', async () => {
