@@ -359,7 +359,7 @@ export class BezierState extends GaitState {
 
         this.body_state.feet[index][0] += delta[0]
         this.body_state.feet[index][2] += delta[2]
-        if (m.step_x || m.step_z || m.step_angle) this.body_state.feet[index][1] += delta[1]
+        if (stroke !== 0) this.body_state.feet[index][1] += delta[1]
 
         return this.body_state.feet[index]
     }
