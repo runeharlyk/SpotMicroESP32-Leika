@@ -35,9 +35,11 @@ async function sendRequest<TResponse>(
     endpoint = resolveUrl(endpoint)
 
     const isProtobuf = data instanceof BinaryWriter
-    const body = data !== null && typeof data !== 'undefined'
-        ? (isProtobuf ? data.finish() : JSON.stringify(data))
-        : undefined
+    const body =
+        data !== null && typeof data !== 'undefined' ?
+            isProtobuf ? data.finish()
+            :   JSON.stringify(data)
+        :   undefined
 
     const request = {
         ...params,

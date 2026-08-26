@@ -23,7 +23,7 @@
                 {#if isWidgetConfig(widget)}
                     {@const SvelteComponent = WidgetComponents[widget.component]}
                     <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -- props are heterogeneous across dynamically-selected widgets -->
-                    <SvelteComponent {...(widget.props as any)} />
+                    <SvelteComponent {...widget.props as any} />
                 {:else if widget.widgets}
                     <WidgetContainer container={widget} />
                 {/if}

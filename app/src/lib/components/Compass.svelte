@@ -51,10 +51,16 @@
                 class="opacity-20"
             />
 
-            <text x="100" y="20" text-anchor="middle" class="fill-current text-sm font-bold">N</text>
-            <text x="180" y="105" text-anchor="middle" class="fill-current text-sm font-bold">E</text>
-            <text x="100" y="190" text-anchor="middle" class="fill-current text-sm font-bold">S</text>
-            <text x="20" y="105" text-anchor="middle" class="fill-current text-sm font-bold">W</text>
+            <text x="100" y="20" text-anchor="middle" class="fill-current text-sm font-bold">N</text
+            >
+            <text x="180" y="105" text-anchor="middle" class="fill-current text-sm font-bold"
+                >E</text
+            >
+            <text x="100" y="190" text-anchor="middle" class="fill-current text-sm font-bold"
+                >S</text
+            >
+            <text x="20" y="105" text-anchor="middle" class="fill-current text-sm font-bold">W</text
+            >
 
             {#each ticks as tick (tick)}
                 <line

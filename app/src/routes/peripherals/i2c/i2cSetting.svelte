@@ -43,7 +43,10 @@
                 const request = Request.create({
                     peripheralSettings: settings
                 })
-                const result = await api.post_proto<ProtoResponse>('/api/peripherals/settings', request)
+                const result = await api.post_proto<ProtoResponse>(
+                    '/api/peripherals/settings',
+                    request
+                )
                 if (result.isErr()) {
                     console.error('Error:', result.inner)
                     return

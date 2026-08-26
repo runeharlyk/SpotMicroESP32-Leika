@@ -108,7 +108,10 @@
     }
 
     async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post_proto<ProtoResponse>('/api/wifi/sta/settings', Request.create({ wifiSettings: data }))
+        const result = await api.post_proto<ProtoResponse>(
+            '/api/wifi/sta/settings',
+            Request.create({ wifiSettings: data })
+        )
         if (result.isErr()) {
             console.error(`Error occurred while fetching: `, result.inner)
             notifications.error('User not authorized.', 3000)
@@ -576,9 +579,7 @@
                                         </label>
                                         <input
                                             type="text"
-                                            class="input input-bordered w-full {(
-                                                formErrors.localIp
-                                            ) ?
+                                            class="input input-bordered w-full {formErrors.localIp ?
                                                 'border-error border-2'
                                             :   ''}"
                                             minlength="7"
@@ -672,7 +673,9 @@
                                         />
                                         <label class="label" for="gateway">
                                             <span
-                                                class="label-text-alt text-error {formErrors.dnsIp1 ?
+                                                class="label-text-alt text-error {(
+                                                    formErrors.dnsIp1
+                                                ) ?
                                                     ''
                                                 :   'hidden'}"
                                             >
@@ -697,7 +700,9 @@
                                         />
                                         <label class="label" for="subnet">
                                             <span
-                                                class="label-text-alt text-error {formErrors.dnsIp2 ?
+                                                class="label-text-alt text-error {(
+                                                    formErrors.dnsIp2
+                                                ) ?
                                                     ''
                                                 :   'hidden'}"
                                             >

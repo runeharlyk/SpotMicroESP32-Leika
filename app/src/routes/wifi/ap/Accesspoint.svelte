@@ -88,7 +88,10 @@
     })
 
     async function postAPSettings(data: APSettings) {
-        const result = await api.post_proto<Response>('/api/ap/settings', Request.create({ apSettings: data }))
+        const result = await api.post_proto<Response>(
+            '/api/ap/settings',
+            Request.create({ apSettings: data })
+        )
         if (result.isErr()) {
             notifications.error('User not authorized.', 3000)
             console.error('Error:', result.inner)
