@@ -238,20 +238,22 @@ class WalkState : public MotionState {
 
     void controller(const int index, body_state_t &body_state, const float phase,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
-        float delta_pos[3] = {0};
-        float delta_rot[3] = {0};
+        float delta[3] = {0};
 
-        float length = step_length * 0.5f;
-        float angle = std::atan2(gait_state.step_z, step_length) * 2.0f;
-        curve(length, angle, arg, phase, delta_pos);
+        // Each foot's stroke is the rigid-body velocity field at its stance position: the commanded
+        // translation plus the rotational contribution omega x r about the body centre. Composing
+        // both into one vector means a single curve, so the swing/stance profile is applied once.
+        const float rx = default_feet_pos[index][0];
+        const float rz = default_feet_pos[index][2];
+        const float stroke_x = gait_state.step_x + gait_state.step_angle * -rz;
+        const float stroke_z = gait_state.step_z + gait_state.step_angle * rx;
+        const float stroke = std::hypot(stroke_x, stroke_z);
 
-        length = gait_state.step_angle * KinConfig::max_step_length;
-        angle = yawArc(default_feet_pos[index], body_state.feet[index]);
-        curve(length, angle, arg, phase, delta_rot);
+        curve(stroke * 0.5f, std::atan2(stroke_z, stroke_x), arg, phase, delta);
 
-        body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2;
-        if (step_length || gait_state.step_angle) body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2;
-        body_state.feet[index][2] += delta_pos[2] + delta_rot[2] * 0.2;
+        body_state.feet[index][0] += delta[0];
+        body_state.feet[index][2] += delta[2];
+        if (stroke != 0.0f) body_state.feet[index][1] += delta[1];
     }
 
     static void stanceCurve(const float length, const float angle, const float *depth, const float phase,
@@ -281,16 +283,5 @@ class WalkState : public MotionState {
             phase_power *= t;
             inv_phase_power /= one_minus_phase;
         }
-    }
-
-    static float yawArc(const float feet_pos[3], const float *current_pos) {
-        const float foot_mag = std::hypot(feet_pos[0], feet_pos[2]);
-        const float foot_dir = std::atan2(feet_pos[2], feet_pos[0]);
-        const float offsets[] = {current_pos[0] - feet_pos[0], current_pos[1] - feet_pos[1],
-                                 current_pos[2] - feet_pos[2]};
-        const float offset_mag = std::hypot(offsets[0], offsets[2]);
-        const float offset_mod = std::atan2(offset_mag, foot_mag);
-
-        return (float)M_PI_2 + foot_dir + offset_mod;
     }
 };
