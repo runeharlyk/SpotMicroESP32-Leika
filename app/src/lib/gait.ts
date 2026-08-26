@@ -53,10 +53,10 @@ export abstract class GaitState {
     end() {
         console.log('Ending', this.name)
     }
-    step(body_state: body_state_t, command: ControllerData, dt: number = 0.02) {
+    step(body_state: body_state_t, command: ControllerData, dt_ms: number = 20) {
         this.map_command(command)
         this.body_state = body_state
-        this.dt = dt / 1000
+        this.dt = dt_ms / 1000
 
         if (body_state.cumulative_x === undefined) {
             body_state.cumulative_x = 0
@@ -193,8 +193,8 @@ export class BezierState extends GaitState {
         super.end()
     }
 
-    step(body_state: body_state_t, command: ControllerData, dt: number = 0.02) {
-        super.step(body_state, command, dt)
+    step(body_state: body_state_t, command: ControllerData, dt_ms: number = 20) {
+        super.step(body_state, command, dt_ms)
         const kin = this.kinematic
         this.body_state.ym = kin.min_body_height + command.height * kin.body_height_range
         // Duty factor scales with commanded velocity, mirroring the firmware.
