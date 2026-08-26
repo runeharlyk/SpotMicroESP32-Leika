@@ -49,11 +49,11 @@ export const variants = {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
         kinematics: {
-            coxa: 0.035,
+            coxa: 0.04,
             coxa_offset: 0.0,
             femur: 0.13,
             tibia: 0.13,
-            L: 0.24,
+            L: 0.258,
             W: 0.078
         }
     }
