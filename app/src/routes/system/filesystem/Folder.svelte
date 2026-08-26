@@ -19,7 +19,7 @@
 </script>
 
 <div class="folder-item">
-    <button class="flex items-center pl-2 hover:bg-gray-700 w-full rounded py-1" onclick={toggle}>
+    <button class="flex items-center pl-2 hover:bg-base-300 w-full rounded py-1" onclick={toggle}>
         {#if expanded}
             <FolderOpenOutline class="w-5 h-5 mr-1" />
         {:else}
@@ -29,7 +29,7 @@
     </button>
 
     {#if expanded}
-        <ul class="ml-4 border-l border-gray-600 mt-1">
+        <ul class="ml-4 border-l border-base-300 mt-1">
             {#each Object.entries(files) as [itemName, content] (itemName)}
                 <li class="py-1">
                     {#if typeof content === 'object' && content !== null}

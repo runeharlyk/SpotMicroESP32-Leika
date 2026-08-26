@@ -104,7 +104,7 @@
                                 onclick={() => toggleDirection(index)}
                             >
                                 {#if servo.direction === 1}
-                                    <RotateCw class="w-4 h-4 text-green-500" />
+                                    <RotateCw class="w-4 h-4 text-success" />
                                 {:else}
                                     <RotateCcw class="w-4 h-4" />
                                 {/if}

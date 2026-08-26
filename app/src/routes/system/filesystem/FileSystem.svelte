@@ -356,7 +356,7 @@
                         class="flex items-center gap-2 flex-1"
                         onclick={() => navigateTo(dir.name)}
                     >
-                        <FolderIcon class="w-5 h-5 text-yellow-500" />
+                        <FolderIcon class="w-5 h-5 text-warning" />
                         <span class="text-sm">{dir.name}</span>
                     </button>
                     <button
