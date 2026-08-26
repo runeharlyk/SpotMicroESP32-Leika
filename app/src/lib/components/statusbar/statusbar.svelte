@@ -2,6 +2,7 @@
     import { page } from '$app/state'
     import { telemetry } from '$lib/stores/telemetry'
 
+    import ConnectionIndicator from '$lib/components/statusbar/ConnectionIndicator.svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
     import UpdateIndicator from '$lib/components/statusbar/UpdateIndicator.svelte'
     import SleepButton from './SleepButton.svelte'
@@ -41,6 +42,8 @@
             </span>
         </div>
     {/if}
+
+    <ConnectionIndicator />
 
     <RssiIndicator rssi={$telemetry.rssi.rssi} />
 
