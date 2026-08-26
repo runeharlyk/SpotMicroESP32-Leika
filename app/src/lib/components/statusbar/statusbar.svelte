@@ -2,7 +2,7 @@
     import { page } from '$app/state'
     import { telemetry } from '$lib/stores/telemetry'
 
-    import ConnectionIndicator from '$lib/components/statusbar/ConnectionIndicator.svelte'
+    import LinkIndicator from '$lib/components/statusbar/LinkIndicator.svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
     import UpdateIndicator from '$lib/components/statusbar/UpdateIndicator.svelte'
     import SleepButton from './SleepButton.svelte'
@@ -31,19 +31,7 @@
 
     <ThemeButton />
 
-    {#if $telemetry.latency >= 0}
-        <div class="tooltip tooltip-left hidden sm:block" data-tip="WebSocket round-trip latency">
-            <span
-                class="px-1 font-mono text-xs {$telemetry.latency < 100 ? 'text-success'
-                : $telemetry.latency < 300 ? 'text-warning'
-                : 'text-error'}"
-            >
-                {$telemetry.latency} ms
-            </span>
-        </div>
-    {/if}
-
-    <ConnectionIndicator />
+    <LinkIndicator />
 
     <RssiIndicator rssi={$telemetry.rssi.rssi} />
 
