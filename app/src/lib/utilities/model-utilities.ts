@@ -1,4 +1,4 @@
-import { Color, Vector3 } from 'three'
+import { Vector3 } from 'three'
 import URDFLoader, { type URDFRobot } from 'urdf-loader'
 import { XacroLoader } from 'xacro-parser'
 import { Result } from '$lib/utilities'
@@ -7,8 +7,6 @@ import uzip from 'uzip'
 import { fileService } from '$lib/services'
 import { get } from 'svelte/store'
 import { resolve } from '$app/paths'
-
-let model_xml: XMLDocument
 
 export const populateModelCache = async () => {
     await cacheModelFiles()
@@ -46,7 +44,6 @@ export const loadModel = async (url: string): Promise<Result<[URDFRobot, string[
     }
 
     return new Promise(resolve => {
-        model_xml = xml
         try {
             const model = urdfLoader.parse(xml)
             setupRobot(model)
@@ -81,16 +78,4 @@ export function getToeWorldPositions(robot: URDFRobot): Vector3[] {
             toes.push(c.getWorldPosition(new Vector3()))
     })
     return toes
-}
-
-export const extractFootColor = () => {
-    const colorElem = model_xml.querySelector('material[name=foot_color] > color') as Element
-    const colorAttrStr = colorElem.getAttribute('rgba') as string
-    const colorStr = colorAttrStr
-        .split(' ')
-        .slice(0, 3)
-        .map(val => Math.floor(+val * 255))
-        .join(', ')
-
-    return new Color(`rgb(${colorStr})`)
 }

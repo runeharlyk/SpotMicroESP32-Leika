@@ -64,8 +64,6 @@ export const gamepadAxes = derived(gamepad, g => (g ? g.axes.map(dz) : [0, 0, 0,
 type ButtonEdge = { pressed: boolean; value: number; justPressed: boolean; justReleased: boolean }
 const prev = new Map<number, { pressed: boolean; value: number }[]>()
 
-export const gamepadButtons = derived(gamepad, g => g?.buttons ?? [])
-
 export const gamepadButtonsEdges = derived(gamepad, g => {
     if (!g) return [] as ButtonEdge[]
     const p = prev.get(g.index) || []

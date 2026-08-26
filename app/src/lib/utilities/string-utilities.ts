@@ -4,10 +4,6 @@ export const humanFileSize = (size: number): string => {
     return Number((size / Math.pow(1024, i)).toFixed(2)) * 1 + units[i]
 }
 
-export const capitalize = (str: string): string => {
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
-}
-
 export const convertSeconds = (seconds: number) => {
     // Calculate the number of seconds, minutes, hours, and days
     let minutes = Math.floor(seconds / 60)

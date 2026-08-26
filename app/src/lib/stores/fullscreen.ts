@@ -10,13 +10,6 @@ export function toggleFullscreen() {
     })
 }
 
-export function enterFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen()
-        isFullscreen.set(true)
-    }
-}
-
 export function exitFullscreen() {
     if (document.fullscreenElement) {
         document.exitFullscreen()

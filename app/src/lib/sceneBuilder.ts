@@ -30,8 +30,6 @@ import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader
 // @ts-expect-error - urdf-loader ships this submodule without type declarations
 import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
 
-export const addScene = () => new Scene()
-
 interface position {
     x?: number
     y?: number
