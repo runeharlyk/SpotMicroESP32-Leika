@@ -6,6 +6,7 @@
     "arrowParens": "avoid",
     "experimentalTernaries": true,
     "printWidth": 100,
+    "endOfLine": "auto",
     "semi": false,
     "plugins": ["prettier-plugin-svelte"],
     "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
