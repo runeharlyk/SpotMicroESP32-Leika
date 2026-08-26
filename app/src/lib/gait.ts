@@ -146,6 +146,8 @@ export class BezierState extends GaitState {
     protected phase_num = 0
     protected step_length = 0
     protected stand_offset = 0.75
+    protected duty_slow = 0.85
+    protected duty_fast = 0.5
     protected mode: WalkGaits = WalkGaits.TROT
     protected speed_factor = 1
     offset = [0, 0.5, 0.75, 0.25]
@@ -168,11 +170,12 @@ export class BezierState extends GaitState {
         super.begin()
     }
 
-    set_mode(mode: WalkGaits, duty?: number, order?: [number, number, number, number]) {
+    set_mode(mode: WalkGaits, order?: [number, number, number, number]) {
         this.mode = mode
         if (mode === WalkGaits.CRAWL) {
             this.speed_factor = 0.5
-            this.stand_offset = duty ?? 0.85
+            this.duty_slow = 0.9
+            this.duty_fast = 0.8
             const o = order ?? [3, 0, 2, 1]
             const base = [0, 0.25, 0.5, 0.75]
             const offsets = new Array(4).fill(0)
@@ -180,7 +183,8 @@ export class BezierState extends GaitState {
             this.offset = offsets
         } else {
             this.speed_factor = 2
-            this.stand_offset = duty ?? 0.6
+            this.duty_slow = 0.85
+            this.duty_fast = 0.5
             this.offset = order ? (order.map(v => v % 1) as number[]) : [0, 0.5, 0.5, 0]
         }
     }
@@ -193,6 +197,13 @@ export class BezierState extends GaitState {
         super.step(body_state, command, dt)
         const kin = this.kinematic
         this.body_state.ym = kin.min_body_height + command.height * kin.body_height_range
+        // Duty factor scales with commanded velocity, mirroring the firmware.
+        const v = Math.max(0, Math.min(1, this.gait_state.step_velocity))
+        this.stand_offset = this.lerp(
+            this.stand_offset,
+            this.lerp(this.duty_slow, this.duty_fast, v),
+            0.1
+        )
         this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2)
         if (this.gait_state.step_x < 0) this.step_length = -this.step_length
         this.update_phase()
