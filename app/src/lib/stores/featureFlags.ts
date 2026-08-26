@@ -60,7 +60,7 @@ export const variants = {
 }
 
 export const currentVariant = derived(useFeatureFlags(), $flagStore => {
-    const variantFlag = $flagStore['variant'] as string
+    const variantFlag = ($flagStore['variant'] as string)?.replace(/_V\d+$/, '')
     return variantFlag && variants[variantFlag as keyof typeof variants] ?
             variants[variantFlag as keyof typeof variants]
         :   variants.SPOTMICRO_ESP32
