@@ -31,29 +31,28 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import ActionButton from './ActionButton.svelte'
-    import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/message'
-    import Error from '../../+error.svelte'
-    import { notifications } from '$lib/components/toasts/notifications'
+    import { type SystemInformation } from '$lib/platform_shared/message'
+    import { AnalyticsData } from '$lib/platform_shared/robot_core'
 
     const features = useFeatureFlags()
 
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
-        socket
-            .request({ systemInformationRequest: {} })
-            .then(response => {
-                if (response.systemInformationResponse) {
-                    systemInformation = response.systemInformationResponse
-                    return systemInformation;
-                } else { throw new TypeError("System Information not found in reponse") }
-            })
+        socket.request({ systemInformationRequest: {} }).then(response => {
+            if (response.systemInformationResponse) {
+                systemInformation = response.systemInformationResponse
+                return systemInformation
+            } else {
+                throw new TypeError('System Information not found in reponse')
+            }
+        })
         return
     }
 
     const postFactoryReset = async () => await api.post('/api/system/reset')
 
-    const postSleep = async () => await api.post('api/sleep')
+    const postSleep = async () => await api.post('/api/system/sleep')
 
     let unsub: (() => void) | undefined = undefined
     onMount(() => (unsub = socket.on(AnalyticsData, handleSystemData)))
