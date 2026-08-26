@@ -21,7 +21,7 @@
 
     $effect(() => {
         if ($hasGamepad) {
-            notifications.success('🎮 Gamepad connected', 3000)
+            notifications.success('Gamepad connected', 3000)
         }
     })
 
