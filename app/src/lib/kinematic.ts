@@ -81,16 +81,17 @@ export default class Kinematic {
         this.L = params.L
         this.W = params.W
 
-        this.max_roll = 15 * (Math.PI / 2)
-        this.max_pitch = 15 * (Math.PI / 2)
-        this.max_body_shift_x = this.W / 3
-        this.max_body_shift_z = this.W / 3
+        this.max_roll = 30
+        this.max_pitch = 20
+        this.max_body_shift_x = this.W / 2
+        this.max_body_shift_z = this.W / 2
         this.max_leg_reach = this.femur + this.tibia - this.coxa_offset
         this.min_body_height = this.max_leg_reach * 0.45
-        this.max_body_height = this.max_leg_reach * 1
+        this.max_body_height = this.max_leg_reach * 0.9
         this.body_height_range = this.max_body_height - this.min_body_height
         this.max_step_length = this.max_leg_reach * 0.8
         this.max_step_height = this.max_leg_reach / 2
+        this.max_yaw_step_length = this.max_step_length * 1.5
         this.default_step_depth = 0.002
         this.default_body_height = this.min_body_height + this.body_height_range / 2
         this.default_step_height = this.default_body_height / 2
