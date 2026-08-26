@@ -1,0 +1,1 @@
+export const PUBLIC_VITE_USE_HOST_NAME = ''

@@ -6,7 +6,10 @@ const config: UserConfigExport = {
     plugins: [svelte()],
     resolve: {
         alias: {
-            $lib: path.resolve(__dirname, './src/lib')
+            $lib: path.resolve(__dirname, './src/lib'),
+            '$app/paths': path.resolve(__dirname, './tests/stubs/app-paths.ts'),
+            '$app/environment': path.resolve(__dirname, './tests/stubs/app-environment.ts'),
+            '$env/static/public': path.resolve(__dirname, './tests/stubs/env-static-public.ts')
         }
     },
     test: {
