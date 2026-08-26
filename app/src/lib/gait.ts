@@ -219,7 +219,7 @@ export class BezierState extends GaitState {
             this.phase = 0
             return
         }
-        this.phase += this.dt * m.step_velocity * this.speed_factor
+        this.phase += this.dt * Math.max(m.step_velocity, 0.5) * this.speed_factor
         if (this.phase >= 1) {
             this.phase_num = (this.phase_num + 1) % 2
             this.phase = 0
