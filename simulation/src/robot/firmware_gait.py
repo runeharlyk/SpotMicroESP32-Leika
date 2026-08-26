@@ -176,7 +176,12 @@ TROT, CRAWL = 0, 1
 # and kept inside the reachable workspace so the zero-residual baseline stays feasible.
 MAX_STEP_LENGTH = 0.030
 MAX_LATERAL_STEP = 0.018       # abduction workspace is tighter than the sagittal stride
-MAX_TURN_STEP = 0.026          # tangential stride amplitude at full step_angle
+MAX_TURN_STEP = 0.026          # mean tangential half-stroke at full step_angle
+# Yaw command -> rotation amplitude. A foot's tangential half-stroke is TURN_RATE * radius / 2,
+# calibrated so the mean still lands on MAX_TURN_STEP. Note MAX_TURN_STEP is a half-stroke while
+# MAX_STEP_LENGTH is a full stroke: the curve takes half-amplitudes, and the old code passed the
+# turn amplitude straight through while halving the linear one.
+TURN_RATE = 2.0 * MAX_TURN_STEP / float(np.hypot(DEFAULT_FEET[:, 0], DEFAULT_FEET[:, 1]).mean())
 DEFAULT_STEP_HEIGHT = 0.015
 DEFAULT_STEP_DEPTH = 0.002
 
@@ -243,11 +248,19 @@ def _bezier_curve(length, angle, height, phase, point):
             inv_phase_power /= one_minus
 
 
-def _yaw_arc(foot):
-    """Stride heading (in the curve's stride frame) that makes a foot push tangentially about
-    the body centre. With the base mapping (dx, dy) = (step*sin a, -step*cos a), a foot at
-    (fx, fy) needs the tangential direction (fy, -fx), which corresponds to a = atan2(fy, fx)."""
-    return math.atan2(foot[1], foot[0])
+def _stroke(gait, foot):
+    """Rigid-body velocity field at a foot's stance position, as (amplitude, stride heading).
+
+    The commanded translation and the rotation about the body centre compose into one vector
+    before the curve is evaluated, matching walk_state.h. In the base frame a stride of length
+    ``step`` at heading ``a`` displaces the foot by (step*sin a, -step*cos a), so forward
+    (+step_x) maps to -Y and lateral (+step_z) to +X. The rotational part is omega x r, signed
+    so that a positive step_angle keeps its historical turn direction.
+    """
+    turn = gait.step_angle * TURN_RATE
+    sx = gait.step_z + turn * foot[1]
+    sy = -gait.step_x - turn * foot[0]
+    return math.hypot(sx, sy), math.atan2(sx, -sy)
 
 
 class GaitController:
@@ -264,16 +277,8 @@ class GaitController:
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
 
-    def _kinematic_params(self, gait: GaitState):
-        length = math.hypot(gait.step_x, gait.step_z)
-        if gait.step_x < 0:
-            length = -length
-        angle = math.atan2(gait.step_z, length) * 2.0 if length != 0.0 else 0.0
-        return length, angle
-
     def generate_feet(self, gait: GaitState, body: BodyState) -> None:
         """Write body.feet at the CURRENT phase (does not advance it). Base-frame targets."""
-        length, turn_angle = self._kinematic_params(gait)
         new_feet = self.default_position.copy()
         moving = (abs(gait.step_x) > 1e-6) or (abs(gait.step_z) > 1e-6) or (abs(gait.step_angle) > 1e-6)
         for i in range(4):
@@ -287,17 +292,14 @@ class GaitController:
                 curve, amp = _bezier_curve, gait.step_height
 
             # stride frame delta: [0]=along-stride, [1]=vertical, [2]=cross-stride
-            delta_pos = [0.0, 0.0, 0.0]
-            curve(length * 0.5, turn_angle, amp, ph, delta_pos)
-
-            delta_rot = [0.0, 0.0, 0.0]
-            turn_len = gait.step_angle * MAX_TURN_STEP
-            curve(turn_len, _yaw_arc(self.default_position[i]), amp, ph, delta_rot)
+            stroke, heading = _stroke(gait, self.default_position[i])
+            delta = [0.0, 0.0, 0.0]
+            curve(stroke * 0.5, heading, amp, ph, delta)
 
             # map stride frame -> base frame: forward(+stride)-> -Y, cross-> +X, lift(+)-> +Z
-            dx = delta_pos[2] + delta_rot[2]         # cross-stride -> lateral X
-            dy = -(delta_pos[0] + delta_rot[0])      # along-stride -> fore-aft Y (forward = -Y)
-            dz = delta_pos[1] + delta_rot[1]         # vertical -> Z
+            dx = delta[2]     # cross-stride -> lateral X
+            dy = -delta[0]    # along-stride -> fore-aft Y (forward = -Y)
+            dz = delta[1]     # vertical -> Z
             new_feet[i, 0] = self.default_position[i, 0] + dx
             if moving:
                 new_feet[i, 1] = self.default_position[i, 1] + dy
