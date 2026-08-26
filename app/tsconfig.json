@@ -11,7 +11,7 @@
         "strict": true,
         "moduleResolution": "bundler",
         "module": "preserve",
-        "types": ["unplugin-icons/types/svelte"]
+        "types": ["unplugin-icons/types/svelte", "web-bluetooth"]
     }
     // Path aliases are handled by https://kit.svelte.dev/docs/configuration#alias
     // except $lib which is handled by https://kit.svelte.dev/docs/configuration#files
