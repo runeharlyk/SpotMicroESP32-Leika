@@ -1,8 +1,10 @@
 <script lang="ts">
     import { ModeData, ModesEnum } from '$lib/platform_shared/message'
     import { mode } from '$lib/stores'
+    import { haptics } from '$lib/utilities'
 
     const deactivate = async () => {
+        haptics.stop()
         mode.set(ModeData.create({ mode: ModesEnum.DEACTIVATED }))
     }
 </script>

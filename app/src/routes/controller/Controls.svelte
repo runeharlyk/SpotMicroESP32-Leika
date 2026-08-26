@@ -1,5 +1,6 @@
 <script lang="ts">
     import nipplejs from 'nipplejs'
+    import { haptics } from '$lib/utilities'
     import { onMount } from 'svelte'
     import {
         input,
@@ -101,6 +102,8 @@
     }
 
     const changeMode = (modeValue: ModesEnum) => {
+        if (modeValue === ModesEnum.DEACTIVATED) haptics.stop()
+        else haptics.modeChange()
         mode.set(ModeData.create({ mode: modeValue }))
     }
 
