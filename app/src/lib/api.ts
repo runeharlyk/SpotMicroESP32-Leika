@@ -1,7 +1,6 @@
 import { get } from 'svelte/store'
 import { Err, Ok, type Result } from './utilities'
 import { apiLocation } from './stores/location-store'
-import type { MessageFns } from './platform_shared/filesystem'
 import { Request, Response as ProtoResponse } from './platform_shared/api'
 import { BinaryWriter } from '@bufbuild/protobuf/wire'
 

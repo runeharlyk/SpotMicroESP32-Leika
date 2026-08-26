@@ -1,4 +1,3 @@
-import Kinematic from '$lib/kinematic'
 import {
     ControllerData,
     KinematicData,
