@@ -60,7 +60,6 @@ export default class Kinematic {
     body_height_range: number
     max_step_length: number
     max_step_height: number
-    max_yaw_step_length: number
     default_step_depth: number
     default_body_height: number
     default_step_height: number
@@ -92,7 +91,6 @@ export default class Kinematic {
         this.body_height_range = this.max_body_height - this.min_body_height
         this.max_step_length = this.max_leg_reach * 0.8
         this.max_step_height = this.max_leg_reach / 2
-        this.max_yaw_step_length = this.max_step_length * 1.5
         this.default_step_depth = 0.002
         this.default_body_height = this.min_body_height + this.body_height_range / 2
         this.default_step_height = this.default_body_height / 2

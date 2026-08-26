@@ -144,7 +144,6 @@ export class BezierState extends GaitState {
     protected name = 'Bezier'
     protected phase = 0
     protected phase_num = 0
-    protected step_length = 0
     protected stand_offset = 0.75
     protected duty_slow = 0.85
     protected duty_fast = 0.5
@@ -204,8 +203,6 @@ export class BezierState extends GaitState {
             this.lerp(this.duty_slow, this.duty_fast, v),
             0.1
         )
-        this.step_length = Math.sqrt(this.gait_state.step_x ** 2 + this.gait_state.step_z ** 2)
-        if (this.gait_state.step_x < 0) this.step_length = -this.step_length
         this.update_phase()
         this.update_body_position()
         this.update_feet_positions()
@@ -348,20 +345,21 @@ export class BezierState extends GaitState {
         controller: (length: number, angle: number, ...args: number[]) => number[],
         ...args: number[]
     ) {
-        let length = this.step_length / 2
-        let angle = Math.atan2(this.gait_state.step_z, this.step_length) * 2
-        const delta_pos = controller(length, angle, ...args, phase)
+        // Each foot's stroke is the rigid-body velocity field at its stance position: the commanded
+        // translation plus the rotational contribution omega x r about the body centre. Composing
+        // both into one vector means a single curve, so the swing/stance profile is applied once.
+        const m = this.gait_state
+        const rx = this.default_feet_pos[index][0]
+        const rz = this.default_feet_pos[index][2]
+        const stroke_x = m.step_x + m.step_angle * -rz
+        const stroke_z = m.step_z + m.step_angle * rx
+        const stroke = Math.hypot(stroke_x, stroke_z)
 
-        const kin = this.kinematic
-        length = this.gait_state.step_angle * kin.max_yaw_step_length
-        angle = yawArc(this.default_feet_pos[index], this.body_state.feet[index])
+        const delta = controller(stroke / 2, Math.atan2(stroke_z, stroke_x), ...args, phase)
 
-        const delta_rot = controller(length, angle, ...args, phase)
-
-        this.body_state.feet[index][0] += delta_pos[0] + delta_rot[0] * 0.2
-        this.body_state.feet[index][2] += delta_pos[2] + delta_rot[2] * 0.2
-        if (this.gait_state.step_x || this.gait_state.step_z || this.gait_state.step_angle)
-            this.body_state.feet[index][1] += delta_pos[1] + delta_rot[1] * 0.2
+        this.body_state.feet[index][0] += delta[0]
+        this.body_state.feet[index][2] += delta[2]
+        if (m.step_x || m.step_z || m.step_angle) this.body_state.feet[index][1] += delta[1]
 
         return this.body_state.feet[index]
     }
@@ -422,20 +420,6 @@ const stance_curve = (length: number, angle: number, depth: number, phase: numbe
     let Y = 0
     if (length !== 0) Y = -depth * Math.cos((Math.PI * (X + Y)) / (2 * length))
     return [X, Y, Z]
-}
-
-const yawArc = (default_foot_pos: number[], current_foot_pos: number[]): number => {
-    const foot_mag = Math.sqrt(default_foot_pos[0] ** 2 + default_foot_pos[2] ** 2)
-    const foot_dir = Math.atan2(default_foot_pos[2], default_foot_pos[0])
-    const offsets = [
-        current_foot_pos[0] - default_foot_pos[0],
-        current_foot_pos[1] - default_foot_pos[1],
-        current_foot_pos[2] - default_foot_pos[2]
-    ]
-    const offset_mag = Math.sqrt(offsets[0] ** 2 + offsets[2] ** 2)
-    const offset_mod = Math.atan2(offset_mag, foot_mag)
-
-    return Math.PI / 2.0 + foot_dir + offset_mod
 }
 
 const bezier_curve = (length: number, angle: number, height: number, phase: number): number[] => {
