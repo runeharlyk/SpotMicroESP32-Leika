@@ -60,6 +60,7 @@ export default class Kinematic {
     body_height_range: number
     max_step_length: number
     max_step_height: number
+    max_yaw_step_length: number
     default_step_depth: number
     default_body_height: number
     default_step_height: number

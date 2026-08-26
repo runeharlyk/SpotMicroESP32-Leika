@@ -342,7 +342,7 @@ export class BezierState extends GaitState {
         const delta_pos = controller(length, angle, ...args, phase)
 
         const kin = this.kinematic
-        length = this.gait_state.step_angle * kin.max_step_length
+        length = this.gait_state.step_angle * kin.max_yaw_step_length
         angle = yawArc(this.default_feet_pos[index], this.body_state.feet[index])
 
         const delta_rot = controller(length, angle, ...args, phase)
