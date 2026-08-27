@@ -1,14 +1,11 @@
 <script lang="ts">
-    import { apiLocation, socket } from '$lib/stores'
+    import { apiLocation, pairing, socket, startPairing } from '$lib/stores'
     import { telemetry } from '$lib/stores/telemetry'
-    import { notifications } from '$lib/components/toasts/notifications'
     import { isBluetoothSupported } from '$lib/transport/ble-adapter'
     import { Bluetooth, Connection } from '../icons'
 
     const transport = socket.transport
     const transportLabels = { websocket: 'WiFi', bluetooth: 'BLE' }
-
-    let pairing = $state(false)
 
     // The link only counts as healthy once a pong has come back; a socket that is open but silent
     // still leaves the robot uncommanded.
@@ -29,20 +26,6 @@
     const connectWifi = () => {
         const host = $apiLocation ? $apiLocation : window.location.host
         socket.init(`ws://${host}/api/ws`)
-    }
-
-    const pair = async () => {
-        pairing = true
-        try {
-            await socket.connectBluetooth()
-        } catch (error) {
-            // Dismissing the browser's chooser is a normal outcome, not a failure.
-            if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
-                notifications.error(`Bluetooth connection failed: ${error}`, 5000)
-            }
-        } finally {
-            pairing = false
-        }
     }
 </script>
 
@@ -91,8 +74,8 @@
             </div>
 
             <div class="mt-2 flex justify-end">
-                <button class="btn btn-sm btn-primary" onclick={pair} disabled={pairing}>
-                    {#if pairing}
+                <button class="btn btn-sm btn-primary" onclick={startPairing} disabled={$pairing}>
+                    {#if $pairing}
                         <span class="loading loading-spinner loading-xs"></span>
                     {/if}
                     Pair

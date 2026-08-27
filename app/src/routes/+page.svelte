@@ -4,7 +4,7 @@
     import Visualization from '$lib/components/Visualization.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
-    import { apiLocation, socket } from '$lib/stores'
+    import { apiLocation, pairing, socket, startPairing } from '$lib/stores'
     import { addRobot, forgetRobot, markSeen, robots, subnetPrefix, type Robot } from '$lib/stores'
     import {
         normalizeSubnetPrefix,
@@ -18,7 +18,6 @@
     type Reachability = 'probing' | 'online' | 'offline'
 
     let adding = $state(false)
-    let pairing = $state(false)
     let candidates = $state<CandidateStatus[]>([])
     let searching = $state(false)
     let sweeping = $state(false)
@@ -128,17 +127,7 @@
     }
 
     const pair = async () => {
-        pairing = true
-        try {
-            await socket.connectBluetooth()
-            adding = false
-        } catch (error) {
-            if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
-                notifications.error(`Bluetooth connection failed: ${error}`, 5000)
-            }
-        } finally {
-            pairing = false
-        }
+        if (await startPairing()) adding = false
     }
 
     const statusLabel = (robot: Robot) => {
@@ -267,8 +256,8 @@
             </div>
 
             {#if isBluetoothSupported()}
-                <button class="btn btn-primary w-full" onclick={pair} disabled={pairing}>
-                    {#if pairing}
+                <button class="btn btn-primary w-full" onclick={pair} disabled={$pairing}>
+                    {#if $pairing}
                         <span class="loading loading-spinner loading-xs"></span>
                     {:else}
                         <Bluetooth class="h-5 w-5" />
