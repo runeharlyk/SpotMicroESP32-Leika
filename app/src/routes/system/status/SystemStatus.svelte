@@ -31,8 +31,7 @@
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import ActionButton from './ActionButton.svelte'
-    import { type SystemInformation } from '$lib/platform_shared/message'
-    import { AnalyticsData } from '$lib/platform_shared/robot_core'
+    import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/message'
 
     const features = useFeatureFlags()
 
