@@ -1,11 +1,15 @@
-"""NumPy port of the ESP32 FIRMWARE gait, retargeted to the spot_pico robot.
+"""Baseline gait and kinematics for the spot_pico robot (the Leika Mini).
 
-The gait *engine* is a faithful port of `esp32/include/motion_states/walk_state.h`
-(phase clock, per-leg offsets, stance/Bezier curves, stroke composition, command->gait mapping,
-0.03 LERP smoothing). The *kinematics* are NOT the firmware's SPOTMICRO_ESP32 constants
-(that is a different, larger robot) but are derived directly from the spot_pico MJCF, since
-that is the model we train on. So a "zero residual" reproduces the firmware gait *shape*
-executed on spot_pico's geometry.
+The gait follows the structure of `esp32/include/motion_states/walk_state.h` (phase clock,
+per-leg offsets, stance and 12-point Bezier curves, rigid-body stroke composition) but is
+retargeted to spot_pico: fixed step lengths sized to its workspace, a calibrated turn rate,
+no command smoothing, and an analytic command->gait map. It is therefore not the firmware's
+classic WALK gait.
+
+The firmware runs this exact baseline in WALK_NN: esp32/include/spot_pico/kinematics.h and
+residual_gait.h are C++ ports, pinned to this module by golden vectors from export_golden.py
+(`pio test -e native`). The kinematics are derived from the spot_pico MJCF, which is also the
+Mini geometry the firmware uses in every mode.
 
 Coordinate frame (spot_pico `base_link`, MuJoCo world at identity):
     +X = left, +Y = rear, +Z = up   (so forward = -Y, right = -X).

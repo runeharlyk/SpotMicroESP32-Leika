@@ -27,6 +27,24 @@ permissions:
   contents: read
 
 jobs:
+  native-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO and proto dependencies
+        run: pip install --upgrade platformio protobuf grpcio-tools
+
+      - name: Host tests (kinematics, gait, policy parity)
+        run: pio test -e native
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45

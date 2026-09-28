@@ -5,11 +5,13 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -35,3 +37,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
+
+      - name: Firmware golden vectors are up to date
+        run: uv run python export_golden.py --check
