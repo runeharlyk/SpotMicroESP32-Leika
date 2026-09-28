@@ -69,8 +69,6 @@ export { default as Delete } from '~icons/tabler/trash'
 export { default as Network } from '~icons/tabler/router'
 export { default as Reload } from '~icons/tabler/reload'
 
-export { default as Firmware } from '~icons/tabler/refresh-alert'
-export { default as CloudDown } from '~icons/tabler/cloud-download'
 export { default as Server } from '~icons/tabler/server'
 export { default as Clock } from '~icons/tabler/clock'
 export { default as UTC } from '~icons/tabler/clock-pin'

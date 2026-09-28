@@ -4,7 +4,6 @@
 
     import LinkIndicator from '$lib/components/statusbar/LinkIndicator.svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import UpdateIndicator from '$lib/components/statusbar/UpdateIndicator.svelte'
     import SleepButton from './SleepButton.svelte'
     import ThemeButton from './ThemeButton.svelte'
     import FullscreenButton from './FullscreenButton.svelte'
@@ -24,8 +23,6 @@
             <h1 class="px-2 text-xl font-bold lg:text-2xl">{page.data.title}</h1>
         {/if}
     </div>
-
-    <UpdateIndicator />
 
     <FullscreenButton />
 

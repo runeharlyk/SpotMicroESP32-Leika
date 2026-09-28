@@ -29,8 +29,6 @@ socket_message.PeripheralSettingsData.pins max_count:32
 socket_message.WifiSettingsData.hostname max_size:32
 socket_message.WifiSettingsData.wifi_networks max_count:8
 
-socket_message.DownloadOTAData.status max_size:32
-socket_message.DownloadOTAData.error max_size:64
 
 socket_message.SonarData.dummy_field max_size:16
 

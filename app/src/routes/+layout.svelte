@@ -18,12 +18,10 @@
         servoAnglesOut,
         socket,
         apiLocation,
-        useFeatureFlags,
         walkGait
     } from '$lib/stores'
     import {
         AnglesData,
-        DownloadOTAData,
         ControllerData,
         KinematicData,
         ModeData,
@@ -38,7 +36,6 @@
 
     let { children }: Props = $props()
 
-    const features = useFeatureFlags()
     const throttler = new Throttler()
 
     onMount(async () => {
@@ -74,12 +71,6 @@
                 servoAngles.set(data)
             })
         )
-        features.subscribe(data => {
-            if (data?.download_firmware)
-                eventListeners.push(
-                    socket.on(DownloadOTAData, data => telemetry.setDownloadOTA(data))
-                )
-        })
     }
 
     const removeEventListeners = () => {

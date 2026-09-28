@@ -149,11 +149,7 @@
                         title: 'Firmware Update',
                         icon: Update,
                         href: withBase('/system/update'),
-                        feature: !!(
-                            $features.ota ||
-                            $features.upload_firmware ||
-                            $features.download_firmware
-                        )
+                        feature: !!($features.ota || $features.upload_firmware)
                     }
                 ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
             }

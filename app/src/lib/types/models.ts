@@ -19,19 +19,6 @@ export enum MessageTopic {
 
 export type vector = { x: number; y: number }
 
-export type GithubRelease = {
-    message: string
-    tag_name: string
-    name: string
-    html_url: string
-    published_at: string
-    prerelease: boolean
-    assets: Array<{
-        name: string
-        browser_download_url: string
-    }>
-}
-
 export type Rssi = {
     rssi: number
     ssid: string
