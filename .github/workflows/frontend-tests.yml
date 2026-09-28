@@ -16,6 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./app
@@ -28,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "latest"
+          node-version: 24
           cache: "pnpm"
           cache-dependency-path: "./app/pnpm-lock.yaml"
 
@@ -43,8 +44,14 @@ jobs:
       - name: Generate Proto
         run: pnpm proto
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm check
+
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run tests
         run: pnpm test
