@@ -138,6 +138,7 @@ class WebServer {
     static esp_err_t wsHandler(httpd_req_t* req);
 
     void applyDefaultHeaders(httpd_req_t* req);
+    void addRoute(HttpRoute route);
     esp_err_t registerRoute(const HttpRoute& route);
 };
 

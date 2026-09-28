@@ -182,30 +182,21 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
 }
 
 void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handler) {
-    HttpRoute route;
-    route.uri = uri;
-    route.method = method;
-    route.getHandler = handler;
-    route.postHandler = nullptr;
-    route.isWebsocket = false;
-    routes_.push_back(route);
-
-    if (server_) {
-        registerRoute(route);
-    }
+    addRoute({uri, method, handler, nullptr, false});
 }
 
 void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handler) {
-    HttpRoute route;
-    route.uri = uri;
-    route.method = method;
-    route.getHandler = nullptr;
-    route.postHandler = handler;
-    route.isWebsocket = false;
-    routes_.push_back(route);
+    addRoute({uri, method, nullptr, handler, false});
+}
 
-    if (server_) {
-        registerRoute(route);
+void WebServer::addRoute(HttpRoute route) {
+    routes_.push_back(std::move(route));
+    if (!server_) return;
+
+    const HttpRoute& added = routes_.back();
+    esp_err_t ret = registerRoute(added);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register %s (method %d): %s", added.uri.c_str(), added.method, esp_err_to_name(ret));
     }
 }
 
@@ -220,19 +211,7 @@ esp_err_t WebServer::registerRoute(const HttpRoute& route) {
     return httpd_register_uri_handler(server_, &httpd_route);
 }
 
-void WebServer::registerWebsocket(const char* uri) {
-    HttpRoute route;
-    route.uri = uri;
-    route.method = HTTP_GET;
-    route.getHandler = nullptr;
-    route.postHandler = nullptr;
-    route.isWebsocket = true;
-    routes_.push_back(route);
-
-    if (server_) {
-        registerRoute(route);
-    }
-}
+void WebServer::registerWebsocket(const char* uri) { addRoute({uri, HTTP_GET, nullptr, nullptr, true}); }
 
 void WebServer::onWsFrame(WsFrameHandler handler) { wsFrameHandler_ = handler; }
 

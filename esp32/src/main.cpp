@@ -46,7 +46,7 @@ WiFiService wifiService;
 APService apService;
 
 void setupServer() {
-    server.config(50 + WWW_ASSETS_COUNT, 16384);
+    server.config(50 + webAssetCount(), 16384);
     server.listen(80);
 
     server.on("/api/system/reset", HTTP_POST,
@@ -114,10 +114,7 @@ void setupServer() {
     STATIC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
     STATIC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
     wsSocket.begin();
-#if EMBED_WEBAPP
-    mountStaticAssets(server);
-    mountSpaFallback(server);
-#endif
+    mountWebApp(server);
     server.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
         httpd_resp_set_status(request, "200 OK");
         return httpd_resp_send(request, nullptr, 0);
