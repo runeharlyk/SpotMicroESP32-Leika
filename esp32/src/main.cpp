@@ -267,7 +267,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
         peripherals.update();
         motionService.update(&peripherals);
-        servoController.setAngles(motionService.getAngles());
+        servoController.setAngles(motionService.getAngles(), motionService.servoSmoothing());
         servoController.update();
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();

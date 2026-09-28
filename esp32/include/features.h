@@ -43,6 +43,24 @@
 #define USE_MDNS 1
 #endif
 
+// Learned residual walking policy (WALK_NN mode). Needs the Mini geometry it was trained on, the
+// MPU6050 (quaternion + gyro observation) and a header from simulation/export_policy.py.
+#ifndef USE_POLICY
+#define USE_POLICY 0
+#endif
+
+#if USE_POLICY
+#if !defined(SPOTMICRO_ESP32_MINI)
+#error "USE_POLICY requires SPOTMICRO_ESP32_MINI: the policy was trained on the spot_pico geometry"
+#endif
+#if !USE_MPU6050
+#error "USE_POLICY requires USE_MPU6050: the policy observes the IMU quaternion and gyro"
+#endif
+#if !__has_include(<policy/leika_policy.h>)
+#error "USE_POLICY requires esp32/include/policy/leika_policy.h; generate it with simulation/export_policy.py"
+#endif
+#endif
+
 #if defined(SPOTMICRO_ESP32) && defined(SPOTMICRO_ESP32_MINI) && defined(SPOTMICRO_YERTLE)
 #error "Only one kinematics variant must be defined"
 #endif

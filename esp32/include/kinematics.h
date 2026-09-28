@@ -2,6 +2,10 @@
 #define Kinematics_h
 
 #include <utils/math_utils.h>
+#if defined(SPOTMICRO_ESP32_MINI)
+#include <spot_pico/kinematics.h>
+#include <spot_pico/residual_gait.h>
+#endif
 
 class KinConfig {
   public:
@@ -13,11 +17,13 @@ class KinConfig {
     static constexpr float L = 0.2075f;
     static constexpr float W = 0.078f;
 #elif defined(SPOTMICRO_ESP32_MINI)
-    static constexpr float coxa = 0.035f;
+    // spot_pico link lengths rounded; they only set the body-motion limits below. The IK uses the
+    // exact per-leg geometry in spot_pico/kinematics.h.
+    static constexpr float coxa = 0.0433f;
     static constexpr float coxa_offset = 0.0f;
-    static constexpr float femur = 0.060f;
-    static constexpr float tibia = 0.060f;
-    static constexpr float L = 0.160f;
+    static constexpr float femur = 0.0579f;
+    static constexpr float tibia = 0.0525f;
+    static constexpr float L = 0.175f;
     static constexpr float W = 0.080f;
 #elif defined(SPOTMICRO_YERTLE)
     static constexpr float coxa = 0.035f;
@@ -31,12 +37,22 @@ class KinConfig {
     static constexpr float mountOffsets[4][3] = {
         {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
 
+#if defined(SPOTMICRO_ESP32_MINI)
+    // spot_pico stance feet mapped into the firmware frame (x forward, z left): x = -sim y, z = sim x.
+    static constexpr float default_feet_positions[4][4] = {
+        {-spot_pico::stanceFoot(1, 1), 0, spot_pico::stanceFoot(1, 0), 1},
+        {-spot_pico::stanceFoot(0, 1), 0, spot_pico::stanceFoot(0, 0), 1},
+        {-spot_pico::stanceFoot(3, 1), 0, spot_pico::stanceFoot(3, 0), 1},
+        {-spot_pico::stanceFoot(2, 1), 0, spot_pico::stanceFoot(2, 0), 1},
+    };
+#else
     static constexpr float default_feet_positions[4][4] = {
         {mountOffsets[0][0], 0, mountOffsets[0][2] + coxa, 1},
         {mountOffsets[1][0], 0, mountOffsets[1][2] - coxa, 1},
         {mountOffsets[2][0], 0, mountOffsets[2][2] + coxa, 1},
         {mountOffsets[3][0], 0, mountOffsets[3][2] - coxa, 1},
     };
+#endif
 
     // Max constants
     static constexpr float max_roll = 20.0f;
@@ -51,7 +67,12 @@ class KinConfig {
     static constexpr float max_body_height = max_leg_reach * 0.9;
     static constexpr float body_height_range = max_body_height - min_body_height;
 
+#if defined(SPOTMICRO_ESP32_MINI)
+    // 80% of the reach overshoots spot_pico's workspace; this is the stride the simulation validated.
+    static constexpr float max_step_length = spot_pico::MAX_STEP_LENGTH;
+#else
     static constexpr float max_step_length = max_leg_reach * 0.8;
+#endif
     static constexpr float max_step_height = max_leg_reach / 2;
 
     // Default constant
@@ -69,6 +90,7 @@ struct alignas(16) body_state_t {
 
 class Kinematics {
   private:
+#if !defined(SPOTMICRO_ESP32_MINI)
     static constexpr float coxa = KinConfig::coxa;
     static constexpr float coxa_offset = KinConfig::coxa_offset;
     static constexpr float femur = KinConfig::femur;
@@ -81,11 +103,15 @@ class Kinematics {
         {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
 
     static constexpr float invMountRot[3][3] = {{0, 0, -1}, {0, 1, 0}, {1, 0, 0}};
+#endif
 
     alignas(16) float rot[3][3] = {0};
     alignas(16) float inv_rot[3][3] = {0};
     alignas(16) float inv_trans[3] = {0};
 
+#if defined(SPOTMICRO_ESP32_MINI)
+    float joint_rad[12] = {0};
+#endif
 
   public:
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
@@ -113,6 +139,12 @@ class Kinematics {
             float by = inv_rot[1][0] * wx + inv_rot[1][1] * wy + inv_rot[1][2] * wz + inv_trans[1];
             float bz = inv_rot[2][0] * wx + inv_rot[2][1] * wy + inv_rot[2][2] * wz + inv_trans[2];
 
+#if defined(SPOTMICRO_ESP32_MINI)
+            const float target[3] = {bz, -bx, by};
+            const int leg = spot_pico::FIRMWARE_TO_SIM_LEG[i];
+            spot_pico::legIK(leg, target, joint_rad + leg * 3);
+            if (!toServoDegrees(joint_rad + leg * 3, result + i * 3)) ret = ESP_FAIL;
+#else
             float mx = mountOffsets[i][0];
             float my = mountOffsets[i][1];
             float mz = mountOffsets[i][2];
@@ -127,10 +159,16 @@ class Kinematics {
 
             float xLocal = (i % 2 == 1) ? -lx : lx;
             legIK(xLocal, ly, lz, result + i * 3);
+#endif
         }
 
         return ret;
     }
+
+#if defined(SPOTMICRO_ESP32_MINI)
+    // spot_pico joint angles (rad, sim leg order) behind the last result; the residual policy observes these.
+    const float *jointRadians() const { return joint_rad; }
+#endif
 
     inline void euler2R(float roll, float pitch, float yaw, float rot[3][3]) {
         float cos_roll = std::cos(roll);
@@ -163,6 +201,18 @@ class Kinematics {
         inv_rot[2][2] = rot[2][2];
     }
 
+#if defined(SPOTMICRO_ESP32_MINI)
+    // Servo degrees, 0 = CAD stance pose: hip and femur drive their joints directly, the tibia servo
+    // drives a four-bar crank. Returns false (leaving out untouched) if the linkage cannot close.
+    static bool toServoDegrees(const float q[3], float out[3]) {
+        float tibia_servo;
+        if (!spot_pico::linkage::servoFromTibia(q[2], q[1], tibia_servo)) return false;
+        out[0] = RAD_TO_DEG_F(q[0]);
+        out[1] = RAD_TO_DEG_F(q[1]);
+        out[2] = RAD_TO_DEG_F(tibia_servo);
+        return true;
+    }
+#else
     inline void legIK(float x, float y, float z, float out[3]) {
         float F = sqrt(fmax(0.0f, x * x + y * y - coxa * coxa));
         float G = F - coxa_offset;
@@ -174,12 +224,13 @@ class Kinematics {
         float theta2 = atan2f(z, G) - atan2f(tibia * sinf(theta3), femur + tibia * cosf(theta3));
         out[0] = RAD_TO_DEG_F(theta1);
         out[1] = RAD_TO_DEG_F(theta2);
-#if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
+#if defined(SPOTMICRO_ESP32)
         out[2] = RAD_TO_DEG_F(theta3);
 #elif defined(SPOTMICRO_YERTLE)
         out[2] = RAD_TO_DEG_F(theta3 + theta2);
 #endif
     }
+#endif
 };
 
 #endif

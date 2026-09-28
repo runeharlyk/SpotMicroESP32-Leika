@@ -93,16 +93,18 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void setMode(SERVO_CONTROL_STATE newMode) { control_state = newMode; }
 
-    void setAngles(float new_angles[12]) {
+    // smoothing: fraction of the remaining distance covered per update (1 = apply the target directly).
+    void setAngles(const float new_angles[12], float new_smoothing) {
         for (int i = 0; i < 12; i++) {
             target_angles[i] = new_angles[i];
         }
+        smoothing = new_smoothing;
     }
 
     void calculatePWM() {
         uint16_t pwms[12];
         for (int i = 0; i < 12; i++) {
-            angles[i] = lerp(angles[i], target_angles[i], 0.1);
+            angles[i] = lerp(angles[i], target_angles[i], smoothing);
             auto &servo = state().servos[i];
             float angle = servo.direction * angles[i] + servo.center_angle;
             uint16_t pwm = angle * servo.conversion + servo.center_pwm;
@@ -131,6 +133,7 @@ class ServoController : public StatefulService<ServoSettings> {
     SERVO_CONTROL_STATE control_state = SERVO_CONTROL_STATE::DEACTIVATED;
 
     bool is_active {false};
+    float smoothing = 0.1f;
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
 };

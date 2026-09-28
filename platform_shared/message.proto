@@ -37,6 +37,7 @@ message FeaturesDataResponse {
     bool ws2812 = 110;
     bool mdns = 120;
     bool embed_www = 130;
+    bool policy = 230;
 }
 
 message FeaturesDataRequest { }
@@ -88,6 +89,7 @@ enum ModesEnum {
     REST = 3;
     STAND = 4;
     WALK = 5;
+    WALK_NN = 6;
 }
 
 message StaticSystemInformation {

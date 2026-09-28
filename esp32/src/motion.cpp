@@ -1,6 +1,20 @@
 #include <motion.h>
 
-void MotionService::begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
+static constexpr float SERVO_SMOOTHING = 0.1f;
+
+void MotionService::begin() {
+    body_state.updateFeet(KinConfig::default_feet_positions);
+#if FT_ENABLED(USE_POLICY)
+    policyVerified = WalkNNState::verifyPolicy();
+#endif
+}
+
+float MotionService::servoSmoothing() const {
+#if FT_ENABLED(USE_POLICY)
+    if (state == &walkNNState && walkNNState.engaged()) return 1.0f;
+#endif
+    return SERVO_SMOOTHING;
+}
 
 void MotionService::handleAngles(const socket_message_AnglesData& data) {
     for (int i = 0; i < 12 && i < data.angles_count; i++) {
@@ -44,6 +58,17 @@ void MotionService::handleMode(const socket_message_ModeData& data) {
         case MOTION_STATE::REST: setState(&restState); break;
         case MOTION_STATE::STAND: setState(&standState); break;
         case MOTION_STATE::WALK: setState(&walkState); break;
+        case MOTION_STATE::WALK_NN:
+#if FT_ENABLED(USE_POLICY)
+            if (policyVerified) {
+                setState(&walkNNState);
+                break;
+            }
+            ESP_LOGE("MotionService", "WALK_NN refused: the policy failed its boot self-check");
+#else
+            ESP_LOGW("MotionService", "WALK_NN requested, but this firmware was built without USE_POLICY");
+#endif
+            break;
         case MOTION_STATE::DEACTIVATED: setState(nullptr); break;
         default: setState(nullptr); break;
     }
@@ -70,6 +95,11 @@ bool MotionService::update(Peripherals* peripherals) {
     float dt = (now - lastUpdate) / 1000000.0f; // Convert microseconds to seconds
     lastUpdate = now;
     state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());
+#if FT_ENABLED(USE_POLICY)
+    if (state == &walkNNState) {
+        walkNNState.observe(peripherals->imuQuaternion(), peripherals->imuGyroRad(), kinematics.jointRadians());
+    }
+#endif
     state->step(body_state, dt);
     kinematics.calculate_inverse_kinematics(body_state, new_angles);
 

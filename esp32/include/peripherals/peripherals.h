@@ -59,6 +59,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     float angleZ();
 
+#if FT_ENABLED(USE_MPU6050)
+    const float *imuQuaternion() { return _imu.getQuaternion(); }
+    const float *imuGyroRad() { return _imu.getGyroRad(); }
+#endif
+
     gesture_t takeGesture();
 
     float leftDistance();

@@ -9,7 +9,8 @@
         modes,
         modeLabels,
         walkGaits,
-        walkGaitLabels
+        walkGaitLabels,
+        useFeatureFlags
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
@@ -101,6 +102,11 @@
         })
     }
 
+    const features = useFeatureFlags()
+    const availableModes = $derived(
+        modes.filter(modeValue => modeValue !== ModesEnum.WALK_NN || $features.policy)
+    )
+
     const changeMode = (modeValue: ModesEnum) => {
         if (modeValue === ModesEnum.DEACTIVATED) haptics.stop()
         else haptics.modeChange()
@@ -146,7 +152,7 @@
             class="flex items-end gap-4 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 border-t border-r border-base-content/5 pointer-events-auto"
         >
             <div class="join shadow-lg">
-                {#each modes as modeValue (modeValue)}
+                {#each availableModes as modeValue (modeValue)}
                     <button
                         class="btn join-item btn-sm transition-all duration-200"
                         class:btn-primary={$mode.mode === modeValue}

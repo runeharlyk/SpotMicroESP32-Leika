@@ -150,8 +150,8 @@ uv run python train_mj.py --smoke        # short pipeline sanity run
 uv run pytest -q                         # regression tests
 ```
 
-The simulated robot model is `spot_pico`, which the firmware does not yet have as a kinematics variant.
-Exporting a trained policy to the ESP32 is not implemented yet.
+The simulated robot model is `spot_pico`, the geometry of the Leika Mini (`SPOTMICRO_ESP32_MINI`).
+A trained policy can be exported to the firmware and runs there as the `WALK_NN` mode; see the deployment section of the simulation README.
 See [simulation/README.md](simulation/README.md) for the architecture, training options, and follow-ups.
 
 ## Hardware Variants

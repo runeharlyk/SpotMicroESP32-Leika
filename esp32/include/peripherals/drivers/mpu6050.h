@@ -30,10 +30,17 @@ class MPU6050Driver {
         if (!_initialized) return false;
 
         if (dmpGetCurrentFIFOPacket(_fifoBuffer)) {
-            float q[4];
-            dmpGetQuaternion(q, _fifoBuffer);
-            dmpGetGravity(_gravity, q);
-            dmpGetYawPitchRoll(_rpy, q, _gravity);
+            dmpGetQuaternion(_quat, _fifoBuffer);
+            dmpGetGravity(_gravity, _quat);
+            dmpGetYawPitchRoll(_rpy, _quat, _gravity);
+        }
+
+        uint8_t gyro[6];
+        if (I2CBus::instance().readReg(_addr, REG_GYRO_XOUT_H, gyro, 6) == ESP_OK) {
+            for (int i = 0; i < 3; i++) {
+                const int16_t raw = (gyro[2 * i] << 8) | gyro[2 * i + 1];
+                _gyroRad[i] = raw * GYRO_RAD_PER_LSB;
+            }
         }
 
         uint8_t buf[2];
@@ -59,6 +66,10 @@ class MPU6050Driver {
     float getYaw() const { return _rpy[0]; }
     float getTemperature() const { return _temp; }
     bool isInitialized() const { return _initialized; }
+    // DMP orientation quaternion (w, x, y, z), sensor frame relative to the world at DMP start.
+    const float *getQuaternion() const { return _quat; }
+    // Body rates (rad/s) in the sensor frame.
+    const float *getGyroRad() const { return _gyroRad; }
 
   private:
     static constexpr uint8_t REG_XG_OFFS_USRH = 0x13;
@@ -88,6 +99,8 @@ class MPU6050Driver {
     static constexpr uint8_t REG_WHO_AM_I = 0x75;
 
     static constexpr uint16_t DMP_PACKET_SIZE = 28;
+    // REG_GYRO_CONFIG = 0x18 selects +-2000 deg/s: 16.4 LSB per deg/s.
+    static constexpr float GYRO_RAD_PER_LSB = DEG2RAD_F / 16.4f;
     static constexpr uint16_t DMP_CODE_SIZE = 3062;
 
     static constexpr uint8_t dmpMemory[DMP_CODE_SIZE] = {
@@ -502,6 +515,8 @@ class MPU6050Driver {
     bool _initialized = false;
     uint8_t _fifoBuffer[DMP_PACKET_SIZE];
     float _gravity[3] = {0};
+    float _quat[4] = {1, 0, 0, 0};
+    float _gyroRad[3] = {0};
     float _rpy[3] = {0};
     float _temp = 0;
 };

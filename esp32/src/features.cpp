@@ -35,6 +35,7 @@ void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_m
     fd_res.ws2812 = USE_WS2812 ? true : false;
     fd_res.mdns = USE_MDNS ? true : false;
     fd_res.embed_www = EMBED_WEBAPP ? true : false;
+    fd_res.policy = USE_POLICY ? true : false;
     fd_res.firmware_version = const_cast<char*>(APP_VERSION);
     fd_res.firmware_name = const_cast<char*>(APP_NAME);
     fd_res.firmware_built_target = const_cast<char*>(BUILD_TARGET);

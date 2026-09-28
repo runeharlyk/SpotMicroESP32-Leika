@@ -62,6 +62,10 @@ class IMU : public SensorBase<IMUAnglesMsg> {
     float getAngleX() { return _msg.rpy[2]; }
     float getAngleY() { return _msg.rpy[1]; }
     float getAngleZ() { return _msg.rpy[0]; }
+#if FT_ENABLED(USE_MPU6050)
+    const float *getQuaternion() const { return _imu.getQuaternion(); }
+    const float *getGyroRad() const { return _imu.getGyroRad(); }
+#endif
 
     bool calibrate() {
 #if FT_ENABLED(USE_MPU6050)

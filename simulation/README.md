@@ -63,6 +63,28 @@ TensorBoard: `uv run tensorboard --logdir runs`. Watch `terms/r_vel` (tracking) 
 
 ## Follow-ups (out of scope here)
 
-- **Sim-to-real export**: bake actor + VecNormalize stats + analytic gait map + `servo_from_tibia`
-  into a C++ header for the ESP32 (see Hexapod's `export_policy.py`).
+- Model the servo PWM frame (50 Hz) in the action-latency randomization; the robot applies a new
+  target at most every 20 ms, while the sim applies it every 10 ms.
 - Hardware validation of IK joint-sign conventions and the four-bar linkage.
+
+## Deploying to the robot
+
+The spot_pico geometry is the Leika Mini, so a policy runs on firmware built with `SPOTMICRO_ESP32_MINI`, `USE_MPU6050=1` and `USE_POLICY=1` (see `esp32/features.ini`).
+
+```bash
+uv run python export_policy.py --run residual_pure_dr   # writes esp32/include/policy/leika_policy.h
+uv run python export_golden.py                          # after changing the gait, IK, linkage or exporter
+```
+
+`export_policy.py` checks its numpy forward pass against SB3 before writing, bakes the command->gait coefficients recorded in the run's `gait_coef.json`, and embeds a golden input/output pair that the firmware verifies at boot.
+Runs trained before `train_mj.py` recorded `gait_coef.json` need `--gait-coef` pointing at the coefficients they actually used.
+
+On the robot, `WALK_NN` first settles into the trained stance, then runs the policy every 10 ms control tick from phase 0 with a zero action history, as the environment does after a reset.
+It sends servo targets without the firmware's usual command smoothing, because the simulation has none.
+`pio test -e native` replays `QuadrupedMjEnv.step` against the firmware's `WalkNNState` tick for tick, so the observation layout, the one-step-older joint and action history, the phase clock and the residual application stay in lockstep.
+
+Still to verify on hardware before the first walk:
+
+- the IMU mounting matrix `WalkNNState::IMU_FROM_BASE` (the bench test is described next to it);
+- servo direction and zero calibration, now that Mini joint angles are 0 at the CAD stance pose;
+- the joystick turn direction in `WalkNNState::handleCommand`.
