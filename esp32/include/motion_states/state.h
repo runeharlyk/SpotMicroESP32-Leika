@@ -1,5 +1,6 @@
 #pragma once
 
+#include <esp_log.h>
 #include <kinematics.h>
 #include <message_types.h>
 #include <utils/math_utils.h>

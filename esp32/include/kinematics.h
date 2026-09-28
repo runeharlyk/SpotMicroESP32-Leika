@@ -65,15 +65,6 @@ struct alignas(16) body_state_t {
     float feet[4][4];
 
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
-
-    bool operator==(const body_state_t &other) const {
-        if (!IS_ALMOST_EQUAL(omega, other.omega) || !IS_ALMOST_EQUAL(phi, other.phi) ||
-            !IS_ALMOST_EQUAL(psi, other.psi) || !IS_ALMOST_EQUAL(xm, other.xm) || !IS_ALMOST_EQUAL(ym, other.ym) ||
-            !IS_ALMOST_EQUAL(zm, other.zm)) {
-            return false;
-        }
-        return arrayEqual(feet, other.feet, 0.001f);
-    }
 };
 
 class Kinematics {
@@ -95,21 +86,10 @@ class Kinematics {
     alignas(16) float inv_rot[3][3] = {0};
     alignas(16) float inv_trans[3] = {0};
 
-    body_state_t currentState;
 
   public:
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
-
-        if (currentState == body_state) return ESP_OK;
-
-        currentState.omega = body_state.omega;
-        currentState.phi = body_state.phi;
-        currentState.psi = body_state.psi;
-        currentState.xm = body_state.xm;
-        currentState.ym = body_state.ym;
-        currentState.zm = body_state.zm;
-        currentState.updateFeet(body_state.feet);
 
         float roll = body_state.omega * DEG2RAD_F;
         float pitch = body_state.phi * DEG2RAD_F;
@@ -118,16 +98,16 @@ class Kinematics {
         inverse(rot, inv_rot);
 
         inv_trans[0] =
-            -inv_rot[0][0] * currentState.xm - inv_rot[0][1] * currentState.ym - inv_rot[0][2] * currentState.zm;
+            -inv_rot[0][0] * body_state.xm - inv_rot[0][1] * body_state.ym - inv_rot[0][2] * body_state.zm;
         inv_trans[1] =
-            -inv_rot[1][0] * currentState.xm - inv_rot[1][1] * currentState.ym - inv_rot[1][2] * currentState.zm;
+            -inv_rot[1][0] * body_state.xm - inv_rot[1][1] * body_state.ym - inv_rot[1][2] * body_state.zm;
         inv_trans[2] =
-            -inv_rot[2][0] * currentState.xm - inv_rot[2][1] * currentState.ym - inv_rot[2][2] * currentState.zm;
+            -inv_rot[2][0] * body_state.xm - inv_rot[2][1] * body_state.ym - inv_rot[2][2] * body_state.zm;
 
         for (int i = 0; i < 4; i++) {
-            float wx = currentState.feet[i][0];
-            float wy = currentState.feet[i][1];
-            float wz = currentState.feet[i][2];
+            float wx = body_state.feet[i][0];
+            float wy = body_state.feet[i][1];
+            float wz = body_state.feet[i][2];
 
             float bx = inv_rot[0][0] * wx + inv_rot[0][1] * wy + inv_rot[0][2] * wz + inv_trans[0];
             float by = inv_rot[1][0] * wx + inv_rot[1][1] * wy + inv_rot[1][2] * wz + inv_trans[1];
