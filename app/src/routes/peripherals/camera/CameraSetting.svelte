@@ -1,7 +1,11 @@
 <script lang="ts">
     import { api } from '$lib/api'
     import Spinner from '$lib/components/Spinner.svelte'
-    import { CameraSettings, Request, type Response as ProtoResponse } from '$lib/platform_shared/api'
+    import {
+        CameraSettings,
+        Request,
+        type Response as ProtoResponse
+    } from '$lib/platform_shared/api'
 
     let settings = $state<CameraSettings>(CameraSettings.create({}))
 
@@ -84,7 +88,7 @@
                 type="checkbox"
                 class="toggle"
                 checked={getVflip()}
-                onchange={(e) => setVflip(e.currentTarget.checked)}
+                onchange={e => setVflip(e.currentTarget.checked)}
             />
         </label>
 
@@ -94,7 +98,7 @@
                 type="checkbox"
                 class="toggle"
                 checked={getHmirror()}
-                onchange={(e) => setHmirror(e.currentTarget.checked)}
+                onchange={e => setHmirror(e.currentTarget.checked)}
             />
         </label>
 

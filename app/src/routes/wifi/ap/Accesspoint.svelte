@@ -11,9 +11,8 @@
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { APSettings, APStatus, Request, Response } from '$lib/platform_shared/api'
-    import { input } from '$lib/stores'
 
-    let apSettings: APSettings  | null = $state(null)
+    let apSettings: APSettings | null = $state(null)
     let apStatus: APStatus | null = $state(null)
 
     let ipDisplay = $state({
