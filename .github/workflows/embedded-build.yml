@@ -1,50 +1,82 @@
 name: PlatformIO CI
 
 on:
+  workflow_call:
   push:
     branches: [master]
     paths:
       - "esp32/**"
+      - "platform_shared/**"
+      - "app/**"
+      - "boards/**"
       - "platformio.ini"
+      - "sdkconfig.defaults*"
+      - ".github/workflows/embedded-build.yml"
   pull_request:
     branches: [master]
     paths:
       - "esp32/**"
+      - "platform_shared/**"
+      - "app/**"
+      - "boards/**"
       - "platformio.ini"
+      - "sdkconfig.defaults*"
+      - ".github/workflows/embedded-build.yml"
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [esp32-camera, esp32dev, esp32-wroom-camera, seeed-xiao-esp32s3, esp32-p4]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions/cache@v3
+
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
             ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
+          key: ${{ runner.os }}-pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-pio-${{ matrix.env }}-
 
-      - uses: actions/setup-python@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: "./app/pnpm-lock.yaml"
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: pip install -r esp32/scripts/requirements.txt
-      - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
 
-      - name: Install Python dependencies for nanopb
-        run: pip install protobuf grpcio-tools
+      - name: Install PlatformIO and build script dependencies
+        run: pip install --upgrade platformio protobuf grpcio-tools -r esp32/scripts/requirements.txt
 
-      - name: Build Protocol Buffers (nanopb)
-        run: python ./submodules/nanopb/generator/nanopb_generator.py -I "./platform_shared/" -D esp32/src/platform_shared ./platform_shared/message.proto
+      - name: Build ${{ matrix.env }}
+        run: pio run -e ${{ matrix.env }}
 
-      - name: Build PlatformIO Project
-        run: pio run
-
-      - name: Upload Artifacts
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
-          path: esp32/build/firmware
+          name: firmware-${{ matrix.env }}
+          path: .pio/build/${{ matrix.env }}/*.bin
+          if-no-files-found: error

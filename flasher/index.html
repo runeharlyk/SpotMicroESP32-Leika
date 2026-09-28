@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Leika Web Flasher</title>
+        <script
+            type="module"
+            src="https://cdn.jsdelivr.net/npm/esp-web-tools@10.4.0/dist/web/install-button.js"
+        ></script>
+        <style>
+            :root {
+                --bg: #f7f7f5;
+                --surface: #ffffff;
+                --text: #1d1d1b;
+                --muted: #5f5f5a;
+                --border: #d9d9d4;
+                --accent: #2f6fdf;
+                --accent-text: #ffffff;
+                --warn: #8a5a00;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #151514;
+                    --surface: #1f1f1d;
+                    --text: #ececea;
+                    --muted: #a3a39e;
+                    --border: #3a3a37;
+                    --accent: #6c9cf0;
+                    --accent-text: #0f0f0e;
+                    --warn: #e0b040;
+                }
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font:
+                    16px/1.5 system-ui,
+                    sans-serif;
+            }
+            main {
+                max-width: 640px;
+                margin: 0 auto;
+                padding: 32px 16px 48px;
+            }
+            h1 {
+                font-size: 1.6rem;
+                margin: 0 0 4px;
+            }
+            .version {
+                color: var(--muted);
+                margin: 0 0 24px;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            label {
+                display: block;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            select {
+                width: 100%;
+                padding: 10px;
+                font: inherit;
+                color: var(--text);
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                margin-bottom: 16px;
+            }
+            esp-web-install-button button {
+                font: inherit;
+                font-weight: 600;
+                padding: 10px 18px;
+                border: 0;
+                border-radius: 6px;
+                background: var(--accent);
+                color: var(--accent-text);
+                cursor: pointer;
+            }
+            .warn {
+                color: var(--warn);
+            }
+            ol,
+            ul {
+                padding-left: 20px;
+            }
+            code {
+                font-size: 0.95em;
+            }
+            a {
+                color: var(--accent);
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Leika Web Flasher</h1>
+            <p class="version" id="version">Loading firmware list...</p>
+
+            <div class="card" id="installer" hidden>
+                <label for="board">Board</label>
+                <select id="board"></select>
+                <esp-web-install-button id="install">
+                    <button slot="activate">Connect and install</button>
+                    <span slot="unsupported" class="warn">
+                        Your browser does not support Web Serial. Use Chrome or Edge on a desktop.
+                    </span>
+                    <span slot="not-allowed" class="warn">Web Serial needs this page to be served over HTTPS.</span>
+                </esp-web-install-button>
+            </div>
+
+            <p class="card warn" id="empty" hidden>
+                No firmware has been published yet. Build from source as described in the
+                <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/blob/master/docs/3_software.md">software guide</a>.
+            </p>
+
+            <div class="card">
+                <strong>Before you start</strong>
+                <ul>
+                    <li>Connect the board over USB with a data cable. Some boards need BOOT held while plugging in.</li>
+                    <li>Boards need at least 4 MB of flash.</li>
+                    <li>A first install erases the board, including saved settings.</li>
+                </ul>
+                <strong>After installing</strong>
+                <ol>
+                    <li>Join the Wi-Fi network <code>Spot-Micro</code> with password <code>spot-leika</code>.</li>
+                    <li>Open <code>http://192.168.4.1</code> and configure your home network under Wi-Fi.</li>
+                </ol>
+            </div>
+        </main>
+        <script type="module">
+            const version = document.getElementById('version')
+            try {
+                const response = await fetch('available.json', { cache: 'no-cache' })
+                if (!response.ok) throw new Error(`HTTP ${response.status}`)
+                const { version: release, boards } = await response.json()
+                if (boards.length === 0) throw new Error('empty')
+
+                const select = document.getElementById('board')
+                const install = document.getElementById('install')
+                for (const board of boards) {
+                    select.add(new Option(`${board.name} (${board.chipFamily})`, board.manifest))
+                }
+                const selectBoard = () => install.setAttribute('manifest', select.value)
+                select.addEventListener('change', selectBoard)
+                selectBoard()
+
+                version.textContent = `Firmware ${release}`
+                document.getElementById('installer').hidden = false
+            } catch {
+                version.textContent = ''
+                document.getElementById('empty').hidden = false
+            }
+        </script>
+    </body>
+</html>

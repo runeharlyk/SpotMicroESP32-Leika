@@ -1,0 +1,7 @@
+[
+    { "env": "esp32-camera", "name": "ESP32-CAM (AI Thinker)", "chipFamily": "ESP32" },
+    { "env": "esp32dev", "name": "ESP32 DevKit (no camera)", "chipFamily": "ESP32" },
+    { "env": "esp32-wroom-camera", "name": "ESP32-S3 with camera (ESP32-S3-EYE pinout)", "chipFamily": "ESP32-S3" },
+    { "env": "seeed-xiao-esp32s3", "name": "Seeed XIAO ESP32S3 Sense", "chipFamily": "ESP32-S3" },
+    { "env": "esp32-p4", "name": "ESP32-P4 dev board (ESP32-C6 co-processor)", "chipFamily": "ESP32-P4" }
+]

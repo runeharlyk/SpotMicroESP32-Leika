@@ -2,7 +2,7 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./app
@@ -44,6 +45,21 @@ jobs:
       - run: pnpm install
       - run: pnpm run build
 
+      - name: Add web flasher with the latest release firmware
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          site=app/build/flash
+          mkdir -p "$site/firmware"
+          cp flasher/index.html "$site/"
+          if tag=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName); then
+            gh release download "$tag" --repo "${{ github.repository }}" --pattern '*.factory.bin' --dir "$site/firmware"
+          else
+            tag=none
+          fi
+          python3 flasher/generate_manifests.py "$site" "$tag"
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
@@ -56,6 +72,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
     environment:
       name: github-pages
