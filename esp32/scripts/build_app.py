@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from os.path import exists, getmtime, splitext
 import os
+import sys
 import gzip
 import mimetypes
 import glob
@@ -14,7 +15,8 @@ buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
 interface_dir = f"{project_dir}/app"
 output_file = f"{project_dir}/esp32/include/WWWData.h"
-source_www_dir = f"{interface_dir}/src"
+rebuild_inputs = [f"{interface_dir}/src", f"{interface_dir}/static",
+                  f"{interface_dir}/package.json", f"{interface_dir}/pnpm-lock.yaml"]
 build_dir = f"{interface_dir}/build"
 filesystem_dir = f"{project_dir}/data"
 
@@ -51,9 +53,14 @@ def get_files_to_exclude():
     return files_to_exclude
 
 
+def fail(message):
+    print(f"Error: {message}", file=sys.stderr)
+    env.Exit(1)
+
+
 def latest_ts():
-    files = [p for p in glob.glob(
-        f"{source_www_dir}/**/*", recursive=True) if os.path.isfile(p)]
+    files = [p for src in rebuild_inputs for p in glob.glob(
+        f"{src}/**/*", recursive=True) + [src] if os.path.isfile(p)]
     return max(getmtime(p) for p in files) if files else 0
 
 
@@ -80,8 +87,10 @@ def build_web():
     cwd = os.getcwd()
     try:
         os.chdir(interface_dir)
-        env.Execute(f"{m} install")
-        env.Execute(f"{m} run build:embedded")
+        for cmd in (f"{m} install", f"{m} run build:embedded"):
+            if env.Execute(cmd) != 0:
+                fail(f"Web app build failed: '{cmd}' in {interface_dir}. "
+                     "Fix it or set EMBED_WEBAPP=0 in esp32/build_settings.ini.")
     finally:
         os.chdir(cwd)
 
@@ -106,6 +115,9 @@ def write_header():
         mime = mimetypes.guess_type(uri)[0] or "application/octet-stream"
         data, gz_flag, etag = encode_asset_data(p)
         assets.append((uri, mime, data, gz_flag, etag))
+
+    if not any(uri == "/index.html" for uri, _, _, _, _ in assets):
+        fail(f"Web app build produced no index.html in {build_dir}; refusing to embed an incomplete app.")
 
     offsets, cursor = [], 0
     for _, _, data, _, _ in assets:
@@ -147,10 +159,7 @@ def write_header():
         f.write("};\n\n")
 
         f.write(f"static const size_t WWW_ASSETS_COUNT = {len(assets)};\n")
-        default_uri = "/index.html" if any(u == "/index.html" for u,
-                                           _, _, _, _ in assets) else (assets[0][0] if assets else "/")
-        f.write(
-            f'static const WebOptions WWW_OPT = {{ "{default_uri}", 31536000u, 1 }};\n')
+        f.write('static const WebOptions WWW_OPT = { "/index.html", 31536000u, 1 };\n')
 
 
 if get_flag("EMBED_WEBAPP") == "1" and needs_rebuild():
