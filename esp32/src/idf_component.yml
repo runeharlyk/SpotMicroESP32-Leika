@@ -25,8 +25,10 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
       
+  # 3.x adds "-include eh_host_port_master_config.h", which pioarduino's builder splits apart by
+  # sorting the compile flags; the P4 code was written against the 2.x API.
   espressif/esp_hosted:
-    version: ">=0.0.6"
+    version: "^2.12.0"
     rules:
       - if: "target in [esp32p4]"
 
