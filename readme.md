@@ -6,7 +6,7 @@
     <br />  
     Spot Micro - Leika
   </h1>
-  <h4>An ESP32-based quadruped robot platform with web based controller and pybullet simulator</h4>
+  <h4>An ESP32-based quadruped robot platform with web based controller and MuJoCo simulator</h4>
 
   <p>
    <a href="docs/readme.md"><strong>Documentation</strong></a>
@@ -21,7 +21,7 @@
 
 Leika is an open-source quadruped robot built around the ESP32 microcontroller. The project combines embedded firmware, web-based control interfaces, and a physics-based simulation environment to create a complete robotics development platform. Using FreeRTOS for real-time task management, the robot handles inverse kinematics, gait generation, sensor fusion, and wireless communication simultaneously.
 
-The project includes a PyBullet simulation environment for testing control algorithms and training reinforcement learning policies before deploying to hardware.
+The project includes a MuJoCo simulation that ports the firmware walking gait to Python and trains a reinforcement learning policy to stabilize it.
 
 <img src="images/short_walk.gif" width="450"/>
 
@@ -45,11 +45,10 @@ The project includes a PyBullet simulation environment for testing control algor
 
 ### Simulation & Training
 
-- PyBullet physics simulation with Gymnasium interface
-- Reinforcement learning support (PPO, SAC)
-- Parallel training infrastructure
-- Model evaluation and comparison tools
-- Interactive kinematics playground
+- MuJoCo physics simulation with a Gymnasium interface
+- NumPy port of the firmware walk gait, so a zero policy action reproduces the robot's own gait
+- Residual PPO policy (Stable-Baselines3) that learns small per-foot corrections on top of that gait
+- Domain randomization and optional uneven terrain for sim-to-real robustness
 
 ## Architecture
 
@@ -139,24 +138,21 @@ The motion system is implemented as a finite state machine supporting multiple l
 
 ## Simulation Environment
 
-A PyBullet-based physics simulation is available for algorithm development and reinforcement learning training:
+The `simulation/` directory contains a MuJoCo environment for residual-gait reinforcement learning.
+The baseline is a NumPy port of the firmware walk gait in `esp32/include/motion_states/walk_state.h`, so a zero action reproduces the gait the robot runs.
+A PPO policy learns only small per-foot corrections on top of it, which keeps training focused on stabilization.
 
 ```bash
 cd simulation
 uv sync
-uv run play.py
+uv run python replay_gait.py --vx 0.05   # watch the baseline firmware gait
+uv run python train_mj.py --smoke        # short pipeline sanity run
+uv run pytest -q                         # regression tests
 ```
 
-Features:
-
-- Real-time interactive control with GUI
-- Multiple terrain types (flat, heightmap, maze)
-- Gymnasium-compatible interface for RL
-- PPO and SAC algorithm support
-- Parallel training capabilities
-- Training scripts with TensorBoard integration
-
-The simulation environment allows testing control algorithms and training policies before deploying to hardware. See [simulation/README.md](simulation/README.md) for detailed documentation.
+The simulated robot model is `spot_pico`, which the firmware does not yet have as a kinematics variant.
+Exporting a trained policy to the ESP32 is not implemented yet.
+See [simulation/README.md](simulation/README.md) for the architecture, training options, and follow-ups.
 
 ## Hardware Variants
 
@@ -235,12 +231,19 @@ Complete build instructions are available in the documentation:
 4. [Initial Configuration](docs/4_configuring.md)
 5. [Running the Robot](docs/5_running.md)
 
+### Flash from the Browser
+
+Prebuilt firmware for every supported board can be installed from the [web flasher](https://runeharlyk.github.io/SpotMicroESP32-Leika/flash/) in Chrome or Edge, with no toolchain required.
+Firmware is published there whenever a `v*` tag is released.
+
 ### Firmware Development
 
 **Prerequisites:**
 
 - PlatformIO IDE or CLI
-- Node.js 18+ (for web controller development)
+- Node.js 20.19+ or 22.12+ and pnpm (the web controller is built and embedded into the firmware)
+- `protoc` on `PATH` (generates the TypeScript protobuf bindings for the web controller)
+- The `submodules/nanopb` submodule (clone with `--recurse-submodules`, or run `git submodule update --init --recursive`)
 
 **Build and flash:**
 
@@ -260,12 +263,12 @@ Configuration is managed through `factory_settings.ini` and `features.ini` in th
 
 ### Simulation Only
 
-To experiment with the simulation environments without hardware:
+To experiment with the simulation without hardware, install [uv](https://docs.astral.sh/uv/) and run:
 
 ```bash
 cd simulation
 uv sync
-uv run play.py
+uv run python replay_gait.py --vx 0.05
 ```
 
 For development workflows and contribution guidelines, see [docs/6_developing.md](docs/6_developing.md) and [docs/7_contributing.md](docs/7_contributing.md).
@@ -278,10 +281,11 @@ For development workflows and contribution guidelines, see [docs/6_developing.md
 ├── esp32/                  # ESP32 firmware (PlatformIO)
 │   ├── include/           # Firmware headers
 │   ├── src/               # Firmware source
-│   └── lib/               # Third-party libraries (TensorFlow Lite Micro)
-├── simulation/             # PyBullet simulation environment
+│   └── scripts/           # PlatformIO build scripts (web app embedding, proto generation)
+├── platform_shared/        # Protobuf message definitions shared by firmware and app
+├── simulation/             # MuJoCo residual-gait training environment
 ├── hardware/              # 3D printable parts and CAD files
-├── scripts/               # Utility scripts
+├── submodules/            # nanopb
 ```
 
 ## Documentation

@@ -16,6 +16,6 @@ These are the steps it takes to get a fresh new robot up and barking.
 
 ## About Spot
 
-<!-- - [Kinematics](kinematics.md) (transformation matrix, mode etc)-->
+- [Kinematics](kinematics.md) (transformation matrix, mode etc)
 - [API](api.md)
 - [Robots capabilities](spot.md)
