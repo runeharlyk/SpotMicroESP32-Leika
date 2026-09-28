@@ -11,6 +11,7 @@ dependencies.lock
 sdkconfig
 sdkconfig.*
 !sdkconfig.defaults
+!sdkconfig.defaults.*
 esp32/src/platform_shared/*
 !esp32/src/platform_shared/.gitkeep
 app/src/lib/platform_shared/*
