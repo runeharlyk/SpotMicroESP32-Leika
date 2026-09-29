@@ -50,6 +50,14 @@ const controls = (mode: ModesEnum, ly = 0): SimControls => ({
     imu: [0, 0]
 })
 
+// Half the distance each robot covers in 3 s of full-stick trot today: a gait that slips or
+// shuffles in place falls short of it.
+const MIN_WALK: Record<RobotId, number> = { pico: 0.1, spot_micro: 0.28, yertle: 0.32 }
+// How far a robot spawned on the floor sinks onto its servos before they hold it.
+const MAX_SETTLE = 0.006
+// Standing, each servo holds its target to within this; servos too weak for the body sag past it.
+const MAX_STAND_ERROR = (4 * Math.PI) / 180
+
 const cases = ROBOTS.flatMap(robot => robot.controllers.map(controller => ({ robot, controller })))
 
 describe('robot simulation', () => {
@@ -70,18 +78,37 @@ describe('robot simulation', () => {
     describe.each(cases)(
         '$robot.label with the $controller.label controller',
         ({ robot, controller }) => {
-            const create = () =>
-                new RobotSim(
-                    mujoco,
-                    SCENES[robot.id](),
-                    controller.create({ gaitCoef }),
-                    robot.footRadius
-                )
+            let targets: Record<string, number> = {}
+            const create = () => {
+                const inner = controller.create({ gaitCoef })
+                const recording = {
+                    reset: () => inner.reset(),
+                    tick: (frame: SimControls) => (targets = inner.tick(frame))
+                }
+                return new RobotSim(mujoco, SCENES[robot.id](), recording)
+            }
+
+            // Spawned on the floor, the body only settles as far as its servos give under its
+            // weight; spawned into it, the contacts push it up; spawned above it, it drops.
+            it('spawns resting on the floor', () => {
+                sim = create()
+                const spawned = sim.basePosition()[2]
+                const heights: number[] = []
+                for (let t = 0; t < 0.4; t += 0.02) {
+                    sim.step(0.02)
+                    heights.push(sim.basePosition()[2])
+                }
+                expect(Math.max(...heights) - spawned).toBeLessThan(0.001)
+                expect(spawned - Math.min(...heights)).toBeLessThan(MAX_SETTLE)
+            })
 
             it('stands on its own', () => {
                 sim = create()
                 run(2, controls(ModesEnum.STAND))
                 expect(sim.hasFallen()).toBe(false)
+                const angles = sim.jointAngles()
+                for (const [joint, target] of Object.entries(targets))
+                    expect(Math.abs(angles[joint] - target), joint).toBeLessThan(MAX_STAND_ERROR)
             })
 
             it('walks forward', () => {
@@ -92,7 +119,7 @@ describe('robot simulation', () => {
                 const end = sim.basePosition()
                 const progress =
                     (end[0] - start[0]) * robot.forward[0] + (end[1] - start[1]) * robot.forward[1]
-                expect(progress).toBeGreaterThan(0.03)
+                expect(progress).toBeGreaterThan(MIN_WALK[robot.id])
                 expect(sim.hasFallen()).toBe(false)
             })
         }
@@ -100,12 +127,7 @@ describe('robot simulation', () => {
 
     it('never advances more than one frame budget at a time', () => {
         const pico = ROBOTS.find(robot => robot.id === 'pico')!
-        sim = new RobotSim(
-            mujoco,
-            SCENES.pico(),
-            pico.controllers[0].create({ gaitCoef }),
-            pico.footRadius
-        )
+        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create({ gaitCoef }))
         const before = sim.time()
         sim.step(120)
         expect(sim.time() - before).toBeLessThanOrEqual(0.05 + 1e-9)
@@ -113,12 +135,7 @@ describe('robot simulation', () => {
 
     it('starts over on reset', () => {
         const pico = ROBOTS.find(robot => robot.id === 'pico')!
-        sim = new RobotSim(
-            mujoco,
-            SCENES.pico(),
-            pico.controllers[0].create({ gaitCoef }),
-            pico.footRadius
-        )
+        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create({ gaitCoef }))
         run(2, controls(ModesEnum.WALK, 1))
         sim.reset()
         expect(sim.time()).toBe(0)

@@ -27,11 +27,13 @@ export interface SimScene {
 
 /** The most simulated time one call may advance, so a tab returning from the background resumes instead of replaying. */
 export const MAX_FRAME_SECONDS = 0.05
-const FOOT_SITES = ['foot_fl', 'foot_fr', 'foot_rl', 'foot_rr']
-const SITE_OBJECT = 6 // mjtObj.mjOBJ_SITE
 const ACTUATOR_OBJECT = 19 // mjtObj.mjOBJ_ACTUATOR
 const JOINT_OBJECT = 3 // mjtObj.mjOBJ_JOINT
 const FALLEN_TILT_COS = Math.cos((60 * Math.PI) / 180)
+// mjtGeom
+const SPHERE = 2
+const BOX = 6
+const MESH = 7
 
 /** One robot in MuJoCo, driven by a controller at 100 Hz with 5 physics steps per tick. */
 export class RobotSim {
@@ -39,7 +41,6 @@ export class RobotSim {
     private readonly data: MjData
     private readonly actuators: Map<string, number>
     private readonly jointQpos: Map<string, number>
-    private readonly footSites: number[]
     private readonly substeps: number
     private spawnHeight = 0
     private controls: SimControls | undefined
@@ -48,8 +49,7 @@ export class RobotSim {
     constructor(
         private readonly mujoco: MainModule,
         scene: SimScene,
-        private readonly controller: SimController,
-        private readonly footRadius: number
+        private readonly controller: SimController
     ) {
         const scenePath = writeScene(mujoco, scene)
         this.model = mujoco.MjModel.from_xml_path(scenePath)
@@ -65,19 +65,17 @@ export class RobotSim {
                 this.model.jnt_qposadr[id]
             ])
         )
-        this.footSites = FOOT_SITES.map(site => mujoco.mj_name2id(this.model, SITE_OBJECT, site))
         this.reset()
     }
 
-    /** Spawns the robot in its controller's starting pose, with the lowest foot resting on the floor. */
+    /** Spawns the robot in its controller's starting pose, its lowest collision point on the floor. */
     reset() {
         this.mujoco.mj_resetData(this.model, this.data)
         const pose = this.controller.reset()
         this.apply(pose, true)
         this.data.qpos.set([0, 0, 0, 1, 0, 0, 0], 0)
         this.mujoco.mj_forward(this.model, this.data)
-        const lowest = Math.min(...this.footSites.map(site => this.data.site_xpos[site * 3 + 2]))
-        this.spawnHeight = this.footRadius - lowest
+        this.spawnHeight = -this.lowestPoint()
         this.data.qpos[2] = this.spawnHeight
         this.mujoco.mj_forward(this.model, this.data)
         this.pending = 0
@@ -128,6 +126,40 @@ export class RobotSim {
     dispose() {
         this.data.delete()
         this.model.delete()
+    }
+
+    /** The height of the lowest point of the robot's collision geometry. */
+    private lowestPoint(): number {
+        const { model, data } = this
+        let lowest = Infinity
+        for (let geom = 0; geom < model.ngeom; geom++) {
+            const collides = model.geom_contype[geom] || model.geom_conaffinity[geom]
+            if (model.geom_bodyid[geom] === 0 || !collides) continue
+            const z = data.geom_xpos[geom * 3 + 2]
+            // Row z of the geom's rotation, which maps a point in the geom's frame to world height.
+            const [rx, ry, rz] = data.geom_xmat.subarray(geom * 9 + 6, geom * 9 + 9)
+            const size = model.geom_size.subarray(geom * 3, geom * 3 + 3)
+            const type = model.geom_type[geom]
+            if (type === SPHERE) lowest = Math.min(lowest, z - size[0])
+            else if (type === BOX)
+                lowest = Math.min(
+                    lowest,
+                    z - Math.abs(rx) * size[0] - Math.abs(ry) * size[1] - Math.abs(rz) * size[2]
+                )
+            else if (type === MESH) {
+                const mesh = model.geom_dataid[geom]
+                const start = model.mesh_vertadr[mesh] * 3
+                const end = start + model.mesh_vertnum[mesh] * 3
+                const vertex = model.mesh_vert
+                for (let v = start; v < end; v += 3) {
+                    lowest = Math.min(
+                        lowest,
+                        z + rx * vertex[v] + ry * vertex[v + 1] + rz * vertex[v + 2]
+                    )
+                }
+            } else throw new Error(`Spawning on the floor does not handle geom type ${type}`)
+        }
+        return lowest
     }
 
     private apply(targets: Record<string, number>, setPosition: boolean) {
