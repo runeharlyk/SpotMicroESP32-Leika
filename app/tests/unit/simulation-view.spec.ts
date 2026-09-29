@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { flushSync, mount, unmount } from 'svelte'
+import { BufferGeometry, Mesh, MeshBasicMaterial } from 'three'
 
 // The view's heavy parts are stubbed: WebGL (the scene builder), the 10 MB engine download and
 // the model loader. What remains is the view's own lifecycle, which is what this test is about.
@@ -43,12 +44,14 @@ vi.mock('$lib/simulation/load', () => ({
         })
 }))
 
+const models: Mesh<BufferGeometry, MeshBasicMaterial>[] = []
 vi.mock('$lib/utilities/model-utilities', () => ({
     cacheModelFiles: async () => {},
-    loadModel: async () => ({
-        isErr: () => false,
-        inner: [{ rotation: { set: () => {} }, scale: { setScalar: () => {} } }]
-    })
+    loadModel: async () => {
+        const model = new Mesh(new BufferGeometry(), new MeshBasicMaterial())
+        models.push(model)
+        return { isErr: () => false, inner: [model] }
+    }
 }))
 
 vi.mock('$lib/simulation/robot-sim', () => ({
@@ -80,6 +83,7 @@ describe('SimulationView', () => {
     beforeEach(() => {
         created.length = 0
         loads.length = 0
+        models.length = 0
         localStorage.clear()
         document.body.innerHTML = ''
         vi.stubGlobal(
@@ -115,6 +119,24 @@ describe('SimulationView', () => {
 
         const live = created.filter(sim => !sim.disposed)
         expect(live.map(sim => sim.sceneId)).toEqual(['yertle'])
+        unmount(component)
+    })
+
+    it("frees the previous robot's model on the GPU when another robot is chosen", async () => {
+        const component = await mountView()
+        loads.forEach(load => load.finish())
+        await settle()
+        const [first] = models
+        const freed = { geometry: false, material: false }
+        first.geometry.addEventListener('dispose', () => (freed.geometry = true))
+        first.material.addEventListener('dispose', () => (freed.material = true))
+
+        const robotChooser = document.querySelector<HTMLSelectElement>('select[name="robot"]')!
+        robotChooser.value = 'yertle'
+        robotChooser.dispatchEvent(new Event('change', { bubbles: true }))
+        flushSync()
+
+        expect(freed).toEqual({ geometry: true, material: true })
         unmount(component)
     })
 

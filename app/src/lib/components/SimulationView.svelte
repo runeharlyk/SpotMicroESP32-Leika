@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import { get } from 'svelte/store'
-    import { Group, Vector3 } from 'three'
+    import { Group, Mesh, Vector3 } from 'three'
     import type { URDFRobot } from 'urdf-loader'
     import SceneBuilder from '$lib/sceneBuilder'
     import { input, mode, reportedVariant, variants, walkGait } from '$lib/stores'
@@ -12,6 +12,8 @@
     import { resolveChoice, ROBOTS, type SimChoice } from '$lib/simulation/robots'
     import LoadError from './LoadError.svelte'
 
+    // The shipped firmware enables no IMU (esp32/features.ini), so Peripherals reports zero tilt.
+    const IMU_ANGLES: [number, number] = [0, 0]
     // The 3D view draws models ten times their size in metres; the simulation matches it.
     const MODEL_SCALE = 10
 
@@ -49,8 +51,7 @@
         const variant = variants[definition.variant]
         sim?.dispose()
         sim = undefined
-        robot?.parent?.removeFromParent()
-        robot = undefined
+        removeModel()
         fallen = false
         status = 'loading'
         try {
@@ -59,12 +60,7 @@
                 loadRobotModel(variant)
             ])
             if (overtaken(load)) return
-            sim = new RobotSim(
-                mujoco,
-                scene,
-                controller.create({ gaitCoef }),
-                definition.footRadius
-            )
+            sim = new RobotSim(mujoco, scene, controller.create({ gaitCoef }))
             placeRobot(model, variant.modelYaw)
             lastFrame = performance.now()
             engineReady = true
@@ -98,6 +94,17 @@
         followed.set(0, 0, 0)
     }
 
+    // Detaching a model leaves its buffers on the GPU; each switch loads a fresh one.
+    function removeModel() {
+        robot?.parent?.removeFromParent()
+        robot?.traverse(part => {
+            if (!(part instanceof Mesh)) return
+            part.geometry.dispose()
+            for (const material of [part.material].flat()) material.dispose()
+        })
+        robot = undefined
+    }
+
     function frame() {
         if (!sim || !robot) return
         const now = performance.now()
@@ -105,7 +112,7 @@
             input: get(input),
             mode: get(mode).mode,
             gait: get(walkGait).gait,
-            imu: [0, 0]
+            imu: IMU_ANGLES
         })
         sim.step((now - lastFrame) / 1000)
         lastFrame = now
@@ -165,6 +172,7 @@
         sceneManager.renderer?.dispose()
         resize?.disconnect()
         sim?.dispose()
+        removeModel()
     })
 </script>
 
