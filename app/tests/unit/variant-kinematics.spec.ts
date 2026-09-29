@@ -17,10 +17,9 @@ const firmwareKinematics = () => {
             .map(([, variant, body]) => [
                 variant,
                 Object.fromEntries(
-                    [...body.matchAll(/constexpr float (\w+) = ([\d.]+)f;/g)].map(([, name, value]) => [
-                        name,
-                        Number(value)
-                    ])
+                    [...body.matchAll(/constexpr float (\w+) = ([\d.]+)f;/g)].map(
+                        ([, name, value]) => [name, Number(value)]
+                    )
                 )
             ])
     )
