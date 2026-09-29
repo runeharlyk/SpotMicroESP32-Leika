@@ -26,7 +26,7 @@ void printFeatureConfiguration() {
     ESP_LOGI("Features", "==========================================================");
 }
 
-void features_request(const char* robotName, socket_message_FeaturesDataResponse& fd_res) {
+void features_request(const char* robotName, const char* hostname, socket_message_FeaturesDataResponse& fd_res) {
     fd_res.camera = USE_CAMERA ? true : false;
     fd_res.imu = (USE_MPU6050 || USE_BNO055) ? true : false;
     fd_res.mag = (USE_HMC5883 || USE_BNO055) ? true : false;
@@ -42,6 +42,7 @@ void features_request(const char* robotName, socket_message_FeaturesDataResponse
     fd_res.variant = const_cast<char*>(KINEMATICS_VARIANT_STR);
     fd_res.device_id = const_cast<char*>(deviceId().c_str());
     fd_res.robot_name = const_cast<char*>(robotName);
+    fd_res.hostname = const_cast<char*>(hostname);
 }
 
 

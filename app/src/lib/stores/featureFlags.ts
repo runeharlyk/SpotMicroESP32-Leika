@@ -18,7 +18,8 @@ export function applyFeatures(features: FeaturesDataResponse) {
     identify(get(apiLocation) || window.location.host, {
         deviceId: features.deviceId,
         name: features.robotName,
-        variant: features.variant
+        variant: features.variant,
+        hostname: features.hostname
     })
 }
 

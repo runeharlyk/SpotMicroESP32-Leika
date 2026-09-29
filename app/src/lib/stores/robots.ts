@@ -15,7 +15,17 @@ export interface RobotIdentity {
     deviceId: string
     name: string
     variant: string
+    hostname: string
 }
+
+/**
+ * The robot's mDNS name, when it is provably this board's: the factory default embeds the last
+ * six hex digits of the device id, whereas a name like "spot-micro" may be shared by several robots.
+ */
+const ownMdnsName = ({ deviceId, hostname }: RobotIdentity) =>
+    hostname && hostname.toLowerCase().includes(deviceId.slice(-6).toLowerCase()) ?
+        `${hostname.toLowerCase()}.local`
+    :   null
 
 type AddressOnlyRobot = { address: string; name: string; lastSeenAt: number | null }
 
@@ -87,13 +97,19 @@ export const identify = (address: string, identity: RobotIdentity) => {
         return
     }
 
+    // Addresses proven to reach this robot leave any entry that held them before.
+    const proven = [address, ...[ownMdnsName(identity)].filter(name => name !== null)]
+
     robots.update(list => {
         const known = list.find(robot => robot.id === identity.deviceId)
         const identified: Robot = {
             id: identity.deviceId,
             name: identity.name || known?.name || address,
             variant: identity.variant || known?.variant || null,
-            addresses: [...(known?.addresses.filter(a => a !== address) ?? []), address],
+            addresses: [
+                ...(known?.addresses.filter(held => !proven.includes(held)) ?? []),
+                ...proven
+            ],
             lastAddress: address,
             lastSeenAt: Date.now()
         }
@@ -103,13 +119,13 @@ export const identify = (address: string, identity: RobotIdentity) => {
         for (const robot of list) {
             const replacesThis =
                 robot.id === identity.deviceId ||
-                (robot.id === null && robot.addresses.includes(address))
+                (robot.id === null && robot.addresses.some(held => proven.includes(held)))
             if (replacesThis) {
                 if (!placed) next.push(identified)
                 placed = true
                 continue
             }
-            const stripped = withoutAddress(robot, address)
+            const stripped = proven.reduce(withoutAddress, robot)
             if (stripped.id !== null || stripped.addresses.length) next.push(stripped)
         }
         if (!placed) next.push(identified)

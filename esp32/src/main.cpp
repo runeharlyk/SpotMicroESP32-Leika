@@ -167,14 +167,16 @@ void setupEventSocket() {
         {socket_message_CorrelationRequest_features_data_request_tag,
          [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name(), res.response.features_data_response);
+             feature_service::features_request(robotService.name(), wifiService.getHostname(),
+                                               res.response.features_data_response);
          }},
 
         {socket_message_CorrelationRequest_robot_name_update_tag,
          [](const auto &req, auto &res, int clientId) {
              if (!robotService.rename(req.request.robot_name_update.name)) res.status_code = 400;
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name(), res.response.features_data_response);
+             feature_service::features_request(robotService.name(), wifiService.getHostname(),
+                                               res.response.features_data_response);
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
