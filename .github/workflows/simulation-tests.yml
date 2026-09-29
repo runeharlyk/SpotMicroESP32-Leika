@@ -5,11 +5,17 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "app/static/spot_micro.urdf.xacro"
+      - "app/static/yertle.URDF"
+      - "app/static/URDF/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
     paths:
       - "simulation/**"
+      - "app/static/spot_micro.urdf.xacro"
+      - "app/static/yertle.URDF"
+      - "app/static/URDF/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:

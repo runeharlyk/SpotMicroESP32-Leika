@@ -29,7 +29,7 @@ const Segment SCRIPT[] = {
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 200},
     {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
     {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
-    {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 50},
+    {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 150},
     {STAND, CRAWL, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 50},
 };
@@ -120,7 +120,9 @@ int main(int argc, char **argv) {
                 printFloats(b.feet[leg], 3);
                 printf("]");
             }
-            printf("]},\"angles\":[");
+            printf("]},\"ik\":[");
+            printFloats(motion.new_angles, 12);
+            printf("],\"angles\":[");
             printFloats(motion.angles, 12);
             printf("]}");
             first = false;

@@ -5,8 +5,8 @@ import { MotionState, RestState, StandState, WalkState, type CommandMsg } from '
 
 // MotionService (esp32/src/motion.cpp): servo direction per joint, and the change below which an
 // angle is not re-sent.
-const DIR = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
-const ANGLE_EPSILON = 0.1
+export const DIR = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
+export const ANGLE_EPSILON = 0.1
 
 /**
  * Port of the firmware's MotionService for one kinematics variant: mode, gait and controller input

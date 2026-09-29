@@ -1,0 +1,71 @@
+name: Firmware Port Tests
+
+# The web app's TypeScript port of the firmware motion code is pinned to traces of the firmware's
+# own headers. This regenerates them from the current firmware and tests the port against them, so
+# a change to the motion code fails here instead of leaving the committed traces stale.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "esp32/src/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
+      - "platform_shared/**"
+      - "app/src/lib/simulation/firmware/**"
+      - "app/tests/unit/firmware-motion.spec.ts"
+      - ".github/workflows/firmware-port-tests.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "esp32/src/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
+      - "platform_shared/**"
+      - "app/src/lib/simulation/firmware/**"
+      - "app/tests/unit/firmware-motion.spec.ts"
+      - ".github/workflows/firmware-port-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Generate the nanopb headers the motion code includes
+        run: |
+          pip install protobuf grpcio-tools
+          python esp32/scripts/compile_protos.py
+
+      - name: Trace the firmware motion code
+        run: python esp32/test/host/export_firmware_traces.py
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: "./app/pnpm-lock.yaml"
+
+      - name: Test the port against the traces
+        working-directory: ./app
+        run: |
+          pnpm install
+          pnpm proto
+          pnpm exec vitest run tests/unit/firmware-motion.spec.ts

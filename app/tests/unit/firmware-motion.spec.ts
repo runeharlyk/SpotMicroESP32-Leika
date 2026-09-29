@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import esp32 from '../fixtures/firmware-trace-SPOTMICRO_ESP32.json'
 import mini from '../fixtures/firmware-trace-SPOTMICRO_ESP32_MINI.json'
 import yertle from '../fixtures/firmware-trace-SPOTMICRO_YERTLE.json'
-import { FirmwareMotion } from '../../src/lib/simulation/firmware/motion'
+import { ANGLE_EPSILON, DIR, FirmwareMotion } from '../../src/lib/simulation/firmware/motion'
+import { inverseKinematics } from '../../src/lib/simulation/firmware/kinematics'
 import { kinConfig, type Variant } from '../../src/lib/simulation/firmware/kin-config'
 import { ControllerData } from '../../src/lib/platform_shared/message'
 
@@ -12,6 +13,9 @@ import { ControllerData } from '../../src/lib/platform_shared/message'
 // emulated at float precision (their rounding changes decisions); the IK is not, and its acos
 // amplifies float rounding near a straight leg to about 0.006 degrees on the MINI, well below
 // both servo resolution and the firmware's own 0.1 degree re-send threshold.
+// That noise can put a change that lands on the threshold itself on the other side of it; the
+// IK is then still pinned tick by tick, and the angle sent may lag by up to the threshold until
+// the port's and the firmware's sent angles meet again.
 const ANGLE_TOLERANCE = 1e-2
 const POSITION_TOLERANCE = 1e-6
 
@@ -42,8 +46,11 @@ describe.each([esp32, mini, yertle] as Trace[])('firmware motion port ($variant)
     })
 
     it('reproduces every tick of the firmware: body state and servo angles', () => {
+        const cfg = kinConfig(trace.variant as Variant)
         const motion = new FirmwareMotion(trace.variant as Variant)
         let previous: Tick | undefined
+        let sent = new Array(12).fill(0)
+        const lagging = new Array(12).fill(false)
         for (const tick of trace.ticks) {
             // Messages arrive in the order the trace program replays them: mode, gait, input.
             if (!previous || tick.mode !== previous.mode) motion.setMode(tick.mode)
@@ -69,7 +76,19 @@ describe.each([esp32, mini, yertle] as Trace[])('firmware motion port ($variant)
             expect(worst(body.feet.flat(), feet.flat()), `${where} feet`).toBeLessThan(
                 POSITION_TOLERANCE
             )
-            expect(worst(angles, tick.angles), `${where} angles`).toBeLessThan(ANGLE_TOLERANCE)
+            expect(worst(inverseKinematics(cfg, body), tick.ik), `${where} ik`).toBeLessThan(
+                ANGLE_TOLERANCE
+            )
+            tick.ik.forEach((angle, i) => {
+                const change = Math.abs(angle * DIR[i] - sent[i])
+                if (Math.abs(change - ANGLE_EPSILON) < ANGLE_TOLERANCE) lagging[i] = true
+                const error = Math.abs(angles[i] - tick.angles[i])
+                if (error < ANGLE_TOLERANCE) lagging[i] = false
+                expect(error, `${where} angle ${i}`).toBeLessThan(
+                    lagging[i] ? 2 * ANGLE_EPSILON + ANGLE_TOLERANCE : ANGLE_TOLERANCE
+                )
+            })
+            sent = tick.angles
         }
     })
 })
