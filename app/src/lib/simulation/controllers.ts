@@ -1,7 +1,7 @@
 import type { ControllerData } from '$lib/platform_shared/message'
 import type { Variant } from '$lib/kinematics-variants'
-import { FirmwareMotion } from './firmware/motion'
-import { DEG2RAD_F } from './firmware/kinematics'
+import { DIR, FirmwareMotion } from './firmware/motion'
+import { DEG2RAD_F, inverseKinematics } from './firmware/kinematics'
 import { JOINT_NAMES, PicoController, type GaitCoef } from './pico-gait'
 import { simulationCommand } from './controls'
 import type { SimController, SimControls } from './robot-sim'
@@ -73,7 +73,9 @@ export class FirmwareController implements SimController {
     reset() {
         this.motion = new FirmwareMotion(this.variant)
         this.previous = undefined
-        return this.targets(new Array(12).fill(0))
+        // The pose the firmware's body starts in, before any mode moves it.
+        const { cfg, body } = this.motion
+        return this.targets(inverseKinematics(cfg, body).map((angle, i) => angle * DIR[i]))
     }
 
     tick({ input, mode, gait, imu }: SimControls) {

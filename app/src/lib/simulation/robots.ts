@@ -19,8 +19,6 @@ export interface RobotDefinition {
     /** Static files the app publishes for the simulation (scripts/build_sim_models.js). */
     sceneFile: string
     meshZip: string | null
-    /** Radius of its feet (m), so it can be spawned resting on the floor. */
-    footRadius: number
     /** Its forward direction on the floor plane of its scene. */
     forward: [number, number]
     controllers: ControllerDefinition[]
@@ -46,6 +44,15 @@ const YERTLE_JOINTS: JointMap = {
     kneeRelativeToBody: true
 }
 
+// Fitted by simulation/fit_pico_joint_map.py: the MJCF feet follow the firmware's MINI foot targets
+// to about 1.3 mm, with the two body origins up to 13 mm apart.
+const degrees = (values: number[]) => values.map(value => (value * Math.PI) / 180)
+const PICO_JOINTS: JointMap = {
+    joints: legs(['fl', 'fr', 'rl', 'rr'], ['_hip_joint', '_femur_joint', '_tibia_joint']),
+    sign: [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1],
+    offset: degrees([7.3, 54.6, 101.2, 6.0, 52.9, -99.4, 5.8, 54.4, 100.4, 6.7, 50.6, -98.1])
+}
+
 export const ROBOTS: RobotDefinition[] = [
     {
         id: 'pico',
@@ -53,9 +60,13 @@ export const ROBOTS: RobotDefinition[] = [
         variant: 'SPOTMICRO_ESP32_MINI',
         sceneFile: 'spot_pico_scene.xml',
         meshZip: 'spot_pico.zip',
-        footRadius: 0.009,
         forward: [0, -1],
         controllers: [
+            {
+                id: 'firmware',
+                label: 'Firmware (MINI)',
+                create: () => new FirmwareController('SPOTMICRO_ESP32_MINI', PICO_JOINTS)
+            },
             {
                 id: 'training',
                 label: 'Training (Python)',
@@ -69,7 +80,6 @@ export const ROBOTS: RobotDefinition[] = [
         variant: 'SPOTMICRO_ESP32',
         sceneFile: 'sim_spot_micro.xml',
         meshZip: null,
-        footRadius: 0.02,
         forward: [1, 0],
         controllers: [
             {
@@ -85,7 +95,6 @@ export const ROBOTS: RobotDefinition[] = [
         variant: 'SPOTMICRO_YERTLE',
         sceneFile: 'sim_yertle.xml',
         meshZip: 'sim_yertle_meshes.zip',
-        footRadius: 0.01,
         forward: [1, 0],
         controllers: [
             {
