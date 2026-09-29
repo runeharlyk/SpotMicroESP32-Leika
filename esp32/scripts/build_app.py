@@ -42,7 +42,9 @@ def get_flag(flag, default=None):
 
 # The robot-served app is built without the 3D view (PUBLIC_EMBEDDED_BUILD), so no model is ever
 # read from flash; only the hosted web app loads them.
-MODEL_FILES = ["spot_micro.urdf.xacro", "stl.zip", "yertle.URDF", "URDF.zip", "URDF/"]
+MODEL_FILES = [
+    "spot_micro.urdf.xacro", "stl.zip", "yertle.URDF", "URDF.zip", "URDF/", "spot_pico.urdf", "spot_pico.zip",
+]
 
 
 def fail(message):

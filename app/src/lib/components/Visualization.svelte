@@ -18,6 +18,7 @@
         mpu,
         jointNames,
         currentKinematic,
+        currentVariant,
         walkGait,
         kinematicData
     } from '$lib/stores'
@@ -381,7 +382,7 @@
         sceneManager.transformControl.showY = settings['Robot transform controls']
         sceneManager.transformControl.showZ = settings['Robot transform controls']
 
-        for (let i = 0; i < $jointNames.length; i++) {
+        for (let i = 0; $currentVariant.drivable && i < $jointNames.length; i++) {
             currentModelAngles.angles[i] = smooth(
                 (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
                 modelTargetAngles.angles[i],

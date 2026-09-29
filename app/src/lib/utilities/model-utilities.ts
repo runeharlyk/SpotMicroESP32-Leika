@@ -10,7 +10,8 @@ import { resolve } from '$app/paths'
 
 export const populateModelCache = async () => {
     await cacheModelFiles()
-    const modelRes = await loadModel(get(currentVariant).model)
+    const { model: modelUrl, modelYaw } = get(currentVariant)
+    const modelRes = await loadModel(modelUrl, modelYaw)
     if (modelRes.isOk()) {
         const [urdf, JOINT_NAME] = modelRes.inner
         jointNames.set(JOINT_NAME)
@@ -33,7 +34,10 @@ export const cacheModelFiles = async () => {
     }
 }
 
-export const loadModel = async (url: string): Promise<Result<[URDFRobot, string[]], string>> => {
+export const loadModel = async (
+    url: string,
+    yaw: number
+): Promise<Result<[URDFRobot, string[]], string>> => {
     const urdfLoader = new URDFLoader()
 
     let xml =
@@ -46,7 +50,7 @@ export const loadModel = async (url: string): Promise<Result<[URDFRobot, string[
     return new Promise(resolve => {
         try {
             const model = urdfLoader.parse(xml)
-            setupRobot(model)
+            setupRobot(model, yaw)
             const joints = Object.entries(model.joints)
                 .filter(joint => joint[1].jointType !== 'fixed')
                 .map(joint => joint[0])
@@ -63,9 +67,9 @@ const loadXacro = async (url: string): Promise<XMLDocument> =>
         new XacroLoader().load(url, resolve, reject)
     })
 
-function setupRobot(robot: URDFRobot) {
+function setupRobot(robot: URDFRobot, yaw: number) {
     robot.rotation.x = -Math.PI / 2
-    robot.rotation.z = Math.PI / 2
+    robot.rotation.z = Math.PI / 2 + yaw
     robot.scale.setScalar(10)
     robot.traverse(c => (c.castShadow = true))
     robot.updateMatrixWorld(true)

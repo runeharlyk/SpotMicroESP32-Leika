@@ -45,10 +45,16 @@ export function useFeatureFlags() {
 
 const base = resolve('/')
 
+/**
+ * `modelYaw` turns a model whose forward axis differs from Spot Micro's. `drivable` is false where
+ * the robot's joint angles cannot yet be mapped onto the model, which then holds its CAD stance.
+ */
 export const variants = {
     SPOTMICRO_ESP32: {
         model: `${base}spot_micro.urdf.xacro`,
         stl: `${base}stl.zip`,
+        modelYaw: 0,
+        drivable: true,
         kinematics: {
             coxa: 0.0605,
             coxa_offset: 0.01,
@@ -58,10 +64,13 @@ export const variants = {
             W: 0.078
         }
     },
-    // No Mini model exists yet, so the Pico is drawn with the full-size Spot Micro model.
+    // The Pico's model is generated from the simulation (scripts/build_pico_model.js). Its URDF and
+    // these firmware dimensions disagree by up to 16 mm, so it is not driven until one is confirmed.
     SPOTMICRO_ESP32_MINI: {
-        model: `${base}spot_micro.urdf.xacro`,
-        stl: `${base}stl.zip`,
+        model: `${base}spot_pico.urdf`,
+        stl: `${base}spot_pico.zip`,
+        modelYaw: Math.PI / 2,
+        drivable: false,
         kinematics: {
             coxa: 0.035,
             coxa_offset: 0.0,
@@ -74,6 +83,8 @@ export const variants = {
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
+        modelYaw: 0,
+        drivable: true,
         kinematics: {
             coxa: 0.035,
             coxa_offset: 0.0,

@@ -3,8 +3,8 @@
     "version": "0.0.1",
     "private": true,
     "scripts": {
-        "dev": "vite dev --host",
-        "build": "pnpm proto && vite build",
+        "dev": "pnpm model && vite dev --host",
+        "build": "pnpm proto && pnpm model && vite build",
         "build:embedded": "pnpm proto && cross-env PUBLIC_EMBEDDED_BUILD=true vite build",
         "preview": "vite preview",
         "test": "pnpm run test:integration && pnpm run test:unit",
@@ -14,7 +14,8 @@
         "format": "prettier --write .",
         "test:integration": "playwright test",
         "test:unit": "vitest",
-        "proto": "node scripts/compile_protos.js"
+        "proto": "node scripts/compile_protos.js",
+        "model": "node scripts/build_pico_model.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",

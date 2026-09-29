@@ -8,3 +8,6 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 /test-results
+# Generated from simulation/src/resources/spot_pico by `pnpm model`
+/static/spot_pico.urdf
+/static/spot_pico.zip
