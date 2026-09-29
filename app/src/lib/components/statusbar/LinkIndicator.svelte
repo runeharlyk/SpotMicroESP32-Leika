@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { apiLocation, pairing, socket, startPairing } from '$lib/stores'
+    import { apiLocation, pairing, robotSocketUrl, socket, startPairing } from '$lib/stores'
     import { telemetry } from '$lib/stores/telemetry'
     import { isBluetoothSupported } from '$lib/transport/ble-adapter'
     import { Bluetooth, Connection } from '../icons'
@@ -23,10 +23,7 @@
 
     const detail = $derived(!$socket || !responsive ? '' : `${$telemetry.latency} ms`)
 
-    const connectWifi = () => {
-        const host = $apiLocation ? $apiLocation : window.location.host
-        socket.init(`ws://${host}/api/ws`)
-    }
+    const connectWifi = () => socket.init(robotSocketUrl())
 </script>
 
 <div class="dropdown dropdown-end">

@@ -30,6 +30,7 @@
         Stopwatch
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
     import ActionButton from './ActionButton.svelte'
     import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/message'
 
@@ -46,9 +47,14 @@
         return systemInformation
     }
 
-    const postFactoryReset = async () => await api.post('/api/system/reset')
+    async function postSystemCommand(endpoint: string, action: string) {
+        const result = await api.post(endpoint)
+        if (result.isErr()) notifications.error(`${action} failed: ${result.inner.message}`, 5000)
+    }
 
-    const postSleep = async () => await api.post('/api/system/sleep')
+    const postFactoryReset = () => postSystemCommand('/api/system/reset', 'Factory reset')
+
+    const postSleep = () => postSystemCommand('/api/system/sleep', 'Sleep')
 
     let unsub: (() => void) | undefined = undefined
     onMount(() => (unsub = socket.on(AnalyticsData, handleSystemData)))
@@ -65,7 +71,7 @@
         }
     }
 
-    const postRestart = async () => await api.post('/api/system/restart')
+    const postRestart = () => postSystemCommand('/api/system/restart', 'Restart')
 
     function confirmRestart() {
         modals.open(ConfirmDialog, {

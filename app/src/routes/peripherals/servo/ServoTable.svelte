@@ -1,9 +1,10 @@
 <script lang="ts">
     import { api } from '$lib/api'
-    import { onMount } from 'svelte'
     import { RotateCw, RotateCcw } from '$lib/components/icons'
     import { Request, Response, type ServoSettings } from '$lib/platform_shared/api'
     import { notifications } from '$lib/components/toasts/notifications'
+    import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
 
     interface Props {
         servoSettings?: ServoSettings | null
@@ -20,7 +21,18 @@
     const syncConfig = async () => {
         if (!servoSettings) return
         notifications.info('Uploading servo config...', 3000)
-        await api.post_proto<Response>('/api/servo/config', Request.create({ servoSettings }))
+        const result = await api.post_proto<Response>(
+            '/api/servo/config',
+            Request.create({ servoSettings })
+        )
+        if (result.isErr()) {
+            notifications.error(`Servo config upload failed: ${result.inner.message}`, 5000)
+            return
+        }
+        if (result.inner.statusCode !== 200) {
+            notifications.error(result.inner.errorMessage || 'Servo config upload failed', 5000)
+            return
+        }
         notifications.success('Servo config uploaded successfully', 3000)
     }
 
@@ -30,19 +42,17 @@
         await syncConfig()
     }
 
-    onMount(async () => {
+    const getServoConfig = async () => {
         const result = await api.get<Response>('/api/servo/config')
-        if (result.isOk() && result.inner.servoSettings) {
-            servoSettings = result.inner.servoSettings
-        } else {
-            console.log('Failed to fetch servo config!')
-            console.log(result)
-        }
-    })
+        if (result.isErr()) throw result.inner
+        if (!result.inner.servoSettings) throw new Error('The robot sent no servo config')
+        servoSettings = result.inner.servoSettings
+    }
+
+    let loading = $state(getServoConfig())
 
     const setCenterPWM = async () => {
         if (!servoSettings) return
-        console.log('setCenterPWM', servoId, pwm)
         servoSettings.servos[servoId].centerPwm = pwm
         await syncConfig()
     }
@@ -51,6 +61,12 @@
 <div>
     <button class="btn btn-sm btn-primary" onclick={() => setCenterPWM()}>Set center pwm</button>
 </div>
+
+{#await loading}
+    <Spinner />
+{:catch error}
+    <LoadError {error} retry={() => (loading = getServoConfig())} />
+{/await}
 
 {#if servoSettings}
     <div class="overflow-x-auto">

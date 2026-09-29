@@ -1,7 +1,9 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
     import { api } from '$lib/api'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
+    import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
     import { AP, Home, MAC, Devices } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
@@ -20,10 +22,7 @@
 
     const getMDNSStatus = async () => {
         const result = await api.get<ProtoResponse>('/api/mdns/status')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
+        if (result.isErr()) throw result.inner
         if (result.inner.mdnsStatus) {
             mdnsStatus = result.inner.mdnsStatus
         }
@@ -39,7 +38,7 @@
         })
         const result = await api.post_proto<ProtoResponse>('/api/mdns/query', request)
         if (result.isErr()) {
-            console.error('Error:', result.inner)
+            notifications.error(`mDNS scan failed: ${result.inner.message}`, 5000)
             isLoading = false
             return
         }
@@ -49,25 +48,23 @@
         isLoading = false
     }
 
-    onMount(async () => {
+    const load = async () => {
         await getMDNSStatus()
         await queryMDNSServices()
-    })
-
-    const triggerScan = async () => {
-        await queryMDNSServices()
     }
+
+    let loading = $state(load())
 </script>
 
 <SettingsCard collapsible={false}>
     {#snippet icon()}
-        <AP class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+        <AP class="shrink-0 mr-2 h-6 w-6 self-end" />
     {/snippet}
     {#snippet title()}
         <span>MDNS</span>
     {/snippet}
     {#snippet right()}
-        <button class="btn btn-primary" onclick={triggerScan} disabled={isLoading}>
+        <button class="btn btn-primary" onclick={queryMDNSServices} disabled={isLoading}>
             {#if isLoading}
                 <span class="loading loading-ring loading-xs"></span>
             {:else}
@@ -76,6 +73,11 @@
         </button>
     {/snippet}
     <div class="w-full overflow-x-auto">
+        {#await loading}
+            <Spinner />
+        {:catch error}
+            <LoadError {error} retry={() => (loading = load())} />
+        {/await}
         {#if mdnsStatus}
             <div
                 class="flex w-full flex-col space-y-1"

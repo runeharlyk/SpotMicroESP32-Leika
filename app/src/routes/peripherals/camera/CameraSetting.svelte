@@ -1,6 +1,8 @@
 <script lang="ts">
     import { api } from '$lib/api'
     import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
     import {
         CameraSettings,
         Request,
@@ -11,14 +13,13 @@
 
     const getCameraSettings = async () => {
         const result = await api.get<ProtoResponse>('/api/camera/settings')
-        if (result.isErr()) {
-            console.error('An error occurred', result.inner)
-            return
-        }
+        if (result.isErr()) throw result.inner
         if (result.inner.cameraSettings) {
             settings = result.inner.cameraSettings
         }
     }
+
+    let loading = $state(getCameraSettings())
 
     const updateCameraSettings = async () => {
         const request = Request.create({
@@ -26,7 +27,7 @@
         })
         const result = await api.post_proto<ProtoResponse>('/api/camera/settings', request)
         if (result.isErr()) {
-            console.error('An error occurred', result.inner)
+            notifications.error(`Saving camera settings failed: ${result.inner.message}`, 5000)
             return
         }
         if (result.inner.cameraSettings) {
@@ -41,7 +42,7 @@
     const setHmirror = (value: boolean) => (settings.hmirror = value ? 1 : 0)
 </script>
 
-{#await getCameraSettings()}
+{#await loading}
     <Spinner />
 {:then}
     <div class="flex flex-col gap-1">
@@ -118,4 +119,6 @@
             </select>
         </label>
     </div>
+{:catch error}
+    <LoadError {error} retry={() => (loading = getCameraSettings())} />
 {/await}

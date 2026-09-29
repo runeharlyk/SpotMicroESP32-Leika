@@ -42,6 +42,7 @@
                         href={menuItem.href}
                         class="font-bold"
                         class:bg-base-100={menuItem.active}
+                        aria-current={menuItem.active ? 'page' : undefined}
                         class:text-lg={level === 0}
                         class:text-md={level === 1}
                         onclick={() => selectMenuItem(menuItem.title)}

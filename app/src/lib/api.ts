@@ -1,6 +1,5 @@
-import { get } from 'svelte/store'
-import { Err, Ok, type Result } from './utilities'
-import { apiLocation } from './stores/location-store'
+import { Ok, Result } from './utilities'
+import { robotHttpUrl } from './stores/location-store'
 import { Request, Response as ProtoResponse } from './platform_shared/api'
 import { BinaryWriter } from '@bufbuild/protobuf/wire'
 
@@ -15,14 +14,6 @@ export const api = {
 
     post_proto<TResponse>(endpoint: string, data: Request) {
         return sendRequest<TResponse>(endpoint, 'POST', Request.encode(data))
-    },
-
-    put<TResponse>(endpoint: string, data?: unknown) {
-        return sendRequest<TResponse>(endpoint, 'PUT', data)
-    },
-
-    remove<TResponse>(endpoint: string) {
-        return sendRequest<TResponse>(endpoint, 'DELETE')
     }
 }
 
@@ -32,7 +23,7 @@ async function sendRequest<TResponse>(
     data?: unknown,
     params?: RequestInit
 ): Promise<Result<TResponse, Error>> {
-    endpoint = resolveUrl(endpoint)
+    endpoint = robotHttpUrl(endpoint)
 
     const isProtobuf = data instanceof BinaryWriter
     const body =
@@ -47,7 +38,6 @@ async function sendRequest<TResponse>(
         body,
         headers: {
             ...params?.headers,
-            Authorization: 'Basic',
             'Content-Type': isProtobuf ? 'application/x-protobuf' : 'application/json'
         }
     }
@@ -57,16 +47,11 @@ async function sendRequest<TResponse>(
     try {
         response = await fetch(endpoint, request)
     } catch (e) {
-        return Err.new(e instanceof Error ? e : new Error(String(e)), 'Network request failed')
+        return Result.err(new Error('Could not reach the robot', { cause: e }))
     }
 
     const isResponseOk = response.status >= 200 && response.status < 400
-    if (!isResponseOk) {
-        if (response.status === 401) {
-            return Err.new(new ApiError(response), 'User was not authorized')
-        }
-        return Err.new(new ApiError(response), 'An error has occurred')
-    }
+    if (!isResponseOk) return Result.err(new ApiError(response))
 
     const contentType = response.headers.get('Content-Type')
     if (contentType && contentType.includes('application/json')) {
@@ -81,14 +66,12 @@ async function sendRequest<TResponse>(
     }
 }
 
-function resolveUrl(url: string): string {
-    if (url.startsWith('http') || !get(apiLocation)) return url
-    const protocol = window.location.protocol
-    return `${protocol}//${get(apiLocation)}${url.startsWith('/') ? '' : '/'}${url}`
-}
-
 export class ApiError extends Error {
     constructor(public readonly response: Response) {
-        super(`${response.status}`)
+        super(
+            response.status === 401 ?
+                'Not authorized'
+            :   `Robot responded with HTTP ${response.status} ${response.statusText}`.trimEnd()
+        )
     }
 }

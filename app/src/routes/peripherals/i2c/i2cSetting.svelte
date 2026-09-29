@@ -1,9 +1,11 @@
 <script lang="ts">
     import { Cancel, Edit, EditOff, Power } from '$lib/components/icons'
     import { api } from '$lib/api'
-    import { onMount } from 'svelte'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+    import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
     import {
         type PeripheralSettings,
         Request,
@@ -13,20 +15,15 @@
     let settings = $state<PeripheralSettings | null>(null)
     let isEditing = $state(false)
 
-    onMount(() => {
-        getPeripheralSettings()
-    })
-
     const getPeripheralSettings = async () => {
         const result = await api.get<ProtoResponse>('/api/peripherals/settings')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
+        if (result.isErr()) throw result.inner
         if (result.inner.peripheralSettings) {
             settings = result.inner.peripheralSettings
         }
     }
+
+    let loading = $state(getPeripheralSettings())
 
     const handleSave = () => {
         modals.open(ConfirmDialog, {
@@ -48,7 +45,7 @@
                     request
                 )
                 if (result.isErr()) {
-                    console.error('Error:', result.inner)
+                    notifications.error(`Saving I2C settings failed: ${result.inner.message}`, 5000)
                     return
                 }
                 if (result.inner.peripheralSettings) {
@@ -61,6 +58,12 @@
 
     const Icon = $derived(isEditing ? EditOff : Edit)
 </script>
+
+{#await loading}
+    <Spinner />
+{:catch error}
+    <LoadError {error} retry={() => (loading = getPeripheralSettings())} />
+{/await}
 
 {#if settings}
     <div class="collapse bg-base-100 border-base-300 border">
@@ -116,6 +119,7 @@
                     <button
                         class="btn btn-outline btn-primary"
                         onclick={() => (isEditing = !isEditing)}
+                        aria-label={isEditing ? 'Stop editing' : 'Edit'}
                     >
                         <Icon class="h-6 w-6" />
                     </button>

@@ -1,11 +1,12 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte'
+    import { onDestroy } from 'svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
     import { PasswordInput } from '$lib/components/input'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
     import { api } from '$lib/api'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
@@ -25,21 +26,16 @@
 
     async function getAPStatus() {
         const result = await api.get<Response>('/api/ap/status')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-
-        apStatus = result.inner.apStatus!
+        if (result.isErr()) throw result.inner
+        if (!result.inner.apStatus) throw new Error('The robot sent no access point status')
+        apStatus = result.inner.apStatus
     }
 
     async function getAPSettings() {
         const result = await api.get<Response>('/api/ap/settings')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-        apSettings = result.inner.apSettings!
+        if (result.isErr()) throw result.inner
+        if (!result.inner.apSettings) throw new Error('The robot sent no access point settings')
+        apSettings = result.inner.apSettings
         ipDisplay = {
             local_ip: uint32ToIp(apSettings.localIp),
             gateway_ip: uint32ToIp(apSettings.gatewayIp),
@@ -48,13 +44,20 @@
         return apSettings
     }
 
-    const interval = setInterval(async () => {
-        getAPStatus()
-    }, 5000)
+    let statusLoad = $state(getAPStatus())
+    let settingsLoad = $state(getAPSettings())
+
+    let pollError = $state<unknown>()
+
+    const pollStatus = () =>
+        getAPStatus().then(
+            () => (pollError = undefined),
+            error => (pollError = error)
+        )
+
+    const interval = setInterval(pollStatus, 5000)
 
     onDestroy(() => clearInterval(interval))
-
-    onMount(getAPSettings)
 
     let provisionMode = [
         {
@@ -92,8 +95,10 @@
             Request.create({ apSettings: data })
         )
         if (result.isErr()) {
-            notifications.error('User not authorized.', 3000)
-            console.error('Error:', result.inner)
+            notifications.error(
+                `Saving access point settings failed: ${result.inner.message}`,
+                5000
+            )
             return
         }
         if (result.inner.statusCode !== 200) {
@@ -172,10 +177,12 @@
         <span>Access Point</span>
     {/snippet}
     <div class="w-full overflow-x-auto">
-        {#await getAPStatus()}
+        {#await statusLoad}
             <Spinner />
         {:then}
-            {#if apStatus}
+            {#if pollError}
+                <LoadError error={pollError} retry={pollStatus} />
+            {:else if apStatus}
                 <div
                     class="flex w-full flex-col space-y-1"
                     transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -202,6 +209,8 @@
                     />
                 </div>
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (statusLoad = getAPStatus())} />
         {/await}
     </div>
 
@@ -211,7 +220,7 @@
         >
             Change AP Settings
         </div>
-        {#await getAPSettings()}
+        {#await settingsLoad}
             <Spinner />
         {:then}
             {#if apSettings}
@@ -412,6 +421,8 @@
                     </form>
                 </div>
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (settingsLoad = getAPSettings())} />
         {/await}
     </div>
 </SettingsCard>

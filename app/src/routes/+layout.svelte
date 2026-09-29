@@ -17,7 +17,9 @@
         servoAngles,
         servoAnglesOut,
         socket,
+        robotSocketUrl,
         apiLocation,
+        canReachRobot,
         walkGait
     } from '$lib/stores'
     import {
@@ -39,8 +41,7 @@
     const throttler = new Throttler()
 
     onMount(async () => {
-        const ws = $apiLocation ? $apiLocation : window.location.host
-        socket.init(`ws://${ws}/api/ws`)
+        if (canReachRobot(page.url, $apiLocation)) socket.init(robotSocketUrl())
 
         addEventListeners()
         document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -126,15 +127,15 @@
     </div>
 </div>
 
+<svelte:window onkeydown={e => e.key === 'Escape' && modals.closeAll()} />
+
 <Modals>
     {#snippet backdrop()}
         <div
             class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur-sm"
             transition:fade
             onclick={modals.closeAll}
-            onkeydown={e => e.key === 'Escape' && modals.closeAll()}
-            role="button"
-            tabindex="0"
+            role="presentation"
         ></div>
     {/snippet}
 </Modals>

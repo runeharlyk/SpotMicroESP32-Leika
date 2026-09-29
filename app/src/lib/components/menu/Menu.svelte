@@ -50,7 +50,7 @@
 
     const { menuClicked } = $props()
 
-    const activeTitle = $derived(page.data.title)
+    const activePath = $derived(page.url.pathname)
 
     const menuItems = $derived<menuItem[]>(
         [
@@ -95,7 +95,7 @@
                         href: withBase('/peripherals/imu'),
                         feature: true
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             },
             {
                 title: 'WiFi',
@@ -120,7 +120,7 @@
                         href: withBase('/wifi/mdns'),
                         feature: true
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             },
             {
                 title: 'System',
@@ -151,9 +151,9 @@
                         href: withBase('/system/update'),
                         feature: !!($features.ota || $features.upload_firmware)
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             }
-        ].map(item => ({ ...item, active: item.title === activeTitle }))
+        ].map(item => ({ ...item, active: item.href === activePath }))
     )
 
     const updateMenu = () => {

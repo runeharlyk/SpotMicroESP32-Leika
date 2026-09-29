@@ -9,6 +9,7 @@
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import ScanNetworks from './Scan.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
     import {
         type WifiStatus,
@@ -86,10 +87,7 @@
 
     async function getWifiStatus() {
         const result = await api.get<ProtoResponse>('/api/wifi/sta/status')
-        if (result.isErr()) {
-            console.error(`Error occurred while fetching: `, result.inner)
-            return
-        }
+        if (result.isErr()) throw result.inner
         if (result.inner.wifiStatus) {
             wifiStatus = result.inner.wifiStatus
         }
@@ -98,14 +96,15 @@
 
     async function getWifiSettings() {
         const result = await api.get<ProtoResponse>('/api/wifi/sta/settings')
-        if (result.isErr()) {
-            console.error(`Error occurred while fetching: `, result.inner)
-            return
-        }
-        wifiSettings = result.inner.wifiSettings!
+        if (result.isErr()) throw result.inner
+        if (!result.inner.wifiSettings) throw new Error('The robot sent no Wi-Fi settings')
+        wifiSettings = result.inner.wifiSettings
         dndNetworkList = wifiSettings.wifiNetworks
         return wifiSettings
     }
+
+    let statusLoad = $state(getWifiStatus())
+    let settingsLoad = $state(getWifiSettings())
 
     async function postWiFiSettings(data: WifiSettings) {
         const result = await api.post_proto<ProtoResponse>(
@@ -113,8 +112,7 @@
             Request.create({ wifiSettings: data })
         )
         if (result.isErr()) {
-            console.error(`Error occurred while fetching: `, result.inner)
-            notifications.error('User not authorized.', 3000)
+            notifications.error(`Saving Wi-Fi settings failed: ${result.inner.message}`, 5000)
             return
         }
         if (result.inner.statusCode !== 200) {
@@ -319,7 +317,7 @@
         <span>WiFi Connection</span>
     {/snippet}
     <div class="w-full overflow-x-auto">
-        {#await getWifiStatus()}
+        {#await statusLoad}
             <Spinner />
         {:then}
             {#if wifiStatus}
@@ -345,6 +343,7 @@
 
                         <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
                             <button
+                                aria-label="Toggle connection details"
                                 class="btn btn-circle btn-ghost btn-sm modal-button"
                                 onclick={() => {
                                     showWifiDetails = !showWifiDetails
@@ -400,6 +399,8 @@
                     </div>
                 {/if}
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (statusLoad = getWifiStatus())} />
         {/await}
     </div>
 
@@ -409,12 +410,13 @@
         >
             Saved Networks
         </div>
-        {#await getWifiSettings()}
+        {#await settingsLoad}
             <Spinner />
         {:then}
             {#if wifiSettings}
                 <div class="relative w-full overflow-visible">
                     <button
+                        aria-label="Add network"
                         class="btn btn-primary text-primary-content btn-md absolute -top-14 right-16"
                         onclick={() => {
                             if (checkNetworkList()) {
@@ -426,6 +428,7 @@
                         <Add class="h-6 w-6" /></button
                     >
                     <button
+                        aria-label="Scan for networks"
                         class="btn btn-primary text-primary-content btn-md absolute -top-14 right-0"
                         onclick={() => {
                             if (checkNetworkList()) {
@@ -452,6 +455,7 @@
                                 <StatusItem icon={Router} title={dndNetworkList[index].ssid}>
                                     <div class="space-x-0 px-0 mx-0">
                                         <button
+                                            aria-label="Edit network"
                                             class="btn btn-ghost btn-sm"
                                             onclick={() => {
                                                 handleEdit(index)
@@ -460,6 +464,7 @@
                                             <Edit class="h-6 w-6" /></button
                                         >
                                         <button
+                                            aria-label="Delete network"
                                             class="btn btn-ghost btn-sm"
                                             onclick={() => {
                                                 confirmDelete(index)
@@ -484,7 +489,7 @@
                             class="grid w-full grid-cols-1 content-center gap-x-4 px-4 sm:grid-cols-2"
                         >
                             <div>
-                                <label class="label" for="channel">
+                                <label class="label" for="hostname">
                                     <span class="label-text text-md">Host Name</span>
                                 </label>
                                 <input
@@ -497,14 +502,14 @@
                                         'border-error border-2'
                                     :   ''}"
                                     bind:value={wifiSettings.hostname}
-                                    id="channel"
+                                    id="hostname"
                                     required
                                 />
-                                <label class="label" for="channel">
+                                <label class="label" for="hostname">
                                     <span
                                         class="label-text-alt text-error {formErrorhostname ? '' : (
                                             'hidden'
-                                        )}">Host name must be between 2 and 32 characters long</span
+                                        )}">Host name must be between 3 and 32 characters long</span
                                     >
                                 </label>
                             </div>
@@ -615,6 +620,7 @@
                                             maxlength="15"
                                             size="15"
                                             bind:value={ipDisplay.gatewayIp}
+                                            id="gateway"
                                             required
                                         />
                                         <label class="label" for="gateway">
@@ -642,6 +648,7 @@
                                             maxlength="15"
                                             size="15"
                                             bind:value={ipDisplay.subnetMask}
+                                            id="subnet"
                                             required
                                         />
                                         <label class="label" for="subnet">
@@ -657,7 +664,7 @@
                                         </label>
                                     </div>
                                     <div>
-                                        <label class="label" for="gateway">
+                                        <label class="label" for="dns1">
                                             <span class="label-text text-md">DNS 1</span>
                                         </label>
                                         <input
@@ -669,9 +676,10 @@
                                             maxlength="15"
                                             size="15"
                                             bind:value={ipDisplay.dnsIp1}
+                                            id="dns1"
                                             required
                                         />
-                                        <label class="label" for="gateway">
+                                        <label class="label" for="dns1">
                                             <span
                                                 class="label-text-alt text-error {(
                                                     formErrors.dnsIp1
@@ -684,7 +692,7 @@
                                         </label>
                                     </div>
                                     <div>
-                                        <label class="label" for="subnet">
+                                        <label class="label" for="dns2">
                                             <span class="label-text text-md">DNS 2</span>
                                         </label>
                                         <input
@@ -696,9 +704,10 @@
                                             maxlength="15"
                                             size="15"
                                             bind:value={ipDisplay.dnsIp2}
+                                            id="dns2"
                                             required
                                         />
-                                        <label class="label" for="subnet">
+                                        <label class="label" for="dns2">
                                             <span
                                                 class="label-text-alt text-error {(
                                                     formErrors.dnsIp2
@@ -734,6 +743,8 @@
                     </form>
                 </div>
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (settingsLoad = getWifiSettings())} />
         {/await}
     </div>
 </SettingsCard>

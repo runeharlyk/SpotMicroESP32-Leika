@@ -91,14 +91,12 @@
                     <ul class="menu">
                         {#each listOfNetworks as network (network.ssid)}
                             <li>
-                                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                <div
-                                    class="bg-base-200 rounded-btn my-1 flex items-center space-x-3 hover:scale-[1.02] active:scale-[0.98]"
+                                <button
+                                    type="button"
+                                    class="bg-base-200 rounded-btn my-1 flex items-center space-x-3 text-left hover:scale-[1.02] active:scale-[0.98]"
                                     onclick={() => {
                                         storeNetwork(network.ssid)
                                     }}
-                                    role="button"
-                                    tabindex="0"
                                 >
                                     <div class="mask mask-hexagon bg-primary h-auto w-10 shrink-0">
                                         <Network
@@ -114,7 +112,7 @@
                                     </div>
                                     <div class="grow"></div>
                                     <RssiIndicator showDBm={true} rssi={network.rssi} />
-                                </div>
+                                </button>
                             </li>
                         {/each}
                     </ul>
