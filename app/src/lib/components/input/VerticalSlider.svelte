@@ -5,6 +5,7 @@
         step?: number
         value?: number
         oninput?: (value: Event) => void
+        'aria-label'?: string
     }
 
     let {
@@ -29,7 +30,7 @@
 
 <style>
     input[type='range']::-webkit-slider-runnable-track {
-        background: oklch(var(--p) / 1);
-        border-radius: var(--rounded-box, 1rem);
+        background: var(--color-primary);
+        border-radius: var(--radius-box, 1rem);
     }
 </style>
