@@ -57,15 +57,28 @@ export const variants = {
             W: 0.078
         }
     },
+    // No Mini model exists yet, so the Pico is drawn with the full-size Spot Micro model.
+    SPOTMICRO_ESP32_MINI: {
+        model: `${base}spot_micro.urdf.xacro`,
+        stl: `${base}stl.zip`,
+        kinematics: {
+            coxa: 0.035,
+            coxa_offset: 0.0,
+            femur: 0.06,
+            tibia: 0.06,
+            L: 0.16,
+            W: 0.08
+        }
+    },
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
         kinematics: {
-            coxa: 0.04,
+            coxa: 0.035,
             coxa_offset: 0.0,
             femur: 0.13,
             tibia: 0.13,
-            L: 0.258,
+            L: 0.24,
             W: 0.078
         }
     }
