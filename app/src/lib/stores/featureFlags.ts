@@ -6,7 +6,7 @@ import { resolve } from '$app/paths'
 import { socket } from './socket'
 import { apiLocation } from './location-store'
 import { identify } from './robots'
-import { VARIANT_DIMENSIONS } from '$lib/kinematics-variants'
+import { VARIANT_DIMENSIONS, type Variant } from '$lib/kinematics-variants'
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
@@ -58,7 +58,7 @@ export const variants = {
         drivable: true,
         kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32
     },
-    // The Pico's model is generated from the simulation (scripts/build_pico_model.js). Its URDF and
+    // The Pico's model is generated from the simulation (scripts/build_sim_models.js). Its URDF and
     // these firmware dimensions disagree by up to 16 mm, so it is not driven until one is confirmed.
     SPOTMICRO_ESP32_MINI: {
         model: `${base}spot_pico.urdf`,
@@ -76,12 +76,16 @@ export const variants = {
     }
 }
 
-export const currentVariant = derived(useFeatureFlags(), $flagStore => {
+/** The variant the last connected robot reported, when it is one this app knows. */
+export const reportedVariant = derived(useFeatureFlags(), $flagStore => {
     const variantFlag = ($flagStore['variant'] as string)?.replace(/_V\d+$/, '')
-    return variantFlag && variants[variantFlag as keyof typeof variants] ?
-            variants[variantFlag as keyof typeof variants]
-        :   variants.SPOTMICRO_ESP32
+    return variantFlag && variantFlag in variants ? (variantFlag as Variant) : undefined
 })
+
+export const currentVariant = derived(
+    reportedVariant,
+    $variant => variants[$variant ?? 'SPOTMICRO_ESP32']
+)
 
 export const currentKinematic = derived(
     currentVariant,

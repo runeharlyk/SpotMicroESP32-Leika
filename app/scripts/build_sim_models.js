@@ -29,3 +29,24 @@ const meshes = Object.fromEntries(
 writeFileSync(path.join(staticDir, 'spot_pico.zip'), Buffer.from(uzip.encode(meshes)))
 
 console.log(`Pico model written to static/ (${Object.keys(meshes).length} meshes)`)
+
+// Spot Micro and Yertle: their generated scenes (simulation/generate_scenes.py), and Yertle's STL
+// meshes, which the 3D view's URDF.zip does not carry (it holds OBJ files).
+const generated = path.resolve(resources, '..')
+writeFileSync(
+    path.join(staticDir, 'sim_spot_micro.xml'),
+    readFileSync(path.join(generated, 'spot_micro', 'scene.xml'))
+)
+writeFileSync(
+    path.join(staticDir, 'sim_yertle.xml'),
+    readFileSync(path.join(generated, 'yertle', 'scene.xml'))
+)
+const yertleMeshDir = path.join(staticDir, 'URDF')
+const yertleMeshes = Object.fromEntries(
+    readdirSync(yertleMeshDir)
+        .filter(name => name.endsWith('.stl'))
+        .map(name => [name, readFileSync(path.join(yertleMeshDir, name))])
+)
+writeFileSync(path.join(staticDir, 'sim_yertle_meshes.zip'), Buffer.from(uzip.encode(yertleMeshes)))
+
+console.log('Spot Micro and Yertle scenes written to static/')

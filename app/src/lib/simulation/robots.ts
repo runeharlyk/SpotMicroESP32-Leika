@@ -98,3 +98,23 @@ export const ROBOTS: RobotDefinition[] = [
 ]
 
 export const robotById = (id: string) => ROBOTS.find(robot => robot.id === id)
+
+export interface SimChoice {
+    robot: RobotId
+    controller: ControllerDefinition['id']
+}
+
+/**
+ * The saved choice where it names a robot and controller that exist; otherwise the robot the
+ * last connected robot reported, or the Pico, with its first controller.
+ */
+export function resolveChoice(saved: Partial<SimChoice> | null, reported: Variant | undefined) {
+    const robot =
+        (saved?.robot && robotById(saved.robot)) ||
+        ROBOTS.find(candidate => candidate.variant === reported) ||
+        ROBOTS[0]
+    const controller =
+        robot.controllers.find(candidate => candidate.id === saved?.controller) ??
+        robot.controllers[0]
+    return { robot, controller }
+}

@@ -15,7 +15,7 @@
         "test:integration": "playwright test",
         "test:unit": "vitest",
         "proto": "node scripts/compile_protos.js",
-        "model": "node scripts/build_pico_model.js"
+        "model": "node scripts/build_sim_models.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",
