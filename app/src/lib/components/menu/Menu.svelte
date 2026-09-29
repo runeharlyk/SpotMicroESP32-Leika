@@ -21,7 +21,7 @@
         Metrics,
         DNS
     } from '$lib/components/icons'
-    import { PUBLIC_VITE_USE_HOST_NAME } from '$env/static/public'
+    import { EMBEDDED_BUILD } from '$lib/build-flags'
 
     const appName = page.data.app_name
 
@@ -54,7 +54,7 @@
                 title: 'Connection',
                 icon: WiFi,
                 href: withBase('/connection'),
-                feature: !PUBLIC_VITE_USE_HOST_NAME
+                feature: !EMBEDDED_BUILD
             },
             {
                 title: 'Controller',

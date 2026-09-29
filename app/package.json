@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "vite dev --host",
         "build": "pnpm proto && vite build",
-        "build:embedded": "pnpm proto && cross-env VITE_USE_HOST_NAME=true vite build",
+        "build:embedded": "pnpm proto && cross-env PUBLIC_EMBEDDED_BUILD=true vite build",
         "preview": "vite preview",
         "test": "pnpm run test:integration && pnpm run test:unit",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -53,7 +53,6 @@
     "type": "module",
     "dependencies": {
         "@bufbuild/protobuf": "^2.10.2",
-        "@niku/vite-env-caster": "^1.1.2",
         "@tailwindcss/vite": "^4.1.14",
         "chart.js": "^4.5.0",
         "cross-env": "^10.1.0",

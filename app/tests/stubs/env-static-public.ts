@@ -1,1 +1,1 @@
-export const PUBLIC_VITE_USE_HOST_NAME = ''
+export const PUBLIC_EMBEDDED_BUILD = ''

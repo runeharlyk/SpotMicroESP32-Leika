@@ -1,9 +1,8 @@
 import { persistentStore } from '$lib/utilities'
 import { get, writable } from 'svelte/store'
-import { PUBLIC_VITE_USE_HOST_NAME } from '$env/static/public'
+import { EMBEDDED_BUILD } from '$lib/build-flags'
 
-export const apiLocation =
-    PUBLIC_VITE_USE_HOST_NAME ? writable('') : persistentStore('location', '')
+export const apiLocation = EMBEDDED_BUILD ? writable('') : persistentStore('location', '')
 
 // The firmware has no TLS, so http:// and ws:// are the only schemes it answers. From an https page,
 // Chromium exempts private IPs and .local names from mixed-content blocking once the user grants
