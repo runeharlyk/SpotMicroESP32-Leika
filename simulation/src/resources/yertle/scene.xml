@@ -16,7 +16,7 @@
       <site name="imu" pos="0 0 0"/>
       <body name="frame">
         <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
-        <geom quat="0.000296327 0 0 1" type="mesh" rgba="1 1 1 1" mesh="shell"/>
+        <geom quat="0.000296327 0 0 1" type="mesh" contype="0" rgba="1 1 1 1" mesh="shell"/>
       </body>
       <body name="lf_shoulder" pos="0.09 0.037 0">
         <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
@@ -27,10 +27,10 @@
           <body name="lf_shin" pos="0 0 -0.13">
             <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
             <joint name="lf_shin" pos="0 0 0" axis="0 1 0" armature="0.01" damping="0.1"/>
-            <geom pos="0 0.008 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" rgba="0 0 0 1" mesh="tibia"/>
+            <geom pos="0 0.008 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" contype="0" rgba="0 0 0 1" mesh="tibia"/>
             <body name="lf_toe" pos="0 0 -0.13">
               <inertial pos="0 0 0" mass="0.05" diaginertia="1.8e-05 1.8e-05 1.8e-05"/>
-              <geom size="0.02" rgba="0 0.75 1 1"/>
+              <geom size="0.02" contype="0" rgba="0 0.75 1 1"/>
               <site name="foot_fl" pos="0 0 0"/>
             </body>
           </body>
@@ -45,10 +45,10 @@
           <body name="rf_shin" pos="0 0 -0.13">
             <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
             <joint name="rf_shin" pos="0 0 0" axis="0 1 0" armature="0.01" damping="0.1"/>
-            <geom pos="0 -0.007 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" rgba="0 0 0 1" mesh="tibia"/>
+            <geom pos="0 -0.007 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" contype="0" rgba="0 0 0 1" mesh="tibia"/>
             <body name="rf_toe" pos="0 0 -0.13">
               <inertial pos="0 0 0" mass="0.05" diaginertia="1.8e-05 1.8e-05 1.8e-05"/>
-              <geom size="0.02" rgba="0 0.75 1 1"/>
+              <geom size="0.02" contype="0" rgba="0 0.75 1 1"/>
               <site name="foot_fr" pos="0 0 0"/>
             </body>
           </body>
@@ -63,10 +63,10 @@
           <body name="lb_shin" pos="0 0 -0.13">
             <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
             <joint name="lb_shin" pos="0 0 0" axis="0 1 0" armature="0.01" damping="0.1"/>
-            <geom pos="0 0.008 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" rgba="0 0 0 1" mesh="tibia"/>
+            <geom pos="0 0.008 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" contype="0" rgba="0 0 0 1" mesh="tibia"/>
             <body name="lb_toe" pos="0 0 -0.13">
               <inertial pos="0 0 0" mass="0.05" diaginertia="1.8e-05 1.8e-05 1.8e-05"/>
-              <geom size="0.02" rgba="0 0.75 1 1"/>
+              <geom size="0.02" contype="0" rgba="0 0.75 1 1"/>
               <site name="foot_rl" pos="0 0 0"/>
             </body>
           </body>
@@ -81,10 +81,10 @@
           <body name="rb_shin" pos="0 0 -0.13">
             <inertial pos="0 0 0" mass="0.025" diaginertia="9e-06 9e-06 9e-06"/>
             <joint name="rb_shin" pos="0 0 0" axis="0 1 0" armature="0.01" damping="0.1"/>
-            <geom pos="0 -0.007 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" rgba="0 0 0 1" mesh="tibia"/>
+            <geom pos="0 -0.007 0" quat="0.674379 0.212631 -0.212631 -0.674381" type="mesh" contype="0" rgba="0 0 0 1" mesh="tibia"/>
             <body name="rb_toe" pos="0 0 -0.13">
               <inertial pos="0 0 0" mass="0.05" diaginertia="1.8e-05 1.8e-05 1.8e-05"/>
-              <geom size="0.02" rgba="0 0.75 1 1"/>
+              <geom size="0.02" contype="0" rgba="0 0.75 1 1"/>
               <site name="foot_rr" pos="0 0 0"/>
             </body>
           </body>

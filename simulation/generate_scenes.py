@@ -18,22 +18,25 @@ STATIC = os.path.normpath(os.path.join(HERE, "..", "app", "static"))
 
 # Servo stand-ins are estimates, not measurements: position servos with the given stiffness
 # (N m/rad) and torque limit (N m), and joint damping chosen for a stable simulation.
+# Both URDFs carry placeholder inertia tensors (Spot Micro: 100 and 1000 kg m^2 on parts of a few
+# hundred grams; Yertle: all 0.4, not positive definite), so their masses are kept and each tensor
+# becomes that of a solid sphere of the given radius (m), heavier parts larger.
+PLACEHOLDER_INERTIA = lambda mass: 0.08 if mass >= 1 else 0.03
+
 ROBOTS = {
     "spot_micro": dict(
         source="spot_micro.urdf.xacro",
         mesh_dir=None,  # its collision shapes are all boxes and spheres
         toes={"fl": "front_left_toe_link", "fr": "front_right_toe_link",
               "rl": "rear_left_toe_link", "rr": "rear_right_toe_link"},
-        placeholder_inertia=None,
+        placeholder_inertia=PLACEHOLDER_INERTIA,
         kp=30.0, force=3.0,
     ),
     "yertle": dict(
         source="yertle.URDF",
         mesh_dir="URDF",
         toes={"fl": "lf_toe", "fr": "rf_toe", "rl": "lb_toe", "rr": "rb_toe"},
-        # Its URDF inertia tensors are placeholders (not positive definite); its masses are kept and
-        # each tensor becomes that of a solid sphere of this radius (m), heavier parts larger.
-        placeholder_inertia=lambda mass: 0.08 if mass >= 1 else 0.03,
+        placeholder_inertia=PLACEHOLDER_INERTIA,
         kp=20.0, force=2.0,
     ),
 }
@@ -93,6 +96,11 @@ def _spec(robot: str) -> mujoco.MjSpec:
     spec.worldbody.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[0, 0, 0.05])
     for leg, link in config["toes"].items():
         spec.body(link).add_site(name=f"foot_{leg}")
+    # The robot collides with the floor only: URDF collision boxes overlap between neighbouring
+    # links, and self-contacts would lock the legs.
+    for geom in spec.geoms:
+        if geom.name != "floor":
+            geom.contype, geom.conaffinity = 0, 1
 
     for joint in spec.joints:
         if joint.type != mujoco.mjtJoint.mjJNT_HINGE:

@@ -36,7 +36,7 @@ vi.mock('$lib/sceneBuilder', () => {
 vi.mock('$lib/simulation/load', () => ({
     loadSimulation: () =>
         new Promise(resolve => {
-            finishLoading = () => resolve({ mujoco: {}, assets: {} })
+            finishLoading = () => resolve({ mujoco: {}, scene: {}, gaitCoef: {} })
         })
 }))
 
@@ -48,8 +48,8 @@ vi.mock('$lib/utilities/model-utilities', () => ({
     })
 }))
 
-vi.mock('$lib/simulation/pico-sim', () => ({
-    PicoSim: class {
+vi.mock('$lib/simulation/robot-sim', () => ({
+    RobotSim: class {
         disposed = false
         constructor() {
             created.push(this)

@@ -4,14 +4,15 @@
     import { Group, Vector3 } from 'three'
     import type { URDFRobot } from 'urdf-loader'
     import SceneBuilder from '$lib/sceneBuilder'
-    import { currentVariant, input, mode, variants } from '$lib/stores'
+    import { currentVariant, input, mode, variants, walkGait } from '$lib/stores'
     import { cacheModelFiles, loadModel } from '$lib/utilities/model-utilities'
     import { loadSimulation } from '$lib/simulation/load'
-    import { PicoSim } from '$lib/simulation/pico-sim'
-    import { simulationCommand } from '$lib/simulation/controls'
+    import { RobotSim } from '$lib/simulation/robot-sim'
+    import { robotById } from '$lib/simulation/robots'
     import LoadError from './LoadError.svelte'
 
-    const pico = variants.SPOTMICRO_ESP32_MINI
+    const definition = robotById('pico')!
+    const variant = variants[definition.variant]
     // The 3D view draws models ten times their size in metres; the simulation matches it.
     const MODEL_SCALE = 10
 
@@ -22,16 +23,16 @@
 
     const sceneManager = new SceneBuilder()
     let resize: ResizeObserver | undefined
-    let sim: PicoSim | undefined
+    let sim: RobotSim | undefined
     let robot: URDFRobot | undefined
     let lastFrame = 0
     let destroyed = false
     const followed = new Vector3()
     const robotWorld = new Vector3()
 
-    async function loadPicoModel() {
-        await cacheModelFiles(pico.stl)
-        const result = await loadModel(pico.model, pico.modelYaw)
+    async function loadRobotModel() {
+        await cacheModelFiles(variant.stl)
+        const result = await loadModel(variant.model, variant.modelYaw)
         if (result.isErr()) throw new Error(result.inner)
         return result.inner[0]
     }
@@ -39,14 +40,19 @@
     async function start() {
         status = 'loading'
         try {
-            const [{ mujoco, assets }, model] = await Promise.all([
-                loadSimulation(),
-                loadPicoModel()
+            const [{ mujoco, scene, gaitCoef }, model] = await Promise.all([
+                loadSimulation(definition),
+                loadRobotModel()
             ])
             // Left while loading: nothing renders any more, and the engine outlives this view.
             if (destroyed) return
             sim?.dispose()
-            sim = new PicoSim(mujoco, assets)
+            sim = new RobotSim(
+                mujoco,
+                scene,
+                definition.controllers[0].create({ gaitCoef }),
+                definition.footRadius
+            )
             placeRobot(model)
             lastFrame = performance.now()
             status = 'running'
@@ -63,7 +69,7 @@
     function placeRobot(model: URDFRobot) {
         if (robot) robot.parent?.removeFromParent()
         const world = new Group()
-        world.rotation.set(-Math.PI / 2, 0, Math.PI / 2 + pico.modelYaw)
+        world.rotation.set(-Math.PI / 2, 0, Math.PI / 2 + variant.modelYaw)
         world.scale.setScalar(MODEL_SCALE)
         model.rotation.set(0, 0, 0)
         model.scale.setScalar(1)
@@ -76,7 +82,12 @@
     function frame() {
         if (!sim || !robot) return
         const now = performance.now()
-        sim.setCommand(simulationCommand(get(input), get(mode).mode))
+        sim.setControls({
+            input: get(input),
+            mode: get(mode).mode,
+            gait: get(walkGait).gait,
+            imu: [0, 0]
+        })
         sim.step((now - lastFrame) / 1000)
         lastFrame = now
 
@@ -145,7 +156,7 @@
         class="bg-base-100/70 rounded-box pointer-events-none absolute top-2 left-2 px-2 py-1 text-xs"
     >
         Simulated Pico
-        {#if $currentVariant !== pico}
+        {#if $currentVariant !== variant}
             <span class="opacity-70">- the simulation always runs the Pico</span>
         {/if}
     </div>

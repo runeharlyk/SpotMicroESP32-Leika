@@ -7,6 +7,8 @@
  * order [fr, fl, rr, rl] x [hip, femur, tibia].
  */
 
+import { CONTROL_DT } from './timing'
+
 export type Vec3 = [number, number, number]
 export type Command = [vx: number, vy: number, yaw: number]
 export type Leg = 'fr' | 'fl' | 'rr' | 'rl'
@@ -15,7 +17,6 @@ export const LEG_NAMES: Leg[] = ['fr', 'fl', 'rr', 'rl']
 export const JOINT_NAMES = LEG_NAMES.flatMap(leg =>
     ['hip', 'femur', 'tibia'].map(joint => `${leg}_${joint}_joint`)
 )
-export const CONTROL_DT = 0.01
 
 interface LegGeometry {
     H: Vec3

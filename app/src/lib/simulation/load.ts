@@ -2,7 +2,9 @@ import loadMujoco, { type MainModule } from '@mujoco/mujoco'
 import wasmUrl from '@mujoco/mujoco/mujoco.wasm?url'
 import uzip from 'uzip'
 import { resolve } from '$app/paths'
-import type { SimAssets } from './pico-sim'
+import type { GaitCoef } from './pico-gait'
+import type { SimScene } from './robot-sim'
+import type { RobotDefinition } from './robots'
 
 let loading: Promise<MainModule> | undefined
 
@@ -19,17 +21,25 @@ const fetchOk = async (path: string) => {
     return response
 }
 
-export async function loadSimulation(): Promise<{ mujoco: MainModule; assets: SimAssets }> {
-    const [mujoco, sceneXml, zip, gaitCoef] = await Promise.all([
-        mujocoModule(),
-        fetchOk('spot_pico_scene.xml').then(response => response.text()),
-        fetchOk('spot_pico.zip').then(response => response.arrayBuffer()),
-        fetchOk('spot_pico_gait.json').then(response => response.json())
-    ])
-    const meshes = Object.fromEntries(
-        Object.entries(uzip.parse(zip))
+const meshesFrom = async (zipFile: string | null) => {
+    if (!zipFile) return {}
+    const files = uzip.parse(await fetchOk(zipFile).then(response => response.arrayBuffer()))
+    return Object.fromEntries(
+        Object.entries(files)
             .filter(([name]) => name.endsWith('.stl'))
             .map(([name, bytes]) => [name.slice(name.lastIndexOf('/') + 1), bytes])
     )
-    return { mujoco, assets: { sceneXml, meshes, gaitCoef } }
+}
+
+/** The engine, a robot's scene and meshes, and the Pico training controller's gait tuning. */
+export async function loadSimulation(
+    robot: RobotDefinition
+): Promise<{ mujoco: MainModule; scene: SimScene; gaitCoef: GaitCoef }> {
+    const [mujoco, sceneXml, meshes, gaitCoef] = await Promise.all([
+        mujocoModule(),
+        fetchOk(robot.sceneFile).then(response => response.text()),
+        meshesFrom(robot.meshZip),
+        fetchOk('spot_pico_gait.json').then(response => response.json())
+    ])
+    return { mujoco, scene: { id: robot.id, sceneXml, meshes }, gaitCoef }
 }
