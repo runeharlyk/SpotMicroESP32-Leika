@@ -1,7 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state'
     import { resolve } from '$app/paths'
-    import { useFeatureFlags } from '$lib/stores/featureFlags'
     import GithubButton from '../menu/GithubButton.svelte'
     import LogoButton from '../menu/LogoButton.svelte'
     import MenuList from '../menu/MenuList.svelte'
@@ -15,7 +14,6 @@
         MotorOutline,
         Health,
         Folder,
-        Update,
         WiFi,
         Router,
         AP,
@@ -24,8 +22,6 @@
         DNS
     } from '$lib/components/icons'
     import { PUBLIC_VITE_USE_HOST_NAME } from '$env/static/public'
-
-    const features = useFeatureFlags()
 
     const appName = page.data.app_name
 
@@ -144,12 +140,6 @@
                         icon: Metrics,
                         href: withBase('/system/metrics'),
                         feature: true
-                    },
-                    {
-                        title: 'Firmware Update',
-                        icon: Update,
-                        href: withBase('/system/update'),
-                        feature: !!($features.ota || $features.upload_firmware)
                     }
                 ].map(sub => ({ ...sub, active: sub.href === activePath }))
             }
