@@ -97,16 +97,6 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
     return WebServer::send(request, 200, response, api_Response_fields);
 }
 
-void WiFiService::setupMDNS(const char *hostname) {
-    mdns_init();
-    mdns_hostname_set(state().hostname);
-    mdns_instance_name_set(hostname);
-    mdns_service_add(nullptr, "_http", "_tcp", 80, nullptr, 0);
-    mdns_service_add(nullptr, "_ws", "_tcp", 80, nullptr, 0);
-    mdns_txt_item_t txtData = {"Firmware Version", APP_VERSION};
-    mdns_service_txt_set("_http", "_tcp", &txtData, 1);
-}
-
 esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
     api_Response response = api_Response_init_zero;
     response.which_payload = api_Response_wifi_status_tag;

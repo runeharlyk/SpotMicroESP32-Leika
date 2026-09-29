@@ -3,6 +3,7 @@
 #include <wifi/wifi_idf.h>
 #include <template/state_result.h>
 #include <platform_shared/api.pb.h>
+#include <settings/placeholders.h>
 #include <cstring>
 
 #ifndef FACTORY_WIFI_SSID
@@ -39,7 +40,8 @@ inline WiFiNetwork WiFiNetwork_defaults() {
 
 inline WiFiSettings WiFiSettings_defaults() {
     WiFiSettings settings = api_WifiSettings_init_zero;
-    strncpy(settings.hostname, FACTORY_WIFI_HOSTNAME, sizeof(settings.hostname) - 1);
+    strncpy(settings.hostname, toHostLabel(substitutePlaceholders(FACTORY_WIFI_HOSTNAME)).c_str(),
+            sizeof(settings.hostname) - 1);
     settings.priority_rssi = true;
     settings.wifi_networks_count = 0;
     settings.selected_network = 0;

@@ -37,9 +37,16 @@ message FeaturesDataResponse {
     bool ws2812 = 110;
     bool mdns = 120;
     bool embed_www = 130;
+
+    string device_id = 140;
+    string robot_name = 150;
 }
 
 message FeaturesDataRequest { }
+
+message RobotSettings { string name = 1; }
+
+message RobotNameUpdate { string name = 1; }
 
 // SYSTEM INFORMATION
 
@@ -62,6 +69,7 @@ message CorrelationRequest {
         FSDownloadRequest fs_download_request = 80;
         FSUploadStart fs_upload_start = 100;
         FSCancelTransfer fs_cancel_transfer = 120;
+        RobotNameUpdate robot_name_update = 130;
     }
 }
 

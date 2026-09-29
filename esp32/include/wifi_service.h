@@ -2,7 +2,6 @@
 
 #include <esp_http_server.h>
 #include <wifi/wifi_idf.h>
-#include <mdns.h>
 #include <string>
 
 #include <filesystem.h>
@@ -24,7 +23,6 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void begin();
     void loop();
 
-    void setupMDNS(const char *hostname);
     void selectNetwork(uint32_t index);
 
     const char *getHostname() { return state().hostname; }

@@ -1,30 +1,42 @@
 import { notifications } from '$lib/components/toasts/notifications'
 import Kinematic from '$lib/kinematic'
 import { persistentStore } from '$lib/utilities'
-import { derived, type Writable } from 'svelte/store'
+import { derived, get, type Writable } from 'svelte/store'
 import { resolve } from '$app/paths'
-import { socket } from '$lib/stores'
+import { socket } from './socket'
+import { apiLocation } from './location-store'
+import { identify } from './robots'
+import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
+
+/** Records what the connected robot reported about itself: its feature flags and its identity. */
+export function applyFeatures(features: FeaturesDataResponse) {
+    useFeatureFlags().set(features as unknown as Record<string, boolean | string>)
+    // A Bluetooth session has no network address to file the robot under.
+    if (get(socket.transport) !== 'websocket') return
+    identify(get(apiLocation) || window.location.host, {
+        deviceId: features.deviceId,
+        name: features.robotName,
+        variant: features.variant
+    })
+}
+
+// Each connection may be a different robot, so the flags are fetched again on every open.
+const fetchFeatures = () =>
+    socket
+        .request({ featuresDataRequest: {} })
+        .then(response => {
+            if (response.featuresDataResponse) applyFeatures(response.featuresDataResponse)
+            else notifications.error('Feature flags could not be fetched', 2500)
+        })
+        .catch(() => notifications.error('Feature flags could not be fetched', 2500))
 
 export function useFeatureFlags() {
     if (!featureFlagsStore) {
         featureFlagsStore = persistentStore<Record<string, boolean | string>>('FeatureFlags', {})
-
-        socket
-            .request({ featuresDataRequest: {} })
-            .then(response => {
-                if (response.featuresDataResponse) {
-                    featureFlagsStore.set(
-                        response.featuresDataResponse as unknown as Record<string, boolean | string>
-                    )
-                } else {
-                    notifications.error('Feature flags could not be fetched', 2500)
-                }
-            })
-            .catch(() => {
-                notifications.error('Feature flags could not be fetched', 2500)
-            })
+        socket.onEvent('open', fetchFeatures)
+        if (get(socket)) void fetchFeatures()
     }
 
     return featureFlagsStore

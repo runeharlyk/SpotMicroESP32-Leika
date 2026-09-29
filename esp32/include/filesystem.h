@@ -19,6 +19,7 @@
 #define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.pb"
 #define PERIPHERAL_SETTINGS_FILE MOUNT_POINT "/config/peripheralSettings.pb"
 #define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.pb"
+#define ROBOT_SETTINGS_FILE MOUNT_POINT "/config/robotSettings.pb"
 
 namespace FileSystem {
 

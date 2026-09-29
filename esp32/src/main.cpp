@@ -19,6 +19,7 @@
 #include <wifi_service.h>
 #include <ap_service.h>
 #include <mdns_service.h>
+#include <robot_service.h>
 #include <system_service.h>
 
 #if CONFIG_IDF_TARGET_ESP32P4
@@ -44,6 +45,7 @@ MDNSService mdnsService;
 
 WiFiService wifiService;
 APService apService;
+RobotService robotService;
 
 void setupServer() {
     server.config(50 + webAssetCount(), 16384);
@@ -165,7 +167,14 @@ void setupEventSocket() {
         {socket_message_CorrelationRequest_features_data_request_tag,
          [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(req.request.features_data_request, res.response.features_data_response);
+             feature_service::features_request(robotService.name(), res.response.features_data_response);
+         }},
+
+        {socket_message_CorrelationRequest_robot_name_update_tag,
+         [](const auto &req, auto &res, int clientId) {
+             if (!robotService.rename(req.request.robot_name_update.name)) res.status_code = 400;
+             res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
+             feature_service::features_request(robotService.name(), res.response.features_data_response);
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
@@ -296,9 +305,11 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     WiFi.init();
     wifiService.begin();
+    robotService.begin();
     mdns_init();
-    mdns_hostname_set(APP_NAME);
-    mdns_instance_name_set(APP_NAME);
+    mdns_hostname_set(wifiService.getHostname());
+    mdns_instance_name_set(robotService.name());
+    robotService.addUpdateHandler([](const std::string &) { mdns_instance_name_set(robotService.name()); }, false);
     apService.begin();
 
 #if FT_ENABLED(USE_CAMERA)

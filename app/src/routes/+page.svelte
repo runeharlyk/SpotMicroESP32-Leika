@@ -1,11 +1,22 @@
 <script lang="ts">
     import { resolve } from '$app/paths'
+    import { browser } from '$app/environment'
     import { onDestroy, onMount } from 'svelte'
     import Visualization from '$lib/components/Visualization.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
-    import { apiLocation, pairing, socket, startPairing } from '$lib/stores'
-    import { addRobot, forgetRobot, markSeen, robots, subnetPrefix, type Robot } from '$lib/stores'
+    import { apiLocation, pairing, robotSocketUrl, socket, startPairing } from '$lib/stores'
+    import {
+        addRobot,
+        forgetRobot,
+        markSeen,
+        robotKey,
+        robots,
+        subnetPrefix,
+        variantLabel,
+        type Robot
+    } from '$lib/stores'
+    import { renameConnectedRobot } from '$lib/services/robot-names'
     import {
         normalizeSubnetPrefix,
         probeAddress,
@@ -26,9 +37,12 @@
     let prefixDraft = $state('')
     let manualAddress = $state('')
     let reachability = $state<Record<string, Reachability>>({})
+    let answeredAt = $state<Record<string, string>>({})
+    let renaming = $state(false)
+    let nameDraft = $state('')
     let controller: AbortController | undefined
 
-    const unsaved = (address: string) => !$robots.some(robot => robot.address === address)
+    const unsaved = (address: string) => !$robots.some(robot => robot.addresses.includes(address))
 
     const found = $derived(
         [...candidates.filter(c => c.state === 'found').map(c => c.address), ...sweepFound].filter(
@@ -40,8 +54,13 @@
         $socket || found.length > 0 || Object.values(reachability).includes('online')
     )
 
+    // Served by the robot itself, the app has no saved address; the robot is then the page's host.
+    const currentAddress = $derived($apiLocation || (browser ? window.location.host : ''))
+
+    const connectedRobot = $derived($robots.find(robot => robot.addresses.includes(currentAddress)))
+
     const connectedName = $derived(
-        $robots.find(robot => robot.address === $apiLocation)?.name ??
+        connectedRobot?.name ??
             ($socket && $apiLocation === '' ? 'this robot' : $apiLocation || 'the robot')
     )
 
@@ -53,13 +72,22 @@
 
     onDestroy(() => controller?.abort())
 
+    // A robot is online if any of its addresses answers; that address is the one to connect to.
     const refreshSaved = async () => {
-        for (const robot of $robots) reachability[robot.address] = 'probing'
+        for (const robot of $robots) reachability[robotKey(robot)] = 'probing'
         await Promise.all(
             $robots.map(async robot => {
-                const isReachable = await probeAddress(robot.address)
-                reachability[robot.address] = isReachable ? 'online' : 'offline'
-                if (isReachable) markSeen(robot.address)
+                const results = await Promise.all(
+                    robot.addresses.map(async address =>
+                        (await probeAddress(address)) ? address : null
+                    )
+                )
+                const answering = results.find(address => address !== null)
+                reachability[robotKey(robot)] = answering ? 'online' : 'offline'
+                if (answering) {
+                    answeredAt[robotKey(robot)] = answering
+                    markSeen(answering)
+                }
             })
         )
     }
@@ -108,7 +136,20 @@
 
     const connect = (address: string) => {
         apiLocation.set(address)
-        socket.init(`ws://${address}/api/ws`)
+        socket.init(robotSocketUrl(address))
+    }
+
+    const connectRobot = (robot: Robot) => connect(answeredAt[robotKey(robot)] ?? robot.lastAddress)
+
+    const startRenaming = () => {
+        nameDraft = connectedRobot?.name ?? ''
+        renaming = true
+    }
+
+    const saveName = async () => {
+        const error = await renameConnectedRobot(nameDraft)
+        if (error) notifications.error(error, 4000)
+        else renaming = false
     }
 
     const addAndConnect = (address: string) => {
@@ -122,7 +163,9 @@
         manualAddress = ''
         addRobot(address)
         reachability[address] = 'probing'
-        reachability[address] = (await probeAddress(address)) ? 'online' : 'offline'
+        const isReachable = await probeAddress(address)
+        reachability[address] = isReachable ? 'online' : 'offline'
+        if (isReachable) answeredAt[address] = address
         adding = false
     }
 
@@ -131,7 +174,7 @@
     }
 
     const statusLabel = (robot: Robot) => {
-        const state = reachability[robot.address]
+        const state = reachability[robotKey(robot)]
         if (state === 'probing') return 'Checking...'
         if (state === 'online') return 'Online'
         if (!robot.lastSeenAt) return 'Offline'
@@ -164,7 +207,37 @@
                         <div class="truncate font-medium">Connected</div>
                         <div class="truncate text-xs opacity-60">{connectedName}</div>
                     </div>
+                    {#if connectedRobot?.id && !renaming}
+                        <button class="btn btn-ghost btn-sm" onclick={startRenaming}>Rename</button>
+                    {/if}
                 </div>
+
+                {#if renaming}
+                    <form
+                        class="mt-3 flex gap-2"
+                        onsubmit={event => {
+                            event.preventDefault()
+                            saveName()
+                        }}
+                    >
+                        <input
+                            class="input input-sm min-w-0 flex-1"
+                            aria-label="Robot name"
+                            maxlength="32"
+                            bind:value={nameDraft}
+                        />
+                        <button class="btn btn-sm btn-primary" disabled={!nameDraft.trim()}>
+                            Save
+                        </button>
+                        <button
+                            class="btn btn-sm btn-ghost"
+                            type="button"
+                            onclick={() => (renaming = false)}
+                        >
+                            Cancel
+                        </button>
+                    </form>
+                {/if}
 
                 <a class="btn btn-primary mt-4 w-full" href={resolve('/controller')}>
                     Open controller
@@ -173,34 +246,40 @@
         {:else if !adding}
             {#if $robots.length}
                 <ul class="mb-4 flex flex-col gap-2">
-                    {#each $robots as robot (robot.address)}
+                    {#each $robots as robot (robotKey(robot))}
+                        {@const state = reachability[robotKey(robot)]}
                         <li class="bg-base-200 rounded-box flex items-center gap-3 p-3">
-                            {#if reachability[robot.address] === 'probing'}
+                            {#if state === 'probing'}
                                 <span class="loading loading-spinner loading-xs shrink-0"></span>
                             {:else}
                                 <span
-                                    class="size-2 shrink-0 rounded-full {(
-                                        reachability[robot.address] === 'online'
-                                    ) ?
+                                    class="size-2 shrink-0 rounded-full {state === 'online' ?
                                         'bg-success'
                                     :   'bg-base-content/30'}"
                                 ></span>
                             {/if}
                             <div class="min-w-0 flex-1">
                                 <div class="truncate font-medium">{robot.name}</div>
-                                <div class="truncate text-xs opacity-60">{statusLabel(robot)}</div>
+                                <div class="truncate text-xs opacity-60">
+                                    {[variantLabel(robot.variant), statusLabel(robot)]
+                                        .filter(Boolean)
+                                        .join(' - ')}
+                                </div>
+                                <div class="truncate font-mono text-xs opacity-50">
+                                    {robot.addresses.join(', ')}
+                                </div>
                             </div>
                             <button
                                 class="btn btn-sm btn-primary"
-                                disabled={reachability[robot.address] === 'offline'}
-                                onclick={() => connect(robot.address)}
+                                disabled={state === 'offline'}
+                                onclick={() => connectRobot(robot)}
                             >
                                 Connect
                             </button>
                             <button
                                 class="btn btn-sm btn-ghost btn-square"
                                 aria-label="Forget {robot.name}"
-                                onclick={() => forgetRobot(robot.address)}
+                                onclick={() => forgetRobot(robot)}
                             >
                                 <Delete class="h-4 w-4" />
                             </button>

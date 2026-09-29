@@ -65,6 +65,6 @@ namespace feature_service {
 
 void printFeatureConfiguration();
 
-void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res);
+void features_request(const char* robotName, socket_message_FeaturesDataResponse& fd_res);
 
 } // namespace feature_service
