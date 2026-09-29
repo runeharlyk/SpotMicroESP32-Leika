@@ -38,7 +38,9 @@
 
     let { children }: Props = $props()
 
-    const throttler = new Throttler()
+    // One per stream, so a burst of servo angles cannot hold back the next joystick command.
+    const inputThrottler = new Throttler()
+    const anglesThrottler = new Throttler()
 
     onMount(async () => {
         if (canReachRobot(page.url, $apiLocation)) socket.init(robotSocketUrl())
@@ -46,11 +48,13 @@
         addEventListeners()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        input.subscribe(data => throttler.throttle(() => socket.emit(ControllerData, data), 100))
+        input.subscribe(data =>
+            inputThrottler.throttle(() => socket.emit(ControllerData, data), 100)
+        )
         mode.subscribe(data => socket.emit(ModeData, data))
         walkGait.subscribe(data => socket.emit(WalkGaitData, data))
         servoAnglesOut.subscribe(data =>
-            throttler.throttle(() => socket.emit(AnglesData, data), 100)
+            anglesThrottler.throttle(() => socket.emit(AnglesData, data), 100)
         )
         kinematicData.subscribe(data => socket.emit(KinematicData, data))
     })
