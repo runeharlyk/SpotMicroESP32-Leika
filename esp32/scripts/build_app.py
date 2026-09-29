@@ -40,17 +40,9 @@ def get_flag(flag, default=None):
     return default
 
 
-def get_files_to_exclude():
-    files_to_exclude = []
-    if (get_flag("SPOTMICRO_ESP32") or get_flag("SPOTMICRO_ESP32_MINI")) and not get_flag("SPOTMICRO_YERTLE"):
-        print("Excluding Yertle files for SPOTMICRO_ESP32 build")
-        files_to_exclude.extend(["yertle.URDF", "URDF.zip", "URDF/"])
-    elif get_flag("SPOTMICRO_YERTLE") and not get_flag("SPOTMICRO_ESP32") and not get_flag("SPOTMICRO_ESP32_MINI"):
-        print("Excluding Spot Micro files for SPOTMICRO_YERTLE build")
-        files_to_exclude.extend(["spot_micro.urdf.xacro", "stl.zip", "stl/"])
-    else:
-        print("No specific variant flag set, including all files")
-    return files_to_exclude
+# The robot-served app is built without the 3D view (PUBLIC_EMBEDDED_BUILD), so no model is ever
+# read from flash; only the hosted web app loads them.
+MODEL_FILES = ["spot_micro.urdf.xacro", "stl.zip", "yertle.URDF", "URDF.zip", "URDF/"]
 
 
 def fail(message):
@@ -105,7 +97,7 @@ def encode_asset_data(path):
 
 
 def write_header():
-    exclude = get_files_to_exclude()
+    exclude = MODEL_FILES
     assets = []
     for p in sorted(Path(build_dir).rglob("*.*"), key=lambda x: x.relative_to(build_dir).as_posix()):
         rel_path = p.relative_to(build_dir).as_posix()

@@ -2,7 +2,7 @@
     import { resolve } from '$app/paths'
     import { browser } from '$app/environment'
     import { onDestroy, onMount } from 'svelte'
-    import Visualization from '$lib/components/Visualization.svelte'
+    import Visualization from '$lib/components/LazyVisualization.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
     import { apiLocation, pairing, robotSocketUrl, socket, startPairing } from '$lib/stores'
