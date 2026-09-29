@@ -6,6 +6,7 @@ import { resolve } from '$app/paths'
 import { socket } from './socket'
 import { apiLocation } from './location-store'
 import { identify } from './robots'
+import { VARIANT_DIMENSIONS } from '$lib/kinematics-variants'
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
@@ -55,14 +56,7 @@ export const variants = {
         stl: `${base}stl.zip`,
         modelYaw: 0,
         drivable: true,
-        kinematics: {
-            coxa: 0.0605,
-            coxa_offset: 0.01,
-            femur: 0.1112,
-            tibia: 0.1185,
-            L: 0.2075,
-            W: 0.078
-        }
+        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32
     },
     // The Pico's model is generated from the simulation (scripts/build_pico_model.js). Its URDF and
     // these firmware dimensions disagree by up to 16 mm, so it is not driven until one is confirmed.
@@ -71,28 +65,14 @@ export const variants = {
         stl: `${base}spot_pico.zip`,
         modelYaw: Math.PI / 2,
         drivable: false,
-        kinematics: {
-            coxa: 0.035,
-            coxa_offset: 0.0,
-            femur: 0.06,
-            tibia: 0.06,
-            L: 0.16,
-            W: 0.08
-        }
+        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32_MINI
     },
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
         modelYaw: 0,
         drivable: true,
-        kinematics: {
-            coxa: 0.035,
-            coxa_offset: 0.0,
-            femur: 0.13,
-            tibia: 0.13,
-            L: 0.24,
-            W: 0.078
-        }
+        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_YERTLE
     }
 }
 
