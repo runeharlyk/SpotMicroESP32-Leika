@@ -13,6 +13,13 @@ const urdf = readFileSync(path.join(resources, 'spot_pico.urdf'), 'utf8')
 const scene = readFileSync(path.join(resources, 'scene.xml'), 'utf8')
 writeFileSync(path.join(staticDir, 'spot_pico.urdf'), picoUrdfForApp(urdf, scene))
 
+// The browser simulation loads the simulation's own scene and gait tuning (lib/simulation).
+writeFileSync(path.join(staticDir, 'spot_pico_scene.xml'), scene)
+writeFileSync(
+    path.join(staticDir, 'spot_pico_gait.json'),
+    readFileSync(path.join(resources, 'gait_coef.json'))
+)
+
 const meshDir = path.join(resources, 'meshes')
 const meshes = Object.fromEntries(
     readdirSync(meshDir)

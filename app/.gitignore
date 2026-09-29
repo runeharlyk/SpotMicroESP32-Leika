@@ -11,3 +11,5 @@ vite.config.ts.timestamp-*
 # Generated from simulation/src/resources/spot_pico by `pnpm model`
 /static/spot_pico.urdf
 /static/spot_pico.zip
+/static/spot_pico_scene.xml
+/static/spot_pico_gait.json
