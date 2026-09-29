@@ -25,6 +25,7 @@
     let sim: PicoSim | undefined
     let robot: URDFRobot | undefined
     let lastFrame = 0
+    let destroyed = false
     const followed = new Vector3()
     const robotWorld = new Vector3()
 
@@ -42,6 +43,8 @@
                 loadSimulation(),
                 loadPicoModel()
             ])
+            // Left while loading: nothing renders any more, and the engine outlives this view.
+            if (destroyed) return
             sim?.dispose()
             sim = new PicoSim(mujoco, assets)
             placeRobot(model)
@@ -127,6 +130,7 @@
     })
 
     onDestroy(() => {
+        destroyed = true
         sceneManager.stopRenderLoop()
         sceneManager.renderer?.dispose()
         resize?.disconnect()
