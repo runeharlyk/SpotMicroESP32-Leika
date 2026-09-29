@@ -1,4 +1,5 @@
 import { savedAddresses } from '$lib/stores/robots'
+import { robotSocketUrl } from '$lib/stores/location-store'
 
 const PROBE_TIMEOUT_MS = 1500
 const SWEEP_TIMEOUT_MS = 1200
@@ -9,6 +10,38 @@ const SWEEP_LAST_HOST = 254
 // spot-micro.local is the factory hostname (esp32/factory_settings.ini), and 192.168.4.1 is the
 // SoftAP address the robot serves on when it hosts its own network.
 const WELL_KNOWN_HOSTS = ['spot-micro.local', 'esp32.local', '192.168.4.1']
+
+const PRIVATE_IPV4 = /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/
+
+/** Loopback, private and link-local addresses, and mDNS names: the hosts a local network prompt guards. */
+const isLocalHost = (hostname: string) =>
+    hostname === 'localhost' ||
+    hostname === '[::1]' ||
+    hostname.endsWith('.local') ||
+    PRIVATE_IPV4.test(hostname)
+
+/**
+ * Chromium holds connections from a page on a public host to local addresses until the user answers
+ * its local network access prompt, so a probe must not start its timeout while that prompt is open.
+ * A page already on the local network is never prompted, although the permission still reads "prompt".
+ */
+const localNetworkAccessDecided = async () => {
+    if (isLocalHost(window.location.hostname)) return
+    let status: PermissionStatus
+    try {
+        status = await navigator.permissions.query({
+            name: 'local-network-access' as PermissionName
+        })
+    } catch {
+        return
+    }
+    if (status.state !== 'prompt') return
+    await new Promise<void>(resolve =>
+        status.addEventListener('change', () => {
+            if (status.state !== 'prompt') resolve()
+        })
+    )
+}
 
 /**
  * Probes by opening the WebSocket the app itself uses. Unlike fetch this is not subject to CORS,
@@ -28,13 +61,15 @@ export const probeAddress = (
 
         let socket: WebSocket
         try {
-            socket = new WebSocket(`ws://${address}/api/ws`)
+            socket = new WebSocket(robotSocketUrl(address))
         } catch {
             resolve(false)
             return
         }
 
+        let settled = false
         const settle = (found: boolean) => {
+            settled = true
             clearTimeout(timer)
             signal?.removeEventListener('abort', onAbort)
             socket.onopen = socket.onerror = socket.onclose = null
@@ -47,8 +82,11 @@ export const probeAddress = (
         }
 
         const onAbort = () => settle(false)
-        const timer = setTimeout(() => settle(false), timeoutMs)
+        let timer: ReturnType<typeof setTimeout> | undefined
         signal?.addEventListener('abort', onAbort, { once: true })
+        void localNetworkAccessDecided().then(() => {
+            if (!settled) timer = setTimeout(() => settle(false), timeoutMs)
+        })
 
         socket.onopen = () => settle(true)
         socket.onerror = () => settle(false)
