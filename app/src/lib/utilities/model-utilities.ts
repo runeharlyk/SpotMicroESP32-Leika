@@ -9,7 +9,7 @@ import { get } from 'svelte/store'
 import { resolve } from '$app/paths'
 
 export const populateModelCache = async () => {
-    await cacheModelFiles()
+    await cacheModelFiles(get(currentVariant).stl)
     const { model: modelUrl, modelYaw } = get(currentVariant)
     const modelRes = await loadModel(modelUrl, modelYaw)
     if (modelRes.isOk()) {
@@ -21,8 +21,8 @@ export const populateModelCache = async () => {
     }
 }
 
-export const cacheModelFiles = async () => {
-    const data = await fetch(get(currentVariant).stl)
+export const cacheModelFiles = async (meshZipUrl: string) => {
+    const data = await fetch(meshZipUrl)
 
     const files = uzip.parse(await data.arrayBuffer())
 
