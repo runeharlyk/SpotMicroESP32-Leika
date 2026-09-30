@@ -1,21 +1,7 @@
 #pragma once
 
 #include <platform_shared/message.pb.h>
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-
-/**
- * 0 for NaN and infinity, else the value. -Ofast implies -ffinite-math-only, under which std::isfinite
- * may be folded to true; the exponent bits cannot be.
- */
-inline float finiteOrZero(float value) {
-    uint32_t bits;
-    std::memcpy(&bits, &value, sizeof(bits));
-    return (bits & 0x7f800000u) == 0x7f800000u ? 0.0f : value;
-}
-
-inline float bounded(float value, float low, float high) { return std::clamp(finiteOrZero(value), low, high); }
+#include <utils/finite.h>
 
 /** Controller input as the motion states use it: sticks in [-1, 1], height, speed and s1 in [0, 1]. */
 struct CommandMsg {

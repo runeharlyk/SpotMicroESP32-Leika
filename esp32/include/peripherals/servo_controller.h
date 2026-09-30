@@ -2,6 +2,7 @@
 #define ServoController_h
 
 #include <peripherals/drivers/pca9685.h>
+#include <peripherals/servo_output.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_proto_handler.h>
 #include <template/stateful_service.h>
@@ -37,6 +38,7 @@ inline ServoSettings ServoSettings_defaults() {
 inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) { proto = settings; }
 
 inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoSettings &settings) {
+    if (!validServoSettings(proto)) return StateUpdateResult::ERROR;
     settings = proto;
     return StateUpdateResult::CHANGED;
 }
@@ -53,14 +55,6 @@ class ServoController : public StatefulService<ServoSettings> {
         initializePCA();
     }
 
-    void pcaWrite(int index, int value) {
-        if (value < 0 || value > 4096) {
-            ESP_LOGE("Peripherals", "Invalid PWM value %d for %d :: Valid range 0-4096", value, index);
-            return;
-        }
-        _pca.setPWM(index, 0, value);
-    }
-
     void activate() {
         if (is_active) return;
         control_state = SERVO_CONTROL_STATE::ANGLE;
@@ -75,38 +69,40 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.sleep();
     }
 
-    void setServoPWM(int32_t servo_id, uint32_t pwm) {
+    /** Calibration: one servo (0-11), or all for -1, to a raw PWM kept inside the servos' range. */
+    void setServoPWM(int32_t servo_id, uint32_t requested) {
+        if (servo_id < -1 || servo_id >= static_cast<int32_t>(SERVO_COUNT)) {
+            ESP_LOGW("SERVO_CONTROLLER", "No servo %d", servo_id);
+            return;
+        }
         control_state = SERVO_CONTROL_STATE::PWM;
+        uint16_t pwm = boundedPwm(static_cast<float>(requested));
         if (servo_id < 0) {
-            uint16_t pwms[12];
-            std::fill_n(pwms, 12, static_cast<uint16_t>(pwm));
-            _pca.setMultiplePWM(pwms, 12);
+            uint16_t pwms[SERVO_COUNT];
+            std::fill_n(pwms, SERVO_COUNT, pwm);
+            _pca.setMultiplePWM(pwms, SERVO_COUNT);
         } else {
             _pca.setPWM(servo_id, 0, pwm);
         }
         ESP_LOGI("SERVO_CONTROLLER", "Setting servo %d to %d", servo_id, pwm);
     }
 
-    void updateActiveState() { is_active ? activate() : deactivate(); }
-
     void setMode(SERVO_CONTROL_STATE newMode) { control_state = newMode; }
 
+    // A non-finite target is dropped: smoothing towards it would leave the joint NaN for good.
     void setAngles(float new_angles[12]) {
         for (int i = 0; i < 12; i++) {
-            target_angles[i] = new_angles[i];
+            if (isFinite(new_angles[i])) target_angles[i] = new_angles[i];
         }
     }
 
     void calculatePWM() {
-        uint16_t pwms[12];
+        uint16_t pwms[SERVO_COUNT];
         for (int i = 0; i < 12; i++) {
             angles[i] = lerp(angles[i], target_angles[i], 0.1);
-            auto &servo = state().servos[i];
-            float angle = servo.direction * angles[i] + servo.center_angle;
-            uint16_t pwm = angle * servo.conversion + servo.center_pwm;
-            pwms[i] = pwm = std::clamp<uint16_t>(pwm, 125, 600);
+            pwms[i] = servoPwm(state().servos[i], angles[i]);
         }
-        _pca.setMultiplePWM(pwms, 12);
+        _pca.setMultiplePWM(pwms, SERVO_COUNT);
     }
 
     void update() {
