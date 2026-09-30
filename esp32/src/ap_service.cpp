@@ -50,7 +50,6 @@ void APService::recoveryMode() {
 
 void APService::loop() {
     EXECUTE_EVERY_N_MS(MANAGE_NETWORK_DELAY, manageAP());
-    handleDNS();
 }
 
 void APService::manageAP() {
@@ -78,7 +77,7 @@ void APService::startAP() {
         IPAddress apIp = WiFi.softAPIP();
         ESP_LOGI(TAG, "Starting captive portal on %s", apIp.toString().c_str());
         _dnsServer = std::make_unique<DNSServer>();
-        _dnsServer->start(DNS_PORT, "*", apIp);
+        _dnsServer->start(DNS_PORT, apIp);
     }
 }
 
@@ -91,5 +90,3 @@ void APService::stopAP() {
     ESP_LOGI(TAG, "Stopping AP");
     WiFi.softAPdisconnect(true);
 }
-
-void APService::handleDNS() {}

@@ -28,6 +28,7 @@ PROGRAMS = {
     "settings_persistence_test.cpp": [*NANOPB, API_PROTO],
     "ws_origin_test.cpp": [],
     "app_network_settings_test.cpp": [],
+    "dns_reply_test.cpp": [],
 }
 
 

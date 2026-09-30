@@ -38,5 +38,4 @@ class APService : public StatefulService<APSettings> {
     void manageAP();
     void startAP();
     void stopAP();
-    void handleDNS();
 };

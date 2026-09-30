@@ -45,7 +45,6 @@
 #define AP_MODE_NEVER api_APProvisionMode_AP_MODE_NEVER
 
 #define MANAGE_NETWORK_DELAY 10000
-#define DNS_PORT 53
 
 using APNetworkStatus = api_APNetworkStatus;
 #define ACTIVE api_APNetworkStatus_AP_ACTIVE
