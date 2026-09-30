@@ -88,13 +88,6 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
 #endif
 }
 
-void Peripherals::getSettingsProto(socket_message_PeripheralSettingsData &data) {
-    data.sda = state().sda;
-    data.scl = state().scl;
-    data.frequency = state().frequency;
-    data.pins_count = 0;
-}
-
 /* IMU FUNCTIONS */
 bool Peripherals::readImu() {
     bool updated = false;

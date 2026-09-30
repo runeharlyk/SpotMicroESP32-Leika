@@ -40,7 +40,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
-    void getSettingsProto(socket_message_PeripheralSettingsData &data);
 
     /* IMU FUNCTIONS */
     bool readImu();

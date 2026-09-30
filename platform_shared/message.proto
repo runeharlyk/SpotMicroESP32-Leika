@@ -8,8 +8,6 @@ import "api.proto";
 // Partial data types
 message Vector { float x = 1; float y = 2; }
 message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; }
-message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
-message KnownNetworkItem { string ssid = 1; string password = 2; bool static_ip = 3; uint32 local_ip = 4; uint32 subnet_mask = 5; uint32 gateway_ip = 6; uint32 dns_ip_1 = 7; uint32 dns_ip_2 = 8; }
 
 // Individual message data types
 message IMUData {
@@ -194,11 +192,8 @@ message I2CScanData { repeated I2CDevice devices = 1; }
 
 message I2CScanDataRequest {}
 
-message PeripheralSettingsData { int32 sda = 1; int32 scl = 2; int32 frequency = 3; repeated PinConfig pins = 4; }
 
-message PeripheralSettingsDataRequest {}
 
-message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated KnownNetworkItem wifi_networks = 3; }
 
 message RSSIData { int32 rssi = 1; }
 
@@ -263,12 +258,9 @@ message Message {
         AnglesData angles = 170;
         I2CScanData i2c_scan = 180;
         I2CScanDataRequest i2c_scan_data_request = 181;
-        PeripheralSettingsData peripheral_settings = 190;
-        PeripheralSettingsDataRequest peripheral_settings_data_request = 191;
         KinematicData kinematic_data = 200;
         ServoPWMData servo_pwm = 210;
         ServoStateData servo_state = 211;
-        WifiSettingsData wifi_settings = 240;
         ControllerData controller_data = 250;
         RSSIData rssi = 260;
     }

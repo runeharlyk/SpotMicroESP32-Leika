@@ -1,18 +1,6 @@
 socket_message.I2CDevice.part_number max_size:32
 socket_message.I2CDevice.name max_size:32
 
-socket_message.PinConfig.mode max_size:16
-socket_message.PinConfig.type max_size:16
-socket_message.PinConfig.role max_size:16
-
-socket_message.KnownNetworkItem.ssid max_size:33
-socket_message.KnownNetworkItem.password max_size:64
-socket_message.KnownNetworkItem.local_ip max_size:16
-socket_message.KnownNetworkItem.subnet_mask max_size:16
-socket_message.KnownNetworkItem.gateway_ip max_size:16
-socket_message.KnownNetworkItem.dns_ip_1 max_size:16
-socket_message.KnownNetworkItem.dns_ip_2 max_size:16
-
 socket_message.StaticSystemInformation.esp_platform type:FT_POINTER
 socket_message.StaticSystemInformation.firmware_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_type type:FT_POINTER
@@ -23,12 +11,6 @@ socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 socket_message.AnglesData.angles max_count:12
 
 socket_message.I2CScanData.devices max_count:16
-
-socket_message.PeripheralSettingsData.pins max_count:32
-
-socket_message.WifiSettingsData.hostname max_size:32
-socket_message.WifiSettingsData.wifi_networks max_count:8
-
 
 socket_message.SonarData.dummy_field max_size:16
 

@@ -4,7 +4,6 @@ package api;
 
 
 // Empty message for endpoints which only needs a status
-message EmptyMessage {}
 
 // =============================================================================
 // AP (Access Point) Settings - shared data types
@@ -189,7 +188,6 @@ message MDNSStatus {
     repeated MDNSTxtRecord global_txt_records = 5;
 }
 
-message MDNSSettingsRequest {}
 message MDNSStatusRequest {}
 
 message MDNSQueryRequest {
@@ -226,84 +224,3 @@ message PeripheralSettings {
 }
 
 message PeripheralSettingsRequest {}
-
-// =============================================================================
-// File System - shared data types
-// =============================================================================
-
-message FileEntry {
-    string name = 1;
-    bool is_directory = 2;
-    uint32 size = 3; // Only for files
-    repeated FileEntry children = 4; // Only for directories
-}
-
-message FileList {
-    repeated FileEntry entries = 1;
-}
-
-message FileListRequest {}
-
-message FileDeleteRequest {
-    string path = 1;
-}
-
-message FileEditRequest {
-    string path = 1;
-    bytes content = 2;
-}
-
-message FileMkdirRequest {
-    string path = 1;
-}
-
-// =============================================================================
-// REST API wrappers - used by HTTP endpoints
-// =============================================================================
-
-// Request wrapper for REST endpoints
-message Request {
-    oneof payload {
-        APSettings ap_settings = 10;
-        APSettingsRequest ap_settings_request = 11;
-        APStatusRequest ap_status_request = 12;
-        ServoSettings servo_settings = 20;
-        ServoSettingsRequest servo_settings_request = 21;
-        FileListRequest file_list_request = 30;
-        FileDeleteRequest file_delete_request = 31;
-        FileEditRequest file_edit_request = 32;
-        FileMkdirRequest file_mkdir_request = 33;
-        WifiSettings wifi_settings = 40;
-        WifiSettingsRequest wifi_settings_request = 41;
-        CameraSettings camera_settings = 50;
-        CameraSettingsRequest camera_settings_request = 51;
-        MDNSSettings mdns_settings = 60;
-        MDNSSettingsRequest mdns_settings_request = 61;
-        MDNSStatusRequest mdns_status_request = 62;
-        MDNSQueryRequest mdns_query_request = 63;
-        PeripheralSettings peripheral_settings = 70;
-        PeripheralSettingsRequest peripheral_settings_request = 71;
-    }
-}
-
-// Response wrapper for REST endpoints
-message Response {
-    uint32 status_code = 1;
-    string error_message = 2;
-
-    oneof payload {
-        EmptyMessage empty_message = 5;
-        APSettings ap_settings = 10;
-        APStatus ap_status = 11;
-        ServoSettings servo_settings = 20;
-        FileList file_list = 30;
-        WifiSettings wifi_settings = 40;
-        WifiNetworkList wifi_network_list = 41;
-        WifiStatus wifi_status = 42;
-        CameraSettings camera_settings = 50;
-        MDNSSettings mdns_settings = 60;
-        MDNSStatus mdns_status = 61;
-        MDNSQueryResponse mdns_query_response = 62;
-        PeripheralSettings peripheral_settings = 70;
-    }
-}
