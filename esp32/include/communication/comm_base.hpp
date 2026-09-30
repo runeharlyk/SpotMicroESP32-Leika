@@ -58,6 +58,11 @@ class CommAdapterBase {
         if (out_size > sizeof(pb_heap_enc_buf)) { // If the encoded size exceeds our buffer size, we needs to malloc a
                                                   // buffer of a proper size
             buffer = (uint8_t*)malloc(out_size);
+            if (!buffer) {
+                ESP_LOGE("ProtoComm", "No memory to encode message (tag %d, %u bytes)", (int)tag, out_size);
+                xSemaphoreGive(encode_mutex_);
+                return;
+            }
         }
 
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
