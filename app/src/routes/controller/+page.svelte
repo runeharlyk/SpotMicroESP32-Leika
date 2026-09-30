@@ -1,13 +1,17 @@
 <script lang="ts">
     import Controls from './Controls.svelte'
     import WidgetContainer from '$lib/components/layout/WidgetContainer.svelte'
-    import { selectedView, views } from '$lib/stores/application'
+    import { page } from '$app/state'
+    import { offlineView, selectedView, views } from '$lib/stores/application'
     import { onDestroy, onMount } from 'svelte'
-    import { mpu, socket } from '$lib/stores'
+    import { apiLocation, hasRobot, mpu, socket } from '$lib/stores'
     import { imu } from '$lib/stores/imu'
     import { IMUData } from '$lib/platform_shared/message'
 
-    let layout = $derived($views.find(v => v.name === $selectedView)!)
+    const transport = socket.transport
+    const robot = $derived(hasRobot(page.url, $apiLocation, $transport))
+    const viewName = $derived(robot ? $selectedView : $offlineView)
+    let layout = $derived($views.find(v => v.name === viewName) ?? $views[0])
 
     let stopImu: (() => void) | undefined
     onMount(() => {

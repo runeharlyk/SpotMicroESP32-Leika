@@ -1,6 +1,7 @@
 import { persistentStore } from '$lib/utilities'
 import { get, writable } from 'svelte/store'
 import { EMBEDDED_BUILD } from '$lib/build-flags'
+import type { TransportKind } from '$lib/transport/transport.interface'
 
 export const apiLocation = EMBEDDED_BUILD ? writable('') : persistentStore('location', '')
 
@@ -16,6 +17,11 @@ export function robotHttpUrl(path: string): string {
 // The hosted app (https) has no robot at its own host, so it needs a saved address to reach one.
 export function canReachRobot(pageUrl: URL, location: string): boolean {
     return pageUrl.protocol !== 'https:' || location !== ''
+}
+
+/** A robot the app can talk to: over the socket it can open, or over Bluetooth, which needs no address. */
+export function hasRobot(pageUrl: URL, location: string, transport: TransportKind | null): boolean {
+    return canReachRobot(pageUrl, location) || transport === 'bluetooth'
 }
 
 export function robotSocketUrl(address: string = get(apiLocation)): string {

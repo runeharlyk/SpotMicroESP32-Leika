@@ -1,19 +1,18 @@
 <script lang="ts">
     import type { Snippet } from 'svelte'
     import { page } from '$app/state'
-    import { apiLocation, canReachRobot } from '$lib/stores'
+    import { apiLocation, hasRobot } from '$lib/stores'
     import { socket } from '$lib/stores/socket'
     import { Warning } from './icons'
 
     const { children }: { children: Snippet } = $props()
 
     const transport = socket.transport
-    // Without an address the socket never opens, so requests would only time out; Bluetooth
-    // needs no address.
-    const hasRobot = $derived(canReachRobot(page.url, $apiLocation) || $transport === 'bluetooth')
+    // Without a robot the socket never opens, so requests would only time out.
+    const robot = $derived(hasRobot(page.url, $apiLocation, $transport))
 </script>
 
-{#if hasRobot}
+{#if robot}
     {@render children()}
 {:else}
     <div role="alert" class="alert alert-warning alert-soft w-full max-w-2xl self-center">

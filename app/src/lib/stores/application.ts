@@ -69,3 +69,7 @@ views.update(list =>
 )
 
 export const selectedView = persistentStore('selected_view', get(views)[0].name)
+
+// Without a robot there is nothing to show but the simulation, which can be played with; a view
+// picked then is remembered apart from the one picked for a robot.
+export const offlineView = persistentStore('selected_view_offline', 'Simulation')
