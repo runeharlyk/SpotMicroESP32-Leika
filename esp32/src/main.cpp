@@ -342,18 +342,30 @@ void setupEventSocket() {
     });
 }
 
+// Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which
+// only copies out their latest readings.
+void sensorLoopEntry(void *) {
+    peripherals.beginSensors();
+    peripherals.calibrateIMU();
+    TickType_t lastWake = xTaskGetTickCount();
+    for (;;) {
+        peripherals.update();
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));
+    }
+}
+
 void IRAM_ATTR SpotControlLoopEntry(void *) {
     ESP_LOGI("main", "Control task starting");
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
     peripherals.begin();
+    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 4096, nullptr, 4, nullptr, 1);
     servoController.begin();
     motionService.begin();
 #if FT_ENABLED(USE_WS2812)
     ledService.begin();
 #endif
-    peripherals.calibrateIMU();
 
     for (;;) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);

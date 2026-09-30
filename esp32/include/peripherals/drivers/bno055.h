@@ -1,6 +1,7 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
+#include <utils/sleep.h>
 #include <utils/math_utils.h>
 
 class BNO055Driver {
@@ -16,25 +17,28 @@ class BNO055Driver {
         if (id != BNO055_ID) return false;
 
         writeReg(REG_OPR_MODE, MODE_CONFIG);
-        vTaskDelay(pdMS_TO_TICKS(25));
+        sleepAtLeastMs(25);
 
         writeReg(REG_SYS_TRIGGER, 0x20);
-        vTaskDelay(pdMS_TO_TICKS(650));
+        sleepAtLeastMs(650);
 
-        while (readReg(REG_CHIP_ID) != BNO055_ID) {
-            vTaskDelay(pdMS_TO_TICKS(10));
+        // The datasheet gives 650 ms from reset to ready; one that does not come back within another second is
+        // absent or broken, and waiting on it forever would stop the sensors for good.
+        for (int attempt = 0; readReg(REG_CHIP_ID) != BNO055_ID; attempt++) {
+            if (attempt == 100) return false;
+            sleepAtLeastMs(10);
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        sleepAtLeastMs(50);
 
         writeReg(REG_PWR_MODE, PWR_NORMAL);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        sleepAtLeastMs(10);
 
         writeReg(REG_PAGE_ID, 0);
         writeReg(REG_SYS_TRIGGER, 0x80);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        sleepAtLeastMs(10);
 
         writeReg(REG_OPR_MODE, MODE_NDOF);
-        vTaskDelay(pdMS_TO_TICKS(20));
+        sleepAtLeastMs(20);
 
         _initialized = true;
         return true;
@@ -64,7 +68,7 @@ class BNO055Driver {
         uint8_t calData[22];
 
         writeReg(REG_OPR_MODE, MODE_CONFIG);
-        vTaskDelay(pdMS_TO_TICKS(25));
+        sleepAtLeastMs(25);
 
         if (I2CBus::instance().readReg(_addr, REG_ACCEL_OFFSET_X_LSB, calData, 22) != ESP_OK) {
             writeReg(REG_OPR_MODE, MODE_NDOF);
@@ -72,7 +76,7 @@ class BNO055Driver {
         }
 
         writeReg(REG_OPR_MODE, MODE_NDOF);
-        vTaskDelay(pdMS_TO_TICKS(20));
+        sleepAtLeastMs(20);
 
         return true;
     }

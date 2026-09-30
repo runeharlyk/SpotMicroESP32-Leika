@@ -1,6 +1,7 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
+#include <utils/sleep.h>
 #include <algorithm>
 
 class PCA9685Driver {
@@ -22,20 +23,20 @@ class PCA9685Driver {
 
     void reset() {
         writeReg(REG_MODE1, MODE1_RESTART);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        sleepAtLeastMs(10);
     }
 
     void sleep() {
         uint8_t mode = readReg(REG_MODE1);
         writeReg(REG_MODE1, (mode & ~MODE1_RESTART) | MODE1_SLEEP);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        sleepAtLeastMs(5);
     }
 
     void wakeup() {
         uint8_t mode = readReg(REG_MODE1);
         uint8_t wakeMode = mode & ~MODE1_SLEEP;
         writeReg(REG_MODE1, wakeMode);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        sleepAtLeastMs(5);
         writeReg(REG_MODE1, wakeMode | MODE1_RESTART);
     }
 
@@ -51,7 +52,7 @@ class PCA9685Driver {
         writeReg(REG_MODE1, newMode);
         writeReg(REG_PRESCALE, prescale);
         writeReg(REG_MODE1, oldMode);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        sleepAtLeastMs(5);
         writeReg(REG_MODE1, oldMode | MODE1_RESTART | MODE1_AI);
     }
 

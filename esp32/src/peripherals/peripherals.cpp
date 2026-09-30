@@ -1,4 +1,5 @@
 #include <peripherals/peripherals.h>
+#include <utils/sleep.h>
 
 Peripherals::Peripherals()
     : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this),
@@ -12,7 +13,9 @@ void Peripherals::begin() {
     _persistence.readFromFS();
 
     updatePins();
+}
 
+void Peripherals::beginSensors() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     if (!_imu.initialize()) ESP_LOGE("Peripherals", "IMU initialize failed");
 #endif
@@ -71,110 +74,110 @@ void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
 }
 
 void Peripherals::getIMUProto(socket_message_IMUData &data) {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    data.x = _imu.getAngleX();
-    data.y = _imu.getAngleY();
-    data.z = _imu.getAngleZ();
-#endif
-#if FT_ENABLED(USE_HMC5883)
-    data.heading = _mag.getHeading();
-#elif FT_ENABLED(USE_MPU6050)
-    data.heading = _imu.getAngleZ();
-#endif
-#if FT_ENABLED(USE_BMP180)
-    data.altitude = _bmp.getAltitude();
-    data.bmp_temp = _bmp.getTemperature();
-    data.pressure = _bmp.getPressure();
-#endif
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    data.x = _readings.angleX;
+    data.y = _readings.angleY;
+    data.z = _readings.angleZ;
+    data.heading = _readings.heading;
+    data.altitude = _readings.altitude;
+    data.bmp_temp = _readings.temperature;
+    data.pressure = _readings.pressure;
 }
 
-/* IMU FUNCTIONS */
-bool Peripherals::readImu() {
-    bool updated = false;
+void Peripherals::readImu() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     beginTransaction();
-    updated = _imu.update();
+    if (_imu.update()) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.angleX = _imu.getAngleX();
+        _readings.angleY = _imu.getAngleY();
+        _readings.angleZ = _imu.getAngleZ();
+#if !FT_ENABLED(USE_HMC5883)
+        _readings.heading = _imu.getAngleZ();
+#endif
+    }
     endTransaction();
 #endif
-    return updated;
 }
 
-bool Peripherals::readMag() {
-    bool updated = false;
+void Peripherals::readMag() {
 #if FT_ENABLED(USE_HMC5883)
     beginTransaction();
-    updated = _mag.update();
+    if (_mag.update()) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.heading = _mag.getHeading();
+    }
     endTransaction();
 #endif
-    return updated;
 }
 
-bool Peripherals::readBMP() {
-    bool updated = false;
+void Peripherals::readBMP() {
 #if FT_ENABLED(USE_BMP180)
     beginTransaction();
-    updated = _bmp.update();
+    if (_bmp.update()) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.altitude = _bmp.getAltitude();
+        _readings.temperature = _bmp.getTemperature();
+        _readings.pressure = _bmp.getPressure();
+    }
     endTransaction();
 #endif
-    return updated;
 }
 
-bool Peripherals::readGesture() {
-    bool updated = false;
+void Peripherals::readGesture() {
 #if FT_ENABLED(USE_PAJ7620U2)
     beginTransaction();
-    updated = _gesture.readGesture();
+    if (_gesture.readGesture()) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.gesture = _gesture.getGesture();
+    }
     endTransaction();
 #endif
-    return updated;
 }
 
 void Peripherals::readSonar() {
 #if FT_ENABLED(USE_USS)
-    _left_distance = _left_sonar->ping_cm();
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-    _right_distance = _right_sonar->ping_cm();
+    const float left = _left_sonar->ping_cm();
+    // Lets the left ping's echo die out before the right one listens.
+    sleepAtLeastMs(50);
+    const float right = _right_sonar->ping_cm();
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    _readings.leftDistance = left;
+    _readings.rightDistance = right;
 #endif
 }
 
 float Peripherals::angleX() {
-    return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        _imu.getAngleX();
-#else
-        0;
-#endif
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.angleX;
 }
 
 float Peripherals::angleY() {
-    return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        _imu.getAngleY();
-#else
-        0;
-#endif
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.angleY;
 }
 
 float Peripherals::angleZ() {
-    return
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-        _imu.getAngleZ();
-#else
-        0;
-#endif
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.angleZ;
 }
 
 gesture_t Peripherals::takeGesture() {
-    return
-#if FT_ENABLED(USE_PAJ7620U2)
-        _gesture.takeGesture();
-#else
-        gesture_t::eGestureNone;
-#endif
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    const gesture_t gesture = _readings.gesture;
+    _readings.gesture = eGestureNone;
+    return gesture;
 }
 
-float Peripherals::leftDistance() { return _left_distance; }
-float Peripherals::rightDistance() { return _right_distance; }
+float Peripherals::leftDistance() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.leftDistance;
+}
+
+float Peripherals::rightDistance() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.rightDistance;
+}
 
 bool Peripherals::calibrateIMU() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)

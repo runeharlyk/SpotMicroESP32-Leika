@@ -11,6 +11,7 @@
 #include <platform_shared/message.pb.h>
 
 #include <list>
+#include <mutex>
 
 #if FT_ENABLED(USE_USS)
 #include <NewPing.h>
@@ -26,11 +27,32 @@
  */
 #define MAX_DISTANCE 200
 
+/**
+ * The sensors' latest values. The sensor task writes them; the control and service tasks copy them out
+ * under a lock held only for the copy, so a slow or absent sensor never stalls the control loop.
+ */
+struct SensorReadings {
+    float angleX {0};
+    float angleY {0};
+    float angleZ {0};
+    float heading {0};
+    float altitude {0};
+    float temperature {0};
+    float pressure {0};
+    float leftDistance {MAX_DISTANCE};
+    float rightDistance {MAX_DISTANCE};
+    gesture_t gesture {eGestureNone};
+};
+
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
   public:
     Peripherals();
 
+    // Loads the settings and starts the I2C bus, which the servos need too.
     void begin();
+
+    // Brings up the sensors, which can take seconds: call from the sensor task, as update().
+    void beginSensors();
 
     void update();
 
@@ -40,17 +62,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
-
-    /* IMU FUNCTIONS */
-    bool readImu();
-
-    bool readMag();
-
-    bool readBMP();
-
-    bool readGesture();
-
-    void readSonar();
 
     float angleX();
 
@@ -68,7 +79,16 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     StatefulProtoHandler<PeripheralsConfiguration, api_PeripheralSettings> protoHandler;
 
   private:
+    void readImu();
+    void readMag();
+    void readBMP();
+    void readGesture();
+    void readSonar();
+
     FSPersistencePB<PeripheralsConfiguration> _persistence;
+
+    std::mutex _readingsMutex;
+    SensorReadings _readings;
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
@@ -91,8 +111,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     std::unique_ptr<NewPing> _left_sonar;
     std::unique_ptr<NewPing> _right_sonar;
 #endif
-    float _left_distance {MAX_DISTANCE};
-    float _right_distance {MAX_DISTANCE};
 
     std::list<uint8_t> _address_list;
     bool _i2c_active = false;

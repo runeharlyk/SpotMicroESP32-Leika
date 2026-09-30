@@ -1,6 +1,7 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
+#include <utils/sleep.h>
 #include <utils/math_utils.h>
 
 class MPU6050Driver {
@@ -18,9 +19,9 @@ class MPU6050Driver {
         if (dmpInitialize() != 0) return false;
 
         setDMPEnabled(true);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        sleepAtLeastMs(100);
         resetFIFO();
-        vTaskDelay(pdMS_TO_TICKS(50));
+        sleepAtLeastMs(50);
 
         _initialized = true;
         return true;
@@ -330,10 +331,10 @@ class MPU6050Driver {
 
     int dmpInitialize() {
         writeBit(REG_PWR_MGMT_1, 7, 1);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        sleepAtLeastMs(100);
 
         writeBits(REG_USER_CTRL, 2, 3, 0b111);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        sleepAtLeastMs(100);
 
         writeReg(REG_PWR_MGMT_1, 0x01);
         writeReg(REG_INT_ENABLE, 0x00);
@@ -373,7 +374,7 @@ class MPU6050Driver {
             uint32_t start = xTaskGetTickCount();
             fifoC = 0;
             while (!fifoC && (xTaskGetTickCount() - start) < pdMS_TO_TICKS(100)) {
-                vTaskDelay(pdMS_TO_TICKS(2));
+                vTaskDelay(1);
                 fifoC = getFIFOCount();
             }
         } else if (fifoC > DMP_PACKET_SIZE) {
@@ -491,7 +492,7 @@ class MPU6050Driver {
                     uint8_t outBuf[2] = {(uint8_t)(data >> 8), (uint8_t)(data & 0xFF)};
                     I2CBus::instance().writeReg(_addr, saveAddr + (i * shift), outBuf, 2);
                 }
-                vTaskDelay(pdMS_TO_TICKS(1));
+                sleepAtLeastMs(1);
             }
             kP *= 0.75f;
             kI *= 0.75f;
