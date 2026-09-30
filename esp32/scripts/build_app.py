@@ -15,8 +15,11 @@ buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
 interface_dir = f"{project_dir}/app"
 output_file = f"{project_dir}/esp32/include/WWWData.h"
-rebuild_inputs = [f"{interface_dir}/src", f"{interface_dir}/static",
-                  f"{interface_dir}/package.json", f"{interface_dir}/pnpm-lock.yaml"]
+# Everything the embedded app is built from, including the protos it compiles and its build configuration.
+rebuild_inputs = [f"{interface_dir}/src", f"{interface_dir}/static", f"{interface_dir}/scripts",
+                  f"{interface_dir}/package.json", f"{interface_dir}/pnpm-lock.yaml",
+                  f"{interface_dir}/vite.config.ts", f"{interface_dir}/svelte.config.js",
+                  f"{project_dir}/platform_shared"]
 build_dir = f"{interface_dir}/build"
 filesystem_dir = f"{project_dir}/data"
 
