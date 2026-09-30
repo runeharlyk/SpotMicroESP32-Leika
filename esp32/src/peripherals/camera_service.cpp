@@ -36,9 +36,7 @@ sensor_t *safe_sensor_get() {
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
-    : protoEndpoint(CameraSettings_read, CameraSettings_update, this,
-                    API_REQUEST_EXTRACTOR(camera_settings, api_CameraSettings),
-                    API_RESPONSE_ASSIGNER(camera_settings, api_CameraSettings)),
+    : protoHandler(CameraSettings_read, CameraSettings_update, this),
       _persistence(CameraSettings_read, CameraSettings_update, this, CAMERA_SETTINGS_FILE, api_CameraSettings_fields,
                    api_CameraSettings_size, CameraSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
@@ -90,19 +88,6 @@ esp_err_t CameraService::begin() {
     return err;
 }
 
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    camera_fb_t *fb = safe_camera_fb_get();
-    if (!fb) {
-        ESP_LOGE(TAG, "Camera capture failed");
-        return WebServer::sendError(request, 500, "Camera capture failed");
-    }
-
-    httpd_resp_set_type(request, "image/jpeg");
-    httpd_resp_set_hdr(request, "Content-Disposition", "inline; filename=capture.jpg");
-    esp_err_t res = httpd_resp_send(request, (const char *)fb->buf, fb->len);
-    esp_camera_fb_return(fb);
-    return res;
-}
 
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     httpd_resp_set_type(request, _STREAM_CONTENT_TYPE);
@@ -568,30 +553,6 @@ esp_err_t CameraService::begin() {
     return ESP_OK;
 }
 
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    if (!s_cam_initialized) {
-        return WebServer::sendError(request, 503, "Camera not initialized");
-    }
-
-    if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) {
-        return WebServer::sendError(request, 500, "Camera capture timed out");
-    }
-
-    xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
-    size_t len = s_ready_jpeg_len;
-    if (s_ready_idx >= 0 && len > 0) {
-        memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], len);
-    }
-    xSemaphoreGive(s_jpeg_lock);
-
-    if (len == 0) {
-        return WebServer::sendError(request, 500, "No frame available");
-    }
-
-    httpd_resp_set_type(request, "image/jpeg");
-    httpd_resp_set_hdr(request, "Content-Disposition", "inline; filename=capture.jpg");
-    return httpd_resp_send(request, (const char *)s_send_buf, len);
-}
 
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     if (!s_cam_initialized) {
@@ -632,9 +593,6 @@ esp_err_t CameraService::cameraStream(httpd_req_t *request) {
 
 CameraService::CameraService() {}
 esp_err_t CameraService::begin() { return ESP_ERR_NOT_SUPPORTED; }
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    return WebServer::sendError(request, 501, "Camera not supported on this platform");
-}
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     return WebServer::sendError(request, 501, "Camera not supported on this platform");
 }

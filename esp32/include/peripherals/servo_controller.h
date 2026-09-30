@@ -3,7 +3,7 @@
 
 #include <peripherals/drivers/pca9685.h>
 #include <template/stateful_persistence.h>
-#include <template/stateful_proto_endpoint.h>
+#include <template/stateful_proto_handler.h>
 #include <template/stateful_service.h>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
@@ -44,9 +44,7 @@ inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoS
 class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
-        : protoEndpoint(ServoSettings_read, ServoSettings_update, this,
-                        API_REQUEST_EXTRACTOR(servo_settings, ServoSettings),
-                        API_RESPONSE_ASSIGNER(servo_settings, ServoSettings)),
+        : protoHandler(ServoSettings_read, ServoSettings_update, this),
           _persistence(ServoSettings_read, ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
                        api_ServoSettings_size, ServoSettings_defaults()) {}
 
@@ -115,7 +113,7 @@ class ServoController : public StatefulService<ServoSettings> {
         if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
     }
 
-    StatefulProtoEndpoint<ServoSettings, ServoSettings> protoEndpoint;
+    StatefulProtoHandler<ServoSettings, ServoSettings> protoHandler;
 
   private:
     void initializePCA() {

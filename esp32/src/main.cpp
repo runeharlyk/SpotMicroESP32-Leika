@@ -47,74 +47,33 @@ WiFiService wifiService;
 APService apService;
 RobotService robotService;
 
+// Replies with the settings a service holds.
+template <class Handler, class Proto>
+static void replyWithSettings(Handler &handler, socket_message_CorrelationResponse &res, pb_size_t tag, Proto &reply) {
+    res.which_response = tag;
+    handler.read(reply);
+}
+
+// Applies settings and replies with the settings now in force: the new ones, or on refusal the
+// unchanged ones together with the reason.
+template <class Handler, class Proto>
+static void applySettings(Handler &handler, const Proto &settings, socket_message_CorrelationResponse &res,
+                          pb_size_t tag, Proto &reply) {
+    if (handler.update(settings) == StateUpdateResult::ERROR) {
+        res.status_code = 400;
+        strncpy(res.error_message, "Invalid state", sizeof(res.error_message) - 1);
+    }
+    replyWithSettings(handler, res, tag, reply);
+}
+
 void setupServer() {
     server.config(50 + webAssetCount(), 16384);
     server.listen(80);
 
-    server.on("/api/system/reset", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleReset(request); });
-    server.on("/api/system/restart", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleRestart(request); });
-    server.on("/api/system/sleep", HTTP_POST,
-              [&](httpd_req_t *request, api_Request *protoReq) { return system_service::handleSleep(request); });
 #if USE_CAMERA
-    server.on("/api/camera/still", HTTP_GET, [&](httpd_req_t *request) { return cameraService.cameraStill(request); });
     server.on("/api/camera/stream", HTTP_GET,
               [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
-#if USE_DVP_CAMERA
-    server.on("/api/camera/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.protoEndpoint.getState(request); });
-    server.on("/api/camera/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return cameraService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
 #endif
-#endif
-    server.on("/api/servo/config", HTTP_GET,
-              [&](httpd_req_t *request) { return servoController.protoEndpoint.getState(request); });
-    server.on("/api/servo/config", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return servoController.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
-    server.on("/api/wifi/sta/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.protoEndpoint.getState(request); });
-    server.on("/api/wifi/sta/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return wifiService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-    server.on("/api/wifi/scan", HTTP_GET, [&](httpd_req_t *request) { return wifiService.handleScan(request); });
-    server.on("/api/wifi/networks", HTTP_GET, [&](httpd_req_t *request) { return wifiService.getNetworks(request); });
-    server.on("/api/wifi/sta/status", HTTP_GET,
-              [&](httpd_req_t *request) { return wifiService.getNetworkStatus(request); });
-
-    server.on("/api/ap/status", HTTP_GET, [&](httpd_req_t *request) { return apService.getStatusProto(request); });
-    server.on("/api/ap/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return apService.protoEndpoint.getState(request); });
-    server.on("/api/ap/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return apService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
-    server.on("/api/peripherals/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return peripherals.protoEndpoint.getState(request); });
-    server.on("/api/peripherals/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return peripherals.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-
-#if FT_ENABLED(USE_MDNS)
-    server.on("/api/mdns/settings", HTTP_GET,
-              [&](httpd_req_t *request) { return mdnsService.protoEndpoint.getState(request); });
-    server.on("/api/mdns/settings", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return mdnsService.protoEndpoint.handleStateUpdate(request, protoReq);
-    });
-    server.on("/api/mdns/status", HTTP_GET, [&](httpd_req_t *request) { return mdnsService.getStatus(request); });
-    server.on("/api/mdns/query", HTTP_POST, [&](httpd_req_t *request, api_Request *protoReq) {
-        return mdnsService.queryServices(request, protoReq);
-    });
-#endif
-
-    server.on("/api/config/*", HTTP_GET, [](httpd_req_t *request) { return FileSystem::getConfigFile(request); });
-    server.on("/api/files", HTTP_GET, [&](httpd_req_t *request) { return FileSystem::getFilesProto(request); });
-    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/delete", file_delete_request, FileSystem::handleDelete);
-    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/edit", file_edit_request, FileSystem::handleEdit);
-    STATIC_PROTO_POST_ENDPOINT(server, "/api/files/mkdir", file_mkdir_request, FileSystem::mkdir);
     wsSocket.begin();
     mountWebApp(server);
     server.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
@@ -124,7 +83,7 @@ void setupServer() {
     server.addDefaultHeader("Server", APP_NAME);
     server.addDefaultHeader("Access-Control-Allow-Origin", "*");
     server.addDefaultHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
-    server.addDefaultHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.addDefaultHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     server.addDefaultHeader("Access-Control-Max-Age", "86400");
 }
 
@@ -239,6 +198,126 @@ void setupEventSocket() {
              res.response.fs_cancel_transfer_response =
                  FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer);
          }},
+
+        {socket_message_CorrelationRequest_wifi_settings_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             replyWithSettings(wifiService.protoHandler, res, socket_message_CorrelationResponse_wifi_settings_tag,
+                               res.response.wifi_settings);
+         }},
+
+        {socket_message_CorrelationRequest_wifi_settings_tag,
+         [](const auto &req, auto &res, int clientId) {
+             applySettings(wifiService.protoHandler, req.request.wifi_settings, res,
+                           socket_message_CorrelationResponse_wifi_settings_tag, res.response.wifi_settings);
+         }},
+
+        {socket_message_CorrelationRequest_wifi_status_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             res.which_response = socket_message_CorrelationResponse_wifi_status_tag;
+             WiFiService::status(res.response.wifi_status);
+         }},
+
+        {socket_message_CorrelationRequest_wifi_scan_start_tag,
+         [](const auto &req, auto &res, int clientId) { WiFiService::startScan(); }},
+
+        {socket_message_CorrelationRequest_wifi_networks_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             if (WiFiService::scanResults(res.response.wifi_network_list))
+                 res.which_response = socket_message_CorrelationResponse_wifi_network_list_tag;
+             else
+                 res.status_code = 202;
+         }},
+
+        {socket_message_CorrelationRequest_ap_settings_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             replyWithSettings(apService.protoHandler, res, socket_message_CorrelationResponse_ap_settings_tag,
+                               res.response.ap_settings);
+         }},
+
+        {socket_message_CorrelationRequest_ap_settings_tag,
+         [](const auto &req, auto &res, int clientId) {
+             applySettings(apService.protoHandler, req.request.ap_settings, res,
+                           socket_message_CorrelationResponse_ap_settings_tag, res.response.ap_settings);
+         }},
+
+        {socket_message_CorrelationRequest_ap_status_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             res.which_response = socket_message_CorrelationResponse_ap_status_tag;
+             apService.statusProto(res.response.ap_status);
+         }},
+
+#if FT_ENABLED(USE_MDNS)
+        {socket_message_CorrelationRequest_mdns_status_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             res.which_response = socket_message_CorrelationResponse_mdns_status_tag;
+             mdnsService.status(res.response.mdns_status);
+         }},
+
+        // The query runs in its own task and replies from there, so the socket is not held up.
+        {socket_message_CorrelationRequest_mdns_query_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             mdnsService.queryAsync(req.request.mdns_query_request,
+                                    [correlationId = req.correlation_id, clientId](const api_MDNSQueryResponse &result) {
+                                        auto reply = new socket_message_CorrelationResponse();
+                                        *reply = socket_message_CorrelationResponse_init_default;
+                                        reply->correlation_id = correlationId;
+                                        reply->status_code = 200;
+                                        reply->which_response =
+                                            socket_message_CorrelationResponse_mdns_query_response_tag;
+                                        reply->response.mdns_query_response = result;
+                                        wsSocket.emit(*reply, clientId);
+                                        delete reply;
+                                    });
+             res.status_code = 0;
+         }},
+#endif
+
+#if USE_CAMERA && USE_DVP_CAMERA
+        {socket_message_CorrelationRequest_camera_settings_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             replyWithSettings(cameraService.protoHandler, res, socket_message_CorrelationResponse_camera_settings_tag,
+                               res.response.camera_settings);
+         }},
+
+        {socket_message_CorrelationRequest_camera_settings_tag,
+         [](const auto &req, auto &res, int clientId) {
+             applySettings(cameraService.protoHandler, req.request.camera_settings, res,
+                           socket_message_CorrelationResponse_camera_settings_tag, res.response.camera_settings);
+         }},
+#endif
+
+        {socket_message_CorrelationRequest_servo_settings_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             replyWithSettings(servoController.protoHandler, res,
+                               socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
+         }},
+
+        {socket_message_CorrelationRequest_servo_settings_tag,
+         [](const auto &req, auto &res, int clientId) {
+             applySettings(servoController.protoHandler, req.request.servo_settings, res,
+                           socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
+         }},
+
+        {socket_message_CorrelationRequest_peripheral_settings_request_tag,
+         [](const auto &req, auto &res, int clientId) {
+             replyWithSettings(peripherals.protoHandler, res,
+                               socket_message_CorrelationResponse_peripheral_settings_tag,
+                               res.response.peripheral_settings);
+         }},
+
+        {socket_message_CorrelationRequest_peripheral_settings_tag,
+         [](const auto &req, auto &res, int clientId) {
+             applySettings(peripherals.protoHandler, req.request.peripheral_settings, res,
+                           socket_message_CorrelationResponse_peripheral_settings_tag,
+                           res.response.peripheral_settings);
+         }},
+
+        // Both defer the work by 250 ms, so this reply leaves before the device goes down.
+        {socket_message_CorrelationRequest_system_restart_tag,
+         [](const auto &req, auto &res, int clientId) { system_service::restart(); }},
+
+        {socket_message_CorrelationRequest_system_reset_tag,
+         [](const auto &req, auto &res, int clientId) { system_service::reset(); }},
     };
 
     wsSocket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
@@ -254,7 +333,9 @@ void setupEventSocket() {
                 wsSocket.emit(*res, clientId);
             }
         } else {
-            printf("WARNING: no handler for correlation request: %d\n", data.which_request);
+            res->status_code = 400;
+            strncpy(res->error_message, "Unknown request", sizeof(res->error_message) - 1);
+            wsSocket.emit(*res, clientId);
         }
 
         delete res;

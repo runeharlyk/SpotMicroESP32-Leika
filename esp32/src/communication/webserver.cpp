@@ -73,46 +73,6 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
             if (route.getHandler) {
                 return route.getHandler(req);
             }
-            if (route.postHandler) {
-                size_t contentLen = req->content_len;
-                if (contentLen == 0 || contentLen > 4096) {
-                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
-                    return ESP_FAIL;
-                }
-
-                uint8_t* buffer = (uint8_t*)malloc(contentLen);
-                if (!buffer) {
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
-                    return ESP_FAIL;
-                }
-
-                int received = 0;
-                int remaining = contentLen;
-                while (remaining > 0) {
-                    int ret = httpd_req_recv(req, (char*)buffer + received, remaining);
-                    if (ret <= 0) {
-                        free(buffer);
-                        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                            httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request timeout");
-                        }
-                        return ESP_FAIL;
-                    }
-                    received += ret;
-                    remaining -= ret;
-                }
-
-                api_Request protoReq = api_Request_init_zero;
-                pb_istream_t stream = pb_istream_from_buffer(buffer, contentLen);
-                bool success = pb_decode(&stream, api_Request_fields, &protoReq);
-                free(buffer);
-
-                if (!success) {
-                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to decode protobuf");
-                    return ESP_FAIL;
-                }
-
-                return route.postHandler(req, &protoReq);
-            }
         }
     }
 
@@ -182,11 +142,7 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
 }
 
 void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handler) {
-    addRoute({uri, method, handler, nullptr, false});
-}
-
-void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handler) {
-    addRoute({uri, method, nullptr, handler, false});
+    addRoute({uri, method, handler, false});
 }
 
 void WebServer::addRoute(HttpRoute route) {
@@ -211,7 +167,7 @@ esp_err_t WebServer::registerRoute(const HttpRoute& route) {
     return httpd_register_uri_handler(server_, &httpd_route);
 }
 
-void WebServer::registerWebsocket(const char* uri) { addRoute({uri, HTTP_GET, nullptr, nullptr, true}); }
+void WebServer::registerWebsocket(const char* uri) { addRoute({uri, HTTP_GET, nullptr, true}); }
 
 void WebServer::onWsFrame(WsFrameHandler handler) { wsFrameHandler_ = handler; }
 

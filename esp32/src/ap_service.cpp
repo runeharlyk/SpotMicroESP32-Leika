@@ -1,11 +1,9 @@
 #include <ap_service.h>
-#include <communication/webserver.h>
 
 static const char *TAG = "APService";
 
 APService::APService()
-    : protoEndpoint(APSettings_read, APSettings_update, this, API_REQUEST_EXTRACTOR(ap_settings, api_APSettings),
-                    API_RESPONSE_ASSIGNER(ap_settings, api_APSettings)),
+    : protoHandler(APSettings_read, APSettings_update, this),
       _persistence(APSettings_read, APSettings_update, this, AP_SETTINGS_FILE, api_APSettings_fields,
                    api_APSettings_size, APSettings_defaults()),
       _dnsServer(nullptr),
@@ -18,14 +16,6 @@ APService::APService()
 APService::~APService() = default;
 
 void APService::begin() { _persistence.readFromFS(); }
-
-esp_err_t APService::getStatusProto(httpd_req_t *request) {
-    api_Response res = api_Response_init_zero;
-    res.status_code = 200;
-    res.which_payload = api_Response_ap_status_tag;
-    statusProto(res.payload.ap_status);
-    return WebServer::send(request, 200, res, api_Response_fields);
-}
 
 void APService::statusProto(api_APStatus &proto) {
     proto.status = getAPNetworkStatus();

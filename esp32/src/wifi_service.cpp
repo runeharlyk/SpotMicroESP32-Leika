@@ -1,12 +1,9 @@
 #include <wifi_service.h>
-#include <communication/webserver.h>
 
 static const char *TAG = "WiFiService";
 
 WiFiService::WiFiService()
-    : protoEndpoint(WiFiSettings_read, WiFiSettings_update, this,
-                    API_REQUEST_EXTRACTOR(wifi_settings, api_WifiSettings),
-                    API_RESPONSE_ASSIGNER(wifi_settings, api_WifiSettings)),
+    : protoHandler(WiFiSettings_read, WiFiSettings_update, this),
       _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE, api_WifiSettings_fields,
                    api_WifiSettings_size, WiFiSettings_defaults()),
       _lastConnectionAttempt(0),
@@ -54,31 +51,26 @@ void WiFiService::selectNetwork(uint32_t index) {
 
 void WiFiService::loop() { EXECUTE_EVERY_N_MS(reconnectDelay, manageSTA()); }
 
-esp_err_t WiFiService::handleScan(httpd_req_t *request) {
+void WiFiService::startScan() {
     if (WiFi.scanComplete() != -1) {
         WiFi.scanDelete();
         WiFi.scanNetworks(true);
     }
-    api_Response response = api_Response_init_zero;
-    response.status_code = 202;
-    response.which_payload = api_Response_empty_message_tag;
-    return WebServer::send(request, 202, response, api_Response_fields);
 }
 
-esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
+bool WiFiService::scanResults(api_WifiNetworkList &list) {
     int numNetworks = WiFi.scanComplete();
-    if (numNetworks == -1) {
-        api_Response response = api_Response_init_zero;
-        response.status_code = 202;
-        response.which_payload = api_Response_empty_message_tag;
-        return WebServer::send(request, 202, response, api_Response_fields);
-    } else if (numNetworks < -1) {
-        return handleScan(request);
+    if (numNetworks == -1) return false;
+    if (numNetworks < -1) {
+        startScan();
+        return false;
     }
 
     size_t count = (numNetworks > 20) ? 20 : static_cast<size_t>(numNetworks);
 
-    api_WifiNetworkScan networks[20] = {};
+    // The list points into this storage, and the reply is encoded after this returns.
+    static api_WifiNetworkScan networks[20];
+    memset(networks, 0, sizeof(networks));
 
     for (size_t i = 0; i < count; i++) {
         networks[i].rssi = WiFi.RSSI(i);
@@ -88,19 +80,12 @@ esp_err_t WiFiService::getNetworks(httpd_req_t *request) {
         networks[i].encryption_type = static_cast<uint32_t>(WiFi.encryptionType(i));
     }
 
-    api_Response response = api_Response_init_zero;
-    response.status_code = 200;
-    response.which_payload = api_Response_wifi_network_list_tag;
-    response.payload.wifi_network_list.networks = networks;
-    response.payload.wifi_network_list.networks_count = count;
-
-    return WebServer::send(request, 200, response, api_Response_fields);
+    list.networks = networks;
+    list.networks_count = count;
+    return true;
 }
 
-esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
-    api_Response response = api_Response_init_zero;
-    response.which_payload = api_Response_wifi_status_tag;
-    api_WifiStatus &wifiStatus = response.payload.wifi_status;
+void WiFiService::status(api_WifiStatus &wifiStatus) {
 
     wl_status_t status = WiFi.status();
     wifiStatus.status = static_cast<uint32_t>(status);
@@ -123,8 +108,6 @@ esp_err_t WiFiService::getNetworkStatus(httpd_req_t *request) {
             wifiStatus.dns_ip_2 = static_cast<uint32_t>(dnsIP2);
         }
     }
-
-    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
 void WiFiService::manageSTA() {

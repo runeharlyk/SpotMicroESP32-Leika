@@ -1,9 +1,7 @@
 #include <peripherals/peripherals.h>
 
 Peripherals::Peripherals()
-    : protoEndpoint(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this,
-                    API_REQUEST_EXTRACTOR(peripheral_settings, api_PeripheralSettings),
-                    API_RESPONSE_ASSIGNER(peripheral_settings, api_PeripheralSettings)),
+    : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this),
       _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, PERIPHERAL_SETTINGS_FILE,
                    api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()) {
     _accessMutex = xSemaphoreCreateMutex();

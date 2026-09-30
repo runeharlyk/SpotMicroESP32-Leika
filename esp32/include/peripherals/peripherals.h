@@ -2,7 +2,7 @@
 
 #include <template/stateful_persistence.h>
 #include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
+#include <template/stateful_proto_handler.h>
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
@@ -66,7 +66,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
-    StatefulProtoEndpoint<PeripheralsConfiguration, api_PeripheralSettings> protoEndpoint;
+    StatefulProtoHandler<PeripheralsConfiguration, api_PeripheralSettings> protoHandler;
 
   private:
     FSPersistencePB<PeripheralsConfiguration> _persistence;

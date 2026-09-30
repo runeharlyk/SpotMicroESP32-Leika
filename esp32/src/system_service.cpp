@@ -1,11 +1,9 @@
 #include "system_service.h"
-#include <communication/webserver.h>
 #include <dirent.h>
 #include <esp_chip_info.h>
 #include <esp_flash.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
-#include <esp_sleep.h>
 #include <mdns.h>
 #include <soc/soc.h>
 
@@ -45,21 +43,6 @@ namespace system_service {
 
 static const char *TAG = "SystemService";
 
-esp_err_t handleReset(httpd_req_t *request) {
-    reset();
-    return WebServer::sendOk(request);
-}
-
-esp_err_t handleRestart(httpd_req_t *request) {
-    restart();
-    return WebServer::sendOk(request);
-}
-
-esp_err_t handleSleep(httpd_req_t *request) {
-    sleep();
-    return WebServer::sendOk(request);
-}
-
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
     DIR *dir = opendir(FS_CONFIG_DIRECTORY);
@@ -88,31 +71,6 @@ void restart() {
             }
         },
         "Restart task", 4096, nullptr, 10, nullptr);
-}
-
-void sleep() {
-    xTaskCreate(
-        [](void *pvParameters) {
-            for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                mdns_free();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-
-                uint64_t bitmask = (uint64_t)1 << (WAKEUP_PIN_NUMBER);
-
-#if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32P4
-                esp_deep_sleep_enable_gpio_wakeup(bitmask, (esp_deepsleep_gpio_wake_up_mode_t)WAKEUP_SIGNAL);
-#else
-                esp_sleep_enable_ext1_wakeup(bitmask, (esp_sleep_ext1_wakeup_mode_t)WAKEUP_SIGNAL);
-                esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
-#endif
-                esp_deep_sleep_start();
-            }
-        },
-        "Sleep task", 4096, nullptr, 10, nullptr);
-    ESP_LOGI(TAG, "Setting device to sleep");
 }
 
 static const char *getChipModel() {

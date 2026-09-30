@@ -13,11 +13,15 @@ class CommAdapterBase {
   public:
     CommAdapterBase() {
         mutex_ = xSemaphoreCreateMutex();
+        encode_mutex_ = xSemaphoreCreateMutex();
         decoder_.onSubscribe([this](int32_t tag, int cid) { subscribe(tag, cid); });
         decoder_.onUnsubscribe([this](int32_t tag, int cid) { unsubscribe(tag, cid); });
         decoder_.onPing([this](int cid) { sendPong(cid); });
     }
-    ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
+    ~CommAdapterBase() {
+        vSemaphoreDelete(mutex_);
+        vSemaphoreDelete(encode_mutex_);
+    }
 
     virtual void begin() {}
 
@@ -41,6 +45,9 @@ class CommAdapterBase {
 
         if (clientId < 0 && !hasSubscribers(tag)) return;
 
+        // Tasks other than the socket's emit too (telemetry, deferred replies); msg_ and the
+        // encode buffer are shared.
+        xSemaphoreTake(encode_mutex_, portMAX_DELAY);
         msg_.which_message = tag;
         MessageTraits<T>::assign(msg_, data);
 
@@ -55,10 +62,7 @@ class CommAdapterBase {
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
-            return;
-        }
-
-        if (clientId >= 0) {
+        } else if (clientId >= 0) {
             send(buffer, stream.bytes_written, clientId);
         } else {
             sendToSubscribers(tag, buffer, stream.bytes_written);
@@ -67,6 +71,7 @@ class CommAdapterBase {
         if (pb_heap_enc_buf != buffer) {
             free(buffer);
         }
+        xSemaphoreGive(encode_mutex_);
     }
 
   protected:
@@ -102,15 +107,18 @@ class CommAdapterBase {
 
     void sendPong(int cid) {
         uint8_t pongBuffer[16];
+        xSemaphoreTake(encode_mutex_, portMAX_DELAY);
         msg_.which_message = socket_message_Message_pongmsg_tag;
         msg_.message.pongmsg = socket_message_PongMsg_init_zero;
         pb_ostream_t stream = pb_ostream_from_buffer(pongBuffer, sizeof(pongBuffer));
         if (pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             send(pongBuffer, stream.bytes_written, cid);
         }
+        xSemaphoreGive(encode_mutex_);
     }
 
     SemaphoreHandle_t mutex_;
+    SemaphoreHandle_t encode_mutex_;
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
     socket_message_Message msg_ = socket_message_Message_init_zero;

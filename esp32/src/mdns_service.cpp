@@ -1,14 +1,10 @@
 #include <mdns_service.h>
-#include <communication/webserver.h>
 #include <esp_netif.h>
 
 static const char *TAG = "MDNSService";
 
 MDNSService::MDNSService()
-    : protoEndpoint(MDNSSettings_read, MDNSSettings_update, this,
-                    API_REQUEST_EXTRACTOR(mdns_settings, api_MDNSSettings),
-                    API_RESPONSE_ASSIGNER(mdns_settings, api_MDNSSettings)),
-      _persistence(MDNSSettings_read, MDNSSettings_update, this, MDNS_SETTINGS_FILE, api_MDNSSettings_fields,
+    : _persistence(MDNSSettings_read, MDNSSettings_update, this, MDNS_SETTINGS_FILE, api_MDNSSettings_fields,
                    api_MDNSSettings_size, MDNSSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { reconfigureMDNS(); }, false);
 }
@@ -90,11 +86,7 @@ void MDNSService::addServices() {
     }
 }
 
-esp_err_t MDNSService::getStatus(httpd_req_t *request) {
-    api_Response response = api_Response_init_zero;
-    response.which_payload = api_Response_mdns_status_tag;
-
-    MDNSStatus &status = response.payload.mdns_status;
+void MDNSService::status(api_MDNSStatus &status) {
     status.started = _started;
     strncpy(status.hostname, state().hostname, sizeof(status.hostname) - 1);
     strncpy(status.instance, state().instance, sizeof(status.instance) - 1);
@@ -108,29 +100,23 @@ esp_err_t MDNSService::getStatus(httpd_req_t *request) {
     for (size_t i = 0; i < state().global_txt_records_count; i++) {
         status.global_txt_records[i] = state().global_txt_records[i];
     }
-
-    return WebServer::send(request, 200, response, api_Response_fields);
 }
 
-esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq) {
-    if (protoReq->which_payload != api_Request_mdns_query_request_tag) {
-        return WebServer::sendError(request, 400, "Invalid request payload");
-    }
+namespace {
+struct MDNSQuery {
+    api_MDNSQueryRequest request;
+    std::function<void(const api_MDNSQueryResponse &)> done;
+};
 
-    const api_MDNSQueryRequest &queryReq = protoReq->payload.mdns_query_request;
+void runQuery(const api_MDNSQueryRequest &queryReq, api_MDNSQueryResponse &queryResp) {
     ESP_LOGI(TAG, "Querying for service: %s, protocol: %s", queryReq.service, queryReq.protocol);
 
     mdns_result_t *results = nullptr;
     esp_err_t err = mdns_query_ptr(queryReq.service, queryReq.protocol, 3000, 20, &results);
-
-    api_Response response = api_Response_init_zero;
-    response.which_payload = api_Response_mdns_query_response_tag;
-    api_MDNSQueryResponse &queryResp = response.payload.mdns_query_response;
-
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "MDNS query failed: %s", esp_err_to_name(err));
         queryResp.services_count = 0;
-        return WebServer::send(request, 200, response, api_Response_fields);
+        return;
     }
 
     int count = 0;
@@ -160,6 +146,21 @@ esp_err_t MDNSService::queryServices(httpd_req_t *request, api_Request *protoReq
     }
 
     mdns_query_results_free(results);
+}
+} // namespace
 
-    return WebServer::send(request, 200, response, api_Response_fields);
+void MDNSService::queryAsync(const api_MDNSQueryRequest &request,
+                             std::function<void(const api_MDNSQueryResponse &)> done) {
+    auto *query = new MDNSQuery {request, std::move(done)};
+    xTaskCreate(
+        [](void *context) {
+            auto *query = static_cast<MDNSQuery *>(context);
+            auto *response = new api_MDNSQueryResponse(api_MDNSQueryResponse_init_zero);
+            runQuery(query->request, *response);
+            query->done(*response);
+            delete response;
+            delete query;
+            vTaskDelete(nullptr);
+        },
+        "mDNS query", 4096, query, 3, nullptr);
 }
