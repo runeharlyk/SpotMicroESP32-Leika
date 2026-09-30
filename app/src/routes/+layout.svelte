@@ -11,7 +11,6 @@
     import Statusbar from '../lib/components/statusbar/statusbar.svelte'
     import {
         telemetry,
-        kinematicData,
         mode,
         input,
         servoAngles,
@@ -25,13 +24,13 @@
     import {
         AnglesData,
         ControllerData,
-        KinematicData,
         ModeData,
         RSSIData,
         WalkGaitData
     } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
     import { keepControlAlive, stopped } from '$lib/control-link'
+    import { mirrorRobot } from '$lib/robot-mirror'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -56,12 +55,25 @@
             () => get(input),
             data => socket.emit(ControllerData, data)
         )
-        mode.subscribe(data => socket.emit(ModeData, data))
-        walkGait.subscribe(data => socket.emit(WalkGaitData, data))
+        const modeMirror = mirrorRobot(
+            mode,
+            data => socket.emit(ModeData, data),
+            (a, b) => a.mode === b.mode
+        )
+        const gaitMirror = mirrorRobot(
+            walkGait,
+            data => socket.emit(WalkGaitData, data),
+            (a, b) => a.gait === b.gait
+        )
+        eventListeners.push(
+            modeMirror.stop,
+            gaitMirror.stop,
+            socket.on(ModeData, modeMirror.report),
+            socket.on(WalkGaitData, gaitMirror.report)
+        )
         servoAnglesOut.subscribe(data =>
             anglesThrottler.throttle(() => socket.emit(AnglesData, data), 100)
         )
-        kinematicData.subscribe(data => socket.emit(KinematicData, data))
     })
 
     let stopKeepAlive: (() => void) | undefined
@@ -82,7 +94,6 @@
             socket.onEvent('unresponsive', handleClose),
             socket.onEvent('error', handleError),
             socket.on(RSSIData, data => telemetry.setRSSI(data)),
-            socket.on(ModeData, data => mode.set(data)),
             socket.on(AnglesData, data => {
                 servoAngles.set(data)
             })

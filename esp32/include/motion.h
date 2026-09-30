@@ -15,6 +15,7 @@
 #include <motion_states/rest_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
+#include <atomic>
 #include <utility>
 
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
@@ -43,10 +44,18 @@ class MotionService {
 
     inline bool isActive() { return state != nullptr; }
 
+    /** The mode and gait in force, for the socket's task to report: the robot, not the app, owns them. */
+    socket_message_ModesEnum mode() const { return currentMode.load(); }
+    socket_message_WalkGaits gait() const { return currentGait.load(); }
+
   private:
     void applyMail(const MotionInbox::Mail& mail);
-    void applyMode(socket_message_ModesEnum mode);
+    // Every mode change, from the app or a gesture, goes through here.
+    void setMode(socket_message_ModesEnum mode);
     void stopLocomotion();
+
+    std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
+    std::atomic<socket_message_WalkGaits> currentGait {socket_message_WalkGaits_TROT};
 
     Kinematics kinematics;
     bool modeApplied = false;

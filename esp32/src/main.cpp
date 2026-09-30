@@ -378,6 +378,24 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     }
 }
 
+// The robot owns its mode and gait: apps hear of a change on the service loop's next pass, and a newly
+// opened app within a second, so after a reload it shows what the robot does rather than a default.
+static void publishMotion() {
+    static socket_message_ModesEnum lastMode = socket_message_ModesEnum_DEACTIVATED;
+    static socket_message_WalkGaits lastGait = socket_message_WalkGaits_TROT;
+    static uint32_t lastSentAt = 0;
+    uint32_t now = esp_timer_get_time() / 1000;
+    socket_message_ModesEnum mode = motionService.mode();
+    socket_message_WalkGaits gait = motionService.gait();
+    bool changed = mode != lastMode || gait != lastGait;
+    if (!changed && now - lastSentAt < 1000) return;
+    lastMode = mode;
+    lastGait = gait;
+    lastSentAt = now;
+    wsSocket.emit(socket_message_ModeData {.mode = mode});
+    wsSocket.emit(socket_message_WalkGaitData {.gait = gait});
+}
+
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 #if CONFIG_IDF_TARGET_ESP32P4
@@ -430,6 +448,8 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         });
 
         EXECUTE_EVERY_N_MS(100, {
+            publishMotion();
+
             if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);

@@ -25,8 +25,9 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
             walkState.set_mode_trot();
         else
             walkState.set_mode_crawl();
+        currentGait = *mail.gait;
     }
-    if (mail.mode) applyMode(*mail.mode);
+    if (mail.mode) setMode(*mail.mode);
     if (mail.input) {
         command = *mail.input;
         if (state) state->handleCommand(command);
@@ -40,8 +41,9 @@ void MotionService::stopLocomotion() {
     ESP_LOGW("MotionService", "Control link lost - locomotion stopped");
 }
 
-void MotionService::applyMode(socket_message_ModesEnum modeData) {
+void MotionService::setMode(socket_message_ModesEnum modeData) {
     modeApplied = true;
+    currentMode = modeData;
     MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
     ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
@@ -57,10 +59,10 @@ void MotionService::handleGestures(const gesture_t ges) {
     if (ges != gesture_t::eGestureNone) {
         ESP_LOGI("Motion", "Gesture: %d", ges);
         switch (ges) {
-            case gesture_t::eGestureDown: setState(&restState); break;
-            case gesture_t::eGestureUp: setState(&standState); break;
+            case gesture_t::eGestureDown: setMode(socket_message_ModesEnum_REST); break;
+            case gesture_t::eGestureUp: setMode(socket_message_ModesEnum_STAND); break;
             case gesture_t::eGestureLeft:
-            case gesture_t::eGestureRight: setState(&walkState); break;
+            case gesture_t::eGestureRight: setMode(socket_message_ModesEnum_WALK); break;
 
             default: break;
         }
