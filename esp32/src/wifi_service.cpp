@@ -85,7 +85,7 @@ void WiFiService::mergeFactoryNetwork() {
 void WiFiService::startScan() {
     if (WiFi.scanComplete() != -1) {
         WiFi.scanDelete();
-        WiFi.scanNetworks(true);
+        WiFi.scanNetworks();
     }
 }
 
@@ -97,18 +97,21 @@ bool WiFiService::scanResults(api_WifiNetworkList &list) {
         return false;
     }
 
-    size_t count = (numNetworks > 20) ? 20 : static_cast<size_t>(numNetworks);
+    const std::vector<wifi_ap_record_t> found = WiFi.scanResults();
+    size_t count = std::min<size_t>(found.size(), 20);
 
     // The list points into this storage, and the reply is encoded after this returns.
     static api_WifiNetworkScan networks[20];
     memset(networks, 0, sizeof(networks));
 
     for (size_t i = 0; i < count; i++) {
-        networks[i].rssi = WiFi.RSSI(i);
-        strncpy(networks[i].ssid, WiFi.SSID(i).c_str(), sizeof(networks[i].ssid) - 1);
-        strncpy(networks[i].bssid, WiFi.BSSIDstr(i).c_str(), sizeof(networks[i].bssid) - 1);
-        networks[i].channel = WiFi.channel(i);
-        networks[i].encryption_type = static_cast<uint32_t>(WiFi.encryptionType(i));
+        const wifi_ap_record_t &record = found[i];
+        networks[i].rssi = record.rssi;
+        strncpy(networks[i].ssid, reinterpret_cast<const char *>(record.ssid), sizeof(networks[i].ssid) - 1);
+        snprintf(networks[i].bssid, sizeof(networks[i].bssid), "%02X:%02X:%02X:%02X:%02X:%02X", record.bssid[0],
+                 record.bssid[1], record.bssid[2], record.bssid[3], record.bssid[4], record.bssid[5]);
+        networks[i].channel = record.primary;
+        networks[i].encryption_type = static_cast<uint32_t>(WiFiClass::encryptionType(record.authmode));
     }
 
     list.networks = networks;
