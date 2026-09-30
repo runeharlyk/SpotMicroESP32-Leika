@@ -53,7 +53,10 @@
     let hostnameProblem = $state<string>()
 
     // The network being added or edited, apart from the saved list until it is saved.
-    let editor = $state<{ draft: NetworkDraft; editing?: WifiNetwork } | null>(null)
+    // The draft outlives the open editor: a closing form's inputs still read it for a tick.
+    let editorOpen = $state(false)
+    let draft = $state<NetworkDraft>(draftFromNetwork(WifiNetwork.create()))
+    let editing = $state<WifiNetwork | undefined>()
     let editorErrors = $state<NetworkErrors>({})
 
     let showWifiDetails = $state(false)
@@ -96,9 +99,11 @@
         if (!hostnameProblem) save(general)
     }
 
-    function openEditor(network: WifiNetwork, editing?: WifiNetwork) {
-        editor = { draft: draftFromNetwork(network), editing }
+    function openEditor(network: WifiNetwork, replacing?: WifiNetwork) {
+        draft = draftFromNetwork(network)
+        editing = replacing
         editorErrors = {}
+        editorOpen = true
     }
 
     function roomForAnother() {
@@ -123,8 +128,7 @@
 
     async function saveNetwork(event: SubmitEvent) {
         event.preventDefault()
-        if (!editor || !settings) return
-        const { draft, editing } = editor
+        if (!editorOpen || !settings) return
         editorErrors = networkErrors(draft, settings.wifiNetworks, editing)
         if (Object.keys(editorErrors).length) return
         const network = networkFromDraft(draft)
@@ -132,7 +136,7 @@
             editing ?
                 settings.wifiNetworks.map(saved => (saved === editing ? network : saved))
             :   [...settings.wifiNetworks, network]
-        if (await save({ wifiNetworks })) editor = null
+        if (await save({ wifiNetworks })) editorOpen = false
     }
 
     function confirmDelete(index: number) {
@@ -150,7 +154,7 @@
                 const saved = await save({
                     wifiNetworks: settings.wifiNetworks.filter((_, i) => i !== index)
                 })
-                if (saved && editor?.editing === deleted) editor = null
+                if (saved && editorOpen && editing === deleted) editorOpen = false
             }
         })
     }
@@ -318,7 +322,7 @@
                     </div>
                 </div>
 
-                {#if editor}
+                {#if editorOpen}
                     <div class="divider my-0"></div>
                     <form
                         onsubmit={saveNetwork}
@@ -331,12 +335,12 @@
                             <TextField
                                 id="ssid"
                                 label="SSID"
-                                bind:value={editor.draft.ssid}
+                                bind:value={draft.ssid}
                                 error={editorErrors.ssid}
                             />
                             <TextField id="pwd" label="Password" error={editorErrors.password}>
                                 {#snippet input()}
-                                    <PasswordInput bind:value={editor!.draft.password} id="pwd" />
+                                    <PasswordInput bind:value={draft.password} id="pwd" />
                                 {/snippet}
                             </TextField>
                             <label
@@ -345,13 +349,13 @@
                                 <input
                                     id="staticIp"
                                     type="checkbox"
-                                    bind:checked={editor.draft.staticIp}
+                                    bind:checked={draft.staticIp}
                                     class="checkbox checkbox-primary sm:-mb-5"
                                 />
                                 <span class="sm:-mb-5">Static IP Config?</span>
                             </label>
                         </div>
-                        {#if editor.draft.staticIp}
+                        {#if draft.staticIp}
                             <div
                                 class="grid w-full grid-cols-1 content-center gap-x-4 px-4 sm:grid-cols-2"
                                 transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -359,37 +363,37 @@
                                 <TextField
                                     id="localIP"
                                     label="Local IP"
-                                    bind:value={editor.draft.localIp}
+                                    bind:value={draft.localIp}
                                     error={editorErrors.localIp}
                                 />
                                 <TextField
                                     id="gateway"
                                     label="Gateway IP"
-                                    bind:value={editor.draft.gatewayIp}
+                                    bind:value={draft.gatewayIp}
                                     error={editorErrors.gatewayIp}
                                 />
                                 <TextField
                                     id="subnet"
                                     label="Subnet Mask"
-                                    bind:value={editor.draft.subnetMask}
+                                    bind:value={draft.subnetMask}
                                     error={editorErrors.subnetMask}
                                 />
                                 <TextField
                                     id="dns1"
                                     label="DNS 1"
-                                    bind:value={editor.draft.dnsIp1}
+                                    bind:value={draft.dnsIp1}
                                     error={editorErrors.dnsIp1}
                                 />
                                 <TextField
                                     id="dns2"
                                     label="DNS 2 (optional)"
-                                    bind:value={editor.draft.dnsIp2}
+                                    bind:value={draft.dnsIp2}
                                     error={editorErrors.dnsIp2}
                                 />
                             </div>
                         {/if}
                         <div class="mx-4 mt-2 flex flex-wrap justify-end gap-2">
-                            <button class="btn" type="button" onclick={() => (editor = null)}>
+                            <button class="btn" type="button" onclick={() => (editorOpen = false)}>
                                 Cancel
                             </button>
                             <button class="btn btn-primary" type="submit">Save network</button>
