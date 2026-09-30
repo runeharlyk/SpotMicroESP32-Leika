@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { mount, unmount } from 'svelte'
+import { flushSync, mount, unmount } from 'svelte'
 import Accesspoint from '../../src/routes/wifi/ap/Accesspoint.svelte'
 import { APSettings, APStatus } from '../../src/lib/platform_shared/api'
 import { fakeRobot } from './fake-robot'
+import { ipToUint32 } from '../../src/lib/utilities'
 
 const status = { apStatus: APStatus.create({ macAddress: 'AA:BB' }) }
 const settings = { apSettings: APSettings.create({}) }
@@ -56,5 +57,59 @@ describe('Accesspoint', () => {
         await vi.advanceTimersByTimeAsync(12_000)
 
         expect(document.body.textContent).not.toMatch(/superseded/i)
+    })
+
+    const apSettings = APSettings.create({
+        ssid: 'Spot-Micro',
+        password: 'spot-leika',
+        channel: 1,
+        maxClients: 4,
+        localIp: ipToUint32('192.168.4.1'),
+        gatewayIp: ipToUint32('192.168.4.1'),
+        subnetMask: ipToUint32('255.255.255.0')
+    })
+
+    async function mountSettings() {
+        const saves: APSettings[] = []
+        robot = fakeRobot((name, data) => {
+            if (name === 'apSettingsRequest') return { apSettings }
+            if (name === 'apSettings') {
+                saves.push(data.apSettings!)
+                return { apSettings: data.apSettings }
+            }
+            return status
+        })
+        component = mount(Accesspoint, { target: document.body })
+        await vi.waitFor(() => expect(document.getElementById('gateway')).not.toBeNull())
+        return saves
+    }
+
+    const set = (id: string, value: string) => {
+        const input = document.getElementById(id) as HTMLInputElement
+        input.value = value
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        flushSync()
+    }
+    const apply = () => {
+        document.body.querySelector<HTMLButtonElement>('button[type="submit"]')!.click()
+        flushSync()
+    }
+
+    it('does not save a password the access point could not start with', async () => {
+        const saves = await mountSettings()
+        set('pwd', 'short')
+        apply()
+
+        expect(document.body.textContent).toMatch(/8 to 63 characters/)
+        expect(saves).toHaveLength(0)
+    })
+
+    it('saves its addresses as the numbers the robot stores', async () => {
+        const saves = await mountSettings()
+        set('gateway', '192.168.4.254')
+        apply()
+        await vi.waitFor(() => expect(saves).toHaveLength(1))
+
+        expect(saves[0]).toEqual({ ...apSettings, gatewayIp: ipToUint32('192.168.4.254') })
     })
 })

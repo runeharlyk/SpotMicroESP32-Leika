@@ -13,10 +13,3 @@ export function ipToUint32(ip: string): number {
 export function uint32ToIp(ip: number): string {
     return [ip & 0xff, (ip >>> 8) & 0xff, (ip >>> 16) & 0xff, (ip >>> 24) & 0xff].join('.')
 }
-
-export function isValidIpString(ip: string | undefined): boolean {
-    if (!ip) return false
-    const regexExp =
-        /\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b/
-    return regexExp.test(ip)
-}
