@@ -2,6 +2,7 @@
 
 #include <wifi/wifi_idf.h>
 #include <string>
+#include <atomic>
 
 #include <filesystem.h>
 #include <utils/timing.h>
@@ -13,7 +14,6 @@
 #include <secrets.h>
 
 #define WIFI_EVENT_STA_DISCONNECTED_IDF WIFI_EVENT_STA_DISCONNECTED
-#define WIFI_EVENT_STA_STOP_IDF WIFI_EVENT_STA_STOP
 #define IP_EVENT_STA_GOT_IP_IDF 1000
 
 class WiFiService : public StatefulService<WiFiSettings> {
@@ -23,8 +23,6 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     void begin();
     void loop();
-
-    void selectNetwork(uint32_t index);
 
     const char *getHostname() { return state().hostname; }
 
@@ -38,8 +36,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
   private:
     void onStationModeDisconnected(int32_t event, void *event_data);
-    void onStationModeStop(int32_t event, void *event_data);
-    static void onStationModeGotIP(int32_t event, void *event_data);
+    void onStationModeGotIP(int32_t event, void *event_data);
 
     FSPersistencePB<WiFiSettings> _persistence;
 
@@ -48,8 +45,13 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void manageSTA();
     void configureNetwork(WiFiNetwork &network);
 
-    unsigned long _lastConnectionAttempt;
-    bool _stopping;
+    // Set from the socket's task when settings change; the service task applies it.
+    std::atomic<uint32_t> _reconfigureAt {0};
+    uint32_t _nextAttemptAt {0};
+    uint32_t _nextNetwork {0};
+    uint32_t _connectingTo {0};
 
-    constexpr static uint16_t reconnectDelay {10000};
+    constexpr static uint32_t reconnectDelay {10000};
+    // Leaves time for the reply to the save that caused the change.
+    constexpr static uint32_t reconfigureDelay {500};
 };

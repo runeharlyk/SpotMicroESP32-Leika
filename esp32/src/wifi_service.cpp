@@ -5,9 +5,7 @@ static const char *TAG = "WiFiService";
 WiFiService::WiFiService()
     : protoHandler(WiFiSettings_read, WiFiSettings_updateFromApp, this),
       _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE, api_WifiSettings_fields,
-                   api_WifiSettings_size, WiFiSettings_defaults()),
-      _lastConnectionAttempt(0),
-      _stopping(false) {
+                   api_WifiSettings_size, WiFiSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { reconfigureWiFiConnection(); }, false);
 }
 
@@ -19,20 +17,58 @@ void WiFiService::begin() {
 
     WiFi.onEvent([this](int32_t event, void *data) { this->onStationModeDisconnected(event, data); },
                  WIFI_EVENT_STA_DISCONNECTED);
-    WiFi.onEvent([this](int32_t event, void *data) { this->onStationModeStop(event, data); }, WIFI_EVENT_STA_STOP);
-    WiFi.onEvent(onStationModeGotIP, IP_EVENT_STA_GOT_IP_IDF);
+    WiFi.onEvent([this](int32_t event, void *data) { this->onStationModeGotIP(event, data); }, IP_EVENT_STA_GOT_IP_IDF);
 
     _persistence.readFromFS();
     mergeFactoryNetwork();
-    _lastConnectionAttempt = 0;
+    _nextNetwork = state().selected_network;
+    if (state().wifi_networks_count >= 1) WiFi.mode(WIFI_MODE_STA);
+}
 
-    if (state().wifi_networks_count >= 1) {
-        WiFi.mode(WIFI_MODE_STA);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        uint32_t idx = state().selected_network;
-        if (idx >= state().wifi_networks_count) idx = 0;
-        configureNetwork(state().wifi_networks[idx]);
+void WiFiService::loop() {
+    uint32_t now = esp_timer_get_time() / 1000;
+    uint32_t reconfigureAt = _reconfigureAt.load();
+    if (reconfigureAt && now >= reconfigureAt && _reconfigureAt.compare_exchange_strong(reconfigureAt, 0)) {
+        WiFi.disconnect(false);
+        _nextNetwork = state().selected_network;
+        _nextAttemptAt = now;
     }
+    EXECUTE_EVERY_N_MS(1000, manageSTA());
+}
+
+void WiFiService::reconfigureWiFiConnection() {
+    // Called while the change is saved, before its reply is sent: disconnecting now would lose the reply.
+    _reconfigureAt = esp_timer_get_time() / 1000 + reconfigureDelay;
+}
+
+void WiFiService::manageSTA() {
+    uint32_t count = state().wifi_networks_count;
+    if (WiFi.isConnected() || count == 0) return;
+    uint32_t now = esp_timer_get_time() / 1000;
+    if (now < _nextAttemptAt) return;
+
+    // The station is off after WiFi.disconnect(true) or while only the access point runs.
+    wifi_mode_t mode = WiFi.getMode();
+    if (!(mode & WIFI_MODE_STA)) WiFi.mode(static_cast<wifi_mode_t>(mode | WIFI_MODE_STA));
+
+    // Each failed attempt moves on to the next saved network.
+    uint32_t index = _nextNetwork % count;
+    _connectingTo = index;
+    _nextNetwork = index + 1;
+    _nextAttemptAt = now + reconnectDelay;
+    ESP_LOGI(TAG, "Connecting to %s", state().wifi_networks[index].ssid);
+    configureNetwork(state().wifi_networks[index]);
+}
+
+void WiFiService::onStationModeDisconnected(int32_t event, void *event_data) {
+    wifi_event_sta_disconnected_t *info = static_cast<wifi_event_sta_disconnected_t *>(event_data);
+    ESP_LOGI(TAG, "WiFi Disconnected. Reason code=%d", info ? info->reason : 0);
+}
+
+void WiFiService::onStationModeGotIP(int32_t event, void *event_data) {
+    // After a later drop, the network that worked is tried first.
+    _nextNetwork = _connectingTo;
+    ESP_LOGI(TAG, "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(), WiFi.getHostname());
 }
 
 void WiFiService::mergeFactoryNetwork() {
@@ -45,23 +81,6 @@ void WiFiService::mergeFactoryNetwork() {
     ESP_LOGI(TAG, "Merged the network from secrets.h: %s", SECRET_WIFI_SSID);
     _persistence.writeToFS();
 }
-
-void WiFiService::reconfigureWiFiConnection() {
-    _lastConnectionAttempt = 0;
-    if (WiFi.disconnect(true)) _stopping = true;
-}
-
-void WiFiService::selectNetwork(uint32_t index) {
-    if (index >= state().wifi_networks_count) return;
-    updateWithoutPropagation([&](WiFiSettings &settings) {
-        settings.selected_network = index;
-        return StateUpdateResult::CHANGED;
-    });
-    _persistence.writeToFS();
-    reconfigureWiFiConnection();
-}
-
-void WiFiService::loop() { EXECUTE_EVERY_N_MS(reconnectDelay, manageSTA()); }
 
 void WiFiService::startScan() {
     if (WiFi.scanComplete() != -1) {
@@ -121,31 +140,6 @@ void WiFiService::status(api_WifiStatus &wifiStatus) {
     }
 }
 
-void WiFiService::manageSTA() {
-    if (WiFi.isConnected() || state().wifi_networks_count == 0) return;
-    wifi_mode_t mode = WiFi.getMode();
-    if (mode == WIFI_MODE_NULL || mode == WIFI_MODE_AP) return;
-
-    static uint32_t startTime = 0;
-    static bool attempted = false;
-
-    if (startTime == 0) {
-        startTime = esp_timer_get_time() / 1000;
-        return;
-    }
-
-    uint32_t now = esp_timer_get_time() / 1000;
-    if (now - startTime < 3000) return;
-
-    if (!attempted && state().wifi_networks_count > 0) {
-        attempted = true;
-        uint32_t idx = state().selected_network;
-        if (idx >= state().wifi_networks_count) idx = 0;
-        ESP_LOGI(TAG, "Connecting to: %s", state().wifi_networks[idx].ssid);
-        configureNetwork(state().wifi_networks[idx]);
-    }
-}
-
 void WiFiService::configureNetwork(WiFiNetwork &network) {
     if (network.static_ip_config) {
         WiFi.config(IPAddress(network.local_ip), IPAddress(network.gateway_ip), IPAddress(network.subnet_mask),
@@ -161,20 +155,3 @@ void WiFiService::configureNetwork(WiFiNetwork &network) {
 #endif
 }
 
-void WiFiService::onStationModeDisconnected(int32_t event, void *event_data) {
-    WiFi.disconnect(true);
-    wifi_event_sta_disconnected_t *info = static_cast<wifi_event_sta_disconnected_t *>(event_data);
-    ESP_LOGI(TAG, "WiFi Disconnected. Reason code=%d", info ? info->reason : 0);
-}
-
-void WiFiService::onStationModeStop(int32_t event, void *event_data) {
-    if (_stopping) {
-        _lastConnectionAttempt = 0;
-        _stopping = false;
-    }
-    ESP_LOGI(TAG, "WiFi STA stopped.");
-}
-
-void WiFiService::onStationModeGotIP(int32_t event, void *event_data) {
-    ESP_LOGI(TAG, "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(), WiFi.getHostname());
-}
