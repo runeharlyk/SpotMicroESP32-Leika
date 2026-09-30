@@ -1,15 +1,17 @@
-name: Firmware Port Tests
+name: Firmware Host Tests
 
-# The web app's TypeScript port of the firmware motion code is pinned to traces of the firmware's
-# own headers. This regenerates them from the current firmware and tests the port against them, so
-# a change to the motion code fails here instead of leaving the committed traces stale.
+# Firmware code tested on the host. The web app's TypeScript port of the motion code is pinned to
+# traces of the firmware's own headers: this regenerates them from the current firmware and tests the
+# port against them, so a change to the motion code fails here instead of leaving the traces stale.
+# The secrets check and the merge of secrets.h's network into the stored ones run here too.
 on:
   push:
     branches: [master]
     paths:
       - "esp32/src/**"
       - "esp32/include/**"
-      - "esp32/test/host/**"
+      - "esp32/test/**"
+      - "esp32/scripts/secrets_file.py"
       - "platform_shared/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
@@ -19,7 +21,8 @@ on:
     paths:
       - "esp32/src/**"
       - "esp32/include/**"
-      - "esp32/test/host/**"
+      - "esp32/test/**"
+      - "esp32/scripts/secrets_file.py"
       - "platform_shared/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
@@ -45,6 +48,11 @@ jobs:
         run: |
           pip install protobuf grpcio-tools
           python esp32/scripts/compile_protos.py
+
+      - name: Test the secrets check and the WiFi network merge
+        run: |
+          pip install pytest
+          pytest -q esp32/test/scripts esp32/test/host
 
       - name: Trace the firmware motion code
         run: python esp32/test/host/export_firmware_traces.py

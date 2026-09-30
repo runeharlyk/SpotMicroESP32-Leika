@@ -5,6 +5,7 @@
 #include <template/state_result.h>
 #include <platform_shared/api.pb.h>
 #include <settings/placeholders.h>
+#include <secrets.h>
 #include <cstring>
 
 #ifndef FACTORY_AP_PROVISION_MODE
@@ -13,10 +14,6 @@
 
 #ifndef FACTORY_AP_SSID
 #define FACTORY_AP_SSID "ESP32-SvelteKit-#{unique_id}"
-#endif
-
-#ifndef FACTORY_AP_PASSWORD
-#define FACTORY_AP_PASSWORD "esp-sveltekit"
 #endif
 
 #ifndef FACTORY_AP_LOCAL_IP
@@ -67,7 +64,7 @@ inline APSettings APSettings_defaults() {
     APSettings settings = {};
     settings.provision_mode = FACTORY_AP_PROVISION_MODE;
     strncpy(settings.ssid, substitutePlaceholders(FACTORY_AP_SSID).c_str(), sizeof(settings.ssid) - 1);
-    strncpy(settings.password, FACTORY_AP_PASSWORD, sizeof(settings.password) - 1);
+    strncpy(settings.password, SECRET_AP_PASSWORD, sizeof(settings.password) - 1);
     settings.channel = FACTORY_AP_CHANNEL;
     settings.ssid_hidden = FACTORY_AP_SSID_HIDDEN;
     settings.max_clients = FACTORY_AP_MAX_CLIENTS;

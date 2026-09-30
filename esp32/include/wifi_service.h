@@ -9,6 +9,8 @@
 #include <template/stateful_persistence.h>
 #include <template/stateful_proto_handler.h>
 #include <settings/wifi_settings.h>
+#include <settings/factory_network.h>
+#include <secrets.h>
 
 #define WIFI_EVENT_STA_DISCONNECTED_IDF WIFI_EVENT_STA_DISCONNECTED
 #define WIFI_EVENT_STA_STOP_IDF WIFI_EVENT_STA_STOP
@@ -41,6 +43,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     FSPersistencePB<WiFiSettings> _persistence;
 
+    void mergeFactoryNetwork();
     void reconfigureWiFiConnection();
     void manageSTA();
     void configureNetwork(WiFiNetwork &network);

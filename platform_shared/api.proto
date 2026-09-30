@@ -79,6 +79,8 @@ message WifiSettings {
     bool priority_rssi = 2;
     repeated WifiNetwork wifi_networks = 3; // max 5 networks
     uint32 selected_network = 4;
+    // Fingerprint of the network from secrets.h last merged into wifi_networks; kept by the firmware.
+    uint32 applied_secret = 5;
 }
 
 message WifiSettingsRequest {}

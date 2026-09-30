@@ -6,14 +6,6 @@
 #include <settings/placeholders.h>
 #include <cstring>
 
-#ifndef FACTORY_WIFI_SSID
-#define FACTORY_WIFI_SSID ""
-#endif
-
-#ifndef FACTORY_WIFI_PASSWORD
-#define FACTORY_WIFI_PASSWORD ""
-#endif
-
 #ifndef FACTORY_WIFI_HOSTNAME
 #define FACTORY_WIFI_HOSTNAME "#{platform}-#{unique_id}"
 #endif
@@ -25,19 +17,6 @@
 using WiFiNetwork = api_WifiNetwork;
 using WiFiSettings = api_WifiSettings;
 
-inline WiFiNetwork WiFiNetwork_defaults() {
-    WiFiNetwork network = api_WifiNetwork_init_zero;
-    strncpy(network.ssid, FACTORY_WIFI_SSID, sizeof(network.ssid) - 1);
-    strncpy(network.password, FACTORY_WIFI_PASSWORD, sizeof(network.password) - 1);
-    network.static_ip_config = false;
-    network.local_ip = 0;
-    network.gateway_ip = 0;
-    network.subnet_mask = 0;
-    network.dns_ip_1 = 0;
-    network.dns_ip_2 = 0;
-    return network;
-}
-
 inline WiFiSettings WiFiSettings_defaults() {
     WiFiSettings settings = api_WifiSettings_init_zero;
     strncpy(settings.hostname, toHostLabel(substitutePlaceholders(FACTORY_WIFI_HOSTNAME)).c_str(),
@@ -45,10 +24,6 @@ inline WiFiSettings WiFiSettings_defaults() {
     settings.priority_rssi = true;
     settings.wifi_networks_count = 0;
     settings.selected_network = 0;
-    if (strlen(FACTORY_WIFI_SSID) > 0) {
-        settings.wifi_networks[0] = WiFiNetwork_defaults();
-        settings.wifi_networks_count = 1;
-    }
     return settings;
 }
 
@@ -56,5 +31,13 @@ inline void WiFiSettings_read(const WiFiSettings &settings, WiFiSettings &proto)
 
 inline StateUpdateResult WiFiSettings_update(const WiFiSettings &proto, WiFiSettings &settings) {
     settings = proto;
+    return StateUpdateResult::CHANGED;
+}
+
+/** A save from the app: it does not own the merged secret's fingerprint, and losing it would re-add a deleted network. */
+inline StateUpdateResult WiFiSettings_updateFromApp(const WiFiSettings &proto, WiFiSettings &settings) {
+    uint32_t appliedSecret = settings.applied_secret;
+    settings = proto;
+    settings.applied_secret = appliedSecret;
     return StateUpdateResult::CHANGED;
 }

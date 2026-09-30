@@ -3,7 +3,7 @@
 static const char *TAG = "WiFiService";
 
 WiFiService::WiFiService()
-    : protoHandler(WiFiSettings_read, WiFiSettings_update, this),
+    : protoHandler(WiFiSettings_read, WiFiSettings_updateFromApp, this),
       _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE, api_WifiSettings_fields,
                    api_WifiSettings_size, WiFiSettings_defaults()),
       _lastConnectionAttempt(0),
@@ -23,6 +23,7 @@ void WiFiService::begin() {
     WiFi.onEvent(onStationModeGotIP, IP_EVENT_STA_GOT_IP_IDF);
 
     _persistence.readFromFS();
+    mergeFactoryNetwork();
     _lastConnectionAttempt = 0;
 
     if (state().wifi_networks_count >= 1) {
@@ -32,6 +33,17 @@ void WiFiService::begin() {
         if (idx >= state().wifi_networks_count) idx = 0;
         configureNetwork(state().wifi_networks[idx]);
     }
+}
+
+void WiFiService::mergeFactoryNetwork() {
+    bool changed = false;
+    updateWithoutPropagation([&](WiFiSettings &settings) {
+        changed = applyFactoryNetwork(settings, SECRET_WIFI_SSID, SECRET_WIFI_PASSWORD);
+        return changed ? StateUpdateResult::CHANGED : StateUpdateResult::UNCHANGED;
+    });
+    if (!changed) return;
+    ESP_LOGI(TAG, "Merged the network from secrets.h: %s", SECRET_WIFI_SSID);
+    _persistence.writeToFS();
 }
 
 void WiFiService::reconfigureWiFiConnection() {
