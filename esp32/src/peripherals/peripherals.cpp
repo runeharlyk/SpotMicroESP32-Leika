@@ -2,7 +2,7 @@
 #include <utils/sleep.h>
 
 Peripherals::Peripherals()
-    : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this),
+    : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, api_PeripheralSettings_fields),
       _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, PERIPHERAL_SETTINGS_FILE,
                    api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()) {
     _accessMutex = xSemaphoreCreateRecursiveMutex();

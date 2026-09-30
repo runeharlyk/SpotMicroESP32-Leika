@@ -15,11 +15,24 @@ INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "esp32", "include"),
             os.path.join(REPO, "submodules", "nanopb")]
 
 
-@pytest.mark.parametrize("program", ["factory_network_test.cpp", "motion_inbox_test.cpp", "servo_output_test.cpp", "i2c_bus_test.cpp",
-                                     "sleep_test.cpp"])
+NANOPB = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_common.c", "pb_encode.c", "pb_decode.c")]
+API_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "api.pb.c")
+
+# Each program with the sources it links besides itself.
+PROGRAMS = {
+    "factory_network_test.cpp": [],
+    "motion_inbox_test.cpp": [],
+    "servo_output_test.cpp": [],
+    "i2c_bus_test.cpp": [],
+    "sleep_test.cpp": [],
+    "settings_persistence_test.cpp": [*NANOPB, API_PROTO],
+}
+
+
+@pytest.mark.parametrize("program", PROGRAMS)
 def test_host_program(program, tmp_path):
     binary = str(tmp_path / (program + ".exe"))
     subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-Ofast", *[f"-I{p}" for p in INCLUDES],
-                    os.path.join(HERE, program), "-o", binary], check=True)
-    result = subprocess.run([binary], capture_output=True, text=True)
+                    os.path.join(HERE, program), *PROGRAMS[program], "-o", binary], check=True)
+    result = subprocess.run([binary], capture_output=True, text=True, cwd=tmp_path)
     assert result.returncode == 0, result.stdout

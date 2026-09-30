@@ -46,7 +46,7 @@ inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoS
 class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
-        : protoHandler(ServoSettings_read, ServoSettings_update, this),
+        : protoHandler(ServoSettings_read, ServoSettings_update, this, api_ServoSettings_fields),
           _persistence(ServoSettings_read, ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
                        api_ServoSettings_size, ServoSettings_defaults()) {}
 

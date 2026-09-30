@@ -36,7 +36,7 @@ sensor_t *safe_sensor_get() {
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
-    : protoHandler(CameraSettings_read, CameraSettings_update, this),
+    : protoHandler(CameraSettings_read, CameraSettings_update, this, api_CameraSettings_fields),
       _persistence(CameraSettings_read, CameraSettings_update, this, CAMERA_SETTINGS_FILE, api_CameraSettings_fields,
                    api_CameraSettings_size, CameraSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);

@@ -3,7 +3,7 @@
 static const char *TAG = "APService";
 
 APService::APService()
-    : protoHandler(APSettings_read, APSettings_update, this),
+    : protoHandler(APSettings_read, APSettings_update, this, api_APSettings_fields),
       _persistence(APSettings_read, APSettings_update, this, AP_SETTINGS_FILE, api_APSettings_fields,
                    api_APSettings_size, APSettings_defaults()),
       _dnsServer(nullptr),
