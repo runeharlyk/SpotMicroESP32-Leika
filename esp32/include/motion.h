@@ -14,6 +14,8 @@
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
 #include <message_types.h>
+#include <motion_inbox.h>
+#include <utility>
 
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
@@ -23,19 +25,17 @@ class MotionService {
 
     void handleAngles(const socket_message_AnglesData& data);
 
-    void handleInput(const socket_message_ControllerData& data);
-
-    void onControlLinkLost();
-
-    void handleWalkGait(const socket_message_WalkGaitData& data);
-
-    void handleMode(const socket_message_ModeData& data);
+    /** Input, mode and gait from the socket's task; the control task applies them in update(). */
+    MotionInbox inbox;
 
     void setState(MotionState* newState);
 
     void handleGestures(const gesture_t ges);
 
     bool update(Peripherals* peripherals);
+
+    /** Whether update() applied a mode message since the last call. */
+    bool takeModeApplied() { return std::exchange(modeApplied, false); }
 
     bool update_angles(float new_angles[12], float angles[12]);
 
@@ -44,7 +44,12 @@ class MotionService {
     inline bool isActive() { return state != nullptr; }
 
   private:
+    void applyMail(const MotionInbox::Mail& mail);
+    void applyMode(socket_message_ModesEnum mode);
+    void stopLocomotion();
+
     Kinematics kinematics;
+    bool modeApplied = false;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
 

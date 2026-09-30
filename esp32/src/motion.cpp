@@ -18,27 +18,31 @@ void MotionService::setState(MotionState* newState) {
     }
 }
 
-void MotionService::handleInput(const socket_message_ControllerData& data) {
-    command.fromProto(data);
-    if (state) state->handleCommand(command);
+void MotionService::applyMail(const MotionInbox::Mail& mail) {
+    if (mail.gait) {
+        ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(*mail.gait));
+        if (*mail.gait == socket_message_WalkGaits_TROT)
+            walkState.set_mode_trot();
+        else
+            walkState.set_mode_crawl();
+    }
+    if (mail.mode) applyMode(*mail.mode);
+    if (mail.input) {
+        command = *mail.input;
+        if (state) state->handleCommand(command);
+    }
+    if (mail.linkLost) stopLocomotion();
 }
 
-void MotionService::onControlLinkLost() {
+void MotionService::stopLocomotion() {
     command.lx = command.ly = command.rx = command.ry = command.s = 0;
     if (state) state->handleCommand(command);
-    ESP_LOGW("MotionService", "Control link lost — locomotion stopped");
+    ESP_LOGW("MotionService", "Control link lost - locomotion stopped");
 }
 
-void MotionService::handleWalkGait(const socket_message_WalkGaitData& data) {
-    ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(data.gait));
-    if (data.gait == socket_message_WalkGaits_TROT)
-        walkState.set_mode_trot();
-    else
-        walkState.set_mode_crawl();
-}
-
-void MotionService::handleMode(const socket_message_ModeData& data) {
-    MOTION_STATE mode = static_cast<MOTION_STATE>(data.mode);
+void MotionService::applyMode(socket_message_ModesEnum modeData) {
+    modeApplied = true;
+    MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
     ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
         case MOTION_STATE::REST: setState(&restState); break;
@@ -64,9 +68,10 @@ void MotionService::handleGestures(const gesture_t ges) {
 }
 
 bool MotionService::update(Peripherals* peripherals) {
+    int64_t now = esp_timer_get_time();
+    applyMail(inbox.take(now / 1000));
     handleGestures(peripherals->takeGesture());
     if (!state) return false;
-    int64_t now = esp_timer_get_time();
     float dt = (now - lastUpdate) / 1000000.0f; // Convert microseconds to seconds
     lastUpdate = now;
     state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());

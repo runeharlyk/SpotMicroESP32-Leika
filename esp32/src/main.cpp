@@ -93,17 +93,15 @@ void setupEventSocket() {
         [](const socket_message_FSDownloadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); },
         [](const socket_message_FSUploadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); });
 
-    wsSocket.on<socket_message_ControllerData>(
-        [&](const socket_message_ControllerData &data, int clientId) { motionService.handleInput(data); });
-
-    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
-        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
-        motionService.handleMode(data);
-        motionService.isActive() ? servoController.activate() : servoController.deactivate();
+    wsSocket.on<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
+        motionService.inbox.postInput(data, esp_timer_get_time() / 1000);
     });
 
+    wsSocket.on<socket_message_ModeData>(
+        [&](const socket_message_ModeData &data, int clientId) { motionService.inbox.postMode(data.mode); });
+
     wsSocket.on<socket_message_WalkGaitData>(
-        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.handleWalkGait(data); });
+        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
 
     wsSocket.on<socket_message_AnglesData>(
         [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
@@ -361,6 +359,10 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
         peripherals.update();
         motionService.update(&peripherals);
+        if (motionService.takeModeApplied()) {
+            servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+            motionService.isActive() ? servoController.activate() : servoController.deactivate();
+        }
         servoController.setAngles(motionService.getAngles());
         servoController.update();
 #if FT_ENABLED(USE_WS2812)
