@@ -167,8 +167,11 @@ void setupEventSocket() {
              res.response.fs_list_response = FileSystemWS::fsHandler.handleList(req.request.fs_list_request);
          }},
 
+        // Accepted before the file streams as download messages, so a long download is not a late reply.
         {socket_message_CorrelationRequest_fs_download_request_tag,
          [](const auto &req, auto &res, int clientId) {
+             res.status_code = 202;
+             wsSocket.emit(res, clientId);
              FileSystemWS::fsHandler.handleDownloadRequest(req.request.fs_download_request, clientId);
              res.status_code = 0;
          }},

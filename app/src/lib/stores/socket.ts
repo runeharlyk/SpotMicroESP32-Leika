@@ -93,7 +93,7 @@ export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
     return encoded
 }
 
-function createWebSocket() {
+export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     const message_listeners = new Map<number, Set<(data?: unknown) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
     const pending_requests = new Map<number, PendingRequest>()
@@ -111,7 +111,6 @@ function createWebSocket() {
     const reconnectMaxDelay = 10000
     const pingIntervalTime = 4000
     const unresponsiveTimeoutTime = 12000
-    const requestTimeoutTime = 30000
     let reconnectAttempts = 0
     let lastPingSentAt = 0
     let correlationIdCounter = 0
@@ -146,6 +145,14 @@ function createWebSocket() {
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
         clearInterval(pingIntervalId)
+        // What was sent on the old link can never be answered: its callers learn so now, not at the timeout.
+        for (const [correlationId, pending] of pending_requests) {
+            clearTimeout(pending.timeoutId)
+            pending.reject(
+                new Error(`The connection closed before the reply (id: ${correlationId})`)
+            )
+        }
+        pending_requests.clear()
         return previous
     }
 
@@ -210,14 +217,6 @@ function createWebSocket() {
 
     function handleData(data: ArrayBuffer) {
         resetUnresponsiveCheck()
-
-        for (const [correlationId, pending] of pending_requests) {
-            clearTimeout(pending.timeoutId)
-            pending.timeoutId = setTimeout(() => {
-                pending_requests.delete(correlationId)
-                pending.reject(new Error(`Request timeout (id: ${correlationId})`))
-            }, requestTimeoutTime)
-        }
 
         const { tag, msg } = decodeMessage(data)
         if (msg.pongmsg !== undefined) {
