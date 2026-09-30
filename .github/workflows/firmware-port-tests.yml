@@ -49,7 +49,7 @@ jobs:
           pip install protobuf grpcio-tools
           python esp32/scripts/compile_protos.py
 
-      - name: Test the secrets check and the WiFi network merge
+      - name: Test the firmware headers and scripts on the host
         run: |
           pip install pytest
           pytest -q esp32/test/scripts esp32/test/host
