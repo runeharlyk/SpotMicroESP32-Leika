@@ -28,8 +28,15 @@ CONFIG_SPIRAM_IGNORE_NOTFOUND=y
 # DSP library
 CONFIG_DSP_MAX_FFT_SIZE_4096=y
 
-# Compiler
+# Compiler; stack canaries catch a smashed stack where it happens, not later as a stray crash.
+# NORM, not STRONG: STRONG crashes GCC 14.2 on esp-dsp's dspi_conv_f32_ansi.c for esp32dev.
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
+
+# A crash leaves an ELF core dump in the coredump partition, readable with esp-coredump; tables
+# without that partition (default_8MB.csv) only log that there is none
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
 
 # Partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y
