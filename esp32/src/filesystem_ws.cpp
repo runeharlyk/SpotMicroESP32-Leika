@@ -59,7 +59,7 @@ void FileSystemHandler::cleanupExpiredTransfers() {
             if (ulIt->second.file) {
                 fclose(ulIt->second.file);
             }
-            remove(ulIt->second.path.c_str());
+            remove(ulIt->second.partPath().c_str());
             ESP_LOGW(TAG, "Upload %u timed out, deleted partial file", ulIt->first);
 
             if (sendUploadCompleteCallback_) {
@@ -367,7 +367,7 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
         }
     }
 
-    FILE* file = fopen(path.c_str(), "wb");
+    FILE* file = fopen((path + ".part").c_str(), "wb");
     if (!file) {
         response.success = false;
         strncpy(response.error, "Cannot open file for writing", sizeof(response.error) - 1);
@@ -415,6 +415,10 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
 
     if (req.chunk_index != state.chunksReceived) {
         ESP_LOGW(TAG, "Upload chunk out of order: expected %u, got %u", state.chunksReceived, req.chunk_index);
+        state.hasError = true;
+        state.errorMessage = "A chunk arrived out of order";
+        finalizeUpload(transferId, false, state.errorMessage);
+        return;
     }
 
     size_t bytesWritten = fwrite(req.data.bytes, 1, req.data.size, state.file);
@@ -447,14 +451,22 @@ void FileSystemHandler::finalizeUpload(uint32_t transferId, bool success, const 
     }
 
     UploadState& state = it->second;
+    std::string failure = error;
 
-    if (state.file) {
-        fclose(state.file);
+    bool closed = !state.file || fclose(state.file) == 0;
+    state.file = nullptr;
+    if (success && (!closed || state.bytesReceived != state.fileSize)) {
+        success = false;
+        failure = closed ? "The file arrived at a different size than announced" : "Failed to write the file";
+    }
+    if (success && rename(state.partPath().c_str(), state.path.c_str()) != 0) {
+        success = false;
+        failure = "Failed to replace the file";
     }
 
     if (!success) {
-        remove(state.path.c_str());
-        ESP_LOGW(TAG, "Upload failed, deleted partial file: %s", state.path.c_str());
+        remove(state.partPath().c_str());
+        ESP_LOGW(TAG, "Upload of %s failed (%s); the previous file is untouched", state.path.c_str(), failure.c_str());
     } else {
         ESP_LOGI(TAG, "Upload completed: %s (%u bytes)", state.path.c_str(), state.bytesReceived);
     }
@@ -463,8 +475,8 @@ void FileSystemHandler::finalizeUpload(uint32_t transferId, bool success, const 
         socket_message_FSUploadComplete complete = socket_message_FSUploadComplete_init_zero;
         complete.transfer_id = transferId;
         complete.success = success;
-        if (!error.empty()) {
-            strncpy(complete.error, error.c_str(), sizeof(complete.error) - 1);
+        if (!failure.empty()) {
+            strncpy(complete.error, failure.c_str(), sizeof(complete.error) - 1);
         }
         complete.chunks_received = state.chunksReceived;
         sendUploadCompleteCallback_(complete, state.clientId);
@@ -495,7 +507,7 @@ socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(
         if (ulIt->second.file) {
             fclose(ulIt->second.file);
         }
-        remove(ulIt->second.path.c_str());
+        remove(ulIt->second.partPath().c_str());
         uploads_.erase(ulIt);
         response.success = true;
         ESP_LOGI(TAG, "Upload cancelled: %u", transferId);

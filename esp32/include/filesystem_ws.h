@@ -34,6 +34,9 @@ struct UploadState {
     int clientId;
     bool hasError;
     std::string errorMessage;
+
+    // The data goes here until all of it arrived, so an interrupted upload leaves the file it replaces intact.
+    std::string partPath() const { return path + ".part"; }
 };
 
 using SendMetadataCallback = std::function<void(const socket_message_FSDownloadMetadata&, int clientId)>;
