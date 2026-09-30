@@ -20,20 +20,25 @@ static const WebAsset* findAsset(const char* uri) {
     return nullptr;
 }
 
+// The app's files keep their names across firmware updates (bundle.js, index.html), so browsers must
+// revalidate them on every load; an unchanged file costs an empty 304 thanks to its content ETag.
 static esp_err_t web_send(httpd_req_t* req, const WebAsset& asset) {
+    char etag[12];
+    snprintf(etag, sizeof(etag), "\"%08lx\"", (unsigned long)asset.etag);
+    httpd_resp_set_hdr(req, "ETag", etag);
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    if (WWW_OPT.add_vary) httpd_resp_set_hdr(req, "Vary", "Accept-Encoding");
+
+    char known[sizeof(etag)];
+    if (httpd_req_get_hdr_value_str(req, "If-None-Match", known, sizeof(known)) == ESP_OK &&
+        strcmp(known, etag) == 0) {
+        httpd_resp_set_status(req, "304 Not Modified");
+        return httpd_resp_send(req, nullptr, 0);
+    }
+
     httpd_resp_set_status(req, "200 OK");
     httpd_resp_set_type(req, asset.mime);
     if (asset.gz) httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-    if (WWW_OPT.add_vary) httpd_resp_set_hdr(req, "Vary", "Accept-Encoding");
-
-    char cc[64];
-    snprintf(cc, sizeof(cc), "public, immutable, max-age=%lu", (unsigned long)WWW_OPT.max_age);
-    httpd_resp_set_hdr(req, "Cache-Control", cc);
-
-    char et[34];
-    snprintf(et, sizeof(et), "\"%08lx\"", (unsigned long)asset.etag);
-    httpd_resp_set_hdr(req, "ETag", et);
-
     return httpd_resp_send(req, (const char*)asset.data, asset.len);
 }
 
