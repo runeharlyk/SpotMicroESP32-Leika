@@ -2,8 +2,10 @@ import { savedAddresses } from '$lib/stores/robots'
 import { robotSocketUrl } from '$lib/stores/location-store'
 
 const PROBE_TIMEOUT_MS = 1500
-const SWEEP_TIMEOUT_MS = 1200
-const SWEEP_CONCURRENCY = 24
+// Measured in Chromium on a /24: 16 requests at a time with 1.5 s each found every HTTP host in each
+// run (about 30 s); 32 or more at a time missed some, as aborted requests hold their connections.
+const SWEEP_TIMEOUT_MS = 1500
+const SWEEP_CONCURRENCY = 16
 const SWEEP_FIRST_HOST = 1
 const SWEEP_LAST_HOST = 254
 
@@ -93,6 +95,37 @@ export const probeAddress = (
         socket.onclose = () => settle(false)
     })
 
+/**
+ * Whether anything answers HTTP at the address. A sweep asks this before opening a socket: Chromium
+ * throttles new WebSockets while many are pending or have failed, so probing a whole subnet by socket
+ * lost even a robot that answers within 100 ms. A no-cors request gets an opaque answer from any
+ * HTTP server, the robot included, and is not throttled that way.
+ */
+const answersHttp = async (address: string, timeoutMs: number, signal?: AbortSignal) => {
+    if (signal?.aborted) return false
+    const controller = new AbortController()
+    const abort = () => controller.abort()
+    signal?.addEventListener('abort', abort, { once: true })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    void localNetworkAccessDecided().then(() => {
+        if (!controller.signal.aborted) timer = setTimeout(abort, timeoutMs)
+    })
+    try {
+        await fetch(`http://${address}/`, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-store',
+            signal: controller.signal
+        })
+        return true
+    } catch {
+        return false
+    } finally {
+        clearTimeout(timer)
+        signal?.removeEventListener('abort', abort)
+    }
+}
+
 export type CandidateStatus = {
     address: string
     state: 'probing' | 'found' | 'missing'
@@ -132,7 +165,10 @@ type SweepHandlers = {
     signal?: AbortSignal
 }
 
-/** Walks a /24, a bounded number of sockets at a time so the browser's connection pool copes. */
+/**
+ * Walks a /24, a bounded number of requests at a time so the browser's connection pool copes, and
+ * confirms by socket only the hosts that answer HTTP.
+ */
 export const sweepSubnet = async (prefix: string, handlers: SweepHandlers = {}) => {
     const { onProgress, onFound, signal } = handlers
     const hosts = Array.from(
@@ -148,7 +184,10 @@ export const sweepSubnet = async (prefix: string, handlers: SweepHandlers = {}) 
     const worker = async () => {
         while (cursor < hosts.length && !signal?.aborted) {
             const address = hosts[cursor++]
-            if (await probeAddress(address, SWEEP_TIMEOUT_MS, signal)) {
+            const isRobot =
+                (await answersHttp(address, SWEEP_TIMEOUT_MS, signal)) &&
+                (await probeAddress(address, PROBE_TIMEOUT_MS, signal))
+            if (isRobot) {
                 found.push(address)
                 onFound?.(address)
             }
