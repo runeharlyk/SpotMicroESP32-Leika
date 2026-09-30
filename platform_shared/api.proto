@@ -172,19 +172,12 @@ message MDNSServiceDef {
     repeated MDNSTxtRecord txt_records = 4;
 }
 
-message MDNSSettings {
-    string hostname = 1;
-    string instance = 2;
-    repeated MDNSServiceDef services = 3;
-    repeated MDNSTxtRecord global_txt_records = 4;
-}
-
 message MDNSStatus {
     bool started = 1;
     string hostname = 2;
     string instance = 3;
     repeated MDNSServiceDef services = 4;
-    repeated MDNSTxtRecord global_txt_records = 5;
+    reserved 5; // global_txt_records, until the services carried their own
 }
 
 message MDNSStatusRequest {}

@@ -25,7 +25,8 @@
         isLoading = true
         try {
             const reply = await robotRequest({
-                mdnsQueryRequest: { service: 'http', protocol: 'tcp' }
+                // Other robots advertise themselves as _spotmicro._tcp.
+                mdnsQueryRequest: { service: '_spotmicro', protocol: '_tcp' }
             })
             if (reply.mdnsQueryResponse) {
                 services = reply.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
@@ -71,7 +72,11 @@
                 class="flex w-full flex-col space-y-1"
                 transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-                <StatusItem icon={Home} title="IP Address" description={mdnsStatus.hostname} />
+                <StatusItem
+                    icon={Home}
+                    title="Hostname"
+                    description={`${mdnsStatus.hostname}.local`}
+                />
 
                 <StatusItem icon={MAC} title="Instance" description={mdnsStatus.instance} />
 

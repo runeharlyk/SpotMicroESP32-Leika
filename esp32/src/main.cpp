@@ -3,7 +3,6 @@
 #include <esp_log.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
-#include <mdns.h>
 #include <map>
 
 #include <filesystem.h>
@@ -392,10 +391,12 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     WiFi.init();
     wifiService.begin();
     robotService.begin();
-    mdns_init();
-    mdns_hostname_set(wifiService.getHostname());
-    mdns_instance_name_set(robotService.name());
-    robotService.addUpdateHandler([](const std::string &) { mdns_instance_name_set(robotService.name()); }, false);
+#if FT_ENABLED(USE_MDNS)
+    mdnsService.begin(wifiService.getHostname(), robotService.name());
+    robotService.addUpdateHandler([](const std::string &) { mdnsService.setInstance(robotService.name()); }, false);
+    wifiService.addUpdateHandler([](const std::string &) { mdnsService.setHostname(wifiService.getHostname()); },
+                                 false);
+#endif
     apService.begin();
 
 #if FT_ENABLED(USE_CAMERA)

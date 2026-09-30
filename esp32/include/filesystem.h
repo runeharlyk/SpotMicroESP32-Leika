@@ -14,7 +14,6 @@
 #define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.pb"
 #define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.pb"
 #define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.pb"
-#define MDNS_SETTINGS_FILE MOUNT_POINT "/config/mdnsSettings.pb"
 #define WIFI_SETTINGS_FILE MOUNT_POINT "/config/wifiSettings.pb"
 #define PERIPHERAL_SETTINGS_FILE MOUNT_POINT "/config/peripheralSettings.pb"
 #define SERVO_SETTINGS_FILE MOUNT_POINT "/config/servoSettings.pb"

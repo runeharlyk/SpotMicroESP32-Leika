@@ -26,15 +26,9 @@ api.MDNSServiceDef.service max_size:16
 api.MDNSServiceDef.protocol max_size:8
 api.MDNSServiceDef.txt_records max_count:4
 
-api.MDNSSettings.hostname max_size:33
-api.MDNSSettings.instance max_size:64
-api.MDNSSettings.services max_count:4
-api.MDNSSettings.global_txt_records max_count:4
-
 api.MDNSStatus.hostname max_size:33
 api.MDNSStatus.instance max_size:64
 api.MDNSStatus.services max_count:4
-api.MDNSStatus.global_txt_records max_count:4
 
 api.MDNSQueryRequest.service max_size:16
 api.MDNSQueryRequest.protocol max_size:8

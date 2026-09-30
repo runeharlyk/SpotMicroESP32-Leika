@@ -2,17 +2,22 @@
 
 #include <mdns.h>
 #include <functional>
-#include <template/stateful_service.h>
-#include <template/stateful_persistence.h>
-#include <settings/mdns_settings.h>
-#include <utils/timing.h>
+#include <string>
+#include <platform_shared/api.pb.h>
 
-class MDNSService : public StatefulService<MDNSSettings> {
+/**
+ * The robot on mDNS: <hostname>.local, and the services it offers, among them `_spotmicro._tcp`,
+ * whose TXT records (id, variant, version) let one robot find the others. The hostname is the WiFi
+ * hostname and the instance name the robot's name; both follow their settings.
+ */
+class MDNSService {
   public:
-    MDNSService();
     ~MDNSService();
 
-    void begin();
+    /** Starts mDNS; call once WiFi is set up. */
+    void begin(const char *hostname, const char *instance);
+    void setHostname(const char *hostname);
+    void setInstance(const char *instance);
 
     void status(api_MDNSStatus &status);
     /**
@@ -22,11 +27,9 @@ class MDNSService : public StatefulService<MDNSSettings> {
     void queryAsync(const api_MDNSQueryRequest &request, std::function<void(const api_MDNSQueryResponse &)> done);
 
   private:
-    FSPersistencePB<MDNSSettings> _persistence;
     bool _started {false};
+    std::string _hostname;
+    std::string _instance;
 
-    void reconfigureMDNS();
-    void startMDNS();
-    void stopMDNS();
-    void addServices();
+    void advertise();
 };
