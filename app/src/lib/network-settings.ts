@@ -13,6 +13,9 @@ export function ssidError(ssid: string): string | undefined {
     if (bytes > 32) return 'A network name has at most 32 bytes'
 }
 
+/** What the robot shows for a saved password, and keeps it on when it is sent back unchanged. */
+export const STORED_PASSWORD_MASK = '********'
+
 /** WPA2 takes 8 to 63 characters, or a 64-digit hex key; an empty password means an open network. */
 export function passphraseError(password: string): string | undefined {
     if (password === '' || /^[0-9a-fA-F]{64}$/.test(password)) return
@@ -97,9 +100,14 @@ export function networkErrors(
     editing?: WifiNetwork
 ): NetworkErrors {
     const duplicate = saved.some(network => network !== editing && network.ssid === draft.ssid)
+    const keepsSavedPassword =
+        editing?.password === STORED_PASSWORD_MASK && editing.ssid === draft.ssid
     return withoutUndefined({
         ssid: ssidError(draft.ssid) ?? (duplicate ? 'This network is saved already' : undefined),
-        password: passphraseError(draft.password),
+        password:
+            draft.password === STORED_PASSWORD_MASK && !keepsSavedPassword ?
+                "Enter this network's password: the saved one stays with the network it was saved for"
+            :   passphraseError(draft.password),
         ...(draft.staticIp && {
             localIp: ipError(draft.localIp),
             gatewayIp: ipError(draft.gatewayIp),

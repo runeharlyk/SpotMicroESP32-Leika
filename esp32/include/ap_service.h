@@ -4,6 +4,7 @@
 #include <template/stateful_proto_handler.h>
 #include <template/stateful_persistence.h>
 #include <settings/ap_settings.h>
+#include <settings/app_network_settings.h>
 #include <utils/timing.h>
 #include <wifi/wifi_idf.h>
 #include <wifi/dns_server.h>

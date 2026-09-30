@@ -8,6 +8,7 @@ import {
     networkFromDraft,
     passphraseError,
     ssidError,
+    STORED_PASSWORD_MASK,
     subnetMaskError
 } from '../../src/lib/network-settings'
 import { WifiNetwork } from '../../src/lib/platform_shared/api'
@@ -97,6 +98,24 @@ describe('the network editor', () => {
         const draft = draftFromNetwork(staticNetwork)
         expect(networkErrors(draft, [staticNetwork])).toHaveProperty('ssid')
         expect(networkErrors(draft, [staticNetwork], staticNetwork)).toEqual({})
+    })
+
+    it('keeps a saved password only for the network it was saved with', () => {
+        const saved = WifiNetwork.create({ ssid: 'Office', password: STORED_PASSWORD_MASK })
+        const kept = draftFromNetwork(saved)
+        expect(networkErrors(kept, [saved], saved)).toEqual({})
+        expect(networkErrors({ ...kept, ssid: 'Office 5G' }, [saved], saved)).toHaveProperty(
+            'password'
+        )
+        expect(networkErrors({ ...kept, ssid: 'Cafe' }, [saved])).toHaveProperty('password')
+        const open = WifiNetwork.create({ ssid: 'Cafe', password: '' })
+        expect(
+            networkErrors(
+                { ...draftFromNetwork(open), password: STORED_PASSWORD_MASK },
+                [open],
+                open
+            )
+        ).toHaveProperty('password')
     })
 
     it('checks every access point field', () => {

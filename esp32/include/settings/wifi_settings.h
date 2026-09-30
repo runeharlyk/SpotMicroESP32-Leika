@@ -33,11 +33,3 @@ inline StateUpdateResult WiFiSettings_update(const WiFiSettings &proto, WiFiSett
     settings = proto;
     return StateUpdateResult::CHANGED;
 }
-
-/** A save from the app: it does not own the merged secret's fingerprint, and losing it would re-add a deleted network. */
-inline StateUpdateResult WiFiSettings_updateFromApp(const WiFiSettings &proto, WiFiSettings &settings) {
-    uint32_t appliedSecret = settings.applied_secret;
-    settings = proto;
-    settings.applied_secret = appliedSecret;
-    return StateUpdateResult::CHANGED;
-}

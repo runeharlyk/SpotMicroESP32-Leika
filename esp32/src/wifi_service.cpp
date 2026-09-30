@@ -3,7 +3,7 @@
 static const char *TAG = "WiFiService";
 
 WiFiService::WiFiService()
-    : protoHandler(WiFiSettings_read, WiFiSettings_updateFromApp, this, api_WifiSettings_fields),
+    : protoHandler(WiFiSettings_readForApp, WiFiSettings_updateFromApp, this, api_WifiSettings_fields),
       _persistence(WiFiSettings_read, WiFiSettings_update, this, WIFI_SETTINGS_FILE, api_WifiSettings_fields,
                    api_WifiSettings_size, WiFiSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { reconfigureWiFiConnection(); }, false);

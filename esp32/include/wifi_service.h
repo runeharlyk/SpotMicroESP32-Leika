@@ -10,6 +10,7 @@
 #include <template/stateful_persistence.h>
 #include <template/stateful_proto_handler.h>
 #include <settings/wifi_settings.h>
+#include <settings/app_network_settings.h>
 #include <settings/factory_network.h>
 #include <secrets.h>
 
