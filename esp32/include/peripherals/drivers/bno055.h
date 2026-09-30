@@ -1,6 +1,7 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
+#include <utils/math_utils.h>
 
 class BNO055Driver {
   public:
@@ -49,9 +50,10 @@ class BNO055Driver {
         int16_t r = (buf[3] << 8) | buf[2];
         int16_t p = (buf[5] << 8) | buf[4];
 
-        _euler[0] = h / 16.0f;
-        _euler[1] = r / 16.0f;
-        _euler[2] = p / 16.0f;
+        // The chip's default Euler unit is degrees at 16 LSB each; every IMU reports radians, as the MPU6050 does.
+        _euler[0] = DEG_TO_RAD_F(h / 16.0f);
+        _euler[1] = DEG_TO_RAD_F(r / 16.0f);
+        _euler[2] = DEG_TO_RAD_F(p / 16.0f);
 
         return true;
     }
