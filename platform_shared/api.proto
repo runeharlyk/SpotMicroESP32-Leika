@@ -2,9 +2,6 @@ syntax = "proto3";
 
 package api;
 
-
-// Empty message for endpoints which only needs a status
-
 // =============================================================================
 // AP (Access Point) Settings - shared data types
 // =============================================================================

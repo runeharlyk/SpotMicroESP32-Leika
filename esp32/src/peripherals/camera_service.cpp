@@ -88,7 +88,6 @@ esp_err_t CameraService::begin() {
     return err;
 }
 
-
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     httpd_resp_set_type(request, _STREAM_CONTENT_TYPE);
 
@@ -552,7 +551,6 @@ esp_err_t CameraService::begin() {
              MIPI_CSI_DATA_LANES, MIPI_CSI_LANE_BITRATE_MBPS);
     return ESP_OK;
 }
-
 
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     if (!s_cam_initialized) {

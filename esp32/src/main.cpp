@@ -256,8 +256,11 @@ void setupEventSocket() {
         // The query runs in its own task and replies from there, so the socket is not held up.
         {socket_message_CorrelationRequest_mdns_query_request_tag,
          [](const auto &req, auto &res, int clientId) {
+             // A client that left before the answer must not get it, nor whoever holds its socket now.
+             uint32_t session = wsSocket.session(clientId);
              mdnsService.queryAsync(req.request.mdns_query_request,
-                                    [correlationId = req.correlation_id, clientId](const api_MDNSQueryResponse &result) {
+                                    [correlationId = req.correlation_id, clientId,
+                                     session](const api_MDNSQueryResponse &result) {
                                         auto reply = new socket_message_CorrelationResponse();
                                         *reply = socket_message_CorrelationResponse_init_default;
                                         reply->correlation_id = correlationId;
@@ -265,7 +268,7 @@ void setupEventSocket() {
                                         reply->which_response =
                                             socket_message_CorrelationResponse_mdns_query_response_tag;
                                         reply->response.mdns_query_response = result;
-                                        wsSocket.emit(*reply, clientId);
+                                        wsSocket.emitToSession(*reply, clientId, session);
                                         delete reply;
                                     });
              res.status_code = 0;

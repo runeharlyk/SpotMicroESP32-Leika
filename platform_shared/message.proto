@@ -192,9 +192,6 @@ message I2CScanData { repeated I2CDevice devices = 1; }
 
 message I2CScanDataRequest {}
 
-
-
-
 message RSSIData { int32 rssi = 1; }
 
 message SonarData { string dummy_field = 1; }

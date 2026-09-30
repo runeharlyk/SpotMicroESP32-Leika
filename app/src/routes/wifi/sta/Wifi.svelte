@@ -115,9 +115,7 @@
             formErrorhostname = false
             // Update global wifiSettings object
             wifiSettings.wifiNetworks = dndNetworkList
-            // Post to REST API
             postWiFiSettings(wifiSettings)
-            console.log(wifiSettings)
         }
     }
 

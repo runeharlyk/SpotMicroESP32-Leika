@@ -1,6 +1,5 @@
 #include <filesystem.h>
 #include <cstring>
-#include "utils/string_utils.hpp"
 #include <esp_log.h>
 
 static const char *TAG = "FileSystem";

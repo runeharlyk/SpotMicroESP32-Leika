@@ -369,15 +369,26 @@ function createWebSocket() {
             }
         },
         request: (data: CorrelationRequestData): Promise<CorrelationResponse> => {
-            return new Promise((resolve, reject) => {
+            return new Promise((ownResolve, ownReject) => {
                 if (isOpen()) {
-                    request(data, resolve, reject)
+                    request(data, ownResolve, ownReject)
                 } else {
                     const key = getRequestKey(data)
+                    let resolve: (response: CorrelationResponse) => void = ownResolve
+                    let reject: (error: Error) => void = ownReject
+                    // Only the newest request of a kind is sent; an older caller waiting for the
+                    // same kind of answer settles with it.
                     const existing = queued_requests.get(key)
                     if (existing) {
                         clearTimeout(existing.timeoutId)
-                        existing.reject(new Error('Request superseded by newer request'))
+                        resolve = response => {
+                            existing.resolve(response)
+                            ownResolve(response)
+                        }
+                        reject = error => {
+                            existing.reject(error)
+                            ownReject(error)
+                        }
                     }
                     // A queued request must expire too, or a request issued while disconnected
                     // never settles and its caller waits forever.

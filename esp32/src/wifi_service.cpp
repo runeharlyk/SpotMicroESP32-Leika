@@ -86,7 +86,6 @@ bool WiFiService::scanResults(api_WifiNetworkList &list) {
 }
 
 void WiFiService::status(api_WifiStatus &wifiStatus) {
-
     wl_status_t status = WiFi.status();
     wifiStatus.status = static_cast<uint32_t>(status);
 

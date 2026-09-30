@@ -42,7 +42,9 @@
         } catch (error) {
             console.error('Starting a Wi-Fi scan failed: ', error)
         }
-        if (closed || (await pollResults())) return
+        if (closed) return
+        const done = await pollResults()
+        if (done || closed) return
         stopPolling()
         pollingId = setInterval(pollResults, 1000)
     }

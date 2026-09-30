@@ -152,7 +152,8 @@ void runQuery(const api_MDNSQueryRequest &queryReq, api_MDNSQueryResponse &query
 void MDNSService::queryAsync(const api_MDNSQueryRequest &request,
                              std::function<void(const api_MDNSQueryResponse &)> done) {
     auto *query = new MDNSQuery {request, std::move(done)};
-    xTaskCreate(
+    // The stack depth is in bytes; logging, the query and the reply's encode and send share it.
+    BaseType_t created = xTaskCreate(
         [](void *context) {
             auto *query = static_cast<MDNSQuery *>(context);
             auto *response = new api_MDNSQueryResponse(api_MDNSQueryResponse_init_zero);
@@ -162,5 +163,11 @@ void MDNSService::queryAsync(const api_MDNSQueryRequest &request,
             delete query;
             vTaskDelete(nullptr);
         },
-        "mDNS query", 4096, query, 3, nullptr);
+        "mDNS query", 6144, query, 3, nullptr);
+    if (created != pdPASS) {
+        ESP_LOGE(TAG, "No memory for an mDNS query task");
+        api_MDNSQueryResponse nothingFound = api_MDNSQueryResponse_init_zero;
+        query->done(nothingFound);
+        delete query;
+    }
 }

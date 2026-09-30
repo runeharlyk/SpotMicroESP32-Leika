@@ -46,4 +46,15 @@ describe('Accesspoint', () => {
         await vi.waitFor(() => expect(document.body.textContent).toMatch(/AA:BB/))
         expect(document.body.textContent).not.toMatch(/status 503/)
     })
+
+    // The real socket, never connected here: requests queue until it connects, and a queued
+    // request is superseded by a newer one of the same kind.
+    it('keeps waiting for its first status while the socket is still connecting', async () => {
+        vi.useFakeTimers()
+        component = mount(Accesspoint, { target: document.body })
+
+        await vi.advanceTimersByTimeAsync(12_000)
+
+        expect(document.body.textContent).not.toMatch(/superseded/i)
+    })
 })

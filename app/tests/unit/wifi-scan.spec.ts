@@ -67,4 +67,23 @@ describe('WiFi scan dialog', () => {
         await vi.advanceTimersByTimeAsync(5_000)
         expect(robot.sent).toEqual(['wifiScanStart'])
     })
+
+    it('sends nothing more once the dialog is closed while its first poll is unanswered', async () => {
+        vi.useFakeTimers()
+        let answered: () => void = () => {}
+        robot = fakeRobot(name =>
+            name === 'wifiNetworksRequest' ?
+                new Promise(resolve => (answered = () => resolve({ statusCode: 202 })))
+            :   {}
+        )
+        component = mount(Scan, { target: document.body, props })
+        flushSync()
+        await vi.waitFor(() => expect(robot!.sent).toContain('wifiNetworksRequest'))
+        unmount(component)
+        component = undefined
+
+        answered()
+        await vi.advanceTimersByTimeAsync(5_000)
+        expect(robot.sent).toEqual(['wifiScanStart', 'wifiNetworksRequest'])
+    })
 })
