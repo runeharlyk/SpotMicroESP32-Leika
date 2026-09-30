@@ -74,11 +74,13 @@ type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive'
 
 type TaggedMessage = { tag: number; msg: Message }
 
-export const decodeMessage = (data: ArrayBuffer): TaggedMessage => {
+/** Undefined for a message kind this app does not know, as a newer firmware may send. */
+export const decodeMessage = (data: ArrayBuffer): TaggedMessage | undefined => {
     const decoded = Message.decode(new Uint8Array(data))
     const values = Object.entries(decoded).filter(([, value]) => value !== undefined)
-    if (values.length != 1) {
-        throw new Error('Message included either 0 or more than 1 data point')
+    if (values.length === 0) return
+    if (values.length > 1) {
+        throw new Error('Message included more than 1 data point')
     }
     const fieldName = values[0][0]
     const tag = MESSAGE_KEY_TO_TAG.get(fieldName)
@@ -218,7 +220,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     function handleData(data: ArrayBuffer) {
         resetUnresponsiveCheck()
 
-        const { tag, msg } = decodeMessage(data)
+        const decoded = decodeMessage(data)
+        if (!decoded) return
+        const { tag, msg } = decoded
         if (msg.pongmsg !== undefined) {
             if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
             return

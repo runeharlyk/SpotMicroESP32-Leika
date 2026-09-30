@@ -275,11 +275,11 @@ describe('Message Protobuf Encoding/Decoding', () => {
     it('should encode and decode two empty types correctly', () => {
         const encoded_ping = Message.encode(Message.create({ pingmsg: PingMsg.create() })).finish()
         const decoded_ping = decodeMessage(encoded_ping.buffer)
-        expect(decoded_ping.tag).toBe(MESSAGE_KEY_TO_TAG.get('pingmsg'))
+        expect(decoded_ping?.tag).toBe(MESSAGE_KEY_TO_TAG.get('pingmsg'))
 
         const encoded_pong = Message.encode(Message.create({ pongmsg: PongMsg.create() })).finish()
         const decoded_pong = decodeMessage(encoded_pong.buffer)
-        expect(decoded_pong.tag).toBe(MESSAGE_KEY_TO_TAG.get('pongmsg'))
+        expect(decoded_pong?.tag).toBe(MESSAGE_KEY_TO_TAG.get('pongmsg'))
     })
 
     it('should encode and decode complete Message', () => {

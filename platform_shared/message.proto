@@ -232,6 +232,10 @@ message PongMsg {}
 
 // WebSocket message wrapper
 message Message {
+    // Retired, and never to be reused while apps that knew them are out there: the peripheral settings
+    // (190, 191) and WiFi settings (240) now travel as correlation requests.
+    reserved 190, 191, 240;
+    reserved "peripheral_settings", "peripheral_settings_data_request", "wifi_settings";
     oneof message {
         CorrelationRequest correlation_request = 10;
         CorrelationResponse correlation_response = 11;
