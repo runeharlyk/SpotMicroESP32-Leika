@@ -55,10 +55,11 @@ class FileSystemHandler {
     socket_message_FSUploadStartResponse handleUploadStart(const socket_message_FSUploadStart& req, int clientId);
     void handleUploadData(const socket_message_FSUploadData& req);
     socket_message_FSCancelTransferResponse handleCancelTransfer(const socket_message_FSCancelTransfer& req);
-    void cleanupExpiredTransfers();
-    void processPendingDownloads();
 
   private:
+    // Only the socket's task handles transfers, so it also sweeps out the abandoned ones, as each new one starts.
+    void cleanupExpiredTransfers();
+
     std::map<uint32_t, DownloadState> downloads_;
     std::map<uint32_t, UploadState> uploads_;
     uint32_t transferIdCounter_;

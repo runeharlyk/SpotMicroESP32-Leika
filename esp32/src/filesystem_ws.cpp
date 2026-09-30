@@ -213,6 +213,7 @@ socket_message_FSListResponse FileSystemHandler::handleList(const socket_message
 }
 
 void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadRequest& req, int clientId) {
+    cleanupExpiredTransfers();
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Download request: %s", path.c_str());
 
@@ -340,6 +341,7 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
 
 socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const socket_message_FSUploadStart& req,
                                                                           int clientId) {
+    cleanupExpiredTransfers();
     socket_message_FSUploadStartResponse response = socket_message_FSUploadStartResponse_init_zero;
 
     std::string path = std::string(MOUNT_POINT) + req.path;
@@ -503,7 +505,5 @@ socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(
     response.success = false;
     return response;
 }
-
-void FileSystemHandler::processPendingDownloads() {}
 
 } // namespace FileSystemWS

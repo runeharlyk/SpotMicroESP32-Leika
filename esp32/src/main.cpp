@@ -439,8 +439,6 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             }
         });
 
-        EXECUTE_EVERY_N_MS(60000, { FileSystemWS::fsHandler.cleanupExpiredTransfers(); });
-
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
