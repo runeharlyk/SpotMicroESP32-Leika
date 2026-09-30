@@ -17,3 +17,4 @@ vite.config.ts.timestamp-*
 /static/sim_spot_micro.xml
 /static/sim_yertle.xml
 /static/sim_yertle_meshes.zip
+/static/URDF.zip
