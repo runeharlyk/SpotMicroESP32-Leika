@@ -67,9 +67,12 @@ void APService::manageAP() {
 }
 
 void APService::startAP() {
-    ESP_LOGI(TAG, "Starting software access point: %s", state().ssid);
-    WiFi.softAPConfig(IPAddress(state().local_ip), IPAddress(state().gateway_ip), IPAddress(state().subnet_mask));
-    WiFi.softAP(state().ssid, state().password, state().channel, state().ssid_hidden, state().max_clients);
+    // A save from the app rewrites the settings on the socket's task: start with one whole copy.
+    APSettings settings;
+    read([&](const APSettings &stored) { settings = stored; });
+    ESP_LOGI(TAG, "Starting software access point: %s", settings.ssid);
+    WiFi.softAPConfig(IPAddress(settings.local_ip), IPAddress(settings.gateway_ip), IPAddress(settings.subnet_mask));
+    WiFi.softAP(settings.ssid, settings.password, settings.channel, settings.ssid_hidden, settings.max_clients);
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(8);
 #endif

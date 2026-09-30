@@ -42,22 +42,34 @@ void WiFiService::reconfigureWiFiConnection() {
 }
 
 void WiFiService::manageSTA() {
-    uint32_t count = state().wifi_networks_count;
-    if (WiFi.isConnected() || count == 0) return;
+    if (WiFi.isConnected()) return;
     uint32_t now = esp_timer_get_time() / 1000;
     if (now < _nextAttemptAt) return;
+
+    // A save from the app rewrites the networks on the socket's task: connect with one whole copy.
+    // Each failed attempt moves on to the next saved network.
+    WiFiNetwork network;
+    char hostname[sizeof(WiFiSettings::hostname)];
+    uint32_t count = 0;
+    uint32_t index = 0;
+    read([&](const WiFiSettings &settings) {
+        count = settings.wifi_networks_count;
+        if (count == 0) return;
+        index = _nextNetwork % count;
+        network = settings.wifi_networks[index];
+        memcpy(hostname, settings.hostname, sizeof(hostname));
+    });
+    if (count == 0) return;
 
     // The station is off after WiFi.disconnect(true) or while only the access point runs.
     wifi_mode_t mode = WiFi.getMode();
     if (!(mode & WIFI_MODE_STA)) WiFi.mode(static_cast<wifi_mode_t>(mode | WIFI_MODE_STA));
 
-    // Each failed attempt moves on to the next saved network.
-    uint32_t index = _nextNetwork % count;
     _connectingTo = index;
     _nextNetwork = index + 1;
     _nextAttemptAt = now + reconnectDelay;
-    ESP_LOGI(TAG, "Connecting to %s", state().wifi_networks[index].ssid);
-    configureNetwork(state().wifi_networks[index]);
+    ESP_LOGI(TAG, "Connecting to %s", network.ssid);
+    configureNetwork(network, hostname);
 }
 
 void WiFiService::onStationModeDisconnected(int32_t event, void *event_data) {
@@ -143,14 +155,14 @@ void WiFiService::status(api_WifiStatus &wifiStatus) {
     }
 }
 
-void WiFiService::configureNetwork(WiFiNetwork &network) {
+void WiFiService::configureNetwork(const WiFiNetwork &network, const char *hostname) {
     if (network.static_ip_config) {
         WiFi.config(IPAddress(network.local_ip), IPAddress(network.gateway_ip), IPAddress(network.subnet_mask),
                     IPAddress(network.dns_ip_1), IPAddress(network.dns_ip_2));
     } else {
         WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     }
-    WiFi.setHostname(state().hostname);
+    WiFi.setHostname(hostname);
     WiFi.begin(network.ssid, network.password);
 
 #if CONFIG_IDF_TARGET_ESP32C3

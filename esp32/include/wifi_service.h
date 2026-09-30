@@ -44,7 +44,7 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void mergeFactoryNetwork();
     void reconfigureWiFiConnection();
     void manageSTA();
-    void configureNetwork(WiFiNetwork &network);
+    void configureNetwork(const WiFiNetwork &network, const char *hostname);
 
     // Set from the socket's task when settings change; the service task applies it.
     std::atomic<uint32_t> _reconfigureAt {0};

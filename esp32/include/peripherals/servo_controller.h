@@ -98,10 +98,13 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void calculatePWM() {
         uint16_t pwms[SERVO_COUNT];
-        for (int i = 0; i < 12; i++) {
-            angles[i] = lerp(angles[i], target_angles[i], 0.1);
-            pwms[i] = servoPwm(state().servos[i], angles[i]);
-        }
+        // A save from the app rewrites the calibration on the socket's task: each tick uses one whole copy.
+        read([&](const ServoSettings &settings) {
+            for (int i = 0; i < SERVO_COUNT; i++) {
+                angles[i] = lerp(angles[i], target_angles[i], 0.1);
+                pwms[i] = servoPwm(settings.servos[i], angles[i]);
+            }
+        });
         _pca.setMultiplePWM(pwms, SERVO_COUNT);
     }
 
