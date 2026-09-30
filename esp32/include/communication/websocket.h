@@ -33,5 +33,5 @@ class Websocket : public CommAdapterBase {
     void onWsClose(int sockfd);
     esp_err_t onFrame(httpd_req_t* req, httpd_ws_frame_t* frame);
 
-    void send(const uint8_t* data, size_t len, int cid = -1) override;
+    void send(const uint8_t* data, size_t len, int cid) override;
 };

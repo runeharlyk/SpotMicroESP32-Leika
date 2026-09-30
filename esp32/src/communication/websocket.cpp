@@ -18,6 +18,8 @@ void Websocket::onWsOpen(httpd_req_t* req) {
     xSemaphoreTake(sessionsMutex_, portMAX_DELAY);
     sessions_[sockfd] = nextSession_++;
     xSemaphoreGive(sessionsMutex_);
+    // A new session starts with no subscriptions, whatever the descriptor's last session left.
+    removeClient(sockfd);
     ESP_LOGI(TAG, "Client connected: %d", sockfd);
     sendPong(sockfd);
 }
@@ -54,12 +56,8 @@ esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
 }
 
 void Websocket::send(const uint8_t* data, size_t len, int cid) {
-    if (cid >= 0) {
-        esp_err_t err = server_.wsSend(cid, data, len);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
-        }
-    } else {
-        server_.wsSendAll(data, len);
+    esp_err_t err = server_.wsSend(cid, data, len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
     }
 }

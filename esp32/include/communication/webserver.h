@@ -42,10 +42,6 @@ class WebServer {
     void registerWebsocket(const char* uri);
 
     esp_err_t wsSend(int sockfd, const uint8_t* data, size_t len);
-    esp_err_t wsSendAll(const uint8_t* data, size_t len);
-    void addWsClient(int sockfd);
-    void removeWsClient(int sockfd);
-    std::vector<int> getWsClients();
 
     void addDefaultHeader(const char* key, const char* value);
 
@@ -70,6 +66,11 @@ class WebServer {
     static esp_err_t httpHandler(httpd_req_t* req);
     static esp_err_t wsHandler(httpd_req_t* req);
     static esp_err_t wsPreHandshake(httpd_req_t* req);
+    static void closeSession(httpd_handle_t handle, int sockfd);
+    static void keepContext(void*) {}
+
+    void addWsClient(int sockfd);
+    void dropWsClient(int sockfd);
 
     void applyDefaultHeaders(httpd_req_t* req);
     void addRoute(HttpRoute route);

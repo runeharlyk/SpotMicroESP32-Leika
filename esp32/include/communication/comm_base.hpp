@@ -4,6 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <functional>
+#include <algorithm>
 #include <list>
 #include <map>
 #include <type_traits>
@@ -75,11 +76,12 @@ class CommAdapterBase {
     }
 
   protected:
-    virtual void send(const uint8_t* data, size_t len, int cid = -1) = 0;
+    virtual void send(const uint8_t* data, size_t len, int cid) = 0;
 
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        client_subscriptions_[tag].push_back(cid);
+        std::list<int>& clients = client_subscriptions_[tag];
+        if (std::find(clients.begin(), clients.end(), cid) == clients.end()) clients.push_back(cid);
         xSemaphoreGive(mutex_);
         ESP_LOGI("ProtoComm", "Client %d subscribed to tag %d", cid, (int)tag);
     }

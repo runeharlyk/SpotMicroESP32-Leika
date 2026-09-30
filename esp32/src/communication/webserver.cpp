@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <cstring>
 #include <algorithm>
+#include <unistd.h>
 
 static const char* TAG = "WebServer";
 
@@ -24,6 +25,17 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.max_resp_headers = 16;
     config_.lru_purge_enable = true;
     config_.uri_match_fn = httpd_uri_match_wildcard;
+    config_.global_user_ctx = this;
+    config_.global_user_ctx_free_fn = keepContext;
+    config_.close_fn = closeSession;
+}
+
+// Every session ends here, however it ended: a close frame, a dropped connection, or the least recently
+// used one purged for a new client. A socket's subscriptions must end with it, or a reused descriptor
+// would inherit them.
+void WebServer::closeSession(httpd_handle_t handle, int sockfd) {
+    static_cast<WebServer*>(httpd_get_global_user_ctx(handle))->dropWsClient(sockfd);
+    close(sockfd);
 }
 
 esp_err_t WebServer::listen(uint16_t port) {
@@ -153,12 +165,7 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
     }
 
     if (frame.type == HTTPD_WS_TYPE_CLOSE) {
-        int sockfd = httpd_req_to_sockfd(req);
-        self->removeWsClient(sockfd);
-        if (self->wsCloseHandler_) {
-            self->wsCloseHandler_(sockfd);
-        }
-        ESP_LOGI(TAG, "WebSocket client disconnected: %d", sockfd);
+        self->dropWsClient(httpd_req_to_sockfd(req));
         if (frame.payload) free(frame.payload);
         return ESP_OK;
     }
@@ -214,17 +221,14 @@ void WebServer::addWsClient(int sockfd) {
     xSemaphoreGive(wsMutex_);
 }
 
-void WebServer::removeWsClient(int sockfd) {
+// Reports a WebSocket client's end once, whichever of its close frame and its session's end comes first.
+void WebServer::dropWsClient(int sockfd) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    wsClients_.erase(std::remove(wsClients_.begin(), wsClients_.end(), sockfd), wsClients_.end());
+    auto client = std::find(wsClients_.begin(), wsClients_.end(), sockfd);
+    bool wasClient = client != wsClients_.end();
+    if (wasClient) wsClients_.erase(client);
     xSemaphoreGive(wsMutex_);
-}
-
-std::vector<int> WebServer::getWsClients() {
-    xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    std::vector<int> clients = wsClients_;
-    xSemaphoreGive(wsMutex_);
-    return clients;
+    if (wasClient && wsCloseHandler_) wsCloseHandler_(sockfd);
 }
 
 esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
@@ -234,15 +238,6 @@ esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
                               .payload = const_cast<uint8_t*>(data),
                               .len = len};
     return httpd_ws_send_frame_async(server_, sockfd, &frame);
-}
-
-esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
-    xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    for (int sockfd : wsClients_) {
-        wsSend(sockfd, data, len);
-    }
-    xSemaphoreGive(wsMutex_);
-    return ESP_OK;
 }
 
 esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {
