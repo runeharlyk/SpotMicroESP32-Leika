@@ -3,6 +3,7 @@ syntax = "proto3";
 package socket_message;
 
 import "filesystem.proto";
+import "api.proto";
 
 // Partial data types
 message Vector { float x = 1; float y = 2; }
@@ -57,6 +58,9 @@ message SystemInformationResponse {
     StaticSystemInformation static_system_information = 2;
 }
 
+message SystemRestart {}
+message SystemReset {}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -71,12 +75,32 @@ message CorrelationRequest {
         FSUploadStart fs_upload_start = 100;
         FSCancelTransfer fs_cancel_transfer = 120;
         RobotNameUpdate robot_name_update = 130;
+        api.WifiSettingsRequest wifi_settings_request = 140;
+        api.WifiSettings wifi_settings = 141;
+        api.WifiStatusRequest wifi_status_request = 142;
+        api.WifiScanStart wifi_scan_start = 143;
+        api.WifiNetworksRequest wifi_networks_request = 144;
+        api.APSettingsRequest ap_settings_request = 150;
+        api.APSettings ap_settings = 151;
+        api.APStatusRequest ap_status_request = 152;
+        api.MDNSStatusRequest mdns_status_request = 160;
+        api.MDNSQueryRequest mdns_query_request = 161;
+        api.CameraSettingsRequest camera_settings_request = 170;
+        api.CameraSettings camera_settings = 171;
+        api.ServoSettingsRequest servo_settings_request = 180;
+        api.ServoSettings servo_settings = 181;
+        api.PeripheralSettingsRequest peripheral_settings_request = 190;
+        api.PeripheralSettings peripheral_settings = 191;
+        SystemRestart system_restart = 200;
+        SystemReset system_reset = 201;
     }
 }
 
 message CorrelationResponse {
     uint32 correlation_id = 1;
     uint32 status_code = 2;
+    // Why the robot refused the request; empty on success.
+    string error_message = 3;
     oneof response {
         FeaturesDataResponse features_data_response = 10;
         I2CScanData i2c_scan_data = 20;
@@ -87,6 +111,16 @@ message CorrelationResponse {
         FSListResponse fs_list_response = 70;
         FSUploadStartResponse fs_upload_start_response = 100;
         FSCancelTransferResponse fs_cancel_transfer_response = 120;
+        api.WifiSettings wifi_settings = 140;
+        api.WifiStatus wifi_status = 142;
+        api.WifiNetworkList wifi_network_list = 144;
+        api.APSettings ap_settings = 150;
+        api.APStatus ap_status = 152;
+        api.MDNSStatus mdns_status = 160;
+        api.MDNSQueryResponse mdns_query_response = 161;
+        api.CameraSettings camera_settings = 170;
+        api.ServoSettings servo_settings = 180;
+        api.PeripheralSettings peripheral_settings = 190;
     }
 }
 

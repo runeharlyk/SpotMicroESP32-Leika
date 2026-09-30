@@ -42,3 +42,5 @@ socket_message.FeaturesDataResponse.hostname type:FT_POINTER
 
 socket_message.RobotSettings.name max_size:33
 socket_message.RobotNameUpdate.name max_size:33
+
+socket_message.CorrelationResponse.error_message max_size:64
