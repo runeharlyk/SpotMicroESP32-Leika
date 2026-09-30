@@ -8,8 +8,7 @@ APService::APService()
                    api_APSettings_size, APSettings_defaults()),
       _dnsServer(nullptr),
       _lastManaged(0),
-      _reconfigureAp(false),
-      _recoveryMode(false) {
+      _reconfigureAp(false) {
     addUpdateHandler([&](const std::string &originId) { reconfigureAP(); }, false);
 }
 
@@ -38,14 +37,6 @@ APNetworkStatus APService::getAPNetworkStatus() {
 void APService::reconfigureAP() {
     _lastManaged = esp_timer_get_time() / 1000 - MANAGE_NETWORK_DELAY;
     _reconfigureAp = true;
-    _recoveryMode = false;
-}
-
-void APService::recoveryMode() {
-    ESP_LOGI(TAG, "Recovery Mode needed");
-    _lastManaged = esp_timer_get_time() / 1000 - MANAGE_NETWORK_DELAY;
-    _recoveryMode = true;
-    _reconfigureAp = true;
 }
 
 void APService::loop() {
@@ -55,7 +46,7 @@ void APService::loop() {
 void APService::manageAP() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
     if (state().provision_mode == AP_MODE_ALWAYS ||
-        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED) || _recoveryMode) {
+        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED)) {
         if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }

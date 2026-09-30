@@ -19,7 +19,6 @@ class APService : public StatefulService<APSettings> {
 
     void begin();
     void loop();
-    void recoveryMode();
 
     void statusProto(api_APStatus &proto);
     APNetworkStatus getAPNetworkStatus();
@@ -32,7 +31,6 @@ class APService : public StatefulService<APSettings> {
 
     volatile unsigned long _lastManaged;
     volatile bool _reconfigureAp;
-    volatile bool _recoveryMode = false;
 
     void reconfigureAP();
     void manageAP();

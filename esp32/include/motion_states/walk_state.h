@@ -23,7 +23,6 @@ class WalkState : public MotionState {
     float phase_time = 0.0f;
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
     float stand_offset = 0.75f;
-    float step_length = 0.0f;
     float speed_factor = 2;
     gait_state_t gait_state;
     gait_state_t target_gait_state;
@@ -97,8 +96,6 @@ class WalkState : public MotionState {
         gait_state.step_angle = lerp(gait_state.step_angle, target_gait_state.step_angle, default_smoothing_factor);
         gait_state.step_depth = lerp(gait_state.step_depth, target_gait_state.step_depth, default_smoothing_factor);
 
-        step_length = std::hypot(gait_state.step_x, gait_state.step_z);
-        if (gait_state.step_x < 0.0f) step_length = -step_length;
         updatePhase(dt);
         updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
