@@ -75,15 +75,7 @@ void setupServer() {
 #endif
     wsSocket.begin();
     mountWebApp(server);
-    server.on("/*", HTTP_OPTIONS, [](httpd_req_t *request) {
-        httpd_resp_set_status(request, "200 OK");
-        return httpd_resp_send(request, nullptr, 0);
-    });
     server.addDefaultHeader("Server", APP_NAME);
-    server.addDefaultHeader("Access-Control-Allow-Origin", "*");
-    server.addDefaultHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
-    server.addDefaultHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    server.addDefaultHeader("Access-Control-Max-Age", "86400");
 }
 
 void setupEventSocket() {

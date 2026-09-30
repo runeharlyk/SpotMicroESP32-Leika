@@ -1,4 +1,5 @@
 #include <communication/webserver.h>
+#include <communication/ws_origin.h>
 #include <esp_log.h>
 #include <cstring>
 #include <algorithm>
@@ -77,6 +78,31 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
     }
 
     httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Not found");
+    return ESP_FAIL;
+}
+
+#if !CONFIG_HTTPD_WS_PRE_HANDSHAKE_CB_SUPPORT
+#error "CONFIG_HTTPD_WS_PRE_HANDSHAKE_CB_SUPPORT is needed to refuse WebSockets from other pages"
+#endif
+
+// A header that is absent reads as nullptr; one too long to read refuses the socket.
+static bool readHeader(httpd_req_t* req, const char* field, char* value, size_t size, const char*& read) {
+    esp_err_t err = httpd_req_get_hdr_value_str(req, field, value, size);
+    read = err == ESP_OK ? value : nullptr;
+    return err == ESP_OK || err == ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t WebServer::wsPreHandshake(httpd_req_t* req) {
+    char originValue[128];
+    char hostValue[128];
+    const char* origin;
+    const char* host;
+    if (readHeader(req, "Origin", originValue, sizeof(originValue), origin) &&
+        readHeader(req, "Host", hostValue, sizeof(hostValue), host) && wsOriginAllowed(origin, host)) {
+        return ESP_OK;
+    }
+    ESP_LOGW(TAG, "Refused a WebSocket opened by %s", origin ? origin : "an unreadable origin");
+    httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "This page may not open the robot's socket");
     return ESP_FAIL;
 }
 
@@ -163,7 +189,8 @@ esp_err_t WebServer::registerRoute(const HttpRoute& route) {
                                .user_ctx = this,
                                .is_websocket = route.isWebsocket,
                                .handle_ws_control_frames = route.isWebsocket,
-                               .supported_subprotocol = nullptr};
+                               .supported_subprotocol = nullptr,
+                               .ws_pre_handshake_cb = route.isWebsocket ? wsPreHandshake : nullptr};
     return httpd_register_uri_handler(server_, &httpd_route);
 }
 

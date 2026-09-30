@@ -69,6 +69,7 @@ class WebServer {
 
     static esp_err_t httpHandler(httpd_req_t* req);
     static esp_err_t wsHandler(httpd_req_t* req);
+    static esp_err_t wsPreHandshake(httpd_req_t* req);
 
     void applyDefaultHeaders(httpd_req_t* req);
     void addRoute(HttpRoute route);
