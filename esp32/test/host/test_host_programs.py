@@ -11,11 +11,11 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
-INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src"),
+INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src"),
             os.path.join(REPO, "submodules", "nanopb")]
 
 
-@pytest.mark.parametrize("program", ["factory_network_test.cpp", "motion_inbox_test.cpp", "servo_output_test.cpp"])
+@pytest.mark.parametrize("program", ["factory_network_test.cpp", "motion_inbox_test.cpp", "servo_output_test.cpp", "i2c_bus_test.cpp"])
 def test_host_program(program, tmp_path):
     binary = str(tmp_path / (program + ".exe"))
     subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-Ofast", *[f"-I{p}" for p in INCLUDES],
