@@ -31,6 +31,7 @@
         WalkGaitData
     } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
+    import { keepControlAlive, stopped } from '$lib/control-link'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -51,6 +52,10 @@
         input.subscribe(data =>
             inputThrottler.throttle(() => socket.emit(ControllerData, data), 100)
         )
+        stopKeepAlive = keepControlAlive(
+            () => get(input),
+            data => socket.emit(ControllerData, data)
+        )
         mode.subscribe(data => socket.emit(ModeData, data))
         walkGait.subscribe(data => socket.emit(WalkGaitData, data))
         servoAnglesOut.subscribe(data =>
@@ -59,7 +64,10 @@
         kinematicData.subscribe(data => socket.emit(KinematicData, data))
     })
 
+    let stopKeepAlive: (() => void) | undefined
+
     onDestroy(() => {
+        stopKeepAlive?.()
         removeEventListeners()
         document.removeEventListener('visibilitychange', handleVisibilityChange)
     })
@@ -68,7 +76,10 @@
     const addEventListeners = () => {
         eventListeners.push(
             socket.onEvent('open', handleOpen),
+            // A link ends in exactly one of these; the transport is detached at the first.
             socket.onEvent('close', handleClose),
+            socket.onEvent('error', handleClose),
+            socket.onEvent('unresponsive', handleClose),
             socket.onEvent('error', handleError),
             socket.on(RSSIData, data => telemetry.setRSSI(data)),
             socket.on(ModeData, data => mode.set(data)),
@@ -83,12 +94,6 @@
     }
 
     const handleOpen = () => notifications.success('Connection to device established', 5000)
-
-    const stopped = (data: ControllerData) => ({
-        ...data,
-        left: { x: 0, y: 0 },
-        right: { x: 0, y: 0 }
-    })
 
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)

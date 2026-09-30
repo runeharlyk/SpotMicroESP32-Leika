@@ -2,17 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { get } from 'svelte/store'
 import { input } from '$lib/stores/model-store'
 import { ControllerData } from '$lib/platform_shared/message'
+import { stopped } from '$lib/control-link'
 
-/**
- * The layout neutralises the controller command whenever the link drops or the tab is
- * backgrounded. Both paths share this shape, and getting it wrong leaves the robot holding its
- * last commanded gait with no operator watching.
- */
-const stopped = (data: ControllerData) => ({
-    ...data,
-    left: { x: 0, y: 0 },
-    right: { x: 0, y: 0 }
-})
+// Getting this wrong leaves the robot holding its last commanded gait with no operator watching.
 
 describe('neutralised controller command', () => {
     beforeEach(() => {
