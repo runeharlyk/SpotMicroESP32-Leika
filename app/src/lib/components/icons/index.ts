@@ -75,7 +75,6 @@ export { default as Stopwatch } from '~icons/tabler/24-hours'
 
 export { default as CPU } from '~icons/tabler/cpu'
 export { default as CPP } from '~icons/tabler/binary'
-export { default as Sleep } from '~icons/tabler/zzz'
 export { default as FactoryReset } from '~icons/tabler/refresh-dot'
 export { default as Speed } from '~icons/tabler/activity'
 export { default as Flash } from '~icons/tabler/device-sd-card'

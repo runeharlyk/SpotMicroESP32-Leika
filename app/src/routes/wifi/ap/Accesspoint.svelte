@@ -7,11 +7,11 @@
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
-    import { APSettings, APStatus, Request, Response } from '$lib/platform_shared/api'
+    import { APSettings, APStatus } from '$lib/platform_shared/api'
 
     let apSettings: APSettings | null = $state(null)
     let apStatus: APStatus | null = $state(null)
@@ -25,17 +25,15 @@
     let formField: Record<string, unknown> = $state({})
 
     async function getAPStatus() {
-        const result = await api.get<Response>('/api/ap/status')
-        if (result.isErr()) throw result.inner
-        if (!result.inner.apStatus) throw new Error('The robot sent no access point status')
-        apStatus = result.inner.apStatus
+        const reply = await robotRequest({ apStatusRequest: {} })
+        if (!reply.apStatus) throw new Error('The robot sent no access point status')
+        apStatus = reply.apStatus
     }
 
     async function getAPSettings() {
-        const result = await api.get<Response>('/api/ap/settings')
-        if (result.isErr()) throw result.inner
-        if (!result.inner.apSettings) throw new Error('The robot sent no access point settings')
-        apSettings = result.inner.apSettings
+        const reply = await robotRequest({ apSettingsRequest: {} })
+        if (!reply.apSettings) throw new Error('The robot sent no access point settings')
+        apSettings = reply.apSettings
         ipDisplay = {
             local_ip: uint32ToIp(apSettings.localIp),
             gateway_ip: uint32ToIp(apSettings.gatewayIp),
@@ -90,25 +88,16 @@
     })
 
     async function postAPSettings(data: APSettings) {
-        const result = await api.post_proto<Response>(
-            '/api/ap/settings',
-            Request.create({ apSettings: data })
-        )
-        if (result.isErr()) {
+        try {
+            const reply = await robotRequest({ apSettings: data })
+            if (reply.apSettings) apSettings = reply.apSettings
+            notifications.success('Access Point settings updated.', 3000)
+        } catch (error) {
             notifications.error(
-                `Saving access point settings failed: ${result.inner.message}`,
+                `Saving access point settings failed: ${(error as Error).message}`,
                 5000
             )
-            return
         }
-        if (result.inner.statusCode !== 200) {
-            notifications.error(result.inner.errorMessage || 'Failed to update settings', 3000)
-            return
-        }
-        if (result.inner.apSettings) {
-            apSettings = result.inner.apSettings
-        }
-        notifications.success('Access Point settings updated.', 3000)
     }
 
     function handleSubmitAP(e: Event) {

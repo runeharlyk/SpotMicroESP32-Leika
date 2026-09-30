@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
@@ -8,12 +8,7 @@
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
-    import {
-        type MDNSStatus,
-        type MDNSQueryResult,
-        Request,
-        type Response as ProtoResponse
-    } from '$lib/platform_shared/api'
+    import type { MDNSStatus, MDNSQueryResult } from '$lib/platform_shared/api'
     import { compareIp } from '$lib/utilities'
 
     let mdnsStatus = $state<MDNSStatus | undefined>()
@@ -21,29 +16,22 @@
     let isLoading = $state(false)
 
     const getMDNSStatus = async () => {
-        const result = await api.get<ProtoResponse>('/api/mdns/status')
-        if (result.isErr()) throw result.inner
-        if (result.inner.mdnsStatus) {
-            mdnsStatus = result.inner.mdnsStatus
-        }
+        const reply = await robotRequest({ mdnsStatusRequest: {} })
+        if (!reply.mdnsStatus) throw new Error('The robot sent no mDNS status')
+        mdnsStatus = reply.mdnsStatus
     }
 
     const queryMDNSServices = async () => {
         isLoading = true
-        const request = Request.create({
-            mdnsQueryRequest: {
-                service: 'http',
-                protocol: 'tcp'
+        try {
+            const reply = await robotRequest({
+                mdnsQueryRequest: { service: 'http', protocol: 'tcp' }
+            })
+            if (reply.mdnsQueryResponse) {
+                services = reply.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
             }
-        })
-        const result = await api.post_proto<ProtoResponse>('/api/mdns/query', request)
-        if (result.isErr()) {
-            notifications.error(`mDNS scan failed: ${result.inner.message}`, 5000)
-            isLoading = false
-            return
-        }
-        if (result.inner.mdnsQueryResponse) {
-            services = result.inner.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
+        } catch (error) {
+            notifications.error(`mDNS scan failed: ${(error as Error).message}`, 5000)
         }
         isLoading = false
     }

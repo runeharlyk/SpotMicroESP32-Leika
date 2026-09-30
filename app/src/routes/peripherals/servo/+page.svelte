@@ -1,5 +1,5 @@
 <script lang="ts">
-    import RequiresHttpApi from '$lib/components/RequiresHttpApi.svelte'
+    import RequiresRobot from '$lib/components/RequiresRobot.svelte'
     import Servos from './servos.svelte'
     import ServoTable from './ServoTable.svelte'
 
@@ -9,7 +9,7 @@
 
 <div class="mx-0 my-1 flex flex-col space-y-4 sm:mx-8 sm:my-8">
     <Servos bind:servoId bind:pwm />
-    <RequiresHttpApi>
+    <RequiresRobot>
         <ServoTable {servoId} {pwm} />
-    </RequiresHttpApi>
+    </RequiresRobot>
 </div>

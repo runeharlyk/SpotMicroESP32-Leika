@@ -11,14 +11,8 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import {
-        type WifiStatus,
-        type WifiSettings,
-        type WifiNetwork,
-        type Response as ProtoResponse,
-        Request
-    } from '$lib/platform_shared/api'
-    import { api } from '$lib/api'
+    import type { WifiStatus, WifiSettings, WifiNetwork } from '$lib/platform_shared/api'
+    import { robotRequest } from '$lib/robot-request'
     import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
     import {
         Cancel,
@@ -86,19 +80,16 @@
     let formErrorhostname = $state(false)
 
     async function getWifiStatus() {
-        const result = await api.get<ProtoResponse>('/api/wifi/sta/status')
-        if (result.isErr()) throw result.inner
-        if (result.inner.wifiStatus) {
-            wifiStatus = result.inner.wifiStatus
-        }
+        const reply = await robotRequest({ wifiStatusRequest: {} })
+        if (!reply.wifiStatus) throw new Error('The robot sent no Wi-Fi status')
+        wifiStatus = reply.wifiStatus
         return wifiStatus
     }
 
     async function getWifiSettings() {
-        const result = await api.get<ProtoResponse>('/api/wifi/sta/settings')
-        if (result.isErr()) throw result.inner
-        if (!result.inner.wifiSettings) throw new Error('The robot sent no Wi-Fi settings')
-        wifiSettings = result.inner.wifiSettings
+        const reply = await robotRequest({ wifiSettingsRequest: {} })
+        if (!reply.wifiSettings) throw new Error('The robot sent no Wi-Fi settings')
+        wifiSettings = reply.wifiSettings
         dndNetworkList = wifiSettings.wifiNetworks
         return wifiSettings
     }
@@ -107,22 +98,13 @@
     let settingsLoad = $state(getWifiSettings())
 
     async function postWiFiSettings(data: WifiSettings) {
-        const result = await api.post_proto<ProtoResponse>(
-            '/api/wifi/sta/settings',
-            Request.create({ wifiSettings: data })
-        )
-        if (result.isErr()) {
-            notifications.error(`Saving Wi-Fi settings failed: ${result.inner.message}`, 5000)
-            return
+        try {
+            const reply = await robotRequest({ wifiSettings: data })
+            if (reply.wifiSettings) wifiSettings = reply.wifiSettings
+            notifications.success('Wi-Fi settings updated.', 3000)
+        } catch (error) {
+            notifications.error(`Saving Wi-Fi settings failed: ${(error as Error).message}`, 5000)
         }
-        if (result.inner.statusCode !== 200) {
-            notifications.error(result.inner.errorMessage || 'Failed to update settings', 3000)
-            return
-        }
-        if (result.inner.wifiSettings) {
-            wifiSettings = result.inner.wifiSettings
-        }
-        notifications.success('Wi-Fi settings updated.', 3000)
     }
 
     function validateHostName() {

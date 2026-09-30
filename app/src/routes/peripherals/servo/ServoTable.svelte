@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import { RotateCw, RotateCcw } from '$lib/components/icons'
-    import { Request, Response, type ServoSettings } from '$lib/platform_shared/api'
+    import type { ServoSettings } from '$lib/platform_shared/api'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
@@ -21,19 +21,12 @@
     const syncConfig = async () => {
         if (!servoSettings) return
         notifications.info('Uploading servo config...', 3000)
-        const result = await api.post_proto<Response>(
-            '/api/servo/config',
-            Request.create({ servoSettings })
-        )
-        if (result.isErr()) {
-            notifications.error(`Servo config upload failed: ${result.inner.message}`, 5000)
-            return
+        try {
+            await robotRequest({ servoSettings })
+            notifications.success('Servo config uploaded successfully', 3000)
+        } catch (error) {
+            notifications.error(`Servo config upload failed: ${(error as Error).message}`, 5000)
         }
-        if (result.inner.statusCode !== 200) {
-            notifications.error(result.inner.errorMessage || 'Servo config upload failed', 5000)
-            return
-        }
-        notifications.success('Servo config uploaded successfully', 3000)
     }
 
     const toggleDirection = async (index: number) => {
@@ -43,10 +36,9 @@
     }
 
     const getServoConfig = async () => {
-        const result = await api.get<Response>('/api/servo/config')
-        if (result.isErr()) throw result.inner
-        if (!result.inner.servoSettings) throw new Error('The robot sent no servo config')
-        servoSettings = result.inner.servoSettings
+        const reply = await robotRequest({ servoSettingsRequest: {} })
+        if (!reply.servoSettings) throw new Error('The robot sent no servo config')
+        servoSettings = reply.servoSettings
     }
 
     let loading = $state(getServoConfig())

@@ -1,37 +1,26 @@
 <script lang="ts">
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
-    import {
-        CameraSettings,
-        Request,
-        type Response as ProtoResponse
-    } from '$lib/platform_shared/api'
+    import { CameraSettings } from '$lib/platform_shared/api'
 
     let settings = $state<CameraSettings>(CameraSettings.create({}))
 
     const getCameraSettings = async () => {
-        const result = await api.get<ProtoResponse>('/api/camera/settings')
-        if (result.isErr()) throw result.inner
-        if (result.inner.cameraSettings) {
-            settings = result.inner.cameraSettings
-        }
+        const reply = await robotRequest({ cameraSettingsRequest: {} })
+        if (!reply.cameraSettings) throw new Error('The robot sent no camera settings')
+        settings = reply.cameraSettings
     }
 
     let loading = $state(getCameraSettings())
 
     const updateCameraSettings = async () => {
-        const request = Request.create({
-            cameraSettings: settings
-        })
-        const result = await api.post_proto<ProtoResponse>('/api/camera/settings', request)
-        if (result.isErr()) {
-            notifications.error(`Saving camera settings failed: ${result.inner.message}`, 5000)
-            return
-        }
-        if (result.inner.cameraSettings) {
-            settings = result.inner.cameraSettings
+        try {
+            const reply = await robotRequest({ cameraSettings: settings })
+            if (reply.cameraSettings) settings = reply.cameraSettings
+        } catch (error) {
+            notifications.error(`Saving camera settings failed: ${(error as Error).message}`, 5000)
         }
     }
 

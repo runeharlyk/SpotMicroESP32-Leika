@@ -1,26 +1,20 @@
 <script lang="ts">
     import { Cancel, Edit, EditOff, Power } from '$lib/components/icons'
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
-    import {
-        type PeripheralSettings,
-        Request,
-        type Response as ProtoResponse
-    } from '$lib/platform_shared/api'
+    import type { PeripheralSettings } from '$lib/platform_shared/api'
 
     let settings = $state<PeripheralSettings | null>(null)
     let isEditing = $state(false)
 
     const getPeripheralSettings = async () => {
-        const result = await api.get<ProtoResponse>('/api/peripherals/settings')
-        if (result.isErr()) throw result.inner
-        if (result.inner.peripheralSettings) {
-            settings = result.inner.peripheralSettings
-        }
+        const reply = await robotRequest({ peripheralSettingsRequest: {} })
+        if (!reply.peripheralSettings) throw new Error('The robot sent no peripheral settings')
+        settings = reply.peripheralSettings
     }
 
     let loading = $state(getPeripheralSettings())
@@ -37,21 +31,16 @@
             onConfirm: async () => {
                 modals.close()
                 if (!settings) return
-                const request = Request.create({
-                    peripheralSettings: settings
-                })
-                const result = await api.post_proto<ProtoResponse>(
-                    '/api/peripherals/settings',
-                    request
-                )
-                if (result.isErr()) {
-                    notifications.error(`Saving I2C settings failed: ${result.inner.message}`, 5000)
-                    return
+                try {
+                    const reply = await robotRequest({ peripheralSettings: settings })
+                    if (reply.peripheralSettings) settings = reply.peripheralSettings
+                    isEditing = false
+                } catch (error) {
+                    notifications.error(
+                        `Saving I2C settings failed: ${(error as Error).message}`,
+                        5000
+                    )
                 }
-                if (result.inner.peripheralSettings) {
-                    settings = result.inner.peripheralSettings
-                }
-                isEditing = false
             }
         })
     }

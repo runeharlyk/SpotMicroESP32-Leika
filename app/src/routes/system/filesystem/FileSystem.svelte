@@ -15,8 +15,6 @@
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import NewFolderDialog from './NewFolderDialog.svelte'
     import NewFileDialog from './NewFileDialog.svelte'
-    import { api } from '$lib/api'
-    import type { Response } from '$lib/platform_shared/api'
 
     let currentPath = $state('/')
     let files = $state<Array<{ name: string; size: number }>>([])
@@ -215,16 +213,11 @@
         const path = currentPath === '/' ? `/${folderName}` : `${currentPath}/${folderName}`
 
         try {
-            const result = await api.post_proto<Response>('/api/files/mkdir', {
-                fileMkdirRequest: { path }
-            })
-
-            if (result.isOk() && result.inner.statusCode === 200) {
+            const result = await fileSystemClient.createDirectory(path)
+            if (result.success) {
                 await loadDirectory()
-            } else if (result.isErr()) {
-                error = 'Failed to create directory'
             } else {
-                error = result.inner.errorMessage || 'Failed to create directory'
+                error = result.error || 'Failed to create directory'
             }
         } catch (e) {
             error = e instanceof Error ? e.message : 'Error creating directory'

@@ -4,7 +4,6 @@
 
     import LinkIndicator from '$lib/components/statusbar/LinkIndicator.svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import SleepButton from './SleepButton.svelte'
     import ThemeButton from './ThemeButton.svelte'
     import FullscreenButton from './FullscreenButton.svelte'
     import StopButton from './StopButton.svelte'
@@ -35,8 +34,6 @@
     <LinkIndicator />
 
     <RssiIndicator rssi={$telemetry.rssi.rssi} />
-
-    <SleepButton />
 
     <StopButton />
 </div>

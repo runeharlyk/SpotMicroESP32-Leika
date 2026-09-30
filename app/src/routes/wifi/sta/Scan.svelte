@@ -3,8 +3,8 @@
     import { fly } from 'svelte/transition'
     import { onMount, onDestroy } from 'svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import { type WifiNetworkScan, type Response as ProtoResponse } from '$lib/platform_shared/api'
-    import { api } from '$lib/api'
+    import type { WifiNetworkScan } from '$lib/platform_shared/api'
+    import { robotRequest } from '$lib/robot-request'
     import { AP, Network, Reload, Cancel } from '$lib/components/icons'
     import { modals, exitBeforeEnter, type ModalProps } from 'svelte-modals'
 
@@ -26,33 +26,41 @@
 
     let scanActive = $state(false)
 
-    let pollingId: ReturnType<typeof setTimeout> | number
+    let pollingId: ReturnType<typeof setInterval> | undefined
+    // A scan answered after the dialog closed must not start polling.
+    let closed = false
+
+    const stopPolling = () => {
+        clearInterval(pollingId)
+        pollingId = undefined
+    }
 
     async function scanNetworks() {
         scanActive = true
-        await api.get('/api/wifi/scan')
-        if ((await pollingResults()) == false) {
-            pollingId = setInterval(() => pollingResults(), 1000)
+        try {
+            await robotRequest({ wifiScanStart: {} })
+        } catch (error) {
+            console.error('Starting a Wi-Fi scan failed: ', error)
         }
-        return
+        if (closed || (await pollResults())) return
+        stopPolling()
+        pollingId = setInterval(pollResults, 1000)
     }
 
-    async function pollingResults() {
-        const result = await api.get<ProtoResponse>('/api/wifi/networks')
-        if (result.isErr() || !result.inner) {
-            console.error(`Error occurred while fetching: `, result.inner)
+    /** True once the robot has finished scanning and the list is shown. */
+    async function pollResults() {
+        try {
+            const reply = await robotRequest({ wifiNetworksRequest: {} })
+            // 202: still scanning
+            if (reply.statusCode === 202 || !reply.wifiNetworkList) return false
+            listOfNetworks = reply.wifiNetworkList.networks
+            scanActive = false
+            stopPolling()
+            return true
+        } catch (error) {
+            console.error('Fetching Wi-Fi scan results failed: ', error)
             return false
         }
-        // Check if scan is complete (status 200 means we have results)
-        if (result.inner.statusCode === 200 && result.inner.wifiNetworkList) {
-            listOfNetworks = result.inner.wifiNetworkList.networks ?? []
-            scanActive = false
-            clearInterval(pollingId)
-            pollingId = 0
-            return listOfNetworks.length
-        }
-        // Still scanning (status 202)
-        return 0
     }
 
     onMount(() => {
@@ -60,10 +68,8 @@
     })
 
     onDestroy(() => {
-        if (pollingId) {
-            clearInterval(pollingId)
-            pollingId = 0
-        }
+        closed = true
+        stopPolling()
     })
 </script>
 
