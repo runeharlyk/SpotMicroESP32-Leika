@@ -36,6 +36,14 @@ esp_err_t WebServer::listen(uint16_t port) {
         return ret;
     }
 
+    for (const HttpRoute& route : routes_) {
+        esp_err_t err = registerRoute(route);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register %s (method %d): %s", route.uri.c_str(), route.method,
+                     esp_err_to_name(err));
+        }
+    }
+
     ESP_LOGI(TAG, "Server started on port %d", port);
     return ESP_OK;
 }
@@ -171,15 +179,13 @@ void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handle
     addRoute({uri, method, handler, false});
 }
 
+// The server's task reads the routes while it runs, so they are all added before listen().
 void WebServer::addRoute(HttpRoute route) {
-    routes_.push_back(std::move(route));
-    if (!server_) return;
-
-    const HttpRoute& added = routes_.back();
-    esp_err_t ret = registerRoute(added);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register %s (method %d): %s", added.uri.c_str(), added.method, esp_err_to_name(ret));
+    if (server_) {
+        ESP_LOGE(TAG, "Refused %s: routes are added before listen()", route.uri.c_str());
+        return;
     }
+    routes_.push_back(std::move(route));
 }
 
 esp_err_t WebServer::registerRoute(const HttpRoute& route) {

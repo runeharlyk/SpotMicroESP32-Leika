@@ -67,7 +67,6 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
 
 void setupServer() {
     server.config(50 + webAssetCount(), 16384);
-    server.listen(80);
 
 #if USE_CAMERA
     server.on("/api/camera/stream", HTTP_GET,
@@ -411,6 +410,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     setupServer();
     setupEventSocket();
+    server.listen(80);
 
     ESP_LOGI("main", "Service task started");
 
