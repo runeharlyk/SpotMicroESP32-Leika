@@ -148,7 +148,7 @@ void setupEventSocket() {
         {socket_message_CorrelationRequest_features_data_request_tag,
          [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name(), wifiService.getHostname(),
+             feature_service::features_request(robotService.name().c_str(), wifiService.getHostname().c_str(),
                                                res.response.features_data_response);
          }},
 
@@ -156,7 +156,7 @@ void setupEventSocket() {
          [](const auto &req, auto &res, int clientId) {
              if (!robotService.rename(req.request.robot_name_update.name)) res.status_code = 400;
              res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name(), wifiService.getHostname(),
+             feature_service::features_request(robotService.name().c_str(), wifiService.getHostname().c_str(),
                                                res.response.features_data_response);
          }},
 
@@ -448,9 +448,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     wifiService.begin();
     robotService.begin();
 #if FT_ENABLED(USE_MDNS)
-    mdnsService.begin(wifiService.getHostname(), robotService.name());
-    robotService.addUpdateHandler([](const std::string &) { mdnsService.setInstance(robotService.name()); }, false);
-    wifiService.addUpdateHandler([](const std::string &) { mdnsService.setHostname(wifiService.getHostname()); },
+    mdnsService.begin(wifiService.getHostname().c_str(), robotService.name().c_str());
+    robotService.addUpdateHandler([](const std::string &) { mdnsService.setInstance(robotService.name().c_str()); }, false);
+    wifiService.addUpdateHandler([](const std::string &) { mdnsService.setHostname(wifiService.getHostname().c_str()); },
                                  false);
 #endif
     apService.begin();

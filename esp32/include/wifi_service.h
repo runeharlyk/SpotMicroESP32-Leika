@@ -25,7 +25,11 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void begin();
     void loop();
 
-    const char *getHostname() { return state().hostname; }
+    std::string getHostname() const {
+        std::string hostname;
+        read([&hostname](const WiFiSettings &settings) { hostname = settings.hostname; });
+        return hostname;
+    }
 
     /** Starts a scan unless one is running. */
     static void startScan();

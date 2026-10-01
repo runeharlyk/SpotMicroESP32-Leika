@@ -21,8 +21,12 @@ void WiFiService::begin() {
 
     _persistence.readFromFS();
     mergeFactoryNetwork();
-    _nextNetwork = state().selected_network;
-    if (state().wifi_networks_count >= 1) WiFi.mode(WIFI_MODE_STA);
+    bool hasNetworks = false;
+    read([&](const WiFiSettings &settings) {
+        _nextNetwork = settings.selected_network;
+        hasNetworks = settings.wifi_networks_count >= 1;
+    });
+    if (hasNetworks) WiFi.mode(WIFI_MODE_STA);
 }
 
 void WiFiService::loop() {
@@ -30,7 +34,7 @@ void WiFiService::loop() {
     uint32_t reconfigureAt = _reconfigureAt.load();
     if (reconfigureAt && now >= reconfigureAt && _reconfigureAt.compare_exchange_strong(reconfigureAt, 0)) {
         WiFi.disconnect(false);
-        _nextNetwork = state().selected_network;
+        read([this](const WiFiSettings &settings) { _nextNetwork = settings.selected_network; });
         _nextAttemptAt = now;
     }
     EXECUTE_EVERY_N_MS(1000, manageSTA());

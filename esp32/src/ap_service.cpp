@@ -28,7 +28,7 @@ void APService::statusProto(api_APStatus &proto) {
 APNetworkStatus APService::getAPNetworkStatus() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
     bool apActive = currentWiFiMode == WIFI_MODE_AP || currentWiFiMode == WIFI_MODE_APSTA;
-    if (apActive && state().provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
+    if (apActive && snapshot().provision_mode != AP_MODE_ALWAYS && WiFi.status() == WL_CONNECTED) {
         return LINGERING;
     }
     return apActive ? ACTIVE : INACTIVE;
@@ -45,8 +45,8 @@ void APService::loop() {
 
 void APService::manageAP() {
     wifi_mode_t currentWiFiMode = WiFi.getMode();
-    if (state().provision_mode == AP_MODE_ALWAYS ||
-        (state().provision_mode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED)) {
+    const auto provisionMode = snapshot().provision_mode;
+    if (provisionMode == AP_MODE_ALWAYS || (provisionMode == AP_MODE_DISCONNECTED && WiFi.status() != WL_CONNECTED)) {
         if (_reconfigureAp || currentWiFiMode == WIFI_MODE_NULL || currentWiFiMode == WIFI_MODE_STA) {
             startAP();
         }

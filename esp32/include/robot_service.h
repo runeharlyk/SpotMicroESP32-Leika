@@ -10,7 +10,11 @@ class RobotService : public StatefulService<RobotSettings> {
 
     void begin();
 
-    const char *name() { return state().name; }
+    std::string name() const {
+        std::string name;
+        read([&name](const RobotSettings &settings) { name = settings.name; });
+        return name;
+    }
 
     /** Returns false when the name is invalid; the stored name is then unchanged. */
     bool rename(const char *name);

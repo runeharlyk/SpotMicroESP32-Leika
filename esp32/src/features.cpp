@@ -41,8 +41,8 @@ void features_request(const char* robotName, const char* hostname, socket_messag
     fd_res.firmware_built_target = const_cast<char*>(BUILD_TARGET);
     fd_res.variant = const_cast<char*>(KINEMATICS_VARIANT_STR);
     fd_res.device_id = const_cast<char*>(deviceId().c_str());
-    fd_res.robot_name = const_cast<char*>(robotName);
-    fd_res.hostname = const_cast<char*>(hostname);
+    strncpy(fd_res.robot_name, robotName, sizeof(fd_res.robot_name) - 1);
+    strncpy(fd_res.hostname, hostname, sizeof(fd_res.hostname) - 1);
 }
 
 

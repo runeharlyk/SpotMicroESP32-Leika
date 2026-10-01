@@ -5,7 +5,6 @@ socket_message.StaticSystemInformation.esp_platform type:FT_POINTER
 socket_message.StaticSystemInformation.firmware_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_type type:FT_POINTER
 socket_message.StaticSystemInformation.sdk_version type:FT_POINTER
-socket_message.StaticSystemInformation.arduino_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
 socket_message.AnglesData.angles max_count:12
@@ -19,8 +18,8 @@ socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_version type:FT_POINTER
 socket_message.FeaturesDataResponse.device_id type:FT_POINTER
-socket_message.FeaturesDataResponse.robot_name type:FT_POINTER
-socket_message.FeaturesDataResponse.hostname type:FT_POINTER
+socket_message.FeaturesDataResponse.robot_name max_size:33
+socket_message.FeaturesDataResponse.hostname max_size:33
 
 socket_message.RobotSettings.name max_size:33
 socket_message.RobotNameUpdate.name max_size:33

@@ -48,9 +48,10 @@ void Peripherals::updatePins() {
         I2CBus::instance().end();
     }
 
-    if (state().sda != -1 && state().scl != -1) {
-        esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(state().sda),
-                                                 static_cast<gpio_num_t>(state().scl), state().frequency);
+    const PeripheralsConfiguration settings = snapshot();
+    if (settings.sda != -1 && settings.scl != -1) {
+        esp_err_t err = I2CBus::instance().begin(static_cast<gpio_num_t>(settings.sda),
+                                                 static_cast<gpio_num_t>(settings.scl), settings.frequency);
         _i2c_active = (err == ESP_OK);
     }
 }

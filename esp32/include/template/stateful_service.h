@@ -85,7 +85,12 @@ class StatefulService {
         }
     }
 
-    T &state() { return state_; }
+    /** A copy taken under the lock: the state may change on another task while the copy is in use. */
+    T snapshot() const {
+        T copy;
+        read([&copy](const T &state) { copy = state; });
+        return copy;
+    }
 
   private:
     T state_;
