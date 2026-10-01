@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <mutex>
 #include <set>
+#include <vector>
 
 typedef int i2c_port_t;
 #define I2C_NUM_0 0
@@ -46,6 +47,7 @@ inline std::set<const void *> live;
 inline std::atomic<int> devicesAdded {0};
 inline std::atomic<int> staleUses {0};
 inline std::atomic<int> transfers {0};
+inline std::vector<std::vector<uint8_t>> written;
 
 inline bool isLive(const void *handle) {
     std::lock_guard<std::mutex> lock(mutex);
@@ -54,6 +56,7 @@ inline bool isLive(const void *handle) {
 inline void reset() {
     std::lock_guard<std::mutex> lock(mutex);
     live.clear();
+    written.clear();
     devicesAdded = staleUses = transfers = 0;
 }
 } // namespace fake_i2c
@@ -103,6 +106,24 @@ inline esp_err_t fakeTransfer(const void *handle) {
 }
 
 inline esp_err_t i2c_master_transmit(i2c_master_dev_handle_t device, const uint8_t *, size_t, int) {
+    return fakeTransfer(device);
+}
+
+struct i2c_master_transmit_multi_buffer_info_t {
+    const uint8_t *write_buffer;
+    size_t buffer_size;
+};
+
+// Records what one transaction put on the wire: the parts back to back, as the hardware sends them.
+inline esp_err_t i2c_master_multi_buffer_transmit(i2c_master_dev_handle_t device,
+                                                  i2c_master_transmit_multi_buffer_info_t *parts, size_t count, int) {
+    std::vector<uint8_t> bytes;
+    for (size_t i = 0; i < count; i++)
+        bytes.insert(bytes.end(), parts[i].write_buffer, parts[i].write_buffer + parts[i].buffer_size);
+    {
+        std::lock_guard<std::mutex> lock(fake_i2c::mutex);
+        fake_i2c::written.push_back(bytes);
+    }
     return fakeTransfer(device);
 }
 

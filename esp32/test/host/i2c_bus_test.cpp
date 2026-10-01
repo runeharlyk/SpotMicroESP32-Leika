@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <vector>
 #include <peripherals/i2c_bus.h>
 
 static int failures = 0;
@@ -47,6 +48,19 @@ static void aStoppedBusRefusesTransfersAndStartsAgainClean() {
     bus.end();
 }
 
+static void aRegisterWriteSendsTheRegisterThenTheDataInOneTransaction() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    const uint8_t pwm[4] = {0x00, 0x00, 0x34, 0x01};
+    CHECK(bus.writeReg(PCA9685, 0x06, pwm, 4) == ESP_OK);
+    CHECK(bus.writeReg(MPU6050, 0x6B, nullptr, 0) == ESP_OK);
+    CHECK(fake_i2c::written.size() == 2);
+    CHECK((fake_i2c::written[0] == std::vector<uint8_t> {0x06, 0x00, 0x00, 0x34, 0x01}));
+    CHECK((fake_i2c::written[1] == std::vector<uint8_t> {0x6B}));
+    bus.end();
+}
+
 // Two tasks transfer while a third restarts the bus (new pins saved from the app): no transfer may
 // ever use a device or bus the restart freed.
 static void transfersNeverUseAFreedHandleWhileTheBusRestarts() {
@@ -75,10 +89,35 @@ static void transfersNeverUseAFreedHandleWhileTheBusRestarts() {
     bus.end();
 }
 
+// A scan holds the bus one probe at a time, so a restart can come between two probes: none may use the
+// bus the restart freed.
+static void aScanNeverProbesAFreedBusWhileTheBusRestarts() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    std::atomic<bool> running {true};
+    std::thread scanner([&] {
+        while (running) bus.scan();
+    });
+    for (int restart = 0; restart < 300 || fake_i2c::transfers < 1000; restart++) {
+        bus.end();
+        bus.begin(21, 22);
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
+        if (restart > 100000) break;
+    }
+    running = false;
+    scanner.join();
+    CHECK(fake_i2c::staleUses == 0);
+    CHECK(fake_i2c::transfers >= 1000);
+    bus.end();
+}
+
 int main() {
     devicesAreCreatedOnceNotPerTransfer();
     aStoppedBusRefusesTransfersAndStartsAgainClean();
+    aRegisterWriteSendsTheRegisterThenTheDataInOneTransaction();
     transfersNeverUseAFreedHandleWhileTheBusRestarts();
+    aScanNeverProbesAFreedBusWhileTheBusRestarts();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

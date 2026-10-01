@@ -7,7 +7,6 @@
 #include <functional>
 #include <map>
 #include <vector>
-#include <cstring>
 
 /**
  * The robot's I2C bus, shared by the control task (servos), the sensors and the socket's task (scans,
@@ -75,7 +74,7 @@ class I2CBus {
         i2c_master_dev_handle_t device;
         esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit(device, data, len, pdMS_TO_TICKS(200));
+        return i2c_master_transmit(device, data, len, TIMEOUT_MS);
     }
 
     esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
@@ -84,12 +83,8 @@ class I2CBus {
         esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
 
-        uint8_t buf[len + 1];
-        buf[0] = reg;
-        if (len > 0 && data != nullptr) {
-            memcpy(buf + 1, data, len);
-        }
-        return i2c_master_transmit(device, buf, len + 1, pdMS_TO_TICKS(200));
+        i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
+        return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
@@ -97,20 +92,18 @@ class I2CBus {
         i2c_master_dev_handle_t device;
         esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit_receive(device, &reg, 1, data, len, pdMS_TO_TICKS(200));
+        return i2c_master_transmit_receive(device, &reg, 1, data, len, TIMEOUT_MS);
     }
 
     bool probe(uint8_t addr) {
         Lock lock(_mutex);
         if (!_initialized) return false;
-        return i2c_master_probe(_bus, addr, pdMS_TO_TICKS(200)) == ESP_OK;
+        return i2c_master_probe(_bus, addr, TIMEOUT_MS) == ESP_OK;
     }
 
+    // Locks per probe rather than for the whole scan, so the servos keep being written while it runs.
     std::vector<uint8_t> scan(uint8_t lower = 1, uint8_t upper = 127) {
-        Lock lock(_mutex);
         std::vector<uint8_t> devices;
-        if (!_initialized) return devices;
-
         for (uint8_t addr = lower; addr < upper; addr++) {
             if (probe(addr)) {
                 devices.push_back(addr);
@@ -139,6 +132,9 @@ class I2CBus {
     I2CBus& operator=(const I2CBus&) = delete;
 
     static constexpr const char* TAG = "I2CBus";
+    // The driver takes milliseconds, not ticks. Long enough for any transfer here; short, because a missing
+    // device costs the control loop this long on every write.
+    static constexpr int TIMEOUT_MS = 20;
     i2c_port_t _port = I2C_NUM_0;
     gpio_num_t _sda = GPIO_NUM_NC;
     gpio_num_t _scl = GPIO_NUM_NC;
