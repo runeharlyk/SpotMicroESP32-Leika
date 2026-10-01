@@ -169,16 +169,6 @@ gesture_t Peripherals::takeGesture() {
     return gesture;
 }
 
-float Peripherals::leftDistance() {
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    return _readings.leftDistance;
-}
-
-float Peripherals::rightDistance() {
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    return _readings.rightDistance;
-}
-
 bool Peripherals::calibrateIMU() {
 #if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     beginTransaction();

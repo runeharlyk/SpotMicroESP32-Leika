@@ -71,9 +71,6 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     gesture_t takeGesture();
 
-    float leftDistance();
-    float rightDistance();
-
     bool calibrateIMU();
 
     StatefulProtoHandler<PeripheralsConfiguration, api_PeripheralSettings> protoHandler;

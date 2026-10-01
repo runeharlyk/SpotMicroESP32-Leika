@@ -170,10 +170,6 @@ class GestureSensor {
 
     gesture_t getGesture() { return msg.gesture; }
 
-    GestureMsg getGestureMsg() { return msg; }
-
-    bool isActive() { return msg.success; }
-
   private:
     PAJ7620U2 paj;
     GestureMsg msg;
