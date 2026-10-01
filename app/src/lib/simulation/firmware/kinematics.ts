@@ -22,7 +22,8 @@ export class BodyState {
 
 const clampUnit = (value: number) => Math.max(-1, Math.min(1, value))
 
-function legIk(cfg: KinConfig, x: number, y: number, z: number): number[] {
+/** Kinematics::legIK: hip, femur and knee angles in degrees for a foot at (x, y, z) in the leg's frame. */
+export function legIk(cfg: KinConfig, x: number, y: number, z: number): number[] {
     const { coxa, coxa_offset, femur, tibia } = cfg
     const F = Math.sqrt(Math.max(0, x * x + y * y - coxa * coxa))
     const G = F - coxa_offset

@@ -5,6 +5,7 @@
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
+    import LegDiagram from './LegDiagram.svelte'
 
     interface Props {
         servoSettings?: ServoSettings | null
@@ -61,6 +62,7 @@
 {/await}
 
 {#if servoSettings}
+    <LegDiagram servos={servoSettings.servos} {servoId} {pwm} />
     <div class="overflow-x-auto">
         <table class="table table-xs">
             <thead>
