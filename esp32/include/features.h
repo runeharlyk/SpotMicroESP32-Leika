@@ -23,6 +23,10 @@
 #define USE_HMC5883 0
 #endif
 
+#ifndef USE_ICM20948
+#define USE_ICM20948 0
+#endif
+
 #ifndef USE_BMP180
 #define USE_BMP180 0
 #endif

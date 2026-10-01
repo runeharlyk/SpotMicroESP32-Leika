@@ -13,6 +13,7 @@ void printFeatureConfiguration() {
 
     ESP_LOGI("Features", "USE_BNO055: %s", USE_BNO055 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_MPU6050: %s", USE_MPU6050 ? "enabled" : "disabled");
+    ESP_LOGI("Features", "USE_ICM20948: %s", USE_ICM20948 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_HMC5883: %s", USE_HMC5883 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_BMP180: %s", USE_BMP180 ? "enabled" : "disabled");
     ESP_LOGI("Features", "USE_USS: %s", USE_USS ? "enabled" : "disabled");
@@ -28,8 +29,8 @@ void printFeatureConfiguration() {
 
 void features_request(const char* robotName, const char* hostname, socket_message_FeaturesDataResponse& fd_res) {
     fd_res.camera = USE_CAMERA ? true : false;
-    fd_res.imu = (USE_MPU6050 || USE_BNO055) ? true : false;
-    fd_res.mag = (USE_HMC5883 || USE_BNO055) ? true : false;
+    fd_res.imu = (USE_MPU6050 || USE_BNO055 || USE_ICM20948) ? true : false;
+    fd_res.mag = (USE_HMC5883 || USE_BNO055 || USE_ICM20948) ? true : false;
     fd_res.bmp = USE_BMP180 ? true : false;
     fd_res.sonar = USE_USS ? true : false;
     fd_res.servo = USE_PCA9685 ? true : false;

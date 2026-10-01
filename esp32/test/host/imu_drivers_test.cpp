@@ -4,6 +4,7 @@
 #include <peripherals/drivers/mpu6050.h>
 #include <peripherals/drivers/hmc5883l.h>
 #include <peripherals/drivers/bno055.h>
+#include <peripherals/drivers/icm20948.h>
 
 static int failures = 0;
 
@@ -123,12 +124,67 @@ static void bno055ReportsItsOwnFusionAndRawReadings() {
     I2CBus::instance().end();
 }
 
+static void icm20948ReportsSiUnitsAndItsCompass() {
+    startBus();
+    fake_i2c::registers[0x68][0x00] = 0xEA;  // WHO_AM_I in bank 0
+    fake_i2c::registers[0x0C][0x01] = 0x09;  // AK09916 WIA2
+    ICM20948Driver icm;
+    CHECK(icm.begin());
+    CHECK(fake_i2c::registers[0x68][0x0F] == 0x02);  // bypass
+    CHECK(fake_i2c::registers[0x0C][0x31] == 0x08);  // compass continuous 100 Hz
+    CHECK(fake_i2c::registers[0x68][0x7F] == 0x00);  // left in bank 0, where the data lives
+    // Bank 2 writes land at the same addresses in this flat fake: re-seed bank 0 data after begin().
+    putBigEndian(0x68, 0x2D, 8192);   // accel x +1 g
+    putBigEndian(0x68, 0x2F, 0);
+    putBigEndian(0x68, 0x31, -8192);  // accel z -1 g
+    putBigEndian(0x68, 0x33, 655);    // gyro x 10 deg/s
+    putBigEndian(0x68, 0x35, 0);
+    putBigEndian(0x68, 0x37, 0);
+    putBigEndian(0x68, 0x39, 3339);   // about 31 degC
+    fake_i2c::registers[0x0C][0x10] = 0x01;  // data ready
+    putLittleEndian(0x0C, 0x11, 100);  // 15 microtesla on the compass's x
+    putLittleEndian(0x0C, 0x13, 200);  // 30 on its y
+    putLittleEndian(0x0C, 0x15, -300); // -45 on its z
+    fake_i2c::registers[0x0C][0x18] = 0x00;
+    RawImu raw;
+    CHECK(icm.read(raw));
+    CHECK(near(raw.accel[0], 9.80665f, 1e-3f));
+    CHECK(near(raw.accel[2], -9.80665f, 1e-3f));
+    CHECK(near(raw.gyro[0], 10 * 0.017453292f, 1e-4f));
+    CHECK(near(raw.temperature, 31.0f, 0.05f));
+    CHECK(raw.hasMag && !raw.hasOrientation);
+    CHECK(near(raw.mag[0], 15.0f, 1e-3f));
+    CHECK(near(raw.mag[1], -30.0f, 1e-3f));  // compass y and z point against the accelerometer's
+    CHECK(near(raw.mag[2], 45.0f, 1e-3f));
+    I2CBus::instance().end();
+}
+
+// No new compass data, or an overflowed one: the accelerometer and gyro still come through.
+static void icm20948SkipsACompassReadingThatIsNotThere() {
+    startBus();
+    fake_i2c::registers[0x68][0x00] = 0xEA;
+    fake_i2c::registers[0x0C][0x01] = 0x09;
+    ICM20948Driver icm;
+    CHECK(icm.begin());
+    fake_i2c::registers[0x0C][0x10] = 0x00;
+    RawImu raw;
+    CHECK(icm.read(raw));
+    CHECK(!raw.hasMag);
+    fake_i2c::registers[0x0C][0x10] = 0x01;
+    fake_i2c::registers[0x0C][0x18] = 0x08;  // HOFL
+    CHECK(icm.read(raw));
+    CHECK(!raw.hasMag);
+    I2CBus::instance().end();
+}
+
 int main() {
     mpu6050ReportsSiUnits();
     mpu6050RefusesAnotherChip();
     hmc5883ReportsMicrotesla();
     hmc5883RefusesAnOverflow();
     bno055ReportsItsOwnFusionAndRawReadings();
+    icm20948ReportsSiUnitsAndItsCompass();
+    icm20948SkipsACompassReadingThatIsNotThere();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }
