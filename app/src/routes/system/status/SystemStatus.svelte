@@ -135,7 +135,7 @@
                     <StatusItem
                         icon={SDK}
                         title="SDK Version"
-                        description={`ESP-IDF ${systemInformation.staticSystemInformation?.sdkVersion} / Arduino ${systemInformation.staticSystemInformation?.arduinoVersion}`}
+                        description={`ESP-IDF ${systemInformation.staticSystemInformation?.sdkVersion}`}
                     />
 
                     <StatusItem

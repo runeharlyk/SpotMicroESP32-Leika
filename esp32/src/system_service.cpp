@@ -154,7 +154,7 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
     info.esp_platform = (char *)ESP_PLATFORM_NAME;
-    info.firmware_version = APP_VERSION;
+    info.firmware_version = (char *)APP_VERSION;
     info.cpu_freq_mhz = getCpuFreqMHz();
     info.cpu_type = (char *)getChipModel();
     info.cpu_rev = getChipRevision();
@@ -162,7 +162,6 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     info.sketch_size = getSketchSize();
     info.free_sketch_space = getFreeSketchSpace();
     info.sdk_version = (char *)esp_get_idf_version();
-    info.arduino_version = "";
     info.flash_chip_size = getFlashChipSize();
     info.flash_chip_speed = getFlashChipSpeed();
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());

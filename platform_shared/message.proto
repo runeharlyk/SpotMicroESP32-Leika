@@ -141,7 +141,8 @@ message StaticSystemInformation {
     uint32 sketch_size = 7; 
     uint32 free_sketch_space = 8; 
     string sdk_version = 9; 
-    string arduino_version = 10; 
+    reserved 10;
+    reserved "arduino_version";
     uint32 flash_chip_size = 11; 
     uint32 flash_chip_speed = 12; 
     string cpu_reset_reason = 13; 
