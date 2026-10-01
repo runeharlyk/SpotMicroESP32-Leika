@@ -18,6 +18,7 @@
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
     import {
+        normalizeRobotAddress,
         normalizeSubnetPrefix,
         probeAddress,
         probeCandidates,
@@ -158,8 +159,11 @@
     }
 
     const addManual = async () => {
-        const address = manualAddress.trim()
-        if (!address) return
+        const address = normalizeRobotAddress(manualAddress)
+        if (!address) {
+            notifications.error('Enter an address like 192.168.1.39 or spot-micro.local', 4000)
+            return
+        }
         manualAddress = ''
         addRobot(address)
         reachability[address] = 'probing'

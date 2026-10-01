@@ -154,6 +154,21 @@ export const probeCandidates = async (
     return statuses
 }
 
+/**
+ * The host, and port if any, of a robot address typed by hand, which is often a URL pasted from the address bar;
+ * null when it names no host.
+ */
+export const normalizeRobotAddress = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    try {
+        const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+        return new URL(hasScheme ? trimmed : `http://${trimmed}`).host || null
+    } catch {
+        return null
+    }
+}
+
 export const normalizeSubnetPrefix = (value: string) => {
     const trimmed = value.trim().replace(/\.+$/, '')
     return /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed) ? `${trimmed}.` : null
