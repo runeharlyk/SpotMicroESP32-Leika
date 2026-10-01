@@ -66,6 +66,7 @@ class WebServer {
     static esp_err_t httpHandler(httpd_req_t* req);
     static esp_err_t wsHandler(httpd_req_t* req);
     static esp_err_t wsPreHandshake(httpd_req_t* req);
+    static esp_err_t openSession(httpd_handle_t handle, int sockfd);
     static void closeSession(httpd_handle_t handle, int sockfd);
     static void keepContext(void*) {}
 

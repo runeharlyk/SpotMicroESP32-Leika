@@ -4,6 +4,7 @@
 #include <cstring>
 #include <algorithm>
 #include <unistd.h>
+#include <lwip/sockets.h>
 
 static const char* TAG = "WebServer";
 
@@ -27,7 +28,17 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.uri_match_fn = httpd_uri_match_wildcard;
     config_.global_user_ctx = this;
     config_.global_user_ctx_free_fn = keepContext;
+    config_.open_fn = openSession;
     config_.close_fn = closeSession;
+}
+
+// httpd writes a socket frame's header and payload separately; with Nagle on, the payload waits for the
+// client's delayed acknowledgement of the header, which added about 80 ms to every reply.
+esp_err_t WebServer::openSession(httpd_handle_t handle, int sockfd) {
+    int noDelay = 1;
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay)) != 0)
+        ESP_LOGW(TAG, "TCP_NODELAY not set on socket %d", sockfd);
+    return ESP_OK;
 }
 
 // Every session ends here, however it ended: a close frame, a dropped connection, or the least recently
