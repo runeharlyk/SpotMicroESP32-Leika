@@ -2,15 +2,15 @@
 
 #include <peripherals/i2c_bus.h>
 #include <utils/sleep.h>
-#include <utils/math_utils.h>
+#include <peripherals/imu/imu_driver.h>
 
-class BNO055Driver {
+class BNO055Driver final : public ImuDriver {
   public:
     static constexpr uint8_t DEFAULT_ADDR = 0x29;
 
-    BNO055Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
+    explicit BNO055Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() {
+    bool begin() override {
         if (!I2CBus::instance().probe(_addr)) return false;
 
         uint8_t id = readReg(REG_CHIP_ID);
@@ -40,63 +40,43 @@ class BNO055Driver {
         writeReg(REG_OPR_MODE, MODE_NDOF);
         sleepAtLeastMs(20);
 
-        _initialized = true;
         return true;
     }
 
-    bool update() {
-        if (!_initialized) return false;
-
-        uint8_t buf[6];
-        if (I2CBus::instance().readReg(_addr, REG_EULER_H_LSB, buf, 6) != ESP_OK) return false;
-
-        int16_t h = (buf[1] << 8) | buf[0];
-        int16_t r = (buf[3] << 8) | buf[2];
-        int16_t p = (buf[5] << 8) | buf[4];
-
-        // The chip's default Euler unit is degrees at 16 LSB each; every IMU reports radians, as the MPU6050 does.
-        _euler[0] = DEG_TO_RAD_F(h / 16.0f);
-        _euler[1] = DEG_TO_RAD_F(r / 16.0f);
-        _euler[2] = DEG_TO_RAD_F(p / 16.0f);
-
-        return true;
-    }
-
-    bool calibrate() {
-        if (!_initialized) return false;
-
-        uint8_t calData[22];
-
-        writeReg(REG_OPR_MODE, MODE_CONFIG);
-        sleepAtLeastMs(25);
-
-        if (I2CBus::instance().readReg(_addr, REG_ACCEL_OFFSET_X_LSB, calData, 22) != ESP_OK) {
-            writeReg(REG_OPR_MODE, MODE_NDOF);
-            return false;
+    /** Accelerometer, compass, gyro and the chip's own fusion, read in one burst. */
+    bool read(RawImu &raw) override {
+        uint8_t b[32];  // 0x08 accel, 0x0E mag, 0x14 gyro, 0x1A euler (unused), 0x20 quaternion
+        if (I2CBus::instance().readReg(_addr, REG_ACCEL_DATA_X_LSB, b, sizeof(b)) != ESP_OK) return false;
+        uint8_t temperature = 0;
+        if (I2CBus::instance().readReg(_addr, REG_TEMP, &temperature, 1) != ESP_OK) return false;
+        for (int axis = 0; axis < 3; axis++) {
+            raw.accel[axis] = word(b, axis * 2) / 100.0f;
+            raw.mag[axis] = word(b, 6 + axis * 2) / 16.0f;
+            raw.gyro[axis] = word(b, 12 + axis * 2) / 16.0f * RAD_PER_DEG;
         }
-
-        writeReg(REG_OPR_MODE, MODE_NDOF);
-        sleepAtLeastMs(20);
-
+        for (int i = 0; i < 4; i++) raw.quat[i] = word(b, 24 + i * 2) / 16384.0f;
+        raw.temperature = static_cast<int8_t>(temperature);
+        raw.hasMag = true;
+        raw.hasOrientation = true;
         return true;
     }
 
-    float getHeading() const { return _euler[0]; }
-    float getRoll() const { return _euler[1]; }
-    float getPitch() const { return _euler[2]; }
-    bool isInitialized() const { return _initialized; }
+    const char *name() const override { return "BNO055"; }
+    uint32_t rateHz() const override { return 100; }
+    uint32_t magRateHz() const override { return 20; }
 
-    uint8_t getCalibrationStatus() { return readReg(REG_CALIB_STAT); }
+    /** System, gyro, accelerometer and compass calibration, two bits each, 3 meaning calibrated. */
+    uint8_t calibrationStatus() { return readReg(REG_CALIB_STAT); }
 
   private:
     static constexpr uint8_t BNO055_ID = 0xA0;
     static constexpr uint8_t REG_CHIP_ID = 0x00;
     static constexpr uint8_t REG_PAGE_ID = 0x07;
-    static constexpr uint8_t REG_ACCEL_OFFSET_X_LSB = 0x55;
+    static constexpr uint8_t REG_ACCEL_DATA_X_LSB = 0x08;
+    static constexpr uint8_t REG_TEMP = 0x34;
     static constexpr uint8_t REG_OPR_MODE = 0x3D;
     static constexpr uint8_t REG_PWR_MODE = 0x3E;
     static constexpr uint8_t REG_SYS_TRIGGER = 0x3F;
-    static constexpr uint8_t REG_EULER_H_LSB = 0x1A;
     static constexpr uint8_t REG_CALIB_STAT = 0x35;
 
     static constexpr uint8_t MODE_CONFIG = 0x00;
@@ -111,7 +91,7 @@ class BNO055Driver {
         return val;
     }
 
+    static float word(const uint8_t *b, int at) { return static_cast<int16_t>(b[at] | (b[at + 1] << 8)); }
+
     uint8_t _addr;
-    bool _initialized = false;
-    float _euler[3] = {0};
 };

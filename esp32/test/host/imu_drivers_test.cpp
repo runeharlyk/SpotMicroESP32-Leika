@@ -2,6 +2,8 @@
 #include <cmath>
 #include <cstdio>
 #include <peripherals/drivers/mpu6050.h>
+#include <peripherals/drivers/hmc5883l.h>
+#include <peripherals/drivers/bno055.h>
 
 static int failures = 0;
 
@@ -60,9 +62,73 @@ static void mpu6050RefusesAnotherChip() {
     I2CBus::instance().end();
 }
 
+static void putLittleEndian(uint8_t address, uint8_t reg, int16_t value) {
+    fake_i2c::registers[address][reg] = static_cast<uint8_t>(value & 0xFF);
+    fake_i2c::registers[address][reg + 1] = static_cast<uint8_t>(value >> 8);
+}
+
+static void hmc5883ReportsMicrotesla() {
+    startBus();
+    fake_i2c::registers[0x1E][0x0A] = 'H';
+    fake_i2c::registers[0x1E][0x0B] = '4';
+    fake_i2c::registers[0x1E][0x0C] = '3';
+    HMC5883LDriver hmc;
+    CHECK(hmc.begin());
+    CHECK(fake_i2c::registers[0x1E][0x00] == 0x78);  // 8-sample average, 75 Hz
+    CHECK(fake_i2c::registers[0x1E][0x01] == 0x20);  // 1090 LSB per gauss
+    putBigEndian(0x1E, 0x03, 1090);   // x: 1 gauss = 100 microtesla
+    putBigEndian(0x1E, 0x05, -545);   // z comes before y on this chip
+    putBigEndian(0x1E, 0x07, 218);    // y
+    Vec3 mag;
+    CHECK(hmc.read(mag));
+    CHECK(near(mag[0], 100.0f, 1e-3f));
+    CHECK(near(mag[1], 20.0f, 1e-3f));
+    CHECK(near(mag[2], -50.0f, 1e-3f));
+    I2CBus::instance().end();
+}
+
+// -4096 is the chip's overflow marker: the reading is not a field value.
+static void hmc5883RefusesAnOverflow() {
+    startBus();
+    fake_i2c::registers[0x1E][0x0A] = 'H';
+    fake_i2c::registers[0x1E][0x0B] = '4';
+    fake_i2c::registers[0x1E][0x0C] = '3';
+    HMC5883LDriver hmc;
+    CHECK(hmc.begin());
+    putBigEndian(0x1E, 0x03, -4096);
+    Vec3 mag {1, 2, 3};
+    CHECK(!hmc.read(mag));
+    CHECK(mag[0] == 1);
+    I2CBus::instance().end();
+}
+
+static void bno055ReportsItsOwnFusionAndRawReadings() {
+    startBus();
+    fake_i2c::registers[0x29][0x00] = 0xA0;  // chip id, also read back after the reset
+    BNO055Driver bno;
+    CHECK(bno.begin());
+    putLittleEndian(0x29, 0x08, 981);    // accel x: 100 LSB per m/s^2
+    putLittleEndian(0x29, 0x0E, 320);    // mag x: 16 LSB per microtesla
+    putLittleEndian(0x29, 0x14, -160);   // gyro x: 16 LSB per deg/s
+    putLittleEndian(0x29, 0x20, 16384);  // quaternion w: 2^14 LSB per unit
+    fake_i2c::registers[0x29][0x34] = 31;
+    RawImu raw;
+    CHECK(bno.read(raw));
+    CHECK(near(raw.accel[0], 9.81f, 1e-3f));
+    CHECK(near(raw.mag[0], 20.0f, 1e-3f));
+    CHECK(near(raw.gyro[0], -10 * 0.017453292f, 1e-4f));
+    CHECK(raw.hasMag && raw.hasOrientation);
+    CHECK(near(raw.quat[0], 1.0f, 1e-4f));
+    CHECK(near(raw.temperature, 31.0f, 1e-4f));
+    I2CBus::instance().end();
+}
+
 int main() {
     mpu6050ReportsSiUnits();
     mpu6050RefusesAnotherChip();
+    hmc5883ReportsMicrotesla();
+    hmc5883RefusesAnOverflow();
+    bno055ReportsItsOwnFusionAndRawReadings();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

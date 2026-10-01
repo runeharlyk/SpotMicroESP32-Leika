@@ -20,7 +20,9 @@
 #endif
 #include <peripherals/i2c_bus.h>
 #include <peripherals/imu.h>
+#if FT_ENABLED(USE_HMC5883)
 #include <peripherals/magnetometer.h>
+#endif
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
 
