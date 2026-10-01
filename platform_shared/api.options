@@ -43,3 +43,8 @@ api.PinConfig.type max_size:16
 api.PinConfig.role max_size:16
 
 api.PeripheralSettings.pins max_count:32
+
+api.ImuSettings.mounting max_count:9 fixed_count:true
+api.ImuSettings.mag_alignment max_count:9 fixed_count:true
+api.ImuSettings.mag_offset max_count:3 fixed_count:true
+api.ImuSettings.mag_soft_iron max_count:9 fixed_count:true

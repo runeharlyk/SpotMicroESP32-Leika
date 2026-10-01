@@ -223,6 +223,71 @@ message PingMsg {}
 
 message PongMsg {}
 
+// ===== SIM-TO-REAL TELEMETRY (robot -> recorder) =====
+// Vectors are in the body frame: x forward, y left, z up. Times are esp_timer microseconds.
+
+message ImuSample {
+    uint64 t_us = 1;             // when the accelerometer and gyro were read
+    repeated float accel = 2;    // m/s^2, specific force: +9.81 on z when level and still
+    repeated float gyro = 3;     // rad/s
+    repeated float mag = 4;      // microtesla
+    uint64 mag_t_us = 5;
+    repeated float gravity = 6;  // unit vector of gravity: (0, 0, -1) when level
+    repeated float quat = 7;     // w, x, y, z: rotates body vectors into the world frame
+    repeated float rpy = 8;      // rad, roll, pitch, yaw (ZYX)
+    float temperature = 9;       // degrees Celsius
+    uint32 valid = 10;           // bits: 1 accel, 2 gyro, 4 mag, 8 orientation, 16 yaw drifts
+}
+
+message TickSample {
+    uint32 seq = 1;
+    uint64 t_us = 2;             // tick start
+    uint32 period_us = 3;        // since the previous tick start
+    uint32 compute_us = 4;       // tick start to just before the servo write
+    ImuSample imu = 5;           // the sample this tick used
+    repeated float angles = 6;   // rad, servo space, after the servo controller's smoothing
+    repeated float targets = 7;  // rad, servo space, the motion's angles before smoothing
+    repeated uint32 pwm = 8;     // the 12 values written to the PCA9685
+    uint32 servo_write_us = 9;
+    bool servo_ok = 10;
+    repeated float command = 11; // lx, ly, rx, ry, height, speed, s1, as the motion state used them
+    uint32 command_age_us = 12;  // tick start minus command_rx_us; 0 before any command
+    uint64 command_rx_us = 13;
+    ModesEnum mode = 14;
+    WalkGaits gait = 15;
+    bool link_lost = 16;         // the dead-man stop is in force
+}
+
+message TelemetryBatch {
+    uint32 batch_seq = 1;
+    uint32 dropped_ticks = 2;    // ticks the ring had no room for, since boot
+    repeated TickSample ticks = 3;
+}
+
+message TelemetryHeader {
+    string firmware_version = 1;
+    string build_target = 2;
+    string variant = 3;
+    string device_id = 4;
+    string imu_driver = 5;       // "none" without an IMU
+    uint32 imu_rate_hz = 6;
+    uint32 mag_rate_hz = 7;      // 0 without a magnetometer
+    uint32 control_rate_hz = 8;
+    api.ServoSettings servo_settings = 9;
+    api.ImuSettings imu_settings = 10;
+    uint32 batch_ticks = 11;
+    repeated float joint_direction = 12; // sign MotionService applies per joint
+}
+
+message TelemetryNetwork {
+    uint64 t_us = 1;
+    int32 rssi = 2;
+    uint32 channel = 3;
+    uint32 batches_sent = 4;
+    uint32 batches_failed = 5;
+    uint32 ticks_dropped = 6;
+}
+
 // WebSocket message wrapper
 message Message {
     // Retired, and never to be reused while apps that knew them are out there: the IMU calibration (120,
@@ -253,5 +318,8 @@ message Message {
         ServoStateData servo_state = 211;
         ControllerData controller_data = 250;
         RSSIData rssi = 260;
+        TelemetryHeader telemetry_header = 270;
+        TelemetryBatch telemetry_batch = 271;
+        TelemetryNetwork telemetry_network = 272;
     }
 }

@@ -208,11 +208,22 @@ message PinConfig {
     string role = 4;
 }
 
+// How the IMU sits in the robot and how its readings are fused. A settings file without it gets the defaults:
+// identity rotations, no magnetometer correction, fusion gain 0.1.
+message ImuSettings {
+    repeated float mounting = 1;      // row-major 3x3 rotation, IMU chip frame to body frame
+    repeated float mag_alignment = 2; // row-major 3x3 rotation, magnetometer chip frame to IMU chip frame
+    repeated float mag_offset = 3;    // microtesla, hard-iron offset, subtracted first
+    repeated float mag_soft_iron = 4; // row-major 3x3, applied after the offset
+    float fusion_gain = 5;            // Madgwick beta
+}
+
 message PeripheralSettings {
     int32 sda = 1;
     int32 scl = 2;
     int32 frequency = 3;
     repeated PinConfig pins = 4;
+    ImuSettings imu = 5;
 }
 
 message PeripheralSettingsRequest {}

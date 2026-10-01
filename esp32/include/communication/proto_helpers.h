@@ -6,7 +6,7 @@
 #include <functional>
 #include <map>
 
-#define PROTO_BUFFER_SIZE 2048
+#define PROTO_BUFFER_SIZE 4096
 
 template <typename T>
 struct MessageTraits;
@@ -34,6 +34,9 @@ DEFINE_MESSAGE_TRAITS(ServoPWMData, servo_pwm)
 DEFINE_MESSAGE_TRAITS(ServoStateData, servo_state)
 DEFINE_MESSAGE_TRAITS(CorrelationRequest, correlation_request)
 DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
+DEFINE_MESSAGE_TRAITS(TelemetryHeader, telemetry_header)
+DEFINE_MESSAGE_TRAITS(TelemetryBatch, telemetry_batch)
+DEFINE_MESSAGE_TRAITS(TelemetryNetwork, telemetry_network)
 
 // Streaming file transfer messages
 DEFINE_MESSAGE_TRAITS(FSDownloadMetadata, fs_download_metadata)

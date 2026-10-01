@@ -25,3 +25,24 @@ socket_message.RobotSettings.name max_size:33
 socket_message.RobotNameUpdate.name max_size:33
 
 socket_message.CorrelationResponse.error_message max_size:64
+
+socket_message.ImuSample.accel max_count:3 fixed_count:true
+socket_message.ImuSample.gyro max_count:3 fixed_count:true
+socket_message.ImuSample.mag max_count:3 fixed_count:true
+socket_message.ImuSample.gravity max_count:3 fixed_count:true
+socket_message.ImuSample.quat max_count:4 fixed_count:true
+socket_message.ImuSample.rpy max_count:3 fixed_count:true
+
+socket_message.TickSample.angles max_count:12 fixed_count:true
+socket_message.TickSample.targets max_count:12 fixed_count:true
+socket_message.TickSample.pwm max_count:12 fixed_count:true
+socket_message.TickSample.command max_count:7 fixed_count:true
+
+socket_message.TelemetryBatch.ticks max_count:10
+
+socket_message.TelemetryHeader.firmware_version type:FT_POINTER
+socket_message.TelemetryHeader.build_target type:FT_POINTER
+socket_message.TelemetryHeader.variant type:FT_POINTER
+socket_message.TelemetryHeader.device_id type:FT_POINTER
+socket_message.TelemetryHeader.imu_driver type:FT_POINTER
+socket_message.TelemetryHeader.joint_direction max_count:12 fixed_count:true
