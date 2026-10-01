@@ -481,7 +481,9 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        // A tick that overran (a servo board that times out, a slow bus) starts the schedule afresh: catching
+        // up would run every missed tick back to back once the stall ends.
+        if (xTaskDelayUntil(&xLastWakeTime, xFrequency) == pdFALSE) xLastWakeTime = xTaskGetTickCount();
     }
 }
 
