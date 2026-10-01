@@ -1,6 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
 #include <functional>
@@ -367,15 +368,22 @@ void setupEventSocket() {
     });
 }
 
-// Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which
-// only copies out their latest readings.
+// Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which only
+// copies out their latest readings. A 5 ms timer paces them, since the 100 Hz FreeRTOS tick cannot.
 void sensorLoopEntry(void *) {
+    static TaskHandle_t sensorTask = xTaskGetCurrentTaskHandle();
     peripherals.beginSensors();
-    peripherals.calibrateIMU();
-    TickType_t lastWake = xTaskGetTickCount();
+    if (peripherals.imuRateHz() && !peripherals.calibrateIMU())
+        ESP_LOGW("main", "Robot moved during gyro calibration; bias left at zero");
+    const esp_timer_create_args_t pace = {
+        .callback = [](void *) { xTaskNotifyGive(sensorTask); }, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK,
+        .name = "sensor pace", .skip_unhandled_events = true};
+    esp_timer_handle_t timer;
+    ESP_ERROR_CHECK(esp_timer_create(&pace, &timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(timer, 5000));
     for (;;) {
-        peripherals.update();
-        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        peripherals.sensorTick();
     }
 }
 
@@ -385,7 +393,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
     peripherals.begin();
-    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 4096, nullptr, 4, nullptr, 1);
+    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 6144, nullptr, 4, nullptr, 1);
     servoController.begin();
     motionService.begin();
 #if FT_ENABLED(USE_WS2812)
@@ -394,7 +402,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 
     for (;;) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
-        motionService.update(&peripherals);
+        motionService.update(peripherals.imuSample(), peripherals.takeGesture());
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();

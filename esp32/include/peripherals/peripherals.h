@@ -19,9 +19,18 @@
 #include <NewPing.h>
 #endif
 #include <peripherals/i2c_bus.h>
-#include <peripherals/imu.h>
+#include <peripherals/imu/imu.h>
+#if FT_ENABLED(USE_MPU6050)
+#include <peripherals/drivers/mpu6050.h>
+#endif
+#if FT_ENABLED(USE_BNO055)
+#include <peripherals/drivers/bno055.h>
+#endif
+#if FT_ENABLED(USE_ICM20948)
+#include <peripherals/drivers/icm20948.h>
+#endif
 #if FT_ENABLED(USE_HMC5883)
-#include <peripherals/magnetometer.h>
+#include <peripherals/drivers/hmc5883l.h>
 #endif
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
@@ -36,10 +45,7 @@
  * under a lock held only for the copy, so a slow or absent sensor never stalls the control loop.
  */
 struct SensorReadings {
-    float angleX {0};
-    float angleY {0};
-    float angleZ {0};
-    float heading {0};
+    ImuSample imu;
     float altitude {0};
     float temperature {0};
     float pressure {0};
@@ -55,10 +61,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     // Loads the settings and starts the I2C bus, which the servos need too.
     void begin();
 
-    // Brings up the sensors, which can take seconds: call from the sensor task, as update().
+    // Brings up the sensors, which can take seconds: call from the sensor task, as sensorTick().
     void beginSensors();
 
-    void update();
+    // One pass of the sensor task: queued bus work, the IMU every time, the slower sensors when due.
+    void sensorTick();
 
     void updatePins();
 
@@ -67,11 +74,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
 
-    float angleX();
-
-    float angleY();
-
-    float angleZ();
+    ImuSample imuSample();
+    const char *imuDriverName() const;
+    uint32_t imuRateHz() const;
+    uint32_t magRateHz() const;
 
     gesture_t takeGesture();
 
@@ -87,7 +93,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
   private:
     void readImu();
-    void readMag();
+    ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
     void readSonar();
@@ -107,12 +113,17 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    IMU _imu;
+#if FT_ENABLED(USE_MPU6050)
+    MPU6050Driver _imuDriver;
+#elif FT_ENABLED(USE_ICM20948)
+    ICM20948Driver _imuDriver;
+#elif FT_ENABLED(USE_BNO055)
+    BNO055Driver _imuDriver;
 #endif
 #if FT_ENABLED(USE_HMC5883)
-    Magnetometer _mag;
+    HMC5883LDriver _magDriver;
 #endif
+    Imu _imu;
 #if FT_ENABLED(USE_BMP180)
     Barometer _bmp;
 #endif

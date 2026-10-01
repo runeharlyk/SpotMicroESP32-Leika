@@ -69,17 +69,16 @@ void MotionService::handleGestures(const gesture_t ges) {
     }
 }
 
-bool MotionService::update(Peripherals* peripherals) {
+bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     int64_t now = esp_timer_get_time();
     applyMail(inbox.take(now / 1000));
-    handleGestures(peripherals->takeGesture());
+    handleGestures(gesture);
     if (!state) return false;
-    float dt = (now - lastUpdate) / 1000000.0f; // Convert microseconds to seconds
+    float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
-    state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());
+    state->updateImuOffsets(imu.rpy[1], imu.rpy[0]);
     state->step(body_state, dt);
     kinematics.calculate_inverse_kinematics(body_state, new_angles);
-
     return update_angles(new_angles, angles);
 }
 

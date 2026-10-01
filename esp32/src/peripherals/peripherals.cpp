@@ -1,12 +1,31 @@
 #include <peripherals/peripherals.h>
 #include <utils/sleep.h>
+#include <esp_timer.h>
+#include <cmath>
+
+#if FT_ENABLED(USE_MPU6050 || USE_ICM20948 || USE_BNO055)
+#define IMU_DRIVER &_imuDriver
+#else
+#define IMU_DRIVER nullptr
+#endif
+#if FT_ENABLED(USE_HMC5883)
+#define MAG_DRIVER &_magDriver
+#else
+#define MAG_DRIVER nullptr
+#endif
 
 Peripherals::Peripherals()
     : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, api_PeripheralSettings_fields),
       _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, PERIPHERAL_SETTINGS_FILE,
-                   api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()) {
+                   api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()),
+      _imu(IMU_DRIVER, MAG_DRIVER) {
     _accessMutex = xSemaphoreCreateRecursiveMutex();
-    addUpdateHandler([&](const std::string &originId) { updatePins(); }, false);
+    addUpdateHandler(
+        [&](const std::string &originId) {
+            updatePins();
+            runOnSensorTask([this] { _imu.configure(imuConfig()); });
+        },
+        false);
 }
 
 void Peripherals::begin() {
@@ -16,12 +35,11 @@ void Peripherals::begin() {
 }
 
 void Peripherals::beginSensors() {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
-    if (!_imu.initialize()) ESP_LOGE("Peripherals", "IMU initialize failed");
-#endif
-#if FT_ENABLED(USE_HMC5883)
-    if (!_mag.initialize()) ESP_LOGE("Peripherals", "Magnetometer initialize failed");
-#endif
+    beginTransaction();
+    _imu.configure(imuConfig());
+    if (!_imu.begin(esp_timer_get_time())) ESP_LOGW("Peripherals", "No IMU answered");
+    else ESP_LOGI("Peripherals", "IMU %s at %u Hz, compass at %u Hz", _imu.driverName(), _imu.rateHz(), _imu.magRateHz());
+    endTransaction();
 #if FT_ENABLED(USE_BMP180)
     if (!_bmp.initialize()) ESP_LOGE("Peripherals", "Barometer initialize failed");
 #endif
@@ -32,12 +50,11 @@ void Peripherals::beginSensors() {
     _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
     _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
 #endif
-};
+}
 
-void Peripherals::update() {
+void Peripherals::sensorTick() {
     runQueuedWork();
-    EXECUTE_EVERY_N_MS(20, { readImu(); });
-    EXECUTE_EVERY_N_MS(100, { readMag(); });
+    readImu();
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
     EXECUTE_EVERY_N_MS(500, { readSonar(); });
@@ -77,41 +94,41 @@ void Peripherals::scanI2C(uint8_t lower, uint8_t higher) {
 
 void Peripherals::getIMUProto(socket_message_IMUData &data) {
     std::lock_guard<std::mutex> lock(_readingsMutex);
-    data.x = _readings.angleX;
-    data.y = _readings.angleY;
-    data.z = _readings.angleZ;
-    data.heading = _readings.heading;
+    data.x = _readings.imu.rpy[0];
+    data.y = _readings.imu.rpy[1];
+    data.z = _readings.imu.rpy[2];
+    // The app's compass shows degrees clockwise from north; yaw turns the other way.
+    data.heading = std::fmod(360.0f - RAD_TO_DEG_F(_readings.imu.rpy[2]) + 360.0f, 360.0f);
     data.altitude = _readings.altitude;
     data.bmp_temp = _readings.temperature;
     data.pressure = _readings.pressure;
 }
 
 void Peripherals::readImu() {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
+    ImuSample sample;
     beginTransaction();
-    if (_imu.update()) {
-        std::lock_guard<std::mutex> lock(_readingsMutex);
-        _readings.angleX = _imu.getAngleX();
-        _readings.angleY = _imu.getAngleY();
-        _readings.angleZ = _imu.getAngleZ();
-#if !FT_ENABLED(USE_HMC5883)
-        _readings.heading = _imu.getAngleZ();
-#endif
-    }
+    const bool fresh = _imu.update(esp_timer_get_time(), sample);
     endTransaction();
-#endif
+    if (!fresh) return;
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    _readings.imu = sample;
 }
 
-void Peripherals::readMag() {
-#if FT_ENABLED(USE_HMC5883)
-    beginTransaction();
-    if (_mag.update()) {
-        std::lock_guard<std::mutex> lock(_readingsMutex);
-        _readings.heading = _mag.getHeading();
-    }
-    endTransaction();
-#endif
+// Only the IMU part: the whole settings are 1.8 KB, too much for the sensor task's stack.
+ImuConfig Peripherals::imuConfig() const {
+    ImuConfig config;
+    read([&config](const PeripheralsConfiguration &settings) { config = imuConfigFrom(effectiveImuSettings(settings)); });
+    return config;
 }
+
+ImuSample Peripherals::imuSample() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.imu;
+}
+
+const char *Peripherals::imuDriverName() const { return _imu.driverName(); }
+uint32_t Peripherals::imuRateHz() const { return _imu.rateHz(); }
+uint32_t Peripherals::magRateHz() const { return _imu.magRateHz(); }
 
 void Peripherals::readBMP() {
 #if FT_ENABLED(USE_BMP180)
@@ -149,21 +166,6 @@ void Peripherals::readSonar() {
 #endif
 }
 
-float Peripherals::angleX() {
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    return _readings.angleX;
-}
-
-float Peripherals::angleY() {
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    return _readings.angleY;
-}
-
-float Peripherals::angleZ() {
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    return _readings.angleZ;
-}
-
 gesture_t Peripherals::takeGesture() {
     std::lock_guard<std::mutex> lock(_readingsMutex);
     const gesture_t gesture = _readings.gesture;
@@ -191,13 +193,13 @@ void Peripherals::runQueuedWork() {
     }
 }
 
+// Runs on the sensor task (through runOnSensorTask, or at boot); the robot must stand still for about a second.
 bool Peripherals::calibrateIMU() {
-#if FT_ENABLED(USE_MPU6050 || USE_BNO055)
     beginTransaction();
-    bool result = _imu.calibrate();
+    const bool accepted = _imu.estimateGyroBias([] {
+        sleepAtLeastMs(5);
+        return esp_timer_get_time();
+    });
     endTransaction();
-    return result;
-#else
-    return false;
-#endif
+    return accepted;
 }

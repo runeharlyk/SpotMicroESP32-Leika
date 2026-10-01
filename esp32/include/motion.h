@@ -5,7 +5,7 @@
 
 #include <kinematics.h>
 #include <peripherals/gesture.h>
-#include <peripherals/peripherals.h>
+#include <peripherals/imu/imu_math.h>
 #include <utils/timing.h>
 #include <utils/math_utils.h>
 
@@ -33,7 +33,7 @@ class MotionService {
 
     void handleGestures(const gesture_t ges);
 
-    bool update(Peripherals* peripherals);
+    bool update(const ImuSample& imu, gesture_t gesture);
 
     /** Whether update() applied a mode message since the last call. */
     bool takeModeApplied() { return std::exchange(modeApplied, false); }

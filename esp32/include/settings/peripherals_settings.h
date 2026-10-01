@@ -4,6 +4,7 @@
 #include <sdkconfig.h>
 #include <platform_shared/api.pb.h>
 #include <global.h>
+#include <settings/imu_settings.h>
 
 // Use proto types directly
 using PinConfig = api_PinConfig;
@@ -16,6 +17,8 @@ inline PeripheralsConfiguration PeripheralsConfiguration_defaults() {
     settings.scl = SCL_PIN;
     settings.frequency = I2C_FREQUENCY;
     settings.pins_count = 0;
+    settings.has_imu = true;
+    settings.imu = imuSettingsDefaults();
     return settings;
 }
 
@@ -24,8 +27,13 @@ inline void PeripheralsConfiguration_read(const PeripheralsConfiguration& settin
     proto = settings;
 }
 
+// A save without IMU settings, such as the app's pin editor, keeps the IMU settings in force.
 inline StateUpdateResult PeripheralsConfiguration_update(const PeripheralsConfiguration& proto,
                                                          PeripheralsConfiguration& settings) {
+    if (proto.has_imu && !validImuSettings(proto.imu)) return StateUpdateResult::ERROR;
+    const api_ImuSettings imu = proto.has_imu ? proto.imu : effectiveImuSettings(settings);
     settings = proto;
+    settings.has_imu = true;
+    settings.imu = imu;
     return StateUpdateResult::CHANGED;
 }
