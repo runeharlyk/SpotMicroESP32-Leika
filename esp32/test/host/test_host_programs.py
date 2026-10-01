@@ -31,6 +31,7 @@ PROGRAMS = {
     "dns_reply_test.cpp": [],
     "imu_math_test.cpp": [],
     "madgwick_test.cpp": [],
+    "imu_drivers_test.cpp": [],
 }
 
 

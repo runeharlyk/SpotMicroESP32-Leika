@@ -3,9 +3,11 @@
 // use of a handle that was already freed - what a race between two tasks on the bus would do.
 #include <esp_err.h>
 #include <freertos/FreeRTOS.h>
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <mutex>
 #include <set>
 #include <vector>
@@ -48,6 +50,8 @@ inline std::atomic<int> devicesAdded {0};
 inline std::atomic<int> staleUses {0};
 inline std::atomic<int> transfers {0};
 inline std::vector<std::vector<uint8_t>> written;
+// What each device's registers hold: reads return them, writes change them, as a register-mapped chip does.
+inline std::map<uint8_t, std::array<uint8_t, 256>> registers;
 
 inline bool isLive(const void *handle) {
     std::lock_guard<std::mutex> lock(mutex);
@@ -57,6 +61,7 @@ inline void reset() {
     std::lock_guard<std::mutex> lock(mutex);
     live.clear();
     written.clear();
+    registers.clear();
     devicesAdded = staleUses = transfers = 0;
 }
 } // namespace fake_i2c
@@ -124,12 +129,23 @@ inline esp_err_t i2c_master_multi_buffer_transmit(i2c_master_dev_handle_t device
         std::lock_guard<std::mutex> lock(fake_i2c::mutex);
         fake_i2c::written.push_back(bytes);
     }
-    return fakeTransfer(device);
+    esp_err_t result = fakeTransfer(device);
+    // Only a live device is read: a freed one is what the bus tests catch, not something to touch.
+    if (result != ESP_OK || bytes.empty()) return result;
+    std::lock_guard<std::mutex> lock(fake_i2c::mutex);
+    auto &chip = fake_i2c::registers[device->address];
+    for (size_t i = 1; i < bytes.size(); i++) chip[(bytes[0] + i - 1) & 0xFF] = bytes[i];
+    return result;
 }
 
-inline esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device, const uint8_t *, size_t, uint8_t *,
-                                             size_t, int) {
-    return fakeTransfer(device);
+inline esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device, const uint8_t *write, size_t, uint8_t *read,
+                                             size_t length, int) {
+    esp_err_t result = fakeTransfer(device);
+    if (result != ESP_OK) return result;
+    std::lock_guard<std::mutex> lock(fake_i2c::mutex);
+    auto &chip = fake_i2c::registers[device->address];
+    for (size_t i = 0; i < length; i++) read[i] = chip[(write[0] + i) & 0xFF];
+    return ESP_OK;
 }
 
 inline esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus, uint16_t, int) { return fakeTransfer(bus); }
