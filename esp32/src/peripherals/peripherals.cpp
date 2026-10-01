@@ -193,13 +193,28 @@ void Peripherals::runQueuedWork() {
     }
 }
 
-// Runs on the sensor task (through runOnSensorTask, or at boot); the robot must stand still for about a second.
-bool Peripherals::calibrateIMU() {
+Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level) {
+    ImuCalibration result;
+    Vec3 up {};
     beginTransaction();
-    const bool accepted = _imu.estimateGyroBias([] {
-        sleepAtLeastMs(5);
-        return esp_timer_get_time();
-    });
+    result.still = _imu.estimateGyroBias(
+        [] {
+            sleepAtLeastMs(5);
+            return esp_timer_get_time();
+        },
+        level ? &up : nullptr);
     endTransaction();
-    return accepted;
+    if (!level || !result.still) return result;
+    // Saving reconfigures the IMU through the update handler.
+    update(
+        [&](PeripheralsConfiguration &settings) {
+            api_ImuSettings imu = effectiveImuSettings(settings);
+            if (!levelImuSettings(imu, up, result.tiltDeg)) return StateUpdateResult::UNCHANGED;
+            settings.has_imu = true;
+            settings.imu = imu;
+            result.levelled = true;
+            return StateUpdateResult::CHANGED;
+        },
+        "imu-level");
+    return result;
 }

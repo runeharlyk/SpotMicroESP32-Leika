@@ -89,6 +89,26 @@ inline Vec3 rpyFromQuat(const Quat &q) {
             std::atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))};
 }
 
+/** The angle (radians) between a still body's measured up, its accelerometer, and the body's z axis. */
+inline float tiltOf(const Vec3 &up) {
+    const float length = std::sqrt(up[0] * up[0] + up[1] * up[1] + up[2] * up[2]);
+    return std::acos(std::clamp(up[2] / length, -1.0f, 1.0f));
+}
+
+/**
+ * The smallest rotation that turns a still body's measured up onto its z axis (Rodrigues, about up x z): it corrects
+ * roll and pitch and leaves the heading alone.
+ */
+inline Mat3 levellingRotation(const Vec3 &up) {
+    const float length = std::sqrt(up[0] * up[0] + up[1] * up[1] + up[2] * up[2]);
+    const float x = up[0] / length, y = up[1] / length, c = up[2] / length;
+    const float s2 = x * x + y * y;  // |up x z|^2, with up x z = (y, -x, 0)
+    if (s2 < 1e-12f) return IDENTITY3;
+    const float k = (1 - c) / s2;
+    // I + [v]x + [v]x^2 * (1 - c) / |v|^2 for v = (y, -x, 0)
+    return {1 - k * x * x, -k * x * y, -x, -k * x * y, 1 - k * y * y, -y, x, y, 1 - k * s2};
+}
+
 /** Whether m is a proper rotation: orthonormal with determinant +1, within `tolerance`. */
 inline bool isRotation(const Mat3 &m, float tolerance) {
     const Mat3 t = {m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]};

@@ -81,7 +81,17 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     gesture_t takeGesture();
 
-    bool calibrateIMU();
+    struct ImuCalibration {
+        bool still = false;     // the gyro bias was taken
+        bool levelled = false;  // the tilt was folded into the stored mounting
+        float tiltDeg = 0;      // the tilt the accelerometer showed, when levelling was asked for
+    };
+
+    /**
+     * The gyro bias of a still robot; with `level`, also its tilt folded into the stored mounting, so a robot lying
+     * on a level surface reads level. Runs on the sensor task; the robot must stay still for about a second.
+     */
+    ImuCalibration calibrateIMU(bool level);
 
     /**
      * Queues bus work too slow for the socket task, such as a scan or a calibration, to run on the sensor task

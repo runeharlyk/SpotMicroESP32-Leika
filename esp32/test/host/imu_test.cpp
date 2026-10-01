@@ -196,6 +196,90 @@ static void aRecalibrationDoesNotSpinTheOrientation() {
     CHECK(near(sample.rpy[0], 0.5236f, 0.035f));
 }
 
+constexpr float DEG = 0.01745329f;
+constexpr float G = 9.81f;
+constexpr Mat3 TURN = {0, -1, 0, 1, 0, 0, 0, 0, 1};  // the Pico's chip: a quarter turn about z
+
+static Mat3 rotX(float a) { return {1, 0, 0, 0, std::cos(a), -std::sin(a), 0, std::sin(a), std::cos(a)}; }
+static Mat3 rotY(float a) { return {std::cos(a), 0, std::sin(a), 0, 1, 0, -std::sin(a), 0, std::cos(a)}; }
+static Mat3 transpose(const Mat3 &m) { return {m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]}; }
+static bool nearVec(const Vec3 &a, const Vec3 &b, float tolerance) {
+    return near(a[0], b[0], tolerance) && near(a[1], b[1], tolerance) && near(a[2], b[2], tolerance);
+}
+
+// What a chip mounted as `truth` (chip to body) reads on a level, still robot.
+static Vec3 chipAccelAtRest(const Mat3 &truth) { return mul(transpose(truth), Vec3 {0, 0, G}); }
+
+static api_ImuSettings turned() {
+    api_ImuSettings settings = imuSettingsDefaults();
+    std::copy(TURN.begin(), TURN.end(), settings.mounting);
+    return settings;
+}
+
+// The Pico's case: the chip sits rolled 5 and pitched 2 degrees under its quarter turn. Levelling folds the tilt
+// into the mounting and keeps the turn: the chip's x axis still points where it really does.
+static void aTiltedChipIsLevelledAndKeepsItsTurn() {
+    const Mat3 truth = mul(TURN, mul(rotX(5 * DEG), rotY(2 * DEG)));
+    const Vec3 chip = chipAccelAtRest(truth);
+    api_ImuSettings settings = turned();
+    float tiltDeg = 0;
+    CHECK(levelImuSettings(settings, mul(TURN, chip), tiltDeg));
+    CHECK(near(tiltDeg, 5.385f, 0.01f));
+    const Mat3 mounting = toMat3(settings.mounting);
+    CHECK(isRotation(mounting, 1e-4f));
+    CHECK(nearVec(mul(mounting, chip), {0, 0, G}, 1e-3f));
+    CHECK(nearVec(mul(mounting, Vec3 {1, 0, 0}), mul(truth, Vec3 {1, 0, 0}), 0.005f));
+}
+
+// A tilt this large means the robot is not on a level surface, or the mounting is wrong: nothing is changed.
+static void aTiltBeyondTheLimitIsRefused() {
+    const Vec3 chip = chipAccelAtRest(mul(TURN, rotX(20 * DEG)));
+    api_ImuSettings settings = turned();
+    float tiltDeg = 0;
+    CHECK(!levelImuSettings(settings, mul(TURN, chip), tiltDeg));
+    CHECK(near(tiltDeg, 20, 0.01f));
+    CHECK(toMat3(settings.mounting) == TURN);
+}
+
+// The bias belongs to the chip: a mounting changed after it was measured must not turn it into a false rate.
+static void theGyroBiasFollowsAMountingChange() {
+    ScriptedImu driver;
+    driver.script = {still({0.01f, -0.02f, 0.005f})};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    int64_t clock = 0;
+    CHECK(imu.estimateGyroBias([&] { return clock += 5000; }));
+    ImuConfig config;
+    config.mounting = TURN;
+    imu.configure(config);
+    ImuSample sample;
+    CHECK(imu.update(clock += 5000, sample));
+    CHECK(nearVec(sample.gyro, {0, 0, 0}, 1e-5f));
+}
+
+// From the button to the reading: the still second's mean accelerometer levels the mounting, and the fused
+// orientation of the level robot then reads level.
+static void aCalibratedRobotReadsLevel() {
+    ScriptedImu driver;
+    RawImu raw = still();
+    raw.accel = chipAccelAtRest(mul(TURN, mul(rotX(5 * DEG), rotY(2 * DEG))));
+    driver.script = {raw};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    api_ImuSettings settings = turned();
+    imu.configure(imuConfigFrom(settings));
+    int64_t clock = 0;
+    Vec3 up {};
+    CHECK(imu.estimateGyroBias([&] { return clock += 5000; }, &up));
+    CHECK(nearVec(up, mul(TURN, raw.accel), 1e-4f));
+    float tiltDeg = 0;
+    CHECK(levelImuSettings(settings, up, tiltDeg));
+    imu.configure(imuConfigFrom(settings));
+    ImuSample sample;
+    for (int64_t end = clock + 3000000; clock <= end; clock += 5000) imu.update(clock, sample);
+    CHECK(near(sample.rpy[0], 0, 0.2f * DEG) && near(sample.rpy[1], 0, 0.2f * DEG));
+}
+
 // A compass that stops answering must not hold the heading where it was: the fusion drops to six axes.
 static void aCompassThatStopsAnsweringFallsBackToSixAxis() {
     ScriptedImu driver;
@@ -225,6 +309,10 @@ int main() {
     onlySensibleImuSettingsAreAccepted();
     aRecalibrationDoesNotSpinTheOrientation();
     aCompassThatStopsAnsweringFallsBackToSixAxis();
+    aTiltedChipIsLevelledAndKeepsItsTurn();
+    aTiltBeyondTheLimitIsRefused();
+    theGyroBiasFollowsAMountingChange();
+    aCalibratedRobotReadsLevel();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

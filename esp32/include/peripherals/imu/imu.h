@@ -49,31 +49,34 @@ class Imu {
 
     /**
      * Averages the gyro over BIAS_SAMPLES reads while the robot is still. A robot that moves keeps the previous
-     * bias and gets false. `readClockAndWait` waits for the next read and returns the time in microseconds.
+     * bias and gets false. `readClockAndWait` waits for the next read and returns the time in microseconds. With
+     * `meanAccel`, a still robot also gets the mean accelerometer, in the body frame: its measured up.
      */
-    bool estimateGyroBias(const std::function<int64_t()> &readClockAndWait) {
+    bool estimateGyroBias(const std::function<int64_t()> &readClockAndWait, Vec3 *meanAccel = nullptr) {
         if (!_ready) return false;
         // The orientation stays; only the second spent here must not count as one integration step.
         _lastUs = 0;
-        double sum[3] = {0, 0, 0}, sumSquares[3] = {0, 0, 0};
+        double sum[3] = {0, 0, 0}, sumSquares[3] = {0, 0, 0}, accelSum[3] = {0, 0, 0};
         for (int i = 0; i < BIAS_SAMPLES; i++) {
             readClockAndWait();
             RawImu raw;
             if (!_driver->read(raw)) return false;
-            const Vec3 gyro = mul(_config.mounting, raw.gyro);
             for (int axis = 0; axis < 3; axis++) {
-                sum[axis] += gyro[axis];
-                sumSquares[axis] += gyro[axis] * gyro[axis];
+                sum[axis] += raw.gyro[axis];
+                sumSquares[axis] += raw.gyro[axis] * raw.gyro[axis];
+                accelSum[axis] += raw.accel[axis];
             }
         }
-        Vec3 bias;
+        Vec3 bias, accel;
         for (int axis = 0; axis < 3; axis++) {
             const double mean = sum[axis] / BIAS_SAMPLES;
             const double variance = sumSquares[axis] / BIAS_SAMPLES - mean * mean;
             if (std::sqrt(std::fmax(variance, 0.0)) > STILL_GYRO_STD) return false;
             bias[axis] = static_cast<float>(mean);
+            accel[axis] = static_cast<float>(accelSum[axis] / BIAS_SAMPLES);
         }
         _gyroBias = bias;
+        if (meanAccel) *meanAccel = mul(_config.mounting, accel);
         return true;
     }
 
@@ -83,7 +86,7 @@ class Imu {
         ImuSample sample;
         sample.t_us = nowUs;
         sample.accel = mul(_config.mounting, raw.accel);
-        sample.gyro = sub(mul(_config.mounting, raw.gyro), _gyroBias);
+        sample.gyro = mul(_config.mounting, sub(raw.gyro, _gyroBias));
         sample.temperature = raw.temperature;
         sample.valid = ImuValid::ACCEL | ImuValid::GYRO;
         takeMag(nowUs, raw);
@@ -122,7 +125,7 @@ class Imu {
     Madgwick _filter;
     bool _ready = false;
     bool _hasSeparateMag = false;
-    Vec3 _gyroBias {};
+    Vec3 _gyroBias {};  // chip frame, so a later mounting change leaves it right
     int64_t _startUs = 0;
     int64_t _lastUs = 0;
     bool _magValid = false;

@@ -148,7 +148,11 @@ message StaticSystemInformation {
     string cpu_reset_reason = 13; 
 }
 
-message IMUCalibrateData { bool success = 1; }
+message IMUCalibrateData {
+    bool success = 1;   // the robot was still and the gyro bias was taken
+    bool levelled = 2;  // the tilt was folded into the IMU mounting
+    float tilt_deg = 3; // the tilt the accelerometer showed; above 15 degrees it is not levelled
+}
 
 message IMUCalibrateExecute {}
 

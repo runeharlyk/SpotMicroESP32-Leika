@@ -203,7 +203,10 @@ void setupEventSocket() {
          [](const auto &req, auto &res, int clientId) {
              replyFromSensorTask(req, res, clientId, [](socket_message_CorrelationResponse &reply) {
                  reply.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
-                 reply.response.imu_calibrate_data.success = peripherals.calibrateIMU();
+                 const Peripherals::ImuCalibration result = peripherals.calibrateIMU(true);
+                 reply.response.imu_calibrate_data.success = result.still;
+                 reply.response.imu_calibrate_data.levelled = result.levelled;
+                 reply.response.imu_calibrate_data.tilt_deg = result.tiltDeg;
              });
          }},
 
@@ -402,7 +405,8 @@ void setupEventSocket() {
 void sensorLoopEntry(void *) {
     static TaskHandle_t sensorTask = xTaskGetCurrentTaskHandle();
     peripherals.beginSensors();
-    if (peripherals.imuRateHz() && !peripherals.calibrateIMU())
+    // Only the gyro at boot: the robot may be standing anywhere.
+    if (peripherals.imuRateHz() && !peripherals.calibrateIMU(false).still)
         ESP_LOGW("main", "Robot moved during gyro calibration; bias left at zero");
     const esp_timer_create_args_t pace = {
         .callback = [](void *) { xTaskNotifyGive(sensorTask); }, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK,
@@ -454,7 +458,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
     peripherals.begin();
-    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 6144, nullptr, 4, nullptr, 1);
+    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 8192, nullptr, 4, nullptr, 1);
     servoController.begin();
     motionService.begin();
 #if FT_ENABLED(USE_WS2812)
