@@ -17,6 +17,8 @@ INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "esp32", "include"),
 
 NANOPB = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_common.c", "pb_encode.c", "pb_decode.c")]
 API_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "api.pb.c")
+MESSAGE_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "message.pb.c")
+FILESYSTEM_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "filesystem.pb.c")
 
 # Each program with the sources it links besides itself.
 PROGRAMS = {
@@ -34,6 +36,7 @@ PROGRAMS = {
     "imu_drivers_test.cpp": [],
     "imu_test.cpp": [*NANOPB, API_PROTO],
     "spsc_ring_test.cpp": [],
+    "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
 }
 
 
