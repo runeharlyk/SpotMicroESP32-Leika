@@ -8,7 +8,7 @@ import { CorrelationResponse } from '../../src/lib/platform_shared/message'
 import { fakeRobot } from './fake-robot'
 
 const servoSettings = ServoSettings.create({
-    servos: [{ centerPwm: 306, direction: 1, centerAngle: 0, conversion: 2.2, name: 'fl' }]
+    servos: [{ centerPwm: 306, name: 'fl' }]
 })
 
 let robot: ReturnType<typeof fakeRobot> | undefined

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Servo } from '$lib/platform_shared/api'
+    import type { JointModel } from '$lib/platform_shared/api'
     import { reportedVariant } from '$lib/stores/featureFlags'
     import { kinConfig } from '$lib/simulation/firmware/kin-config'
     import {
@@ -7,25 +7,29 @@
         LEG_NAMES,
         calibrationPose,
         legPoints,
+        referenceAngle,
+        referencePose,
         servoAngleFromPwm,
         servoJoint,
         type LegPoint
     } from '$lib/calibration/leg-pose'
 
     interface Props {
-        servos: Servo[]
-        servoId: number
+        model: JointModel
+        centers: number[]
+        jointId: number
         pwm: number
     }
 
-    let { servos, servoId, pwm }: Props = $props()
+    let { model, centers, jointId, pwm }: Props = $props()
 
     // The faint leg shows where a slightly higher PWM puts it: the way the real leg must move as the slider rises.
     const PWM_STEP = 20
 
     const cfg = $derived(kinConfig($reportedVariant ?? 'SPOTMICRO_ESP32'))
-    const pose = $derived(calibrationPose(cfg, servos, servoId, pwm))
-    const ahead = $derived(calibrationPose(cfg, servos, servoId, pwm + PWM_STEP))
+    const pose = $derived(calibrationPose(cfg, model, centers, jointId, pwm))
+    const ahead = $derived(calibrationPose(cfg, model, centers, jointId, pwm + PWM_STEP))
+    const reference = $derived(referencePose(cfg, model, jointId))
     const reach = $derived(cfg.coxa + cfg.femur + cfg.tibia)
     const viewBox = $derived(`${-reach} ${-0.3 * reach} ${2 * reach} ${1.4 * reach}`)
 
@@ -49,8 +53,8 @@
         }
     }
 
-    const selected = $derived(servoId === -1 ? null : servoJoint(servoId))
-    const moves = (leg: number) => servoId === -1 || selected?.leg === leg
+    const selected = $derived(jointId === -1 ? null : servoJoint(jointId))
+    const moves = (leg: number) => jointId === -1 || selected?.leg === leg
 
     // Laid out as seen from above with the front at the top: left legs on the left.
     const LAYOUT = [1, 0, 3, 2]
@@ -64,22 +68,26 @@
                 {LEG_NAMES[selected.leg]}
                 {JOINT_NAMES[selected.joint].toLowerCase()}:
                 <span class="font-mono font-bold text-primary"
-                    >{servoAngleFromPwm(servos[servoId], pwm).toFixed(1)}°</span
+                    >{servoAngleFromPwm(model, jointId, centers[jointId], pwm).toFixed(1)}°</span
+                >
+                <span class="opacity-70"
+                    >(reference {referenceAngle(model, jointId).toFixed(1)}°)</span
                 >
             </span>
         {:else}
-            <span class="text-sm opacity-70">All servos follow the PWM</span>
+            <span class="text-sm opacity-70">All joints follow the PWM</span>
         {/if}
     </div>
     <p class="text-xs opacity-70">
-        Solid: where the calibration puts the joint at this PWM. Faint: {PWM_STEP} PWM higher. A real
-        leg that moves the other way as the PWM rises needs its direction flipped; one that sits elsewhere
-        at the centre PWM needs its centre adjusted.
+        Solid: where the joint is at this PWM. Faint: {PWM_STEP} PWM higher. Green outline: the reference
+        pose, where the joint sits at its centre PWM; line the real joint up with it and set the centre.
+        A real joint that moves the other way as the PWM rises does not match this variant's joint model.
     </p>
     <div class="grid grid-cols-2 gap-3">
         {#each LAYOUT as leg (leg)}
             {@const now = legView(leg, pose)}
             {@const next = legView(leg, ahead)}
+            {@const home = legView(leg, reference)}
             <div class="flex flex-col gap-1 rounded-lg p-2 {moves(leg) ? 'bg-base-300' : ''}">
                 <span class="text-xs font-medium">{LEG_NAMES[leg]}</span>
                 <div class="grid grid-cols-2 gap-1">
@@ -99,6 +107,14 @@
                                 stroke-width={reach / 80}
                             />
                             {#if moves(leg)}
+                                <polyline
+                                    points={home.front}
+                                    fill="none"
+                                    class="stroke-success"
+                                    stroke-width={reach / 40}
+                                    stroke-dasharray="{reach / 15} {reach / 30}"
+                                    stroke-linejoin="round"
+                                />
                                 <polyline
                                     points={next.front}
                                     fill="none"
@@ -138,6 +154,14 @@
                                 stroke-width={reach / 80}
                             />
                             {#if moves(leg)}
+                                <polyline
+                                    points={home.side}
+                                    fill="none"
+                                    class="stroke-success"
+                                    stroke-width={reach / 40}
+                                    stroke-dasharray="{reach / 15} {reach / 30}"
+                                    stroke-linejoin="round"
+                                />
                                 <polyline
                                     points={next.side}
                                     fill="none"
