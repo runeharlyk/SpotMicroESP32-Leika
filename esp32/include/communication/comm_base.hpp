@@ -132,11 +132,13 @@ class CommAdapterBase {
     uint8_t pb_heap_enc_buf[PROTO_BUFFER_SIZE];
 
   private:
+    // Sends to a copy of the list, so a slow client never holds up subscribing or closing on the socket task.
     void sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        for (int cid : client_subscriptions_[tag]) {
+        const std::list<int> clients = client_subscriptions_[tag];
+        xSemaphoreGive(mutex_);
+        for (int cid : clients) {
             send(data, len, cid);
         }
-        xSemaphoreGive(mutex_);
     }
 };
