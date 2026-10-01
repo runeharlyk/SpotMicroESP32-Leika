@@ -177,6 +177,34 @@ static void icm20948SkipsACompassReadingThatIsNotThere() {
     I2CBus::instance().end();
 }
 
+// A compass that does not answer after the reset leaves a 6-axis IMU, not a missing one.
+static void icm20948WithoutItsCompassIsStillAnImu() {
+    startBus();
+    fake_i2c::registers[0x68][0x00] = 0xEA;  // the AK09916 never answers: WIA2 stays 0
+    ICM20948Driver icm;
+    CHECK(icm.begin());
+    CHECK(icm.magRateHz() == 0);
+    fake_i2c::registers[0x0C][0x10] = 0x01;
+    RawImu raw;
+    CHECK(icm.read(raw));
+    CHECK(!raw.hasMag);
+    I2CBus::instance().end();
+}
+
+// Adafruit's and SparkFun's breakouts tie AD0 high: the chip answers at 0x69.
+static void icm20948IsFoundAtItsAlternativeAddress() {
+    startBus();
+    fake_i2c::registers[0x69][0x00] = 0xEA;
+    fake_i2c::registers[0x0C][0x01] = 0x09;
+    ICM20948Driver icm;
+    CHECK(icm.begin());
+    putBigEndian(0x69, 0x2D, 8192);
+    RawImu raw;
+    CHECK(icm.read(raw));
+    CHECK(near(raw.accel[0], 9.80665f, 1e-3f));
+    I2CBus::instance().end();
+}
+
 int main() {
     mpu6050ReportsSiUnits();
     mpu6050RefusesAnotherChip();
@@ -185,6 +213,8 @@ int main() {
     bno055ReportsItsOwnFusionAndRawReadings();
     icm20948ReportsSiUnitsAndItsCompass();
     icm20948SkipsACompassReadingThatIsNotThere();
+    icm20948WithoutItsCompassIsStillAnImu();
+    icm20948IsFoundAtItsAlternativeAddress();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

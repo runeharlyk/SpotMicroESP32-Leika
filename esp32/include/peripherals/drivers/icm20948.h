@@ -1,5 +1,6 @@
 #pragma once
 
+#include <esp_log.h>
 #include <peripherals/i2c_bus.h>
 #include <peripherals/imu/imu_driver.h>
 #include <utils/sleep.h>
@@ -7,18 +8,14 @@
 /** ICM-20948 accelerometer and gyro, with its AK09916 compass reached through bypass. */
 class ICM20948Driver final : public ImuDriver {
   public:
-    static constexpr uint8_t DEFAULT_ADDR = 0x68;
+    static constexpr uint8_t ADDRESSES[] = {0x68, 0x69};  // AD0 low or high; breakouts differ
     static constexpr uint8_t AK09916_ADDR = 0x0C;
     static constexpr float ACCEL_LSB_PER_G = 8192.0f;
     static constexpr float GYRO_LSB_PER_DPS = 65.5f;
     static constexpr float MICROTESLA_PER_LSB = 0.15f;
 
-    explicit ICM20948Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
-
     bool begin() override {
-        if (!I2CBus::instance().probe(_addr)) return false;
-        selectBank(0);
-        if (readReg(_addr, REG_WHO_AM_I) != 0xEA) return false;
+        if (!findChip()) return false;
         writeReg(_addr, REG_PWR_MGMT_1, 0x80);  // reset
         sleepAtLeastMs(100);
         selectBank(0);
@@ -34,7 +31,11 @@ class ICM20948Driver final : public ImuDriver {
         writeReg(_addr, REG_USER_CTRL, 0x00);          // own I2C master off, which bypass needs
         writeReg(_addr, REG_INT_PIN_CFG, 0x02);        // bypass: the AK09916 appears on the main bus
         sleepAtLeastMs(10);
-        if (readReg(AK09916_ADDR, AK_WIA2) != 0x09) return false;
+        _hasCompass = readReg(AK09916_ADDR, AK_WIA2) == 0x09;
+        if (!_hasCompass) {
+            ESP_LOGW("ICM20948", "The AK09916 compass did not answer; running without it");
+            return true;
+        }
         writeReg(AK09916_ADDR, AK_CNTL3, 0x01);        // soft reset
         sleepAtLeastMs(10);
         writeReg(AK09916_ADDR, AK_CNTL2, 0x08);        // continuous measurement mode 4, 100 Hz
@@ -50,13 +51,13 @@ class ICM20948Driver final : public ImuDriver {
         }
         raw.temperature = bigEndian(b, 12) / 333.87f + 21.0f;
         raw.hasOrientation = false;
-        raw.hasMag = readCompass(raw.mag);
+        raw.hasMag = _hasCompass && readCompass(raw.mag);
         return true;
     }
 
     const char *name() const override { return "ICM-20948"; }
     uint32_t rateHz() const override { return 200; }
-    uint32_t magRateHz() const override { return 100; }
+    uint32_t magRateHz() const override { return _hasCompass ? 100 : 0; }
 
   private:
     static constexpr uint8_t REG_WHO_AM_I = 0x00;
@@ -76,6 +77,16 @@ class ICM20948Driver final : public ImuDriver {
     static constexpr uint8_t AK_HXL = 0x11;
     static constexpr uint8_t AK_CNTL2 = 0x31;
     static constexpr uint8_t AK_CNTL3 = 0x32;
+    bool findChip() {
+        for (uint8_t addr : ADDRESSES) {
+            _addr = addr;
+            if (!I2CBus::instance().probe(addr)) continue;
+            selectBank(0);
+            if (readReg(addr, REG_WHO_AM_I) == 0xEA) return true;
+        }
+        return false;
+    }
+
     // Unverified on hardware: the compass's x matches the accelerometer's, its y and z point the other way.
     static constexpr Vec3 AK_TO_ACCEL = {1, -1, -1};
 
@@ -106,5 +117,6 @@ class ICM20948Driver final : public ImuDriver {
         return value;
     }
 
-    uint8_t _addr;
+    uint8_t _addr = ADDRESSES[0];
+    bool _hasCompass = false;
 };
