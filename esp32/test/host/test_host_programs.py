@@ -29,6 +29,7 @@ PROGRAMS = {
     "ws_origin_test.cpp": [],
     "app_network_settings_test.cpp": [],
     "dns_reply_test.cpp": [],
+    "imu_math_test.cpp": [],
 }
 
 
