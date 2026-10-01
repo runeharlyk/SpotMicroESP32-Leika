@@ -21,6 +21,8 @@ async function startFakeRobot(port: number, robot: FakeRobot) {
             if (!request) return
             let statusCode = 200
             if (request.robotNameUpdate) {
+                // The firmware holds 32 bytes of name: a longer one fails to decode, and goes unanswered.
+                if (new TextEncoder().encode(request.robotNameUpdate.name).length > 32) return
                 const name = request.robotNameUpdate.name.trim()
                 if (name) robot.robotName = name
                 else statusCode = 400
@@ -102,6 +104,12 @@ describe('robot identification on connect', () => {
 
         expect(await renameConnectedRobot('   ')).toMatch(/rejected/i)
         expect(get(robots).find(robot => robot.id === pico.deviceId)?.name).toBe('Pico two')
+
+        // Too long for the robot to read: refused at once, not after the request times out.
+        expect(await renameConnectedRobot('a'.repeat(33))).toMatch(/32/)
+        expect(await renameConnectedRobot('ø'.repeat(17))).toMatch(/32/)
+        expect(await renameConnectedRobot(` ${'ø'.repeat(16)} `)).toBeNull()
+        expect(pico.robotName).toBe('ø'.repeat(16))
     })
 
     it('closes the previous robot connection when switching robots', async () => {
