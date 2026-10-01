@@ -15,6 +15,9 @@ from src.sim.recording import RecordingWriter
 
 TAGS = ("telemetry_batch", "telemetry_network")
 KINDS = {"telemetry_header", *TAGS}
+# The robot sends a network sample every second while recording: this long without a frame means the link is gone,
+# even when no close ever arrives (a brown-out, or walking out of WiFi range).
+SILENCE_S = 3.0
 
 
 def _host_us() -> int:
@@ -32,7 +35,7 @@ async def record(url: str, writer: RecordingWriter, seconds: float | None) -> in
     first = True
     while deadline is None or time.monotonic() < deadline:
         try:
-            async with websockets.connect(url, open_timeout=10, ping_interval=None, max_size=None) as socket:
+            async with websockets.connect(url, open_timeout=10, close_timeout=1, ping_interval=None, max_size=None) as socket:
                 if not first:
                     writer.gap(_host_us())
                 first = False
@@ -40,7 +43,13 @@ async def record(url: str, writer: RecordingWriter, seconds: float | None) -> in
                     await socket.send(_subscription(name))
                 while deadline is None or time.monotonic() < deadline:
                     remaining = None if deadline is None else max(deadline - time.monotonic(), 0.01)
-                    frame = await asyncio.wait_for(socket.recv(), timeout=remaining)
+                    wait = SILENCE_S if remaining is None else min(remaining, SILENCE_S)
+                    try:
+                        frame = await asyncio.wait_for(socket.recv(), timeout=wait)
+                    except TimeoutError:
+                        if deadline is not None and time.monotonic() >= deadline:
+                            return frames
+                        raise ConnectionError(f"no frame for {SILENCE_S:g} s") from None
                     if message_pb2.Message.FromString(frame).WhichOneof("message") in KINDS:
                         writer.write(frame, _host_us())
                         frames += 1
