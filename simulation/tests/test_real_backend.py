@@ -5,7 +5,7 @@ import time
 import pytest
 
 from fake_robot import FakeRobot
-from src.leika import Mode, Robot, RobotDisconnected, RobotTimeout, UnknownVariant
+from src.leika import Gait, Mode, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
@@ -49,6 +49,7 @@ def test_an_unknown_variant_is_refused():
     try:
         with pytest.raises(UnknownVariant):
             RealBackend(f"127.0.0.1:{fake.port}").connect()
+        _eventually(lambda: fake.connections == 0)  # a failed connect leaves no subscriber on the robot
     finally:
         fake.stop()
 
@@ -100,6 +101,7 @@ def test_leaving_after_an_error_stops_then_rests(fake, monkeypatch):
     monkeypatch.setattr(real, "MODE_TIMEOUT_S", 1.0)
     with pytest.raises(ValueError):
         with Robot(backend=RealBackend(f"127.0.0.1:{fake.port}")) as client:
+            client.stand()  # the robot boots deactivated, and a script does not wake it by walking
             client.set_velocity(0.03, 0, 0)
             raise ValueError("a bug in the script")
     kinds = fake.kinds()
@@ -122,6 +124,28 @@ def test_a_silent_link_counts_as_disconnected(robot, fake):
     with pytest.raises(RobotDisconnected):
         robot.sleep(3.0)
     assert time.monotonic() - started < 1.5
+
+
+def test_a_request_the_robot_refuses_raises(robot, fake):
+    fake.status = 503
+    with pytest.raises(RobotError):
+        robot.calibrate()
+
+
+# The sticks for a velocity depend on the gait: a gait change re-sends them, so the robot keeps the velocity asked for.
+def test_a_gait_change_keeps_the_velocity(robot, fake):
+    robot.stand()
+    robot.set_velocity(0.02, 0, 0)
+    robot.set_gait(Gait.CRAWL)
+    crawl_per_stick = 0.8 * 0.12 * 0.25 / 0.85
+    _eventually(lambda: fake.inputs()[-1][1].left.y == pytest.approx(0.02 / crawl_per_stick, rel=1e-3))
+
+
+# A stall shorter than a batch trips and clears the dead-man between two newest ticks: it must still be counted.
+def test_a_dead_man_stop_between_two_reads_is_counted(robot, fake):
+    assert robot.state().link_drops == 0
+    fake.blip()
+    _eventually(lambda: robot.state().link_drops == 1)
 
 
 def test_calibration_returns_the_robots_result(robot):

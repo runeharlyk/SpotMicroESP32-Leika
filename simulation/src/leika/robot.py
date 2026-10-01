@@ -7,6 +7,10 @@ from . import motions
 from .backends.base import ZERO, Backend, Calibration, RobotError, RobotState, Velocity
 from .constants import Gait, Mode
 
+# The modes a script may walk from. DEACTIVATED is the app's stop button, IDLE and CALIBRATION are the user's: walking
+# would wake the servos the user turned off.
+WALKS_FROM = (Mode.STAND, Mode.REST, Mode.WALK)
+
 
 class Robot:
     def __init__(self, target: str = "simulation", *, realtime: bool = True, backend: Backend | None = None):
@@ -27,7 +31,9 @@ class Robot:
 
     def __exit__(self, exc_type, exc, traceback) -> None:
         try:
-            self.rest()
+            self.stop()
+            if self.state().mode is not Mode.DEACTIVATED:  # a robot the user stopped stays stopped
+                self._backend.set_mode(Mode.REST)
         except RobotError:
             pass  # the link is gone, and the robot's dead-man stop has halted it
         finally:
@@ -57,8 +63,12 @@ class Robot:
 
     def set_velocity(self, vx: float, vy: float, yaw_rate: float) -> Velocity:
         velocity = Velocity(vx, vy, yaw_rate)
-        if velocity != ZERO and self._backend.state().mode is not Mode.WALK:
-            self._backend.set_mode(Mode.WALK)  # STAND reads the same sticks as a shift and tilt of the body
+        if velocity != ZERO:
+            mode = self._backend.state().mode
+            if mode not in WALKS_FROM:
+                raise RobotError(f"the robot is {mode.name}: stand() it before walking")
+            if mode is not Mode.WALK:
+                self._backend.set_mode(Mode.WALK)  # STAND reads the same sticks as a shift and tilt of the body
         return self._backend.set_velocity(velocity)
 
     def stop(self) -> None:

@@ -6,10 +6,10 @@ import time
 import mujoco
 import numpy as np
 
-from ...robot.firmware_gait import CRAWL, GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ..constants import Gait, Mode
-from .base import ZERO, Calibration, RobotState, Velocity
+from .base import ZERO, Calibration, RobotError, RobotState, Velocity
 
 # The model's axes are +X left, +Y rear, +Z up; REP-103 is forward, left, up.
 MODEL_TO_REP = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -73,9 +73,13 @@ class SimBackend:
         with self._lock:
             self._mode = mode
 
+    # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
+    # reports, so a distance move would land far short.
     def set_gait(self, gait: Gait) -> None:
+        if gait is not Gait.TROT:
+            raise RobotError(f"the simulation models the trot only, not {gait.name}")
         with self._lock:
-            set_mode(self._gait, TROT if gait is Gait.TROT else CRAWL)
+            set_mode(self._gait, TROT)
 
     def set_height(self, height: float) -> None:
         """The simulated gait stands at one height."""
@@ -109,6 +113,7 @@ class SimBackend:
                 accel=tuple(float(a) for a in accel),
                 joints=tuple(float(j) for j in joints),
                 link_lost=False,
+                link_drops=0,
             )
 
     def calibrate(self) -> Calibration:

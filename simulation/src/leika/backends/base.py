@@ -26,6 +26,7 @@ class RobotState:
     accel: tuple[float, float, float]  # m/s^2
     joints: tuple[float, ...]  # degrees
     link_lost: bool  # the robot's dead-man stop is in force
+    link_drops: int  # dead-man stops since connecting, each counted once
 
 
 @dataclass(frozen=True)

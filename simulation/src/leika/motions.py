@@ -1,7 +1,7 @@
 """Distance and turn motions, written once against the Robot's velocity, state and clock."""
 import math
 
-from .backends.base import RobotTimeout
+from .backends.base import RobotError, RobotTimeout
 
 SETTLE_S = 0.5  # the robot's 333 ms command filter, settled
 POLL_S = 0.05
@@ -23,10 +23,13 @@ def move(robot, forward: float, sideways: float, speed: float | None) -> None:
     v = speed if speed is not None else (top.vx if sideways == 0 else top.vy) / 2
     if v <= 0:
         raise ValueError(f"a move needs a positive speed, not {v}")
+    drops = robot.state().link_drops
     commanded = robot.set_velocity(v * forward / distance, v * sideways / distance, 0.0)
     robot.sleep(distance / math.hypot(commanded.vx, commanded.vy))
     robot.stop()
     robot.sleep(SETTLE_S)
+    if robot.state().link_drops > drops:
+        raise RobotError("the robot's dead-man stop held it during the move: it walked less than asked")
 
 
 def rotate(robot, degrees: float, rate: float | None) -> None:

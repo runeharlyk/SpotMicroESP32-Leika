@@ -4,7 +4,7 @@ import pytest
 
 from scripted_backend import ScriptedBackend
 from src.leika import Mode, Robot
-from src.leika.backends.base import ZERO, RobotTimeout, Velocity
+from src.leika.backends.base import ZERO, RobotError, RobotTimeout, Velocity
 from src.leika.backends.sim import MODEL_TO_REP, SimBackend
 
 
@@ -20,6 +20,25 @@ def test_a_velocity_starts_the_walk():
     assert backend.modes == [Mode.STAND, Mode.WALK]
     robot.stop()
     assert backend.velocity == ZERO and backend.mode is Mode.WALK
+
+
+# The app's stop button deactivates the robot: a script must not wake it, neither by walking nor on leaving.
+def test_a_stopped_robot_is_not_woken_by_a_script():
+    robot, backend = _robot()
+    backend.mode = Mode.DEACTIVATED
+    with pytest.raises(RobotError):
+        robot.set_velocity(0.05, 0, 0)
+    with robot:
+        pass
+    assert backend.modes == [] and backend.closed
+
+
+# An open-loop move cannot tell how far the robot walked while its dead-man stop held it: it must say so.
+def test_a_move_cut_by_the_dead_man_raises():
+    robot, backend = _robot(drop_at=2.0)
+    with pytest.raises(RobotError):
+        robot.move_forward(0.5)
+    assert backend.velocity == ZERO
 
 
 def test_a_move_runs_half_the_top_speed_for_its_distance():

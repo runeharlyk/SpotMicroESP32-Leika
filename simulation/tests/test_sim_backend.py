@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 
-from src.leika.backends.base import Velocity, ZERO
+from src.leika.backends.base import RobotError, Velocity, ZERO
 from src.leika.backends.sim import MODEL_TO_REP, SimBackend
-from src.leika.constants import Mode
+from src.leika.constants import Gait, Mode
 
 
 @pytest.fixture
@@ -54,6 +54,13 @@ def test_a_velocity_moves_the_robot_only_when_it_walks(sim):
     sim.set_velocity(Velocity(0.04, 0, 0))
     sim.sleep(2.0)
     assert np.linalg.norm(_position(sim) - start) < 0.01
+
+
+# The simulated gait's gains are fitted for trot; in crawl it walks about a fifth of what it reports.
+def test_the_simulation_refuses_a_gait_it_does_not_model(sim):
+    with pytest.raises(RobotError):
+        sim.set_gait(Gait.CRAWL)
+    sim.set_gait(Gait.TROT)
 
 
 def test_a_velocity_beyond_the_gait_is_clamped(sim):

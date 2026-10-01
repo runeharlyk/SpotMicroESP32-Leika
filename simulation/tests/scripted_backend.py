@@ -10,8 +10,9 @@ DT = 0.01
 
 
 class ScriptedBackend:
-    def __init__(self, top=Velocity(0.1, 0.06, 1.2), yaw=0.0, yaw_lag_s=0.0, turn_scale=1.0):
-        self.top, self.turn_scale = top, turn_scale
+    def __init__(self, top=Velocity(0.1, 0.06, 1.2), yaw=0.0, yaw_lag_s=0.0, turn_scale=1.0, drop_at=None):
+        self.top, self.turn_scale, self.drop_at = top, turn_scale, drop_at
+        self.link_drops = 0
         self.t, self.x, self.y, self.yaw = 0.0, 0.0, 0.0, yaw
         self.mode = Mode.REST
         self.velocity = ZERO
@@ -47,7 +48,7 @@ class ScriptedBackend:
 
     def state(self):
         seen = (self._seen[0] + 180) % 360 - 180
-        return RobotState(self.t, self.mode, 0.0, 0.0, seen, (0.0, 0.0, 0.0), (0.0, 0.0, 9.81), (), False)
+        return RobotState(self.t, self.mode, 0.0, 0.0, seen, (0.0, 0.0, 0.0), (0.0, 0.0, 9.81), (), False, self.link_drops)
 
     def calibrate(self):
         return Calibration(True, True, 1.5)
@@ -67,6 +68,8 @@ class ScriptedBackend:
         self.x += (v.vx * math.cos(heading) - v.vy * math.sin(heading)) * dt
         self.y += (v.vx * math.sin(heading) + v.vy * math.cos(heading)) * dt
         self.yaw += math.degrees(v.yaw_rate * self.turn_scale) * dt
+        if self.drop_at is not None and self.t < self.drop_at <= self.t + dt:
+            self.link_drops += 1
         self.t += dt
         self._seen.append(self.yaw)
         self._seen.popleft()

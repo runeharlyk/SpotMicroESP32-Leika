@@ -1,5 +1,6 @@
 """A robot on a local WebSocket: answers the variant and the calibration, reports its mode and gait in telemetry at
-10 Hz, and records what it receives. `obey=False` ignores mode changes; `silent=True` stops all sending."""
+10 Hz, and records what it receives. `obey=False` ignores mode changes; `silent=True` stops all sending. Replies carry
+status 200 as the firmware's do; `status` changes it."""
 import asyncio
 import threading
 import time
@@ -12,6 +13,8 @@ from src.proto import message_pb2 as pb
 class FakeRobot:
     def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True):
         self.variant, self.obey, self.silent = variant, obey, False
+        self.status = 200
+        self.connections = 0
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
         self.received = []  # (monotonic time, Message)
         self._loop = asyncio.new_event_loop()
@@ -25,6 +28,7 @@ class FakeRobot:
 
     async def _handle(self, socket):
         self._socket = socket
+        self.connections += 1
         sender = asyncio.create_task(self._telemetry(socket))
         try:
             async for frame in socket:
@@ -39,25 +43,35 @@ class FakeRobot:
                     await socket.send(self._reply(message.correlation_request).SerializeToString())
         finally:
             sender.cancel()
+            self.connections -= 1
 
     def _reply(self, request):
-        response = pb.CorrelationResponse(correlation_id=request.correlation_id)
+        response = pb.CorrelationResponse(correlation_id=request.correlation_id, status_code=self.status)
         if request.WhichOneof("request") == "features_data_request":
             response.features_data_response.variant = self.variant
         else:
             response.imu_calibrate_data.CopyFrom(pb.IMUCalibrateData(success=True, levelled=True, tilt_deg=4.2))
         return pb.Message(correlation_response=response)
 
+    def _tick(self, link_lost=False):
+        tick = pb.TickSample(t_us=int(time.monotonic() * 1e6), mode=self.mode, gait=self.gait, link_lost=link_lost)
+        tick.imu.rpy.extend([0.1, -0.05, 1.0])
+        tick.imu.gyro.extend([0.0, 0.0, 0.2])
+        tick.imu.accel.extend([0.0, 0.0, 9.81])
+        tick.angles.extend([0.5] * 12)
+        return tick
+
     async def _telemetry(self, socket):
         while True:
             if not self.silent:
-                tick = pb.TickSample(t_us=int(time.monotonic() * 1e6), mode=self.mode, gait=self.gait)
-                tick.imu.rpy.extend([0.1, -0.05, 1.0])
-                tick.imu.gyro.extend([0.0, 0.0, 0.2])
-                tick.imu.accel.extend([0.0, 0.0, 9.81])
-                tick.angles.extend([0.5] * 12)
-                await socket.send(pb.Message(telemetry_batch=pb.TelemetryBatch(ticks=[tick])).SerializeToString())
+                await socket.send(pb.Message(telemetry_batch=pb.TelemetryBatch(ticks=[self._tick()])).SerializeToString())
             await asyncio.sleep(0.1)
+
+    def blip(self):
+        """One batch in which the dead-man stop fires and clears again, as after a short WiFi stall."""
+        batch = pb.TelemetryBatch(ticks=[self._tick(link_lost=True), self._tick()])
+        frame = pb.Message(telemetry_batch=batch).SerializeToString()
+        asyncio.run_coroutine_threadsafe(self._socket.send(frame), self._loop).result(5)
 
     def kinds(self):
         return [message.WhichOneof("message") for _, message in self.received]

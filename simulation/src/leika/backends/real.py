@@ -13,7 +13,7 @@ import websockets
 from ...proto import message_pb2 as pb
 from .. import speed_model
 from ..constants import Gait, Mode
-from .base import Calibration, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
+from .base import ZERO, Calibration, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
 
 KEEPALIVE_S = 0.1
 MODE_TIMEOUT_S = 3.0
@@ -39,17 +39,25 @@ class RealBackend:
         self._replies: dict[int, asyncio.Future] = {}
         self._next_id = 1
         self._sticks = NO_STICKS
+        self._requested = ZERO
+        self._lost = False
+        self._drops = 0
         self._height = 0.7
         self._gait = Gait.TROT
         self._variant = None
 
     # --- connection --------------------------------------------------------------------------------------------
+    # A connect that fails partway closes what it opened: the robot would otherwise keep streaming to a dead subscriber.
     def connect(self) -> None:
         self._thread.start()
-        self._run(self._open(), REQUEST_TIMEOUT_S)
-        reply = self._request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest()))
-        self._variant = speed_model.known_variant(reply.features_data_response.variant)
-        self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot")
+        try:
+            self._run(self._open(), REQUEST_TIMEOUT_S)
+            reply = self._request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest()))
+            self._variant = speed_model.known_variant(reply.features_data_response.variant)
+            self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot")
+        except BaseException:
+            self.close()
+            raise
 
     # Closes the socket even after the link failed, so a silent robot's connection is not left open.
     def close(self) -> None:
@@ -79,6 +87,10 @@ class RealBackend:
                 kind = message.WhichOneof("message")
                 if kind == "telemetry_batch" and message.telemetry_batch.ticks:
                     with self._changed:
+                        # Every tick, not only the newest: a short stall trips and clears the dead-man within a batch.
+                        for tick in message.telemetry_batch.ticks:
+                            self._drops += tick.link_lost and not self._lost
+                            self._lost = tick.link_lost
                         self._tick = message.telemetry_batch.ticks[-1]
                         self._changed.notify_all()
                 elif kind == "correlation_response":
@@ -138,7 +150,7 @@ class RealBackend:
 
     def _request(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
         reply = self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
-        if reply.status_code:
+        if reply.status_code >= 400:  # the firmware answers 200 (or 202 while it works) on success
             raise RobotError(f"the robot refused the request: {reply.status_code} {reply.error_message}")
         return reply
 
@@ -162,12 +174,14 @@ class RealBackend:
         self._run(self._send(pb.Message(walk_gait=pb.WalkGaitData(gait=gait.value))), REQUEST_TIMEOUT_S)
         self._wait(lambda: self._tick.gait == gait.value, MODE_TIMEOUT_S, f"the robot did not report {gait.name}")
         self._gait = gait
+        self.set_velocity(self._requested)  # the same velocity takes other sticks in this gait
 
     def set_height(self, height: float) -> None:
         self._height = height
         self._run(self._send_input(), REQUEST_TIMEOUT_S)
 
     def set_velocity(self, velocity: Velocity) -> Velocity:
+        self._requested = velocity
         self._sticks = speed_model.sticks_for(self._variant, self._gait, velocity)
         self._run(self._send_input(), REQUEST_TIMEOUT_S)
         return speed_model.velocity_of(self._variant, self._gait, self._sticks)
@@ -179,7 +193,7 @@ class RealBackend:
         with self._changed:
             if self._error is not None:
                 raise self._error
-            tick = self._tick
+            tick, drops = self._tick, self._drops
         rpy = list(tick.imu.rpy) or [0.0, 0.0, 0.0]
         return RobotState(
             t=tick.t_us / 1e6,
@@ -191,6 +205,7 @@ class RealBackend:
             accel=tuple(tick.imu.accel) or (0.0, 0.0, 0.0),
             joints=tuple(math.degrees(a) for a in tick.angles),
             link_lost=tick.link_lost,
+            link_drops=drops,
         )
 
     def calibrate(self) -> Calibration:
