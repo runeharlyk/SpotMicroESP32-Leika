@@ -36,10 +36,10 @@ class MotionState {
     }
 
   public:
-    // The kinematics turn omega about forward x, as REP-103 roll does, and psi about the lateral axis pointing
-    // right, the opposite of REP-103 pitch's y pointing left.
+    // Measured on the Pico: a positive omega lowers REP-103 roll and a positive psi lowers REP-103 pitch, so the
+    // offsets are the IMU's angles with their signs reversed.
     void updateImuOffsets(const ImuSample& imu) {
-        omega_offset = RAD_TO_DEG_F(imu.rpy[0]);
+        omega_offset = -RAD_TO_DEG_F(imu.rpy[0]);
         psi_offset = -RAD_TO_DEG_F(imu.rpy[1]);
     }
     virtual ~MotionState() {}

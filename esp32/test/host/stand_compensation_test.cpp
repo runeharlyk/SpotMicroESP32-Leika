@@ -35,11 +35,12 @@ static body_state_t settleAt(float roll, float pitch) {
     return body;
 }
 
-// Kinematics: omega turns about forward x, as REP-103 roll does; psi turns about the lateral axis, which points to
-// the robot's right, so a positive psi lifts the nose and REP-103 pitch (nose down) is minus psi.
+// Measured on the Pico in STAND (2026-10-01): a positive omega lowered the IMU's REP-103 roll (left side down) and a
+// positive psi lowered its pitch (nose up). So both offsets are the measured angle with its sign reversed; with roll
+// fed in unreversed the stand drove itself to its 20 degree roll limit.
 static void aRobotTiltedLeftSideUpRollsItsBodyBack() {
     const body_state_t body = settleAt(5 * DEG, 0);
-    CHECK(body.omega < -1);
+    CHECK(body.omega > 1);
     CHECK(body.psi > -0.1f && body.psi < 0.1f);
 }
 
