@@ -1,5 +1,6 @@
 #pragma once
 
+#include <joint_model.h>
 #include <platform_shared/api.pb.h>
 #include <utils/finite.h>
 #include <cstdint>
@@ -14,13 +15,13 @@ inline uint16_t boundedPwm(float pwm) {
 }
 
 /**
- * The PWM for a joint angle (degrees) through the servo's calibration, clamped as a float before it
- * becomes an integer: converting a negative or NaN float to unsigned is undefined, and in practice
- * wraps to the far end stop. A non-finite angle holds the calibrated centre.
+ * The PWM for a joint's angle (degrees, servo space) through the variant's joint model and the robot's centre PWM,
+ * clamped as a float before it becomes an integer: converting a negative or NaN float to unsigned is undefined, and
+ * in practice wraps to the far end stop. A non-finite angle holds the joint's centre.
  */
-inline uint16_t servoPwm(const api_Servo &servo, float angle) {
-    float calibrated = servo.direction * finiteOrZero(angle) + servo.center_angle;
-    return boundedPwm(calibrated * servo.conversion + servo.center_pwm);
+inline uint16_t servoPwm(const JointModel &model, size_t joint, float centerPwm, float angle) {
+    const float servoAngle = model.direction[joint] * finiteOrZero(angle) + model.center_angle[joint];
+    return boundedPwm(servoAngle * model.pwm_per_degree + centerPwm);
 }
 
 /** Settings the controller can drive safely: twelve servos, each with a direction of +-1 and a finite, sane calibration. */

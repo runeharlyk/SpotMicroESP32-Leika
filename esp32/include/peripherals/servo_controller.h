@@ -106,7 +106,7 @@ class ServoController : public StatefulService<ServoSettings> {
         read([&](const ServoSettings &settings) {
             for (int i = 0; i < SERVO_COUNT; i++) {
                 angles[i] = lerp(angles[i], target_angles[i], 0.1);
-                _outputPwm[i] = servoPwm(settings.servos[i], angles[i]);
+                _outputPwm[i] = servoPwm(VARIANT_JOINT_MODEL, i, settings.servos[i].center_pwm, angles[i]);
             }
         });
         return _pca.setMultiplePWM(_outputPwm, SERVO_COUNT) == 0;
