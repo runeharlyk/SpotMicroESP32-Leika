@@ -58,6 +58,11 @@ bool WiFiClass::init() {
 
     esp_wifi_set_storage(_persistent ? WIFI_STORAGE_FLASH : WIFI_STORAGE_RAM);
 
+    // Modem sleep holds frames for the robot until its next beacon wake, which delays steering by up to
+    // a few hundred milliseconds and eats into the controller's 500 ms dead-man timeout.
+    ret = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (ret != ESP_OK) ESP_LOGW(TAG, "Power save stays on: %s", esp_err_to_name(ret));
+
     _initialized = true;
     return true;
 }
