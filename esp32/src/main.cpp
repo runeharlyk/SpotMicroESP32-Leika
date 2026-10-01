@@ -363,7 +363,6 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
 
     for (;;) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
-        peripherals.update();
         motionService.update(&peripherals);
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
