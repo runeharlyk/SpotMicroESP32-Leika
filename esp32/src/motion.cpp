@@ -81,7 +81,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     if (!state) return false;
     float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
-    state->updateImuOffsets(imu.rpy[1], imu.rpy[0]);
+    state->updateImuOffsets(imu);
     state->step(body_state, dt);
     kinematics.calculate_inverse_kinematics(body_state, new_angles);
     return update_angles(new_angles, angles);

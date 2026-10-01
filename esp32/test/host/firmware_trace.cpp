@@ -63,7 +63,9 @@ struct Motion {
     }
 
     void update(float imu_x, float imu_y) {
-        state->updateImuOffsets(imu_y, imu_x);
+        ImuSample imu;
+        imu.rpy = {imu_x, imu_y, 0};
+        state->updateImuOffsets(imu);
         state->step(body, DT);
         kinematics.calculate_inverse_kinematics(body, new_angles);
         for (int i = 0; i < 12; i++) {

@@ -7,7 +7,7 @@ export interface SimControls {
     input: ControllerData
     mode: ModesEnum
     gait: WalkGaits
-    imu: [angleX: number, angleY: number]
+    imu: [roll: number, pitch: number]
 }
 
 export interface SimController {

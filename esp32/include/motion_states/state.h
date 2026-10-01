@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <kinematics.h>
 #include <message_types.h>
+#include <peripherals/imu/imu_math.h>
 #include <utils/math_utils.h>
 #include <cstring>
 
@@ -35,9 +36,11 @@ class MotionState {
     }
 
   public:
-    void updateImuOffsets(const float new_omega, const float new_psi) {
-        omega_offset = RAD_TO_DEG_F(new_omega);
-        psi_offset = RAD_TO_DEG_F(new_psi);
+    // The kinematics turn omega about forward x, as REP-103 roll does, and psi about the lateral axis pointing
+    // right, the opposite of REP-103 pitch's y pointing left.
+    void updateImuOffsets(const ImuSample& imu) {
+        omega_offset = RAD_TO_DEG_F(imu.rpy[0]);
+        psi_offset = -RAD_TO_DEG_F(imu.rpy[1]);
     }
     virtual ~MotionState() {}
 

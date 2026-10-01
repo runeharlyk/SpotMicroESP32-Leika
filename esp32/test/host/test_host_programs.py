@@ -36,6 +36,7 @@ PROGRAMS = {
     "imu_drivers_test.cpp": [],
     "imu_test.cpp": [*NANOPB, API_PROTO],
     "spsc_ring_test.cpp": [],
+    "stand_compensation_test.cpp": [],
     "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
 }
 

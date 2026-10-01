@@ -58,10 +58,13 @@ export class FirmwareMotion {
         this.state?.handleCommand(cmd)
     }
 
-    /** One control tick. `imu` is [angleX, angleY] in radians, as Peripherals reports them. */
-    update(dt: number, [angleX, angleY]: [number, number]): number[] {
+    /**
+     * One control tick. `imu` is [roll, pitch] in radians, REP-103 (positive roll lifts the left side, positive
+     * pitch lowers the nose). The kinematics' psi turns the other way from pitch, as in state.h.
+     */
+    update(dt: number, [roll, pitch]: [number, number]): number[] {
         if (this.state) {
-            this.state.updateImuOffsets(angleY, angleX)
+            this.state.updateImuOffsets(roll, -pitch)
             this.state.step(this.body, dt)
             inverseKinematics(this.cfg, this.body).forEach((angle, i) => {
                 const directed = angle * DIR[i]
