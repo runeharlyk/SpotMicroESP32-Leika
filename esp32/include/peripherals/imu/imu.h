@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <peripherals/imu/imu_driver.h>
@@ -23,6 +24,8 @@ class Imu {
     static constexpr float FAST_START_GAIN = 2.5f;
     static constexpr float STILL_GYRO_STD = 0.02f;      // rad/s; well above the chips' noise, below any handling
     static constexpr int BIAS_SAMPLES = 200;
+    static constexpr float MAX_DT_S = 0.05f;           // a longer gap is a stall, not motion to integrate
+    static constexpr int MAG_STALE_PERIODS = 3;         // a compass silent this long is treated as gone
 
     Imu(ImuDriver *driver, MagDriver *mag) : _driver(driver), _mag(mag) {}
 
@@ -50,6 +53,8 @@ class Imu {
      */
     bool estimateGyroBias(const std::function<int64_t()> &readClockAndWait) {
         if (!_ready) return false;
+        // The orientation stays; only the second spent here must not count as one integration step.
+        _lastUs = 0;
         double sum[3] = {0, 0, 0}, sumSquares[3] = {0, 0, 0};
         for (int i = 0; i < BIAS_SAMPLES; i++) {
             readClockAndWait();
@@ -69,8 +74,6 @@ class Imu {
             bias[axis] = static_cast<float>(mean);
         }
         _gyroBias = bias;
-        _startUs = readClockAndWait();
-        _filter.reset();
         return true;
     }
 
@@ -84,19 +87,20 @@ class Imu {
         sample.temperature = raw.temperature;
         sample.valid = ImuValid::ACCEL | ImuValid::GYRO;
         takeMag(nowUs, raw);
-        if (_magValid) {
+        const bool magFresh = _magValid && nowUs - _magUs <= MAG_STALE_PERIODS * (1000000 / magRateHz());
+        if (magFresh) {
             sample.mag = _magBody;
             sample.mag_t_us = _magUs;
             sample.valid |= ImuValid::MAG;
         }
 
-        const float dt = _lastUs ? (nowUs - _lastUs) * 1e-6f : 0;
+        const float dt = _lastUs ? std::min((nowUs - _lastUs) * 1e-6f, MAX_DT_S) : 0;
         _lastUs = nowUs;
         if (raw.hasOrientation) {
             sample.quat = quatMul(raw.quat, quatConj(quatFromMatrix(_config.mounting)));
         } else {
             _filter.setGain(nowUs - _startUs < FAST_START_US ? FAST_START_GAIN : _config.fusionGain);
-            if (_magValid) {
+            if (magFresh) {
                 _filter.update(sample.gyro, sample.accel, sample.mag, dt);
             } else {
                 _filter.updateImu(sample.gyro, sample.accel, dt);

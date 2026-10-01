@@ -40,6 +40,7 @@ class ScriptedMag final : public MagDriver {
     bool begin() override { return present; }
     bool read(Vec3 &microtesla) override {
         reads++;
+        if (!present) return false;
         microtesla = field;
         return true;
     }
@@ -177,6 +178,41 @@ static void onlySensibleImuSettingsAreAccepted() {
     CHECK(!validImuSettings(settings));
 }
 
+// Calibrating from the app on a tilted robot: the first sample after it must not integrate the second spent
+// calibrating as one step.
+static void aRecalibrationDoesNotSpinTheOrientation() {
+    ScriptedImu driver;
+    RawImu raw = still();
+    raw.accel = {0, 4.905f, 8.4957f};  // rolled 30 degrees
+    driver.script = {raw};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    ImuSample sample;
+    int64_t clock = 0;
+    for (; clock <= 3000000; clock += 5000) imu.update(clock, sample);
+    CHECK(near(sample.rpy[0], 0.5236f, 0.02f));
+    CHECK(imu.estimateGyroBias([&] { return clock += 5000; }));
+    CHECK(imu.update(clock += 5000, sample));
+    CHECK(near(sample.rpy[0], 0.5236f, 0.035f));
+}
+
+// A compass that stops answering must not hold the heading where it was: the fusion drops to six axes.
+static void aCompassThatStopsAnsweringFallsBackToSixAxis() {
+    ScriptedImu driver;
+    driver.script = {still()};
+    ScriptedMag mag;
+    Imu imu(&driver, &mag);
+    CHECK(imu.begin(0));
+    ImuSample sample;
+    int64_t clock = 0;
+    for (; clock <= 500000; clock += 5000) imu.update(clock, sample);
+    CHECK(sample.valid & ImuValid::MAG);
+    mag.present = false;  // reads now fail
+    for (; clock <= 1000000; clock += 5000) imu.update(clock, sample);
+    CHECK(!(sample.valid & ImuValid::MAG));
+    CHECK(sample.valid & ImuValid::YAW_DRIFTS);
+}
+
 int main() {
     aStillRobotsGyroBiasIsRemoved();
     aMovingRobotKeepsThePreviousBias();
@@ -187,6 +223,8 @@ int main() {
     aChipsOwnFusionIsTurnedIntoTheBodyFrame();
     settingsWithoutImuUseTheDefaults();
     onlySensibleImuSettingsAreAccepted();
+    aRecalibrationDoesNotSpinTheOrientation();
+    aCompassThatStopsAnsweringFallsBackToSixAxis();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }
