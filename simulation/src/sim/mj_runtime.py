@@ -43,6 +43,7 @@ class SpotPicoSim:
         self.foot_geom_ids = np.array([nid(mujoco.mjtObj.mjOBJ_GEOM, f"foot_{lg}") for lg in LEG_NAMES])
         self.ground_geom_id = nid(mujoco.mjtObj.mjOBJ_GEOM, "floor")
         self._gyro_slice = self._sensor_slice("imu_gyro")
+        self._accel_slice = self._sensor_slice("imu_acc")
 
     @property
     def stand_pose(self) -> np.ndarray:
@@ -78,6 +79,9 @@ class SpotPicoSim:
 
     def gyro(self) -> np.ndarray:
         return self.data.sensordata[self._gyro_slice].copy()
+
+    def accel(self) -> np.ndarray:
+        return self.data.sensordata[self._accel_slice].copy()
 
     def _sensor_slice(self, name):
         sid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, name)
