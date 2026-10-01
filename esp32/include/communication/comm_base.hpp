@@ -40,11 +40,12 @@ class CommAdapterBase {
         decoder_.on<T>(handler);
     }
 
+    /** Whether every addressed client got the message. */
     template <typename T>
-    void emit(const T& data, int clientId = -1) {
+    bool emit(const T& data, int clientId = -1) {
         constexpr pb_size_t tag = MessageTraits<T>::tag;
 
-        if (clientId < 0 && !hasSubscribers(tag)) return;
+        if (clientId < 0 && !hasSubscribers(tag)) return true;
 
         // Tasks other than the socket's emit too (telemetry, deferred replies); msg_ and the
         // encode buffer are shared.
@@ -61,27 +62,32 @@ class CommAdapterBase {
             if (!buffer) {
                 ESP_LOGE("ProtoComm", "No memory to encode message (tag %d, %u bytes)", (int)tag, out_size);
                 xSemaphoreGive(encode_mutex_);
-                return;
+                return false;
             }
         }
 
+        bool sent = false;
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
         } else if (clientId >= 0) {
-            send(buffer, stream.bytes_written, clientId);
+            sent = send(buffer, stream.bytes_written, clientId);
         } else {
-            sendToSubscribers(tag, buffer, stream.bytes_written);
+            sent = sendToSubscribers(tag, buffer, stream.bytes_written);
         }
 
         if (pb_heap_enc_buf != buffer) {
             free(buffer);
         }
         xSemaphoreGive(encode_mutex_);
+        return sent;
     }
 
+    /** Called on the socket's task after a client subscribes to a tag. */
+    void onSubscribed(std::function<void(int32_t tag, int cid)> listener) { subscribedListener_ = std::move(listener); }
+
   protected:
-    virtual void send(const uint8_t* data, size_t len, int cid) = 0;
+    virtual bool send(const uint8_t* data, size_t len, int cid) = 0;
 
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -89,6 +95,7 @@ class CommAdapterBase {
         if (std::find(clients.begin(), clients.end(), cid) == clients.end()) clients.push_back(cid);
         xSemaphoreGive(mutex_);
         ESP_LOGI("ProtoComm", "Client %d subscribed to tag %d", cid, (int)tag);
+        if (subscribedListener_) subscribedListener_(tag, cid);
     }
 
     void unsubscribe(int32_t tag, int cid = 0) {
@@ -128,17 +135,20 @@ class CommAdapterBase {
     SemaphoreHandle_t encode_mutex_;
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
+    std::function<void(int32_t, int)> subscribedListener_;
     socket_message_Message msg_ = socket_message_Message_init_zero;
     uint8_t pb_heap_enc_buf[PROTO_BUFFER_SIZE];
 
   private:
     // Sends to a copy of the list, so a slow client never holds up subscribing or closing on the socket task.
-    void sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
+    bool sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         const std::list<int> clients = client_subscriptions_[tag];
         xSemaphoreGive(mutex_);
+        bool sent = true;
         for (int cid : clients) {
-            send(data, len, cid);
+            sent = send(data, len, cid) && sent;
         }
+        return sent;
     }
 };

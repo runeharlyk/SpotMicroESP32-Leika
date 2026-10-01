@@ -30,9 +30,14 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
     if (mail.mode) setMode(*mail.mode);
     if (mail.input) {
         command = *mail.input;
+        commandRxUs = mail.inputAtUs;
+        linkLostNow = false;
         if (state) state->handleCommand(command);
     }
-    if (mail.linkLost) stopLocomotion();
+    if (mail.linkLost) {
+        linkLostNow = true;
+        stopLocomotion();
+    }
 }
 
 void MotionService::stopLocomotion() {
@@ -85,7 +90,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
 bool MotionService::update_angles(float new_angles[12], float angles[12]) {
     bool updated = false;
     for (int i = 0; i < 12; i++) {
-        const float new_angle = new_angles[i] * dir[i];
+        const float new_angle = new_angles[i] * JOINT_DIRECTION[i];
         if (!isEqual(new_angle, angles[i], 0.1)) {
             angles[i] = new_angle;
             updated = true;

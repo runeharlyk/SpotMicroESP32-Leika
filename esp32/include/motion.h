@@ -48,6 +48,15 @@ class MotionService {
     socket_message_ModesEnum mode() const { return currentMode.load(); }
     socket_message_WalkGaits gait() const { return currentGait.load(); }
 
+    /** The sign applied to each joint's angle on its way to the servo. */
+    static constexpr float JOINT_DIRECTION[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
+
+    const CommandMsg& currentCommand() const { return command; }
+    /** When the command in use arrived, in esp_timer microseconds; 0 before the first. */
+    int64_t commandReceivedAt() const { return commandRxUs; }
+    /** Whether the dead-man stop is in force: the link fell silent and no input came since. */
+    bool linkLost() const { return linkLostNow; }
+
   private:
     void applyMail(const MotionInbox::Mail& mail);
     // Every mode change, from the app or a gesture, goes through here.
@@ -61,6 +70,8 @@ class MotionService {
     bool modeApplied = false;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
+    int64_t commandRxUs = 0;
+    bool linkLostNow = false;
 
     friend class MotionState;
 
@@ -74,8 +85,6 @@ class MotionService {
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-    float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
     int64_t lastUpdate = esp_timer_get_time();
 };

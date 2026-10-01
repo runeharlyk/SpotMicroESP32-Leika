@@ -20,14 +20,16 @@ class MotionInbox {
         std::optional<socket_message_ModesEnum> mode;
         std::optional<socket_message_WalkGaits> gait;
         bool linkLost = false;
+        int64_t inputAtUs = 0; // when the input arrived, in esp_timer microseconds; 0 without input
     };
 
-    void postInput(const socket_message_ControllerData &data, uint32_t nowMs) {
+    void postInput(const socket_message_ControllerData &data, uint32_t nowMs, int64_t nowUs) {
         CommandMsg command;
         command.fromProto(data);
         std::lock_guard<std::mutex> lock(_mutex);
         _input = command;
         _lastInputAt = nowMs;
+        _inputAtUs = nowUs;
         _steering = command.steering();
     }
 
@@ -45,6 +47,7 @@ class MotionInbox {
     Mail take(uint32_t nowMs) {
         std::lock_guard<std::mutex> lock(_mutex);
         Mail mail {_input, _mode, _gait};
+        mail.inputAtUs = _input ? _inputAtUs : 0;
         _input.reset();
         _mode.reset();
         _gait.reset();
@@ -61,5 +64,6 @@ class MotionInbox {
     std::optional<socket_message_ModesEnum> _mode;
     std::optional<socket_message_WalkGaits> _gait;
     uint32_t _lastInputAt = 0;
+    int64_t _inputAtUs = 0;
     bool _steering = false;
 };

@@ -22,6 +22,10 @@
 #include <mdns_service.h>
 #include <robot_service.h>
 #include <system_service.h>
+#include <telemetry/telemetry.h>
+#include <settings/placeholders.h>
+#include <settings/imu_settings.h>
+#include <algorithm>
 
 #if CONFIG_IDF_TARGET_ESP32P4
 #include <esp_hosted.h>
@@ -47,6 +51,7 @@ MDNSService mdnsService;
 WiFiService wifiService;
 APService apService;
 RobotService robotService;
+Telemetry telemetry;
 
 // Replies with the settings a service holds.
 template <class Handler, class Proto>
@@ -118,9 +123,32 @@ void setupEventSocket() {
         [](std::function<void()> work) { return server.queueWork(std::move(work)); },
         [](int clientId, uint32_t ms) { return WebServer::waitWritable(clientId, ms); });
     wsSocket.onClose([](int clientId) { FileSystemWS::fsHandler.dropClient(clientId); });
+    wsSocket.onSubscribed([](int32_t tag, int clientId) {
+        if (tag != socket_message_Message_telemetry_batch_tag) return;
+        telemetry.setRecording(true);
+        static socket_message_TelemetryHeader header;
+        header = socket_message_TelemetryHeader_init_zero;
+        header.firmware_version = const_cast<char *>(APP_VERSION);
+        header.build_target = const_cast<char *>(BUILD_TARGET);
+        header.variant = const_cast<char *>(KINEMATICS_VARIANT_STR);
+        header.device_id = const_cast<char *>(deviceId().c_str());
+        header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
+        header.imu_rate_hz = peripherals.imuRateHz();
+        header.mag_rate_hz = peripherals.magRateHz();
+        header.control_rate_hz = 100;
+        header.has_servo_settings = true;
+        header.servo_settings = servoController.snapshot();
+        header.has_imu_settings = true;
+        header.imu_settings = effectiveImuSettings(peripherals.snapshot());
+        header.batch_ticks = Telemetry::BATCH_TICKS;
+        std::copy(std::begin(MotionService::JOINT_DIRECTION), std::end(MotionService::JOINT_DIRECTION),
+                  header.joint_direction);
+        wsSocket.emit(header, clientId);
+    });
 
     wsSocket.on<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
-        motionService.inbox.postInput(data, esp_timer_get_time() / 1000);
+        const int64_t now = esp_timer_get_time();
+        motionService.inbox.postInput(data, now / 1000, now);
     });
 
     wsSocket.on<socket_message_ModeData>(
@@ -387,6 +415,38 @@ void sensorLoopEntry(void *) {
     }
 }
 
+// One control tick as the simulation needs it; angles leave the robot in radians.
+static void recordTick(uint32_t seq, int64_t start, int64_t previousStart, int64_t computed, int64_t written,
+                       const ImuSample &imu, ServoWrite write) {
+    static socket_message_TickSample tick;  // about 340 bytes: kept off the control task's stack
+    tick = socket_message_TickSample_init_zero;
+    tick.seq = seq;
+    tick.t_us = start;
+    tick.period_us = previousStart ? start - previousStart : 0;
+    tick.compute_us = computed - start;
+    tick.has_imu = true;
+    imuToProto(imu, tick.imu);
+    const float *targets = motionService.getAngles();
+    const float *angles = servoController.outputAngles();
+    const uint16_t *pwm = servoController.outputPwm();
+    for (int i = 0; i < 12; i++) {
+        tick.angles[i] = DEG_TO_RAD_F(angles[i]);
+        tick.targets[i] = DEG_TO_RAD_F(targets[i]);
+        tick.pwm[i] = pwm[i];
+    }
+    tick.servo_write_us = write.attempted ? written - computed : 0;
+    tick.servo_ok = write.ok;
+    const CommandMsg &command = motionService.currentCommand();
+    const float values[7] = {command.lx, command.ly, command.rx, command.ry, command.h, command.s, command.s1};
+    std::copy(values, values + 7, tick.command);
+    tick.command_rx_us = motionService.commandReceivedAt();
+    tick.command_age_us = tick.command_rx_us ? start - static_cast<int64_t>(tick.command_rx_us) : 0;
+    tick.mode = motionService.mode();
+    tick.gait = motionService.gait();
+    tick.link_lost = motionService.linkLost();
+    telemetry.record(tick);
+}
+
 void IRAM_ATTR SpotControlLoopEntry(void *) {
     ESP_LOGI("main", "Control task starting");
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -400,15 +460,24 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     ledService.begin();
 #endif
 
+    uint32_t tickSeq = 0;
+    int64_t lastTickStart = 0;
     for (;;) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
-        motionService.update(peripherals.imuSample(), peripherals.takeGesture());
+        const int64_t tickStart = esp_timer_get_time();
+        const ImuSample imu = peripherals.imuSample();
+        motionService.update(imu, peripherals.takeGesture());
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
         }
         servoController.setAngles(motionService.getAngles());
-        servoController.update();
+        const int64_t computed = esp_timer_get_time();
+        const ServoWrite write = servoController.update();
+        const int64_t written = esp_timer_get_time();
+        if (telemetry.recording()) recordTick(tickSeq, tickStart, lastTickStart, computed, written, imu, write);
+        tickSeq++;
+        lastTickStart = tickStart;
 #if FT_ENABLED(USE_WS2812)
         ledService.loop();
 #endif
@@ -497,6 +566,24 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
                 wsSocket.emit(rssi);
+            }
+        });
+
+        // Recording follows the subscribers, so a recorder that vanished without unsubscribing stops it too.
+        telemetry.setRecording(wsSocket.hasSubscribers(socket_message_Message_telemetry_batch_tag));
+        static socket_message_TelemetryBatch batch;
+        static uint32_t batchesSent = 0, batchesFailed = 0;
+        while (telemetry.takeBatch(batch)) (wsSocket.emit(batch) ? batchesSent : batchesFailed)++;
+        EXECUTE_EVERY_N_MS(1000, {
+            if (telemetry.recording()) {
+                socket_message_TelemetryNetwork network = socket_message_TelemetryNetwork_init_zero;
+                network.t_us = esp_timer_get_time();
+                network.rssi = WiFi.RSSI();
+                network.channel = WiFi.channel();
+                network.batches_sent = batchesSent;
+                network.batches_failed = batchesFailed;
+                network.ticks_dropped = telemetry.droppedTicks();
+                wsSocket.emit(network);
             }
         });
 

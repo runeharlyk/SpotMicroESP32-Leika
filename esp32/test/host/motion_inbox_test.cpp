@@ -25,7 +25,7 @@ static socket_message_ControllerData sticks(float lx, float ly, float height = 0
 
 static void inputIsTakenOnce() {
     MotionInbox inbox;
-    inbox.postInput(sticks(0.2f, 0.4f), 0);
+    inbox.postInput(sticks(0.2f, 0.4f), 0, 0);
     MotionInbox::Mail first = inbox.take(10);
     CHECK(first.input && first.input->lx == 0.2f && first.input->ly == 0.4f);
     CHECK(!inbox.take(20).input);
@@ -33,8 +33,8 @@ static void inputIsTakenOnce() {
 
 static void theNewestInputWins() {
     MotionInbox inbox;
-    inbox.postInput(sticks(0.2f, 0), 0);
-    inbox.postInput(sticks(0.7f, 0), 5);
+    inbox.postInput(sticks(0.2f, 0), 0, 0);
+    inbox.postInput(sticks(0.7f, 0), 5, 5000);
     CHECK(inbox.take(10).input->lx == 0.7f);
 }
 
@@ -45,7 +45,7 @@ static void inputIsBoundedAndNonFiniteBecomesNeutral() {
     data.right.y = INFINITY;
     data.speed = -1.0f;
     data.s1 = NAN;
-    inbox.postInput(data, 0);
+    inbox.postInput(data, 0, 0);
     CommandMsg command = *inbox.take(1).input;
     CHECK(command.lx == 0.0f);
     CHECK(command.ly == 1.0f);
@@ -58,7 +58,7 @@ static void inputIsBoundedAndNonFiniteBecomesNeutral() {
 
 static void aSilentControllerStopsTheRobotOnce() {
     MotionInbox inbox;
-    inbox.postInput(sticks(0, 1.0f), 1000);
+    inbox.postInput(sticks(0, 1.0f), 1000, 1000000);
     inbox.take(1000);
     CHECK(!inbox.take(1000 + MotionInbox::LINK_TIMEOUT_MS).linkLost);
     CHECK(inbox.take(1001 + MotionInbox::LINK_TIMEOUT_MS).linkLost);
@@ -67,17 +67,17 @@ static void aSilentControllerStopsTheRobotOnce() {
 
 static void aControllerAtRestNeedsNoKeepAlive() {
     MotionInbox inbox;
-    inbox.postInput(sticks(0, 0), 0);
+    inbox.postInput(sticks(0, 0), 0, 0);
     inbox.take(0);
     CHECK(!inbox.take(10000).linkLost);
 }
 
 static void newInputRearmsTheStop() {
     MotionInbox inbox;
-    inbox.postInput(sticks(0, 1.0f), 0);
+    inbox.postInput(sticks(0, 1.0f), 0, 0);
     inbox.take(0);
     CHECK(inbox.take(600).linkLost);
-    inbox.postInput(sticks(0.5f, 0), 700);
+    inbox.postInput(sticks(0.5f, 0), 700, 700000);
     CHECK(inbox.take(710).input);
     CHECK(inbox.take(1300).linkLost);
 }
@@ -93,6 +93,16 @@ static void modeAndGaitAreTakenOnce() {
     CHECK(!next.mode && !next.gait);
 }
 
+static void anInputKeepsWhenItArrived() {
+    MotionInbox inbox;
+    socket_message_ControllerData data = socket_message_ControllerData_init_zero;
+    inbox.postInput(data, 1000, 1000123);
+    const MotionInbox::Mail mail = inbox.take(1010);
+    CHECK(mail.input.has_value());
+    CHECK(mail.inputAtUs == 1000123);
+    CHECK(inbox.take(1020).inputAtUs == 0);
+}
+
 int main() {
     inputIsTakenOnce();
     theNewestInputWins();
@@ -101,6 +111,7 @@ int main() {
     aControllerAtRestNeedsNoKeepAlive();
     newInputRearmsTheStop();
     modeAndGaitAreTakenOnce();
+    anInputKeepsWhenItArrived();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

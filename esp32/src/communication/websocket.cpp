@@ -56,9 +56,10 @@ esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
     return ESP_OK;
 }
 
-void Websocket::send(const uint8_t* data, size_t len, int cid) {
+bool Websocket::send(const uint8_t* data, size_t len, int cid) {
     esp_err_t err = server_.wsSend(cid, data, len);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
     }
+    return err == ESP_OK;
 }

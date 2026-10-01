@@ -43,6 +43,11 @@ inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoS
     return StateUpdateResult::CHANGED;
 }
 
+struct ServoWrite {
+    bool attempted = false;
+    bool ok = false;
+};
+
 class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
@@ -96,21 +101,24 @@ class ServoController : public StatefulService<ServoSettings> {
         }
     }
 
-    void calculatePWM() {
-        uint16_t pwms[SERVO_COUNT];
+    bool calculatePWM() {
         // A save from the app rewrites the calibration on the socket's task: each tick uses one whole copy.
         read([&](const ServoSettings &settings) {
             for (int i = 0; i < SERVO_COUNT; i++) {
                 angles[i] = lerp(angles[i], target_angles[i], 0.1);
-                pwms[i] = servoPwm(settings.servos[i], angles[i]);
+                _outputPwm[i] = servoPwm(settings.servos[i], angles[i]);
             }
         });
-        _pca.setMultiplePWM(pwms, SERVO_COUNT);
+        return _pca.setMultiplePWM(_outputPwm, SERVO_COUNT) == 0;
     }
 
-    void update() {
-        if (control_state == SERVO_CONTROL_STATE::ANGLE) calculatePWM();
+    ServoWrite update() {
+        if (control_state != SERVO_CONTROL_STATE::ANGLE) return {};
+        return {true, calculatePWM()};
     }
+
+    const float *outputAngles() const { return angles; }
+    const uint16_t *outputPwm() const { return _outputPwm; }
 
     StatefulProtoHandler<ServoSettings, ServoSettings> protoHandler;
 
@@ -130,6 +138,7 @@ class ServoController : public StatefulService<ServoSettings> {
     bool is_active {false};
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
+    uint16_t _outputPwm[SERVO_COUNT] = {};
 };
 
 #endif
