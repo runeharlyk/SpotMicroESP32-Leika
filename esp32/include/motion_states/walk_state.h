@@ -27,6 +27,10 @@ class WalkState : public MotionState {
     gait_state_t gait_state;
     gait_state_t target_gait_state;
 
+    struct GaitDampers {
+        CriticalDamper step_x, step_z, step_angle, step_depth;
+    } gait_dampers;
+
     struct ShiftState {
         float start_x = 0.0f;
         float start_z = 0.0f;
@@ -69,6 +73,11 @@ class WalkState : public MotionState {
 
   public:
     WalkState() = default;
+
+    void resetSmoothing() override {
+        MotionState::resetSmoothing();
+        gait_dampers = {};
+    }
     const char *name() const override { return "Bezier"; }
 
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
@@ -87,14 +96,14 @@ class WalkState : public MotionState {
     }
 
     void step(body_state_t &body_state, float dt = 0.02f) override {
-        body_state.ym = lerp(body_state.ym, target_body_state.ym, default_smoothing_factor);
-        body_state.psi = lerp(body_state.psi, target_body_state.psi, default_smoothing_factor);
+        follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
+        follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
         gait_state.step_height = target_gait_state.step_height;
-        gait_state.step_x = lerp(gait_state.step_x, target_gait_state.step_x, default_smoothing_factor);
-        gait_state.step_z = lerp(gait_state.step_z, target_gait_state.step_z, default_smoothing_factor);
+        follow(gait_dampers.step_x, gait_state.step_x, target_gait_state.step_x, dt);
+        follow(gait_dampers.step_z, gait_state.step_z, target_gait_state.step_z, dt);
         gait_state.step_velocity = target_gait_state.step_velocity;
-        gait_state.step_angle = lerp(gait_state.step_angle, target_gait_state.step_angle, default_smoothing_factor);
-        gait_state.step_depth = lerp(gait_state.step_depth, target_gait_state.step_depth, default_smoothing_factor);
+        follow(gait_dampers.step_angle, gait_state.step_angle, target_gait_state.step_angle, dt);
+        follow(gait_dampers.step_depth, gait_state.step_depth, target_gait_state.step_depth, dt);
 
         updatePhase(dt);
         updateBodyPosition(body_state, dt);

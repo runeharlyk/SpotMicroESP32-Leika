@@ -37,6 +37,7 @@ export class FirmwareMotion {
             : mode === ModesEnum.STAND ? this.stand
             : mode === ModesEnum.WALK ? this.walk
             : null
+        this.state?.resetSmoothing()
         this.state?.begin()
     }
 

@@ -32,6 +32,10 @@ const Segment SCRIPT[] = {
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 150},
     {STAND, CRAWL, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 50},
+    // Out of a state and back while the body is still moving, so a state re-entered with stale smoothing shows.
+    {STAND, CRAWL, {0, 0, 0, 0, 1, 0, 0}, 0, 0, 10},
+    {WALK, CRAWL, {0, 0, 0, 0, 0, 0.5f, 0.5f}, 0, 0, 5},
+    {STAND, CRAWL, {0, 0, 0, 0, 0, 0, 0}, 0, 0, 40},
 };
 
 // MotionService's state and angle handling (esp32/src/motion.cpp), without its timer and peripherals.
@@ -52,6 +56,7 @@ struct Motion {
         if (state) state->end();
         MotionState *states[] = {&rest, &stand, &walk};
         state = states[mode - REST];
+        state->resetSmoothing();
         state->begin();
     }
 

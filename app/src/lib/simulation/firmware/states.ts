@@ -1,4 +1,5 @@
 import type { KinConfig } from './kin-config'
+import { CriticalDamper } from './critical-damper'
 import { BodyState, RAD2DEG_F } from './kinematics'
 
 /** CommandMsg of esp32/include/message_types.h. */
@@ -12,7 +13,7 @@ export interface CommandMsg {
     s1: number
 }
 
-const DEFAULT_SMOOTHING = 0.03
+const SMOOTHING_OMEGA = CriticalDamper.omegaFor(0.333)
 const clamp = (value: number, low: number, high: number) =>
     value < low ? low
     : value > high ? high
@@ -26,6 +27,7 @@ export abstract class MotionState {
     protected target: BodyState
     protected omegaOffset = 0
     protected psiOffset = 0
+    protected bodyDampers = MotionState.bodyDampers()
 
     constructor(protected readonly cfg: KinConfig) {
         this.target = new BodyState(cfg)
@@ -38,16 +40,33 @@ export abstract class MotionState {
 
     begin() {}
     end() {}
+
+    resetSmoothing() {
+        this.bodyDampers = MotionState.bodyDampers()
+    }
+
+    private static bodyDampers() {
+        const keys = ['xm', 'ym', 'zm', 'phi', 'psi', 'omega'] as const
+        return Object.fromEntries(keys.map(key => [key, new CriticalDamper()])) as Record<
+            (typeof keys)[number],
+            CriticalDamper
+        >
+    }
+
+    protected static follow(damper: CriticalDamper, value: number, target: number, dt: number) {
+        return damper.step(value, target, dt, SMOOTHING_OMEGA)
+    }
     handleCommand(cmd: CommandMsg): void
     handleCommand() {}
     abstract step(body: BodyState, dt: number): void
 
-    protected lerpToBody(body: BodyState, imuCompensate = false) {
-        const t = DEFAULT_SMOOTHING
-        body.xm = lerp(body.xm, this.target.xm, t)
-        body.ym = lerp(body.ym, this.target.ym, t)
-        body.zm = lerp(body.zm, this.target.zm, t)
-        body.phi = lerp(body.phi, this.target.phi, t)
+    protected smoothToBody(body: BodyState, dt: number, imuCompensate = false) {
+        const { follow } = MotionState
+        const dampers = this.bodyDampers
+        body.xm = follow(dampers.xm, body.xm, this.target.xm, dt)
+        body.ym = follow(dampers.ym, body.ym, this.target.ym, dt)
+        body.zm = follow(dampers.zm, body.zm, this.target.zm, dt)
+        body.phi = follow(dampers.phi, body.phi, this.target.phi, dt)
         const compensate = imuCompensate ? 1 : 0
         const targetPsi = clamp(
             this.target.psi - compensate * this.psiOffset,
@@ -59,8 +78,8 @@ export abstract class MotionState {
             -this.cfg.maxRoll,
             this.cfg.maxRoll
         )
-        body.psi = lerp(body.psi, targetPsi, t)
-        body.omega = lerp(body.omega, targetOmega, t)
+        body.psi = follow(dampers.psi, body.psi, targetPsi, dt)
+        body.omega = follow(dampers.omega, body.omega, targetOmega, dt)
     }
 
     protected updateFeet(body: BodyState) {
@@ -80,8 +99,8 @@ export class RestState extends MotionState {
         this.resetTarget(this.cfg.minBodyHeight)
     }
 
-    step(body: BodyState) {
-        this.lerpToBody(body)
+    step(body: BodyState, dt: number) {
+        this.smoothToBody(body, dt)
         this.updateFeet(body)
     }
 }
@@ -102,8 +121,8 @@ export class StandState extends MotionState {
         target.feet = cfg.defaultFeet.map(foot => [...foot])
     }
 
-    step(body: BodyState) {
-        this.lerpToBody(body, true)
+    step(body: BodyState, dt: number) {
+        this.smoothToBody(body, dt, true)
         this.updateFeet(body)
     }
 }
@@ -174,6 +193,7 @@ export class WalkState extends MotionState {
     private speedFactor = 2
     private gait: GaitState
     private targetGait: GaitState
+    private gaitDampers = WalkState.gaitDampers()
     private shift = { startX: 0, startZ: 0, targetX: 0, targetZ: 0, startTime: 0, leg: -1 }
 
     constructor(cfg: KinConfig) {
@@ -188,6 +208,20 @@ export class WalkState extends MotionState {
         })
         this.gait = initial()
         this.targetGait = initial()
+    }
+
+    resetSmoothing() {
+        super.resetSmoothing()
+        this.gaitDampers = WalkState.gaitDampers()
+    }
+
+    private static gaitDampers() {
+        return {
+            stepX: new CriticalDamper(),
+            stepZ: new CriticalDamper(),
+            stepAngle: new CriticalDamper(),
+            stepDepth: new CriticalDamper()
+        }
     }
 
     setModeCrawl(duty = 0.85, order = [3, 0, 2, 1]) {
@@ -218,16 +252,16 @@ export class WalkState extends MotionState {
     }
 
     step(body: BodyState, dt: number) {
-        const t = DEFAULT_SMOOTHING
-        const { gait, targetGait } = this
-        body.ym = lerp(body.ym, this.target.ym, t)
-        body.psi = lerp(body.psi, this.target.psi, t)
+        const { follow } = MotionState
+        const { gait, targetGait, gaitDampers, bodyDampers } = this
+        body.ym = follow(bodyDampers.ym, body.ym, this.target.ym, dt)
+        body.psi = follow(bodyDampers.psi, body.psi, this.target.psi, dt)
         gait.stepHeight = targetGait.stepHeight
-        gait.stepX = lerp(gait.stepX, targetGait.stepX, t)
-        gait.stepZ = lerp(gait.stepZ, targetGait.stepZ, t)
+        gait.stepX = follow(gaitDampers.stepX, gait.stepX, targetGait.stepX, dt)
+        gait.stepZ = follow(gaitDampers.stepZ, gait.stepZ, targetGait.stepZ, dt)
         gait.stepVelocity = targetGait.stepVelocity
-        gait.stepAngle = lerp(gait.stepAngle, targetGait.stepAngle, t)
-        gait.stepDepth = lerp(gait.stepDepth, targetGait.stepDepth, t)
+        gait.stepAngle = follow(gaitDampers.stepAngle, gait.stepAngle, targetGait.stepAngle, dt)
+        gait.stepDepth = follow(gaitDampers.stepDepth, gait.stepDepth, targetGait.stepDepth, dt)
         this.updatePhase(dt)
         this.updateBodyPosition(body)
         for (let i = 0; i < 4; i++) this.updateFootPosition(body, i)

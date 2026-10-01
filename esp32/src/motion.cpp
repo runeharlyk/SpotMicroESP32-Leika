@@ -14,6 +14,7 @@ void MotionService::setState(MotionState* newState) {
     }
     state = newState;
     if (state) {
+        state->resetSmoothing();
         state->begin();
     }
 }
