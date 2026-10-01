@@ -18,3 +18,4 @@ esp32/include/secrets.h
 !esp32/src/platform_shared/.gitkeep
 app/src/lib/platform_shared/*
 !app/src/lib/platform_shared/.gitkeep
+simulation/src/proto/*_pb2.py
