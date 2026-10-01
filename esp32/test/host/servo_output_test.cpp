@@ -64,11 +64,35 @@ static void aRawCalibrationPwmIsBounded() {
     CHECK(boundedPwm(400) == 400);
 }
 
+// 700 deg/s, just under the servos' speed, sampled at the control loop's 100 Hz: the limit must not touch it.
+static void aMotionTheServosCanFollowPassesUntouched() {
+    float angle = 0;
+    for (int tick = 1; tick <= 20; tick++) {
+        const float target = 7.0f * tick;
+        angle = slewToward(angle, target, SERVO_MAX_SPEED_DEG_S * 0.01f);
+        CHECK(angle == target);
+    }
+}
+
+// A jump across the whole range takes as long as the servo itself would: 180 degrees in 250 ms.
+static void aJumpTakesAsLongAsTheServoWould() {
+    float angle = 0;
+    int ticks = 0;
+    while (std::fabs(angle - 180) > 1e-3f && ticks < 100) {
+        angle = slewToward(angle, 180, SERVO_MAX_SPEED_DEG_S * 0.01f);
+        ticks++;
+    }
+    CHECK(ticks == 25);
+    CHECK(slewToward(180, 0, SERVO_MAX_SPEED_DEG_S * 0.01f) < 180);
+}
+
 int main() {
     eachVariantTableReproducesTheSettingsItReplaces();
     theOutputStaysInsideTheServoRange();
     aNonFiniteAngleHoldsTheCentre();
     aRawCalibrationPwmIsBounded();
+    aMotionTheServosCanFollowPassesUntouched();
+    aJumpTakesAsLongAsTheServoWould();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

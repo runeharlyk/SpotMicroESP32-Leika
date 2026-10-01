@@ -78,13 +78,18 @@ class ServoController : public StatefulService<ServoSettings> {
         }
     }
 
-    // Each joint's PWM goes to its channel; channels no joint uses are written off.
-    bool calculatePWM() {
+    // The longest tick the speed limit spans: after a stall the joints still move no more than two ticks' worth.
+    static constexpr float MAX_TICK_S = 0.02f;
+
+    // Each joint moves toward its target no faster than the servos can, and its PWM goes to its channel; channels no
+    // joint uses are written off.
+    bool calculatePWM(float dt) {
+        const float maxStep = SERVO_MAX_SPEED_DEG_S * std::clamp(dt, 0.0f, MAX_TICK_S);
         uint32_t written = 0;
         read([&](const ServoSettings &settings) {
             std::fill(std::begin(_channelPwm), std::end(_channelPwm), 0);
             for (size_t i = 0; i < SERVO_COUNT; i++) {
-                angles[i] = lerp(angles[i], target_angles[i], 0.1);
+                angles[i] = slewToward(angles[i], target_angles[i], maxStep);
                 _outputPwm[i] = servoPwm(VARIANT_JOINT_MODEL, i, settings.servos[i].center_pwm, angles[i]);
                 const uint32_t channel = jointChannel(settings, i);
                 _channelPwm[channel] = _outputPwm[i];
@@ -94,9 +99,9 @@ class ServoController : public StatefulService<ServoSettings> {
         return _pca.setMultiplePWM(_channelPwm, written) == 0;
     }
 
-    ServoWrite update() {
+    ServoWrite update(float dt) {
         if (control_state != SERVO_CONTROL_STATE::ANGLE) return {};
-        return {true, calculatePWM()};
+        return {true, calculatePWM(dt)};
     }
 
     const float *outputAngles() const { return angles; }

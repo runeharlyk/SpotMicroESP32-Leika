@@ -9,6 +9,8 @@
 constexpr uint16_t SERVO_PWM_MIN = 125;
 constexpr uint16_t SERVO_PWM_MAX = 600;
 constexpr size_t SERVO_COUNT = 12;
+// The MG92B's rated speed at 6 V is 0.08 s per 60 degrees (750 deg/s, unloaded): 180 degrees in 250 ms.
+constexpr float SERVO_MAX_SPEED_DEG_S = 720;
 
 inline uint16_t boundedPwm(float pwm) {
     return static_cast<uint16_t>(std::clamp(finiteOrZero(pwm), float(SERVO_PWM_MIN), float(SERVO_PWM_MAX)));
@@ -24,3 +26,7 @@ inline uint16_t servoPwm(const JointModel &model, size_t joint, float centerPwm,
     return boundedPwm(servoAngle * model.pwm_per_degree + centerPwm);
 }
 
+/** One step toward the target, no larger than maxStep: a jump is spread out, a motion slower than that passes as is. */
+inline float slewToward(float current, float target, float maxStep) {
+    return current + std::clamp(target - current, -maxStep, maxStep);
+}

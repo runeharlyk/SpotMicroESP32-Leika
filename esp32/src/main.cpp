@@ -474,7 +474,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         }
         servoController.setAngles(motionService.getAngles());
         const int64_t computed = esp_timer_get_time();
-        const ServoWrite write = servoController.update();
+        const ServoWrite write = servoController.update((tickStart - lastTickStart) / 1e6f);
         const int64_t written = esp_timer_get_time();
         if (telemetry.recording()) recordTick(tickSeq, tickStart, lastTickStart, computed, written, imu, write);
         tickSeq++;
