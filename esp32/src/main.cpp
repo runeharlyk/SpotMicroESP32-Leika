@@ -137,7 +137,8 @@ void setupEventSocket() {
         header.mag_rate_hz = peripherals.magRateHz();
         header.control_rate_hz = 100;
         header.has_servo_settings = true;
-        header.servo_settings = servoController.snapshot();
+        // Through the settings reader, so the header carries the variant's joint model with the centres.
+        servoController.protoHandler.read(header.servo_settings);
         header.has_imu_settings = true;
         header.imu_settings = effectiveImuSettings(peripherals.snapshot());
         header.batch_ticks = Telemetry::BATCH_TICKS;
