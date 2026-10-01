@@ -1,20 +1,26 @@
 // @vitest-environment-options { "url": "https://runeharlyk.github.io/SpotMicroESP32-Leika/" }
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { probeAddress } from '../../src/lib/services/discovery'
+import { Message } from '../../src/lib/platform_shared/message'
 
 // Stands in for a WebSocket that stays CONNECTING until the test opens it, which is how Chromium
-// holds a connection to a local address while its local network access prompt is unanswered.
+// holds a connection to a local address while its local network access prompt is unanswered. Once
+// open, the robot greets it with a pong, as the firmware greets every new socket.
 class HeldWebSocket {
     static last: HeldWebSocket | undefined
     onopen: (() => void) | null = null
     onerror: (() => void) | null = null
     onclose: (() => void) | null = null
+    onmessage: ((event: { data: unknown }) => void) | null = null
+    binaryType = 'blob'
     constructor(readonly url: string) {
         HeldWebSocket.last = this
     }
     close() {}
     open() {
         this.onopen?.()
+        const pong = Message.encode(Message.create({ pongmsg: {} })).finish()
+        this.onmessage?.({ data: pong.slice().buffer })
     }
 }
 

@@ -20,7 +20,7 @@
     import {
         normalizeRobotAddress,
         normalizeSubnetPrefix,
-        probeAddress,
+        robotAnswersAt,
         probeCandidates,
         sweepSubnet,
         type CandidateStatus
@@ -80,7 +80,7 @@
             $robots.map(async robot => {
                 const results = await Promise.all(
                     robot.addresses.map(async address =>
-                        (await probeAddress(address)) ? address : null
+                        (await robotAnswersAt(address)) ? address : null
                     )
                 )
                 const answering = results.find(address => address !== null)
@@ -167,7 +167,7 @@
         manualAddress = ''
         addRobot(address)
         reachability[address] = 'probing'
-        const isReachable = await probeAddress(address)
+        const isReachable = await robotAnswersAt(address)
         reachability[address] = isReachable ? 'online' : 'offline'
         if (isReachable) answeredAt[address] = address
         adding = false

@@ -1,7 +1,12 @@
 import { savedAddresses } from '$lib/stores/robots'
 import { robotSocketUrl } from '$lib/stores/location-store'
+import { Message } from '$lib/platform_shared/message'
 
 const PROBE_TIMEOUT_MS = 1500
+// Chromium delays a page's new sockets after many of its sockets failed: right after a socket-only sweep, a robot
+// that opens one in 200 ms took 1.4 to over 8 s. Only hosts that answered HTTP get this long, so a silent address
+// still fails fast.
+const CONFIRM_TIMEOUT_MS = 10_000
 // Measured in Chromium on a /24: 16 requests at a time with 1.5 s each found every HTTP host in each
 // run (about 30 s); 32 or more at a time missed some, as aborted requests hold their connections.
 const SWEEP_TIMEOUT_MS = 1500
@@ -45,10 +50,20 @@ const localNetworkAccessDecided = async () => {
     )
 }
 
+/** Whether a socket frame is the pong a robot greets every new socket with. */
+const isRobotGreeting = (data: unknown) => {
+    if (!(data instanceof ArrayBuffer)) return false
+    try {
+        return Message.decode(new Uint8Array(data)).pongmsg !== undefined
+    } catch {
+        return false
+    }
+}
+
 /**
- * Probes by opening the WebSocket the app itself uses. Unlike fetch this is not subject to CORS,
- * and a successful open proves the robot's protocol endpoint is live rather than merely that
- * something is listening on the address.
+ * Probes by opening the WebSocket the app itself uses and waiting for the robot's greeting. Unlike fetch this is
+ * not subject to CORS, and the greeting tells the robot from other devices that serve a socket on the same path,
+ * such as a Creality printer.
  */
 export const probeAddress = (
     address: string,
@@ -74,7 +89,7 @@ export const probeAddress = (
             settled = true
             clearTimeout(timer)
             signal?.removeEventListener('abort', onAbort)
-            socket.onopen = socket.onerror = socket.onclose = null
+            socket.onopen = socket.onerror = socket.onclose = socket.onmessage = null
             try {
                 socket.close()
             } catch {
@@ -90,7 +105,8 @@ export const probeAddress = (
             if (!settled) timer = setTimeout(() => settle(false), timeoutMs)
         })
 
-        socket.onopen = () => settle(true)
+        socket.binaryType = 'arraybuffer'
+        socket.onmessage = event => settle(isRobotGreeting(event.data))
         socket.onerror = () => settle(false)
         socket.onclose = () => settle(false)
     })
@@ -126,6 +142,11 @@ const answersHttp = async (address: string, timeoutMs: number, signal?: AbortSig
     }
 }
 
+/** Whether a robot is at the address: anything answers HTTP there, and then the robot's socket opens. */
+export const robotAnswersAt = async (address: string, signal?: AbortSignal) =>
+    (await answersHttp(address, SWEEP_TIMEOUT_MS, signal)) &&
+    (await probeAddress(address, CONFIRM_TIMEOUT_MS, signal))
+
 export type CandidateStatus = {
     address: string
     state: 'probing' | 'found' | 'missing'
@@ -145,7 +166,7 @@ export const probeCandidates = async (
 
     await Promise.all(
         statuses.map(async status => {
-            const found = await probeAddress(status.address, PROBE_TIMEOUT_MS, signal)
+            const found = await robotAnswersAt(status.address, signal)
             status.state = found ? 'found' : 'missing'
             onUpdate([...statuses])
         })
@@ -199,10 +220,7 @@ export const sweepSubnet = async (prefix: string, handlers: SweepHandlers = {}) 
     const worker = async () => {
         while (cursor < hosts.length && !signal?.aborted) {
             const address = hosts[cursor++]
-            const isRobot =
-                (await answersHttp(address, SWEEP_TIMEOUT_MS, signal)) &&
-                (await probeAddress(address, PROBE_TIMEOUT_MS, signal))
-            if (isRobot) {
+            if (await robotAnswersAt(address, signal)) {
                 found.push(address)
                 onFound?.(address)
             }
