@@ -51,6 +51,21 @@ static void aFullRingCountsWhatItDrops() {
     CHECK(batch.dropped_ticks == 7);
 }
 
+// A recorder that leaves mid-batch must not hand its leftovers to the next one, minutes later.
+static void aNewRecordingStartsWithoutTheLastOnesLeftovers() {
+    static Telemetry telemetry;
+    telemetry.setRecording(true);
+    for (uint32_t i = 0; i < 25; i++) telemetry.record(tick(i));
+    static socket_message_TelemetryBatch batch;
+    CHECK(telemetry.takeBatch(batch) && telemetry.takeBatch(batch));
+    telemetry.setRecording(false);
+    telemetry.discardUnsent();
+    telemetry.setRecording(true);
+    for (uint32_t i = 100; i < 110; i++) telemetry.record(tick(i));
+    CHECK(telemetry.takeBatch(batch));
+    CHECK(batch.ticks[0].seq == 100);
+}
+
 static void anImuSampleKeepsEveryField() {
     ImuSample sample;
     sample.t_us = 123456789012LL;
@@ -74,6 +89,7 @@ int main() {
     nothingIsRecordedWhileNobodyListens();
     batchesAreWholeAndContiguous();
     aFullRingCountsWhatItDrops();
+    aNewRecordingStartsWithoutTheLastOnesLeftovers();
     anImuSampleKeepsEveryField();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;

@@ -570,7 +570,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         });
 
         // Recording follows the subscribers, so a recorder that vanished without unsubscribing stops it too.
-        telemetry.setRecording(wsSocket.hasSubscribers(socket_message_Message_telemetry_batch_tag));
+        const bool listening = wsSocket.hasSubscribers(socket_message_Message_telemetry_batch_tag);
+        telemetry.setRecording(listening);
+        if (!listening) telemetry.discardUnsent();
         static socket_message_TelemetryBatch batch;
         static uint32_t batchesSent = 0, batchesFailed = 0;
         while (telemetry.takeBatch(batch)) (wsSocket.emit(batch) ? batchesSent : batchesFailed)++;

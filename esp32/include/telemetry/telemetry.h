@@ -46,6 +46,9 @@ class Telemetry {
         return true;
     }
 
+    /** Called by the service task while nobody listens, so a new recording starts with fresh ticks only. */
+    void discardUnsent() { _ring.discard(); }
+
     uint32_t droppedTicks() const { return _dropped.load(std::memory_order_relaxed); }
 
   private:

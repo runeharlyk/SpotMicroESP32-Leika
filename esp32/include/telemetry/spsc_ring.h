@@ -29,6 +29,9 @@ class SpscRing {
         return true;
     }
 
+    /** Drops everything queued; consumer side only. */
+    void discard() { _tail.store(_head.load(std::memory_order_acquire), std::memory_order_release); }
+
     size_t size() const { return _head.load(std::memory_order_acquire) - _tail.load(std::memory_order_acquire); }
 
   private:
