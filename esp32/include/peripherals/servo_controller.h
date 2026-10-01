@@ -34,7 +34,7 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void begin() {
         _persistence.readFromFS();
-        initializePCA();
+        _pca.begin(FACTORY_SERVO_OSCILLATOR_FREQUENCY, FACTORY_SERVO_PWM_FREQUENCY);
     }
 
     void activate() {
@@ -105,12 +105,6 @@ class ServoController : public StatefulService<ServoSettings> {
     StatefulProtoHandler<ServoSettings, ServoSettings> protoHandler;
 
   private:
-    void initializePCA() {
-        _pca.begin();
-        _pca.setOscillatorFrequency(FACTORY_SERVO_OSCILLATOR_FREQUENCY);
-        _pca.setPWMFreq(FACTORY_SERVO_PWM_FREQUENCY);
-        _pca.sleep();
-    }
     FSPersistencePB<ServoSettings> _persistence;
 
     PCA9685Driver _pca;

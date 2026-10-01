@@ -3,6 +3,7 @@
 #include <peripherals/i2c_bus.h>
 #include <utils/sleep.h>
 #include <algorithm>
+#include <cmath>
 
 class PCA9685Driver {
   public:
@@ -10,20 +11,20 @@ class PCA9685Driver {
 
     PCA9685Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() {
+    /**
+     * Starts the chip asleep with every channel fully off, and leaves it asleep until wakeup(). Across an ESP32 reset
+     * the chip keeps running, or sleeps holding the last pose, and waking it restarts the channels it held: the legs
+     * would jump to that pose. The prescale can only be written while asleep.
+     */
+    bool begin(uint32_t oscillatorHz, float pwmHz) {
         if (!I2CBus::instance().probe(_addr)) return false;
 
-        reset();
-        setOscillatorFrequency(25000000);
-        setPWMFreq(50);
+        writeReg(REG_ALL_LED_OFF_H, FULL_OFF_BIT);
+        writeReg(REG_MODE1, MODE1_SLEEP | MODE1_AI);
+        writeReg(REG_PRESCALE, prescale(oscillatorHz, pwmHz));
 
         _initialized = true;
         return true;
-    }
-
-    void reset() {
-        writeReg(REG_MODE1, MODE1_RESTART);
-        sleepAtLeastMs(10);
     }
 
     void sleep() {
@@ -39,24 +40,6 @@ class PCA9685Driver {
         sleepAtLeastMs(5);
         writeReg(REG_MODE1, wakeMode | MODE1_RESTART);
     }
-
-    void setPWMFreq(float freq) {
-        freq = std::clamp(freq, 1.0f, 3500.0f);
-        float prescaleval = ((_oscFreq / (freq * 4096.0f)) + 0.5f) - 1;
-        if (prescaleval < 3) prescaleval = 3;
-        if (prescaleval > 255) prescaleval = 255;
-        uint8_t prescale = static_cast<uint8_t>(prescaleval);
-
-        uint8_t oldMode = readReg(REG_MODE1);
-        uint8_t newMode = (oldMode & ~MODE1_RESTART) | MODE1_SLEEP;
-        writeReg(REG_MODE1, newMode);
-        writeReg(REG_PRESCALE, prescale);
-        writeReg(REG_MODE1, oldMode);
-        sleepAtLeastMs(5);
-        writeReg(REG_MODE1, oldMode | MODE1_RESTART | MODE1_AI);
-    }
-
-    void setOscillatorFrequency(uint32_t freq) { _oscFreq = freq; }
 
     uint8_t setPWM(uint8_t channel, uint16_t on, uint16_t off) {
         if (channel > 15) return 1;
@@ -97,6 +80,7 @@ class PCA9685Driver {
     static constexpr uint8_t REG_MODE1 = 0x00;
     static constexpr uint8_t REG_MODE2 = 0x01;
     static constexpr uint8_t REG_PRESCALE = 0xFE;
+    static constexpr uint8_t REG_ALL_LED_OFF_H = 0xFD;
     static constexpr uint8_t REG_LED0_ON_L = 0x06;
 
     static constexpr uint8_t MODE1_RESTART = 0x80;
@@ -114,7 +98,12 @@ class PCA9685Driver {
         return val;
     }
 
+    // The datasheet's prescale: round(oscillator / (4096 * rate)) - 1, within the chip's 3 to 255.
+    static uint8_t prescale(uint32_t oscillatorHz, float pwmHz) {
+        const float value = std::round(oscillatorHz / (4096.0f * pwmHz)) - 1;
+        return static_cast<uint8_t>(std::clamp(value, 3.0f, 255.0f));
+    }
+
     uint8_t _addr;
     bool _initialized = false;
-    uint32_t _oscFreq = 25000000;
 };

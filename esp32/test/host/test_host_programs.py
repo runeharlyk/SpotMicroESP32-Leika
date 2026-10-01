@@ -28,6 +28,7 @@ PROGRAMS = {
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],
     "i2c_bus_test.cpp": [],
+    "pca9685_test.cpp": [],
     "sleep_test.cpp": [],
     "settings_persistence_test.cpp": [*NANOPB, API_PROTO],
     "ws_origin_test.cpp": [],
