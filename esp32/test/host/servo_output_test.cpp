@@ -14,22 +14,6 @@ static int failures = 0;
         }                                                                    \
     } while (0)
 
-static api_Servo servo(int32_t direction = 1, float centerAngle = 0) {
-    api_Servo s = api_Servo_init_zero;
-    s.center_pwm = 306;
-    s.direction = direction;
-    s.center_angle = centerAngle;
-    s.conversion = 2.0f;
-    return s;
-}
-
-static api_ServoSettings twelveServos() {
-    api_ServoSettings settings = api_ServoSettings_init_zero;
-    settings.servos_count = 12;
-    for (int i = 0; i < 12; i++) settings.servos[i] = servo();
-    return settings;
-}
-
 // The PWM today's firmware wrote from per-servo settings, kept here as the reference the tables must reproduce.
 static float oldPwm(float direction, float centerAngle, float conversion, float centerPwm, float angle) {
     return (direction * angle + centerAngle) * conversion + centerPwm;
@@ -80,40 +64,11 @@ static void aRawCalibrationPwmIsBounded() {
     CHECK(boundedPwm(400) == 400);
 }
 
-static void settingsTheControllerCannotDriveAreRefused() {
-    CHECK(validServoSettings(twelveServos()));
-
-    api_ServoSettings settings = twelveServos();
-    settings.servos_count = 11;
-    CHECK(!validServoSettings(settings));
-
-    settings = twelveServos();
-    settings.servos[3].direction = 0;
-    CHECK(!validServoSettings(settings));
-
-    settings = twelveServos();
-    settings.servos[3].conversion = NAN;
-    CHECK(!validServoSettings(settings));
-
-    settings = twelveServos();
-    settings.servos[3].conversion = 0;
-    CHECK(!validServoSettings(settings));
-
-    settings = twelveServos();
-    settings.servos[3].center_pwm = 700;
-    CHECK(!validServoSettings(settings));
-
-    settings = twelveServos();
-    settings.servos[3].center_angle = INFINITY;
-    CHECK(!validServoSettings(settings));
-}
-
 int main() {
     eachVariantTableReproducesTheSettingsItReplaces();
     theOutputStaysInsideTheServoRange();
     aNonFiniteAngleHoldsTheCentre();
     aRawCalibrationPwmIsBounded();
-    settingsTheControllerCannotDriveAreRefused();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

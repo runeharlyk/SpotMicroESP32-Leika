@@ -1,8 +1,8 @@
 #pragma once
 
 #include <joint_model.h>
-#include <platform_shared/api.pb.h>
 #include <utils/finite.h>
+#include <algorithm>
 #include <cstdint>
 
 // The pulse widths (PCA9685 counts at 50 Hz) the servos accept; outside them they press on their stops.
@@ -24,16 +24,3 @@ inline uint16_t servoPwm(const JointModel &model, size_t joint, float centerPwm,
     return boundedPwm(servoAngle * model.pwm_per_degree + centerPwm);
 }
 
-/** Settings the controller can drive safely: twelve servos, each with a direction of +-1 and a finite, sane calibration. */
-inline bool validServoSettings(const api_ServoSettings &settings) {
-    if (settings.servos_count != SERVO_COUNT) return false;
-    for (size_t i = 0; i < SERVO_COUNT; i++) {
-        const api_Servo &servo = settings.servos[i];
-        if (servo.direction != 1 && servo.direction != -1) return false;
-        if (!isFinite(servo.conversion) || servo.conversion <= 0 || servo.conversion > 10) return false;
-        if (!isFinite(servo.center_pwm) || servo.center_pwm < SERVO_PWM_MIN || servo.center_pwm > SERVO_PWM_MAX)
-            return false;
-        if (!isFinite(servo.center_angle) || servo.center_angle < -180 || servo.center_angle > 180) return false;
-    }
-    return true;
-}

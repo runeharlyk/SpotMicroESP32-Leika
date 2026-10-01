@@ -25,6 +25,8 @@ PROGRAMS = {
     "factory_network_test.cpp": [],
     "motion_inbox_test.cpp": [],
     "servo_output_test.cpp": [],
+    "servo_settings_test.cpp": [*NANOPB, API_PROTO],
+    "servo_controller_test.cpp": [*NANOPB, API_PROTO],
     "i2c_bus_test.cpp": [],
     "sleep_test.cpp": [],
     "settings_persistence_test.cpp": [*NANOPB, API_PROTO],

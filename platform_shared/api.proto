@@ -47,14 +47,22 @@ message APStatusRequest {}
 
 message Servo {
     float center_pwm = 1;
-    float direction = 2;
-    float center_angle = 3;
-    float conversion = 4;
+    reserved 2, 3, 4;
+    reserved "direction", "center_angle", "conversion";
     string name = 5;
+}
+
+// How the variant's servos sit, reported by the robot and ignored when saved.
+message JointModel {
+    repeated float direction = 1;
+    repeated float center_angle = 2;
+    float pwm_per_degree = 3;
 }
 
 message ServoSettings {
     repeated Servo servos = 1; // max 12 servos
+    repeated uint32 channels = 2; // PCA9685 channel of each joint; empty means joint j on channel j
+    JointModel model = 3;
 }
 
 message ServoSettingsRequest {}

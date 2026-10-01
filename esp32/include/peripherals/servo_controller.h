@@ -3,6 +3,7 @@
 
 #include <peripherals/drivers/pca9685.h>
 #include <peripherals/servo_output.h>
+#include <settings/servo_settings.h>
 #include <template/stateful_persistence.h>
 #include <template/stateful_proto_handler.h>
 #include <template/stateful_service.h>
@@ -18,30 +19,6 @@
 #endif
 
 enum class SERVO_CONTROL_STATE { DEACTIVATED, PWM, ANGLE };
-
-using ServoSettings = api_ServoSettings;
-
-inline ServoSettings ServoSettings_defaults() {
-    ServoSettings settings = {};
-    settings.servos_count = 12;
-    const api_Servo defaults[12] = {
-        {306, -1, 0, 2.0f, "Servo1"}, {306, 1, -45, 2.0f, "Servo2"},  {306, 1, 90, 2.0f, "Servo3"},
-        {306, -1, 0, 2.0f, "Servo4"}, {306, -1, 45, 2.0f, "Servo5"},  {306, -1, -90, 2.0f, "Servo6"},
-        {306, 1, 0, 2.0f, "Servo7"},  {306, 1, -45, 2.0f, "Servo8"},  {306, 1, 90, 2.0f, "Servo9"},
-        {306, 1, 0, 2.0f, "Servo10"}, {306, -1, 45, 2.0f, "Servo11"}, {306, -1, -90, 2.0f, "Servo12"}};
-    for (int i = 0; i < 12; i++) {
-        settings.servos[i] = defaults[i];
-    }
-    return settings;
-}
-
-inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) { proto = settings; }
-
-inline StateUpdateResult ServoSettings_update(const ServoSettings &proto, ServoSettings &settings) {
-    if (!validServoSettings(proto)) return StateUpdateResult::ERROR;
-    settings = proto;
-    return StateUpdateResult::CHANGED;
-}
 
 struct ServoWrite {
     bool attempted = false;
@@ -74,22 +51,22 @@ class ServoController : public StatefulService<ServoSettings> {
         _pca.sleep();
     }
 
-    /** Calibration: one servo (0-11), or all for -1, to a raw PWM kept inside the servos' range. */
-    void setServoPWM(int32_t servo_id, uint32_t requested) {
-        if (servo_id < -1 || servo_id >= static_cast<int32_t>(SERVO_COUNT)) {
-            ESP_LOGW("SERVO_CONTROLLER", "No servo %d", servo_id);
+    /** Calibration: one PCA9685 channel, or every channel a joint uses for -1, to a raw PWM inside the servos' range. */
+    void setServoPWM(int32_t channel, uint32_t requested) {
+        if (channel < -1 || channel >= static_cast<int32_t>(PCA9685_CHANNELS)) {
+            ESP_LOGW("SERVO_CONTROLLER", "No channel %d", channel);
             return;
         }
         control_state = SERVO_CONTROL_STATE::PWM;
-        uint16_t pwm = boundedPwm(static_cast<float>(requested));
-        if (servo_id < 0) {
-            uint16_t pwms[SERVO_COUNT];
-            std::fill_n(pwms, SERVO_COUNT, pwm);
-            _pca.setMultiplePWM(pwms, SERVO_COUNT);
+        const uint16_t pwm = boundedPwm(static_cast<float>(requested));
+        if (channel >= 0) {
+            _pca.setPWM(channel, 0, pwm);
         } else {
-            _pca.setPWM(servo_id, 0, pwm);
+            read([&](const ServoSettings &settings) {
+                for (size_t i = 0; i < SERVO_COUNT; i++) _pca.setPWM(jointChannel(settings, i), 0, pwm);
+            });
         }
-        ESP_LOGI("SERVO_CONTROLLER", "Setting servo %d to %d", servo_id, pwm);
+        ESP_LOGI("SERVO_CONTROLLER", "Setting channel %d to %d", channel, pwm);
     }
 
     void setMode(SERVO_CONTROL_STATE newMode) { control_state = newMode; }
@@ -101,15 +78,20 @@ class ServoController : public StatefulService<ServoSettings> {
         }
     }
 
+    // Each joint's PWM goes to its channel; channels no joint uses are written off.
     bool calculatePWM() {
-        // A save from the app rewrites the calibration on the socket's task: each tick uses one whole copy.
+        uint32_t written = 0;
         read([&](const ServoSettings &settings) {
-            for (int i = 0; i < SERVO_COUNT; i++) {
+            std::fill(std::begin(_channelPwm), std::end(_channelPwm), 0);
+            for (size_t i = 0; i < SERVO_COUNT; i++) {
                 angles[i] = lerp(angles[i], target_angles[i], 0.1);
                 _outputPwm[i] = servoPwm(VARIANT_JOINT_MODEL, i, settings.servos[i].center_pwm, angles[i]);
+                const uint32_t channel = jointChannel(settings, i);
+                _channelPwm[channel] = _outputPwm[i];
+                written = std::max(written, channel + 1);
             }
         });
-        return _pca.setMultiplePWM(_outputPwm, SERVO_COUNT) == 0;
+        return _pca.setMultiplePWM(_channelPwm, written) == 0;
     }
 
     ServoWrite update() {
@@ -139,6 +121,7 @@ class ServoController : public StatefulService<ServoSettings> {
     float angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     uint16_t _outputPwm[SERVO_COUNT] = {};
+    uint16_t _channelPwm[PCA9685_CHANNELS] = {};
 };
 
 #endif
