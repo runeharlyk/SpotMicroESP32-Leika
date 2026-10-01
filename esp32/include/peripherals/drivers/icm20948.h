@@ -30,7 +30,7 @@ class ICM20948Driver final : public ImuDriver {
         selectBank(0);
         writeReg(_addr, REG_USER_CTRL, 0x00);          // own I2C master off, which bypass needs
         writeReg(_addr, REG_INT_PIN_CFG, 0x02);        // bypass: the AK09916 appears on the main bus
-        sleepAtLeastMs(10);
+        sleepAtLeastMs(50);                            // past the gyro's start-up time, as on the MPU6050
         _hasCompass = readReg(AK09916_ADDR, AK_WIA2) == 0x09;
         if (!_hasCompass) {
             ESP_LOGW("ICM20948", "The AK09916 compass did not answer; running without it");

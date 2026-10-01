@@ -26,6 +26,9 @@ class MPU6050Driver final : public ImuDriver {
         writeReg(REG_ACCEL_CONFIG, 0x08);
         writeReg(REG_USER_CTRL, 0x00);   // own I2C master off, which bypass needs
         writeReg(REG_INT_PIN_CFG, 0x02); // bypass: a compass on the auxiliary bus appears on the main bus
+        // The gyro reads large spurious rates for its start-up time (30 ms in the datasheet; seen on the robot as
+        // the first two reads), which would spoil the gyro bias estimated right after.
+        sleepAtLeastMs(50);
         return true;
     }
 
