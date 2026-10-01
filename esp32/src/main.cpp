@@ -113,6 +113,10 @@ void setupEventSocket() {
         [](const socket_message_FSDownloadData &data, int clientId) { wsSocket.emit(data, clientId); },
         [](const socket_message_FSDownloadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); },
         [](const socket_message_FSUploadComplete &complete, int clientId) { wsSocket.emit(complete, clientId); });
+    FileSystemWS::fsHandler.setScheduling(
+        [](std::function<void()> work) { return server.queueWork(std::move(work)); },
+        [](int clientId, uint32_t ms) { return WebServer::waitWritable(clientId, ms); });
+    wsSocket.onClose([](int clientId) { FileSystemWS::fsHandler.dropClient(clientId); });
 
     wsSocket.on<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
         motionService.inbox.postInput(data, esp_timer_get_time() / 1000);

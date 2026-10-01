@@ -45,7 +45,14 @@ class WebServer {
 
     void addDefaultHeader(const char* key, const char* value);
 
-    httpd_handle_t getHandle() { return server_; }
+    /** Runs `work` on the server's task between requests and frames; false when it could not be queued. */
+    bool queueWork(std::function<void()> work);
+
+    /**
+     * Waits up to `ms` for a socket to take a write without blocking. lwIP reports a socket writable once
+     * TCP_SNDLOWAT bytes are free, half its send buffer (CONFIG_LWIP_TCP_SND_BUF_DEFAULT).
+     */
+    static bool waitWritable(int sockfd, uint32_t ms);
 
     static esp_err_t sendError(httpd_req_t* req, int status, const char* message);
     static esp_err_t sendOk(httpd_req_t* req);

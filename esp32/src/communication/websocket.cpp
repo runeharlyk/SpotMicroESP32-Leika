@@ -30,6 +30,7 @@ void Websocket::onWsClose(int sockfd) {
     xSemaphoreGive(sessionsMutex_);
     ESP_LOGI(TAG, "Client disconnected: %d", sockfd);
     removeClient(sockfd);
+    if (closeListener_) closeListener_(sockfd);
 }
 
 uint32_t Websocket::session(int cid) {

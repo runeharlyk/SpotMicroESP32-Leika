@@ -251,6 +251,27 @@ esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     return httpd_ws_send_frame_async(server_, sockfd, &frame);
 }
 
+bool WebServer::queueWork(std::function<void()> work) {
+    if (!server_) return false;
+    auto job = new std::function<void()>(std::move(work));
+    auto run = [](void* arg) {
+        auto job = static_cast<std::function<void()>*>(arg);
+        (*job)();
+        delete job;
+    };
+    if (httpd_queue_work(server_, run, job) == ESP_OK) return true;
+    delete job;
+    return false;
+}
+
+bool WebServer::waitWritable(int sockfd, uint32_t ms) {
+    fd_set writable;
+    FD_ZERO(&writable);
+    FD_SET(sockfd, &writable);
+    timeval timeout = {.tv_sec = 0, .tv_usec = static_cast<suseconds_t>(ms * 1000)};
+    return select(sockfd + 1, nullptr, &writable, nullptr, &timeout) > 0;
+}
+
 esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {
     return send(req, status, (uint8_t*)message, strlen(message));
 }

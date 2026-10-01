@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 static const char* TAG = "FileSystemWS";
 
@@ -29,29 +30,11 @@ void FileSystemHandler::setSendCallbacks(SendMetadataCallback sendMetadata, Send
 void FileSystemHandler::cleanupExpiredTransfers() {
     uint32_t now = esp_timer_get_time() / 1000;
 
-    auto dlIt = downloads_.begin();
-    while (dlIt != downloads_.end()) {
-        if (now - dlIt->second.lastActivityTime > FS_TRANSFER_TIMEOUT_MS) {
-            if (dlIt->second.file) {
-                fclose(dlIt->second.file);
-            }
-            ESP_LOGW(TAG, "Download %u timed out", dlIt->first);
-
-            if (sendCompleteCallback_) {
-                socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-                complete.transfer_id = dlIt->first;
-                complete.success = false;
-                strncpy(complete.error, "Transfer timed out", sizeof(complete.error) - 1);
-                complete.total_chunks = dlIt->second.chunksSent;
-                complete.file_size = dlIt->second.fileSize;
-                sendCompleteCallback_(complete, dlIt->second.clientId);
-            }
-
-            dlIt = downloads_.erase(dlIt);
-        } else {
-            ++dlIt;
-        }
+    std::vector<uint32_t> expiredDownloads;
+    for (const auto& [transferId, download] : downloads_) {
+        if (now - download.lastActivityTime > FS_TRANSFER_TIMEOUT_MS) expiredDownloads.push_back(transferId);
     }
+    for (uint32_t transferId : expiredDownloads) failDownload(transferId, "Transfer timed out");
 
     auto ulIt = uploads_.begin();
     while (ulIt != uploads_.end()) {
@@ -269,8 +252,56 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
 
     ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u", path.c_str(), fileSize, totalChunks, transferId);
 
-    while (sendNextDownloadChunk(transferId)) {
-        taskYIELD();
+    pumpDownload(transferId);
+}
+
+// At most one chunk per turn of the socket's task, and only once the socket can take it whole: a send the network
+// cannot absorb would hold the task, and every client's frames with it, for as long as the chunk takes to drain.
+void FileSystemHandler::pumpDownload(uint32_t transferId) {
+    auto it = downloads_.find(transferId);
+    if (it == downloads_.end()) return;
+    if (waitWritable_(it->second.clientId, 10) && !sendNextDownloadChunk(transferId)) return;
+    if (!runLater_([this, transferId] { pumpDownload(transferId); }))
+        failDownload(transferId, "Server too busy to continue");
+}
+
+void FileSystemHandler::failDownload(uint32_t transferId, const char* error) {
+    auto it = downloads_.find(transferId);
+    if (it == downloads_.end()) return;
+    DownloadState& state = it->second;
+    if (sendCompleteCallback_) {
+        socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
+        complete.transfer_id = transferId;
+        complete.success = false;
+        strncpy(complete.error, error, sizeof(complete.error) - 1);
+        complete.total_chunks = state.chunksSent;
+        complete.file_size = state.fileSize;
+        sendCompleteCallback_(complete, state.clientId);
+    }
+    fclose(state.file);
+    downloads_.erase(it);
+    ESP_LOGW(TAG, "Download %u failed: %s", transferId, error);
+}
+
+void FileSystemHandler::dropClient(int clientId) {
+    for (auto it = downloads_.begin(); it != downloads_.end();) {
+        if (it->second.clientId != clientId) {
+            ++it;
+            continue;
+        }
+        fclose(it->second.file);
+        ESP_LOGI(TAG, "Download %u ended with its client", it->first);
+        it = downloads_.erase(it);
+    }
+    for (auto it = uploads_.begin(); it != uploads_.end();) {
+        if (it->second.clientId != clientId) {
+            ++it;
+            continue;
+        }
+        if (it->second.file) fclose(it->second.file);
+        remove(it->second.partPath().c_str());
+        ESP_LOGI(TAG, "Upload %u ended with its client", it->first);
+        it = uploads_.erase(it);
     }
 }
 
@@ -312,19 +343,7 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
 
     size_t bytesRead = fread(data->data.bytes, 1, bytesToRead, state.file);
     if (bytesRead == 0 && bytesToRead > 0) {
-        if (sendCompleteCallback_) {
-            socket_message_FSDownloadComplete complete = socket_message_FSDownloadComplete_init_zero;
-            complete.transfer_id = transferId;
-            complete.success = false;
-            strncpy(complete.error, "Failed to read file", sizeof(complete.error) - 1);
-            complete.total_chunks = state.chunksSent;
-            complete.file_size = state.fileSize;
-            sendCompleteCallback_(complete, state.clientId);
-        }
-
-        fclose(state.file);
-        downloads_.erase(it);
-        ESP_LOGE(TAG, "Download failed - read error: %u", transferId);
+        failDownload(transferId, "Failed to read file");
         return false;
     }
     data->data.size = bytesRead;

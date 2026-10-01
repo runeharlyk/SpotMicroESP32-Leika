@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <communication/webserver.h>
 #include <communication/comm_base.hpp>
@@ -10,6 +11,9 @@ class Websocket : public CommAdapterBase {
     Websocket(WebServer& server, const char* route = "/api/ws");
 
     void begin() override;
+
+    /** Called on the socket's task when a client's session ends, however it ends. */
+    void onClose(std::function<void(int cid)> listener) { closeListener_ = std::move(listener); }
 
     /** The connection a client id stands for now; the id of a closed socket is reused by the next one. */
     uint32_t session(int cid);
@@ -26,6 +30,7 @@ class Websocket : public CommAdapterBase {
     SemaphoreHandle_t sessionsMutex_;
     std::map<int, uint32_t> sessions_;
     uint32_t nextSession_ = 1;
+    std::function<void(int)> closeListener_;
 
     bool isSession(int cid, uint32_t session);
 

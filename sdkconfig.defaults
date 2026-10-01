@@ -4,6 +4,10 @@ CONFIG_HTTPD_WS_PRE_HANDSHAKE_CB_SUPPORT=y
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=2048
 CONFIG_HTTPD_MAX_URI_LEN=1024
 
+# A socket counts as writable once half its send buffer is free: room for one whole 16 KB file chunk, so
+# downloads never block the socket's task on a send (FS_MAX_CHUNK_SIZE)
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=34816
+
 # mDNS
 CONFIG_MDNS_MAX_SERVICES=10
 
