@@ -10,6 +10,8 @@
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
 
+#include <deque>
+#include <functional>
 #include <list>
 #include <mutex>
 
@@ -73,6 +75,12 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     bool calibrateIMU();
 
+    /**
+     * Queues bus work too slow for the socket task, such as a scan or a calibration, to run on the sensor task
+     * between reads. Refuses when the queue is full.
+     */
+    bool runOnSensorTask(std::function<void()> work);
+
     StatefulProtoHandler<PeripheralsConfiguration, api_PeripheralSettings> protoHandler;
 
   private:
@@ -86,6 +94,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     std::mutex _readingsMutex;
     SensorReadings _readings;
+
+    static constexpr size_t MAX_QUEUED_WORK = 4;
+    std::mutex _workMutex;
+    std::deque<std::function<void()>> _work;
+    void runQueuedWork();
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
+#include <functional>
 #include <map>
 
 #include <filesystem.h>
@@ -63,6 +64,35 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
         strncpy(res.error_message, "Invalid state", sizeof(res.error_message) - 1);
     }
     replyWithSettings(handler, res, tag, reply);
+}
+
+using ReplyFiller = std::function<void(socket_message_CorrelationResponse &)>;
+
+// Answers a request later from another task. A client that left before the answer must not get it, nor whoever
+// holds its socket now; `fill` sets the response, and may change the status from 200.
+static std::function<void(const ReplyFiller &)> replyLater(const socket_message_CorrelationRequest &req, int clientId) {
+    return
+        [correlationId = req.correlation_id, clientId, session = wsSocket.session(clientId)](const ReplyFiller &fill) {
+            auto reply = new socket_message_CorrelationResponse();
+            *reply = socket_message_CorrelationResponse_init_default;
+            reply->correlation_id = correlationId;
+            reply->status_code = 200;
+            fill(*reply);
+            wsSocket.emitToSession(*reply, clientId, session);
+            delete reply;
+        };
+}
+
+// Runs bus work on the sensor task and replies from there, so the socket is not held up for its duration.
+static void replyFromSensorTask(const socket_message_CorrelationRequest &req, socket_message_CorrelationResponse &res,
+                                int clientId, ReplyFiller work) {
+    auto reply = replyLater(req, clientId);
+    if (peripherals.runOnSensorTask([reply, work = std::move(work)] { reply(work); })) {
+        res.status_code = 0;
+    } else {
+        res.status_code = 503;
+        strncpy(res.error_message, "Sensor task busy", sizeof(res.error_message) - 1);
+    }
 }
 
 void setupServer() {
@@ -128,15 +158,19 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
          [](const auto &req, auto &res, int clientId) {
-             res.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
-             peripherals.scanI2C();
-             peripherals.getI2CScanProto(res.response.i2c_scan_data);
+             replyFromSensorTask(req, res, clientId, [](socket_message_CorrelationResponse &reply) {
+                 reply.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
+                 peripherals.scanI2C();
+                 peripherals.getI2CScanProto(reply.response.i2c_scan_data);
+             });
          }},
 
         {socket_message_CorrelationRequest_imu_calibrate_execute_tag,
          [](const auto &req, auto &res, int clientId) {
-             res.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
-             res.response.imu_calibrate_data.success = peripherals.calibrateIMU();
+             replyFromSensorTask(req, res, clientId, [](socket_message_CorrelationResponse &reply) {
+                 reply.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
+                 reply.response.imu_calibrate_data.success = peripherals.calibrateIMU();
+             });
          }},
 
         {socket_message_CorrelationRequest_system_information_request_tag,
@@ -247,20 +281,13 @@ void setupEventSocket() {
         // The query runs in its own task and replies from there, so the socket is not held up.
         {socket_message_CorrelationRequest_mdns_query_request_tag,
          [](const auto &req, auto &res, int clientId) {
-             // A client that left before the answer must not get it, nor whoever holds its socket now.
-             uint32_t session = wsSocket.session(clientId);
              mdnsService.queryAsync(req.request.mdns_query_request,
-                                    [correlationId = req.correlation_id, clientId,
-                                     session](const api_MDNSQueryResponse &result) {
-                                        auto reply = new socket_message_CorrelationResponse();
-                                        *reply = socket_message_CorrelationResponse_init_default;
-                                        reply->correlation_id = correlationId;
-                                        reply->status_code = 200;
-                                        reply->which_response =
-                                            socket_message_CorrelationResponse_mdns_query_response_tag;
-                                        reply->response.mdns_query_response = result;
-                                        wsSocket.emitToSession(*reply, clientId, session);
-                                        delete reply;
+                                    [reply = replyLater(req, clientId)](const api_MDNSQueryResponse &result) {
+                                        reply([&result](socket_message_CorrelationResponse &response) {
+                                            response.which_response =
+                                                socket_message_CorrelationResponse_mdns_query_response_tag;
+                                            response.response.mdns_query_response = result;
+                                        });
                                     });
              res.status_code = 0;
          }},

@@ -35,6 +35,7 @@ void Peripherals::beginSensors() {
 };
 
 void Peripherals::update() {
+    runQueuedWork();
     EXECUTE_EVERY_N_MS(20, { readImu(); });
     EXECUTE_EVERY_N_MS(100, { readMag(); });
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
@@ -167,6 +168,26 @@ gesture_t Peripherals::takeGesture() {
     const gesture_t gesture = _readings.gesture;
     _readings.gesture = eGestureNone;
     return gesture;
+}
+
+bool Peripherals::runOnSensorTask(std::function<void()> work) {
+    std::lock_guard<std::mutex> lock(_workMutex);
+    if (_work.size() >= MAX_QUEUED_WORK) return false;
+    _work.push_back(std::move(work));
+    return true;
+}
+
+void Peripherals::runQueuedWork() {
+    for (;;) {
+        std::function<void()> work;
+        {
+            std::lock_guard<std::mutex> lock(_workMutex);
+            if (_work.empty()) return;
+            work = std::move(_work.front());
+            _work.pop_front();
+        }
+        work();
+    }
 }
 
 bool Peripherals::calibrateIMU() {
