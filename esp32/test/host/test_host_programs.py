@@ -33,6 +33,7 @@ PROGRAMS = {
     "madgwick_test.cpp": [],
     "imu_drivers_test.cpp": [],
     "imu_test.cpp": [*NANOPB, API_PROTO],
+    "spsc_ring_test.cpp": [],
 }
 
 
