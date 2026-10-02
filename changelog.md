@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0]
+
+### Added
+
+- Adds support for the ESP32-P4, with a working camera stream
+- Adds an ESP Web Tools flasher, tagged firmware releases and a CI build of every board
+- Adds robot discovery by WebSocket probe, a saved robot list and a landing page built around connecting to a robot
+- Adds a Web Bluetooth transport and a pairing card, behind a pluggable socket transport
+- Adds a connection status indicator, a latency readout and a link dropdown to the status bar
+- Adds a safe stop when the controller disconnects, a neutral command when its tab is backgrounded, and haptic feedback for stop and mode changes
+- Adds ICM-20948 support and body-frame IMU orientation, with Madgwick fusion (except on the BNO055, which fuses on the chip) and gyro bias, mounting and compass calibration
+- Adds a telemetry stream of every control tick, a recorder that writes it to a file, and a report that compares it with the simulation's assumptions
+- Adds a MuJoCo residual-gait simulation that replaces the PyBullet one, managed with uv
+- Adds a Python `Robot` API that drives the simulation and the real robot over its WebSocket
+- Adds a joint model per hardware variant, a servo calibration page that draws each leg's expected pose, and an IMU levelling step on the calibrate button
+- Adds `secrets.h` for WiFi and access point credentials, kept out of git
+- Adds a heading chart
+- Adds a CI workflow that tests the firmware's motion code on the host
+
+### Changed
+
+- Migrates the firmware fully to ESP-IDF and replaces PsychicHttp with a native HTTP wrapper
+- Replaces the yaw arc with rigid-body velocity composition in the firmware, the simulation and the web app
+- Scales the gait duty factor with the commanded velocity
+- Smooths body and gait commands with a critically damped filter, and limits each joint to the servos' speed instead of smoothing it
+- Reads the MPU6050's raw accelerometer and gyro in SI units instead of its DMP
+- Runs I2C scans and IMU calibration on the sensor task, and restarts the control loop's schedule after an overrun
+- Starts the servo board asleep, so a reset no longer throws the legs to their last pose
+- Makes the robot try the most recent WiFi network first and keeps the radio awake while connected
+- Streams file downloads a chunk at a time
+
+### Fixed
+
+- Fixes the stand posture's roll and pitch signs, measured on the Pico
+- Fixes the boot calibration seeing a still robot as moving
+- Fixes the firmware build succeeding when the web app or the protos failed to build
+- Fixes the sleep endpoint path and unreported failures on the system status page
+
+### Removed
+
+- Removes the unused recovery mode, hook handlers, NTP settings, result service, service worker and the OBJ meshes behind the 3D view
+- Removes the GitHub firmware download path, which had no firmware endpoint behind it
+
 ## [0.2.0]
 
 ### Added
