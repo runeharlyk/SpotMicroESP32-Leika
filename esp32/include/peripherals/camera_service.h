@@ -4,7 +4,7 @@
 
 #include <features.h>
 #include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
+#include <template/stateful_proto_handler.h>
 #include <template/stateful_persistence.h>
 
 #include <settings/camera_settings.h>
@@ -35,11 +35,10 @@ class CameraService
 
     esp_err_t begin();
 
-    esp_err_t cameraStill(httpd_req_t *request);
     esp_err_t cameraStream(httpd_req_t *request);
 
 #if USE_DVP_CAMERA
-    StatefulProtoEndpoint<CameraSettings, api_CameraSettings> protoEndpoint;
+    StatefulProtoHandler<CameraSettings, api_CameraSettings> protoHandler;
 
   private:
     FSPersistencePB<CameraSettings> _persistence;

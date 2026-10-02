@@ -4,6 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <functional>
+#include <algorithm>
 #include <list>
 #include <map>
 #include <type_traits>
@@ -13,11 +14,15 @@ class CommAdapterBase {
   public:
     CommAdapterBase() {
         mutex_ = xSemaphoreCreateMutex();
+        encode_mutex_ = xSemaphoreCreateMutex();
         decoder_.onSubscribe([this](int32_t tag, int cid) { subscribe(tag, cid); });
         decoder_.onUnsubscribe([this](int32_t tag, int cid) { unsubscribe(tag, cid); });
         decoder_.onPing([this](int cid) { sendPong(cid); });
     }
-    ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
+    ~CommAdapterBase() {
+        vSemaphoreDelete(mutex_);
+        vSemaphoreDelete(encode_mutex_);
+    }
 
     virtual void begin() {}
 
@@ -35,12 +40,16 @@ class CommAdapterBase {
         decoder_.on<T>(handler);
     }
 
+    /** Whether every addressed client got the message. */
     template <typename T>
-    void emit(const T& data, int clientId = -1) {
+    bool emit(const T& data, int clientId = -1) {
         constexpr pb_size_t tag = MessageTraits<T>::tag;
 
-        if (clientId < 0 && !hasSubscribers(tag)) return;
+        if (clientId < 0 && !hasSubscribers(tag)) return true;
 
+        // Tasks other than the socket's emit too (telemetry, deferred replies); msg_ and the
+        // encode buffer are shared.
+        xSemaphoreTake(encode_mutex_, portMAX_DELAY);
         msg_.which_message = tag;
         MessageTraits<T>::assign(msg_, data);
 
@@ -50,33 +59,43 @@ class CommAdapterBase {
         if (out_size > sizeof(pb_heap_enc_buf)) { // If the encoded size exceeds our buffer size, we needs to malloc a
                                                   // buffer of a proper size
             buffer = (uint8_t*)malloc(out_size);
+            if (!buffer) {
+                ESP_LOGE("ProtoComm", "No memory to encode message (tag %d, %u bytes)", (int)tag, out_size);
+                xSemaphoreGive(encode_mutex_);
+                return false;
+            }
         }
 
+        bool sent = false;
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, out_size);
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             ESP_LOGE("ProtoComm", "Failed to encode message (tag %d), buffer too small?", (int)tag);
-            return;
-        }
-
-        if (clientId >= 0) {
-            send(buffer, stream.bytes_written, clientId);
+        } else if (clientId >= 0) {
+            sent = send(buffer, stream.bytes_written, clientId);
         } else {
-            sendToSubscribers(tag, buffer, stream.bytes_written);
+            sent = sendToSubscribers(tag, buffer, stream.bytes_written);
         }
 
         if (pb_heap_enc_buf != buffer) {
             free(buffer);
         }
+        xSemaphoreGive(encode_mutex_);
+        return sent;
     }
 
+    /** Called on the socket's task after a client subscribes to a tag. */
+    void onSubscribed(std::function<void(int32_t tag, int cid)> listener) { subscribedListener_ = std::move(listener); }
+
   protected:
-    virtual void send(const uint8_t* data, size_t len, int cid = -1) = 0;
+    virtual bool send(const uint8_t* data, size_t len, int cid) = 0;
 
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        client_subscriptions_[tag].push_back(cid);
+        std::list<int>& clients = client_subscriptions_[tag];
+        if (std::find(clients.begin(), clients.end(), cid) == clients.end()) clients.push_back(cid);
         xSemaphoreGive(mutex_);
         ESP_LOGI("ProtoComm", "Client %d subscribed to tag %d", cid, (int)tag);
+        if (subscribedListener_) subscribedListener_(tag, cid);
     }
 
     void unsubscribe(int32_t tag, int cid = 0) {
@@ -102,26 +121,34 @@ class CommAdapterBase {
 
     void sendPong(int cid) {
         uint8_t pongBuffer[16];
+        xSemaphoreTake(encode_mutex_, portMAX_DELAY);
         msg_.which_message = socket_message_Message_pongmsg_tag;
         msg_.message.pongmsg = socket_message_PongMsg_init_zero;
         pb_ostream_t stream = pb_ostream_from_buffer(pongBuffer, sizeof(pongBuffer));
         if (pb_encode(&stream, socket_message_Message_fields, &msg_)) {
             send(pongBuffer, stream.bytes_written, cid);
         }
+        xSemaphoreGive(encode_mutex_);
     }
 
     SemaphoreHandle_t mutex_;
+    SemaphoreHandle_t encode_mutex_;
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
+    std::function<void(int32_t, int)> subscribedListener_;
     socket_message_Message msg_ = socket_message_Message_init_zero;
     uint8_t pb_heap_enc_buf[PROTO_BUFFER_SIZE];
 
   private:
-    void sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
+    // Sends to a copy of the list, so a slow client never holds up subscribing or closing on the socket task.
+    bool sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        for (int cid : client_subscriptions_[tag]) {
-            send(data, len, cid);
-        }
+        const std::list<int> clients = client_subscriptions_[tag];
         xSemaphoreGive(mutex_);
+        bool sent = true;
+        for (int cid : clients) {
+            sent = send(data, len, cid) && sent;
+        }
+        return sent;
     }
 };

@@ -1,7 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state'
     import { resolve } from '$app/paths'
-    import { useFeatureFlags } from '$lib/stores/featureFlags'
     import GithubButton from '../menu/GithubButton.svelte'
     import LogoButton from '../menu/LogoButton.svelte'
     import MenuList from '../menu/MenuList.svelte'
@@ -15,7 +14,6 @@
         MotorOutline,
         Health,
         Folder,
-        Update,
         WiFi,
         Router,
         AP,
@@ -23,9 +21,7 @@
         Metrics,
         DNS
     } from '$lib/components/icons'
-    import { PUBLIC_VITE_USE_HOST_NAME } from '$env/static/public'
-
-    const features = useFeatureFlags()
+    import { EMBEDDED_BUILD } from '$lib/build-flags'
 
     const appName = page.data.app_name
 
@@ -50,7 +46,7 @@
 
     const { menuClicked } = $props()
 
-    const activeTitle = $derived(page.data.title)
+    const activePath = $derived(page.url.pathname)
 
     const menuItems = $derived<menuItem[]>(
         [
@@ -58,7 +54,7 @@
                 title: 'Connection',
                 icon: WiFi,
                 href: withBase('/connection'),
-                feature: !PUBLIC_VITE_USE_HOST_NAME
+                feature: !EMBEDDED_BUILD
             },
             {
                 title: 'Controller',
@@ -95,7 +91,7 @@
                         href: withBase('/peripherals/imu'),
                         feature: true
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             },
             {
                 title: 'WiFi',
@@ -120,7 +116,7 @@
                         href: withBase('/wifi/mdns'),
                         feature: true
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             },
             {
                 title: 'System',
@@ -144,16 +140,10 @@
                         icon: Metrics,
                         href: withBase('/system/metrics'),
                         feature: true
-                    },
-                    {
-                        title: 'Firmware Update',
-                        icon: Update,
-                        href: withBase('/system/update'),
-                        feature: !!($features.ota || $features.upload_firmware)
                     }
-                ].map(sub => ({ ...sub, active: sub.title === activeTitle }))
+                ].map(sub => ({ ...sub, active: sub.href === activePath }))
             }
-        ].map(item => ({ ...item, active: item.title === activeTitle }))
+        ].map(item => ({ ...item, active: item.href === activePath }))
     )
 
     const updateMenu = () => {

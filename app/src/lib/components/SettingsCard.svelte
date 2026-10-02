@@ -34,6 +34,8 @@
             </span>
             <button
                 class="btn btn-circle btn-ghost btn-sm"
+                aria-label={open ? 'Collapse' : 'Expand'}
+                aria-expanded={open}
                 onclick={() => {
                     open = !open
                 }}

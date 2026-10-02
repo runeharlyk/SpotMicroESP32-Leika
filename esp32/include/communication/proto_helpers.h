@@ -6,7 +6,7 @@
 #include <functional>
 #include <map>
 
-#define PROTO_BUFFER_SIZE 2048
+#define PROTO_BUFFER_SIZE 4096
 
 template <typename T>
 struct MessageTraits;
@@ -28,19 +28,15 @@ DEFINE_MESSAGE_TRAITS(ModeData, mode)
 DEFINE_MESSAGE_TRAITS(AnalyticsData, analytics)
 DEFINE_MESSAGE_TRAITS(AnglesData, angles)
 DEFINE_MESSAGE_TRAITS(RSSIData, rssi)
-DEFINE_MESSAGE_TRAITS(KinematicData, kinematic_data)
-DEFINE_MESSAGE_TRAITS(IMUCalibrateData, imu_calibrate)
-DEFINE_MESSAGE_TRAITS(I2CScanData, i2c_scan)
-DEFINE_MESSAGE_TRAITS(PeripheralSettingsData, peripheral_settings)
 DEFINE_MESSAGE_TRAITS(ControllerData, controller_data)
 DEFINE_MESSAGE_TRAITS(WalkGaitData, walk_gait)
-DEFINE_MESSAGE_TRAITS(IMUCalibrateExecute, imu_calibrate_execute)
-DEFINE_MESSAGE_TRAITS(I2CScanDataRequest, i2c_scan_data_request)
-DEFINE_MESSAGE_TRAITS(PeripheralSettingsDataRequest, peripheral_settings_data_request)
 DEFINE_MESSAGE_TRAITS(ServoPWMData, servo_pwm)
 DEFINE_MESSAGE_TRAITS(ServoStateData, servo_state)
 DEFINE_MESSAGE_TRAITS(CorrelationRequest, correlation_request)
 DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
+DEFINE_MESSAGE_TRAITS(TelemetryHeader, telemetry_header)
+DEFINE_MESSAGE_TRAITS(TelemetryBatch, telemetry_batch)
+DEFINE_MESSAGE_TRAITS(TelemetryNetwork, telemetry_network)
 
 // Streaming file transfer messages
 DEFINE_MESSAGE_TRAITS(FSDownloadMetadata, fs_download_metadata)

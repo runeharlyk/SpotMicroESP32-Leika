@@ -1,13 +1,10 @@
 <script lang="ts">
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { Bluetooth, WiFi } from '$lib/components/icons'
-    import { apiLocation, pairing, socket, startPairing } from '$lib/stores'
+    import { apiLocation, pairing, robotSocketUrl, socket, startPairing } from '$lib/stores'
     import { isBluetoothSupported } from '$lib/transport/ble-adapter'
 
-    const update = () => {
-        const ws = $apiLocation ? $apiLocation : window.location.host
-        socket.init(`ws://${ws}/api/ws`)
-    }
+    const update = () => socket.init(robotSocketUrl())
 </script>
 
 <SettingsCard collapsible={false}>

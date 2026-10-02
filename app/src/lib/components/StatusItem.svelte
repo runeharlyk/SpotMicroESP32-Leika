@@ -1,7 +1,16 @@
 <script lang="ts">
-    import type { Component } from 'svelte'
+    import type { Component, Snippet } from 'svelte'
 
     type Variant = 'success' | 'error' | 'primary' | 'info' | 'warning'
+
+    interface Props {
+        icon?: Component
+        title: string
+        description?: string | number
+        variant?: Variant
+        class?: string
+        children?: Snippet
+    }
 
     const {
         icon,
@@ -9,15 +18,8 @@
         description = '',
         variant = 'primary',
         class: klass = '',
-        children = null
-    } = $props<{
-        icon?: Component
-        title: string
-        description?: string | number
-        variant?: Variant
-        class?: string
-        children?: () => Component
-    }>()
+        children
+    }: Props = $props()
 
     const Icon = $derived(icon)
 
@@ -29,8 +31,7 @@
         warning: ['bg-warning', 'text-warning-content']
     }
 
-    const variantKey: Variant = (variant as Variant) in variants ? (variant as Variant) : 'primary'
-    const [bgColor, textColor] = variants[variantKey]
+    const [bgColor, textColor] = $derived(variants[variant] ?? variants.primary)
 </script>
 
 <div class="rounded-box bg-base-100 flex items-center space-x-3 px-4 py-2 {klass}">

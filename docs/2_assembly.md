@@ -7,59 +7,65 @@ There are a number of great resources for the assembly of the Spot Micro. For th
 
 ## Calibration
 
-Discussion about [Calibration](https://github.com/runeharlyk/SpotMicroESP32-Leika/discussions/118)
+Assuming the servos are connected to the PCA9685 and are powered on, and the robot runs firmware that reports its joint model.
+Without it, the servo page shows a warning and cannot draw the expected pose; update the firmware first.
 
-Assuming the servos are connected to the PCA9685 and are powered on:
+A variant fixes how its servos sit in the mechanical design: direction, centre angle and PWM per degree (`JointModel` in `esp32/include/joint_model.h`, selected by the variant in `esp32/features.ini`).
+A robot stores only two values per joint: the PCA9685 channel that drives it and its centre PWM.
+The centre PWM is the PWM at which the servo holds the joint's reference pose.
 
-### Calibrate in servo frame
+### Calibrate each joint
 
-1. Navigate to `/controller` and click on "Calibrate". This will set the servo to the center pwm value.
-2. Navigate to `peripherals/servo` - Here you can control the servos individually.
-3. If all your servos are the same kind, you can calibrate one and copy the configuration to the other ones.
+1. Navigate to `/peripherals/servo` (Peripherals, then Servo).
+1. Check the channel of every joint in the table. Joint `j` is on channel `j` until you change it, and the channels must be distinct and between 0 and 15. A change is sent to the robot when the field loses focus.
+1. Switch on "Active" to wake the PCA9685.
+1. Select a joint with the joint slider. "All joints" drives every joint with the same PWM.
+1. Move the PWM slider until the real joint lines up with the green dashed reference pose in the "Expected pose" diagram. The robot clamps every PWM to 125-600.
+1. Click "Set centre PWM". This stores the slider value as the joint's centre PWM and uploads it. You can also type the value in the "Centre PWM" column.
+1. Repeat for all twelve joints, then switch "Active" off.
 
-We have to find a couple of values: min pwm, max pwm and conversion ratio.
+The solid leg in the diagram is where the joint is at the current PWM, and the faint leg is where it is 20 PWM higher.
+The real joint must move the same way as the faint leg when the PWM rises.
+If it moves the other way, your build does not match the joint model of the selected variant.
 
-**Min Pwm**
+If a joint cannot reach its reference pose inside the PWM range, remove the servo horn and refit it one spline tooth over.
 
-1. Select the servo you want to calibrate and move the pwm slider to where the servo stops moving. Then move it up and note the value where it starts moving again as $p_1$.
+### Level the IMU
 
-**Max Pwm**
-
-1. Move the pwm slider up to where the servo stops moving. Then move it down until the servo starts moving again and note this value as $p_2$.
-
-**Conversion ratio**
-
-1. Now we have to find the conversion ratio, by looking at how much the servo move in deg per pwm. Move the pwm slider to the min pwm. Then mentally mark this as 0 deg. Move the pwm slider until the servo has moved 180 deg. Mark the pwm value $p_3$
-
-Center pwm $=p_2 - p_2$
-Conversion ratio $=(p_3 - p_1) / 180$
-
-You now have the values for the servos.
-
-### Calibration in body frame
-
-They now have to be calibrated to the body frame. It is assumed they have the center PWM pointing straight down.
-
-1. Navigate to `/controller` and click on "Calibrate". This will set the servo to the center pwm value.
-2. Navigate to `peripherals/servo` - Here you can set the servo angle offset.
-
-All the legs should be pointing down. If they are not, you have two options. 1. Physically move the servos to the correct position by unscrewing the servo horns. 2. Update the servo offset in the servo table.
+With an IMU enabled in `esp32/features.ini`, open `/peripherals/imu` and click "Calibrate IMU" while the robot lies still and level.
+The calibration fails if the robot moves, and a tilt above 15 degrees is not levelled.
 
 ## Circuit diagram
 
 ![Electronics diagram](media/circuitschematic.png "Title")
 
-PCA9685 Servo PWM numbers to joint:
-| PWM_0  | Front Left Shoulder          |
-|--------|------------------------------|
-| PWM_1  | Front Left Upper-Limb        |
-| PWM_2  | Front Left Leg (Lower-Limb)  |
-| PWM_3  | Front Right Shoulder         |
-| PWM_4  | Front Right Upper-Limb       |
-| PWM_5  | Front Right Leg (Lower-Limb) |
-| PWM_6  | Rear Left Shoulder           |
-| PWM_7  | Rear Left Upper-Limb         |
-| PWM_8  | Rear Left Leg (Lower-Limb)   |
-| PWM_9  | Rear Right Shoulder          |
-| PWM_10 | Rear Right Upper-Limb        |
-| PWM_11 | Rear Right Leg (Lower-limb)  |
+The PCA9685 and the IMU share the I2C bus of the ESP32.
+The PCA9685 uses address `0x40`.
+The default SDA and SCL pins depend on the PlatformIO environment:
+
+| Environment            | SDA | SCL |
+|------------------------|-----|-----|
+| `esp32-camera`         | 14  | 15  |
+| `esp32dev`             | 21  | 22  |
+| `esp32-wroom-camera`   | 47  | 21  |
+| `seeed-xiao-esp32s3`   | 5   | 6   |
+| `esp32-p4`             | 7   | 8   |
+
+The pins and the bus frequency are stored in the peripheral settings and can be changed on `/peripherals/i2c`.
+
+PCA9685 servo channels to joint, with the default channel map (joint `j` on channel `j`).
+The firmware numbers the legs front right, front left, rear right, rear left, and each leg hip, upper limb (femur), lower limb (knee):
+
+| PWM_0  | Front Right Shoulder (hip)         |
+|--------|------------------------------------|
+| PWM_1  | Front Right Upper-Limb (femur)     |
+| PWM_2  | Front Right Lower-Limb (knee)      |
+| PWM_3  | Front Left Shoulder (hip)          |
+| PWM_4  | Front Left Upper-Limb (femur)      |
+| PWM_5  | Front Left Lower-Limb (knee)       |
+| PWM_6  | Rear Right Shoulder (hip)          |
+| PWM_7  | Rear Right Upper-Limb (femur)      |
+| PWM_8  | Rear Right Lower-Limb (knee)       |
+| PWM_9  | Rear Left Shoulder (hip)           |
+| PWM_10 | Rear Left Upper-Limb (femur)       |
+| PWM_11 | Rear Left Lower-Limb (knee)        |

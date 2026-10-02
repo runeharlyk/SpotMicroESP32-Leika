@@ -5,10 +5,12 @@ on:
     branches: [master]
     paths:
       - "app/**"
+      - "simulation/src/resources/**"
   pull_request:
     branches: [master]
     paths:
       - "app/**"
+      - "simulation/src/resources/**"
 
 permissions:
   contents: read

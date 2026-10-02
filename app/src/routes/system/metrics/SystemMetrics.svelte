@@ -18,6 +18,8 @@
     let temperatureChartElement: HTMLCanvasElement
     let temperatureChart: Chart
 
+    let refreshInterval: ReturnType<typeof setInterval> | undefined
+
     onMount(() => {
         analytics.listen()
         heapChart = new Chart(heapChartElement, {
@@ -217,10 +219,13 @@
                 }
             }
         })
-        setInterval(updateData, 500)
+        refreshInterval = setInterval(updateData, 500)
     })
 
-    onDestroy(() => analytics.stop())
+    onDestroy(() => {
+        clearInterval(refreshInterval)
+        analytics.stop()
+    })
 
     function updateData() {
         heapChart.data.labels = $analytics.map(datapoint => datapoint.uptime)

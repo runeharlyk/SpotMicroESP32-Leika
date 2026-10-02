@@ -312,13 +312,24 @@
         {#if calibrationResult}
             <span
                 class="badge"
-                class:badge-success={calibrationResult.success}
+                class:badge-success={calibrationResult.levelled}
+                class:badge-warning={calibrationResult.success && !calibrationResult.levelled}
                 class:badge-error={!calibrationResult.success}
             >
-                {calibrationResult.success ? 'Calibrated' : 'Failed'}
+                {#if !calibrationResult.success}
+                    Failed: the robot moved
+                {:else if calibrationResult.levelled}
+                    Calibrated, {calibrationResult.tiltDeg.toFixed(1)}° of tilt levelled
+                {:else}
+                    Gyro calibrated; not levelled: {calibrationResult.tiltDeg.toFixed(1)}° of tilt
+                    is over 15°
+                {/if}
             </span>
         {/if}
     </div>
+    <p class="text-xs opacity-70 mb-4">
+        Lay the robot still on a level surface first: the tilt the IMU shows then is taken as level.
+    </p>
 
     {#if $features.imu}
         <div class="w-full overflow-x-auto">

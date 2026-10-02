@@ -1,7 +1,10 @@
 #include <communication/webserver.h>
+#include <communication/ws_origin.h>
 #include <esp_log.h>
 #include <cstring>
 #include <algorithm>
+#include <unistd.h>
+#include <lwip/sockets.h>
 
 static const char* TAG = "WebServer";
 
@@ -23,6 +26,27 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.max_resp_headers = 16;
     config_.lru_purge_enable = true;
     config_.uri_match_fn = httpd_uri_match_wildcard;
+    config_.global_user_ctx = this;
+    config_.global_user_ctx_free_fn = keepContext;
+    config_.open_fn = openSession;
+    config_.close_fn = closeSession;
+}
+
+// httpd writes a socket frame's header and payload separately; with Nagle on, the payload waits for the
+// client's delayed acknowledgement of the header, which added about 80 ms to every reply.
+esp_err_t WebServer::openSession(httpd_handle_t handle, int sockfd) {
+    int noDelay = 1;
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay)) != 0)
+        ESP_LOGW(TAG, "TCP_NODELAY not set on socket %d", sockfd);
+    return ESP_OK;
+}
+
+// Every session ends here, however it ended: a close frame, a dropped connection, or the least recently
+// used one purged for a new client. A socket's subscriptions must end with it, or a reused descriptor
+// would inherit them.
+void WebServer::closeSession(httpd_handle_t handle, int sockfd) {
+    static_cast<WebServer*>(httpd_get_global_user_ctx(handle))->dropWsClient(sockfd);
+    close(sockfd);
 }
 
 esp_err_t WebServer::listen(uint16_t port) {
@@ -33,6 +57,14 @@ esp_err_t WebServer::listen(uint16_t port) {
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start server: %s", esp_err_to_name(ret));
         return ret;
+    }
+
+    for (const HttpRoute& route : routes_) {
+        esp_err_t err = registerRoute(route);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register %s (method %d): %s", route.uri.c_str(), route.method,
+                     esp_err_to_name(err));
+        }
     }
 
     ESP_LOGI(TAG, "Server started on port %d", port);
@@ -73,50 +105,35 @@ esp_err_t WebServer::httpHandler(httpd_req_t* req) {
             if (route.getHandler) {
                 return route.getHandler(req);
             }
-            if (route.postHandler) {
-                size_t contentLen = req->content_len;
-                if (contentLen == 0 || contentLen > 4096) {
-                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
-                    return ESP_FAIL;
-                }
-
-                uint8_t* buffer = (uint8_t*)malloc(contentLen);
-                if (!buffer) {
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
-                    return ESP_FAIL;
-                }
-
-                int received = 0;
-                int remaining = contentLen;
-                while (remaining > 0) {
-                    int ret = httpd_req_recv(req, (char*)buffer + received, remaining);
-                    if (ret <= 0) {
-                        free(buffer);
-                        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                            httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request timeout");
-                        }
-                        return ESP_FAIL;
-                    }
-                    received += ret;
-                    remaining -= ret;
-                }
-
-                api_Request protoReq = api_Request_init_zero;
-                pb_istream_t stream = pb_istream_from_buffer(buffer, contentLen);
-                bool success = pb_decode(&stream, api_Request_fields, &protoReq);
-                free(buffer);
-
-                if (!success) {
-                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to decode protobuf");
-                    return ESP_FAIL;
-                }
-
-                return route.postHandler(req, &protoReq);
-            }
         }
     }
 
     httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Not found");
+    return ESP_FAIL;
+}
+
+#if !CONFIG_HTTPD_WS_PRE_HANDSHAKE_CB_SUPPORT
+#error "CONFIG_HTTPD_WS_PRE_HANDSHAKE_CB_SUPPORT is needed to refuse WebSockets from other pages"
+#endif
+
+// A header that is absent reads as nullptr; one too long to read refuses the socket.
+static bool readHeader(httpd_req_t* req, const char* field, char* value, size_t size, const char*& read) {
+    esp_err_t err = httpd_req_get_hdr_value_str(req, field, value, size);
+    read = err == ESP_OK ? value : nullptr;
+    return err == ESP_OK || err == ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t WebServer::wsPreHandshake(httpd_req_t* req) {
+    char originValue[128];
+    char hostValue[128];
+    const char* origin;
+    const char* host;
+    if (readHeader(req, "Origin", originValue, sizeof(originValue), origin) &&
+        readHeader(req, "Host", hostValue, sizeof(hostValue), host) && wsOriginAllowed(origin, host)) {
+        return ESP_OK;
+    }
+    ESP_LOGW(TAG, "Refused a WebSocket opened by %s", origin ? origin : "an unreadable origin");
+    httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "This page may not open the robot's socket");
     return ESP_FAIL;
 }
 
@@ -159,12 +176,7 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
     }
 
     if (frame.type == HTTPD_WS_TYPE_CLOSE) {
-        int sockfd = httpd_req_to_sockfd(req);
-        self->removeWsClient(sockfd);
-        if (self->wsCloseHandler_) {
-            self->wsCloseHandler_(sockfd);
-        }
-        ESP_LOGI(TAG, "WebSocket client disconnected: %d", sockfd);
+        self->dropWsClient(httpd_req_to_sockfd(req));
         if (frame.payload) free(frame.payload);
         return ESP_OK;
     }
@@ -182,22 +194,16 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
 }
 
 void WebServer::on(const char* uri, httpd_method_t method, HttpGetHandler handler) {
-    addRoute({uri, method, handler, nullptr, false});
+    addRoute({uri, method, handler, false});
 }
 
-void WebServer::on(const char* uri, httpd_method_t method, HttpPostHandler handler) {
-    addRoute({uri, method, nullptr, handler, false});
-}
-
+// The server's task reads the routes while it runs, so they are all added before listen().
 void WebServer::addRoute(HttpRoute route) {
-    routes_.push_back(std::move(route));
-    if (!server_) return;
-
-    const HttpRoute& added = routes_.back();
-    esp_err_t ret = registerRoute(added);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register %s (method %d): %s", added.uri.c_str(), added.method, esp_err_to_name(ret));
+    if (server_) {
+        ESP_LOGE(TAG, "Refused %s: routes are added before listen()", route.uri.c_str());
+        return;
     }
+    routes_.push_back(std::move(route));
 }
 
 esp_err_t WebServer::registerRoute(const HttpRoute& route) {
@@ -207,11 +213,12 @@ esp_err_t WebServer::registerRoute(const HttpRoute& route) {
                                .user_ctx = this,
                                .is_websocket = route.isWebsocket,
                                .handle_ws_control_frames = route.isWebsocket,
-                               .supported_subprotocol = nullptr};
+                               .supported_subprotocol = nullptr,
+                               .ws_pre_handshake_cb = route.isWebsocket ? wsPreHandshake : nullptr};
     return httpd_register_uri_handler(server_, &httpd_route);
 }
 
-void WebServer::registerWebsocket(const char* uri) { addRoute({uri, HTTP_GET, nullptr, nullptr, true}); }
+void WebServer::registerWebsocket(const char* uri) { addRoute({uri, HTTP_GET, nullptr, true}); }
 
 void WebServer::onWsFrame(WsFrameHandler handler) { wsFrameHandler_ = handler; }
 
@@ -225,17 +232,14 @@ void WebServer::addWsClient(int sockfd) {
     xSemaphoreGive(wsMutex_);
 }
 
-void WebServer::removeWsClient(int sockfd) {
+// Reports a WebSocket client's end once, whichever of its close frame and its session's end comes first.
+void WebServer::dropWsClient(int sockfd) {
     xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    wsClients_.erase(std::remove(wsClients_.begin(), wsClients_.end(), sockfd), wsClients_.end());
+    auto client = std::find(wsClients_.begin(), wsClients_.end(), sockfd);
+    bool wasClient = client != wsClients_.end();
+    if (wasClient) wsClients_.erase(client);
     xSemaphoreGive(wsMutex_);
-}
-
-std::vector<int> WebServer::getWsClients() {
-    xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    std::vector<int> clients = wsClients_;
-    xSemaphoreGive(wsMutex_);
-    return clients;
+    if (wasClient && wsCloseHandler_) wsCloseHandler_(sockfd);
 }
 
 esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
@@ -247,13 +251,25 @@ esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
     return httpd_ws_send_frame_async(server_, sockfd, &frame);
 }
 
-esp_err_t WebServer::wsSendAll(const uint8_t* data, size_t len) {
-    xSemaphoreTake(wsMutex_, portMAX_DELAY);
-    for (int sockfd : wsClients_) {
-        wsSend(sockfd, data, len);
-    }
-    xSemaphoreGive(wsMutex_);
-    return ESP_OK;
+bool WebServer::queueWork(std::function<void()> work) {
+    if (!server_) return false;
+    auto job = new std::function<void()>(std::move(work));
+    auto run = [](void* arg) {
+        auto job = static_cast<std::function<void()>*>(arg);
+        (*job)();
+        delete job;
+    };
+    if (httpd_queue_work(server_, run, job) == ESP_OK) return true;
+    delete job;
+    return false;
+}
+
+bool WebServer::waitWritable(int sockfd, uint32_t ms) {
+    fd_set writable;
+    FD_ZERO(&writable);
+    FD_SET(sockfd, &writable);
+    timeval timeout = {.tv_sec = 0, .tv_usec = static_cast<suseconds_t>(ms * 1000)};
+    return select(sockfd + 1, nullptr, &writable, nullptr, &timeout) > 0;
 }
 
 esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message) {

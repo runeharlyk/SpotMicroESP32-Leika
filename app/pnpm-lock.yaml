@@ -11,9 +11,9 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.10.2
         version: 2.10.2
-      '@niku/vite-env-caster':
-        specifier: ^1.1.2
-        version: 1.1.2
+      '@mujoco/mujoco':
+        specifier: 3.14.0
+        version: 3.14.0
       '@tailwindcss/vite':
         specifier: ^4.1.14
         version: 4.1.14(vite@7.1.9(@types/node@24.7.1)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.1))
@@ -457,8 +457,8 @@ packages:
   '@kurkle/color@0.3.4':
     resolution: {integrity: sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==}
 
-  '@niku/vite-env-caster@1.1.2':
-    resolution: {integrity: sha512-6I/8REFdmfeGnK92H3nYHGc6lExwjm72jLxAsDPlfji97Eej4rOMl6WuYGLgsQI0pl5RrMRMveeRdijdL6hW+Q==}
+  '@mujoco/mujoco@3.14.0':
+    resolution: {integrity: sha512-WPUYidu4Fx8+uM4hQv80SOA0ifpWGrsNJguKs8JBV8SCTxjKQ2/rqsh880nUH0/Vwa8vuefghvCQkkoed3bkUg==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -2431,9 +2431,7 @@ snapshots:
 
   '@kurkle/color@0.3.4': {}
 
-  '@niku/vite-env-caster@1.1.2':
-    dependencies:
-      chalk: 4.1.2
+  '@mujoco/mujoco@3.14.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

@@ -9,7 +9,7 @@ import {
 import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
 import { telemetry } from './telemetry'
-import type { ITransport, TransportCloseReason } from '$lib/transport/transport.interface'
+import type { ITransport, TransportHandlers } from '$lib/transport/transport.interface'
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
 import { createBleTransport } from '$lib/transport/ble-adapter'
 
@@ -74,11 +74,13 @@ type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive'
 
 type TaggedMessage = { tag: number; msg: Message }
 
-export const decodeMessage = (data: ArrayBuffer): TaggedMessage => {
+/** Undefined for a message kind this app does not know, as a newer firmware may send. */
+export const decodeMessage = (data: ArrayBuffer): TaggedMessage | undefined => {
     const decoded = Message.decode(new Uint8Array(data))
     const values = Object.entries(decoded).filter(([, value]) => value !== undefined)
-    if (values.length != 1) {
-        throw new Error('Message included either 0 or more than 1 data point')
+    if (values.length === 0) return
+    if (values.length > 1) {
+        throw new Error('Message included more than 1 data point')
     }
     const fieldName = values[0][0]
     const tag = MESSAGE_KEY_TO_TAG.get(fieldName)
@@ -93,7 +95,7 @@ export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
     return encoded
 }
 
-function createWebSocket() {
+export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     const message_listeners = new Map<number, Set<(data?: unknown) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
     const pending_requests = new Map<number, PendingRequest>()
@@ -111,7 +113,6 @@ function createWebSocket() {
     const reconnectMaxDelay = 10000
     const pingIntervalTime = 4000
     const unresponsiveTimeoutTime = 12000
-    const requestTimeoutTime = 30000
     let reconnectAttempts = 0
     let lastPingSentAt = 0
     let correlationIdCounter = 0
@@ -136,17 +137,54 @@ function createWebSocket() {
         connect()
     }
 
+    /** Drops the active transport without reporting it; its late events are ignored from here on. */
+    function detach() {
+        const previous = transport
+        transport = undefined
+        previous?.close()
+        set(false)
+        activeTransport.set(null)
+        clearTimeout(unresponsiveTimeoutId)
+        clearTimeout(reconnectTimeoutId)
+        clearInterval(pingIntervalId)
+        // What was sent on the old link can never be answered: its callers learn so now, not at the timeout.
+        for (const [correlationId, pending] of pending_requests) {
+            clearTimeout(pending.timeoutId)
+            pending.reject(
+                new Error(`The connection closed before the reply (id: ${correlationId})`)
+            )
+        }
+        pending_requests.clear()
+        return previous
+    }
+
+    /** Replaces the active transport, so a robot being switched away from cannot feed or close its successor. */
+    function attach(create: (handlers: TransportHandlers) => ITransport) {
+        detach()
+        const next = create({
+            onOpen: () => {
+                if (transport === next) handleOpen()
+            },
+            onData: data => {
+                if (transport === next) handleData(data)
+            },
+            onClose: (reason, event) => {
+                if (transport === next) disconnect(reason, event)
+            }
+        })
+        transport = next
+        return next
+    }
+
     /**
      * Web Bluetooth needs a user gesture, so this is called from a click rather than on mount.
      * BLE carries the same protobuf envelope as the WebSocket (robot_comm_ble attaches to the same
      * broker), but only messages that fit in one ATT frame.
      */
     async function connectBluetooth() {
-        clearTimeout(reconnectTimeoutId)
-        transport?.close()
-        transport = createBleTransport(handlers)
+        const ble = attach(createBleTransport)
         try {
-            await transport.connect()
+            await ble.connect()
         } catch (error) {
             // Pairing was cancelled or failed. Fall back to WiFi, or a dead BLE transport would be
             // left in place, whose canAutoReconnect: false also suppresses the WebSocket retry.
@@ -156,72 +194,56 @@ function createWebSocket() {
     }
 
     function disconnect(reason: SocketEvent, event?: unknown) {
-        transport?.close()
-        set(false)
-        activeTransport.set(null)
-        clearTimeout(unresponsiveTimeoutId)
-        clearTimeout(reconnectTimeoutId)
-        clearInterval(pingIntervalId)
+        const closed = detach()
         event_listeners.get(reason)?.forEach(listener => listener(event))
         // Re-pairing a BLE device requires a user gesture, so only WiFi redials itself.
-        if (transport && !transport.canAutoReconnect) return
+        if (closed && !closed.canAutoReconnect) return
         const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
         reconnectAttempts++
         reconnectTimeoutId = setTimeout(connect, delay)
     }
 
-    const handlers = {
-        onOpen: () => {
-            reconnectAttempts = 0
-            set(true)
-            activeTransport.set(transport?.kind ?? null)
-            ping()
-            clearTimeout(reconnectTimeoutId)
-            clearInterval(pingIntervalId)
-            pingIntervalId = setInterval(ping, pingIntervalTime)
-            resetUnresponsiveCheck()
-            resubscribeAll()
-            flushQueuedRequests()
-            event_listeners.get('open')?.forEach(listener => listener(undefined))
-        },
-        onClose: (reason: TransportCloseReason, event?: unknown) => disconnect(reason, event),
-        onData: (data: ArrayBuffer) => {
-            resetUnresponsiveCheck()
+    function handleOpen() {
+        reconnectAttempts = 0
+        set(true)
+        activeTransport.set(transport?.kind ?? null)
+        ping()
+        clearTimeout(reconnectTimeoutId)
+        clearInterval(pingIntervalId)
+        pingIntervalId = setInterval(ping, pingIntervalTime)
+        resetUnresponsiveCheck()
+        resubscribeAll()
+        flushQueuedRequests()
+        event_listeners.get('open')?.forEach(listener => listener(undefined))
+    }
 
-            for (const [correlationId, pending] of pending_requests) {
+    function handleData(data: ArrayBuffer) {
+        resetUnresponsiveCheck()
+
+        const decoded = decodeMessage(data)
+        if (!decoded) return
+        const { tag, msg } = decoded
+        if (msg.pongmsg !== undefined) {
+            if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
+            return
+        }
+        if (msg.correlationResponse) {
+            const pending = pending_requests.get(msg.correlationResponse.correlationId)
+            if (pending) {
                 clearTimeout(pending.timeoutId)
-                pending.timeoutId = setTimeout(() => {
-                    pending_requests.delete(correlationId)
-                    pending.reject(new Error(`Request timeout (id: ${correlationId})`))
-                }, requestTimeoutTime)
+                pending_requests.delete(msg.correlationResponse.correlationId)
+                pending.resolve(msg.correlationResponse)
             }
-
-            const { tag, msg } = decodeMessage(data)
-            if (msg.pongmsg !== undefined) {
-                if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
-                return
-            }
-            if (msg.correlationResponse) {
-                const pending = pending_requests.get(msg.correlationResponse.correlationId)
-                if (pending) {
-                    clearTimeout(pending.timeoutId)
-                    pending_requests.delete(msg.correlationResponse.correlationId)
-                    pending.resolve(msg.correlationResponse)
-                }
-                return
-            }
-            if (tag) {
-                const key = MESSAGE_TAG_TO_KEY.get(tag)!
-                message_listeners
-                    .get(tag)
-                    ?.forEach(listener => listener(msg[key as keyof typeof msg]))
-            }
+            return
+        }
+        if (tag) {
+            const key = MESSAGE_TAG_TO_KEY.get(tag)!
+            message_listeners.get(tag)?.forEach(listener => listener(msg[key as keyof typeof msg]))
         }
     }
 
     function connect() {
-        transport = createWebSocketTransport(socketUrl, handlers)
-        transport.connect()
+        attach(handlers => createWebSocketTransport(socketUrl, handlers)).connect()
     }
 
     function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
@@ -350,15 +372,26 @@ function createWebSocket() {
             }
         },
         request: (data: CorrelationRequestData): Promise<CorrelationResponse> => {
-            return new Promise((resolve, reject) => {
+            return new Promise((ownResolve, ownReject) => {
                 if (isOpen()) {
-                    request(data, resolve, reject)
+                    request(data, ownResolve, ownReject)
                 } else {
                     const key = getRequestKey(data)
+                    let resolve: (response: CorrelationResponse) => void = ownResolve
+                    let reject: (error: Error) => void = ownReject
+                    // Only the newest request of a kind is sent; an older caller waiting for the
+                    // same kind of answer settles with it.
                     const existing = queued_requests.get(key)
                     if (existing) {
                         clearTimeout(existing.timeoutId)
-                        existing.reject(new Error('Request superseded by newer request'))
+                        resolve = response => {
+                            existing.resolve(response)
+                            ownResolve(response)
+                        }
+                        reject = error => {
+                            existing.reject(error)
+                            ownReject(error)
+                        }
                     }
                     // A queued request must expire too, or a request issued while disconnected
                     // never settles and its caller waits forever.

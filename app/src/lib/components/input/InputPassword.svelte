@@ -18,9 +18,13 @@
 
 <label class="input input-bordered flex items-center gap-2">
     <input {type} class="grow" {value} oninput={handleInput} {id} />
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div onclick={togglePassword} role="button" tabindex="0">
+    <button
+        type="button"
+        onclick={togglePassword}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        aria-pressed={show}
+    >
         <MdiEyeOffOutline class="text-base-content/50 h-6 {show ? 'block' : 'hidden'}" />
         <MdiEyeOutline class="text-base-content/50 h-6 {show ? 'hidden' : 'block'}" />
-    </div>
+    </button>
 </label>

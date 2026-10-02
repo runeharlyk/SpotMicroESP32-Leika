@@ -5,11 +5,19 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "platform_shared/**"
+      - "app/static/spot_micro.urdf.xacro"
+      - "app/static/yertle.URDF"
+      - "app/static/URDF/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
     paths:
       - "simulation/**"
+      - "platform_shared/**"
+      - "app/static/spot_micro.urdf.xacro"
+      - "app/static/yertle.URDF"
+      - "app/static/URDF/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -32,6 +40,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Generate the protocol classes the recording loader reads
+        run: uv run python gen_protos.py
 
       - name: Run tests
         run: uv run pytest -q

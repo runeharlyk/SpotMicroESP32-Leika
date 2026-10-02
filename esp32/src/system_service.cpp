@@ -1,11 +1,10 @@
 #include "system_service.h"
-#include <communication/webserver.h>
 #include <dirent.h>
 #include <esp_chip_info.h>
 #include <esp_flash.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
-#include <esp_sleep.h>
+#include <mdns.h>
 #include <soc/soc.h>
 
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || \
@@ -17,11 +16,7 @@ static float temperatureRead() {
     static bool initialized = false;
 
     if (!initialized) {
-        temperature_sensor_config_t temp_sensor_config = {
-            .range_min = -10,
-            .range_max = 80,
-            .clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
-        };
+        temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
         if (temperature_sensor_install(&temp_sensor_config, &temp_sensor) == ESP_OK) {
             temperature_sensor_enable(temp_sensor);
             initialized = true;
@@ -43,21 +38,6 @@ static inline float temperatureRead() { return 0.0f; }
 namespace system_service {
 
 static const char *TAG = "SystemService";
-
-esp_err_t handleReset(httpd_req_t *request) {
-    reset();
-    return WebServer::sendOk(request);
-}
-
-esp_err_t handleRestart(httpd_req_t *request) {
-    restart();
-    return WebServer::sendOk(request);
-}
-
-esp_err_t handleSleep(httpd_req_t *request) {
-    sleep();
-    return WebServer::sendOk(request);
-}
 
 void reset() {
     ESP_LOGI(TAG, "Resetting device");
@@ -87,31 +67,6 @@ void restart() {
             }
         },
         "Restart task", 4096, nullptr, 10, nullptr);
-}
-
-void sleep() {
-    xTaskCreate(
-        [](void *pvParameters) {
-            for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                mdns_free();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-
-                uint64_t bitmask = (uint64_t)1 << (WAKEUP_PIN_NUMBER);
-
-#if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32P4
-                esp_deep_sleep_enable_gpio_wakeup(bitmask, (esp_deepsleep_gpio_wake_up_mode_t)WAKEUP_SIGNAL);
-#else
-                esp_sleep_enable_ext1_wakeup(bitmask, (esp_sleep_ext1_wakeup_mode_t)WAKEUP_SIGNAL);
-                esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
-#endif
-                esp_deep_sleep_start();
-            }
-        },
-        "Sleep task", 4096, nullptr, 10, nullptr);
-    ESP_LOGI(TAG, "Setting device to sleep");
 }
 
 static const char *getChipModel() {
@@ -195,7 +150,7 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
 
     info.esp_platform = (char *)ESP_PLATFORM_NAME;
-    info.firmware_version = APP_VERSION;
+    info.firmware_version = (char *)APP_VERSION;
     info.cpu_freq_mhz = getCpuFreqMHz();
     info.cpu_type = (char *)getChipModel();
     info.cpu_rev = getChipRevision();
@@ -203,7 +158,6 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     info.sketch_size = getSketchSize();
     info.free_sketch_space = getFreeSketchSpace();
     info.sdk_version = (char *)esp_get_idf_version();
-    info.arduino_version = "";
     info.flash_chip_size = getFlashChipSize();
     info.flash_chip_speed = getFlashChipSpeed();
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());

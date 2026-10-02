@@ -14,6 +14,8 @@
 
 [![Frontend Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/frontend-tests.yml)
 [![PlatformIO CI](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/embedded-build.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/embedded-build.yml)
+[![Firmware Host Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/firmware-port-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/firmware-port-tests.yml)
+[![Simulation Tests](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/simulation-tests.yml/badge.svg)](https://github.com/runeharlyk/SpotMicroESP32-Leika/actions/workflows/simulation-tests.yml)
 
 </div>
 
@@ -22,6 +24,8 @@
 Leika is an open-source quadruped robot built around the ESP32 microcontroller. The project combines embedded firmware, web-based control interfaces, and a physics-based simulation environment to create a complete robotics development platform. Using FreeRTOS for real-time task management, the robot handles inverse kinematics, gait generation, sensor fusion, and wireless communication simultaneously.
 
 The project includes a MuJoCo simulation that ports the firmware walking gait to Python and trains a reinforcement learning policy to stabilize it.
+One Python `Robot` API drives the simulation and the real robot over its WebSocket.
+A recorder streams the real robot's telemetry to a file and reports it beside the simulation's assumptions.
 
 <img src="images/short_walk.gif" width="450"/>
 
@@ -32,16 +36,18 @@ The project includes a MuJoCo simulation that ports the firmware walking gait to
 - ESP32-based control system with FreeRTOS
 - Inverse kinematics with 3-DOF legs
 - Multiple gait implementations (Bezier trot, 8-phase crawl)
-- Real-time sensor integration
-<!-- - Over-the-air firmware updates -->
+- Body-frame IMU orientation for the ICM-20948, BNO055 and MPU6050 (Madgwick fusion, except on the BNO055, which fuses on the chip), with an optional separate compass
+- Telemetry stream of every control tick: timing, IMU sample and servo command
 - Multiple hardware variants (standard, Yertle, and upcoming ✨Leika Mini✨)
 
 ### Web Controller
 
-- Self-hosted web interface embedded in firmware
-- Dual joystick control with real-time robot visualization
-- Complete configuration interface (calibration, network, settings)
-- Built with Svelte and embedded using LittleFS
+- Self-hosted web interface, built with SvelteKit and embedded in the firmware with LittleFS, so it always matches the firmware version
+- Dual joystick control with configurable input mapping and a real-time 3D view of the robot
+- Network and WiFi configuration, system monitoring and diagnostics
+- Servo calibration that draws each leg's expected pose, so a reversed or off-centre servo shows
+
+<img src="images/controller.gif" alt="controller" width="500">
 
 ### Simulation & Training
 
@@ -49,179 +55,12 @@ The project includes a MuJoCo simulation that ports the firmware walking gait to
 - NumPy port of the firmware walk gait, so a zero policy action reproduces the robot's own gait
 - Residual PPO policy (Stable-Baselines3) that learns small per-foot corrections on top of that gait
 - Domain randomization and optional uneven terrain for sim-to-real robustness
-
-## Architecture
-
-### Control Flow
-
-The robot implements a sense-plan-act control architecture:
-
-![control flow](images/flowchart.png)
-
-1. **Sense**: Read IMU, magnetometer and gensture sensor
-2. **Plan**: Process sensor data, compute inverse kinematics, generate gait trajectories
-3. **Act**: Send servo commands, stream telemetry data
-
-### Kinematics
-
-The kinematics system allows control through Cartesian coordinates rather than raw joint angles. This abstraction simplifies motion planning and enables intuitive control.
-
-The robot's body pose in the world reference frame:
-
-$$T_{body}=\left[x_b,y_b,z_b,\phi, \theta,\psi\right]$$
-
-Where:
-
-- $x_b, y_b, z_b$ are Cartesian coordinates of the body center
-- $\phi, \theta,\psi$ represent roll, pitch, and yaw angles
-
-Foot positions in the world reference frame:
-
-$$P_{feet}=\\{(x_{f_i},y_{f_i},z_{f_i})|i=1,2,3,4\\}$$
-
-The inverse kinematics solver converts these high-level commands into joint angles for the 12 servos (3 per leg). The kinematics library is implemented in C++ for the ESP32 firmware and TypeScript for the web controller, enabling both real-time control and browser-based visualization.
-
-### Web Controller
-
-The web interface is built with SvelteKit and compiled to static assets that are embedded directly in the ESP32 firmware. This approach eliminates the need for external servers and ensures the controller is always synchronized with the firmware version.
-
-<img src="images/controller.gif" alt="controller" width="500">
-
-Features:
-
-- Real-time 3D robot visualization
-- Dual joystick control with configurable input mapping
-- Network configuration and WiFi management
-- Servo calibration tools
-- System monitoring and diagnostics
-- Firmware over-the-air updates
-
-## Motion Control
-
-The motion system is implemented as a finite state machine supporting multiple locomotion modes:
-
-### Available Gaits
-
-**Trot Gait (12-Point Bezier)**
-
-- Uses continuous phase time $t\in[0,1]$ with configurable swing/stance ratios
-- Swing phase: 12-point Bezier curve for smooth foot trajectories
-- Stance phase: Sinusoidal curve for body weight transfer
-- Supports diagonal leg pairs moving in opposition
-- Enables dynamic turning through trajectory modification
-
-**8-Phase Crawl Gait**
-
-- Static stability: three feet always on ground
-- Sequential leg lifting with center-of-mass shifting
-- Discrete phase transitions based on phase time accumulation
-- Suitable for rough terrain and slow, stable locomotion
-- Based on the implementation from [mike4192's spotMicro](https://github.com/mike4192/spotMicro)
-
-**Static/Dynamic Posing**
-
-- Direct body pose control without locomotion
-- Used for manual positioning, rest states, and transitions
-
-### Controller Input Mapping
-
-| Input            | Parameter       | Range   |
-| ---------------- | --------------- | ------- |
-| Left joystick X  | Step length (X) | -1 to 1 |
-| Left joystick Y  | Step length (Z) | -1 to 1 |
-| Right joystick X | Turn angle      | -1 to 1 |
-| Right joystick Y | Body pitch      | -1 to 1 |
-| Height slider    | Body height     | 0 to 1  |
-| Speed slider     | Step velocity   | 0 to 1  |
-| S1 slider        | Step height     | 0 to 1  |
-| Stop button      | Emergency stop  | 0 or 1  |
-
-## Simulation Environment
-
-The `simulation/` directory contains a MuJoCo environment for residual-gait reinforcement learning.
-The baseline is a NumPy port of the firmware walk gait in `esp32/include/motion_states/walk_state.h`, so a zero action reproduces the gait the robot runs.
-A PPO policy learns only small per-foot corrections on top of it, which keeps training focused on stabilization.
-
-```bash
-cd simulation
-uv sync
-uv run python replay_gait.py --vx 0.05   # watch the baseline firmware gait
-uv run python train_mj.py --smoke        # short pipeline sanity run
-uv run pytest -q                         # regression tests
-```
-
-The simulated robot model is `spot_pico`, which the firmware does not yet have as a kinematics variant.
-Exporting a trained policy to the ESP32 is not implemented yet.
-See [simulation/README.md](simulation/README.md) for the architecture, training options, and follow-ups.
-
-## Hardware Variants
-
-### Leika (Standard)
-
-The original design supporting 12 servos with full 3-DOF leg control. Suitable for experimentation and learning about quadruped robotics.
-
-### [Yertle](https://github.com/Jerome-Graves/yertle/tree/main)
-
-A crossbreed between <a href="https://grabcad.com/library/diy-quadruped-robot-1">Kangal</a>, <a href="https://spotmicroai.readthedocs.io/en/latest/">SpotMicro</a> and <a href="https://github.com/adham-elarabawy/open-quadruped">Open Quadruped</a>
-
-### Leika Mini (In Development)
-
-A smaller and more affordable variant currently under development. Leika Mini aims to lower the entry barrier while being fully compatible with the platform.
-
-<img src="images/leika_mini.jpg" alt="Leika mini" width="500">
-
-### Kinematics Configuration
-
-| Parameter             | Leika (Standard) | Leika Mini  | Yertle        |
-| --------------------- | ---------------- | ----------- | ------------- |
-| **Coxa Length**       | 60.5mm           | 35.0mm      | 35.0mm        |
-| **Coxa Offset**       | 10.0mm           | 0.0mm       | 0.0mm         |
-| **Femur Length**      | 111.2mm          | 60.0mm      | 130.0mm       |
-| **Tibia Length**      | 118.5mm          | 60.0mm      | 130.0mm       |
-| **Body Length (L)**   | 207.5mm          | 160.0mm     | 240.0mm       |
-| **Body Width (W)**    | 78.0mm           | 80.0mm      | 78.0mm        |
-| **Max Leg Reach**     | 219.7mm          | 95.0mm      | 255.0mm       |
-| **Body Height Range** | 98.9-197.7mm     | 42.8-85.5mm | 114.8-229.5mm |
-
-**Motion Limits:**
-
-- Maximum roll/pitch: ±15°
-- Maximum body shift: W/3 in X and Z directions
-- Maximum step length: 80% of leg reach
-- Maximum step height: 50% of leg reach
-
-The kinematics system automatically adapts to the selected hardware variant through compile-time configuration flags (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI`, `SPOTMICRO_YERTLE`).
-
-## Hardware & Electronics
-
-### Mechanical Components
-
-The robot body is constructed from 3D-printed parts based on various Spot Micro community designs:
-
-- [robjk reinforced shoulder remix](https://www.thingiverse.com/thing:4937631)
-- [Kooba SpotMicroESP32 remix](https://www.thingiverse.com/thing:4559827)
-- [KDY0532 original design](https://www.thingiverse.com/thing:3445283)
-
-### Electronics
-
-| Component        | Specification                   | Required    | Notes                                                 |
-| ---------------- | ------------------------------- | ----------- | ----------------------------------------------------- |
-| ESP32            | Microcontroller                 | Yes         | ESP32-S3 (N8R8) recommended for better performance    |
-| PCA9685          | 16-channel PWM servo driver     | Yes         | Reinforce with thicker solder traces                  |
-| 12x Servo motors | 20-36kg torque                  | Yes         | Minimum MG996R, highly recommend the pricer CLS6336HV |
-| LM2596/XL4015    | DC-DC buck converter            | Yes         | Set to 5V for ESP32 and peripherals                   |
-| MPU6050          | IMU (accelerometer + gyroscope) | Recommended | GY-87 or MPU-9250 include magnetometer                |
-| HMC5883          | Magnetometer                    | Optional    | Included in GY-87/MPU-9250                            |
-| PAJ7620U2        | Gesture sensor                  | Optional    | For interaction capabilities                          |
-| OV2640/OV5640    | Camera module                   | Optional    | 120-160° FOV recommended                              |
-| 2x HC-SR04       | Ultrasonic distance sensors     | Optional    | For obstacle detection                                |
-| 0.96" SD1306     | OLED display                    | Optional    | Status display                                        |
-| Battery          | 7.6-8.4V                        | Yes         | 4x 18650 in 2S2P or 2S LiPo                           |
-| Power switch     | Main power                      | Yes         | Rated for battery current                             |
+- A `Robot` facade (`stand`, `move_forward`, `rotate`, `state`) with the same calls for the simulation and the real robot
+- A telemetry recorder and report that compare the real robot's latencies and IMU noise with the ranges the simulation randomizes over
 
 ## Getting Started
 
-### Hardware Build
+### Build the Robot
 
 Complete build instructions are available in the documentation:
 
@@ -256,10 +95,11 @@ pnpm install
 cd ..
 
 pio run -t upload
-pio run -t uploadfs
 ```
 
-Configuration is managed through `factory_settings.ini` and `features.ini` in the `esp32/` directory.
+The first build creates `esp32/include/secrets.h` from `secrets.example.h`, which git ignores.
+Put your WiFi network and the robot's access point password there, then build again.
+Other configuration is managed through `factory_settings.ini` and `features.ini` in the `esp32/` directory.
 
 ### Simulation Only
 
@@ -268,22 +108,88 @@ To experiment with the simulation without hardware, install [uv](https://docs.as
 ```bash
 cd simulation
 uv sync
-uv run python replay_gait.py --vx 0.05
+uv run python replay_gait.py --vx 0.05   # watch the baseline firmware gait
+uv run pytest -q                         # regression tests
 ```
 
 For development workflows and contribution guidelines, see [docs/6_developing.md](docs/6_developing.md) and [docs/7_contributing.md](docs/7_contributing.md).
+
+## Hardware
+
+The robot body is 3D printed from community Spot Micro designs, and the electronics are an ESP32, a PCA9685 servo driver, 12 servos, a DC-DC converter and a 2S battery, with an optional IMU, compass, gesture sensor and camera.
+The [component list](docs/1_components.md) has the parts, their credits and notes.
+
+### Variants
+
+Select the variant with `SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE` in `esp32/features.ini`.
+Each variant's dimensions and motion limits are in [docs/kinematics.md](docs/kinematics.md).
+
+**Leika (Standard)**
+
+The original design supporting 12 servos with full 3-DOF leg control. Suitable for experimentation and learning about quadruped robotics.
+
+**[Yertle](https://github.com/Jerome-Graves/yertle/tree/main)**
+
+A crossbreed between <a href="https://grabcad.com/library/diy-quadruped-robot-1">Kangal</a>, <a href="https://spotmicroai.readthedocs.io/en/latest/">SpotMicro</a> and <a href="https://github.com/adham-elarabawy/open-quadruped">Open Quadruped</a>
+
+**Leika Mini (In Development)**
+
+A smaller and more affordable variant currently under development. Leika Mini aims to lower the entry barrier while being fully compatible with the platform.
+
+<img src="images/leika_mini.jpg" alt="Leika mini" width="500">
+
+## How It Works
+
+### Control Flow
+
+The robot implements a sense-plan-act control architecture, followed by a communication step:
+
+![control flow](images/flowchart.png)
+
+1. **Sense**: Read IMU, magnetometer and gesture sensor
+2. **Plan**: Process sensor data, compute inverse kinematics, generate gait trajectories
+3. **Act**: Send servo commands
+4. **Communicate**: Stream telemetry data
+
+### Kinematics
+
+The kinematics system allows control through Cartesian coordinates rather than raw joint angles.
+The body pose and the foot positions are expressed in the world reference frame, and the inverse kinematics solver converts them into joint angles for the 12 servos (3 per leg).
+The library is implemented in C++ for the firmware and TypeScript for the web controller, enabling both real-time control and browser-based visualization.
+See [docs/kinematics.md](docs/kinematics.md) for the maths.
+
+### Motion Control
+
+The motion system is a finite state machine with a 12-point Bezier trot, an 8-phase crawl (based on [mike4192's spotMicro](https://github.com/mike4192/spotMicro)), and static and dynamic posing.
+See [docs/motion_system.md](docs/motion_system.md) for the gaits and the controller input mapping.
+
+## Simulation Environment
+
+The `simulation/` directory contains a MuJoCo environment for residual-gait reinforcement learning.
+The baseline is a NumPy port of the firmware walk gait in `esp32/include/motion_states/walk_state.h`, so a zero action reproduces the gait the robot runs.
+A PPO policy learns only small per-foot corrections on top of it, which keeps training focused on stabilization.
+
+The simulated robot model is `spot_pico`, the hardware behind the firmware's `SPOTMICRO_ESP32_MINI` variant.
+Exporting a trained policy to the ESP32 is not implemented yet.
+
+`Robot("simulation")` and `Robot("<robot address>")` expose the same calls, so a script written against the simulation runs on the robot by changing its target.
+`record.py` and `report_recording.py` capture the real robot's telemetry and compare it with the simulation's assumptions.
+See [simulation/README.md](simulation/README.md) for the architecture, training options, the Robot API, recording and follow-ups.
 
 ## Project Structure
 
 ```text
 ├── app/                    # SvelteKit web controller
+├── boards/                 # PlatformIO board definitions
 ├── docs/                   # Build and software documentation
+├── flasher/                # Web flasher page and its firmware manifests
 ├── esp32/                  # ESP32 firmware (PlatformIO)
 │   ├── include/           # Firmware headers
 │   ├── src/               # Firmware source
-│   └── scripts/           # PlatformIO build scripts (web app embedding, proto generation)
+│   ├── scripts/           # PlatformIO build scripts (web app embedding, proto generation)
+│   └── test/              # Firmware tests that run on the host
 ├── platform_shared/        # Protobuf message definitions shared by firmware and app
-├── simulation/             # MuJoCo residual-gait training environment
+├── simulation/             # MuJoCo training environment, Robot API and telemetry tools
 ├── hardware/              # 3D printable parts and CAD files
 ├── submodules/            # nanopb
 ```
@@ -311,11 +217,3 @@ If you're interested in quadruped robotics, check out:
 ## License
 
 This project is licensed under the MIT License - see [LICENSE.md](LICENSE.md) for details.
-
-## Contact
-
-Rune Harlyk - [runeharlyk.dk](https://runeharlyk.dk)
-
-Project Repository: [https://github.com/runeharlyk/SpotMicroESP32-Leika](https://github.com/runeharlyk/SpotMicroESP32-Leika)
-
-<a href="https://bmc.link/runeharlyk" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/purple_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>

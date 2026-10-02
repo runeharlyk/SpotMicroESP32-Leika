@@ -14,31 +14,43 @@ void MotionService::setState(MotionState* newState) {
     }
     state = newState;
     if (state) {
+        state->resetSmoothing();
         state->begin();
     }
 }
 
-void MotionService::handleInput(const socket_message_ControllerData& data) {
-    command.fromProto(data);
-    if (state) state->handleCommand(command);
+void MotionService::applyMail(const MotionInbox::Mail& mail) {
+    if (mail.gait) {
+        ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(*mail.gait));
+        if (*mail.gait == socket_message_WalkGaits_TROT)
+            walkState.set_mode_trot();
+        else
+            walkState.set_mode_crawl();
+        currentGait = *mail.gait;
+    }
+    if (mail.mode) setMode(*mail.mode);
+    if (mail.input) {
+        command = *mail.input;
+        commandRxUs = mail.inputAtUs;
+        linkLostNow = false;
+        if (state) state->handleCommand(command);
+    }
+    if (mail.linkLost) {
+        linkLostNow = true;
+        stopLocomotion();
+    }
 }
 
-void MotionService::onControlLinkLost() {
+void MotionService::stopLocomotion() {
     command.lx = command.ly = command.rx = command.ry = command.s = 0;
     if (state) state->handleCommand(command);
-    ESP_LOGW("MotionService", "Control link lost — locomotion stopped");
+    ESP_LOGW("MotionService", "Control link lost - locomotion stopped");
 }
 
-void MotionService::handleWalkGait(const socket_message_WalkGaitData& data) {
-    ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(data.gait));
-    if (data.gait == socket_message_WalkGaits_TROT)
-        walkState.set_mode_trot();
-    else
-        walkState.set_mode_crawl();
-}
-
-void MotionService::handleMode(const socket_message_ModeData& data) {
-    MOTION_STATE mode = static_cast<MOTION_STATE>(data.mode);
+void MotionService::setMode(socket_message_ModesEnum modeData) {
+    modeApplied = true;
+    currentMode = modeData;
+    MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
     ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
         case MOTION_STATE::REST: setState(&restState); break;
@@ -53,33 +65,33 @@ void MotionService::handleGestures(const gesture_t ges) {
     if (ges != gesture_t::eGestureNone) {
         ESP_LOGI("Motion", "Gesture: %d", ges);
         switch (ges) {
-            case gesture_t::eGestureDown: setState(&restState); break;
-            case gesture_t::eGestureUp: setState(&standState); break;
+            case gesture_t::eGestureDown: setMode(socket_message_ModesEnum_REST); break;
+            case gesture_t::eGestureUp: setMode(socket_message_ModesEnum_STAND); break;
             case gesture_t::eGestureLeft:
-            case gesture_t::eGestureRight: setState(&walkState); break;
+            case gesture_t::eGestureRight: setMode(socket_message_ModesEnum_WALK); break;
 
             default: break;
         }
     }
 }
 
-bool MotionService::update(Peripherals* peripherals) {
-    handleGestures(peripherals->takeGesture());
-    if (!state) return false;
+bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     int64_t now = esp_timer_get_time();
-    float dt = (now - lastUpdate) / 1000000.0f; // Convert microseconds to seconds
+    applyMail(inbox.take(now / 1000));
+    handleGestures(gesture);
+    if (!state) return false;
+    float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
-    state->updateImuOffsets(peripherals->angleY(), peripherals->angleX());
+    state->updateImuOffsets(imu);
     state->step(body_state, dt);
     kinematics.calculate_inverse_kinematics(body_state, new_angles);
-
     return update_angles(new_angles, angles);
 }
 
 bool MotionService::update_angles(float new_angles[12], float angles[12]) {
     bool updated = false;
     for (int i = 0; i < 12; i++) {
-        const float new_angle = new_angles[i] * dir[i];
+        const float new_angle = new_angles[i] * JOINT_DIRECTION[i];
         if (!isEqual(new_angle, angles[i], 0.1)) {
             angles[i] = new_angle;
             updated = true;

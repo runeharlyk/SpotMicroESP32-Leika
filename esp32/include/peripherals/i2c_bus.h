@@ -5,9 +5,15 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <functional>
+#include <map>
 #include <vector>
-#include <cstring>
 
+/**
+ * The robot's I2C bus, shared by the control task (servos), the sensors and the socket's task (scans,
+ * pin changes). Every operation holds one recursive lock, so a restart cannot free a device another
+ * task is using, and each address keeps its device handle for the bus's lifetime instead of one
+ * handle being removed and re-added on every switch between the servo board and the IMU.
+ */
 class I2CBus {
   public:
     static I2CBus& instance() {
@@ -16,6 +22,7 @@ class I2CBus {
     }
 
     esp_err_t begin(gpio_num_t sda, gpio_num_t scl, uint32_t freq = 100000, i2c_port_t port = I2C_NUM_0) {
+        Lock lock(_mutex);
         if (_initialized) {
             end();
         }
@@ -48,12 +55,10 @@ class I2CBus {
     }
 
     void end() {
+        Lock lock(_mutex);
         if (_initialized) {
-            if (_dev) {
-                i2c_master_bus_rm_device(_dev);
-                _dev = NULL;
-                _dev_addr = 0xFF;
-            }
+            for (auto &[address, device] : _devices) i2c_master_bus_rm_device(device);
+            _devices.clear();
             i2c_del_master_bus(_bus);
             _bus = NULL;
             _initialized = false;
@@ -65,41 +70,40 @@ class I2CBus {
     i2c_master_bus_handle_t busHandle() const { return _bus; }
 
     esp_err_t writeBytes(uint8_t addr, const uint8_t* data, size_t len) {
-        if (!_initialized) return ESP_ERR_INVALID_STATE;
-        esp_err_t err = ensureDevice(addr);
+        Lock lock(_mutex);
+        i2c_master_dev_handle_t device;
+        esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit(_dev, data, len, pdMS_TO_TICKS(200));
+        return i2c_master_transmit(device, data, len, TIMEOUT_MS);
     }
 
     esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
-        if (!_initialized) return ESP_ERR_INVALID_STATE;
-        esp_err_t err = ensureDevice(addr);
+        Lock lock(_mutex);
+        i2c_master_dev_handle_t device;
+        esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
 
-        uint8_t buf[len + 1];
-        buf[0] = reg;
-        if (len > 0 && data != nullptr) {
-            memcpy(buf + 1, data, len);
-        }
-        return i2c_master_transmit(_dev, buf, len + 1, pdMS_TO_TICKS(200));
+        i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
+        return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
-        if (!_initialized) return ESP_ERR_INVALID_STATE;
-        esp_err_t err = ensureDevice(addr);
+        Lock lock(_mutex);
+        i2c_master_dev_handle_t device;
+        esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
-        return i2c_master_transmit_receive(_dev, &reg, 1, data, len, pdMS_TO_TICKS(200));
+        return i2c_master_transmit_receive(device, &reg, 1, data, len, TIMEOUT_MS);
     }
 
     bool probe(uint8_t addr) {
+        Lock lock(_mutex);
         if (!_initialized) return false;
-        return i2c_master_probe(_bus, addr, pdMS_TO_TICKS(200)) == ESP_OK;
+        return i2c_master_probe(_bus, addr, TIMEOUT_MS) == ESP_OK;
     }
 
+    // Locks per probe rather than for the whole scan, so the servos keep being written while it runs.
     std::vector<uint8_t> scan(uint8_t lower = 1, uint8_t upper = 127) {
         std::vector<uint8_t> devices;
-        if (!_initialized) return devices;
-
         for (uint8_t addr = lower; addr < upper; addr++) {
             if (probe(addr)) {
                 devices.push_back(addr);
@@ -116,34 +120,45 @@ class I2CBus {
     uint32_t freq() const { return _freq; }
 
   private:
-    I2CBus() = default;
+    struct Lock {
+        explicit Lock(SemaphoreHandle_t mutex) : _mutex(mutex) { xSemaphoreTakeRecursive(_mutex, portMAX_DELAY); }
+        ~Lock() { xSemaphoreGiveRecursive(_mutex); }
+        SemaphoreHandle_t _mutex;
+    };
+
+    I2CBus() : _mutex(xSemaphoreCreateRecursiveMutex()) {}
     ~I2CBus() { end(); }
     I2CBus(const I2CBus&) = delete;
     I2CBus& operator=(const I2CBus&) = delete;
 
     static constexpr const char* TAG = "I2CBus";
+    // The driver takes milliseconds, not ticks. Long enough for any transfer here; short, because a missing
+    // device costs the control loop this long on every write.
+    static constexpr int TIMEOUT_MS = 20;
     i2c_port_t _port = I2C_NUM_0;
     gpio_num_t _sda = GPIO_NUM_NC;
     gpio_num_t _scl = GPIO_NUM_NC;
     uint32_t _freq = 100000;
     bool _initialized = false;
 
+    SemaphoreHandle_t _mutex;
     i2c_master_bus_handle_t _bus = NULL;
-    i2c_master_dev_handle_t _dev = NULL;
-    uint8_t _dev_addr = 0xFF;
+    std::map<uint8_t, i2c_master_dev_handle_t> _devices;
 
-    esp_err_t ensureDevice(uint8_t addr) {
-        if (_dev && _dev_addr == addr) return ESP_OK;
-        if (_dev) {
-            i2c_master_bus_rm_device(_dev);
-            _dev = NULL;
+    // Called with the lock held.
+    esp_err_t deviceAt(uint8_t addr, i2c_master_dev_handle_t &device) {
+        if (!_initialized) return ESP_ERR_INVALID_STATE;
+        auto known = _devices.find(addr);
+        if (known != _devices.end()) {
+            device = known->second;
+            return ESP_OK;
         }
         i2c_device_config_t dev_cfg = {};
         dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
         dev_cfg.device_address = addr;
         dev_cfg.scl_speed_hz = _freq;
-        esp_err_t err = i2c_master_bus_add_device(_bus, &dev_cfg, &_dev);
-        if (err == ESP_OK) _dev_addr = addr;
+        esp_err_t err = i2c_master_bus_add_device(_bus, &dev_cfg, &device);
+        if (err == ESP_OK) _devices[addr] = device;
         return err;
     }
 };

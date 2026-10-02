@@ -4,7 +4,6 @@
 
     import LinkIndicator from '$lib/components/statusbar/LinkIndicator.svelte'
     import RssiIndicator from '$lib/components/statusbar/RSSIIndicator.svelte'
-    import SleepButton from './SleepButton.svelte'
     import ThemeButton from './ThemeButton.svelte'
     import FullscreenButton from './FullscreenButton.svelte'
     import StopButton from './StopButton.svelte'
@@ -14,7 +13,11 @@
 
 <div class="navbar bg-base-300 sticky top-0 z-10 h-12 min-h-fit drop-shadow-lg lg:h-16 gap-2 pr-0">
     <div class="flex flex-1 gap-2">
-        <label for="main-menu" class="btn btn-ghost btn-circle btn-sm drawer-button">
+        <label
+            for="main-menu"
+            class="btn btn-ghost btn-circle btn-sm drawer-button"
+            aria-label="Open menu"
+        >
             <Hamburger class="h-6 w-auto" />
         </label>
         {#if page.data.title === 'Controller'}
@@ -31,8 +34,6 @@
     <LinkIndicator />
 
     <RssiIndicator rssi={$telemetry.rssi.rssi} />
-
-    <SleepButton />
 
     <StopButton />
 </div>

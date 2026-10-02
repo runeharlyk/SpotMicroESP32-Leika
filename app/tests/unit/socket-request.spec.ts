@@ -20,16 +20,21 @@ describe('socket.request while disconnected', () => {
         await rejection
     })
 
-    it('rejects a superseded request as soon as an identical one is queued', async () => {
+    // Only the newer request is sent; the older caller gets its answer instead of an error.
+    it('settles a superseded request with the outcome of the newer one', async () => {
         const first = socket.request({ systemInformationRequest: {} })
-        const firstRejection = expect(first).rejects.toThrow(/superseded/i)
+        const firstSettled = vi.fn()
+        first.catch(firstSettled)
+        const firstRejection = expect(first).rejects.toThrow(/timeout/i)
 
+        await vi.advanceTimersByTimeAsync(10_000)
         const second = socket.request({ systemInformationRequest: {} })
         const secondRejection = expect(second).rejects.toThrow(/timeout/i)
 
-        await firstRejection
+        await vi.advanceTimersByTimeAsync(25_000)
+        expect(firstSettled).not.toHaveBeenCalled()
 
-        await vi.advanceTimersByTimeAsync(31_000)
-        await secondRejection
+        await vi.advanceTimersByTimeAsync(6_000)
+        await Promise.all([firstRejection, secondRejection])
     })
 })

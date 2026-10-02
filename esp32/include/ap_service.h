@@ -1,9 +1,10 @@
 #pragma once
 
 #include <template/stateful_service.h>
-#include <template/stateful_proto_endpoint.h>
+#include <template/stateful_proto_handler.h>
 #include <template/stateful_persistence.h>
 #include <settings/ap_settings.h>
+#include <settings/app_network_settings.h>
 #include <utils/timing.h>
 #include <wifi/wifi_idf.h>
 #include <wifi/dns_server.h>
@@ -18,13 +19,11 @@ class APService : public StatefulService<APSettings> {
 
     void begin();
     void loop();
-    void recoveryMode();
 
-    esp_err_t getStatusProto(httpd_req_t *request);
     void statusProto(api_APStatus &proto);
     APNetworkStatus getAPNetworkStatus();
 
-    StatefulProtoEndpoint<APSettings, api_APSettings> protoEndpoint;
+    StatefulProtoHandler<APSettings, api_APSettings> protoHandler;
 
   private:
     FSPersistencePB<APSettings> _persistence;
@@ -32,11 +31,9 @@ class APService : public StatefulService<APSettings> {
 
     volatile unsigned long _lastManaged;
     volatile bool _reconfigureAp;
-    volatile bool _recoveryMode = false;
 
     void reconfigureAP();
     void manageAP();
     void startAP();
     void stopAP();
-    void handleDNS();
 };

@@ -1,17 +1,14 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
+    import Spinner from '$lib/components/Spinner.svelte'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
     import { AP, Home, MAC, Devices } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
-    import {
-        type MDNSStatus,
-        type MDNSQueryResult,
-        Request,
-        type Response as ProtoResponse
-    } from '$lib/platform_shared/api'
+    import type { MDNSStatus, MDNSQueryResult } from '$lib/platform_shared/api'
     import { compareIp } from '$lib/utilities'
 
     let mdnsStatus = $state<MDNSStatus | undefined>()
@@ -19,55 +16,44 @@
     let isLoading = $state(false)
 
     const getMDNSStatus = async () => {
-        const result = await api.get<ProtoResponse>('/api/mdns/status')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-        if (result.inner.mdnsStatus) {
-            mdnsStatus = result.inner.mdnsStatus
-        }
+        const reply = await robotRequest({ mdnsStatusRequest: {} })
+        if (!reply.mdnsStatus) throw new Error('The robot sent no mDNS status')
+        mdnsStatus = reply.mdnsStatus
     }
 
     const queryMDNSServices = async () => {
         isLoading = true
-        const request = Request.create({
-            mdnsQueryRequest: {
-                service: 'http',
-                protocol: 'tcp'
+        try {
+            const reply = await robotRequest({
+                // Other robots advertise themselves as _spotmicro._tcp.
+                mdnsQueryRequest: { service: '_spotmicro', protocol: '_tcp' }
+            })
+            if (reply.mdnsQueryResponse) {
+                services = reply.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
             }
-        })
-        const result = await api.post_proto<ProtoResponse>('/api/mdns/query', request)
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            isLoading = false
-            return
-        }
-        if (result.inner.mdnsQueryResponse) {
-            services = result.inner.mdnsQueryResponse.services.sort((a, b) => compareIp(a.ip, b.ip))
+        } catch (error) {
+            notifications.error(`mDNS scan failed: ${(error as Error).message}`, 5000)
         }
         isLoading = false
     }
 
-    onMount(async () => {
+    const load = async () => {
         await getMDNSStatus()
         await queryMDNSServices()
-    })
-
-    const triggerScan = async () => {
-        await queryMDNSServices()
     }
+
+    let loading = $state(load())
 </script>
 
 <SettingsCard collapsible={false}>
     {#snippet icon()}
-        <AP class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
+        <AP class="shrink-0 mr-2 h-6 w-6 self-end" />
     {/snippet}
     {#snippet title()}
         <span>MDNS</span>
     {/snippet}
     {#snippet right()}
-        <button class="btn btn-primary" onclick={triggerScan} disabled={isLoading}>
+        <button class="btn btn-primary" onclick={queryMDNSServices} disabled={isLoading}>
             {#if isLoading}
                 <span class="loading loading-ring loading-xs"></span>
             {:else}
@@ -76,12 +62,21 @@
         </button>
     {/snippet}
     <div class="w-full overflow-x-auto">
+        {#await loading}
+            <Spinner />
+        {:catch error}
+            <LoadError {error} retry={() => (loading = load())} />
+        {/await}
         {#if mdnsStatus}
             <div
                 class="flex w-full flex-col space-y-1"
                 transition:slide|local={{ duration: 300, easing: cubicOut }}
             >
-                <StatusItem icon={Home} title="IP Address" description={mdnsStatus.hostname} />
+                <StatusItem
+                    icon={Home}
+                    title="Hostname"
+                    description={`${mdnsStatus.hostname}.local`}
+                />
 
                 <StatusItem icon={MAC} title="Instance" description={mdnsStatus.instance} />
 

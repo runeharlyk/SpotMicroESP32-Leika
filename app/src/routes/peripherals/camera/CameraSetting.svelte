@@ -1,36 +1,26 @@
 <script lang="ts">
-    import { api } from '$lib/api'
+    import { robotRequest } from '$lib/robot-request'
     import Spinner from '$lib/components/Spinner.svelte'
-    import {
-        CameraSettings,
-        Request,
-        type Response as ProtoResponse
-    } from '$lib/platform_shared/api'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { notifications } from '$lib/components/toasts/notifications'
+    import { CameraSettings } from '$lib/platform_shared/api'
 
     let settings = $state<CameraSettings>(CameraSettings.create({}))
 
     const getCameraSettings = async () => {
-        const result = await api.get<ProtoResponse>('/api/camera/settings')
-        if (result.isErr()) {
-            console.error('An error occurred', result.inner)
-            return
-        }
-        if (result.inner.cameraSettings) {
-            settings = result.inner.cameraSettings
-        }
+        const reply = await robotRequest({ cameraSettingsRequest: {} })
+        if (!reply.cameraSettings) throw new Error('The robot sent no camera settings')
+        settings = reply.cameraSettings
     }
 
+    let loading = $state(getCameraSettings())
+
     const updateCameraSettings = async () => {
-        const request = Request.create({
-            cameraSettings: settings
-        })
-        const result = await api.post_proto<ProtoResponse>('/api/camera/settings', request)
-        if (result.isErr()) {
-            console.error('An error occurred', result.inner)
-            return
-        }
-        if (result.inner.cameraSettings) {
-            settings = result.inner.cameraSettings
+        try {
+            const reply = await robotRequest({ cameraSettings: settings })
+            if (reply.cameraSettings) settings = reply.cameraSettings
+        } catch (error) {
+            notifications.error(`Saving camera settings failed: ${(error as Error).message}`, 5000)
         }
     }
 
@@ -41,7 +31,7 @@
     const setHmirror = (value: boolean) => (settings.hmirror = value ? 1 : 0)
 </script>
 
-{#await getCameraSettings()}
+{#await loading}
     <Spinner />
 {:then}
     <div class="flex flex-col gap-1">
@@ -118,4 +108,6 @@
             </select>
         </label>
     </div>
+{:catch error}
+    <LoadError {error} retry={() => (loading = getCameraSettings())} />
 {/await}

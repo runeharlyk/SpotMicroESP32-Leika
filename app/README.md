@@ -1,29 +1,34 @@
-# create-svelte
+# Spot Micro controller
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+The SvelteKit web app for the robot.
+It is built three ways:
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npx sv create
-```
+- `pnpm dev` serves it with Vite for development.
+- `pnpm build` produces the static site that GitHub Pages hosts (`BASE_PATH` sets the sub-path).
+- `pnpm build:embedded` produces the build that the firmware embeds in its flash, without the 3D view and the simulation. The firmware build runs it, see [Software](../docs/3_software.md).
 
 ## Developing
 
-Once you've created your project, follow these steps:
+Requirements: Node.js 20.19+ or 22.12+ (`.npmrc` sets `engine-strict`), pnpm, and `protoc` on `PATH`.
 
-1: Delete package-lock.json
-2: Check `git status`. If you see any changes other than package-lock.json or favicon.ico, run the command `git restore ./` (See below)
-3: Run `npm install` or `pnpm install` or `yarn` to install the dependencies
-4: Run `npm run build` to build the project
+```sh
+pnpm install
+pnpm proto        # generates src/lib/platform_shared from ../platform_shared (git ignores it)
+pnpm dev          # runs `pnpm model` first, then Vite on port 5173
+```
 
-Running `git status` should show:
+`pnpm model` copies the simulation models from `../simulation/src/resources` into `static/`.
+`pnpm build` runs `proto` and `model` itself, and `pnpm preview` serves the result on port 4173.
 
-[![example.png](https://i.postimg.cc/yddM3hH3/example.png)](https://postimg.cc/7CFsp2bq)
+## Checks
 
-You can preview the production build with `npm run preview`.
+```sh
+pnpm lint         # prettier --check . && eslint .
+pnpm check        # svelte-kit sync && svelte-check
+pnpm test         # Playwright integration tests (tests/integration), then Vitest (tests/unit)
+pnpm format       # prettier --write .
+```
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+The first Playwright run needs `pnpm exec playwright install chromium`.
+`pnpm test:unit` stays in watch mode in a terminal; use `pnpm exec vitest run` for one run.
+More in [Developing](../docs/6_developing.md).

@@ -1,60 +1,62 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte'
+    import { onDestroy } from 'svelte'
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
-    import { PasswordInput } from '$lib/components/input'
+    import { PasswordInput, TextField } from '$lib/components/input'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
-    import { api } from '$lib/api'
-    import { ipToUint32, uint32ToIp, isValidIpString } from '$lib/utilities'
+    import LoadError from '$lib/components/LoadError.svelte'
+    import { robotRequest } from '$lib/robot-request'
+    import { ipToUint32, uint32ToIp } from '$lib/utilities'
+    import { accessPointErrors, type AccessPointDraft } from '$lib/network-settings'
     import { AP, Devices, Home, MAC } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
-    import { APSettings, APStatus, Request, Response } from '$lib/platform_shared/api'
+    import { APSettings, APStatus } from '$lib/platform_shared/api'
 
     let apSettings: APSettings | null = $state(null)
     let apStatus: APStatus | null = $state(null)
 
-    let ipDisplay = $state({
-        local_ip: '',
-        gateway_ip: '',
-        subnet_mask: ''
-    })
-
-    let formField: Record<string, unknown> = $state({})
+    // The form's copy, with addresses as text; the robot's settings change only through a save.
+    let draft = $state<AccessPointDraft | null>(null)
+    let errors = $state<ReturnType<typeof accessPointErrors>>({})
 
     async function getAPStatus() {
-        const result = await api.get<Response>('/api/ap/status')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-
-        apStatus = result.inner.apStatus!
+        const reply = await robotRequest({ apStatusRequest: {} })
+        if (!reply.apStatus) throw new Error('The robot sent no access point status')
+        apStatus = reply.apStatus
     }
 
     async function getAPSettings() {
-        const result = await api.get<Response>('/api/ap/settings')
-        if (result.isErr()) {
-            console.error('Error:', result.inner)
-            return
-        }
-        apSettings = result.inner.apSettings!
-        ipDisplay = {
-            local_ip: uint32ToIp(apSettings.localIp),
-            gateway_ip: uint32ToIp(apSettings.gatewayIp),
-            subnet_mask: uint32ToIp(apSettings.subnetMask)
+        const reply = await robotRequest({ apSettingsRequest: {} })
+        if (!reply.apSettings) throw new Error('The robot sent no access point settings')
+        apSettings = reply.apSettings
+        draft = {
+            ssid: apSettings.ssid,
+            password: apSettings.password,
+            channel: apSettings.channel,
+            maxClients: apSettings.maxClients,
+            localIp: uint32ToIp(apSettings.localIp),
+            gatewayIp: uint32ToIp(apSettings.gatewayIp),
+            subnetMask: uint32ToIp(apSettings.subnetMask)
         }
         return apSettings
     }
 
-    const interval = setInterval(async () => {
-        getAPStatus()
-    }, 5000)
+    let statusLoad = $state(getAPStatus())
+    let settingsLoad = $state(getAPSettings())
+
+    let pollError = $state<unknown>()
+
+    const pollStatus = () =>
+        getAPStatus().then(
+            () => (pollError = undefined),
+            error => (pollError = error)
+        )
+
+    const interval = setInterval(pollStatus, 5000)
 
     onDestroy(() => clearInterval(interval))
-
-    onMount(getAPSettings)
 
     let provisionMode = [
         {
@@ -77,90 +79,34 @@
 
     let apStatusDescription = ['Active', 'Inactive', 'Lingering']
 
-    let formErrors = $state({
-        ssid: false,
-        channel: false,
-        max_clients: false,
-        local_ip: false,
-        gateway_ip: false,
-        subnet_mask: false
-    })
-
     async function postAPSettings(data: APSettings) {
-        const result = await api.post_proto<Response>(
-            '/api/ap/settings',
-            Request.create({ apSettings: data })
-        )
-        if (result.isErr()) {
-            notifications.error('User not authorized.', 3000)
-            console.error('Error:', result.inner)
-            return
+        try {
+            const reply = await robotRequest({ apSettings: data })
+            if (reply.apSettings) apSettings = reply.apSettings
+            notifications.success('Access Point settings updated.', 3000)
+        } catch (error) {
+            notifications.error(
+                `Saving access point settings failed: ${(error as Error).message}`,
+                5000
+            )
         }
-        if (result.inner.statusCode !== 200) {
-            notifications.error(result.inner.errorMessage || 'Failed to update settings', 3000)
-            return
-        }
-        if (result.inner.apSettings) {
-            apSettings = result.inner.apSettings
-        }
-        notifications.success('Access Point settings updated.', 3000)
     }
 
-    function handleSubmitAP(e: Event) {
-        e.preventDefault()
-        if (!apSettings) return
-        let valid = true
-
-        if (apSettings.ssid.length < 3 || apSettings.ssid.length > 32) {
-            valid = false
-            formErrors.ssid = true
-        } else {
-            formErrors.ssid = false
-        }
-
-        let channel = Number(apSettings.channel)
-        if (1 > channel || channel > 13) {
-            valid = false
-            formErrors.channel = true
-        } else {
-            formErrors.channel = false
-        }
-
-        let maxClients = Number(apSettings.maxClients)
-        if (1 > maxClients || maxClients > 8) {
-            valid = false
-            formErrors.max_clients = true
-        } else {
-            formErrors.max_clients = false
-        }
-
-        if (!isValidIpString(ipDisplay.gateway_ip)) {
-            valid = false
-            formErrors.gateway_ip = true
-        } else {
-            formErrors.gateway_ip = false
-        }
-
-        if (!isValidIpString(ipDisplay.subnet_mask)) {
-            valid = false
-            formErrors.subnet_mask = true
-        } else {
-            formErrors.subnet_mask = false
-        }
-
-        if (!isValidIpString(ipDisplay.local_ip)) {
-            valid = false
-            formErrors.local_ip = true
-        } else {
-            formErrors.local_ip = false
-        }
-
-        if (valid) {
-            apSettings.localIp = ipToUint32(ipDisplay.local_ip)
-            apSettings.gatewayIp = ipToUint32(ipDisplay.gateway_ip)
-            apSettings.subnetMask = ipToUint32(ipDisplay.subnet_mask)
-            postAPSettings(apSettings)
-        }
+    function handleSubmitAP(event: Event) {
+        event.preventDefault()
+        if (!apSettings || !draft) return
+        errors = accessPointErrors(draft)
+        if (Object.keys(errors).length) return
+        postAPSettings({
+            ...$state.snapshot(apSettings),
+            ssid: draft.ssid,
+            password: draft.password,
+            channel: draft.channel,
+            maxClients: draft.maxClients,
+            localIp: ipToUint32(draft.localIp),
+            gatewayIp: ipToUint32(draft.gatewayIp),
+            subnetMask: ipToUint32(draft.subnetMask)
+        })
     }
 </script>
 
@@ -172,10 +118,12 @@
         <span>Access Point</span>
     {/snippet}
     <div class="w-full overflow-x-auto">
-        {#await getAPStatus()}
+        {#await statusLoad}
             <Spinner />
         {:then}
-            {#if apStatus}
+            {#if pollError}
+                <LoadError error={pollError} retry={pollStatus} />
+            {:else if apStatus}
                 <div
                     class="flex w-full flex-col space-y-1"
                     transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -202,6 +150,8 @@
                     />
                 </div>
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (statusLoad = getAPStatus())} />
         {/await}
     </div>
 
@@ -211,10 +161,10 @@
         >
             Change AP Settings
         </div>
-        {#await getAPSettings()}
+        {#await settingsLoad}
             <Spinner />
         {:then}
-            {#if apSettings}
+            {#if apSettings && draft}
                 <div
                     class="flex flex-col gap-2 p-0"
                     transition:slide|local={{ duration: 300, easing: cubicOut }}
@@ -223,7 +173,6 @@
                         class="grid w-full grid-cols-1 content-center gap-x-4 p-0s sm:grid-cols-2"
                         onsubmit={handleSubmitAP}
                         novalidate
-                        bind:this={formField}
                     >
                         <div>
                             <label class="label" for="apmode">
@@ -241,161 +190,49 @@
                                 {/each}
                             </select>
                         </div>
-                        <div>
-                            <label class="label" for="ssid">
-                                <span class="label-text text-md">SSID</span>
-                            </label>
-                            <input
-                                type="text"
-                                class="input input-bordered invalid:border-error w-full invalid:border-2 {(
-                                    formErrors.ssid
-                                ) ?
-                                    'border-error border-2'
-                                :   ''}"
-                                bind:value={apSettings.ssid}
-                                id="ssid"
-                                min="2"
-                                max="32"
-                                required
-                            />
-                            <label class="label" for="ssid">
-                                <span
-                                    class="label-text-alt text-error {formErrors.ssid ? '' : (
-                                        'hidden'
-                                    )}">SSID must be between 2 and 32 characters long</span
-                                >
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="label" for="pwd">
-                                <span class="label-text text-md">Password</span>
-                            </label>
-                            <PasswordInput bind:value={apSettings.password} id="pwd" />
-                        </div>
-                        <div>
-                            <label class="label" for="channel">
-                                <span class="label-text text-md">Preferred Channel</span>
-                            </label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="13"
-                                class="input input-bordered invalid:border-error w-full invalid:border-2 {(
-                                    formErrors.channel
-                                ) ?
-                                    'border-error border-2'
-                                :   ''}"
-                                bind:value={apSettings.channel}
-                                id="channel"
-                                required
-                            />
-                            <label class="label" for="channel">
-                                <span
-                                    class="label-text-alt text-error {formErrors.channel ? '' : (
-                                        'hidden'
-                                    )}">Must be channel 1 to 13</span
-                                >
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="label" for="clients">
-                                <span class="label-text text-md">Max Clients</span>
-                            </label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="8"
-                                class="input input-bordered invalid:border-error w-full invalid:border-2 {(
-                                    formErrors.max_clients
-                                ) ?
-                                    'border-error border-2'
-                                :   ''}"
-                                bind:value={apSettings.maxClients}
-                                id="clients"
-                                required
-                            />
-                            <label class="label" for="clients">
-                                <span
-                                    class="label-text-alt text-error {formErrors.max_clients ? ''
-                                    :   'hidden'}">Maximum 8 clients allowed</span
-                                >
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="label" for="localIP">
-                                <span class="label-text text-md">Local IP</span>
-                            </label>
-                            <input
-                                type="text"
-                                class="input input-bordered w-full {formErrors.local_ip ?
-                                    'border-error border-2'
-                                :   ''}"
-                                minlength="7"
-                                maxlength="15"
-                                size="15"
-                                bind:value={ipDisplay.local_ip}
-                                id="localIP"
-                                required
-                            />
-                            <label class="label" for="localIP">
-                                <span
-                                    class="label-text-alt text-error {formErrors.local_ip ? '' : (
-                                        'hidden'
-                                    )}">Must be a valid IPv4 address</span
-                                >
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="label" for="gateway">
-                                <span class="label-text text-md">Gateway IP</span>
-                            </label>
-                            <input
-                                type="text"
-                                class="input input-bordered w-full {formErrors.gateway_ip ?
-                                    'border-error border-2'
-                                :   ''}"
-                                minlength="7"
-                                maxlength="15"
-                                size="15"
-                                bind:value={ipDisplay.gateway_ip}
-                                id="gateway"
-                                required
-                            />
-                            <label class="label" for="gateway">
-                                <span
-                                    class="label-text-alt text-error {formErrors.gateway_ip ? '' : (
-                                        'hidden'
-                                    )}">Must be a valid IPv4 address</span
-                                >
-                            </label>
-                        </div>
-                        <div>
-                            <label class="label" for="subnet">
-                                <span class="label-text text-md">Subnet Mask</span>
-                            </label>
-                            <input
-                                type="text"
-                                class="input input-bordered w-full {formErrors.subnet_mask ?
-                                    'border-error border-2'
-                                :   ''}"
-                                minlength="7"
-                                maxlength="15"
-                                size="15"
-                                bind:value={ipDisplay.subnet_mask}
-                                id="subnet"
-                                required
-                            />
-                            <label class="label" for="subnet">
-                                <span
-                                    class="label-text-alt text-error {formErrors.subnet_mask ? ''
-                                    :   'hidden'}">Must be a valid IPv4 address</span
-                                >
-                            </label>
-                        </div>
+                        <TextField
+                            id="ssid"
+                            label="SSID"
+                            bind:value={draft!.ssid}
+                            error={errors.ssid}
+                        />
+                        <TextField id="pwd" label="Password" error={errors.password}>
+                            {#snippet input()}
+                                <PasswordInput bind:value={draft!.password} id="pwd" />
+                            {/snippet}
+                        </TextField>
+                        <TextField
+                            id="channel"
+                            label="Preferred Channel"
+                            numeric
+                            bind:value={draft!.channel}
+                            error={errors.channel}
+                        />
+                        <TextField
+                            id="clients"
+                            label="Max Clients"
+                            numeric
+                            bind:value={draft!.maxClients}
+                            error={errors.maxClients}
+                        />
+                        <TextField
+                            id="localIP"
+                            label="Local IP"
+                            bind:value={draft!.localIp}
+                            error={errors.localIp}
+                        />
+                        <TextField
+                            id="gateway"
+                            label="Gateway IP"
+                            bind:value={draft!.gatewayIp}
+                            error={errors.gatewayIp}
+                        />
+                        <TextField
+                            id="subnet"
+                            label="Subnet Mask"
+                            bind:value={draft!.subnetMask}
+                            error={errors.subnetMask}
+                        />
 
                         <label class="label my-auto cursor-pointer justify-start gap-4">
                             <input
@@ -412,6 +249,8 @@
                     </form>
                 </div>
             {/if}
+        {:catch error}
+            <LoadError {error} retry={() => (settingsLoad = getAPSettings())} />
         {/await}
     </div>
 </SettingsCard>

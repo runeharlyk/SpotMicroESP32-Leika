@@ -6,19 +6,6 @@ api.APStatus.mac_address max_size:18
 api.Servo.name max_size:16
 api.ServoSettings.servos max_count:12
 
-api.FileEntry.name max_size:64
-api.FileEntry.children type:FT_POINTER
-api.FileList.entries type:FT_POINTER
-
-api.Response.error_message type:FT_POINTER
-
-api.FileDeleteRequest.path max_size:128
-
-api.FileEditRequest.path max_size:128
-api.FileEditRequest.content type:FT_POINTER
-
-api.FileMkdirRequest.path max_size:128
-
 api.WifiNetwork.ssid max_size:33
 api.WifiNetwork.password max_size:65
 api.WifiSettings.hostname max_size:33
@@ -39,15 +26,9 @@ api.MDNSServiceDef.service max_size:16
 api.MDNSServiceDef.protocol max_size:8
 api.MDNSServiceDef.txt_records max_count:4
 
-api.MDNSSettings.hostname max_size:33
-api.MDNSSettings.instance max_size:64
-api.MDNSSettings.services max_count:4
-api.MDNSSettings.global_txt_records max_count:4
-
 api.MDNSStatus.hostname max_size:33
 api.MDNSStatus.instance max_size:64
 api.MDNSStatus.services max_count:4
-api.MDNSStatus.global_txt_records max_count:4
 
 api.MDNSQueryRequest.service max_size:16
 api.MDNSQueryRequest.protocol max_size:8
@@ -62,3 +43,12 @@ api.PinConfig.type max_size:16
 api.PinConfig.role max_size:16
 
 api.PeripheralSettings.pins max_count:32
+
+api.ImuSettings.mounting max_count:9 fixed_count:true
+api.ImuSettings.mag_alignment max_count:9 fixed_count:true
+api.ImuSettings.mag_offset max_count:3 fixed_count:true
+api.ImuSettings.mag_soft_iron max_count:9 fixed_count:true
+
+api.ServoSettings.channels max_count:12
+api.JointModel.direction max_count:12 fixed_count:true
+api.JointModel.center_angle max_count:12 fixed_count:true

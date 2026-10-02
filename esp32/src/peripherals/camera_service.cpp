@@ -36,9 +36,7 @@ sensor_t *safe_sensor_get() {
 void safe_sensor_return() { xSemaphoreGiveRecursive(cameraMutex); }
 
 CameraService::CameraService()
-    : protoEndpoint(CameraSettings_read, CameraSettings_update, this,
-                    API_REQUEST_EXTRACTOR(camera_settings, api_CameraSettings),
-                    API_RESPONSE_ASSIGNER(camera_settings, api_CameraSettings)),
+    : protoHandler(CameraSettings_read, CameraSettings_update, this, api_CameraSettings_fields),
       _persistence(CameraSettings_read, CameraSettings_update, this, CAMERA_SETTINGS_FILE, api_CameraSettings_fields,
                    api_CameraSettings_size, CameraSettings_defaults()) {
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
@@ -88,20 +86,6 @@ esp_err_t CameraService::begin() {
         ESP_LOGE(TAG, "Camera probe failed with error 0x%x", err);
 
     return err;
-}
-
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    camera_fb_t *fb = safe_camera_fb_get();
-    if (!fb) {
-        ESP_LOGE(TAG, "Camera capture failed");
-        return WebServer::sendError(request, 500, "Camera capture failed");
-    }
-
-    httpd_resp_set_type(request, "image/jpeg");
-    httpd_resp_set_hdr(request, "Content-Disposition", "inline; filename=capture.jpg");
-    esp_err_t res = httpd_resp_send(request, (const char *)fb->buf, fb->len);
-    esp_camera_fb_return(fb);
-    return res;
 }
 
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
@@ -155,30 +139,31 @@ void CameraService::updateCamera() {
         safe_sensor_return();
         return;
     }
-    s->set_pixformat(s, static_cast<pixformat_t>(state().pixformat));
-    s->set_framesize(s, static_cast<framesize_t>(state().framesize));
-    s->set_brightness(s, state().brightness);
-    s->set_contrast(s, state().contrast);
-    s->set_saturation(s, state().saturation);
-    s->set_sharpness(s, state().sharpness);
-    s->set_denoise(s, state().denoise);
-    s->set_gainceiling(s, static_cast<gainceiling_t>(state().gainceiling));
-    s->set_quality(s, state().quality);
-    s->set_colorbar(s, state().colorbar);
-    s->set_awb_gain(s, state().awb_gain);
-    s->set_wb_mode(s, state().wb_mode);
-    s->set_aec2(s, state().aec2);
-    s->set_ae_level(s, state().ae_level);
-    s->set_aec_value(s, state().aec_value);
-    s->set_agc_gain(s, state().agc_gain);
-    s->set_bpc(s, state().bpc);
-    s->set_wpc(s, state().wpc);
-    s->set_special_effect(s, state().special_effect);
-    s->set_raw_gma(s, state().raw_gma);
-    s->set_lenc(s, state().lenc);
-    s->set_hmirror(s, state().hmirror);
-    s->set_vflip(s, state().vflip);
-    s->set_dcw(s, state().dcw);
+    const CameraSettings settings = snapshot();
+    s->set_pixformat(s, static_cast<pixformat_t>(settings.pixformat));
+    s->set_framesize(s, static_cast<framesize_t>(settings.framesize));
+    s->set_brightness(s, settings.brightness);
+    s->set_contrast(s, settings.contrast);
+    s->set_saturation(s, settings.saturation);
+    s->set_sharpness(s, settings.sharpness);
+    s->set_denoise(s, settings.denoise);
+    s->set_gainceiling(s, static_cast<gainceiling_t>(settings.gainceiling));
+    s->set_quality(s, settings.quality);
+    s->set_colorbar(s, settings.colorbar);
+    s->set_awb_gain(s, settings.awb_gain);
+    s->set_wb_mode(s, settings.wb_mode);
+    s->set_aec2(s, settings.aec2);
+    s->set_ae_level(s, settings.ae_level);
+    s->set_aec_value(s, settings.aec_value);
+    s->set_agc_gain(s, settings.agc_gain);
+    s->set_bpc(s, settings.bpc);
+    s->set_wpc(s, settings.wpc);
+    s->set_special_effect(s, settings.special_effect);
+    s->set_raw_gma(s, settings.raw_gma);
+    s->set_lenc(s, settings.lenc);
+    s->set_hmirror(s, settings.hmirror);
+    s->set_vflip(s, settings.vflip);
+    s->set_dcw(s, settings.dcw);
     safe_sensor_return();
 }
 
@@ -568,31 +553,6 @@ esp_err_t CameraService::begin() {
     return ESP_OK;
 }
 
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    if (!s_cam_initialized) {
-        return WebServer::sendError(request, 503, "Camera not initialized");
-    }
-
-    if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) {
-        return WebServer::sendError(request, 500, "Camera capture timed out");
-    }
-
-    xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
-    size_t len = s_ready_jpeg_len;
-    if (s_ready_idx >= 0 && len > 0) {
-        memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], len);
-    }
-    xSemaphoreGive(s_jpeg_lock);
-
-    if (len == 0) {
-        return WebServer::sendError(request, 500, "No frame available");
-    }
-
-    httpd_resp_set_type(request, "image/jpeg");
-    httpd_resp_set_hdr(request, "Content-Disposition", "inline; filename=capture.jpg");
-    return httpd_resp_send(request, (const char *)s_send_buf, len);
-}
-
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     if (!s_cam_initialized) {
         return WebServer::sendError(request, 503, "Camera not initialized");
@@ -632,9 +592,6 @@ esp_err_t CameraService::cameraStream(httpd_req_t *request) {
 
 CameraService::CameraService() {}
 esp_err_t CameraService::begin() { return ESP_ERR_NOT_SUPPORTED; }
-esp_err_t CameraService::cameraStill(httpd_req_t *request) {
-    return WebServer::sendError(request, 501, "Camera not supported on this platform");
-}
 esp_err_t CameraService::cameraStream(httpd_req_t *request) {
     return WebServer::sendError(request, 501, "Camera not supported on this platform");
 }

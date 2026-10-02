@@ -1,59 +1,36 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
-#include <cmath>
+#include <peripherals/imu/imu_driver.h>
 
-class HMC5883LDriver {
+/** HMC5883L compass, continuous at 75 Hz, in microtesla in its own axes. */
+class HMC5883LDriver final : public MagDriver {
   public:
     static constexpr uint8_t DEFAULT_ADDR = 0x1E;
+    static constexpr float MICROTESLA_PER_LSB = 100.0f / 1090.0f;  // gain 1090 LSB per gauss
 
-    HMC5883LDriver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
+    explicit HMC5883LDriver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() {
+    bool begin() override {
         if (!I2CBus::instance().probe(_addr)) return false;
-
-        uint8_t idA = readReg(REG_ID_A);
-        uint8_t idB = readReg(REG_ID_B);
-        uint8_t idC = readReg(REG_ID_C);
-        if (idA != 'H' || idB != '4' || idC != '3') return false;
-
-        writeReg(REG_CONFIG_A, 0x70);
-        writeReg(REG_CONFIG_B, 0x20);
-        writeReg(REG_MODE, 0x00);
-
-        _initialized = true;
+        if (readReg(REG_ID_A) != 'H' || readReg(REG_ID_B) != '4' || readReg(REG_ID_C) != '3') return false;
+        writeReg(REG_CONFIG_A, 0x78);  // 8-sample average, 75 Hz
+        writeReg(REG_CONFIG_B, 0x20);  // +-1.3 gauss, 1090 LSB per gauss
+        writeReg(REG_MODE, 0x00);      // continuous
         return true;
     }
 
-    bool update() {
-        if (!_initialized) return false;
-
-        uint8_t buf[6];
-        if (I2CBus::instance().readReg(_addr, REG_DATA_X_MSB, buf, 6) != ESP_OK) return false;
-
-        int16_t x = (buf[0] << 8) | buf[1];
-        int16_t z = (buf[2] << 8) | buf[3];
-        int16_t y = (buf[4] << 8) | buf[5];
-
-        _mag[0] = x * _scale;
-        _mag[1] = y * _scale;
-        _mag[2] = z * _scale;
-
-        _heading = atan2f(_mag[1], _mag[0]);
-        _heading += _declination;
-        if (_heading < 0) _heading += 2 * M_PI;
-        if (_heading > 2 * M_PI) _heading -= 2 * M_PI;
-        _heading *= 180.0f / M_PI;
-
+    bool read(Vec3 &microtesla) override {
+        uint8_t b[6];
+        if (I2CBus::instance().readReg(_addr, REG_DATA_X_MSB, b, sizeof(b)) != ESP_OK) return false;
+        const int16_t x = (b[0] << 8) | b[1], z = (b[2] << 8) | b[3], y = (b[4] << 8) | b[5];
+        if (x == OVERFLOW_MARKER || y == OVERFLOW_MARKER || z == OVERFLOW_MARKER) return false;
+        microtesla = {x * MICROTESLA_PER_LSB, y * MICROTESLA_PER_LSB, z * MICROTESLA_PER_LSB};
         return true;
     }
 
-    void setDeclination(float dec) { _declination = dec; }
-    float getMagX() const { return _mag[0]; }
-    float getMagY() const { return _mag[1]; }
-    float getMagZ() const { return _mag[2]; }
-    float getHeading() const { return _heading; }
-    bool isInitialized() const { return _initialized; }
+    const char *name() const override { return "HMC5883L"; }
+    uint32_t rateHz() const override { return 75; }
 
   private:
     static constexpr uint8_t REG_CONFIG_A = 0x00;
@@ -63,19 +40,15 @@ class HMC5883LDriver {
     static constexpr uint8_t REG_ID_A = 0x0A;
     static constexpr uint8_t REG_ID_B = 0x0B;
     static constexpr uint8_t REG_ID_C = 0x0C;
-    static constexpr float _scale = 0.92f;
+    static constexpr int16_t OVERFLOW_MARKER = -4096;
 
-    void writeReg(uint8_t reg, uint8_t val) { I2CBus::instance().writeReg(_addr, reg, &val, 1); }
+    void writeReg(uint8_t reg, uint8_t value) { I2CBus::instance().writeReg(_addr, reg, &value, 1); }
 
     uint8_t readReg(uint8_t reg) {
-        uint8_t val = 0;
-        I2CBus::instance().readReg(_addr, reg, &val, 1);
-        return val;
+        uint8_t value = 0;
+        I2CBus::instance().readReg(_addr, reg, &value, 1);
+        return value;
     }
 
     uint8_t _addr;
-    bool _initialized = false;
-    float _mag[3] = {0};
-    float _heading = 0;
-    float _declination = 0.22f;
 };

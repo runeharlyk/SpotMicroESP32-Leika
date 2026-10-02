@@ -10,7 +10,6 @@
 
 using HandlerId = size_t;
 using StateUpdateCallback = std::function<void(const std::string &originId)>;
-using StateHookCallback = std::function<void(const std::string &originId, StateUpdateResult &result)>;
 
 class HandlerBase {
   protected:
@@ -35,16 +34,6 @@ class UpdateHandler : public HandlerBase {
     void invoke(const std::string &originId) const { callback_(originId); }
 };
 
-class HookHandler : public HandlerBase {
-    StateHookCallback callback_;
-
-  public:
-    HookHandler(StateHookCallback callback, bool allowRemove)
-        : HandlerBase(allowRemove), callback_(std::move(callback)) {}
-
-    void invoke(const std::string &originId, StateUpdateResult &result) const { callback_(originId, result); }
-};
-
 template <class T>
 class StatefulService {
   public:
@@ -61,18 +50,6 @@ class StatefulService {
     void removeUpdateHandler(HandlerId id) {
         updateHandlers_.remove_if(
             [id](const UpdateHandler &handler) { return handler.isRemovable() && handler.getId() == id; });
-    }
-
-    HandlerId addHookHandler(StateHookCallback callback, bool allowRemove = true) {
-        if (!callback) return 0;
-
-        hookHandlers_.emplace_back(std::move(callback), allowRemove);
-        return hookHandlers_.back().getId();
-    }
-
-    void removeHookHandler(HandlerId id) {
-        hookHandlers_.remove_if(
-            [id](const HookHandler &handler) { return handler.isRemovable() && handler.getId() == id; });
     }
 
     StateUpdateResult update(std::function<StateUpdateResult(T &)> stateUpdater, const std::string &originId) {
@@ -108,13 +85,12 @@ class StatefulService {
         }
     }
 
-    void callHookHandlers(const std::string &originId, StateUpdateResult &result) {
-        for (const HookHandler &hookHandler : hookHandlers_) {
-            hookHandler.invoke(originId, result);
-        }
+    /** A copy taken under the lock: the state may change on another task while the copy is in use. */
+    T snapshot() const {
+        T copy;
+        read([&copy](const T &state) { copy = state; });
+        return copy;
     }
-
-    T &state() { return state_; }
 
   private:
     T state_;
@@ -123,7 +99,6 @@ class StatefulService {
     inline void unlock() { xSemaphoreGiveRecursive(mutex_); }
 
     void notifyStateChange(const std::string &originId, StateUpdateResult &result) {
-        callHookHandlers(originId, result);
         if (result == StateUpdateResult::CHANGED) {
             callUpdateHandlers(originId);
         }
@@ -131,5 +106,4 @@ class StatefulService {
 
     SemaphoreHandle_t mutex_;
     std::list<UpdateHandler> updateHandlers_;
-    std::list<HookHandler> hookHandlers_;
 };

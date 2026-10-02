@@ -15,8 +15,11 @@ buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
 interface_dir = f"{project_dir}/app"
 output_file = f"{project_dir}/esp32/include/WWWData.h"
-rebuild_inputs = [f"{interface_dir}/src", f"{interface_dir}/static",
-                  f"{interface_dir}/package.json", f"{interface_dir}/pnpm-lock.yaml"]
+# Everything the embedded app is built from, including the protos it compiles and its build configuration.
+rebuild_inputs = [f"{interface_dir}/src", f"{interface_dir}/static", f"{interface_dir}/scripts",
+                  f"{interface_dir}/package.json", f"{interface_dir}/pnpm-lock.yaml",
+                  f"{interface_dir}/vite.config.ts", f"{interface_dir}/svelte.config.js",
+                  f"{project_dir}/platform_shared"]
 build_dir = f"{interface_dir}/build"
 filesystem_dir = f"{project_dir}/data"
 
@@ -40,17 +43,12 @@ def get_flag(flag, default=None):
     return default
 
 
-def get_files_to_exclude():
-    files_to_exclude = []
-    if (get_flag("SPOTMICRO_ESP32") or get_flag("SPOTMICRO_ESP32_MINI")) and not get_flag("SPOTMICRO_YERTLE"):
-        print("Excluding Yertle files for SPOTMICRO_ESP32 build")
-        files_to_exclude.extend(["yertle.URDF", "URDF.zip", "URDF/"])
-    elif get_flag("SPOTMICRO_YERTLE") and not get_flag("SPOTMICRO_ESP32") and not get_flag("SPOTMICRO_ESP32_MINI"):
-        print("Excluding Spot Micro files for SPOTMICRO_YERTLE build")
-        files_to_exclude.extend(["spot_micro.urdf.xacro", "stl.zip", "stl/"])
-    else:
-        print("No specific variant flag set, including all files")
-    return files_to_exclude
+# The robot-served app is built without the 3D view (PUBLIC_EMBEDDED_BUILD), so no model is ever
+# read from flash; only the hosted web app loads them.
+MODEL_FILES = [
+    "spot_micro.urdf.xacro", "stl.zip", "yertle.URDF", "URDF.zip", "URDF/", "spot_pico.urdf", "spot_pico.zip",
+    "spot_pico_scene.xml", "spot_pico_gait.json", "sim_spot_micro.xml", "sim_yertle.xml", "sim_yertle_meshes.zip",
+]
 
 
 def fail(message):
@@ -105,7 +103,7 @@ def encode_asset_data(path):
 
 
 def write_header():
-    exclude = get_files_to_exclude()
+    exclude = MODEL_FILES
     assets = []
     for p in sorted(Path(build_dir).rglob("*.*"), key=lambda x: x.relative_to(build_dir).as_posix()):
         rel_path = p.relative_to(build_dir).as_posix()
@@ -130,7 +128,7 @@ def write_header():
         f.write(
             "struct WebAsset { const char* uri; const char* mime; const uint8_t* data; uint32_t len; uint32_t etag; uint8_t gz; };\n")
         f.write(
-            "struct WebOptions { const char* default_uri; uint32_t max_age; uint8_t add_vary; };\n\n")
+            "struct WebOptions { const char* default_uri; uint8_t add_vary; };\n\n")
 
         f.write("static const uint8_t WWW_BLOB[] PROGMEM = {\n")
         col = 0
@@ -159,7 +157,7 @@ def write_header():
         f.write("};\n\n")
 
         f.write(f"static const size_t WWW_ASSETS_COUNT = {len(assets)};\n")
-        f.write('static const WebOptions WWW_OPT = { "/index.html", 31536000u, 1 };\n')
+        f.write('static const WebOptions WWW_OPT = { "/index.html", 1 };\n')
 
 
 if get_flag("EMBED_WEBAPP") == "1" and needs_rebuild():

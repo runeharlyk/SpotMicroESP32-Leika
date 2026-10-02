@@ -8,13 +8,13 @@
         FileIcon,
         UploadIcon,
         DownloadIcon,
-        TrashIcon
+        TrashIcon,
+        Cancel
     } from '$lib/components/icons'
     import { modals } from 'svelte-modals'
+    import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import NewFolderDialog from './NewFolderDialog.svelte'
     import NewFileDialog from './NewFileDialog.svelte'
-    import { api } from '$lib/api'
-    import type { Response } from '$lib/platform_shared/api'
 
     let currentPath = $state('/')
     let files = $state<Array<{ name: string; size: number }>>([])
@@ -170,9 +170,23 @@
         }
     }
 
-    async function handleDelete(name: string, isDirectory: boolean) {
-        if (!confirm(`Delete ${isDirectory ? 'directory' : 'file'} "${name}"?`)) return
+    function handleDelete(name: string, isDirectory: boolean) {
+        const kind = isDirectory ? 'directory' : 'file'
+        modals.open(ConfirmDialog, {
+            title: `Delete ${kind}`,
+            message: `Delete ${kind} "${name}"? This cannot be undone.`,
+            labels: {
+                cancel: { label: 'Cancel', icon: Cancel },
+                confirm: { label: 'Delete', icon: TrashIcon }
+            },
+            onConfirm: () => {
+                modals.close()
+                deleteEntry(name)
+            }
+        })
+    }
 
+    async function deleteEntry(name: string) {
         error = ''
         const path = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`
 
@@ -199,16 +213,11 @@
         const path = currentPath === '/' ? `/${folderName}` : `${currentPath}/${folderName}`
 
         try {
-            const result = await api.post_proto<Response>('/api/files/mkdir', {
-                fileMkdirRequest: { path }
-            })
-
-            if (result.isOk() && result.inner.statusCode === 200) {
+            const result = await fileSystemClient.createDirectory(path)
+            if (result.success) {
                 await loadDirectory()
-            } else if (result.isErr()) {
-                error = 'Failed to create directory'
             } else {
-                error = result.inner.errorMessage || 'Failed to create directory'
+                error = result.error || 'Failed to create directory'
             }
         } catch (e) {
             error = e instanceof Error ? e.message : 'Error creating directory'
@@ -360,8 +369,9 @@
                         <span class="text-sm">{dir.name}</span>
                     </button>
                     <button
-                        class="opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost btn-square"
+                        class="pointer-fine:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 btn btn-xs btn-ghost btn-square"
                         onclick={() => handleDelete(dir.name, true)}
+                        aria-label="Delete {dir.name}"
                     >
                         <TrashIcon class="w-4 h-4 text-error" />
                     </button>
@@ -382,18 +392,20 @@
                             >{formatBytes(file.size)}</span
                         >
                     </button>
-                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 flex-shrink-0">
+                    <div
+                        class="flex gap-1 pointer-fine:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex-shrink-0"
+                    >
                         <button
                             class="btn btn-xs btn-ghost btn-square"
                             onclick={() => handleDownload(file.name)}
-                            title="Download"
+                            aria-label="Download {file.name}"
                         >
                             <DownloadIcon class="w-4 h-4 text-info" />
                         </button>
                         <button
                             class="btn btn-xs btn-ghost btn-square"
                             onclick={() => handleDelete(file.name, false)}
-                            title="Delete"
+                            aria-label="Delete {file.name}"
                         >
                             <TrashIcon class="w-4 h-4 text-error" />
                         </button>

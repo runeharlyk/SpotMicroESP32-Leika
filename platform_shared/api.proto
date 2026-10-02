@@ -2,10 +2,6 @@ syntax = "proto3";
 
 package api;
 
-
-// Empty message for endpoints which only needs a status
-message EmptyMessage {}
-
 // =============================================================================
 // AP (Access Point) Settings - shared data types
 // =============================================================================
@@ -51,14 +47,22 @@ message APStatusRequest {}
 
 message Servo {
     float center_pwm = 1;
-    float direction = 2;
-    float center_angle = 3;
-    float conversion = 4;
+    reserved 2, 3, 4;
+    reserved "direction", "center_angle", "conversion";
     string name = 5;
+}
+
+// How the variant's servos sit, reported by the robot and ignored when saved.
+message JointModel {
+    repeated float direction = 1;
+    repeated float center_angle = 2;
+    float pwm_per_degree = 3;
 }
 
 message ServoSettings {
     repeated Servo servos = 1; // max 12 servos
+    repeated uint32 channels = 2; // PCA9685 channel of each joint; empty means joint j on channel j
+    JointModel model = 3;
 }
 
 message ServoSettingsRequest {}
@@ -83,9 +87,14 @@ message WifiSettings {
     bool priority_rssi = 2;
     repeated WifiNetwork wifi_networks = 3; // max 5 networks
     uint32 selected_network = 4;
+    // Fingerprint of the network from secrets.h last merged into wifi_networks; kept by the firmware.
+    uint32 applied_secret = 5;
 }
 
 message WifiSettingsRequest {}
+message WifiStatusRequest {}
+message WifiScanStart {}
+message WifiNetworksRequest {}
 
 // WiFi scan result - single network found during scan
 message WifiNetworkScan {
@@ -171,22 +180,14 @@ message MDNSServiceDef {
     repeated MDNSTxtRecord txt_records = 4;
 }
 
-message MDNSSettings {
-    string hostname = 1;
-    string instance = 2;
-    repeated MDNSServiceDef services = 3;
-    repeated MDNSTxtRecord global_txt_records = 4;
-}
-
 message MDNSStatus {
     bool started = 1;
     string hostname = 2;
     string instance = 3;
     repeated MDNSServiceDef services = 4;
-    repeated MDNSTxtRecord global_txt_records = 5;
+    reserved 5; // global_txt_records, until the services carried their own
 }
 
-message MDNSSettingsRequest {}
 message MDNSStatusRequest {}
 
 message MDNSQueryRequest {
@@ -215,92 +216,22 @@ message PinConfig {
     string role = 4;
 }
 
+// How the IMU sits in the robot and how its readings are fused. A settings file without it gets the defaults:
+// identity rotations, no magnetometer correction, fusion gain 0.1.
+message ImuSettings {
+    repeated float mounting = 1;      // row-major 3x3 rotation, IMU chip frame to body frame
+    repeated float mag_alignment = 2; // row-major 3x3 rotation, magnetometer chip frame to IMU chip frame
+    repeated float mag_offset = 3;    // microtesla, hard-iron offset, subtracted first
+    repeated float mag_soft_iron = 4; // row-major 3x3, applied after the offset
+    float fusion_gain = 5;            // Madgwick beta
+}
+
 message PeripheralSettings {
     int32 sda = 1;
     int32 scl = 2;
     int32 frequency = 3;
     repeated PinConfig pins = 4;
+    ImuSettings imu = 5;
 }
 
 message PeripheralSettingsRequest {}
-
-// =============================================================================
-// File System - shared data types
-// =============================================================================
-
-message FileEntry {
-    string name = 1;
-    bool is_directory = 2;
-    uint32 size = 3; // Only for files
-    repeated FileEntry children = 4; // Only for directories
-}
-
-message FileList {
-    repeated FileEntry entries = 1;
-}
-
-message FileListRequest {}
-
-message FileDeleteRequest {
-    string path = 1;
-}
-
-message FileEditRequest {
-    string path = 1;
-    bytes content = 2;
-}
-
-message FileMkdirRequest {
-    string path = 1;
-}
-
-// =============================================================================
-// REST API wrappers - used by HTTP endpoints
-// =============================================================================
-
-// Request wrapper for REST endpoints
-message Request {
-    oneof payload {
-        APSettings ap_settings = 10;
-        APSettingsRequest ap_settings_request = 11;
-        APStatusRequest ap_status_request = 12;
-        ServoSettings servo_settings = 20;
-        ServoSettingsRequest servo_settings_request = 21;
-        FileListRequest file_list_request = 30;
-        FileDeleteRequest file_delete_request = 31;
-        FileEditRequest file_edit_request = 32;
-        FileMkdirRequest file_mkdir_request = 33;
-        WifiSettings wifi_settings = 40;
-        WifiSettingsRequest wifi_settings_request = 41;
-        CameraSettings camera_settings = 50;
-        CameraSettingsRequest camera_settings_request = 51;
-        MDNSSettings mdns_settings = 60;
-        MDNSSettingsRequest mdns_settings_request = 61;
-        MDNSStatusRequest mdns_status_request = 62;
-        MDNSQueryRequest mdns_query_request = 63;
-        PeripheralSettings peripheral_settings = 70;
-        PeripheralSettingsRequest peripheral_settings_request = 71;
-    }
-}
-
-// Response wrapper for REST endpoints
-message Response {
-    uint32 status_code = 1;
-    string error_message = 2;
-
-    oneof payload {
-        EmptyMessage empty_message = 5;
-        APSettings ap_settings = 10;
-        APStatus ap_status = 11;
-        ServoSettings servo_settings = 20;
-        FileList file_list = 30;
-        WifiSettings wifi_settings = 40;
-        WifiNetworkList wifi_network_list = 41;
-        WifiStatus wifi_status = 42;
-        CameraSettings camera_settings = 50;
-        MDNSSettings mdns_settings = 60;
-        MDNSStatus mdns_status = 61;
-        MDNSQueryResponse mdns_query_response = 62;
-        PeripheralSettings peripheral_settings = 70;
-    }
-}

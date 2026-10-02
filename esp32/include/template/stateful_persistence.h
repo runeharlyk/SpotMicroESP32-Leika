@@ -32,33 +32,8 @@ class FSPersistencePB {
     }
 
     void readFromFS() {
-        FILE *file = fopen(_filePath, "rb");
-
-        if (file) {
-            fseek(file, 0, SEEK_END);
-            size_t fileSize = ftell(file);
-            fseek(file, 0, SEEK_SET);
-
-            if (fileSize > 0 && fileSize <= _maxSize) {
-                std::vector<uint8_t> buffer(fileSize);
-                size_t bytesRead = fread(buffer.data(), 1, fileSize, file);
-                fclose(file);
-
-                if (bytesRead == fileSize) {
-                    T protoMsg = {};
-                    pb_istream_t stream = pb_istream_from_buffer(buffer.data(), bytesRead);
-
-                    if (pb_decode(&stream, _msgDescriptor, &protoMsg)) {
-                        _statefulService->updateWithoutPropagation(
-                            [this, &protoMsg](T &state) { return _stateUpdater(protoMsg, state); });
-                        return;
-                    }
-                }
-            } else {
-                fclose(file);
-            }
-        }
-
+        if (loadFromFS()) return;
+        keepUnloadableFile();
         applyDefaults();
         writeToFS();
     }
@@ -71,6 +46,7 @@ class FSPersistencePB {
         _statefulService->read([this, &protoMsg](const T &state) { _stateReader(state, protoMsg); });
 
         if (!pb_encode(&stream, _msgDescriptor, &protoMsg)) {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to encode %s: %s", _filePath, PB_GET_ERROR(&stream));
             return false;
         }
 
@@ -83,9 +59,13 @@ class FSPersistencePB {
         }
 
         size_t written = fwrite(buffer.data(), 1, stream.bytes_written, file);
-        fclose(file);
+        bool closed = fclose(file) == 0;
 
-        return written == stream.bytes_written;
+        if (written != stream.bytes_written || !closed) {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to write %s", _filePath);
+            return false;
+        }
+        return true;
     }
 
     void disableUpdateHandler() {
@@ -110,6 +90,40 @@ class FSPersistencePB {
     size_t _maxSize;
     T _defaultState;
     HandlerId _updateHandlerId;
+
+    bool loadFromFS() {
+        FILE *file = fopen(_filePath, "rb");
+        if (!file) return false;
+        std::vector<uint8_t> buffer(_maxSize + 1);
+        size_t size = fread(buffer.data(), 1, buffer.size(), file);
+        fclose(file);
+        if (size == 0 || size > _maxSize) return false;
+
+        T protoMsg = {};
+        pb_istream_t stream = pb_istream_from_buffer(buffer.data(), size);
+        if (!pb_decode(&stream, _msgDescriptor, &protoMsg)) {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to decode %s: %s", _filePath, PB_GET_ERROR(&stream));
+            return false;
+        }
+        return _statefulService->updateWithoutPropagation([this, &protoMsg](T &state) {
+            return _stateUpdater(protoMsg, state);
+        }) != StateUpdateResult::ERROR;
+    }
+
+    // A file that is there but does not load was written by a firmware that stored the settings
+    // differently, and may hold what took effort to enter, such as the saved WiFi networks: it is kept
+    // beside the defaults that replace it rather than overwritten.
+    void keepUnloadableFile() {
+        struct stat st;
+        if (stat(_filePath, &st) != 0 || st.st_size == 0) return;
+        std::string backup = std::string(_filePath) + ".bak";
+        remove(backup.c_str());
+        if (rename(_filePath, backup.c_str()) == 0) {
+            ESP_LOGW(TAG_PERSISTENCE, "Kept unloadable %s as %s", _filePath, backup.c_str());
+        } else {
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to keep unloadable %s", _filePath);
+        }
+    }
 
     void mkdirs() {
         std::string path(_filePath);

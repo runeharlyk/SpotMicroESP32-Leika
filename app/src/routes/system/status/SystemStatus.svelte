@@ -8,14 +8,12 @@
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
     import { socket } from '$lib/stores/socket'
-    import { api } from '$lib/api'
+    import { factoryResetRobot, restartRobot } from '$lib/robot-commands'
     import { convertSeconds } from '$lib/utilities'
-    import { useFeatureFlags } from '$lib/stores/featureFlags'
     import {
         Cancel,
         Power,
         FactoryReset,
-        Sleep,
         Health,
         CPU,
         SDK,
@@ -33,8 +31,6 @@
     import ActionButton from './ActionButton.svelte'
     import { AnalyticsData, type SystemInformation } from '$lib/platform_shared/message'
 
-    const features = useFeatureFlags()
-
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
@@ -45,10 +41,6 @@
         systemInformation = response.systemInformationResponse
         return systemInformation
     }
-
-    const postFactoryReset = async () => await api.post('/api/system/reset')
-
-    const postSleep = async () => await api.post('/api/system/sleep')
 
     let unsub: (() => void) | undefined = undefined
     onMount(() => (unsub = socket.on(AnalyticsData, handleSystemData)))
@@ -65,8 +57,6 @@
         }
     }
 
-    const postRestart = async () => await api.post('/api/system/restart')
-
     function confirmRestart() {
         modals.open(ConfirmDialog, {
             title: 'Confirm Restart',
@@ -77,7 +67,7 @@
             },
             onConfirm: () => {
                 modals.close()
-                postRestart()
+                restartRobot()
             }
         })
     }
@@ -92,22 +82,7 @@
             },
             onConfirm: () => {
                 modals.close()
-                postFactoryReset()
-            }
-        })
-    }
-
-    function confirmSleep() {
-        modals.open(ConfirmDialog, {
-            title: 'Confirm Going to Sleep',
-            message: 'Are you sure you want to put the device into sleep?',
-            labels: {
-                cancel: { label: 'Abort', icon: Cancel },
-                confirm: { label: 'Sleep', icon: Sleep }
-            },
-            onConfirm: () => {
-                modals.close()
-                postSleep()
+                factoryResetRobot()
             }
         })
     }
@@ -117,16 +92,9 @@
         label: string
         onClick: () => void
         type?: string
-        condition?: () => boolean
     }
 
     const actionButtons: ActionButtonDef[] = [
-        {
-            icon: Sleep,
-            label: 'Sleep',
-            onClick: confirmSleep,
-            condition: () => Boolean($features.sleep)
-        },
         {
             icon: Power,
             label: 'Restart',
@@ -167,7 +135,7 @@
                     <StatusItem
                         icon={SDK}
                         title="SDK Version"
-                        description={`ESP-IDF ${systemInformation.staticSystemInformation?.sdkVersion} / Arduino ${systemInformation.staticSystemInformation?.arduinoVersion}`}
+                        description={`ESP-IDF ${systemInformation.staticSystemInformation?.sdkVersion}`}
                     />
 
                     <StatusItem
@@ -270,14 +238,12 @@
 
     <div class="mt-4 flex flex-wrap justify-end gap-2">
         {#each actionButtons as button (button.label)}
-            {#if button.condition === undefined || button.condition()}
-                <ActionButton
-                    onclick={button.onClick}
-                    icon={button.icon}
-                    label={button.label}
-                    type={button.type || 'primary'}
-                />
-            {/if}
+            <ActionButton
+                onclick={button.onClick}
+                icon={button.icon}
+                label={button.label}
+                type={button.type || 'primary'}
+            />
         {/each}
     </div>
 </SettingsCard>

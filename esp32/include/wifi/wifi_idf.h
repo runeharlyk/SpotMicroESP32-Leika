@@ -13,6 +13,8 @@
 #include <cstring>
 #include <functional>
 #include <vector>
+#include <atomic>
+#include <mutex>
 
 typedef enum {
     WL_NO_SHIELD = 255,
@@ -72,16 +74,13 @@ class WiFiClass {
     int32_t RSSI();
     uint8_t channel();
 
-    int16_t scanNetworks(bool async = false);
+    // Starts a scan; its results replace the last ones when the driver reports it done.
+    int16_t scanNetworks();
     int16_t scanComplete();
     void scanDelete();
-
-    std::string SSID(uint8_t i);
-    int32_t RSSI(uint8_t i);
-    wifi_enc_type_t encryptionType(uint8_t i);
-    std::string BSSIDstr(uint8_t i);
-    int32_t channel(uint8_t i);
-    void getNetworkInfo(uint8_t i, std::string& ssid, uint8_t& encType, int32_t& rssi, uint8_t*& bssid, int32_t& ch);
+    // A copy: the WiFi event task replaces the results while other tasks read them.
+    std::vector<wifi_ap_record_t> scanResults();
+    static wifi_enc_type_t encryptionType(wifi_auth_mode_t authmode);
 
     bool softAP(const char* ssid, const char* password = nullptr, int channel = 1, bool ssid_hidden = false,
                 int max_connection = 4);
@@ -110,9 +109,9 @@ class WiFiClass {
     wifi_mode_t _mode;
 
     std::string _hostname;
-    wifi_ap_record_t* _scanResult;
-    uint16_t _scanCount;
-    int16_t _scanStatus;
+    std::mutex _scanMutex;
+    std::vector<wifi_ap_record_t> _scanResults;
+    std::atomic<int16_t> _scanStatus;
 
     std::vector<WiFiEventHandler> _eventHandlers;
 

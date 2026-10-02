@@ -1,8 +1,8 @@
 """NumPy port of the ESP32 FIRMWARE gait, retargeted to the spot_pico robot.
 
 The gait *engine* is a faithful port of `esp32/include/motion_states/walk_state.h`
-(phase clock, per-leg offsets, stance/Bezier curves, stroke composition, command->gait mapping,
-0.03 LERP smoothing). The *kinematics* are NOT the firmware's SPOTMICRO_ESP32 constants
+(phase clock, per-leg offsets, stance/Bezier curves, stroke composition, command->gait mapping);
+it applies no command smoothing. The *kinematics* are NOT the firmware's SPOTMICRO_ESP32 constants
 (that is a different, larger robot) but are derived directly from the spot_pico MJCF, since
 that is the model we train on. So a "zero residual" reproduces the firmware gait *shape*
 executed on spot_pico's geometry.

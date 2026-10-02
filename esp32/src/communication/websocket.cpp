@@ -3,7 +3,8 @@
 
 static const char* TAG = "Websocket";
 
-Websocket::Websocket(WebServer& server, const char* route) : server_(server), route_(route) {}
+Websocket::Websocket(WebServer& server, const char* route)
+    : server_(server), route_(route), sessionsMutex_(xSemaphoreCreateMutex()) {}
 
 void Websocket::begin() {
     server_.onWsOpen([this](httpd_req_t* req) { onWsOpen(req); });
@@ -14,13 +15,34 @@ void Websocket::begin() {
 
 void Websocket::onWsOpen(httpd_req_t* req) {
     int sockfd = httpd_req_to_sockfd(req);
+    xSemaphoreTake(sessionsMutex_, portMAX_DELAY);
+    sessions_[sockfd] = nextSession_++;
+    xSemaphoreGive(sessionsMutex_);
+    // A new session starts with no subscriptions, whatever the descriptor's last session left.
+    removeClient(sockfd);
     ESP_LOGI(TAG, "Client connected: %d", sockfd);
     sendPong(sockfd);
 }
 
 void Websocket::onWsClose(int sockfd) {
+    xSemaphoreTake(sessionsMutex_, portMAX_DELAY);
+    sessions_.erase(sockfd);
+    xSemaphoreGive(sessionsMutex_);
     ESP_LOGI(TAG, "Client disconnected: %d", sockfd);
     removeClient(sockfd);
+    if (closeListener_) closeListener_(sockfd);
+}
+
+uint32_t Websocket::session(int cid) {
+    xSemaphoreTake(sessionsMutex_, portMAX_DELAY);
+    auto it = sessions_.find(cid);
+    uint32_t session = it == sessions_.end() ? 0 : it->second;
+    xSemaphoreGive(sessionsMutex_);
+    return session;
+}
+
+bool Websocket::isSession(int cid, uint32_t session) {
+    return session != 0 && this->session(cid) == session;
 }
 
 esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
@@ -34,13 +56,10 @@ esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
     return ESP_OK;
 }
 
-void Websocket::send(const uint8_t* data, size_t len, int cid) {
-    if (cid >= 0) {
-        esp_err_t err = server_.wsSend(cid, data, len);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
-        }
-    } else {
-        server_.wsSendAll(data, len);
+bool Websocket::send(const uint8_t* data, size_t len, int cid) {
+    esp_err_t err = server_.wsSend(cid, data, len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send message to client %d: %s (len=%u)", cid, esp_err_to_name(err), len);
     }
+    return err == ESP_OK;
 }

@@ -13,6 +13,9 @@ sdkconfig.*
 !sdkconfig.defaults
 !sdkconfig.defaults.*
 esp32/src/platform_shared/*
+# Credentials; created from esp32/include/secrets.example.h by the first build
+esp32/include/secrets.h
 !esp32/src/platform_shared/.gitkeep
 app/src/lib/platform_shared/*
 !app/src/lib/platform_shared/.gitkeep
+simulation/src/proto/*_pb2.py

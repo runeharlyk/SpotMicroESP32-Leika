@@ -23,6 +23,10 @@
 #define USE_HMC5883 0
 #endif
 
+#ifndef USE_ICM20948
+#define USE_ICM20948 0
+#endif
+
 #ifndef USE_BMP180
 #define USE_BMP180 0
 #endif
@@ -65,6 +69,6 @@ namespace feature_service {
 
 void printFeatureConfiguration();
 
-void features_request(const socket_message_FeaturesDataRequest& fd_req, socket_message_FeaturesDataResponse& fd_res);
+void features_request(const char* robotName, const char* hostname, socket_message_FeaturesDataResponse& fd_res);
 
 } // namespace feature_service

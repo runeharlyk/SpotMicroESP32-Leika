@@ -1,6 +1,7 @@
 #pragma once
 
 #include <peripherals/i2c_bus.h>
+#include <utils/sleep.h>
 #include <cmath>
 
 class BMP180Driver {
@@ -36,11 +37,11 @@ class BMP180Driver {
         if (!_initialized) return false;
 
         writeReg(REG_CONTROL, CMD_TEMP);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        sleepAtLeastMs(5);
         int32_t ut = readReg16(REG_OUT_MSB);
 
         writeReg(REG_CONTROL, CMD_PRESSURE + (_oss << 6));
-        vTaskDelay(pdMS_TO_TICKS(2 + (3 << _oss)));
+        sleepAtLeastMs(2 + (3 << _oss));
 
         int32_t up = readReg24(REG_OUT_MSB) >> (8 - _oss);
 

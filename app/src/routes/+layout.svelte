@@ -11,24 +11,26 @@
     import Statusbar from '../lib/components/statusbar/statusbar.svelte'
     import {
         telemetry,
-        kinematicData,
         mode,
         input,
         servoAngles,
         servoAnglesOut,
         socket,
+        robotSocketUrl,
         apiLocation,
+        canReachRobot,
         walkGait
     } from '$lib/stores'
     import {
         AnglesData,
         ControllerData,
-        KinematicData,
         ModeData,
         RSSIData,
         WalkGaitData
     } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
+    import { keepControlAlive, stopped } from '$lib/control-link'
+    import { mirrorRobot } from '$lib/robot-mirror'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -36,25 +38,48 @@
 
     let { children }: Props = $props()
 
-    const throttler = new Throttler()
+    // One per stream, so a burst of servo angles cannot hold back the next joystick command.
+    const inputThrottler = new Throttler()
+    const anglesThrottler = new Throttler()
 
     onMount(async () => {
-        const ws = $apiLocation ? $apiLocation : window.location.host
-        socket.init(`ws://${ws}/api/ws`)
+        if (canReachRobot(page.url, $apiLocation)) socket.init(robotSocketUrl())
 
         addEventListeners()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        input.subscribe(data => throttler.throttle(() => socket.emit(ControllerData, data), 100))
-        mode.subscribe(data => socket.emit(ModeData, data))
-        walkGait.subscribe(data => socket.emit(WalkGaitData, data))
-        servoAnglesOut.subscribe(data =>
-            throttler.throttle(() => socket.emit(AnglesData, data), 100)
+        input.subscribe(data =>
+            inputThrottler.throttle(() => socket.emit(ControllerData, data), 100)
         )
-        kinematicData.subscribe(data => socket.emit(KinematicData, data))
+        stopKeepAlive = keepControlAlive(
+            () => get(input),
+            data => socket.emit(ControllerData, data)
+        )
+        const modeMirror = mirrorRobot(
+            mode,
+            data => socket.emit(ModeData, data),
+            (a, b) => a.mode === b.mode
+        )
+        const gaitMirror = mirrorRobot(
+            walkGait,
+            data => socket.emit(WalkGaitData, data),
+            (a, b) => a.gait === b.gait
+        )
+        eventListeners.push(
+            modeMirror.stop,
+            gaitMirror.stop,
+            socket.on(ModeData, modeMirror.report),
+            socket.on(WalkGaitData, gaitMirror.report)
+        )
+        servoAnglesOut.subscribe(data =>
+            anglesThrottler.throttle(() => socket.emit(AnglesData, data), 100)
+        )
     })
 
+    let stopKeepAlive: (() => void) | undefined
+
     onDestroy(() => {
+        stopKeepAlive?.()
         removeEventListeners()
         document.removeEventListener('visibilitychange', handleVisibilityChange)
     })
@@ -63,10 +88,12 @@
     const addEventListeners = () => {
         eventListeners.push(
             socket.onEvent('open', handleOpen),
+            // A link ends in exactly one of these; the transport is detached at the first.
             socket.onEvent('close', handleClose),
+            socket.onEvent('error', handleClose),
+            socket.onEvent('unresponsive', handleClose),
             socket.onEvent('error', handleError),
             socket.on(RSSIData, data => telemetry.setRSSI(data)),
-            socket.on(ModeData, data => mode.set(data)),
             socket.on(AnglesData, data => {
                 servoAngles.set(data)
             })
@@ -78,12 +105,6 @@
     }
 
     const handleOpen = () => notifications.success('Connection to device established', 5000)
-
-    const stopped = (data: ControllerData) => ({
-        ...data,
-        left: { x: 0, y: 0 },
-        right: { x: 0, y: 0 }
-    })
 
     const handleClose = () => {
         notifications.error('Connection to device lost', 5000)
@@ -126,15 +147,15 @@
     </div>
 </div>
 
+<svelte:window onkeydown={e => e.key === 'Escape' && modals.closeAll()} />
+
 <Modals>
     {#snippet backdrop()}
         <div
             class="fixed inset-0 z-40 max-h-full max-w-full bg-black/20 backdrop-blur-sm"
             transition:fade
             onclick={modals.closeAll}
-            onkeydown={e => e.key === 'Escape' && modals.closeAll()}
-            role="button"
-            tabindex="0"
+            role="presentation"
         ></div>
     {/snippet}
 </Modals>

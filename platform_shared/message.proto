@@ -3,12 +3,11 @@ syntax = "proto3";
 package socket_message;
 
 import "filesystem.proto";
+import "api.proto";
 
 // Partial data types
 message Vector { float x = 1; float y = 2; }
 message I2CDevice { int32 address = 1; string part_number = 2; string name = 3; }
-message PinConfig { int32 pin = 1; string mode = 2; string type = 3; string role = 4; }
-message KnownNetworkItem { string ssid = 1; string password = 2; bool static_ip = 3; uint32 local_ip = 4; uint32 subnet_mask = 5; uint32 gateway_ip = 6; uint32 dns_ip_1 = 7; uint32 dns_ip_2 = 8; }
 
 // Individual message data types
 message IMUData {
@@ -37,9 +36,17 @@ message FeaturesDataResponse {
     bool ws2812 = 110;
     bool mdns = 120;
     bool embed_www = 130;
+
+    string device_id = 140;
+    string robot_name = 150;
+    string hostname = 160;
 }
 
 message FeaturesDataRequest { }
+
+message RobotSettings { string name = 1; }
+
+message RobotNameUpdate { string name = 1; }
 
 // SYSTEM INFORMATION
 
@@ -48,6 +55,9 @@ message SystemInformationResponse {
     AnalyticsData analytics_data = 1;
     StaticSystemInformation static_system_information = 2;
 }
+
+message SystemRestart {}
+message SystemReset {}
 
 message CorrelationRequest {
     uint32 correlation_id = 1;
@@ -62,12 +72,33 @@ message CorrelationRequest {
         FSDownloadRequest fs_download_request = 80;
         FSUploadStart fs_upload_start = 100;
         FSCancelTransfer fs_cancel_transfer = 120;
+        RobotNameUpdate robot_name_update = 130;
+        api.WifiSettingsRequest wifi_settings_request = 140;
+        api.WifiSettings wifi_settings = 141;
+        api.WifiStatusRequest wifi_status_request = 142;
+        api.WifiScanStart wifi_scan_start = 143;
+        api.WifiNetworksRequest wifi_networks_request = 144;
+        api.APSettingsRequest ap_settings_request = 150;
+        api.APSettings ap_settings = 151;
+        api.APStatusRequest ap_status_request = 152;
+        api.MDNSStatusRequest mdns_status_request = 160;
+        api.MDNSQueryRequest mdns_query_request = 161;
+        api.CameraSettingsRequest camera_settings_request = 170;
+        api.CameraSettings camera_settings = 171;
+        api.ServoSettingsRequest servo_settings_request = 180;
+        api.ServoSettings servo_settings = 181;
+        api.PeripheralSettingsRequest peripheral_settings_request = 190;
+        api.PeripheralSettings peripheral_settings = 191;
+        SystemRestart system_restart = 200;
+        SystemReset system_reset = 201;
     }
 }
 
 message CorrelationResponse {
     uint32 correlation_id = 1;
     uint32 status_code = 2;
+    // Why the robot refused the request; empty on success.
+    string error_message = 3;
     oneof response {
         FeaturesDataResponse features_data_response = 10;
         I2CScanData i2c_scan_data = 20;
@@ -78,6 +109,16 @@ message CorrelationResponse {
         FSListResponse fs_list_response = 70;
         FSUploadStartResponse fs_upload_start_response = 100;
         FSCancelTransferResponse fs_cancel_transfer_response = 120;
+        api.WifiSettings wifi_settings = 140;
+        api.WifiStatus wifi_status = 142;
+        api.WifiNetworkList wifi_network_list = 144;
+        api.APSettings ap_settings = 150;
+        api.APStatus ap_status = 152;
+        api.MDNSStatus mdns_status = 160;
+        api.MDNSQueryResponse mdns_query_response = 161;
+        api.CameraSettings camera_settings = 170;
+        api.ServoSettings servo_settings = 180;
+        api.PeripheralSettings peripheral_settings = 190;
     }
 }
 
@@ -100,25 +141,22 @@ message StaticSystemInformation {
     uint32 sketch_size = 7; 
     uint32 free_sketch_space = 8; 
     string sdk_version = 9; 
-    string arduino_version = 10; 
+    reserved 10;
+    reserved "arduino_version";
     uint32 flash_chip_size = 11; 
     uint32 flash_chip_speed = 12; 
     string cpu_reset_reason = 13; 
 }
 
-message IMUCalibrateData { bool success = 1; }
+message IMUCalibrateData {
+    bool success = 1;   // the robot was still and the gyro bias was taken
+    bool levelled = 2;  // the tilt was folded into the IMU mounting
+    float tilt_deg = 3; // the tilt the accelerometer showed; above 15 degrees it is not levelled
+}
 
 message IMUCalibrateExecute {}
 
 message ModeData { ModesEnum mode = 1; }
-
-message ControllerInputData {
-    Vector left = 1;
-    Vector right = 2;
-    float height = 3;
-    float speed = 4;
-    float s1 = 5;
-}
 
 message AnalyticsData {
     int32 max_alloc_heap = 1;
@@ -150,12 +188,6 @@ message AnglesData { repeated int32 angles = 1; }
 message I2CScanData { repeated I2CDevice devices = 1; }
 
 message I2CScanDataRequest {}
-
-message PeripheralSettingsData { int32 sda = 1; int32 scl = 2; int32 frequency = 3; repeated PinConfig pins = 4; }
-
-message PeripheralSettingsDataRequest {}
-
-message WifiSettingsData { string hostname = 1; bool priority_rssi = 2; repeated KnownNetworkItem wifi_networks = 3; }
 
 message RSSIData { int32 rssi = 1; }
 
@@ -195,8 +227,79 @@ message PingMsg {}
 
 message PongMsg {}
 
+// ===== SIM-TO-REAL TELEMETRY (robot -> recorder) =====
+// Vectors are in the body frame: x forward, y left, z up. Times are esp_timer microseconds.
+
+message ImuSample {
+    uint64 t_us = 1;             // when the accelerometer and gyro were read
+    repeated float accel = 2;    // m/s^2, specific force: +9.81 on z when level and still
+    repeated float gyro = 3;     // rad/s
+    repeated float mag = 4;      // microtesla
+    uint64 mag_t_us = 5;
+    repeated float gravity = 6;  // unit vector of gravity: (0, 0, -1) when level
+    repeated float quat = 7;     // w, x, y, z: rotates body vectors into the world frame
+    repeated float rpy = 8;      // rad, roll, pitch, yaw (ZYX)
+    float temperature = 9;       // degrees Celsius
+    uint32 valid = 10;           // bits: 1 accel, 2 gyro, 4 mag, 8 orientation, 16 yaw drifts
+}
+
+message TickSample {
+    uint32 seq = 1;
+    uint64 t_us = 2;             // tick start
+    uint32 period_us = 3;        // since the previous tick start
+    uint32 compute_us = 4;       // tick start to just before the servo write
+    ImuSample imu = 5;           // the sample this tick used
+    repeated float angles = 6;   // rad, servo space, after the servo controller's smoothing
+    repeated float targets = 7;  // rad, servo space, the motion's angles before smoothing
+    repeated uint32 pwm = 8;     // the 12 values written to the PCA9685
+    uint32 servo_write_us = 9;
+    bool servo_ok = 10;
+    repeated float command = 11; // lx, ly, rx, ry, height, speed, s1, as the motion state used them
+    uint32 command_age_us = 12;  // tick start minus command_rx_us; 0 before any command
+    uint64 command_rx_us = 13;
+    ModesEnum mode = 14;
+    WalkGaits gait = 15;
+    bool link_lost = 16;         // the dead-man stop is in force
+}
+
+message TelemetryBatch {
+    uint32 batch_seq = 1;
+    uint32 dropped_ticks = 2;    // ticks the ring had no room for, since boot
+    repeated TickSample ticks = 3;
+}
+
+message TelemetryHeader {
+    string firmware_version = 1;
+    string build_target = 2;
+    string variant = 3;
+    string device_id = 4;
+    string imu_driver = 5;       // "none" without an IMU
+    uint32 imu_rate_hz = 6;
+    uint32 mag_rate_hz = 7;      // 0 without a magnetometer
+    uint32 control_rate_hz = 8;
+    api.ServoSettings servo_settings = 9;
+    api.ImuSettings imu_settings = 10;
+    uint32 batch_ticks = 11;
+    repeated float joint_direction = 12; // sign MotionService applies per joint
+}
+
+message TelemetryNetwork {
+    uint64 t_us = 1;
+    int32 rssi = 2;
+    uint32 channel = 3;
+    uint32 batches_sent = 4;
+    uint32 batches_failed = 5;
+    uint32 ticks_dropped = 6;
+}
+
 // WebSocket message wrapper
 message Message {
+    // Retired, and never to be reused while apps that knew them are out there: the IMU calibration (120,
+    // 121), I2C scan (180, 181), peripheral settings (190, 191) and WiFi settings (240) now travel as
+    // correlation requests; the controller input (140) and kinematics (200) had no receiver.
+    reserved 120, 121, 140, 180, 181, 190, 191, 200, 240;
+    reserved "imu_calibrate", "imu_calibrate_execute", "input", "i2c_scan", "i2c_scan_data_request";
+    reserved "peripheral_settings", "peripheral_settings_data_request", "kinematic_data", "wifi_settings";
     oneof message {
         CorrelationRequest correlation_request = 10;
         CorrelationResponse correlation_response = 11;
@@ -211,22 +314,16 @@ message Message {
         FSUploadData fs_upload_data = 42;
         FSUploadComplete fs_upload_complete = 43;
         IMUData imu = 110;
-        IMUCalibrateData imu_calibrate = 120;
-        IMUCalibrateExecute imu_calibrate_execute = 121;
         ModeData mode = 130;
-        ControllerInputData input = 140;
         AnalyticsData analytics = 150;
         WalkGaitData walk_gait = 160;
         AnglesData angles = 170;
-        I2CScanData i2c_scan = 180;
-        I2CScanDataRequest i2c_scan_data_request = 181;
-        PeripheralSettingsData peripheral_settings = 190;
-        PeripheralSettingsDataRequest peripheral_settings_data_request = 191;
-        KinematicData kinematic_data = 200;
         ServoPWMData servo_pwm = 210;
         ServoStateData servo_state = 211;
-        WifiSettingsData wifi_settings = 240;
         ControllerData controller_data = 250;
         RSSIData rssi = 260;
+        TelemetryHeader telemetry_header = 270;
+        TelemetryBatch telemetry_batch = 271;
+        TelemetryNetwork telemetry_network = 272;
     }
 }

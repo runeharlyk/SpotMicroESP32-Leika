@@ -12,6 +12,15 @@ Calibrate the IMU noise ranges against real stationary logs later.
 import numpy as np
 import mujoco
 
+# The ranges below are assumptions until real recordings replace them (see report_recording.py).
+GYRO_BIAS_STD = 0.05       # rad/s, per episode
+GYRO_NOISE_STD = 0.05      # rad/s, per step
+RPY_BIAS_DEG = 5.0         # degrees, per episode, uniform +-
+RPY_NOISE_DEG = 1.5        # degrees, per step
+GRAVITY_NOISE_STD = 0.02   # per step, on the unit gravity vector
+ACTION_LATENCY_STEPS = (0, 3)  # rng.integers bounds: 0 to 2 control steps
+CONTROL_DT = 0.01          # s, the 100 Hz control step the latency counts in
+
 
 class DomainRandomizer:
     def __init__(self, model):
@@ -50,9 +59,9 @@ class DomainRandomizer:
         model.actuator_forcerange[:] = self.base_forcerange * rng.uniform(0.9, 1.1)
 
         # per-episode sensor biases + latency
-        self.gyro_bias = rng.normal(0.0, 0.05, size=3)
-        self.rpy_bias = np.deg2rad(rng.uniform(-5.0, 5.0, size=3))
-        self.action_latency_steps = int(rng.integers(0, 3))  # 0..2 control steps (~0-20ms)
+        self.gyro_bias = rng.normal(0.0, GYRO_BIAS_STD, size=3)
+        self.rpy_bias = np.deg2rad(rng.uniform(-RPY_BIAS_DEG, RPY_BIAS_DEG, size=3))
+        self.action_latency_steps = int(rng.integers(*ACTION_LATENCY_STEPS))
 
         # push schedule (every ~1.5-2.5 s at 100 Hz)
         self.next_push = int(rng.integers(150, 250))
@@ -72,7 +81,7 @@ class DomainRandomizer:
             data.xfrc_applied[self.base_id, :3] = 0.0
 
     def noisy_imu(self, grav, gyro, rpy, rng):
-        gyro = gyro + self.gyro_bias + rng.normal(0.0, 0.05, 3)
-        rpy = rpy + self.rpy_bias + np.deg2rad(rng.normal(0.0, 1.5, 3))
-        grav = grav + rng.normal(0.0, 0.02, 3)
+        gyro = gyro + self.gyro_bias + rng.normal(0.0, GYRO_NOISE_STD, 3)
+        rpy = rpy + self.rpy_bias + np.deg2rad(rng.normal(0.0, RPY_NOISE_DEG, 3))
+        grav = grav + rng.normal(0.0, GRAVITY_NOISE_STD, 3)
         return grav, gyro, rpy

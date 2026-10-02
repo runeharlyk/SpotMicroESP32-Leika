@@ -3,7 +3,7 @@
 </script>
 
 <label class="swap swap-rotate">
-    <input type="checkbox" value="light" class="theme-controller" />
+    <input type="checkbox" value="light" class="theme-controller" aria-label="Light theme" />
     <MdiWeatherSunny class="swap-off h-7 w-7" />
     <MdiMoonAndStars class="swap-on h-7 w-7" />
 </label>

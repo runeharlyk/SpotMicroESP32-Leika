@@ -28,8 +28,7 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#nipple_0_0,
-#nipple_1_1 {
+.nipple {
     z-index: 10 !important;
 }
 
