@@ -76,4 +76,5 @@ jobs:
         run: |
           pnpm install
           pnpm proto
+          pnpm exec svelte-kit sync
           pnpm exec vitest run tests/unit/firmware-motion.spec.ts
