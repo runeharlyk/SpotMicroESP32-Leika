@@ -11,8 +11,9 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
-INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src"),
-            os.path.join(REPO, "submodules", "nanopb")]
+INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "submodules", "nanopb")]
+# After the system headers: the firmware's features.h would otherwise shadow the glibc <features.h> that <cmath> includes.
+FIRMWARE_INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src")]
 
 
 NANOPB = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_common.c", "pb_encode.c", "pb_decode.c")]
@@ -49,6 +50,6 @@ PROGRAMS = {
 def test_host_program(program, tmp_path):
     binary = str(tmp_path / (program + ".exe"))
     subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-Ofast", *[f"-I{p}" for p in INCLUDES],
-                    os.path.join(HERE, program), *PROGRAMS[program], "-o", binary], check=True)
+                    *[f"-idirafter{p}" for p in FIRMWARE_INCLUDES], os.path.join(HERE, program), *PROGRAMS[program], "-o", binary], check=True)
     result = subprocess.run([binary], capture_output=True, text=True, cwd=tmp_path)
     assert result.returncode == 0, result.stdout

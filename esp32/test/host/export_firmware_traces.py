@@ -14,12 +14,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 FIXTURES = os.path.join(REPO, "app", "tests", "fixtures")
 VARIANTS = ["SPOTMICRO_ESP32", "SPOTMICRO_ESP32_MINI", "SPOTMICRO_YERTLE"]
-INCLUDES = [
-    os.path.join(HERE, "stubs"),
-    os.path.join(REPO, "esp32", "include"),
-    os.path.join(REPO, "esp32", "src"),
-    os.path.join(REPO, "submodules", "nanopb"),
-]
+INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "submodules", "nanopb")]
+# After the system headers: the firmware's features.h would otherwise shadow the glibc <features.h> that <cmath> includes.
+FIRMWARE_INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src")]
 
 
 def build_and_run(variant: str, workdir: str) -> dict:
@@ -27,7 +24,7 @@ def build_and_run(variant: str, workdir: str) -> dict:
     compiler = os.environ.get("CXX", "g++")
     # gnu++20 rather than c++20: the firmware uses M_PI, as the ESP32 toolchain allows.
     command = [compiler, "-std=gnu++20", "-O0", f"-D{variant}", *[f"-I{path}" for path in INCLUDES],
-               os.path.join(HERE, "firmware_trace.cpp"), "-o", binary]
+               *[f"-idirafter{path}" for path in FIRMWARE_INCLUDES], os.path.join(HERE, "firmware_trace.cpp"), "-o", binary]
     subprocess.run(command, check=True)
     result = subprocess.run([binary, variant], check=True, capture_output=True, text=True)
     return json.loads(result.stdout)

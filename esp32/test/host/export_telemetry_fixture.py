@@ -11,8 +11,9 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 OUT = os.path.join(REPO, "simulation", "tests", "fixtures", "telemetry.leika")
-INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src"),
-            os.path.join(REPO, "submodules", "nanopb")]
+INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "submodules", "nanopb")]
+# After the system headers: the firmware's features.h would otherwise shadow the glibc <features.h> that <cmath> includes.
+FIRMWARE_INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src")]
 SOURCES = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_common.c", "pb_encode.c", "pb_decode.c")]
 SOURCES += [os.path.join(REPO, "esp32", "src", "platform_shared", name)
             for name in ("api.pb.c", "filesystem.pb.c", "message.pb.c")]
@@ -23,7 +24,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as workdir:
         binary = os.path.join(workdir, "telemetry_fixture.exe")
         subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-O0", *[f"-I{p}" for p in INCLUDES],
-                        os.path.join(HERE, "telemetry_fixture.cpp"), *SOURCES, "-o", binary], check=True)
+                        *[f"-idirafter{p}" for p in FIRMWARE_INCLUDES], os.path.join(HERE, "telemetry_fixture.cpp"), *SOURCES, "-o", binary], check=True)
         subprocess.run([binary, OUT], check=True)
     print(OUT)
 
