@@ -1,6 +1,8 @@
 // Host test of the IMU chip drivers against the register-serving I2C fake (stubs/driver/i2c_master.h).
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <peripherals/imu/imu.h>
 #include <peripherals/drivers/mpu6050.h>
 #include <peripherals/drivers/hmc5883l.h>
 #include <peripherals/drivers/bno055.h>
@@ -205,7 +207,51 @@ static void icm20948IsFoundAtItsAlternativeAddress() {
     I2CBus::instance().end();
 }
 
+// Both chips answer at 0x68; each must claim only its own ID, and identifying must not configure either.
+static void identifyingTellsTheChipsAtTheSharedAddressApart() {
+    startBus();
+    fake_i2c::registers[0x68][0x00] = 0xEA;
+    ICM20948Driver icm;
+    MPU6050Driver mpu;
+    CHECK(icm.identify());
+    CHECK(!mpu.identify());
+    CHECK(fake_i2c::registers[0x68][0x06] == 0);  // PWR_MGMT_1 untouched
+    I2CBus::instance().end();
+
+    startBus();
+    fake_i2c::registers[0x68][0x75] = 0x68;
+    CHECK(!icm.identify());
+    CHECK(mpu.identify());
+    CHECK(fake_i2c::registers[0x68][0x6B] == 0);  // PWR_MGMT_1 untouched
+    I2CBus::instance().end();
+}
+
+// The order the robot probes in: the ICM-20948 first, since an MPU6050 probe would reset it.
+static void theProbeOrderPicksTheChipThatIsThere() {
+    startBus();
+    fake_i2c::registers[0x68][0x00] = 0xEA;
+    ICM20948Driver icm;
+    BNO055Driver bno;
+    MPU6050Driver mpu;
+    Imu imu({&icm, &bno, &mpu}, nullptr);
+    CHECK(imu.begin(0));
+    CHECK(std::strcmp(imu.driverName(), "ICM-20948") == 0);
+    I2CBus::instance().end();
+
+    startBus();
+    fake_i2c::registers[0x68][0x75] = 0x68;
+    CHECK(imu.begin(0));
+    CHECK(std::strcmp(imu.driverName(), "MPU6050") == 0);
+    I2CBus::instance().end();
+
+    startBus();
+    CHECK(!imu.begin(0));
+    I2CBus::instance().end();
+}
+
 int main() {
+    identifyingTellsTheChipsAtTheSharedAddressApart();
+    theProbeOrderPicksTheChipThatIsThere();
     mpu6050ReportsSiUnits();
     mpu6050RefusesAnotherChip();
     hmc5883ReportsMicrotesla();

@@ -10,7 +10,8 @@ There are a number of great resources for the assembly of the Spot Micro. For th
 Assuming the servos are connected to the PCA9685 and are powered on, and the robot runs firmware that reports its joint model.
 Without it, the servo page shows a warning and cannot draw the expected pose; update the firmware first.
 
-A variant fixes how its servos sit in the mechanical design: direction, centre angle and PWM per degree (`JointModel` in `esp32/include/joint_model.h`, selected by the variant in `esp32/features.ini`).
+A variant fixes how its servos sit in the mechanical design: direction, centre angle and PWM per degree (`JointModel` in `esp32/include/joint_model.h`, selected by the variant the robot stores).
+Choose the variant in the app first: until then the robot reports no joint model and does not wake the servos.
 A robot stores only two values per joint: the PCA9685 channel that drives it and its centre PWM.
 The centre PWM is the PWM at which the servo holds the joint's reference pose.
 
@@ -26,13 +27,13 @@ The centre PWM is the PWM at which the servo holds the joint's reference pose.
 
 The solid leg in the diagram is where the joint is at the current PWM, and the faint leg is where it is 20 PWM higher.
 The real joint must move the same way as the faint leg when the PWM rises.
-If it moves the other way, your build does not match the joint model of the selected variant.
+If it moves the other way, your build does not match the joint model of the chosen variant.
 
 If a joint cannot reach its reference pose inside the PWM range, remove the servo horn and refit it one spline tooth over.
 
 ### Level the IMU
 
-With an IMU enabled in `esp32/features.ini`, open `/peripherals/imu` and click "Calibrate IMU" while the robot lies still and level.
+With an IMU detected and not disabled, open `/peripherals/imu` and click "Calibrate IMU" while the robot lies still and level.
 The calibration fails if the robot moves, and a tilt above 15 degrees is not levelled.
 
 ## Circuit diagram

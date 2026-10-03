@@ -68,11 +68,20 @@ static void aSaveWithoutChannelsKeepsTheWiring() {
 
 static void theReplyReportsTheVariantsModel() {
     ServoSettings reply = api_ServoSettings_init_zero;
-    ServoSettings_read(ServoSettings_defaults(), reply);
+    ServoSettings_read(ServoSettings_defaults(), reply, &JOINT_MODEL_SPOTMICRO_ESP32_MINI);
     CHECK(reply.has_model);
-    CHECK(reply.model.direction[0] == VARIANT_JOINT_MODEL.direction[0]);
-    CHECK(reply.model.center_angle[2] == VARIANT_JOINT_MODEL.center_angle[2]);
-    CHECK(reply.model.pwm_per_degree == VARIANT_JOINT_MODEL.pwm_per_degree);
+    CHECK(reply.model.direction[0] == JOINT_MODEL_SPOTMICRO_ESP32_MINI.direction[0]);
+    CHECK(reply.model.center_angle[2] == JOINT_MODEL_SPOTMICRO_ESP32_MINI.center_angle[2]);
+    CHECK(reply.model.pwm_per_degree == JOINT_MODEL_SPOTMICRO_ESP32_MINI.pwm_per_degree);
+}
+
+// A reply read after one with a model, into the same message, must not keep that model.
+static void withoutAVariantTheReplyHasNoModel() {
+    ServoSettings reply = api_ServoSettings_init_zero;
+    ServoSettings_read(ServoSettings_defaults(), reply, &JOINT_MODEL_SPOTMICRO_ESP32);
+    ServoSettings_read(ServoSettings_defaults(), reply, nullptr);
+    CHECK(!reply.has_model);
+    CHECK(reply.model.pwm_per_degree == 0);
 }
 
 // What today's firmware stores: per servo the centre PWM (1), direction (2), centre angle (3), conversion (4) and
@@ -117,6 +126,7 @@ int main() {
     aNonFiniteOrOutOfRangeCentreIsRefused();
     aSaveWithoutChannelsKeepsTheWiring();
     theReplyReportsTheVariantsModel();
+    withoutAVariantTheReplyHasNoModel();
     aTodaysSettingsFileKeepsItsCentres();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;

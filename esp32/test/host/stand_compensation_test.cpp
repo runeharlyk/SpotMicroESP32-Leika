@@ -1,5 +1,4 @@
 // Host test of the stand state's IMU compensation, built and run by test_host_programs.py.
-#define SPOTMICRO_ESP32_MINI
 #include <cstdio>
 #include <motion_states/stand_state.h>
 
@@ -26,6 +25,7 @@ static body_state_t settleAt(float roll, float pitch) {
     ImuSample imu;
     imu.rpy = {roll, pitch, 0};
     Stand stand;
+    stand.configure(KIN_CONFIG_SPOTMICRO_ESP32_MINI);
     stand.begin();
     body_state_t body;
     for (int i = 0; i < 1000; i++) {

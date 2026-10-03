@@ -11,11 +11,11 @@ class BMP180Driver {
 
     BMP180Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() {
-        if (!I2CBus::instance().probe(_addr)) return false;
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() { return I2CBus::instance().probe(_addr) && readReg8(REG_CHIP_ID) == 0x55; }
 
-        uint8_t id = readReg8(REG_CHIP_ID);
-        if (id != 0x55) return false;
+    bool begin() {
+        if (!identify()) return false;
 
         _ac1 = readReg16(0xAA);
         _ac2 = readReg16(0xAC);

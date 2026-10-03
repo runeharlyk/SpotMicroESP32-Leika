@@ -49,8 +49,10 @@ The motion states, the command smoothing and the gaits are described in [Motion 
 All sensors are optional.
 The robot walks without any of them, but the stand mode levels the body only with an IMU.
 
-An IMU chip is chosen at build time with `USE_MPU6050`, `USE_ICM20948` or `USE_BNO055`.
-When several are set, the first of that order is used.
+Every driver is built in, and the sensor task probes the I2C bus at boot.
+The IMU is the first chip that answers in the order ICM-20948, BNO055, MPU6050: the ICM-20948 and the MPU6050 share address 0x68, and starting an MPU6050 resets whatever chip is there.
+A sensor disabled in the peripheral settings is only identified by its address and chip ID, so the app can show it as detected, and is never configured.
+A change of what is disabled probes again, which restarts the fusion; other peripheral saves do not.
 
 | Chip | Rate | Compass | Orientation |
 | --- | --- | --- | --- |
@@ -64,11 +66,17 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 - The gyro bias is measured at boot while the robot is still, over 200 samples. If the robot moves, the bias is left at zero.
 - For the MPU6050 and the ICM-20948 a Madgwick filter fuses the gyro and the accelerometer, and the compass when a fresh reading exists. Its gain is an IMU setting that defaults to 0.1, and is 2.5 during the first two seconds so that the first estimate is quick. Without a compass the yaw drifts, and the sample says so with the `YAW_DRIFTS` flag.
 - The BNO055 reports its own fused quaternion, which is rotated by the mounting. The Madgwick filter is not used for it.
-- A separate HMC5883L compass (`USE_HMC5883`, 75 Hz) supplies the compass for a chip without one. Its alignment, hard-iron offset and soft-iron matrix are IMU settings. A compass that has been silent for three of its periods is ignored.
+- A separate HMC5883L compass (75 Hz) supplies the compass for a chip without one. Its alignment, hard-iron offset and soft-iron matrix are IMU settings. A compass that has been silent for three of its periods is ignored. A disabled compass is left out of the fusion, the chip's own as well as a separate one; the BNO055's own fusion keeps using its compass.
 - The tilt of a still robot can be folded into the stored mounting from the app, so that a robot on a level surface reads level. The tilt must be under 15 degrees.
 
-The other sensors are a PAJ7620U2 gesture sensor (`USE_PAJ7620U2`, read every 100 ms), a BMP180 barometer (`USE_BMP180`, every 500 ms) and two HC-SR04 ultrasonic sensors (`USE_USS`, every 500 ms).
+The other sensors are a PAJ7620U2 gesture sensor (read every 100 ms) and a BMP180 barometer (every 500 ms).
 A gesture changes the mode: down selects rest, up selects stand, and left and right select walk.
+
+#### Variant
+
+The variant is a robot setting (`robotSettings.pb`), read in `app_main` before any task starts; a change is stored and restarts the robot.
+It selects the leg geometry (`KIN_CONFIG_*` in `kinematics.h`) and the joint model (`joint_model.h`) through `variant.h`.
+A robot without a variant has neither: the motion service refuses every mode but deactivated, and the servo board stays asleep.
 
 #### Servo output
 
@@ -89,7 +97,7 @@ This limit is the only filtering between the motion state's angles and the servo
 
 #### Settings and communication
 
-Services keep their settings as protobuf files in the `/config` directory of the LittleFS partition: WiFi, access point, camera, servo, peripheral (pins, I2C frequency, IMU) and robot name.
+Services keep their settings as protobuf files in the `/config` directory of the LittleFS partition: WiFi, access point, camera, servo, peripheral (pins, I2C frequency, IMU, disabled sensors, LED strip) and robot (name and variant).
 An invalid settings write is refused and leaves the stored settings unchanged.
 
 Apart from the camera stream (`/api/camera/stream`, MJPEG) and the embedded web app, the robot's API is the WebSocket at `/api/ws`, carrying protobuf messages from `platform_shared/message.proto`.
@@ -99,27 +107,16 @@ The service task broadcasts the IMU and RSSI every 100 ms and the system analyti
 The telemetry stream is recorded only while a client is subscribed.
 The control task puts one sample per tick in a ring of 64 ticks, and the service task sends them in batches of 10, preceded by a header describing the robot's firmware, variant, IMU and settings.
 
-#### Feature flags
+#### Build-time options
 
-To dis-/enable the hardware features, defines are used. Define them in `esp32/features.ini`, or in a PlatformIO environment's `build_flags`.
-A flag that is not defined takes the fallback in `esp32/include/features.h`.
+One firmware per PlatformIO environment serves every variant and every combination of sensors, and always embeds the web app.
+What the board fixes stays a define in the environment's `build_flags`:
 
-| Feature | Description | Default in features.ini |
-| --- | --- | --- |
-| SPOTMICRO_ESP32, SPOTMICRO_ESP32_MINI, SPOTMICRO_YERTLE | The robot variant. Exactly one must be defined, see [Kinematics](kinematics.md) | SPOTMICRO_ESP32 |
-| USE_MOTION | Only reported in the boot log. The motion service is always built | 1 |
-| USE_MDNS | Whether to announce the robot on mDNS | 1 |
-| USE_PCA9685 | Only reported to the app and in the boot log. The servo controller is always built | 1 |
-| USE_WS2812 | Whether to drive a WS2812 LED strip | 1 |
-| USE_MPU6050 | MPU6050 IMU | 0 |
-| USE_ICM20948 | ICM-20948 IMU with compass | 0 |
-| USE_BNO055 | BNO055 IMU with compass (the fallback in features.h is 1) | 0 |
-| USE_HMC5883 | Separate HMC5883L compass | 0 |
-| USE_BMP180 | BMP180 barometer | 0 |
-| USE_USS | Two ultrasonic distance sensors. The code includes `NewPing.h`, which neither `platformio.ini` nor the component manifest provides | 0 |
-| USE_PAJ7620U2 | PAJ7620U2 gesture sensor | 0 |
-| USE_CAMERA | Camera and its stream. Set by the PlatformIO environment, not in features.ini | per environment |
-| EMBED_WEBAPP | Whether to build the web app and embed it in the firmware. Set in `esp32/build_settings.ini` | 1 |
+| Define | Description |
+| --- | --- |
+| USE_CAMERA | Camera and its stream, with the camera model's pins (`CAMERA_MODEL_*`); 0 when undefined |
+| SDA_PIN, SCL_PIN | Default I2C pins, until the peripheral settings change them |
+| WS2812_PIN | Default LED strip pin, until the peripheral settings change it |
 
 ### 📲 Controller
 

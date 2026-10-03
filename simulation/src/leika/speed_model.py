@@ -29,6 +29,8 @@ class Sticks:
 
 
 def known_variant(reported: str) -> str:
+    if not reported:
+        raise UnknownVariant("the robot has no variant chosen yet; choose it in the app first")
     variant = re.sub(r"_V\d+$", "", reported)
     if variant not in LEGS:
         raise UnknownVariant(f"no leg lengths for the robot's variant {reported!r}")

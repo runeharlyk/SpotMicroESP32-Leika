@@ -28,14 +28,13 @@ These are the electronics I used for mine, and they can easily be swapped to sui
 | OV2640 or OV5640          | Camera                        | No       | 120-160 degrees. The ESP32-P4 build uses an OV5647 on its MIPI CSI port                           |
 | PCA9685                   | Servo board                   | Yes      | Add thicker solder traces                                                                               |
 | 12x Servo motors          | Actuators                     | Yes      | 20kg-35kg with high speed. If they are rated for your battery voltage you can skip the step down module |
-| IMU                       | ICM-20948, BNO055 or MPU6050  | No       | Select one in `esp32/features.ini`. The BNO055 and ICM-20948 include a compass                          |
+| IMU                       | ICM-20948, BNO055 or MPU6050  | No       | Detected at boot; the first that answers, in this order, is used. The BNO055 and ICM-20948 include a compass |
 | HMC5883                   | Magnetometer                  | No       | A separate compass for an IMU without one. The GY-87 includes it                                        |
 | PAJ7620U2                 | Gesture sensor                | No       | For interaction capabilities                                                                            |
 | Power switch              | Main power switch             | Yes      |                                                                                                         |
 | Power button w/ led       | Mode switch controller        | No       | The firmware does not read a button. Modes are switched from the web app                                |
-| 2x HC-SR04                | Ultrasonic Distance Sensor    | No       | Not usable yet: `USE_USS` includes `NewPing.h`, which the build does not provide. Each sensor would use one GPIO (`USS_LEFT_PIN`, `USS_RIGHT_PIN`), which only the esp32-wroom-camera environment defines |
-| BMP180                    | Barometer                     | No       | Enable `USE_BMP180` in `esp32/features.ini`. Reports pressure, temperature and altitude over I2C        |
-| WS2812 strip              | Status LEDs                   | No       | Enable `USE_WS2812` in `esp32/features.ini`. The firmware drives 13 LEDs on `WS2812_PIN`                |
+| BMP180                    | Barometer                     | No       | Detected at boot. Reports pressure, temperature and altitude over I2C                                   |
+| WS2812 strip              | Status LEDs                   | No       | The firmware drives 13 LEDs; enable it and set its pin on the Sensors page, by default the board's `WS2812_PIN` |
 | LM2596 or XL4015          | DC-DC Stepdown Module         | Yes      | Should be set a 5V for the ESP32 and peripherals                                                        |
 | 0.96" SD1306              | OLED display                  | No       | The firmware has no display driver                                                                      |
 | SZBK07                    | 20A DC-DC Buck Converter      | No       | Stepdown to servo voltage. If you select servos rated for you battery voltage, you don't need this.     |

@@ -7,12 +7,12 @@
 #include <functional>
 
 struct gait_state_t {
-    float step_height {KinConfig::default_step_height};
+    float step_height {0};
     float step_x {0};
     float step_z {0};
     float step_angle {0};
     float step_velocity {0.5};
-    float step_depth {KinConfig::default_step_depth};
+    float step_depth {0};
 };
 
 enum class WALK_GAIT { TROT, CRAWL };
@@ -74,6 +74,12 @@ class WalkState : public MotionState {
   public:
     WalkState() = default;
 
+    void configure(const KinConfig &config) override {
+        MotionState::configure(config);
+        gait_state.step_height = target_gait_state.step_height = config.default_step_height;
+        gait_state.step_depth = target_gait_state.step_depth = config.default_step_depth;
+    }
+
     void resetSmoothing() override {
         MotionState::resetSmoothing();
         gait_dampers = {};
@@ -112,14 +118,14 @@ class WalkState : public MotionState {
 
   protected:
     void handleCommand(const CommandMsg &cmd) override {
-        target_body_state.ym = KinConfig::min_body_height + cmd.h * KinConfig::body_height_range;
-        target_body_state.psi = cmd.ry * KinConfig::max_pitch;
-        target_gait_state.step_height = cmd.s1 * KinConfig::max_step_height;
-        target_gait_state.step_x = cmd.ly * KinConfig::max_step_length;
-        target_gait_state.step_z = -cmd.lx * KinConfig::max_step_length;
+        target_body_state.ym = kin->min_body_height + cmd.h * kin->body_height_range;
+        target_body_state.psi = cmd.ry * kin->max_pitch;
+        target_gait_state.step_height = cmd.s1 * kin->max_step_height;
+        target_gait_state.step_x = cmd.ly * kin->max_step_length;
+        target_gait_state.step_z = -cmd.lx * kin->max_step_length;
         target_gait_state.step_velocity = cmd.s;
         target_gait_state.step_angle = cmd.rx;
-        target_gait_state.step_depth = KinConfig::default_step_depth;
+        target_gait_state.step_depth = kin->default_step_depth;
     }
 
     static inline bool isZero(float num) { return std::fabs(num) < 0.001; }
@@ -168,8 +174,8 @@ class WalkState : public MotionState {
         for (int i = 0; i < states.stance_count; i++) {
             int leg = states.stance[i];
             if (leg != states.next_swing) {
-                sx += default_feet_pos[leg][0];
-                sz += default_feet_pos[leg][2];
+                sx += kin->default_feet_positions[leg][0];
+                sz += kin->default_feet_positions[leg][2];
                 remaining_count++;
             }
         }
@@ -223,9 +229,9 @@ class WalkState : public MotionState {
     }
 
     void updateFootPosition(body_state_t &body_state, const int index) {
-        body_state.feet[index][0] = this->default_feet_pos[index][0];
-        body_state.feet[index][1] = this->default_feet_pos[index][1];
-        body_state.feet[index][2] = this->default_feet_pos[index][2];
+        body_state.feet[index][0] = kin->default_feet_positions[index][0];
+        body_state.feet[index][1] = kin->default_feet_positions[index][1];
+        body_state.feet[index][2] = kin->default_feet_positions[index][2];
         const float leg_phase = std::fmod(phase_time + phase_offset[index], 1.0f);
         const bool contact = leg_phase <= stand_offset;
         if (contact)
@@ -249,8 +255,8 @@ class WalkState : public MotionState {
         // Each foot's stroke is the rigid-body velocity field at its stance position: the commanded
         // translation plus the rotational contribution omega x r about the body centre. Composing
         // both into one vector means a single curve, so the swing/stance profile is applied once.
-        const float rx = default_feet_pos[index][0];
-        const float rz = default_feet_pos[index][2];
+        const float rx = kin->default_feet_positions[index][0];
+        const float rz = kin->default_feet_positions[index][2];
         const float stroke_x = gait_state.step_x + gait_state.step_angle * -rz;
         const float stroke_z = gait_state.step_z + gait_state.step_angle * rx;
         const float stroke = std::hypot(stroke_x, stroke_z);

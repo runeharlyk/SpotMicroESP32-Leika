@@ -1,6 +1,19 @@
 #include <motion.h>
 
-void MotionService::begin() { body_state.updateFeet(KinConfig::default_feet_positions); }
+void MotionService::useConfig(const KinConfig* newConfig) {
+    config = newConfig;
+    if (!config) return;
+    kinematics.emplace(*config);
+    restState.configure(*config);
+    standState.configure(*config);
+    walkState.configure(*config);
+}
+
+void MotionService::begin() {
+    if (!config) return;
+    body_state.ym = config->default_body_height;
+    body_state.updateFeet(config->default_feet_positions);
+}
 
 void MotionService::handleAngles(const socket_message_AnglesData& data) {
     for (int i = 0; i < 12 && i < data.angles_count; i++) {
@@ -48,6 +61,10 @@ void MotionService::stopLocomotion() {
 }
 
 void MotionService::setMode(socket_message_ModesEnum modeData) {
+    if (!config && modeData != socket_message_ModesEnum_DEACTIVATED) {
+        ESP_LOGW("MotionService", "No variant chosen - mode %d refused", static_cast<int>(modeData));
+        return;
+    }
     modeApplied = true;
     currentMode = modeData;
     MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
@@ -84,7 +101,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     lastUpdate = now;
     state->updateImuOffsets(imu);
     state->step(body_state, dt);
-    kinematics.calculate_inverse_kinematics(body_state, new_angles);
+    kinematics->calculate_inverse_kinematics(body_state, new_angles);
     return update_angles(new_angles, angles);
 }
 

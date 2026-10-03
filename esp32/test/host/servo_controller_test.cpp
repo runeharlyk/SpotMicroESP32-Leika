@@ -29,6 +29,7 @@ static bool fullyOff(uint32_t channel) { return fake_i2c::registers[0x40][0x09 +
 static const uint32_t REVERSED[12] = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4};
 
 static void wireReversed(ServoController &controller) {
+    controller.useJointModel(&JOINT_MODEL_SPOTMICRO_ESP32);
     controller.updateWithoutPropagation([](ServoSettings &settings) {
         settings = ServoSettings_defaults();
         settings.channels_count = 12;
@@ -81,7 +82,45 @@ static void theJointsMoveNoFasterThanTheServos() {
     I2CBus::instance().end();
 }
 
+// Bit 4 of MODE1 holds the chip asleep, every output off.
+static bool asleep() { return fake_i2c::registers[0x40][0x00] & 0x10; }
+
+// A Pico driven with the Leika's joint model would push its mirrored knees against their stops.
+static void withoutAVariantTheServosStayAsleep() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    fake_i2c::registers[0x40][0x00] = 0x10;
+    static ServoController controller;
+    controller.activate();
+    CHECK(asleep());
+    controller.setMode(SERVO_CONTROL_STATE::ANGLE);
+    const ServoWrite write = controller.update(0.01f);
+    CHECK(!write.attempted);
+    for (uint32_t channel = 0; channel < 16; channel++) CHECK(offCount(channel) == 0);
+    ServoSettings reply = api_ServoSettings_init_zero;
+    controller.protoHandler.read(reply);
+    CHECK(!reply.has_model);
+    I2CBus::instance().end();
+}
+
+static void withAVariantActivatingWakesTheServos() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    fake_i2c::registers[0x40][0x00] = 0x10;
+    static ServoController controller;
+    controller.useJointModel(&JOINT_MODEL_SPOTMICRO_ESP32_MINI);
+    controller.activate();
+    CHECK(!asleep());
+    CHECK(controller.update(0.01f).attempted);
+    ServoSettings reply = api_ServoSettings_init_zero;
+    controller.protoHandler.read(reply);
+    CHECK(reply.has_model && reply.model.center_angle[2] == JOINT_MODEL_SPOTMICRO_ESP32_MINI.center_angle[2]);
+    I2CBus::instance().end();
+}
+
 int main() {
+    withoutAVariantTheServosStayAsleep();
+    withAVariantActivatingWakesTheServos();
     allServosMeansEveryMappedChannel();
     eachJointsAngleReachesItsChannel();
     theJointsMoveNoFasterThanTheServos();

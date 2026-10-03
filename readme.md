@@ -99,7 +99,7 @@ pio run -t upload
 
 The first build creates `esp32/include/secrets.h` from `secrets.example.h`, which git ignores.
 Put your WiFi network and the robot's access point password there, then build again.
-Other configuration is managed through `factory_settings.ini` and `features.ini` in the `esp32/` directory.
+Factory defaults such as the hostname are in `esp32/factory_settings.ini`; the variant and the sensors are configured in the app after flashing.
 
 ### Simulation Only
 
@@ -121,7 +121,7 @@ The [component list](docs/1_components.md) has the parts, their credits and note
 
 ### Variants
 
-Select the variant with `SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE` in `esp32/features.ini`.
+The same firmware drives every variant: the app asks which one on the first connection (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE`).
 Each variant's dimensions and motion limits are in [docs/kinematics.md](docs/kinematics.md).
 
 **Leika (Standard)**

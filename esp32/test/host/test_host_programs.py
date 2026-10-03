@@ -25,6 +25,7 @@ FILESYSTEM_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "filesy
 PROGRAMS = {
     "factory_network_test.cpp": [],
     "motion_inbox_test.cpp": [],
+    "motion_service_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "servo_output_test.cpp": [],
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],
@@ -32,6 +33,8 @@ PROGRAMS = {
     "pca9685_test.cpp": [],
     "sleep_test.cpp": [],
     "settings_persistence_test.cpp": [*NANOPB, API_PROTO],
+    "robot_settings_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO,
+                                os.path.join(REPO, "esp32", "src", "robot_service.cpp")],
     "ws_origin_test.cpp": [],
     "app_network_settings_test.cpp": [],
     "dns_reply_test.cpp": [],

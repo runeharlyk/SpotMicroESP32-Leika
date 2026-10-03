@@ -1,7 +1,8 @@
 #include <mdns_service.h>
 #include <esp_netif.h>
 #include <esp_log.h>
-#include <features.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <settings/placeholders.h>
 #include <cstring>
 
@@ -17,27 +18,23 @@ struct AdvertisedService {
 // The web app, its socket, and the robot itself, for other robots and tools to find.
 constexpr AdvertisedService SERVICES[] = {{"_http", "_tcp", 80}, {"_ws", "_tcp", 80}, {"_spotmicro", "_tcp", 80}};
 constexpr const char *ROBOT_SERVICE = "_spotmicro";
+} // namespace
 
 // Identifies the robot to others browsing for _spotmicro._tcp.
-struct RobotRecord {
-    const char *key;
-    const char *value;
-};
-const RobotRecord *robotRecords(size_t &count) {
-    static const RobotRecord records[] = {
-        {"id", deviceId().c_str()}, {"variant", KINEMATICS_VARIANT_STR}, {"version", APP_VERSION}};
-    count = sizeof(records) / sizeof(records[0]);
-    return records;
+void MDNSService::robotRecords(RobotRecord (&records)[ROBOT_RECORDS]) const {
+    records[0] = {"id", deviceId().c_str()};
+    records[1] = {"variant", _variant};
+    records[2] = {"version", APP_VERSION};
 }
-} // namespace
 
 MDNSService::~MDNSService() {
     if (_started) mdns_free();
 }
 
-void MDNSService::begin(const char *hostname, const char *instance) {
+void MDNSService::begin(const char *hostname, const char *instance, const char *variant) {
     _hostname = hostname;
     _instance = instance;
+    _variant = variant;
 
     esp_err_t err = mdns_init();
     if (err != ESP_OK) {
@@ -72,9 +69,9 @@ void MDNSService::advertise() {
         esp_err_t err = mdns_service_add(nullptr, service.type, service.protocol, service.port, nullptr, 0);
         if (err != ESP_OK) ESP_LOGW(TAG, "Failed to add service %s: %s", service.type, esp_err_to_name(err));
     }
-    size_t count = 0;
-    const RobotRecord *records = robotRecords(count);
-    for (size_t i = 0; i < count; i++) mdns_service_txt_item_set(ROBOT_SERVICE, "_tcp", records[i].key, records[i].value);
+    RobotRecord records[ROBOT_RECORDS];
+    robotRecords(records);
+    for (const RobotRecord &record : records) mdns_service_txt_item_set(ROBOT_SERVICE, "_tcp", record.key, record.value);
 }
 
 void MDNSService::status(api_MDNSStatus &status) {
@@ -83,18 +80,18 @@ void MDNSService::status(api_MDNSStatus &status) {
     strncpy(status.instance, _instance.c_str(), sizeof(status.instance) - 1);
 
     status.services_count = 0;
-    size_t count = 0;
-    const RobotRecord *records = robotRecords(count);
+    RobotRecord records[ROBOT_RECORDS];
+    robotRecords(records);
     for (const AdvertisedService &service : SERVICES) {
         api_MDNSServiceDef &def = status.services[status.services_count++];
         strncpy(def.service, service.type, sizeof(def.service) - 1);
         strncpy(def.protocol, service.protocol, sizeof(def.protocol) - 1);
         def.port = service.port;
         if (strcmp(service.type, ROBOT_SERVICE) != 0) continue;
-        for (size_t i = 0; i < count; i++) {
+        for (const RobotRecord &record : records) {
             api_MDNSTxtRecord &txt = def.txt_records[def.txt_records_count++];
-            strncpy(txt.key, records[i].key, sizeof(txt.key) - 1);
-            strncpy(txt.value, records[i].value, sizeof(txt.value) - 1);
+            strncpy(txt.key, record.key, sizeof(txt.key) - 1);
+            strncpy(txt.value, record.value, sizeof(txt.value) - 1);
         }
     }
 }

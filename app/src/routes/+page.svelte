@@ -4,8 +4,17 @@
     import { onDestroy, onMount } from 'svelte'
     import Visualization from '$lib/components/LazyVisualization.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
-    import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
-    import { apiLocation, pairing, robotSocketUrl, socket, startPairing } from '$lib/stores'
+    import { modals } from 'svelte-modals'
+    import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
+    import { Add, Bluetooth, Cancel, Check, Delete, Power, Scan } from '$lib/components/icons'
+    import {
+        apiLocation,
+        connectionFeatures,
+        pairing,
+        robotSocketUrl,
+        socket,
+        startPairing
+    } from '$lib/stores'
     import {
         addRobot,
         forgetRobot,
@@ -17,6 +26,8 @@
         type Robot
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
+    import { VARIANT_CHOICES, chooseVariant } from '$lib/services/robot-variant'
+    import { knownVariant, type Variant } from '$lib/kinematics-variants'
     import {
         normalizeRobotAddress,
         normalizeSubnetPrefix,
@@ -64,6 +75,24 @@
         connectedRobot?.name ??
             ($socket && $apiLocation === '' ? 'this robot' : $apiLocation || 'the robot')
     )
+
+    const connectedVariant = $derived(knownVariant($connectionFeatures?.variant))
+
+    const confirmVariant = (variant: Variant) =>
+        modals.open(ConfirmDialog, {
+            title: `Restart as ${variantLabel(variant)}?`,
+            message:
+                'The robot restarts to drive its legs as this variant, and the connection returns a few seconds later. Its servo calibration is kept.',
+            labels: {
+                cancel: { label: 'Cancel', icon: Cancel },
+                confirm: { label: 'Restart', icon: Power }
+            },
+            onConfirm: async () => {
+                modals.close()
+                const error = await chooseVariant(variant)
+                if (error) notifications.error(error, 5000)
+            }
+        })
 
     onMount(() => {
         prefixDraft = $subnetPrefix
@@ -215,6 +244,29 @@
                         <button class="btn btn-ghost btn-sm" onclick={startRenaming}>Rename</button>
                     {/if}
                 </div>
+
+                {#if $connectionFeatures}
+                    <label class="select select-sm mt-3 w-full">
+                        <span class="label">Variant</span>
+                        <select
+                            value={connectedVariant ?? ''}
+                            onchange={event => {
+                                const chosen = event.currentTarget.value as Variant
+                                event.currentTarget.value = connectedVariant ?? ''
+                                confirmVariant(chosen)
+                            }}
+                        >
+                            {#if !connectedVariant}
+                                <option value="" disabled>
+                                    {variantLabel($connectionFeatures.variant) ?? 'Not chosen'}
+                                </option>
+                            {/if}
+                            {#each VARIANT_CHOICES as variant (variant)}
+                                <option value={variant}>{variantLabel(variant)}</option>
+                            {/each}
+                        </select>
+                    </label>
+                {/if}
 
                 {#if renaming}
                     <form

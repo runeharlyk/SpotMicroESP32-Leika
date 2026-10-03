@@ -14,8 +14,8 @@ class MDNSService {
   public:
     ~MDNSService();
 
-    /** Starts mDNS; call once WiFi is set up. */
-    void begin(const char *hostname, const char *instance);
+    /** Starts mDNS; call once WiFi is set up. `variant` is the name of the variant in force, empty for none. */
+    void begin(const char *hostname, const char *instance, const char *variant);
     void setHostname(const char *hostname);
     void setInstance(const char *instance);
 
@@ -30,6 +30,14 @@ class MDNSService {
     bool _started {false};
     std::string _hostname;
     std::string _instance;
+    const char *_variant = "";
+
+    struct RobotRecord {
+        const char *key;
+        const char *value;
+    };
+    static constexpr size_t ROBOT_RECORDS = 3;
+    void robotRecords(RobotRecord (&records)[ROBOT_RECORDS]) const;
 
     void advertise();
 };

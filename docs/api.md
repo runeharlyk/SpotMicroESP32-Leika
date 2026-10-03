@@ -13,8 +13,8 @@ See [websocket.md](websocket.md) for the framing, subscriptions, reply codes and
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
 | GET    | /api/ws            | WebSocket upgrade                                                          |
-| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when `USE_CAMERA` is on   |
-| GET    | /\*                | The embedded web app (built with `EMBED_WEBAPP`); a path outside `/api/` falls back to `index.html` |
+| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when the build has a camera and it started |
+| GET    | /\*                | The embedded web app; a path outside `/api/` falls back to `index.html` |
 
 An unknown path under `/api/` answers 404.
 The firmware sets no CORS headers.
@@ -30,8 +30,9 @@ Field names below are the proto names; the TypeScript client uses camelCase.
 
 | Request                      | Response                      | Description                                                              |
 | ---------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
-| `features_data_request`      | `features_data_response`      | Variant, firmware version, device id, robot name, hostname, feature flags |
+| `features_data_request`      | `features_data_response`      | Variant, firmware version, device id, robot name, hostname, and per sensor whether it was detected and whether it is active |
 | `robot_name_update`          | `features_data_response`      | Rename the robot; 400 when the name is refused                           |
+| `robot_variant_update`       | `features_data_response`      | Store the variant; 400 for none or an unknown one. A changed variant restarts the robot after the reply, which still reports the old one |
 | `system_information_request` | `system_information_response` | Heap, CPU, flash and filesystem figures plus static chip information     |
 | `system_restart`             | none (empty 200)              | Restart; the reply leaves first, as the restart is deferred by 250 ms    |
 | `system_reset`               | none (empty 200)              | Delete the stored settings, then restart                                 |
@@ -53,7 +54,7 @@ Field names below are the proto names; the TypeScript client uses camelCase.
 | Request                                                | Response              | Description                                                                                                      |
 | ------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `servo_settings_request`, `servo_settings`             | `servo_settings`      | Read or write servo centres, names and PCA9685 channels; the reply also carries the `JointModel`, which a write ignores |
-| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map and the `ImuSettings`                                      |
+| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled and the WS2812 strip; a strip on a pin it cannot use is refused with 400 |
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
 
@@ -61,8 +62,8 @@ Field names below are the proto names; the TypeScript client uses camelCase.
 
 | Request                                       | Response              | Built when                         |
 | --------------------------------------------- | --------------------- | ---------------------------------- |
-| `mdns_status_request`                         | `mdns_status`         | `USE_MDNS`                         |
-| `mdns_query_request`                          | `mdns_query_response` | `USE_MDNS`; answered from its own task |
+| `mdns_status_request`                         | `mdns_status`         | Always                             |
+| `mdns_query_request`                          | `mdns_query_response` | Always; answered from its own task |
 | `camera_settings_request`, `camera_settings`  | `camera_settings`     | `USE_CAMERA` and `USE_DVP_CAMERA`  |
 
 A request that the build does not handle is answered with 400 "Unknown request".

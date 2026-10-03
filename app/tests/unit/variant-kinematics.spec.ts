@@ -10,18 +10,20 @@ const firmwareKinematics = () => {
         path.resolve(__dirname, '../../../esp32/include/kinematics.h'),
         'utf8'
     )
-    const blocks = [...header.matchAll(/#(?:el)?if defined\((\w+)\)([\s\S]*?)(?=#elif|#endif)/g)]
+    // The constructor's float parameters name the dimensions each KIN_CONFIG_<variant> gives in order.
+    const parameters = header.match(/constexpr KinConfig\(([^)]*)\)/)?.[1] ?? ''
+    const dimensions = [...parameters.matchAll(/float (\w+)/g)].map(([, name]) => name)
+    const configs = [...header.matchAll(/constexpr KinConfig KIN_CONFIG_(\w+) \{([^}]*)\};/g)]
     return Object.fromEntries(
-        blocks
-            .filter(([, , body]) => body.includes('coxa'))
-            .map(([, variant, body]) => [
+        configs.map(([, variant, values]) => {
+            const numbers = values.split(',').map(value => value.trim())
+            return [
                 variant,
                 Object.fromEntries(
-                    [...body.matchAll(/constexpr float (\w+) = ([\d.]+)f;/g)].map(
-                        ([, name, value]) => [name, Number(value)]
-                    )
+                    dimensions.map((name, i) => [name, Number(numbers[i].replace(/f$/, ''))])
                 )
-            ])
+            ]
+        })
     )
 }
 

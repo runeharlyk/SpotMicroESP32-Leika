@@ -27,12 +27,20 @@ message FeaturesDataResponse {
     string firmware_name = 30;
     string firmware_version = 40;
     
+    // Each sensor is active when it was detected and is not disabled in the peripheral settings.
     bool camera = 50;
+    bool camera_detected = 51;
     bool imu = 60;
+    bool imu_detected = 61;
     bool mag = 70;
+    bool mag_detected = 71;
     bool bmp = 80;
-    bool sonar = 90;
+    bool bmp_detected = 81;
+    reserved 90;
     bool servo = 100;
+    bool servo_detected = 101;
+    bool gesture = 105;
+    bool gesture_detected = 106;
     bool ws2812 = 110;
     bool mdns = 120;
     bool embed_www = 130;
@@ -44,9 +52,23 @@ message FeaturesDataResponse {
 
 message FeaturesDataRequest { }
 
-message RobotSettings { string name = 1; }
+// The robot's mechanical design. A robot without one keeps its servos asleep until it is chosen.
+enum KinematicsVariant {
+    KINEMATICS_VARIANT_UNSET = 0;
+    SPOTMICRO_ESP32 = 1;
+    SPOTMICRO_ESP32_MINI = 2;
+    SPOTMICRO_YERTLE = 3;
+}
+
+message RobotSettings {
+    string name = 1;
+    KinematicsVariant variant = 2;
+}
 
 message RobotNameUpdate { string name = 1; }
+
+// A changed variant is stored and the robot restarts into it after the reply.
+message RobotVariantUpdate { KinematicsVariant variant = 1; }
 
 // SYSTEM INFORMATION
 
@@ -73,6 +95,7 @@ message CorrelationRequest {
         FSUploadStart fs_upload_start = 100;
         FSCancelTransfer fs_cancel_transfer = 120;
         RobotNameUpdate robot_name_update = 130;
+        RobotVariantUpdate robot_variant_update = 131;
         api.WifiSettingsRequest wifi_settings_request = 140;
         api.WifiSettings wifi_settings = 141;
         api.WifiStatusRequest wifi_status_request = 142;
@@ -271,7 +294,7 @@ message TelemetryBatch {
 message TelemetryHeader {
     string firmware_version = 1;
     string build_target = 2;
-    string variant = 3;
+    string variant = 3;          // empty while no variant is chosen
     string device_id = 4;
     string imu_driver = 5;       // "none" without an IMU
     uint32 imu_rate_hz = 6;

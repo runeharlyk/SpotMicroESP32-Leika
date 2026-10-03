@@ -1,8 +1,10 @@
 // Replays a fixed control script through the firmware's own motion code and prints the result as
 // JSON, so the web app's TypeScript port (app/src/lib/simulation/firmware) can be pinned to it.
-// Built once per kinematics variant by export_firmware_traces.py.
+// Run once per kinematics variant by export_firmware_traces.py, which passes the variant's name.
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <variant.h>
 #include <motion_states/rest_state.h>
 #include <motion_states/stand_state.h>
 #include <motion_states/walk_state.h>
@@ -40,6 +42,7 @@ const Segment SCRIPT[] = {
 
 // MotionService's state and angle handling (esp32/src/motion.cpp), without its timer and peripherals.
 struct Motion {
+    const KinConfig &config;
     RestState rest;
     StandState stand;
     WalkState walk;
@@ -50,7 +53,13 @@ struct Motion {
     float angles[12] = {0};
     const float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
-    Motion() { body.updateFeet(KinConfig::default_feet_positions); }
+    explicit Motion(const KinConfig &config) : config(config), kinematics(config) {
+        rest.configure(config);
+        stand.configure(config);
+        walk.configure(config);
+        body.ym = config.default_body_height;
+        body.updateFeet(config.default_feet_positions);
+    }
 
     void setMode(Mode mode) {
         if (state) state->end();
@@ -88,14 +97,26 @@ void printFloats(const float *values, int count) {
     for (int i = 0; i < count; i++) printf("%s%.9g", i ? "," : "", values[i]);
 }
 
+const KinConfig *configNamed(const char *name) {
+    for (int variant = 0; variant <= socket_message_KinematicsVariant_SPOTMICRO_YERTLE; variant++) {
+        const auto known = static_cast<KinematicsVariant>(variant);
+        if (knownVariant(known) && std::strcmp(variantName(known), name) == 0) return kinConfigFor(known);
+    }
+    return nullptr;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
-    Motion motion;
-    // The variant is chosen with -D at compile time; the exporter passes its name for the record.
-    printf("{\"variant\":\"%s\",\"dt\":%.9g,\"kin\":{", argc > 1 ? argv[1] : "", DT);
-    printf("\"coxa\":%.9g,\"coxa_offset\":%.9g,\"femur\":%.9g,\"tibia\":%.9g,\"L\":%.9g,\"W\":%.9g},", KinConfig::coxa,
-           KinConfig::coxa_offset, KinConfig::femur, KinConfig::tibia, KinConfig::L, KinConfig::W);
+    const KinConfig *config = argc > 1 ? configNamed(argv[1]) : nullptr;
+    if (!config) {
+        fprintf(stderr, "usage: firmware_trace <variant name>\n");
+        return 2;
+    }
+    Motion motion(*config);
+    printf("{\"variant\":\"%s\",\"dt\":%.9g,\"kin\":{", argv[1], DT);
+    printf("\"coxa\":%.9g,\"coxa_offset\":%.9g,\"femur\":%.9g,\"tibia\":%.9g,\"L\":%.9g,\"W\":%.9g},", config->coxa,
+           config->coxa_offset, config->femur, config->tibia, config->L, config->W);
     printf("\"ticks\":[");
 
     int step = 0;

@@ -12,6 +12,7 @@
         servoJoint
     } from '$lib/calibration/leg-pose'
     import LegDiagram from './LegDiagram.svelte'
+    import { connectionFeatures } from '$lib/stores/featureFlags'
 
     interface Props {
         servoSettings?: ServoSettings | null
@@ -93,7 +94,12 @@
         />
     {:else}
         <div role="alert" class="alert alert-warning alert-soft">
-            This robot's firmware predates the joint model; update it to calibrate here.
+            {#if $connectionFeatures?.variant === ''}
+                The joint model depends on which robot this is; choose its variant to calibrate
+                here.
+            {:else}
+                This robot's firmware predates the joint model; update it to calibrate here.
+            {/if}
         </div>
     {/if}
     {#if channelError}

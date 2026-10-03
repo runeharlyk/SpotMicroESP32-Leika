@@ -16,12 +16,16 @@
 #include <message_types.h>
 #include <motion_inbox.h>
 #include <atomic>
+#include <optional>
 #include <utility>
 
 enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
 
 class MotionService {
   public:
+    /** The variant's geometry, set before the tasks start; without one, every mode but DEACTIVATED is refused. */
+    void useConfig(const KinConfig* config);
+
     void begin();
 
     void handleAngles(const socket_message_AnglesData& data);
@@ -66,7 +70,8 @@ class MotionService {
     std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
     std::atomic<socket_message_WalkGaits> currentGait {socket_message_WalkGaits_TROT};
 
-    Kinematics kinematics;
+    const KinConfig* config = nullptr;
+    std::optional<Kinematics> kinematics;
     bool modeApplied = false;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};

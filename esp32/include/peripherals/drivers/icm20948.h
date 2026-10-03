@@ -14,6 +14,9 @@ class ICM20948Driver final : public ImuDriver {
     static constexpr float GYRO_LSB_PER_DPS = 65.5f;
     static constexpr float MICROTESLA_PER_LSB = 0.15f;
 
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() { return findChip(); }
+
     bool begin() override {
         if (!findChip()) return false;
         writeReg(_addr, REG_PWR_MGMT_1, 0x80);  // reset

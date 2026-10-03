@@ -1,74 +1,30 @@
 #pragma once
 
-#include <sdkconfig.h>
-#include <wifi/wifi_idf.h>
-#include <esp_http_server.h>
+#include <peripherals/peripherals.h>
+#include <variant.h>
 #include "platform_shared/message.pb.h"
 
-#define FT_ENABLED(feature) feature
-
+// The camera is the board's, not the robot's: its pins and driver come with the build env.
 #ifndef USE_CAMERA
 #define USE_CAMERA 0
 #endif
 
-#ifndef USE_MPU6050
-#define USE_MPU6050 0
-#endif
-
-#ifndef USE_BNO055
-#define USE_BNO055 1
-#endif
-
-#ifndef USE_HMC5883
-#define USE_HMC5883 0
-#endif
-
-#ifndef USE_ICM20948
-#define USE_ICM20948 0
-#endif
-
-#ifndef USE_BMP180
-#define USE_BMP180 0
-#endif
-
-#ifndef USE_USS
-#define USE_USS 0
-#endif
-
-#ifndef USE_PCA9685
-#define USE_PCA9685 1
-#endif
-
-#ifndef USE_WS2812
-#define USE_WS2812 0
-#endif
-
-#ifndef USE_MDNS
-#define USE_MDNS 1
-#endif
-
-#if defined(SPOTMICRO_ESP32) && defined(SPOTMICRO_ESP32_MINI) && defined(SPOTMICRO_YERTLE)
-#error "Only one kinematics variant must be defined"
-#endif
-
-#if !defined(SPOTMICRO_ESP32) && !defined(SPOTMICRO_ESP32_MINI) && !defined(SPOTMICRO_YERTLE)
-#error "You must define one kinematics variant"
-#endif
-
-#if defined(SPOTMICRO_ESP32)
-#define KINEMATICS_VARIANT_STR "SPOTMICRO_ESP32"
-#elif defined(SPOTMICRO_ESP32_MINI)
-#define KINEMATICS_VARIANT_STR "SPOTMICRO_ESP32_MINI"
-#elif defined(SPOTMICRO_YERTLE)
-#define KINEMATICS_VARIANT_STR "SPOTMICRO_YERTLE"
-#else
-#define KINEMATICS_VARIANT_STR "UNKNOWN"
-#endif
-
 namespace feature_service {
+
+/** What this boot runs with, as the robot reports it to the app. */
+struct RuntimeFeatures {
+    const char *robotName;
+    const char *hostname;
+    KinematicsVariant variant;
+    SensorStatus sensors;
+    bool servoDetected;
+    bool cameraDetected;
+    bool cameraActive;
+    bool ws2812;
+};
 
 void printFeatureConfiguration();
 
-void features_request(const char* robotName, const char* hostname, socket_message_FeaturesDataResponse& fd_res);
+void features_request(const RuntimeFeatures &features, socket_message_FeaturesDataResponse &fd_res);
 
 } // namespace feature_service

@@ -22,11 +22,3 @@ constexpr JointModel JOINT_MODEL_SPOTMICRO_ESP32_MINI = {
 
 // No Yertle calibration says otherwise yet.
 constexpr JointModel JOINT_MODEL_SPOTMICRO_YERTLE = JOINT_MODEL_SPOTMICRO_ESP32;
-
-#if defined(SPOTMICRO_ESP32_MINI)
-constexpr const JointModel &VARIANT_JOINT_MODEL = JOINT_MODEL_SPOTMICRO_ESP32_MINI;
-#elif defined(SPOTMICRO_YERTLE)
-constexpr const JointModel &VARIANT_JOINT_MODEL = JOINT_MODEL_SPOTMICRO_YERTLE;
-#else
-constexpr const JointModel &VARIANT_JOINT_MODEL = JOINT_MODEL_SPOTMICRO_ESP32;
-#endif

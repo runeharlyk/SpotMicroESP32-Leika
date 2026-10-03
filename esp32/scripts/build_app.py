@@ -1,4 +1,3 @@
-from functools import lru_cache
 from pathlib import Path
 from os.path import exists, getmtime, splitext
 import os
@@ -11,7 +10,6 @@ import zlib
 Import("env")
 
 project_dir = env["PROJECT_DIR"]
-buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
 
 interface_dir = f"{project_dir}/app"
 output_file = f"{project_dir}/esp32/include/WWWData.h"
@@ -31,16 +29,6 @@ already_compressed_ext = {
     ".gz", ".br", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".mp3", ".aac", ".ogg", ".wav",
     ".wasm", ".pdf", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".7z", ".zip", ".rar", ".bz2", ".xz", ".lz", ".svgz"
 }
-
-
-@lru_cache(1)
-def get_flag(flag, default=None):
-    for d in buildFlags.get("CPPDEFINES", []):
-        if d == flag:
-            return True
-        if isinstance(d, (list, tuple)) and d[0] == flag:
-            return d[1] if len(d) > 1 else True
-    return default
 
 
 # The robot-served app is built without the 3D view (PUBLIC_EMBEDDED_BUILD), so no model is ever
@@ -87,8 +75,7 @@ def build_web():
         os.chdir(interface_dir)
         for cmd in (f"{m} install", f"{m} run build:embedded"):
             if env.Execute(cmd) != 0:
-                fail(f"Web app build failed: '{cmd}' in {interface_dir}. "
-                     "Fix it or set EMBED_WEBAPP=0 in esp32/build_settings.ini.")
+                fail(f"Web app build failed: '{cmd}' in {interface_dir}.")
     finally:
         os.chdir(cwd)
 
@@ -160,7 +147,7 @@ def write_header():
         f.write('static const WebOptions WWW_OPT = { "/index.html", 1 };\n')
 
 
-if get_flag("EMBED_WEBAPP") == "1" and needs_rebuild():
+if needs_rebuild():
     print("Building web app")
     build_web()
     write_header()
