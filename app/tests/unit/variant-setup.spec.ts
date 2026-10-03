@@ -16,8 +16,8 @@ type FakeRobot = {
     deviceId: string
     variant: string
     answerFeatures: boolean
-    /** Comes back from the restart without the stored variant, as a failed save would. */
-    forgets?: boolean
+    /** A mode moves the legs, so the robot refuses to switch. */
+    moving?: boolean
 }
 
 const VARIANT_NAMES: Record<number, string> = {
@@ -26,8 +26,7 @@ const VARIANT_NAMES: Record<number, string> = {
     [KinematicsVariant.SPOTMICRO_YERTLE]: 'SPOTMICRO_YERTLE'
 }
 
-// Answers as the firmware does: a changed variant is stored, replied to, and followed by a restart.
-// The reply still reports the variant the robot runs as, which only the restart changes.
+// Answers as the firmware does: a variant is switched to and the reply reports it, unless the legs move.
 async function startFakeRobot(port: number, robot: FakeRobot) {
     const chosen: KinematicsVariant[] = []
     const wss = new WebSocketServer({ port })
@@ -39,21 +38,18 @@ async function startFakeRobot(port: number, robot: FakeRobot) {
             if (request.featuresDataRequest && !robot.answerFeatures) return
             const update = request.robotVariantUpdate
             if (!request.featuresDataRequest && !update) return
-            const running = robot.variant
-            const restarts = update !== undefined && VARIANT_NAMES[update.variant] !== running
-            if (update) {
-                chosen.push(update.variant)
-                robot.variant = robot.forgets ? '' : VARIANT_NAMES[update.variant]
-            }
+            if (update) chosen.push(update.variant)
+            const refused = update !== undefined && robot.moving === true
+            if (update && !refused) robot.variant = VARIANT_NAMES[update.variant]
             const reply = Message.create({
                 correlationResponse: {
                     correlationId: request.correlationId,
-                    statusCode: 200,
-                    featuresDataResponse: { deviceId: robot.deviceId, variant: running }
+                    statusCode: refused ? 409 : 200,
+                    errorMessage: refused ? 'Deactivate first' : '',
+                    featuresDataResponse: { deviceId: robot.deviceId, variant: robot.variant }
                 }
             })
             client.send(Message.encode(reply).finish())
-            if (restarts) setTimeout(() => client.terminate(), 250)
         })
     )
     return { wss, chosen }
@@ -117,7 +113,7 @@ describe('variant setup step', () => {
         expect(dialog()).toBeNull()
     })
 
-    it('sends the chosen variant and shows the restart until the robot returns with it', async () => {
+    it('sends the chosen variant and closes on the reply, with the connection kept', async () => {
         const robot = { deviceId: 'AAAAAA000012', variant: '', answerFeatures: true }
         const { wss, chosen } = await startFakeRobot(8912, robot)
         servers.push(wss)
@@ -129,20 +125,14 @@ describe('variant setup step', () => {
 
         pick(/Mini/)
 
-        await until(() => chosen.length === 1)
-        expect(chosen).toEqual([KinematicsVariant.SPOTMICRO_ESP32_MINI])
-        // The reply still reports no variant, which must not bring the chooser back.
-        await until(() => /Restarting/.test(dialog()?.textContent ?? ''))
-        expect(dialog()!.querySelectorAll('button')).toHaveLength(0)
-        await until(() => !get(socket))
-        expect(dialog()!.textContent).toMatch(/Restarting/)
-
-        await until(() => get(socket) && get(useFeatureFlags()).variant === 'SPOTMICRO_ESP32_MINI')
         await until(() => dialog() === null)
+        expect(chosen).toEqual([KinematicsVariant.SPOTMICRO_ESP32_MINI])
+        expect(get(useFeatureFlags()).variant).toBe('SPOTMICRO_ESP32_MINI')
+        expect(get(socket)).toBe(true)
     })
 
-    it('asks again when the robot comes back from the restart still without a variant', async () => {
-        const robot = { deviceId: 'AAAAAA000014', variant: '', answerFeatures: true, forgets: true }
+    it('keeps asking when the robot refuses to switch', async () => {
+        const robot = { deviceId: 'AAAAAA000014', variant: '', answerFeatures: true, moving: true }
         const { wss, chosen } = await startFakeRobot(8914, robot)
         servers.push(wss)
         component = mount(VariantSetup, { target: document.body })
@@ -150,11 +140,11 @@ describe('variant setup step', () => {
         socket.init(robotSocketUrl('localhost:8914'))
         await until(() => dialog() !== null)
         pick(/Yertle/)
-        await until(() => !get(socket))
-        expect(dialog()!.textContent).toMatch(/Restarting/)
+        await until(() => chosen.length === 1)
+        await until(() => !dialog()!.querySelector('button[disabled]'))
 
-        await until(() => /Which robot is this\?/.test(dialog()?.textContent ?? ''))
-        expect(chosen).toEqual([KinematicsVariant.SPOTMICRO_YERTLE])
+        expect(dialog()!.textContent).toMatch(/Which robot is this\?/)
+        expect(dialog()!.querySelectorAll('button')).toHaveLength(3)
     })
 
     it('stays hidden for a robot that knows its variant', async () => {

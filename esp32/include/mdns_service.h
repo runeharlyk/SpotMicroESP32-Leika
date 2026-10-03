@@ -18,6 +18,8 @@ class MDNSService {
     void begin(const char *hostname, const char *instance, const char *variant);
     void setHostname(const char *hostname);
     void setInstance(const char *instance);
+    /** `variant` is a name that outlives the service, as variantName() returns. */
+    void setVariant(const char *variant);
 
     void status(api_MDNSStatus &status);
     /**

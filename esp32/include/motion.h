@@ -15,6 +15,7 @@
 #include <motion_states/rest_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
+#include <variant.h>
 #include <atomic>
 #include <optional>
 #include <utility>
@@ -42,6 +43,9 @@ class MotionService {
     /** Whether update() applied a mode message since the last call. */
     bool takeModeApplied() { return std::exchange(modeApplied, false); }
 
+    /** The variant update() switched to since the last call, if any. */
+    std::optional<KinematicsVariant> takeVariantApplied() { return std::exchange(variantApplied, std::nullopt); }
+
     bool update_angles(float new_angles[12], float angles[12]);
 
     float* getAngles() { return angles; }
@@ -66,6 +70,7 @@ class MotionService {
     // Every mode change, from the app or a gesture, goes through here.
     void setMode(socket_message_ModesEnum mode);
     void stopLocomotion();
+    void switchVariant(KinematicsVariant variant);
 
     std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
     std::atomic<socket_message_WalkGaits> currentGait {socket_message_WalkGaits_TROT};
@@ -73,6 +78,7 @@ class MotionService {
     const KinConfig* config = nullptr;
     std::optional<Kinematics> kinematics;
     bool modeApplied = false;
+    std::optional<KinematicsVariant> variantApplied;
 
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
     int64_t commandRxUs = 0;

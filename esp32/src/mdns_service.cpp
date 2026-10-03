@@ -64,6 +64,11 @@ void MDNSService::setInstance(const char *instance) {
     if (_started) mdns_instance_name_set(_instance.c_str());
 }
 
+void MDNSService::setVariant(const char *variant) {
+    _variant = variant;
+    if (_started) mdns_service_txt_item_set(ROBOT_SERVICE, "_tcp", "variant", _variant);
+}
+
 void MDNSService::advertise() {
     for (const AdvertisedService &service : SERVICES) {
         esp_err_t err = mdns_service_add(nullptr, service.type, service.protocol, service.port, nullptr, 0);

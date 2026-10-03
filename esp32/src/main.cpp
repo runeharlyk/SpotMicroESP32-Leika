@@ -28,6 +28,8 @@
 #include <variant.h>
 #include <algorithm>
 #include <atomic>
+#include <mutex>
+#include <vector>
 
 #if CONFIG_IDF_TARGET_ESP32P4
 #include <esp_hosted.h>
@@ -51,8 +53,8 @@ APService apService;
 RobotService robotService;
 Telemetry telemetry;
 
-// The variant read at boot, which the motion code and the servos run with until the next restart.
-static KinematicsVariant bootVariant = socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET;
+// The variant the motion code and the servos run with: read at boot, switched by the control task.
+static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
 static bool cameraDetected = false;
 
 static bool cameraDisabled() {
@@ -67,7 +69,7 @@ static void reportFeatures(socket_message_CorrelationResponse &res) {
     const std::string hostname = wifiService.getHostname();
     feature_service::features_request({.robotName = name.c_str(),
                                        .hostname = hostname.c_str(),
-                                       .variant = bootVariant,
+                                       .variant = activeVariant.load(),
                                        .sensors = peripherals.status(),
                                        .servoDetected = servoController.detected(),
                                        .cameraDetected = cameraDetected,
@@ -136,6 +138,20 @@ static void replyFromSensorTask(const socket_message_CorrelationRequest &req, so
     }
 }
 
+// Requests waiting for the control task to switch the variant; answered from the server's task once it has.
+static std::mutex variantRepliesMutex;
+static std::vector<std::function<void(const ReplyFiller &)>> variantReplies;
+
+static void finishVariantSwitch() {
+    mdnsService.setVariant(variantName(activeVariant.load()));
+    std::vector<std::function<void(const ReplyFiller &)>> replies;
+    {
+        std::lock_guard<std::mutex> lock(variantRepliesMutex);
+        replies.swap(variantReplies);
+    }
+    for (const auto &reply : replies) reply([](socket_message_CorrelationResponse &res) { reportFeatures(res); });
+}
+
 void setupServer() {
     server.config(50 + webAssetCount(), 16384);
 
@@ -166,7 +182,7 @@ void setupEventSocket() {
         header = socket_message_TelemetryHeader_init_zero;
         header.firmware_version = const_cast<char *>(APP_VERSION);
         header.build_target = const_cast<char *>(BUILD_TARGET);
-        header.variant = const_cast<char *>(variantName(bootVariant));
+        header.variant = const_cast<char *>(variantName(activeVariant.load()));
         header.device_id = const_cast<char *>(deviceId().c_str());
         header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
         header.imu_rate_hz = peripherals.imuRateHz();
@@ -220,18 +236,26 @@ void setupEventSocket() {
              reportFeatures(res);
          }},
 
-        // The motion code takes its geometry at boot, so a new variant restarts the robot once this reply is out.
+        // Only with the legs at rest: a new geometry would make them jump. The control task switches, and the reply
+        // leaves once it has, so it reports the new variant.
         {socket_message_CorrelationRequest_robot_variant_update_tag,
          [](const auto &req, auto &res, int clientId) {
              const KinematicsVariant variant = req.request.robot_variant_update.variant;
-             if (!robotService.chooseVariant(variant)) {
-                 res.status_code = 400;
-                 strncpy(res.error_message, "Unknown variant", sizeof(res.error_message) - 1);
-             } else if (variant != bootVariant) {
-                 ESP_LOGI("main", "Variant %s chosen; restarting into it", variantName(variant));
-                 system_service::restart();
+             auto refuse = [&res](uint32_t status, const char *reason) {
+                 res.status_code = status;
+                 strncpy(res.error_message, reason, sizeof(res.error_message) - 1);
+                 reportFeatures(res);
+             };
+             if (!knownVariant(variant)) return refuse(400, "Unknown variant");
+             if (motionService.mode() != socket_message_ModesEnum_DEACTIVATED) return refuse(409, "Deactivate first");
+             if (!robotService.chooseVariant(variant)) return refuse(400, "Variant not stored");
+             if (variant == activeVariant.load()) return reportFeatures(res);
+             {
+                 std::lock_guard<std::mutex> lock(variantRepliesMutex);
+                 variantReplies.push_back(replyLater(req, clientId));
              }
-             reportFeatures(res);
+             motionService.inbox.postVariant(variant);
+             res.status_code = 0;
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
@@ -514,6 +538,11 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
         }
+        if (const auto variant = motionService.takeVariantApplied()) {
+            servoController.useJointModel(jointModelFor(*variant));
+            activeVariant = *variant;
+            server.queueWork(finishVariantSwitch);
+        }
         servoController.setAngles(motionService.getAngles());
         const int64_t computed = esp_timer_get_time();
         const ServoWrite write = servoController.update((tickStart - lastTickStart) / 1e6f);
@@ -566,7 +595,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     WiFi.init();
     wifiService.begin();
-    mdnsService.begin(wifiService.getHostname().c_str(), robotService.name().c_str(), variantName(bootVariant));
+    mdnsService.begin(wifiService.getHostname().c_str(), robotService.name().c_str(), variantName(activeVariant.load()));
     robotService.addUpdateHandler([](const std::string &) { mdnsService.setInstance(robotService.name().c_str()); }, false);
     wifiService.addUpdateHandler([](const std::string &) { mdnsService.setHostname(wifiService.getHostname().c_str()); },
                                  false);
@@ -650,7 +679,8 @@ extern "C" void app_main(void) {
 
     // Before the tasks start, so none of them sees the robot without its variant or its I2C bus.
     robotService.begin();
-    bootVariant = robotService.variant();
+    const KinematicsVariant bootVariant = robotService.variant();
+    activeVariant = bootVariant;
     if (knownVariant(bootVariant)) ESP_LOGI("main", "Variant %s", variantName(bootVariant));
     else ESP_LOGW("main", "No variant chosen: the servos stay asleep until one is chosen in the app");
     motionService.useConfig(kinConfigFor(bootVariant));

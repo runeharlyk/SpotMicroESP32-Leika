@@ -57,9 +57,68 @@ static void withAVariantTheRobotStandsOnItsOwnGeometry() {
     CHECK(std::fabs(knees[0] - knees[1]) > 1);
 }
 
+static float standingKnee(MotionService &motion) {
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    for (int i = 0; i < 200; i++) tick(motion);
+    return motion.getAngles()[2];
+}
+
+// The knee a robot of `variant` stands with, from a fresh service; the reference for a switched one.
+static float kneeOf(KinematicsVariant variant) {
+    MotionService motion;
+    motion.useConfig(kinConfigFor(variant));
+    motion.begin();
+    return standingKnee(motion);
+}
+
+// After a switch the robot stands exactly as one that booted as the new variant: no geometry is left over.
+static void aSwitchedRobotStandsAsTheNewVariant() {
+    MotionService motion;
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32));
+    motion.begin();
+    standingKnee(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_DEACTIVATED);
+    tick(motion);
+    motion.inbox.postVariant(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    tick(motion);
+    CHECK(motion.takeVariantApplied() == socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    CHECK(!motion.takeVariantApplied());
+    CHECK(std::fabs(standingKnee(motion) - kneeOf(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI)) < 1e-4f);
+}
+
+// The socket refuses a switch while the legs move, but a mode can arrive in the same tick: the switch then
+// deactivates, and the servo controller hears of it through the applied mode.
+static void aSwitchArrivingWithAModeDeactivates() {
+    MotionService motion;
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32));
+    motion.begin();
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    motion.inbox.postVariant(socket_message_KinematicsVariant_SPOTMICRO_YERTLE);
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED);
+    CHECK(!motion.isActive());
+    CHECK(motion.takeModeApplied());
+    CHECK(motion.takeVariantApplied() == socket_message_KinematicsVariant_SPOTMICRO_YERTLE);
+}
+
+// The setup step's case: a robot without a variant is told one and can then stand.
+static void aRobotWithoutAVariantCanStandOnceItIsChosen() {
+    MotionService motion;
+    motion.useConfig(nullptr);
+    motion.begin();
+    motion.inbox.postVariant(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    tick(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+}
+
 int main() {
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();
+    aSwitchedRobotStandsAsTheNewVariant();
+    aSwitchArrivingWithAModeDeactivates();
+    aRobotWithoutAVariantCanStandOnceItIsChosen();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

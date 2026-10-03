@@ -74,7 +74,8 @@ A gesture changes the mode: down selects rest, up selects stand, and left and ri
 
 #### Variant
 
-The variant is a robot setting (`robotSettings.pb`), read in `app_main` before any task starts; a change is stored and restarts the robot.
+The variant is a robot setting (`robotSettings.pb`), read in `app_main` before any task starts.
+A change is accepted only while the robot is deactivated; it is stored and posted to the control task, which switches the motion code and the joint model in one tick and resets the body to the new variant's default pose.
 It selects the leg geometry (`KIN_CONFIG_*` in `kinematics.h`) and the joint model (`joint_model.h`) through `variant.h`.
 A robot without a variant has neither: the motion service refuses every mode but deactivated, and the servo board stays asleep.
 

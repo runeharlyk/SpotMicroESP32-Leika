@@ -32,9 +32,9 @@ The hosted and development apps need one: add the robot by hostname or IP on the
 A freshly flashed robot does not know which robot it drives, and keeps its servos asleep until it is told.
 On the first connection the app asks "Which robot is this?": choose Spot Micro (`SPOTMICRO_ESP32`), Spot Micro Mini / Pico (`SPOTMICRO_ESP32_MINI`) or Yertle (`SPOTMICRO_YERTLE`).
 Right after a flash, join the robot's access point and open the app it serves; the question comes first.
-The robot stores the choice and restarts into it, and the app reconnects.
+The robot stores the choice and switches to it at once, without a restart.
 Until then it refuses every mode but Deactivated, because the wrong joint model would drive the servos against their stops.
-The variant can be changed later on the start page, next to the robot's name; the change restarts the robot too.
+The variant can be changed later on the start page, next to the robot's name, while the robot is deactivated; a robot in any other mode refuses, since a new geometry would make its legs jump.
 The servo calibration is kept across the change.
 
 ## Sensors

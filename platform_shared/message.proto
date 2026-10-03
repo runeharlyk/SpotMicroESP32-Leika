@@ -67,7 +67,7 @@ message RobotSettings {
 
 message RobotNameUpdate { string name = 1; }
 
-// A changed variant is stored and the robot restarts into it after the reply.
+// Stored and switched to while the robot is deactivated (409 otherwise); the reply reports the new variant.
 message RobotVariantUpdate { KinematicsVariant variant = 1; }
 
 // SYSTEM INFORMATION

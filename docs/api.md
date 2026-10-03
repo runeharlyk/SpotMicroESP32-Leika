@@ -32,7 +32,7 @@ Field names below are the proto names; the TypeScript client uses camelCase.
 | ---------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
 | `features_data_request`      | `features_data_response`      | Variant, firmware version, device id, robot name, hostname, and per sensor whether it was detected and whether it is active |
 | `robot_name_update`          | `features_data_response`      | Rename the robot; 400 when the name is refused                           |
-| `robot_variant_update`       | `features_data_response`      | Store the variant; 400 for none or an unknown one. A changed variant restarts the robot after the reply, which still reports the old one |
+| `robot_variant_update`       | `features_data_response`      | Store and switch to the variant; 400 for none or an unknown one, 409 unless the robot is deactivated. The reply leaves once the control task has switched, and reports the new variant |
 | `system_information_request` | `system_information_response` | Heap, CPU, flash and filesystem figures plus static chip information     |
 | `system_restart`             | none (empty 200)              | Restart; the reply leaves first, as the restart is deferred by 250 ms    |
 | `system_reset`               | none (empty 200)              | Delete the stored settings, then restart                                 |

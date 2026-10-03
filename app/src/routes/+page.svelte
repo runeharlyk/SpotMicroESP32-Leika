@@ -6,7 +6,7 @@
     import { notifications } from '$lib/components/toasts/notifications'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
-    import { Add, Bluetooth, Cancel, Check, Delete, Power, Scan } from '$lib/components/icons'
+    import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
     import {
         apiLocation,
         connectionFeatures,
@@ -80,12 +80,12 @@
 
     const confirmVariant = (variant: Variant) =>
         modals.open(ConfirmDialog, {
-            title: `Restart as ${variantLabel(variant)}?`,
+            title: `Switch to ${variantLabel(variant)}?`,
             message:
-                'The robot restarts to drive its legs as this variant, and the connection returns a few seconds later. Its servo calibration is kept.',
+                'The robot drives its legs as this variant from now on. It must be deactivated first; its servo calibration is kept.',
             labels: {
                 cancel: { label: 'Cancel', icon: Cancel },
-                confirm: { label: 'Restart', icon: Power }
+                confirm: { label: 'Switch', icon: Check }
             },
             onConfirm: async () => {
                 modals.close()

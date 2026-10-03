@@ -118,7 +118,25 @@ static void withAVariantActivatingWakesTheServos() {
     I2CBus::instance().end();
 }
 
+// A switched variant drives the servos through its own joint model and reports that one.
+static void aSwitchedJointModelIsUsedAndReported() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);  // also the Leika's joint model
+    CHECK(controller.calculatePWM(0.01f));
+    const uint16_t leikaKnee = controller.outputPwm()[2];
+    controller.useJointModel(&JOINT_MODEL_SPOTMICRO_ESP32_MINI);
+    CHECK(controller.calculatePWM(0.01f));
+    CHECK(controller.outputPwm()[2] != leikaKnee);
+    ServoSettings reply = api_ServoSettings_init_zero;
+    controller.protoHandler.read(reply);
+    CHECK(reply.model.direction[0] == JOINT_MODEL_SPOTMICRO_ESP32_MINI.direction[0]);
+    I2CBus::instance().end();
+}
+
 int main() {
+    aSwitchedJointModelIsUsedAndReported();
     withoutAVariantTheServosStayAsleep();
     withAVariantActivatingWakesTheServos();
     allServosMeansEveryMappedChannel();

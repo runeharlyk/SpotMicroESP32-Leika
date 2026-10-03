@@ -2,7 +2,10 @@
 
 void MotionService::useConfig(const KinConfig* newConfig) {
     config = newConfig;
-    if (!config) return;
+    if (!config) {
+        kinematics.reset();
+        return;
+    }
     kinematics.emplace(*config);
     restState.configure(*config);
     standState.configure(*config);
@@ -42,6 +45,7 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
         currentGait = *mail.gait;
     }
     if (mail.mode) setMode(*mail.mode);
+    if (mail.variant) switchVariant(*mail.variant);
     if (mail.input) {
         command = *mail.input;
         commandRxUs = mail.inputAtUs;
@@ -52,6 +56,16 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
         linkLostNow = true;
         stopLocomotion();
     }
+}
+
+// The socket's task refuses a switch while a mode moves the legs; one that arrives with such a mode still deactivates
+// first, so no leg jumps from one geometry to the other.
+void MotionService::switchVariant(KinematicsVariant variant) {
+    if (state) setMode(socket_message_ModesEnum_DEACTIVATED);
+    useConfig(kinConfigFor(variant));
+    begin();
+    variantApplied = variant;
+    ESP_LOGI("MotionService", "Variant %s", variantName(variant));
 }
 
 void MotionService::stopLocomotion() {
