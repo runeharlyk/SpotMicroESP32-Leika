@@ -11,7 +11,7 @@
 class MotionState {
   protected:
     virtual const char* name() const = 0;
-    static constexpr const float (&default_feet_pos)[4][4] = KinConfig::default_feet_positions;
+    const KinConfig* kin = nullptr;
     body_state_t target_body_state;
     // A step in the body or gait targets settles to 95% in a third of a second, without overshoot.
     static constexpr float smoothing_omega = CriticalDamper::omegaFor(0.333f);
@@ -31,9 +31,9 @@ class MotionState {
         follow(body_dampers.zm, body_state.zm, target_body_state.zm, dt);
         follow(body_dampers.phi, body_state.phi, target_body_state.phi, dt);
         const float target_psi =
-            clamp(target_body_state.psi - imuCompensate * psi_offset, -KinConfig::max_pitch, KinConfig::max_pitch);
+            clamp(target_body_state.psi - imuCompensate * psi_offset, -kin->max_pitch, kin->max_pitch);
         const float target_omega =
-            clamp(target_body_state.omega - imuCompensate * omega_offset, -KinConfig::max_roll, KinConfig::max_roll);
+            clamp(target_body_state.omega - imuCompensate * omega_offset, -kin->max_roll, kin->max_roll);
         follow(body_dampers.psi, body_state.psi, target_psi, dt);
         follow(body_dampers.omega, body_state.omega, target_omega, dt);
     }
@@ -52,6 +52,12 @@ class MotionState {
         psi_offset = -RAD_TO_DEG_F(imu.rpy[1]);
     }
     virtual ~MotionState() {}
+
+    // Before any other call: the variant's geometry, which stays for the state's life.
+    virtual void configure(const KinConfig& config) {
+        kin = &config;
+        target_body_state.ym = config.default_body_height;
+    }
 
     // A state taking over starts from the body at rest: the dampers' velocities are from when it last ran.
     virtual void resetSmoothing() { body_dampers = {}; }

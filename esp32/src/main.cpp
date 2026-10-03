@@ -25,7 +25,11 @@
 #include <telemetry/telemetry.h>
 #include <settings/placeholders.h>
 #include <settings/imu_settings.h>
+#include <variant.h>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <vector>
 
 #if CONFIG_IDF_TARGET_ESP32P4
 #include <esp_hosted.h>
@@ -38,20 +42,53 @@ Websocket wsSocket {server, "/api/ws"};
 Peripherals peripherals;
 ServoController servoController;
 MotionService motionService;
-#if FT_ENABLED(USE_WS2812)
 LEDService ledService;
-#endif
-#if FT_ENABLED(USE_CAMERA)
+#if USE_CAMERA
 Camera::CameraService cameraService;
 #endif
-#if FT_ENABLED(USE_MDNS)
 MDNSService mdnsService;
-#endif
 
 WiFiService wifiService;
 APService apService;
 RobotService robotService;
 Telemetry telemetry;
+
+// The variant the motion code and the servos run with: read at boot, switched by the control task.
+static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
+static bool cameraDetected = false;
+
+static bool cameraDisabled() {
+    bool disabled = false;
+    peripherals.read([&disabled](const PeripheralsConfiguration &settings) { disabled = settings.camera_disabled; });
+    return disabled;
+}
+
+static void reportFeatures(socket_message_CorrelationResponse &res) {
+    res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
+    const std::string name = robotService.name();
+    const std::string hostname = wifiService.getHostname();
+    feature_service::features_request({.robotName = name.c_str(),
+                                       .hostname = hostname.c_str(),
+                                       .variant = activeVariant.load(),
+                                       .sensors = peripherals.status(),
+                                       .servoDetected = servoController.detected(),
+                                       .cameraDetected = cameraDetected,
+                                       .cameraActive = cameraDetected && !cameraDisabled(),
+                                       .ws2812 = effectiveLedSettings(peripherals.snapshot()).enabled},
+                                      res.response.features_data_response);
+}
+
+// The strip the settings ask for, dark when they name a pin it cannot be driven on. Saves arrive on the socket's task
+// and IMU levelling on the sensor task.
+static void driveLeds() {
+    static std::atomic<int32_t> drivenPin {-1};
+    const PeripheralsConfiguration settings = peripherals.snapshot();
+    const api_LedSettings led = effectiveLedSettings(settings);
+    const bool usable = usableLedSettings(led, settings, drivenPin);
+    if (led.enabled && !usable) ESP_LOGW("main", "LED strip on GPIO %d cannot be driven; left dark", (int)led.pin);
+    drivenPin = led.enabled && usable ? led.pin : -1;
+    ledService.drive(drivenPin);
+}
 
 // Replies with the settings a service holds.
 template <class Handler, class Proto>
@@ -101,12 +138,27 @@ static void replyFromSensorTask(const socket_message_CorrelationRequest &req, so
     }
 }
 
+// Requests waiting for the control task to switch the variant; answered from the server's task once it has.
+static std::mutex variantRepliesMutex;
+static std::vector<std::function<void(const ReplyFiller &)>> variantReplies;
+
+static void finishVariantSwitch() {
+    mdnsService.setVariant(variantName(activeVariant.load()));
+    std::vector<std::function<void(const ReplyFiller &)>> replies;
+    {
+        std::lock_guard<std::mutex> lock(variantRepliesMutex);
+        replies.swap(variantReplies);
+    }
+    for (const auto &reply : replies) reply([](socket_message_CorrelationResponse &res) { reportFeatures(res); });
+}
+
 void setupServer() {
     server.config(50 + webAssetCount(), 16384);
 
 #if USE_CAMERA
-    server.on("/api/camera/stream", HTTP_GET,
-              [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
+    if (cameraDetected)
+        server.on("/api/camera/stream", HTTP_GET,
+                  [&](httpd_req_t *request) { return cameraService.cameraStream(request); });
 #endif
     wsSocket.begin();
     mountWebApp(server);
@@ -130,7 +182,7 @@ void setupEventSocket() {
         header = socket_message_TelemetryHeader_init_zero;
         header.firmware_version = const_cast<char *>(APP_VERSION);
         header.build_target = const_cast<char *>(BUILD_TARGET);
-        header.variant = const_cast<char *>(KINEMATICS_VARIANT_STR);
+        header.variant = const_cast<char *>(variantName(activeVariant.load()));
         header.device_id = const_cast<char *>(deviceId().c_str());
         header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
         header.imu_rate_hz = peripherals.imuRateHz();
@@ -176,18 +228,34 @@ void setupEventSocket() {
         std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;
     static std::map<pb_size_t, CorrelationHandler> correlationHandlers = {
         {socket_message_CorrelationRequest_features_data_request_tag,
-         [](const auto &req, auto &res, int clientId) {
-             res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name().c_str(), wifiService.getHostname().c_str(),
-                                               res.response.features_data_response);
-         }},
+         [](const auto &req, auto &res, int clientId) { reportFeatures(res); }},
 
         {socket_message_CorrelationRequest_robot_name_update_tag,
          [](const auto &req, auto &res, int clientId) {
              if (!robotService.rename(req.request.robot_name_update.name)) res.status_code = 400;
-             res.which_response = socket_message_CorrelationResponse_features_data_response_tag;
-             feature_service::features_request(robotService.name().c_str(), wifiService.getHostname().c_str(),
-                                               res.response.features_data_response);
+             reportFeatures(res);
+         }},
+
+        // Only with the legs at rest: a new geometry would make them jump. The control task switches, and the reply
+        // leaves once it has, so it reports the new variant.
+        {socket_message_CorrelationRequest_robot_variant_update_tag,
+         [](const auto &req, auto &res, int clientId) {
+             const KinematicsVariant variant = req.request.robot_variant_update.variant;
+             auto refuse = [&res](uint32_t status, const char *reason) {
+                 res.status_code = status;
+                 strncpy(res.error_message, reason, sizeof(res.error_message) - 1);
+                 reportFeatures(res);
+             };
+             if (!knownVariant(variant)) return refuse(400, "Unknown variant");
+             if (motionService.mode() != socket_message_ModesEnum_DEACTIVATED) return refuse(409, "Deactivate first");
+             if (!robotService.chooseVariant(variant)) return refuse(400, "Variant not stored");
+             if (variant == activeVariant.load()) return reportFeatures(res);
+             {
+                 std::lock_guard<std::mutex> lock(variantRepliesMutex);
+                 variantReplies.push_back(replyLater(req, clientId));
+             }
+             motionService.inbox.postVariant(variant);
+             res.status_code = 0;
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
@@ -308,7 +376,6 @@ void setupEventSocket() {
              apService.statusProto(res.response.ap_status);
          }},
 
-#if FT_ENABLED(USE_MDNS)
         {socket_message_CorrelationRequest_mdns_status_request_tag,
          [](const auto &req, auto &res, int clientId) {
              res.which_response = socket_message_CorrelationResponse_mdns_status_tag;
@@ -328,7 +395,6 @@ void setupEventSocket() {
                                     });
              res.status_code = 0;
          }},
-#endif
 
 #if USE_CAMERA && USE_DVP_CAMERA
         {socket_message_CorrelationRequest_camera_settings_request_tag,
@@ -457,13 +523,9 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
-    peripherals.begin();
     xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 8192, nullptr, 4, nullptr, 1);
     servoController.begin();
     motionService.begin();
-#if FT_ENABLED(USE_WS2812)
-    ledService.begin();
-#endif
 
     uint32_t tickSeq = 0;
     int64_t lastTickStart = 0;
@@ -476,6 +538,11 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
         }
+        if (const auto variant = motionService.takeVariantApplied()) {
+            servoController.useJointModel(jointModelFor(*variant));
+            activeVariant = *variant;
+            server.queueWork(finishVariantSwitch);
+        }
         servoController.setAngles(motionService.getAngles());
         const int64_t computed = esp_timer_get_time();
         const ServoWrite write = servoController.update((tickStart - lastTickStart) / 1e6f);
@@ -483,9 +550,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         if (telemetry.recording()) recordTick(tickSeq, tickStart, lastTickStart, computed, written, imu, write);
         tickSeq++;
         lastTickStart = tickStart;
-#if FT_ENABLED(USE_WS2812)
         ledService.loop();
-#endif
         // A tick that overran (a servo board that times out, a slow bus) starts the schedule afresh: catching
         // up would run every missed tick back to back once the stall ends.
         if (xTaskDelayUntil(&xLastWakeTime, xFrequency) == pdFALSE) xLastWakeTime = xTaskGetTickCount();
@@ -530,17 +595,15 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     WiFi.init();
     wifiService.begin();
-    robotService.begin();
-#if FT_ENABLED(USE_MDNS)
-    mdnsService.begin(wifiService.getHostname().c_str(), robotService.name().c_str());
+    mdnsService.begin(wifiService.getHostname().c_str(), robotService.name().c_str(), variantName(activeVariant.load()));
     robotService.addUpdateHandler([](const std::string &) { mdnsService.setInstance(robotService.name().c_str()); }, false);
     wifiService.addUpdateHandler([](const std::string &) { mdnsService.setHostname(wifiService.getHostname().c_str()); },
                                  false);
-#endif
     apService.begin();
 
-#if FT_ENABLED(USE_CAMERA)
-    cameraService.begin();
+#if USE_CAMERA
+    if (cameraDisabled()) ESP_LOGI("main", "Camera disabled in the peripheral settings");
+    else cameraDetected = cameraService.begin() == ESP_OK;
 #endif
 
     setupServer();
@@ -613,6 +676,18 @@ extern "C" void app_main(void) {
     ESP_LOGI("main", "Booting robot");
 
     feature_service::printFeatureConfiguration();
+
+    // Before the tasks start, so none of them sees the robot without its variant or its I2C bus.
+    robotService.begin();
+    const KinematicsVariant bootVariant = robotService.variant();
+    activeVariant = bootVariant;
+    if (knownVariant(bootVariant)) ESP_LOGI("main", "Variant %s", variantName(bootVariant));
+    else ESP_LOGW("main", "No variant chosen: the servos stay asleep until one is chosen in the app");
+    motionService.useConfig(kinConfigFor(bootVariant));
+    servoController.useJointModel(jointModelFor(bootVariant));
+    peripherals.begin();
+    driveLeds();
+    peripherals.addUpdateHandler([](const std::string &) { driveLeds(); }, false);
 
     xTaskCreate(serviceLoopEntry, "Service task", 8192, nullptr, 2, nullptr);
 

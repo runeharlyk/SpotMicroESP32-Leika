@@ -7,8 +7,23 @@ RobotService::RobotService()
 void RobotService::begin() { _persistence.readFromFS(); }
 
 bool RobotService::rename(const char *name) {
-    RobotSettings requested = socket_message_RobotSettings_init_zero;
-    strncpy(requested.name, name, sizeof(requested.name) - 1);
-    return update([&](RobotSettings &settings) { return RobotSettings_update(requested, settings); }, "socket") !=
-           StateUpdateResult::ERROR;
+    return update(
+               [&](RobotSettings &settings) {
+                   RobotSettings requested = settings;
+                   strncpy(requested.name, name, sizeof(requested.name) - 1);
+                   requested.name[sizeof(requested.name) - 1] = '\0';
+                   return RobotSettings_update(requested, settings);
+               },
+               "socket") != StateUpdateResult::ERROR;
+}
+
+bool RobotService::chooseVariant(KinematicsVariant variant) {
+    if (!knownVariant(variant)) return false;
+    return update(
+               [&](RobotSettings &settings) {
+                   RobotSettings requested = settings;
+                   requested.variant = variant;
+                   return RobotSettings_update(requested, settings);
+               },
+               "socket") != StateUpdateResult::ERROR;
 }

@@ -51,7 +51,7 @@ export const robotKey = (robot: Robot) => robot.id ?? robot.lastAddress
 
 const VARIANT_LABELS: Record<string, string> = {
     SPOTMICRO_ESP32: 'Spot Micro',
-    SPOTMICRO_ESP32_MINI: 'Spot Micro Mini',
+    SPOTMICRO_ESP32_MINI: 'Spot Micro Mini / Pico',
     SPOTMICRO_YERTLE: 'Yertle'
 }
 

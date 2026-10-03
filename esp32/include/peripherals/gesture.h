@@ -26,11 +26,15 @@ struct GestureMsg {
 class PAJ7620U2 {
   public:
     PAJ7620U2(uint8_t addr = 0x73) : dev(addr) {}
-    int begin() {
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() {
         uint16_t id = 0;
         selectBank(0x00);
-        if (readReg(REG_PART_ID, &id, 2) != 2) return ERR_BUS;
-        if (id != PART_ID) return ERR_IC;
+        return readReg(REG_PART_ID, &id, 2) == 2 && id == PART_ID;
+    }
+
+    int begin() {
+        if (!identify()) return ERR_IC;
         for (size_t i = 0; i < (sizeof(initReg) / sizeof(initReg[0])); i++) writeReg(initReg[i][0], &initReg[i][1], 1);
         selectBank(0x00);
         return ERR_OK;
@@ -68,7 +72,6 @@ class PAJ7620U2 {
     static constexpr uint16_t ENTRY_MS = 800;
     static constexpr uint16_t QUIT_MS = 1000;
     static constexpr int ERR_OK = 0;
-    static constexpr int ERR_BUS = -1;
     static constexpr int ERR_IC = -2;
 
     void selectBank(uint8_t b) { writeReg(REG_BANK_SEL, &b, 1); }
@@ -153,6 +156,10 @@ class GestureSensor {
         if (msg.success) paj.setGestureHighRate(true);
         return msg.success;
     }
+
+    bool identify() { return paj.identify(); }
+
+    void stop() { msg.success = false; }
 
     bool readGesture() {
         if (!msg.success) return false;

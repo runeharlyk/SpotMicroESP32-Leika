@@ -57,9 +57,10 @@ The `esp32-p4` environment uses a pinned pioarduino platform release instead of 
 CI builds all five environments.
 For additional boards, add an environment based on the [official board list](https://docs.platformio.org/en/latest/boards/index.html#espressif-32).
 
-The robot variant (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE`) and the optional hardware are set in `esp32/features.ini`.
-Enable the sensors you have by setting the matching `USE_*` flag to 1.
-The IMU, compass, barometer, ultrasonic and gesture sensors are all 0 by default; `USE_PCA9685` and `USE_WS2812` are 1.
+One firmware per environment serves every robot variant and every combination of sensors.
+The variant (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE`) is chosen in the app after flashing, see [Choosing the variant](4_configuring.md#choosing-the-variant).
+The I2C sensors are detected at boot, and each can be disabled on the Sensors page under Peripherals; the WS2812 strip is enabled and given its pin there too.
+Only the camera is fixed by the environment, since its pins and driver come with the board.
 
 ### Factory settings
 
@@ -88,7 +89,7 @@ A build does the following, in order:
 
 1. Creates and checks `esp32/include/secrets.h`.
 1. Compiles `platform_shared/*.proto` with nanopb into `esp32/src/platform_shared`.
-1. Builds the app with `pnpm install` and `pnpm run build:embedded` in `app/`, gzips it and writes it to `esp32/include/WWWData.h`, which is compiled into the firmware. The app is rebuilt when `app/` or `platform_shared/` changed after `WWWData.h`. Set `EMBED_WEBAPP=0` in `esp32/build_settings.ini` to skip it.
+1. Builds the app with `pnpm install` and `pnpm run build:embedded` in `app/`, gzips it and writes it to `esp32/include/WWWData.h`, which is compiled into the firmware. The app is rebuilt when `app/` or `platform_shared/` changed after `WWWData.h`.
 1. Compiles the firmware. For every environment except `esp32-p4`, `esp32/scripts/merge_firmware.py` also writes the single flashable image `.pio/build/<environment>/firmware.factory.bin`.
 
 The filesystem image does not need to be uploaded.

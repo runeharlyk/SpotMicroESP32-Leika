@@ -226,12 +226,26 @@ message ImuSettings {
     float fusion_gain = 5;            // Madgwick beta
 }
 
+// A WS2812 strip; a settings file without it gets the board's default pin, enabled.
+message LedSettings {
+    bool enabled = 1;
+    int32 pin = 2;
+}
+
+// The I2C sensors and the camera are used when detected; a disabled one is not probed, for a chip that is wired
+// but not mounted. Disabled rather than enabled flags, so a settings file from before them leaves all in use.
 message PeripheralSettings {
     int32 sda = 1;
     int32 scl = 2;
     int32 frequency = 3;
     repeated PinConfig pins = 4;
     ImuSettings imu = 5;
+    bool imu_disabled = 6;
+    bool mag_disabled = 7;
+    bool bmp_disabled = 8;
+    bool gesture_disabled = 9;
+    bool camera_disabled = 10;
+    LedSettings ws2812 = 11;
 }
 
 message PeripheralSettingsRequest {}

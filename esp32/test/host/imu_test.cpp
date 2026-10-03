@@ -1,6 +1,7 @@
 // Host test of peripherals/imu/imu.h and settings/imu_settings.h with scripted drivers.
 #include <cmath>
 #include <cstdio>
+#include <string>
 #include <vector>
 #include <peripherals/imu/imu.h>
 #include <settings/imu_settings.h>
@@ -23,12 +24,17 @@ class ScriptedImu final : public ImuDriver {
     std::vector<RawImu> script;
     size_t next = 0;
     bool present = true;
-    bool begin() override { return present; }
+    int begins = 0;
+    const char *label = "scripted";
+    bool begin() override {
+        begins++;
+        return present;
+    }
     bool read(RawImu &raw) override {
         raw = script[next < script.size() ? next++ : script.size() - 1];
         return true;
     }
-    const char *name() const override { return "scripted"; }
+    const char *name() const override { return label; }
     uint32_t rateHz() const override { return 200; }
 };
 
@@ -297,7 +303,67 @@ static void aCompassThatStopsAnsweringFallsBackToSixAxis() {
     CHECK(sample.valid & ImuValid::YAW_DRIFTS);
 }
 
+// MPU6050 and ICM-20948 share 0x68: the first chip in the order that answers is the one used, and those after it
+// are left alone, since starting one resets whatever sits at that address.
+static void theFirstCandidateThatAnswersIsUsed() {
+    ScriptedImu absent, first, second;
+    absent.present = false;
+    first.label = "first";
+    second.label = "second";
+    for (ScriptedImu *driver : {&absent, &first, &second}) driver->script = {still()};
+    Imu imu({&absent, &first, &second}, nullptr);
+    CHECK(imu.begin(0));
+    CHECK(std::string(imu.driverName()) == "first");
+    CHECK(absent.begins == 1 && first.begins == 1 && second.begins == 0);
+}
+
+static void aReprobeAfterTheChipLeftReportsNoImu() {
+    ScriptedImu driver;
+    driver.script = {still()};
+    Imu imu({&driver}, nullptr);
+    CHECK(imu.begin(0));
+    driver.present = false;
+    CHECK(!imu.begin(10000));
+    CHECK(std::string(imu.driverName()) == "none");
+    ImuSample sample;
+    CHECK(!imu.update(15000, sample));
+}
+
+// A compass wired but not mounted reads the robot's own motors: with the compass off, neither a separate one nor the
+// chip's own feeds the fusion.
+static void aDisabledCompassIsNeverUsed() {
+    ScriptedImu driver;
+    RawImu raw = still();
+    raw.hasMag = true;
+    raw.mag = {20, 0, -40};
+    driver.script = {raw};
+    ScriptedMag mag;
+    Imu imu(&driver, &mag);
+    CHECK(imu.begin(0, false));
+    CHECK(imu.magRateHz() == 0 && !imu.hasMag());
+    ImuSample sample;
+    for (int64_t t = 5000; t <= 500000; t += 5000) CHECK(imu.update(t, sample));
+    CHECK(mag.reads == 0);
+    CHECK(!(sample.valid & ImuValid::MAG));
+    CHECK(sample.valid & ImuValid::YAW_DRIFTS);
+}
+
+static void aStoppedImuReportsNothing() {
+    ScriptedImu driver;
+    driver.script = {still()};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    imu.stop();
+    CHECK(!imu.ready() && imu.rateHz() == 0);
+    ImuSample sample;
+    CHECK(!imu.update(5000, sample));
+}
+
 int main() {
+    theFirstCandidateThatAnswersIsUsed();
+    aReprobeAfterTheChipLeftReportsNoImu();
+    aDisabledCompassIsNeverUsed();
+    aStoppedImuReportsNothing();
     aStillRobotsGyroBiasIsRemoved();
     aMovingRobotKeepsThePreviousBias();
     theMountingTurnsChipReadingsIntoTheBodyFrame();

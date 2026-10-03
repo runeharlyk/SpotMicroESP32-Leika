@@ -9,7 +9,8 @@
         modes,
         modeLabels,
         walkGaits,
-        walkGaitLabels
+        walkGaitLabels,
+        variantChoiceNeeded
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
@@ -37,7 +38,8 @@
         const b = $gamepadButtonsEdges
         if (!b.length) return
         const command = gamepadCommand(b)
-        if (command.mode !== undefined) mode.set(ModeData.create({ mode: command.mode }))
+        if (command.mode !== undefined && movable(command.mode))
+            mode.set(ModeData.create({ mode: command.mode }))
         if (command.heightStep)
             input.update(inputData => {
                 inputData.height = stepHeight(inputData.height, command.heightStep)
@@ -102,6 +104,10 @@
         })
     }
 
+    // The robot refuses every other mode until it knows which variant it is.
+    const movable = (modeValue: ModesEnum) =>
+        !$variantChoiceNeeded || modeValue === ModesEnum.DEACTIVATED
+
     const changeMode = (modeValue: ModesEnum) => {
         if (modeValue === ModesEnum.DEACTIVATED) haptics.stop()
         else haptics.modeChange()
@@ -150,11 +156,17 @@
         <div
             class="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-r border-base-content/5 pointer-events-auto"
         >
+            {#if $variantChoiceNeeded}
+                <p class="w-full text-xs opacity-70">
+                    Tell the robot which variant it is before it can move.
+                </p>
+            {/if}
             <div class="join max-w-full shadow-lg max-sm:grid max-sm:grid-cols-3">
                 {#each modes as modeValue (modeValue)}
                     <button
                         class="btn join-item btn-sm pointer-coarse:btn-md transition-all duration-200"
                         class:btn-primary={$mode.mode === modeValue}
+                        disabled={!movable(modeValue)}
                         onclick={() => changeMode(modeValue)}
                     >
                         {modeLabels[modeValue]}

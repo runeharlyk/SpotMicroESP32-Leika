@@ -10,7 +10,7 @@
 ### Motion
 
 - 12 degrees of freedom: a hip, a femur and a tibia joint on each of the four legs
-- Three hardware variants, selected when the firmware is built: Leika (standard), Leika Mini and Yertle, see [Kinematics](kinematics.md)
+- Three hardware variants, chosen in the app on the same firmware: Leika (standard), Leika Mini and Yertle, see [Kinematics](kinematics.md)
 - Rest, stand and walk modes, see [Motion system](motion_system.md)
 - Stand: the body shifts, rotates and changes height from the controller, and levels itself against the IMU when one is fitted
 - Walk: a bezier trot and an 8-phase crawl, with steering, turning on the spot, adjustable body height, step height and speed

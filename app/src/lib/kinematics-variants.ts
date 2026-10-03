@@ -23,3 +23,9 @@ export const VARIANT_DIMENSIONS = {
 }
 
 export type Variant = keyof typeof VARIANT_DIMENSIONS
+
+/** The variant a robot reported, when it is one this app knows; a reported name may carry a version suffix like _V2. */
+export const knownVariant = (reported: string | undefined): Variant | undefined => {
+    const name = reported?.replace(/_V\d+$/, '')
+    return name && name in VARIANT_DIMENSIONS ? (name as Variant) : undefined
+}

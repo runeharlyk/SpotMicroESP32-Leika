@@ -1,18 +1,25 @@
 import { notifications } from '$lib/components/toasts/notifications'
 import Kinematic from '$lib/kinematic'
 import { persistentStore } from '$lib/utilities'
-import { derived, get, type Writable } from 'svelte/store'
+import { derived, get, writable, type Writable } from 'svelte/store'
 import { resolve } from '$app/paths'
 import { socket } from './socket'
 import { apiLocation } from './location-store'
 import { identify } from './robots'
-import { VARIANT_DIMENSIONS, type Variant } from '$lib/kinematics-variants'
+import { VARIANT_DIMENSIONS, knownVariant } from '$lib/kinematics-variants'
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
 
+/**
+ * What the robot on the open connection reported; null until it answers on this connection. The
+ * persisted flags may still be the previous robot's, so a decision about this robot waits for these.
+ */
+export const connectionFeatures = writable<FeaturesDataResponse | null>(null)
+
 /** Records what the connected robot reported about itself: its feature flags and its identity. */
 export function applyFeatures(features: FeaturesDataResponse) {
+    connectionFeatures.set(features)
     useFeatureFlags().set(features as unknown as Record<string, boolean | string>)
     // A Bluetooth session has no network address to file the robot under.
     if (get(socket.transport) !== 'websocket') return
@@ -37,6 +44,9 @@ const fetchFeatures = () =>
 export function useFeatureFlags() {
     if (!featureFlagsStore) {
         featureFlagsStore = persistentStore<Record<string, boolean | string>>('FeatureFlags', {})
+        socket.subscribe(open => {
+            if (!open) connectionFeatures.set(null)
+        })
         socket.onEvent('open', fetchFeatures)
         if (get(socket)) void fetchFeatures()
     }
@@ -77,10 +87,19 @@ export const variants = {
 }
 
 /** The variant the last connected robot reported, when it is one this app knows. */
-export const reportedVariant = derived(useFeatureFlags(), $flagStore => {
-    const variantFlag = ($flagStore['variant'] as string)?.replace(/_V\d+$/, '')
-    return variantFlag && variantFlag in variants ? (variantFlag as Variant) : undefined
-})
+export const reportedVariant = derived(useFeatureFlags(), $flagStore =>
+    knownVariant($flagStore['variant'] as string | undefined)
+)
+
+/** Until the robot knows which variant it is, it refuses to move and asks to be told. */
+export const needsVariantChoice = (
+    connected: boolean,
+    features: Pick<FeaturesDataResponse, 'variant'> | null
+) => connected && features !== null && features.variant === ''
+
+export const variantChoiceNeeded = derived([socket, connectionFeatures], ([$socket, $features]) =>
+    needsVariantChoice($socket, $features)
+)
 
 export const currentVariant = derived(
     reportedVariant,

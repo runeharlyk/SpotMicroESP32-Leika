@@ -47,8 +47,8 @@ In the stand mode the right stick's x axis, which turns the body about the verti
 
 ## Hardware variants
 
-The firmware is built for one variant, selected with `SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE` in `esp32/features.ini`.
-The dimensions are the constants in `esp32/include/kinematics.h`.
+The firmware drives all three variants; each robot stores which one it is, chosen in the app (`SPOTMICRO_ESP32`, `SPOTMICRO_ESP32_MINI` or `SPOTMICRO_YERTLE`).
+The dimensions are the `KIN_CONFIG_*` instances in `esp32/include/kinematics.h`.
 The maximum leg reach is the femur plus the tibia minus the coxa offset, and the body height range follows from it.
 
 | Parameter             | Leika (Standard) | Leika Mini | Yertle        |

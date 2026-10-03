@@ -82,3 +82,9 @@ def test_a_reported_variant_loses_its_version_and_an_unknown_one_is_refused():
     assert known_variant("SPOTMICRO_ESP32_MINI_V2") == "SPOTMICRO_ESP32_MINI"
     with pytest.raises(UnknownVariant):
         known_variant("SPOTMICRO_GIANT")
+
+
+# A freshly flashed robot reports no variant and refuses to move until one is chosen.
+def test_a_robot_without_a_variant_is_refused_with_the_way_out():
+    with pytest.raises(UnknownVariant, match="choose it in the app"):
+        known_variant("")

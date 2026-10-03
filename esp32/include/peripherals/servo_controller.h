@@ -9,6 +9,7 @@
 #include <template/stateful_service.h>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
+#include <atomic>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
@@ -28,17 +29,25 @@ struct ServoWrite {
 class ServoController : public StatefulService<ServoSettings> {
   public:
     ServoController()
-        : protoHandler(ServoSettings_read, ServoSettings_update, this, api_ServoSettings_fields),
-          _persistence(ServoSettings_read, ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
+        : protoHandler(readWithModel(), ServoSettings_update, this, api_ServoSettings_fields),
+          _persistence(readWithModel(), ServoSettings_update, this, SERVO_SETTINGS_FILE, api_ServoSettings_fields,
                        api_ServoSettings_size, ServoSettings_defaults()) {}
+
+    /**
+     * The variant's joint model, set from the control task, or before the tasks start; null while no variant is
+     * chosen, which keeps the servos asleep. The socket's task reads it for the settings it reports.
+     */
+    void useJointModel(const JointModel *model) { _model.store(model); }
 
     void begin() {
         _persistence.readFromFS();
         _pca.begin(FACTORY_SERVO_OSCILLATOR_FREQUENCY, FACTORY_SERVO_PWM_FREQUENCY);
     }
 
+    bool detected() const { return _pca.isInitialized(); }
+
     void activate() {
-        if (is_active) return;
+        if (is_active || !_model.load()) return;
         control_state = SERVO_CONTROL_STATE::ANGLE;
         is_active = true;
         _pca.wakeup();
@@ -84,13 +93,15 @@ class ServoController : public StatefulService<ServoSettings> {
     // Each joint moves toward its target no faster than the servos can, and its PWM goes to its channel; channels no
     // joint uses are written off.
     bool calculatePWM(float dt) {
+        const JointModel *model = _model.load();
+        if (!model) return false;
         const float maxStep = SERVO_MAX_SPEED_DEG_S * std::clamp(dt, 0.0f, MAX_TICK_S);
         uint32_t written = 0;
         read([&](const ServoSettings &settings) {
             std::fill(std::begin(_channelPwm), std::end(_channelPwm), 0);
             for (size_t i = 0; i < SERVO_COUNT; i++) {
                 angles[i] = slewToward(angles[i], target_angles[i], maxStep);
-                _outputPwm[i] = servoPwm(VARIANT_JOINT_MODEL, i, settings.servos[i].center_pwm, angles[i]);
+                _outputPwm[i] = servoPwm(*model, i, settings.servos[i].center_pwm, angles[i]);
                 const uint32_t channel = jointChannel(settings, i);
                 _channelPwm[channel] = _outputPwm[i];
                 written = std::max(written, channel + 1);
@@ -100,7 +111,7 @@ class ServoController : public StatefulService<ServoSettings> {
     }
 
     ServoWrite update(float dt) {
-        if (control_state != SERVO_CONTROL_STATE::ANGLE) return {};
+        if (control_state != SERVO_CONTROL_STATE::ANGLE || !_model.load()) return {};
         return {true, calculatePWM(dt)};
     }
 
@@ -110,6 +121,13 @@ class ServoController : public StatefulService<ServoSettings> {
     StatefulProtoHandler<ServoSettings, ServoSettings> protoHandler;
 
   private:
+    std::function<void(const ServoSettings &, ServoSettings &)> readWithModel() {
+        return [this](const ServoSettings &settings, ServoSettings &proto) {
+            ServoSettings_read(settings, proto, _model.load());
+        };
+    }
+
+    std::atomic<const JointModel *> _model {nullptr};
     FSPersistencePB<ServoSettings> _persistence;
 
     PCA9685Driver _pca;

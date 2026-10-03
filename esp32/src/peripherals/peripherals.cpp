@@ -3,27 +3,22 @@
 #include <esp_timer.h>
 #include <cmath>
 
-#if FT_ENABLED(USE_MPU6050 || USE_ICM20948 || USE_BNO055)
-#define IMU_DRIVER &_imuDriver
-#else
-#define IMU_DRIVER nullptr
-#endif
-#if FT_ENABLED(USE_HMC5883)
-#define MAG_DRIVER &_magDriver
-#else
-#define MAG_DRIVER nullptr
-#endif
-
+// The ICM-20948 before the MPU6050: both answer at 0x68, and starting an MPU6050 resets whatever chip is there.
 Peripherals::Peripherals()
-    : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, api_PeripheralSettings_fields),
+    : protoHandler(PeripheralsConfiguration_read, PeripheralsConfiguration_save, this, api_PeripheralSettings_fields),
       _persistence(PeripheralsConfiguration_read, PeripheralsConfiguration_update, this, PERIPHERAL_SETTINGS_FILE,
                    api_PeripheralSettings_fields, api_PeripheralSettings_size, PeripheralsConfiguration_defaults()),
-      _imu(IMU_DRIVER, MAG_DRIVER) {
+      _imu({&_icm, &_bno, &_mpu}, &_hmc) {
     _accessMutex = xSemaphoreCreateRecursiveMutex();
     addUpdateHandler(
         [&](const std::string &originId) {
             updatePins();
-            runOnSensorTask([this] { _imu.configure(imuConfig()); });
+            runOnSensorTask([this] {
+                _imu.configure(imuConfig());
+                // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
+                const SensorOptions options = sensorOptions();
+                if (!(options == _probedOptions)) probeSensors(options);
+            });
         },
         false);
 }
@@ -35,21 +30,64 @@ void Peripherals::begin() {
 }
 
 void Peripherals::beginSensors() {
-    beginTransaction();
     _imu.configure(imuConfig());
-    if (!_imu.begin(esp_timer_get_time())) ESP_LOGW("Peripherals", "No IMU answered");
-    else ESP_LOGI("Peripherals", "IMU %s at %u Hz, compass at %u Hz", _imu.driverName(), _imu.rateHz(), _imu.magRateHz());
+    probeSensors(sensorOptions());
+}
+
+Peripherals::SensorOptions Peripherals::sensorOptions() const {
+    SensorOptions options;
+    read([&options](const PeripheralsConfiguration &settings) {
+        options = {settings.imu_disabled, settings.mag_disabled, settings.bmp_disabled, settings.gesture_disabled};
+    });
+    return options;
+}
+
+static const char *describe(bool detected, bool active) { return active ? "active" : detected ? "disabled" : "absent"; }
+
+// A disabled sensor is only identified, never configured: the chip is left as it is.
+void Peripherals::probeSensors(const SensorOptions &options) {
+    SensorStatus status;
+    beginTransaction();
+    if (options.imuDisabled) {
+        _imu.stop();
+        status.imuDetected = _icm.identify() || _bno.identify() || _mpu.identify();
+    } else {
+        status.imuActive = status.imuDetected = _imu.begin(esp_timer_get_time(), !options.magDisabled);
+    }
+    status.magActive = _imu.hasMag();
+    status.magDetected = status.magActive || _imu.chipHasMag() || _hmc.identify();
+    status.imuDriver = _imu.driverName();
+    status.imuRateHz = _imu.rateHz();
+    status.magRateHz = _imu.magRateHz();
+
+    if (options.bmpDisabled) {
+        _bmp.stop();
+        status.bmpDetected = _bmp.identify();
+    } else {
+        status.bmpActive = status.bmpDetected = _bmp.initialize();
+    }
+    if (options.gestureDisabled) {
+        _gesture.stop();
+        status.gestureDetected = _gesture.identify();
+    } else {
+        status.gestureActive = status.gestureDetected = _gesture.initialize();
+    }
     endTransaction();
-#if FT_ENABLED(USE_BMP180)
-    if (!_bmp.initialize()) ESP_LOGE("Peripherals", "Barometer initialize failed");
-#endif
-#if FT_ENABLED(USE_PAJ7620U2)
-    if (!_gesture.initialize()) ESP_LOGE("Peripherals", "Gesture sensor initialize failed");
-#endif
-#if FT_ENABLED(USE_USS)
-    _left_sonar = std::make_unique<NewPing>(USS_LEFT_PIN, USS_LEFT_PIN, MAX_DISTANCE);
-    _right_sonar = std::make_unique<NewPing>(USS_RIGHT_PIN, USS_RIGHT_PIN, MAX_DISTANCE);
-#endif
+
+    _probedOptions = options;
+    {
+        std::lock_guard<std::mutex> lock(_statusMutex);
+        _status = status;
+    }
+    ESP_LOGI("Peripherals", "IMU %s %s at %u Hz, compass %s at %u Hz, barometer %s, gesture sensor %s",
+             status.imuDriver, describe(status.imuDetected, status.imuActive), status.imuRateHz,
+             describe(status.magDetected, status.magActive), status.magRateHz,
+             describe(status.bmpDetected, status.bmpActive), describe(status.gestureDetected, status.gestureActive));
+}
+
+SensorStatus Peripherals::status() const {
+    std::lock_guard<std::mutex> lock(_statusMutex);
+    return _status;
 }
 
 void Peripherals::sensorTick() {
@@ -57,7 +95,6 @@ void Peripherals::sensorTick() {
     readImu();
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
-    EXECUTE_EVERY_N_MS(500, { readSonar(); });
 }
 
 void Peripherals::updatePins() {
@@ -126,12 +163,11 @@ ImuSample Peripherals::imuSample() {
     return _readings.imu;
 }
 
-const char *Peripherals::imuDriverName() const { return _imu.driverName(); }
-uint32_t Peripherals::imuRateHz() const { return _imu.rateHz(); }
-uint32_t Peripherals::magRateHz() const { return _imu.magRateHz(); }
+const char *Peripherals::imuDriverName() const { return status().imuDriver; }
+uint32_t Peripherals::imuRateHz() const { return status().imuRateHz; }
+uint32_t Peripherals::magRateHz() const { return status().magRateHz; }
 
 void Peripherals::readBMP() {
-#if FT_ENABLED(USE_BMP180)
     beginTransaction();
     if (_bmp.update()) {
         std::lock_guard<std::mutex> lock(_readingsMutex);
@@ -140,30 +176,15 @@ void Peripherals::readBMP() {
         _readings.pressure = _bmp.getPressure();
     }
     endTransaction();
-#endif
 }
 
 void Peripherals::readGesture() {
-#if FT_ENABLED(USE_PAJ7620U2)
     beginTransaction();
     if (_gesture.readGesture()) {
         std::lock_guard<std::mutex> lock(_readingsMutex);
         _readings.gesture = _gesture.getGesture();
     }
     endTransaction();
-#endif
-}
-
-void Peripherals::readSonar() {
-#if FT_ENABLED(USE_USS)
-    const float left = _left_sonar->ping_cm();
-    // Lets the left ping's echo die out before the right one listens.
-    sleepAtLeastMs(50);
-    const float right = _right_sonar->ping_cm();
-    std::lock_guard<std::mutex> lock(_readingsMutex);
-    _readings.leftDistance = left;
-    _readings.rightDistance = right;
-#endif
 }
 
 gesture_t Peripherals::takeGesture() {

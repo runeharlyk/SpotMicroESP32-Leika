@@ -6,7 +6,6 @@
 #include <utils/math_utils.h>
 #include <utils/timing.h>
 #include <filesystem.h>
-#include <features.h>
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
 
@@ -15,30 +14,14 @@
 #include <list>
 #include <mutex>
 
-#if FT_ENABLED(USE_USS)
-#include <NewPing.h>
-#endif
 #include <peripherals/i2c_bus.h>
 #include <peripherals/imu/imu.h>
-#if FT_ENABLED(USE_MPU6050)
 #include <peripherals/drivers/mpu6050.h>
-#endif
-#if FT_ENABLED(USE_BNO055)
 #include <peripherals/drivers/bno055.h>
-#endif
-#if FT_ENABLED(USE_ICM20948)
 #include <peripherals/drivers/icm20948.h>
-#endif
-#if FT_ENABLED(USE_HMC5883)
 #include <peripherals/drivers/hmc5883l.h>
-#endif
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
-
-/*
- * Ultrasonic Sensor Settings
- */
-#define MAX_DISTANCE 200
 
 /**
  * The sensors' latest values. The sensor task writes them; the control and service tasks copy them out
@@ -49,9 +32,17 @@ struct SensorReadings {
     float altitude {0};
     float temperature {0};
     float pressure {0};
-    float leftDistance {MAX_DISTANCE};
-    float rightDistance {MAX_DISTANCE};
     gesture_t gesture {eGestureNone};
+};
+
+/** What the last probe found: a sensor is detected when it answered, and active when it is also not disabled. */
+struct SensorStatus {
+    bool imuDetected = false, imuActive = false;
+    bool magDetected = false, magActive = false;
+    bool bmpDetected = false, bmpActive = false;
+    bool gestureDetected = false, gestureActive = false;
+    const char *imuDriver = "none";
+    uint32_t imuRateHz = 0, magRateHz = 0;
 };
 
 class Peripherals : public StatefulService<PeripheralsConfiguration> {
@@ -61,8 +52,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     // Loads the settings and starts the I2C bus, which the servos need too.
     void begin();
 
-    // Brings up the sensors, which can take seconds: call from the sensor task, as sensorTick().
+    // Probes the sensors and starts those not disabled, which can take seconds: call from the sensor task, as
+    // sensorTick(). A change of what is disabled probes again there.
     void beginSensors();
+
+    SensorStatus status() const;
 
     // One pass of the sensor task: queued bus work, the IMU every time, the slower sensors when due.
     void sensorTick();
@@ -102,11 +96,18 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     StatefulProtoHandler<PeripheralsConfiguration, api_PeripheralSettings> protoHandler;
 
   private:
+    struct SensorOptions {
+        bool imuDisabled, magDisabled, bmpDisabled, gestureDisabled;
+        bool operator==(const SensorOptions &) const = default;
+    };
+    SensorOptions sensorOptions() const;
+    void probeSensors(const SensorOptions &options);
+    SensorOptions _probedOptions {};
+
     void readImu();
     ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
-    void readSonar();
 
     FSPersistencePB<PeripheralsConfiguration> _persistence;
 
@@ -123,27 +124,16 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     inline void endTransaction() { xSemaphoreGiveRecursive(_accessMutex); }
 
-#if FT_ENABLED(USE_MPU6050)
-    MPU6050Driver _imuDriver;
-#elif FT_ENABLED(USE_ICM20948)
-    ICM20948Driver _imuDriver;
-#elif FT_ENABLED(USE_BNO055)
-    BNO055Driver _imuDriver;
-#endif
-#if FT_ENABLED(USE_HMC5883)
-    HMC5883LDriver _magDriver;
-#endif
+    ICM20948Driver _icm;
+    BNO055Driver _bno;
+    MPU6050Driver _mpu;
+    HMC5883LDriver _hmc;
     Imu _imu;
-#if FT_ENABLED(USE_BMP180)
     Barometer _bmp;
-#endif
-#if FT_ENABLED(USE_PAJ7620U2)
     GestureSensor _gesture;
-#endif
-#if FT_ENABLED(USE_USS)
-    std::unique_ptr<NewPing> _left_sonar;
-    std::unique_ptr<NewPing> _right_sonar;
-#endif
+
+    mutable std::mutex _statusMutex;
+    SensorStatus _status;
 
     std::list<uint8_t> _address_list;
     bool _i2c_active = false;

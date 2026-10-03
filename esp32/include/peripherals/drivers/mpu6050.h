@@ -13,10 +13,15 @@ class MPU6050Driver final : public ImuDriver {
 
     explicit MPU6050Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() override {
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() {
         if (!I2CBus::instance().probe(_addr)) return false;
         const uint8_t whoAmI = readReg(REG_WHO_AM_I);
-        if (whoAmI != 0x68 && whoAmI != 0x72) return false;
+        return whoAmI == 0x68 || whoAmI == 0x72;
+    }
+
+    bool begin() override {
+        if (!identify()) return false;
         writeReg(REG_PWR_MGMT_1, 0x80);  // reset
         sleepAtLeastMs(100);
         writeReg(REG_PWR_MGMT_1, 0x01);  // wake, clock from the x gyro's PLL

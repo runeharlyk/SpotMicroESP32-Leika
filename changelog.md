@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Adds runtime feature flags: one firmware per board drives every variant and every combination of sensors [#174](https://github.com/runeharlyk/SpotMicroESP32-Leika/issues/174)
+- Adds a first-connect step that asks for the robot's variant, and switches the variant live while the robot is deactivated
+- Adds sensor detection at boot, and a Sensors page to disable a sensor that is wired but not mounted and to set the WS2812 strip's pin
 - Adds support for the ESP32-P4, with a working camera stream
 - Adds an ESP Web Tools flasher, tagged firmware releases and a CI build of every board
 - Adds robot discovery by WebSocket probe, a saved robot list and a landing page built around connecting to a robot
@@ -23,6 +26,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Keeps the servos asleep and refuses every mode but Deactivated until the robot knows its variant
+- Always embeds the web app in the firmware
 - Migrates the firmware fully to ESP-IDF and replaces PsychicHttp with a native HTTP wrapper
 - Replaces the yaw arc with rigid-body velocity composition in the firmware, the simulation and the web app
 - Scales the gait duty factor with the commanded velocity
@@ -42,6 +47,8 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- Removes `esp32/features.ini`, the `USE_*` sensor flags and `EMBED_WEBAPP`
+- Removes the sonar code, which needed the Arduino NewPing library and never compiled under ESP-IDF
 - Removes the unused recovery mode, hook handlers, NTP settings, result service, service worker and the OBJ meshes behind the 3D view
 - Removes the GitHub firmware download path, which had no firmware endpoint behind it
 

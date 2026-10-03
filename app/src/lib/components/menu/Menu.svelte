@@ -10,6 +10,7 @@
         MdiController,
         Devices,
         Camera,
+        Chip,
         Rotate3d,
         MotorOutline,
         Health,
@@ -71,6 +72,12 @@
                         title: 'I2C',
                         icon: Connection,
                         href: withBase('/peripherals/i2c'),
+                        feature: true
+                    },
+                    {
+                        title: 'Sensors',
+                        icon: Chip,
+                        href: withBase('/peripherals/sensors'),
                         feature: true
                     },
                     {

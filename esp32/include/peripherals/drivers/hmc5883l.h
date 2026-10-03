@@ -11,9 +11,14 @@ class HMC5883LDriver final : public MagDriver {
 
     explicit HMC5883LDriver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() {
+        return I2CBus::instance().probe(_addr) && readReg(REG_ID_A) == 'H' && readReg(REG_ID_B) == '4' &&
+               readReg(REG_ID_C) == '3';
+    }
+
     bool begin() override {
-        if (!I2CBus::instance().probe(_addr)) return false;
-        if (readReg(REG_ID_A) != 'H' || readReg(REG_ID_B) != '4' || readReg(REG_ID_C) != '3') return false;
+        if (!identify()) return false;
         writeReg(REG_CONFIG_A, 0x78);  // 8-sample average, 75 Hz
         writeReg(REG_CONFIG_B, 0x20);  // +-1.3 gauss, 1090 LSB per gauss
         writeReg(REG_MODE, 0x00);      // continuous

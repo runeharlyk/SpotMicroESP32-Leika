@@ -56,6 +56,13 @@
 #define SCL_PIN 22
 #endif
 #endif
+#ifndef WS2812_PIN
+#if CONFIG_IDF_TARGET_ESP32P4
+#define WS2812_PIN 27
+#else
+#define WS2812_PIN 12
+#endif
+#endif
 #ifndef I2C_FREQUENCY
 #define I2C_FREQUENCY 1000000UL
 #endif

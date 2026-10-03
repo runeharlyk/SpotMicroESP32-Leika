@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <vector>
 #include <peripherals/imu/imu_driver.h>
 #include <peripherals/imu/madgwick.h>
 
@@ -27,15 +28,46 @@ class Imu {
     static constexpr float MAX_DT_S = 0.05f;           // a longer gap is a stall, not motion to integrate
     static constexpr int MAG_STALE_PERIODS = 3;         // a compass silent this long is treated as gone
 
-    Imu(ImuDriver *driver, MagDriver *mag) : _driver(driver), _mag(mag) {}
+    /** The IMU chips to try, in order, and a separate compass if one may be fitted. */
+    Imu(std::vector<ImuDriver *> candidates, MagDriver *mag) : _candidates(std::move(candidates)), _mag(mag) {}
 
-    bool begin(int64_t nowUs) {
-        _ready = _driver && _driver->begin();
-        _hasSeparateMag = _ready && _mag && _mag->begin();
+    Imu(ImuDriver *driver, MagDriver *mag) : Imu(std::vector<ImuDriver *> {driver}, mag) {}
+
+    /**
+     * Starts the first candidate that answers; without `useMag` no compass reading is used, the chip's own or a
+     * separate one. Returns whether an IMU answered.
+     */
+    bool begin(int64_t nowUs, bool useMag = true) {
+        _driver = nullptr;
+        for (ImuDriver *candidate : _candidates) {
+            if (candidate && candidate->begin()) {
+                _driver = candidate;
+                break;
+            }
+        }
+        _ready = _driver != nullptr;
+        _useMag = useMag;
+        _hasSeparateMag = _ready && useMag && _mag && _mag->begin();
+        _magValid = false;
+        _lastUs = 0;
         _startUs = nowUs;
         _filter.reset();
         return _ready;
     }
+
+    /** Leaves the chips alone and reports no IMU, for one that is wired but not mounted. */
+    void stop() {
+        _driver = nullptr;
+        _ready = false;
+        _hasSeparateMag = false;
+        _magValid = false;
+    }
+
+    /** Whether a compass feeds the samples: the IMU chip's own or a separate one. */
+    bool hasMag() const { return magRateHz() > 0; }
+
+    /** Whether the IMU chip has a compass of its own, used or not. */
+    bool chipHasMag() const { return _ready && _driver->magRateHz() > 0; }
 
     void configure(const ImuConfig &config) { _config = config; }
 
@@ -43,7 +75,7 @@ class Imu {
     const char *driverName() const { return _ready ? _driver->name() : "none"; }
     uint32_t rateHz() const { return _ready ? _driver->rateHz() : 0; }
     uint32_t magRateHz() const {
-        if (!_ready) return 0;
+        if (!_ready || !_useMag) return 0;
         return _hasSeparateMag ? _mag->rateHz() : _driver->magRateHz();
     }
 
@@ -119,8 +151,10 @@ class Imu {
     }
 
   private:
-    ImuDriver *_driver;
+    std::vector<ImuDriver *> _candidates;
+    ImuDriver *_driver = nullptr;
     MagDriver *_mag;
+    bool _useMag = true;
     ImuConfig _config;
     Madgwick _filter;
     bool _ready = false;
@@ -135,6 +169,7 @@ class Imu {
 
     // The compass is slower than the IMU: its last reading is reused until the next one is due.
     void takeMag(int64_t nowUs, const RawImu &raw) {
+        if (!_useMag) return;
         Vec3 field;
         bool fresh = false;
         if (raw.hasMag) {

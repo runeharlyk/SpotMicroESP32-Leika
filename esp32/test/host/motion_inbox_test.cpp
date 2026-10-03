@@ -103,7 +103,17 @@ static void anInputKeepsWhenItArrived() {
     CHECK(inbox.take(1020).inputAtUs == 0);
 }
 
+static void theNewestVariantIsTakenOnce() {
+    MotionInbox inbox;
+    inbox.postVariant(socket_message_KinematicsVariant_SPOTMICRO_ESP32);
+    inbox.postVariant(socket_message_KinematicsVariant_SPOTMICRO_YERTLE);
+    MotionInbox::Mail first = inbox.take(10);
+    CHECK(first.variant == socket_message_KinematicsVariant_SPOTMICRO_YERTLE);
+    CHECK(!inbox.take(20).variant);
+}
+
 int main() {
+    theNewestVariantIsTakenOnce();
     inputIsTakenOnce();
     theNewestInputWins();
     inputIsBoundedAndNonFiniteBecomesNeutral();

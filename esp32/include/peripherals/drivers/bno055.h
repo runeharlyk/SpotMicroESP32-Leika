@@ -10,11 +10,11 @@ class BNO055Driver final : public ImuDriver {
 
     explicit BNO055Driver(uint8_t addr = DEFAULT_ADDR) : _addr(addr) {}
 
-    bool begin() override {
-        if (!I2CBus::instance().probe(_addr)) return false;
+    /** Whether the chip answers with its own ID, without configuring it. */
+    bool identify() { return I2CBus::instance().probe(_addr) && readReg(REG_CHIP_ID) == BNO055_ID; }
 
-        uint8_t id = readReg(REG_CHIP_ID);
-        if (id != BNO055_ID) return false;
+    bool begin() override {
+        if (!identify()) return false;
 
         writeReg(REG_OPR_MODE, MODE_CONFIG);
         sleepAtLeastMs(25);

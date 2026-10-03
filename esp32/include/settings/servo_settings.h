@@ -44,15 +44,15 @@ inline bool validServoSettings(const ServoSettings &settings) {
     return true;
 }
 
-/** The stored settings, with the variant's joint model the app draws from. */
-inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto) {
+/** The stored settings, with the variant's joint model the app draws from; without one while no variant is chosen. */
+inline void ServoSettings_read(const ServoSettings &settings, ServoSettings &proto, const JointModel *model) {
     proto = settings;
-    proto.has_model = true;
-    std::copy(std::begin(VARIANT_JOINT_MODEL.direction), std::end(VARIANT_JOINT_MODEL.direction),
-              proto.model.direction);
-    std::copy(std::begin(VARIANT_JOINT_MODEL.center_angle), std::end(VARIANT_JOINT_MODEL.center_angle),
-              proto.model.center_angle);
-    proto.model.pwm_per_degree = VARIANT_JOINT_MODEL.pwm_per_degree;
+    proto.has_model = model != nullptr;
+    proto.model = api_JointModel_init_zero;
+    if (!model) return;
+    std::copy(std::begin(model->direction), std::end(model->direction), proto.model.direction);
+    std::copy(std::begin(model->center_angle), std::end(model->center_angle), proto.model.center_angle);
+    proto.model.pwm_per_degree = model->pwm_per_degree;
 }
 
 // The model is the variant's and is not stored; a save without channels, from an app that does not know them, keeps

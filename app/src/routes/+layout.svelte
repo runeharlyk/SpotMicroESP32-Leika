@@ -4,6 +4,7 @@
     import { page } from '$app/state'
     import { Modals, modals } from 'svelte-modals'
     import Toast from '$lib/components/toasts/Toast.svelte'
+    import VariantSetup from '$lib/components/VariantSetup.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
     import { fade } from 'svelte/transition'
     import '../app.css'
@@ -159,5 +160,7 @@
         ></div>
     {/snippet}
 </Modals>
+
+<VariantSetup />
 
 <Toast />

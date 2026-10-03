@@ -8,7 +8,6 @@ static esp_err_t sendNotFound(httpd_req_t* req) {
     return ESP_FAIL;
 }
 
-#if EMBED_WEBAPP
 #include "WWWData.h"
 
 static const WebAsset* findAsset(const char* uri) {
@@ -60,11 +59,3 @@ void mountWebApp(WebServer& server) {
         return web_send(req, *indexAsset);
     });
 }
-#else
-size_t webAssetCount() { return 0; }
-
-void mountWebApp(WebServer& server) {
-    ESP_LOGW(TAG, "Web app not embedded (EMBED_WEBAPP=0), UI routes will return 404");
-    server.on("/*", HTTP_GET, [](httpd_req_t* req) { return sendNotFound(req); });
-}
-#endif

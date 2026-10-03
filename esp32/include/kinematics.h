@@ -3,65 +3,58 @@
 
 #include <utils/math_utils.h>
 
-class KinConfig {
-  public:
-#if defined(SPOTMICRO_ESP32)
-    static constexpr float coxa = 0.0605f;
-    static constexpr float coxa_offset = 0.010f;
-    static constexpr float femur = 0.1112f;
-    static constexpr float tibia = 0.1185f;
-    static constexpr float L = 0.2075f;
-    static constexpr float W = 0.078f;
-#elif defined(SPOTMICRO_ESP32_MINI)
-    static constexpr float coxa = 0.035f;
-    static constexpr float coxa_offset = 0.0f;
-    static constexpr float femur = 0.060f;
-    static constexpr float tibia = 0.060f;
-    static constexpr float L = 0.160f;
-    static constexpr float W = 0.080f;
-#elif defined(SPOTMICRO_YERTLE)
-    static constexpr float coxa = 0.035f;
-    static constexpr float coxa_offset = 0.0f;
-    static constexpr float femur = 0.130f;
-    static constexpr float tibia = 0.130f;
-    static constexpr float L = 0.240f;
-    static constexpr float W = 0.078f;
-#endif
+/** A variant's leg geometry (m) and the motion limits derived from it. */
+struct KinConfig {
+    float coxa, coxa_offset, femur, tibia, L, W;
+    // Yertle's knee servo turns with its femur, so its angle is the knee's plus the femur's.
+    bool kneeFollowsFemur;
 
-    static constexpr float mountOffsets[4][3] = {
-        {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
+    float mountOffsets[4][3];
+    float default_feet_positions[4][4];
 
-    static constexpr float default_feet_positions[4][4] = {
-        {mountOffsets[0][0], 0, mountOffsets[0][2] + coxa, 1},
-        {mountOffsets[1][0], 0, mountOffsets[1][2] - coxa, 1},
-        {mountOffsets[2][0], 0, mountOffsets[2][2] + coxa, 1},
-        {mountOffsets[3][0], 0, mountOffsets[3][2] - coxa, 1},
-    };
+    float max_roll = 20.0f;
+    float max_pitch = 15.0f;
 
-    // Max constants
-    static constexpr float max_roll = 20.0f;
-    static constexpr float max_pitch = 15.0f;
+    float max_body_shift_x, max_body_shift_z;
+    float max_leg_reach;
+    float min_body_height, max_body_height, body_height_range;
+    float max_step_length, max_step_height;
 
-    static constexpr float max_body_shift_x = W / 3;
-    static constexpr float max_body_shift_z = W / 3;
+    float default_step_depth = 0.002;
+    float default_body_height, default_step_height;
 
-    static constexpr float max_leg_reach = femur + tibia - coxa_offset;
-
-    static constexpr float min_body_height = max_leg_reach * 0.45;
-    static constexpr float max_body_height = max_leg_reach * 0.9;
-    static constexpr float body_height_range = max_body_height - min_body_height;
-
-    static constexpr float max_step_length = max_leg_reach * 0.8;
-    static constexpr float max_step_height = max_leg_reach / 2;
-
-    // Default constant
-    static constexpr float default_step_depth = 0.002;
-    static constexpr float default_body_height = min_body_height + body_height_range / 2;
-    static constexpr float default_step_height = default_body_height / 2;
+    constexpr KinConfig(float coxa, float coxa_offset, float femur, float tibia, float L, float W,
+                        bool kneeFollowsFemur)
+        : coxa(coxa),
+          coxa_offset(coxa_offset),
+          femur(femur),
+          tibia(tibia),
+          L(L),
+          W(W),
+          kneeFollowsFemur(kneeFollowsFemur),
+          mountOffsets {{L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}},
+          default_feet_positions {{L / 2, 0, W / 2 + coxa, 1},
+                                  {L / 2, 0, -W / 2 - coxa, 1},
+                                  {-L / 2, 0, W / 2 + coxa, 1},
+                                  {-L / 2, 0, -W / 2 - coxa, 1}},
+          max_body_shift_x(W / 3),
+          max_body_shift_z(W / 3),
+          max_leg_reach(femur + tibia - coxa_offset),
+          min_body_height(max_leg_reach * 0.45),
+          max_body_height(max_leg_reach * 0.9),
+          body_height_range(max_body_height - min_body_height),
+          max_step_length(max_leg_reach * 0.8),
+          max_step_height(max_leg_reach / 2),
+          default_body_height(min_body_height + body_height_range / 2),
+          default_step_height(default_body_height / 2) {}
 };
 
+constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32 {0.0605f, 0.010f, 0.1112f, 0.1185f, 0.2075f, 0.078f, false};
+constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32_MINI {0.035f, 0.0f, 0.060f, 0.060f, 0.160f, 0.080f, false};
+constexpr KinConfig KIN_CONFIG_SPOTMICRO_YERTLE {0.035f, 0.0f, 0.130f, 0.130f, 0.240f, 0.078f, true};
+
 struct alignas(16) body_state_t {
-    float omega {0}, phi {0}, psi {0}, xm {0}, ym {KinConfig::default_body_height}, zm {0};
+    float omega {0}, phi {0}, psi {0}, xm {0}, ym {0}, zm {0};
     float feet[4][4];
 
     void updateFeet(const float newFeet[4][4]) { COPY_2D_ARRAY_4x4(feet, newFeet); }
@@ -69,16 +62,7 @@ struct alignas(16) body_state_t {
 
 class Kinematics {
   private:
-    static constexpr float coxa = KinConfig::coxa;
-    static constexpr float coxa_offset = KinConfig::coxa_offset;
-    static constexpr float femur = KinConfig::femur;
-    static constexpr float tibia = KinConfig::tibia;
-
-    static constexpr float L = KinConfig::L;
-    static constexpr float W = KinConfig::W;
-
-    static constexpr float mountOffsets[4][3] = {
-        {L / 2, 0, W / 2}, {L / 2, 0, -W / 2}, {-L / 2, 0, W / 2}, {-L / 2, 0, -W / 2}};
+    const KinConfig &config;
 
     static constexpr float invMountRot[3][3] = {{0, 0, -1}, {0, 1, 0}, {1, 0, 0}};
 
@@ -88,6 +72,8 @@ class Kinematics {
 
 
   public:
+    explicit Kinematics(const KinConfig &config) : config(config) {}
+
     esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
         esp_err_t ret = ESP_OK;
 
@@ -113,9 +99,9 @@ class Kinematics {
             float by = inv_rot[1][0] * wx + inv_rot[1][1] * wy + inv_rot[1][2] * wz + inv_trans[1];
             float bz = inv_rot[2][0] * wx + inv_rot[2][1] * wy + inv_rot[2][2] * wz + inv_trans[2];
 
-            float mx = mountOffsets[i][0];
-            float my = mountOffsets[i][1];
-            float mz = mountOffsets[i][2];
+            float mx = config.mountOffsets[i][0];
+            float my = config.mountOffsets[i][1];
+            float mz = config.mountOffsets[i][2];
 
             float px = bx - mx;
             float py = by - my;
@@ -164,6 +150,7 @@ class Kinematics {
     }
 
     inline void legIK(float x, float y, float z, float out[3]) {
+        const float coxa = config.coxa, coxa_offset = config.coxa_offset, femur = config.femur, tibia = config.tibia;
         float F = sqrt(fmax(0.0f, x * x + y * y - coxa * coxa));
         float G = F - coxa_offset;
         float H = sqrt(G * G + z * z);
@@ -174,11 +161,7 @@ class Kinematics {
         float theta2 = atan2f(z, G) - atan2f(tibia * sinf(theta3), femur + tibia * cosf(theta3));
         out[0] = RAD_TO_DEG_F(theta1);
         out[1] = RAD_TO_DEG_F(theta2);
-#if defined(SPOTMICRO_ESP32) || defined(SPOTMICRO_ESP32_MINI)
-        out[2] = RAD_TO_DEG_F(theta3);
-#elif defined(SPOTMICRO_YERTLE)
-        out[2] = RAD_TO_DEG_F(theta3 + theta2);
-#endif
+        out[2] = RAD_TO_DEG_F(config.kneeFollowsFemur ? theta3 + theta2 : theta3);
     }
 };
 

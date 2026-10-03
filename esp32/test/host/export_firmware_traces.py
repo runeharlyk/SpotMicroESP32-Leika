@@ -1,4 +1,4 @@
-"""Builds firmware_trace.cpp once per kinematics variant and writes the golden traces that pin the
+"""Builds firmware_trace.cpp, runs it once per kinematics variant and writes the golden traces that pin the
 web app's TypeScript port of the firmware motion code (app/src/lib/simulation/firmware).
 
 Run from esp32/test/host: python export_firmware_traces.py
@@ -19,22 +19,23 @@ INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "submodules", "nanop
 FIRMWARE_INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src")]
 
 
-def build_and_run(variant: str, workdir: str) -> dict:
-    binary = os.path.join(workdir, f"trace_{variant}.exe")
+def build(workdir: str) -> str:
+    binary = os.path.join(workdir, "firmware_trace.exe")
     compiler = os.environ.get("CXX", "g++")
     # gnu++20 rather than c++20: the firmware uses M_PI, as the ESP32 toolchain allows.
-    command = [compiler, "-std=gnu++20", "-O0", f"-D{variant}", *[f"-I{path}" for path in INCLUDES],
+    command = [compiler, "-std=gnu++20", "-O0", *[f"-I{path}" for path in INCLUDES],
                *[f"-idirafter{path}" for path in FIRMWARE_INCLUDES], os.path.join(HERE, "firmware_trace.cpp"), "-o", binary]
     subprocess.run(command, check=True)
-    result = subprocess.run([binary, variant], check=True, capture_output=True, text=True)
-    return json.loads(result.stdout)
+    return binary
 
 
 def main() -> None:
     os.makedirs(FIXTURES, exist_ok=True)
     with tempfile.TemporaryDirectory() as workdir:
+        binary = build(workdir)
         for variant in VARIANTS:
-            trace = build_and_run(variant, workdir)
+            result = subprocess.run([binary, variant], check=True, capture_output=True, text=True)
+            trace = json.loads(result.stdout)
             path = os.path.join(FIXTURES, f"firmware-trace-{variant}.json")
             with open(path, "w") as f:
                 json.dump(trace, f)

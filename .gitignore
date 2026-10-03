@@ -10,6 +10,7 @@ managed_components/
 dependencies.lock
 sdkconfig
 sdkconfig.*
+!esp32/test/host/stubs/sdkconfig.h
 !sdkconfig.defaults
 !sdkconfig.defaults.*
 esp32/src/platform_shared/*
