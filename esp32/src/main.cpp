@@ -15,6 +15,7 @@
 #include <peripherals/camera_service.h>
 #include <communication/webserver.h>
 #include <communication/websocket.h>
+#include <communication/serial_link.h>
 #include <features.h>
 #include <motion.h>
 #include <wifi_service.h>
@@ -38,6 +39,7 @@
 #include <www_mount.hpp>
 
 Websocket wsSocket {server, "/api/ws"};
+SerialLink serialLink;
 
 Peripherals peripherals;
 ServoController servoController;
@@ -111,25 +113,31 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
 
 using ReplyFiller = std::function<void(socket_message_CorrelationResponse &)>;
 
-// Answers a request later from another task. A client that left before the answer must not get it, nor whoever
-// holds its socket now; `fill` sets the response, and may change the status from 200.
-static std::function<void(const ReplyFiller &)> replyLater(const socket_message_CorrelationRequest &req, int clientId) {
-    return
-        [correlationId = req.correlation_id, clientId, session = wsSocket.session(clientId)](const ReplyFiller &fill) {
-            auto reply = new socket_message_CorrelationResponse();
-            *reply = socket_message_CorrelationResponse_init_default;
-            reply->correlation_id = correlationId;
-            reply->status_code = 200;
-            fill(*reply);
-            wsSocket.emitToSession(*reply, clientId, session);
-            delete reply;
-        };
+/** Who sent a request: the link it came on, WebSocket or serial, and the client on that link. */
+struct Client {
+    CommAdapterBase *link;
+    int id;
+};
+
+// Answers a request later from another task, on the link it came on. A client that left before the answer must not
+// get it, nor whoever holds its socket now; `fill` sets the response, and may change the status from 200.
+static std::function<void(const ReplyFiller &)> replyLater(const socket_message_CorrelationRequest &req, Client client) {
+    return [correlationId = req.correlation_id, client, session = client.link->session(client.id)](
+               const ReplyFiller &fill) {
+        auto reply = new socket_message_CorrelationResponse();
+        *reply = socket_message_CorrelationResponse_init_default;
+        reply->correlation_id = correlationId;
+        reply->status_code = 200;
+        fill(*reply);
+        client.link->emitToSession(*reply, client.id, session);
+        delete reply;
+    };
 }
 
 // Runs bus work on the sensor task and replies from there, so the socket is not held up for its duration.
 static void replyFromSensorTask(const socket_message_CorrelationRequest &req, socket_message_CorrelationResponse &res,
-                                int clientId, ReplyFiller work) {
-    auto reply = replyLater(req, clientId);
+                                Client client, ReplyFiller work) {
+    auto reply = replyLater(req, client);
     if (peripherals.runOnSensorTask([reply, work = std::move(work)] { reply(work); })) {
         res.status_code = 0;
     } else {
@@ -225,13 +233,13 @@ void setupEventSocket() {
         [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
 
     using CorrelationHandler =
-        std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, int)>;
+        std::function<void(const socket_message_CorrelationRequest &, socket_message_CorrelationResponse &, Client)>;
     static std::map<pb_size_t, CorrelationHandler> correlationHandlers = {
         {socket_message_CorrelationRequest_features_data_request_tag,
-         [](const auto &req, auto &res, int clientId) { reportFeatures(res); }},
+         [](const auto &req, auto &res, Client client) { reportFeatures(res); }},
 
         {socket_message_CorrelationRequest_robot_name_update_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              if (!robotService.rename(req.request.robot_name_update.name)) res.status_code = 400;
              reportFeatures(res);
          }},
@@ -239,7 +247,7 @@ void setupEventSocket() {
         // Only with the legs at rest: a new geometry would make them jump. The control task switches, and the reply
         // leaves once it has, so it reports the new variant.
         {socket_message_CorrelationRequest_robot_variant_update_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              const KinematicsVariant variant = req.request.robot_variant_update.variant;
              auto refuse = [&res](uint32_t status, const char *reason) {
                  res.status_code = status;
@@ -252,15 +260,15 @@ void setupEventSocket() {
              if (variant == activeVariant.load()) return reportFeatures(res);
              {
                  std::lock_guard<std::mutex> lock(variantRepliesMutex);
-                 variantReplies.push_back(replyLater(req, clientId));
+                 variantReplies.push_back(replyLater(req, client));
              }
              motionService.inbox.postVariant(variant);
              res.status_code = 0;
          }},
 
         {socket_message_CorrelationRequest_i2c_scan_data_request_tag,
-         [](const auto &req, auto &res, int clientId) {
-             replyFromSensorTask(req, res, clientId, [](socket_message_CorrelationResponse &reply) {
+         [](const auto &req, auto &res, Client client) {
+             replyFromSensorTask(req, res, client, [](socket_message_CorrelationResponse &reply) {
                  reply.which_response = socket_message_CorrelationResponse_i2c_scan_data_tag;
                  peripherals.scanI2C();
                  peripherals.getI2CScanProto(reply.response.i2c_scan_data);
@@ -268,8 +276,8 @@ void setupEventSocket() {
          }},
 
         {socket_message_CorrelationRequest_imu_calibrate_execute_tag,
-         [](const auto &req, auto &res, int clientId) {
-             replyFromSensorTask(req, res, clientId, [](socket_message_CorrelationResponse &reply) {
+         [](const auto &req, auto &res, Client client) {
+             replyFromSensorTask(req, res, client, [](socket_message_CorrelationResponse &reply) {
                  reply.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
                  const Peripherals::ImuCalibration result = peripherals.calibrateIMU(true);
                  reply.response.imu_calibrate_data.success = result.still;
@@ -279,7 +287,7 @@ void setupEventSocket() {
          }},
 
         {socket_message_CorrelationRequest_system_information_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_system_information_response_tag;
              res.response.system_information_response.has_analytics_data = true;
              res.response.system_information_response.has_static_system_information = true;
@@ -289,69 +297,69 @@ void setupEventSocket() {
          }},
 
         {socket_message_CorrelationRequest_fs_delete_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_fs_delete_response_tag;
              res.response.fs_delete_response = FileSystemWS::fsHandler.handleDelete(req.request.fs_delete_request);
          }},
 
         {socket_message_CorrelationRequest_fs_mkdir_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_fs_mkdir_response_tag;
              res.response.fs_mkdir_response = FileSystemWS::fsHandler.handleMkdir(req.request.fs_mkdir_request);
          }},
 
         {socket_message_CorrelationRequest_fs_list_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_fs_list_response_tag;
              res.response.fs_list_response = FileSystemWS::fsHandler.handleList(req.request.fs_list_request);
          }},
 
         // Accepted before the file streams as download messages, so a long download is not a late reply.
         {socket_message_CorrelationRequest_fs_download_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.status_code = 202;
-             wsSocket.emit(res, clientId);
-             FileSystemWS::fsHandler.handleDownloadRequest(req.request.fs_download_request, clientId);
+             client.link->emit(res, client.id);
+             FileSystemWS::fsHandler.handleDownloadRequest(req.request.fs_download_request, client.id);
              res.status_code = 0;
          }},
 
         {socket_message_CorrelationRequest_fs_upload_start_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_fs_upload_start_response_tag;
              res.response.fs_upload_start_response =
-                 FileSystemWS::fsHandler.handleUploadStart(req.request.fs_upload_start, clientId);
+                 FileSystemWS::fsHandler.handleUploadStart(req.request.fs_upload_start, client.id);
          }},
 
         {socket_message_CorrelationRequest_fs_cancel_transfer_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_fs_cancel_transfer_response_tag;
              res.response.fs_cancel_transfer_response =
                  FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer);
          }},
 
         {socket_message_CorrelationRequest_wifi_settings_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              replyWithSettings(wifiService.protoHandler, res, socket_message_CorrelationResponse_wifi_settings_tag,
                                res.response.wifi_settings);
          }},
 
         {socket_message_CorrelationRequest_wifi_settings_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              applySettings(wifiService.protoHandler, req.request.wifi_settings, res,
                            socket_message_CorrelationResponse_wifi_settings_tag, res.response.wifi_settings);
          }},
 
         {socket_message_CorrelationRequest_wifi_status_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_wifi_status_tag;
              WiFiService::status(res.response.wifi_status);
          }},
 
         {socket_message_CorrelationRequest_wifi_scan_start_tag,
-         [](const auto &req, auto &res, int clientId) { WiFiService::startScan(); }},
+         [](const auto &req, auto &res, Client client) { WiFiService::startScan(); }},
 
         {socket_message_CorrelationRequest_wifi_networks_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              if (WiFiService::scanResults(res.response.wifi_network_list))
                  res.which_response = socket_message_CorrelationResponse_wifi_network_list_tag;
              else
@@ -359,34 +367,34 @@ void setupEventSocket() {
          }},
 
         {socket_message_CorrelationRequest_ap_settings_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              replyWithSettings(apService.protoHandler, res, socket_message_CorrelationResponse_ap_settings_tag,
                                res.response.ap_settings);
          }},
 
         {socket_message_CorrelationRequest_ap_settings_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              applySettings(apService.protoHandler, req.request.ap_settings, res,
                            socket_message_CorrelationResponse_ap_settings_tag, res.response.ap_settings);
          }},
 
         {socket_message_CorrelationRequest_ap_status_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_ap_status_tag;
              apService.statusProto(res.response.ap_status);
          }},
 
         {socket_message_CorrelationRequest_mdns_status_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_mdns_status_tag;
              mdnsService.status(res.response.mdns_status);
          }},
 
         // The query runs in its own task and replies from there, so the socket is not held up.
         {socket_message_CorrelationRequest_mdns_query_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              mdnsService.queryAsync(req.request.mdns_query_request,
-                                    [reply = replyLater(req, clientId)](const api_MDNSQueryResponse &result) {
+                                    [reply = replyLater(req, client)](const api_MDNSQueryResponse &result) {
                                         reply([&result](socket_message_CorrelationResponse &response) {
                                             response.which_response =
                                                 socket_message_CorrelationResponse_mdns_query_response_tag;
@@ -398,39 +406,39 @@ void setupEventSocket() {
 
 #if USE_CAMERA && USE_DVP_CAMERA
         {socket_message_CorrelationRequest_camera_settings_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              replyWithSettings(cameraService.protoHandler, res, socket_message_CorrelationResponse_camera_settings_tag,
                                res.response.camera_settings);
          }},
 
         {socket_message_CorrelationRequest_camera_settings_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              applySettings(cameraService.protoHandler, req.request.camera_settings, res,
                            socket_message_CorrelationResponse_camera_settings_tag, res.response.camera_settings);
          }},
 #endif
 
         {socket_message_CorrelationRequest_servo_settings_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              replyWithSettings(servoController.protoHandler, res,
                                socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
          }},
 
         {socket_message_CorrelationRequest_servo_settings_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              applySettings(servoController.protoHandler, req.request.servo_settings, res,
                            socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
          }},
 
         {socket_message_CorrelationRequest_peripheral_settings_request_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              replyWithSettings(peripherals.protoHandler, res,
                                socket_message_CorrelationResponse_peripheral_settings_tag,
                                res.response.peripheral_settings);
          }},
 
         {socket_message_CorrelationRequest_peripheral_settings_tag,
-         [](const auto &req, auto &res, int clientId) {
+         [](const auto &req, auto &res, Client client) {
              applySettings(peripherals.protoHandler, req.request.peripheral_settings, res,
                            socket_message_CorrelationResponse_peripheral_settings_tag,
                            res.response.peripheral_settings);
@@ -438,32 +446,47 @@ void setupEventSocket() {
 
         // Both defer the work by 250 ms, so this reply leaves before the device goes down.
         {socket_message_CorrelationRequest_system_restart_tag,
-         [](const auto &req, auto &res, int clientId) { system_service::restart(); }},
+         [](const auto &req, auto &res, Client client) { system_service::restart(); }},
 
         {socket_message_CorrelationRequest_system_reset_tag,
-         [](const auto &req, auto &res, int clientId) { system_service::reset(); }},
+         [](const auto &req, auto &res, Client client) { system_service::reset(); }},
     };
 
-    wsSocket.on<socket_message_CorrelationRequest>([&](const socket_message_CorrelationRequest &data, int clientId) {
+    // File transfer streams over the WebSocket only: the serial link carries setup, not files.
+    static const pb_size_t WEBSOCKET_ONLY[] = {
+        socket_message_CorrelationRequest_fs_delete_request_tag,   socket_message_CorrelationRequest_fs_mkdir_request_tag,
+        socket_message_CorrelationRequest_fs_list_request_tag,     socket_message_CorrelationRequest_fs_download_request_tag,
+        socket_message_CorrelationRequest_fs_upload_start_tag,     socket_message_CorrelationRequest_fs_cancel_transfer_tag,
+    };
+
+    auto answer = [](const socket_message_CorrelationRequest &data, Client client) {
         auto res = new socket_message_CorrelationResponse();
         *res = socket_message_CorrelationResponse_init_default;
         res->correlation_id = data.correlation_id;
         res->status_code = 200;
 
         auto it = correlationHandlers.find(data.which_request);
-        if (it != correlationHandlers.end()) {
-            it->second(data, *res, clientId);
-            if (res->status_code != 0) {
-                wsSocket.emit(*res, clientId);
-            }
+        const bool websocketOnly = std::find(std::begin(WEBSOCKET_ONLY), std::end(WEBSOCKET_ONLY),
+                                             data.which_request) != std::end(WEBSOCKET_ONLY);
+        if (client.link != &wsSocket && websocketOnly) {
+            res->status_code = 400;
+            strncpy(res->error_message, "Not available over serial", sizeof(res->error_message) - 1);
+            client.link->emit(*res, client.id);
+        } else if (it != correlationHandlers.end()) {
+            it->second(data, *res, client);
+            if (res->status_code != 0) client.link->emit(*res, client.id);
         } else {
             res->status_code = 400;
             strncpy(res->error_message, "Unknown request", sizeof(res->error_message) - 1);
-            wsSocket.emit(*res, clientId);
+            client.link->emit(*res, client.id);
         }
 
         delete res;
-    });
+    };
+    wsSocket.on<socket_message_CorrelationRequest>(
+        [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&wsSocket, clientId}); });
+    serialLink.on<socket_message_CorrelationRequest>(
+        [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&serialLink, clientId}); });
 }
 
 // Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which only
@@ -608,6 +631,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
     setupServer();
     setupEventSocket();
+    serialLink.listen();
     server.listen(80);
 
     ESP_LOGI("main", "Service task started");
@@ -664,6 +688,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 }
 
 extern "C" void app_main(void) {
+    serialLink.begin();
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
