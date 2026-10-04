@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <vector>
 
 static const char* TAG = "FileSystemWS";
@@ -139,11 +140,11 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
         return;
     }
 
+    listedFiles_.clear();
+    listedDirectories_.clear();
     struct dirent* entry;
-    int fileCount = 0;
-    int dirCount = 0;
-
-    while ((entry = readdir(dir)) != nullptr && fileCount < 20 && dirCount < 20) {
+    while ((entry = readdir(dir)) != nullptr && listedFiles_.size() < MAX_LISTED &&
+           listedDirectories_.size() < MAX_LISTED) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
@@ -153,23 +154,22 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
         if (stat(fullPath.c_str(), &st) != 0) continue;
 
         if (S_ISDIR(st.st_mode)) {
-            if (dirCount < 20) {
-                strncpy(response.directories[dirCount].name, entry->d_name,
-                        sizeof(response.directories[dirCount].name) - 1);
-                dirCount++;
-            }
+            socket_message_Directory directory = socket_message_Directory_init_zero;
+            strncpy(directory.name, entry->d_name, sizeof(directory.name) - 1);
+            listedDirectories_.push_back(directory);
         } else {
-            if (fileCount < 20) {
-                strncpy(response.files[fileCount].name, entry->d_name, sizeof(response.files[fileCount].name) - 1);
-                response.files[fileCount].size = st.st_size;
-                fileCount++;
-            }
+            socket_message_File file = socket_message_File_init_zero;
+            strncpy(file.name, entry->d_name, sizeof(file.name) - 1);
+            file.size = st.st_size;
+            listedFiles_.push_back(file);
         }
     }
 
     closedir(dir);
-    response.files_count = fileCount;
-    response.directories_count = dirCount;
+    response.files = listedFiles_.data();
+    response.files_count = listedFiles_.size();
+    response.directories = listedDirectories_.data();
+    response.directories_count = listedDirectories_.size();
 }
 
 socket_message_FSListResponse FileSystemHandler::handleList(const socket_message_FSListRequest& req) {
@@ -330,10 +330,16 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         return false;
     }
 
-    auto data = std::make_unique<socket_message_FSDownloadData>();
-    memset(data.get(), 0, sizeof(socket_message_FSDownloadData));
-    data->transfer_id = transferId;
-    data->chunk_index = state.chunksSent;
+    std::unique_ptr<uint8_t[]> storage(new (std::nothrow) uint8_t[PB_BYTES_ARRAY_T_ALLOCSIZE(state.chunkSize)]);
+    if (!storage) {
+        failDownload(transferId, "Out of memory for a chunk");
+        return false;
+    }
+    auto* chunk = reinterpret_cast<pb_bytes_array_t*>(storage.get());
+    socket_message_FSDownloadData data = socket_message_FSDownloadData_init_zero;
+    data.transfer_id = transferId;
+    data.chunk_index = state.chunksSent;
+    data.data = chunk;
 
     uint32_t bytesToRead = state.chunkSize;
     uint32_t position = state.chunksSent * state.chunkSize;
@@ -341,15 +347,15 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         bytesToRead = state.fileSize - position;
     }
 
-    size_t bytesRead = fread(data->data.bytes, 1, bytesToRead, state.file);
+    size_t bytesRead = fread(chunk->bytes, 1, bytesToRead, state.file);
     if (bytesRead == 0 && bytesToRead > 0) {
         failDownload(transferId, "Failed to read file");
         return false;
     }
-    data->data.size = bytesRead;
+    chunk->size = bytesRead;
 
     if (sendDataCallback_) {
-        sendDataCallback_(*data, state.clientId);
+        sendDataCallback_(data, state.clientId);
     }
 
     state.chunksSent++;
@@ -440,8 +446,9 @@ void FileSystemHandler::handleUploadData(const socket_message_FSUploadData& req)
         return;
     }
 
-    size_t bytesWritten = fwrite(req.data.bytes, 1, req.data.size, state.file);
-    if (bytesWritten != req.data.size) {
+    const size_t size = req.data ? req.data->size : 0;
+    size_t bytesWritten = size ? fwrite(req.data->bytes, 1, size, state.file) : 0;
+    if (bytesWritten != size) {
         state.hasError = true;
         state.errorMessage = "Failed to write chunk";
         finalizeUpload(transferId, false, state.errorMessage);

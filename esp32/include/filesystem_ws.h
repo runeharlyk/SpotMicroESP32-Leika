@@ -4,6 +4,7 @@
 #include <filesystem.h>
 #include <map>
 #include <string>
+#include <vector>
 #include <functional>
 #include <cstdio>
 
@@ -73,6 +74,12 @@ class FileSystemHandler {
   private:
     // Only the socket's task handles transfers, so it also sweeps out the abandoned ones, as each new one starts.
     void cleanupExpiredTransfers();
+
+    // A listing's reply points into these, so they hold its entries until the next listing; the socket's task sends
+    // the reply before it handles another request.
+    static constexpr size_t MAX_LISTED = 20;
+    std::vector<socket_message_File> listedFiles_;
+    std::vector<socket_message_Directory> listedDirectories_;
 
     std::map<uint32_t, DownloadState> downloads_;
     std::map<uint32_t, UploadState> uploads_;

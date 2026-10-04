@@ -64,6 +64,7 @@ class ProtoDecoder {
         };
     }
 
+    /** Decodes one message and hands it to its handler; whatever decoding allocated is freed once the handler returns. */
     bool decode(const uint8_t* data, size_t len, int clientId) {
         pb_istream_t stream = pb_istream_from_buffer(data, len);
 
@@ -71,6 +72,13 @@ class ProtoDecoder {
             return false;
         }
 
+        const bool handled = dispatch(clientId);
+        pb_release(socket_message_Message_fields, &msg_);
+        return handled;
+    }
+
+  private:
+    bool dispatch(int clientId) {
         switch (msg_.which_message) {
             case socket_message_Message_sub_notif_tag:
                 if (subscribeHandler_) subscribeHandler_(msg_.message.sub_notif.tag, clientId);
@@ -95,7 +103,6 @@ class ProtoDecoder {
         }
     }
 
-  private:
     socket_message_Message msg_ = socket_message_Message_init_zero;
     SubscribeHandler subscribeHandler_;
     UnsubscribeHandler unsubscribeHandler_;
