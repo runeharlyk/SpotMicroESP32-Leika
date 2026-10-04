@@ -5,7 +5,7 @@
     import { Bluetooth, Connection } from '../icons'
 
     const transport = socket.transport
-    const transportLabels = { websocket: 'WiFi', bluetooth: 'BLE' }
+    const transportLabels = { websocket: 'WiFi', bluetooth: 'BLE', serial: 'USB' }
 
     // The link only counts as healthy once a pong has come back; a socket that is open but silent
     // still leaves the robot uncommanded.

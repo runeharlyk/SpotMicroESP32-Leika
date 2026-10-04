@@ -345,6 +345,8 @@ message Message {
         ServoStateData servo_state = 211;
         ControllerData controller_data = 250;
         RSSIData rssi = 260;
+        // On every change of the station: an address got, or the network lost.
+        api.WifiStatus wifi_status = 280;
         TelemetryHeader telemetry_header = 270;
         TelemetryBatch telemetry_batch = 271;
         TelemetryNetwork telemetry_network = 272;

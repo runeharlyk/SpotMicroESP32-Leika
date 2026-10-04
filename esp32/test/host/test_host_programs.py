@@ -46,6 +46,12 @@ PROGRAMS = {
     "spsc_ring_test.cpp": [],
     "stand_compensation_test.cpp": [],
     "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
+    "serial_frame_test.cpp": [],
+}
+
+# Arguments a program runs with besides none.
+ARGUMENTS = {
+    "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
 }
 
 
@@ -54,5 +60,5 @@ def test_host_program(program, tmp_path):
     binary = str(tmp_path / (program + ".exe"))
     subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-Ofast", *[f"-I{p}" for p in INCLUDES],
                     *[f"-idirafter{p}" for p in FIRMWARE_INCLUDES], os.path.join(HERE, program), *PROGRAMS[program], "-o", binary], check=True)
-    result = subprocess.run([binary], capture_output=True, text=True, cwd=tmp_path)
+    result = subprocess.run([binary, *ARGUMENTS.get(program, [])], capture_output=True, text=True, cwd=tmp_path)
     assert result.returncode == 0, result.stdout

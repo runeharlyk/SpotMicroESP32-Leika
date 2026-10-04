@@ -86,8 +86,19 @@ class CommAdapterBase {
     /** Called on the socket's task after a client subscribes to a tag. */
     void onSubscribed(std::function<void(int32_t tag, int cid)> listener) { subscribedListener_ = std::move(listener); }
 
+    /** The connection a client id stands for now, for a reply sent later; a link with one lasting client has one. */
+    virtual uint32_t session(int cid) { return 1; }
+
+    /** Emits only while `cid` is still the connection `session` was taken from. */
+    template <typename T>
+    void emitToSession(const T& data, int cid, uint32_t session) {
+        if (isSession(cid, session)) emit(data, cid);
+    }
+
   protected:
     virtual bool send(const uint8_t* data, size_t len, int cid) = 0;
+
+    virtual bool isSession(int cid, uint32_t session) { return true; }
 
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);

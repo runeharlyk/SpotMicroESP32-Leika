@@ -77,7 +77,10 @@
                 border-radius: 6px;
                 margin-bottom: 16px;
             }
-            esp-web-install-button button {
+            esp-web-install-button button,
+            .button {
+                display: inline-block;
+                text-decoration: none;
                 font: inherit;
                 font-weight: 600;
                 padding: 10px 18px;
@@ -119,6 +122,11 @@
                 </esp-web-install-button>
             </div>
 
+            <div class="card" id="setup" hidden>
+                <p>Installed? Set the robot up over the same cable: its Wi-Fi, variant and name.</p>
+                <a class="button" href="../setup">Set up over USB</a>
+            </div>
+
             <p class="card warn" id="empty" hidden>
                 No firmware has been published yet. Build from source as described in the
                 <a href="https://github.com/runeharlyk/SpotMicroESP32-Leika/blob/master/docs/3_software.md">software guide</a>.
@@ -133,12 +141,28 @@
                 </ul>
                 <strong>After installing</strong>
                 <ol>
-                    <li>Join the Wi-Fi network <code>Spot-Micro</code> with password <code>spot-leika</code>.</li>
-                    <li>Open <code>http://192.168.4.1</code> and configure your home network under Wi-Fi.</li>
+                    <li>Close the installer's dialog, which holds the port until then.</li>
+                    <li>
+                        Open <a href="../setup">Set up over USB</a> and connect to the same board to
+                        configure your home network, the variant and the name.
+                    </li>
                 </ol>
+                <p>
+                    Without Web Serial, join the Wi-Fi network <code>Spot-Micro</code> with password
+                    <code>spot-leika</code>, open <code>http://192.168.4.1</code> and configure your
+                    home network under Wi-Fi.
+                </p>
             </div>
         </main>
         <script type="module">
+            // ESP Web Tools 10.x fires 'closed' from its dialog, appended to the body, once the
+            // dialog is dismissed and the port it held is being released.
+            document.addEventListener('closed', event => {
+                if (event.target.localName === 'ewt-install-dialog') {
+                    document.getElementById('setup').hidden = false
+                }
+            })
+
             const version = document.getElementById('version')
             try {
                 const response = await fetch('available.json', { cache: 'no-cache' })

@@ -8,10 +8,12 @@ import {
 } from '$lib/platform_shared/message'
 import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
+import { protoMetadata as apiProtoMetadata } from '$lib/platform_shared/api'
 import { telemetry } from './telemetry'
 import type { ITransport, TransportHandlers } from '$lib/transport/transport.interface'
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
 import { createBleTransport } from '$lib/transport/ble-adapter'
+import { createSerialTransport } from '$lib/transport/serial-adapter'
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -29,7 +31,8 @@ type PendingRequest = {
 // drops those types from the maps below.
 const combinedReferences: Record<string, MessageFns<unknown>> = {
     ...protoMetadata.references,
-    ...filesystemProtoMetadata.references
+    ...filesystemProtoMetadata.references,
+    ...apiProtoMetadata.references
 }
 
 const MessageType = protoMetadata.fileDescriptor.messageType?.find(
@@ -121,6 +124,8 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     let pingIntervalId: ReturnType<typeof setInterval>
     let transport: ITransport | undefined
     let socketUrl: string | URL
+    // The port the user granted; a serial link that is lost, as in a reset, reopens it.
+    let serialPort: SerialPort | undefined
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
@@ -159,7 +164,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     }
 
     /** Replaces the active transport, so a robot being switched away from cannot feed or close its successor. */
-    function attach(create: (handlers: TransportHandlers) => ITransport) {
+    function attach<T extends ITransport>(create: (handlers: TransportHandlers) => T): T {
         detach()
         const next = create({
             onOpen: () => {
@@ -193,14 +198,42 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         }
     }
 
+    /**
+     * Web Serial asks for a port with a user gesture, so this is called from a click unless `port`
+     * was granted before. The robot answers the same requests over USB as over WiFi, but streams
+     * nothing.
+     */
+    async function connectSerial(port?: SerialPort) {
+        const serial = attach(handlers => createSerialTransport(handlers, port))
+        try {
+            await serial.connect()
+            serialPort = serial.port
+        } catch (error) {
+            // The port chooser was cancelled or the port would not open; as for BLE, fall back to WiFi.
+            if (socketUrl) connect()
+            throw error
+        }
+    }
+
+    /** Waits for the granted port to come back, as a native USB board's does after a reset, and opens it. */
+    function reopenSerial() {
+        const serial = attach(handlers => createSerialTransport(handlers, serialPort))
+        serial.connect().then(
+            () => (serialPort = serial.port),
+            error => {
+                if (transport === serial) disconnect('error', error)
+            }
+        )
+    }
+
     function disconnect(reason: SocketEvent, event?: unknown) {
         const closed = detach()
         event_listeners.get(reason)?.forEach(listener => listener(event))
-        // Re-pairing a BLE device requires a user gesture, so only WiFi redials itself.
+        // Re-pairing a BLE device requires a user gesture, so only WiFi and serial redial themselves.
         if (closed && !closed.canAutoReconnect) return
         const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
         reconnectAttempts++
-        reconnectTimeoutId = setTimeout(connect, delay)
+        reconnectTimeoutId = setTimeout(closed?.kind === 'serial' ? reopenSerial : connect, delay)
     }
 
     function handleOpen() {
@@ -344,6 +377,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         emit,
         init,
         connectBluetooth,
+        connectSerial,
         transport: { subscribe: activeTransport.subscribe },
         on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
             const tag = getTagFromMessageType(event_type)

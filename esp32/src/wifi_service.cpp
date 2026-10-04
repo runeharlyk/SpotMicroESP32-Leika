@@ -79,12 +79,14 @@ void WiFiService::manageSTA() {
 void WiFiService::onStationModeDisconnected(int32_t event, void *event_data) {
     wifi_event_sta_disconnected_t *info = static_cast<wifi_event_sta_disconnected_t *>(event_data);
     ESP_LOGI(TAG, "WiFi Disconnected. Reason code=%d", info ? info->reason : 0);
+    _statusChanged = true;
 }
 
 void WiFiService::onStationModeGotIP(int32_t event, void *event_data) {
     // After a later drop, the network that worked is tried first.
     _nextNetwork = _connectingTo;
     ESP_LOGI(TAG, "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(), WiFi.getHostname());
+    _statusChanged = true;
 }
 
 void WiFiService::mergeFactoryNetwork() {

@@ -1,19 +1,21 @@
 <script lang="ts">
     import { resolve } from '$app/paths'
+    import { goto } from '$app/navigation'
     import { browser } from '$app/environment'
     import { onDestroy, onMount } from 'svelte'
     import Visualization from '$lib/components/LazyVisualization.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
-    import { modals } from 'svelte-modals'
-    import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
-    import { Add, Bluetooth, Cancel, Check, Delete, Scan } from '$lib/components/icons'
+    import VariantSelect from '$lib/components/VariantSelect.svelte'
+    import { Add, Bluetooth, Cancel, Check, Delete, Scan, Usb } from '$lib/components/icons'
     import {
         apiLocation,
+        connectingSerial,
         connectionFeatures,
         pairing,
         robotSocketUrl,
         socket,
-        startPairing
+        startPairing,
+        startSerialConnection
     } from '$lib/stores'
     import {
         addRobot,
@@ -26,8 +28,6 @@
         type Robot
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
-    import { VARIANT_CHOICES, chooseVariant } from '$lib/services/robot-variant'
-    import { knownVariant, type Variant } from '$lib/kinematics-variants'
     import {
         normalizeRobotAddress,
         normalizeSubnetPrefix,
@@ -37,6 +37,7 @@
         type CandidateStatus
     } from '$lib/services/discovery'
     import { isBluetoothSupported } from '$lib/transport/ble-adapter'
+    import { isSerialSupported } from '$lib/transport/serial-adapter'
 
     type Reachability = 'probing' | 'online' | 'offline'
 
@@ -75,24 +76,6 @@
         connectedRobot?.name ??
             ($socket && $apiLocation === '' ? 'this robot' : $apiLocation || 'the robot')
     )
-
-    const connectedVariant = $derived(knownVariant($connectionFeatures?.variant))
-
-    const confirmVariant = (variant: Variant) =>
-        modals.open(ConfirmDialog, {
-            title: `Switch to ${variantLabel(variant)}?`,
-            message:
-                'The robot drives its legs as this variant from now on. It must be deactivated first; its servo calibration is kept.',
-            labels: {
-                cancel: { label: 'Cancel', icon: Cancel },
-                confirm: { label: 'Switch', icon: Check }
-            },
-            onConfirm: async () => {
-                modals.close()
-                const error = await chooseVariant(variant)
-                if (error) notifications.error(error, 5000)
-            }
-        })
 
     onMount(() => {
         prefixDraft = $subnetPrefix
@@ -206,6 +189,10 @@
         if (await startPairing()) adding = false
     }
 
+    const connectUsb = async () => {
+        if (await startSerialConnection()) await goto(resolve('/setup'))
+    }
+
     const statusLabel = (robot: Robot) => {
         const state = reachability[robotKey(robot)]
         if (state === 'probing') return 'Checking...'
@@ -246,26 +233,7 @@
                 </div>
 
                 {#if $connectionFeatures}
-                    <label class="select select-sm mt-3 w-full">
-                        <span class="label">Variant</span>
-                        <select
-                            value={connectedVariant ?? ''}
-                            onchange={event => {
-                                const chosen = event.currentTarget.value as Variant
-                                event.currentTarget.value = connectedVariant ?? ''
-                                confirmVariant(chosen)
-                            }}
-                        >
-                            {#if !connectedVariant}
-                                <option value="" disabled>
-                                    {variantLabel($connectionFeatures.variant) ?? 'Not chosen'}
-                                </option>
-                            {/if}
-                            {#each VARIANT_CHOICES as variant (variant)}
-                                <option value={variant}>{variantLabel(variant)}</option>
-                            {/each}
-                        </select>
-                    </label>
+                    <VariantSelect features={$connectionFeatures} class="mt-3" />
                 {/if}
 
                 {#if renaming}
@@ -407,6 +375,25 @@
                 <p class="mb-4 text-xs opacity-60">
                     Bluetooth needs a secure page (https or localhost), so it is unavailable here.
                     Use a network address instead.
+                </p>
+            {/if}
+
+            {#if isSerialSupported()}
+                <button
+                    class="btn btn-outline btn-primary w-full"
+                    onclick={connectUsb}
+                    disabled={$connectingSerial}
+                >
+                    {#if $connectingSerial}
+                        <span class="loading loading-spinner loading-xs"></span>
+                    {:else}
+                        <Usb class="h-5 w-5" />
+                    {/if}
+                    Connect over USB
+                </button>
+                <p class="mt-2 mb-4 text-xs opacity-60">
+                    For a robot on this computer's USB cable: set up its wifi, variant and name, and
+                    read its log. Driving needs WiFi or Bluetooth.
                 </p>
             {/if}
 

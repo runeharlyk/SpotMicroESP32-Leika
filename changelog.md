@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Adds setup over USB: the hosted app talks to the robot over the cable with the same requests as over WiFi, beside a live log console, and the web flasher hands over to it after an install
+
+### Fixed
+
+- Fixes log lines from different tasks being spliced together on the serial port
+
 ## [0.3.0]
 
 ### Added

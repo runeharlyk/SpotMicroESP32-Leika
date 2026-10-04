@@ -10,6 +10,14 @@ If it fails to connect, it will host an AP with a captive portal where it's poss
 
 When the robot connects successfully, the IP address will be printed to the serial monitor.
 
+### Setting up over USB
+
+The hosted app (Chrome or Edge, over HTTPS or on `localhost`) talks to the robot over the USB cable, see [Serial link](serial.md).
+After flashing from the web flasher, close the installer's dialog and click "Set up over USB"; otherwise open Setup over USB in the app's menu, or "Connect over USB" on the start page, and pick the robot's port.
+The page shows the robot's name, its variant and its WiFi networks, and the firmware's log, which shows whether the robot joins the network ("Got IP") or why it does not.
+The other settings pages work over the cable too; driving and live data need WiFi.
+Opening the port can restart the robot; it answers once it has booted.
+
 ### Joining through the access point
 
 With the factory settings the access point runs whenever the robot is not connected to a network (`FACTORY_AP_PROVISION_MODE=AP_MODE_DISCONNECTED`).

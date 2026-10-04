@@ -1,4 +1,4 @@
-export type TransportKind = 'websocket' | 'bluetooth'
+export type TransportKind = 'websocket' | 'bluetooth' | 'serial'
 
 export type TransportCloseReason = 'close' | 'error'
 
@@ -10,7 +10,10 @@ export interface TransportHandlers {
 
 export interface ITransport {
     readonly kind: TransportKind
-    /** WiFi can silently redial; BLE pairing needs a user gesture, so the caller must not retry. */
+    /**
+     * WiFi and a serial port the user granted can silently redial; BLE pairing needs a user
+     * gesture, so the caller must not retry.
+     */
     readonly canAutoReconnect: boolean
     /** Largest frame the link carries, or null when it is effectively unlimited. */
     readonly maxFrameSize: number | null
