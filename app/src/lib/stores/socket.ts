@@ -8,6 +8,7 @@ import {
 } from '$lib/platform_shared/message'
 import * as Messages from '$lib/platform_shared/message'
 import { protoMetadata as filesystemProtoMetadata } from '$lib/platform_shared/filesystem'
+import { protoMetadata as apiProtoMetadata } from '$lib/platform_shared/api'
 import { telemetry } from './telemetry'
 import type { ITransport, TransportHandlers } from '$lib/transport/transport.interface'
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
@@ -30,7 +31,8 @@ type PendingRequest = {
 // drops those types from the maps below.
 const combinedReferences: Record<string, MessageFns<unknown>> = {
     ...protoMetadata.references,
-    ...filesystemProtoMetadata.references
+    ...filesystemProtoMetadata.references,
+    ...apiProtoMetadata.references
 }
 
 const MessageType = protoMetadata.fileDescriptor.messageType?.find(
