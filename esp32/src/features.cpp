@@ -1,11 +1,17 @@
 #include <features.h>
 #include <communication/webserver.h>
 #include <settings/placeholders.h>
+#include <esp_app_desc.h>
 
 namespace feature_service {
 
+// The app reads the env out of an image file behind this marker, so the build target is only ever taken from here.
+static const char BUILD_TARGET_MARKER[] = "LEIKA_ENV=" BUILD_TARGET;
+
+const char *buildTarget() { return BUILD_TARGET_MARKER + sizeof("LEIKA_ENV=") - 1; }
+
 void printFeatureConfiguration() {
-    ESP_LOGI("Features", "Firmware version: %s, name: %s, target: %s, camera: %s", APP_VERSION, APP_NAME, BUILD_TARGET,
+    ESP_LOGI("Features", "Firmware version: %s, name: %s, target: %s, camera: %s", APP_VERSION, APP_NAME, buildTarget(),
              USE_CAMERA ? "built in" : "none");
 }
 
@@ -28,7 +34,8 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.embed_www = true;
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);
     fd_res.firmware_name = const_cast<char *>(APP_NAME);
-    fd_res.firmware_built_target = const_cast<char *>(BUILD_TARGET);
+    fd_res.firmware_built_target = const_cast<char *>(buildTarget());
+    esp_app_get_elf_sha256(fd_res.firmware_elf_sha256, sizeof(fd_res.firmware_elf_sha256));
     fd_res.variant = const_cast<char *>(variantName(features.variant));
     fd_res.device_id = const_cast<char *>(deviceId().c_str());
     strncpy(fd_res.robot_name, features.robotName, sizeof(fd_res.robot_name) - 1);

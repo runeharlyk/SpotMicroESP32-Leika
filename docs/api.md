@@ -38,6 +38,16 @@ Field names below are the proto names; the TypeScript client uses camelCase.
 | `system_restart`             | none (empty 200)              | Restart; the reply leaves first, as the restart is deferred by 250 ms    |
 | `system_reset`               | none (empty 200)              | Delete the stored settings, then restart                                 |
 
+### Firmware update
+
+Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for the sequence.
+
+| Request      | Response         | Description                                                                                         |
+| ------------ | ---------------- | --------------------------------------------------------------------------------------------------- |
+| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 501 without a second slot |
+| `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, which ends the update     |
+| `ota_finish` | none (empty 200) | Validate the image and boot it next; 400 when incomplete, 422 when the robot rejects it              |
+
 ### WiFi and access point
 
 | Request                               | Response            | Description                                                           |

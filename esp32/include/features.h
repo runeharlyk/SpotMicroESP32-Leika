@@ -23,6 +23,9 @@ struct RuntimeFeatures {
     bool ws2812;
 };
 
+/** The PlatformIO env this firmware was built for. */
+const char *buildTarget();
+
 void printFeatureConfiguration();
 
 void features_request(const RuntimeFeatures &features, socket_message_FeaturesDataResponse &fd_res);

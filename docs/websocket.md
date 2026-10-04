@@ -114,6 +114,19 @@ A transfer that is idle for 30 s is abandoned.
 - **Upload:** the client sends `fs_upload_start` and receives a `transfer_id`, streams `fs_upload_data` (42) chunks, and receives `fs_upload_complete` (43).
   The data is written to a `.part` file first, so an interrupted upload leaves the original file intact.
 
+## Firmware update
+
+The app image goes into the app slot the robot does not run from, as correlation requests, so each chunk is acknowledged and a refusal stops the upload at once.
+
+1. `ota_start` with the image size, accepted only while the robot is deactivated; mode changes and gestures are ignored until the update ends.
+2. `ota_chunk` requests in order, 16 KiB each; the app keeps four in flight.
+3. `ota_finish`: `esp_ota_end` checks the image's appended SHA-256 and its chip, then the robot selects it for the next boot.
+4. `system_restart`.
+
+A failed request, the client's socket closing, or 30 s without a chunk ends the update and leaves the boot partition as it was.
+The new firmware boots on probation and confirms itself when the first socket client connects; a reset before that rolls back to the previous firmware.
+After the reconnect the app compares `firmware_elf_sha256` in the features with the image's to tell the new firmware from a rollback.
+
 ## Examples
 
 Send controller input with the app's socket store:
