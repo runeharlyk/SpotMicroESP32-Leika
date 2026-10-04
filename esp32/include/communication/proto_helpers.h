@@ -47,6 +47,13 @@ DEFINE_MESSAGE_TRAITS(FSUploadComplete, fs_upload_complete)
 
 #undef DEFINE_MESSAGE_TRAITS
 
+template <>
+struct MessageTraits<api_WifiStatus> {
+    static constexpr pb_size_t tag = socket_message_Message_wifi_status_tag;
+    static void assign(socket_message_Message& msg, const api_WifiStatus& data) { msg.message.wifi_status = data; }
+    static const api_WifiStatus& access(const socket_message_Message& msg) { return msg.message.wifi_status; }
+};
+
 class ProtoDecoder {
   public:
     using SubscribeHandler = std::function<void(int32_t tag, int clientId)>;

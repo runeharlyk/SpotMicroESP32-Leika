@@ -37,6 +37,9 @@ class WiFiService : public StatefulService<WiFiSettings> {
     static bool scanResults(api_WifiNetworkList &list);
     static void status(api_WifiStatus &status);
 
+    /** Whether the station got an address or lost the network since the last call. */
+    bool takeStatusChanged() { return _statusChanged.exchange(false); }
+
     StatefulProtoHandler<WiFiSettings, api_WifiSettings> protoHandler;
 
   private:
@@ -52,6 +55,8 @@ class WiFiService : public StatefulService<WiFiSettings> {
 
     // Set from the socket's task when settings change; the service task applies it.
     std::atomic<uint32_t> _reconfigureAt {0};
+    // Set on the event loop's task, whose stack is too small to report the status from there.
+    std::atomic<bool> _statusChanged {false};
     uint32_t _nextAttemptAt {0};
     uint32_t _nextNetwork {0};
     uint32_t _connectingTo {0};

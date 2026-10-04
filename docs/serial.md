@@ -28,7 +28,7 @@ A reader that starts in the middle of a frame takes its tail for log text and fi
 
 - `CorrelationRequest` and its `CorrelationResponse`, as listed in [API](api.md#requests-over-the-websocket), with one exception: the filesystem requests are refused with 400 "Not available over serial".
 - `PingMsg` and `PongMsg`.
-- Subscriptions are accepted, but nothing is broadcast over the serial link.
+- Subscriptions are accepted; of the broadcasts, only `wifi_status` is sent over the serial link, so a robot set up over USB shows it joining the network.
 
 Controller input, modes, gaits, angles, servo PWM and servo state are not handled over the serial link.
 The link has one client; a reply sent later, such as an I2C scan's, goes to whoever is on the port when it is ready.

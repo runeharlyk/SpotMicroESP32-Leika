@@ -651,6 +651,14 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         EXECUTE_EVERY_N_MS(100, {
             publishMotion();
 
+            // Over the serial link too: a robot set up over USB shows it joining the network.
+            if (wifiService.takeStatusChanged()) {
+                api_WifiStatus status = api_WifiStatus_init_zero;
+                WiFiService::status(status);
+                wsSocket.emit(status);
+                serialLink.emit(status);
+            }
+
             if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);

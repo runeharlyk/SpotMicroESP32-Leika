@@ -11,7 +11,8 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { WifiNetwork, type WifiStatus, type WifiSettings } from '$lib/platform_shared/api'
+    import { WifiNetwork, WifiStatus, type WifiSettings } from '$lib/platform_shared/api'
+    import { socket } from '$lib/stores'
     import { robotRequest } from '$lib/robot-request'
     import { uint32ToIp } from '$lib/utilities'
     import {
@@ -77,6 +78,9 @@
     }
 
     let statusLoad = $state(getWifiStatus())
+
+    // The robot reports every change of the station, which a page opened over USB sees it join the network by.
+    $effect(() => socket.on(WifiStatus, status => (wifiStatus = status)))
     let settingsLoad = $state(getWifiSettings())
 
     /** Saves `changes` on top of the stored settings; true once the robot accepted them. */
