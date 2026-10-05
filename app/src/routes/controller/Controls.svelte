@@ -15,6 +15,7 @@
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
+    import { shapeStick } from '$lib/utilities/stick'
     import { notifications } from '$lib/components/toasts/notifications'
     import { ModeData, ModesEnum, WalkGaitData, WalkGaits } from '$lib/platform_shared/message'
     import { gamepadCommand, stepHeight } from '$lib/utilities/gamepad-mapping'
@@ -66,9 +67,9 @@
             restOpacity: 1
         })
 
-        left.on('move', (_, data) => handleJoyMove('left', data.vector))
+        left.on('move', (_, data) => handleJoyMove('left', shapeStick(data.vector)))
         left.on('end', () => handleJoyMove('left', { x: 0, y: 0 }))
-        right.on('move', (_, data) => handleJoyMove('right', data.vector))
+        right.on('move', (_, data) => handleJoyMove('right', shapeStick(data.vector)))
         right.on('end', () => handleJoyMove('right', { x: 0, y: 0 }))
     })
 
