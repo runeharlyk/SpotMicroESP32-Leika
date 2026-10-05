@@ -3,7 +3,6 @@
     import { get } from 'svelte/store'
     import {
         Group,
-        Matrix4,
         Mesh,
         MeshBasicMaterial,
         Raycaster,
