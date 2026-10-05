@@ -207,6 +207,10 @@ bool WiFiClass::begin(const char* ssid, const char* password, int32_t channel, c
         ESP_LOGE(TAG, "Failed to set STA config: %s", esp_err_to_name(err));
         return false;
     }
+    // 40 MHz on a crowded 2.4 GHz band: frames waited so long for the air that their buffers took the heap, until the
+    // link stalled for good under the app's twenty or so messages a second. On 20 MHz it stays clear.
+    err = esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
+    if (err != ESP_OK) ESP_LOGW(TAG, "Station stays at its default bandwidth: %s", esp_err_to_name(err));
 
     if (_useStaticIp) {
         esp_netif_dhcpc_stop(_sta_netif);

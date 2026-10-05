@@ -41,7 +41,11 @@ class WebServer {
     void onWsClose(WsCloseHandler handler);
     void registerWebsocket(const char* uri);
 
+    /** Sends one binary frame, a small one in one write; a frame cut short closes the session. */
     esp_err_t wsSend(int sockfd, const uint8_t* data, size_t len);
+
+    /** Ends a session from any task; its close handlers run on the server's task. */
+    void endSession(int sockfd);
 
     void addDefaultHeader(const char* key, const char* value);
 
@@ -59,6 +63,9 @@ class WebServer {
     static esp_err_t send(httpd_req_t* req, int status, const uint8_t* data, size_t len);
 
   private:
+    // Frames up to this size are sent from one stack buffer: every stream message and most replies.
+    static constexpr size_t SINGLE_SEND_MAX = 1024;
+
     httpd_handle_t server_ = nullptr;
     httpd_config_t config_;
     std::vector<HttpRoute> routes_;

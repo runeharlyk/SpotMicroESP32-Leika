@@ -100,6 +100,9 @@ class CommAdapterBase {
 
     virtual bool isSession(int cid, uint32_t session) { return true; }
 
+    /** Whether a client can take a frame now, without waiting. */
+    virtual bool ready(int cid) { return true; }
+
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         std::list<int>& clients = client_subscriptions_[tag];
@@ -152,13 +155,15 @@ class CommAdapterBase {
 
   private:
     // Sends to a copy of the list, so a slow client never holds up subscribing or closing on the socket task.
+    // Subscriptions stream the latest value, so a client that cannot take one now misses it: queueing it
+    // instead held memory for every frame a slow link had not yet sent, until the heap ran out.
     bool sendToSubscribers(int32_t tag, const uint8_t* data, size_t len) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         const std::list<int> clients = client_subscriptions_[tag];
         xSemaphoreGive(mutex_);
         bool sent = true;
         for (int cid : clients) {
-            sent = send(data, len, cid) && sent;
+            sent = ready(cid) && send(data, len, cid) && sent;
         }
         return sent;
     }

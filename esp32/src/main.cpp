@@ -6,6 +6,7 @@
 #include <wifi/wifi_idf.h>
 #include <functional>
 #include <map>
+#include <new>
 
 #include <filesystem.h>
 #include <filesystem_ws.h>
@@ -124,7 +125,11 @@ struct Client {
 static std::function<void(const ReplyFiller &)> replyLater(const socket_message_CorrelationRequest &req, Client client) {
     return [correlationId = req.correlation_id, client, session = client.link->session(client.id)](
                const ReplyFiller &fill) {
-        auto reply = new socket_message_CorrelationResponse();
+        auto reply = new (std::nothrow) socket_message_CorrelationResponse();
+        if (!reply) {
+            ESP_LOGE("main", "No memory to answer request %u", (unsigned)correlationId);
+            return;
+        }
         *reply = socket_message_CorrelationResponse_init_default;
         reply->correlation_id = correlationId;
         reply->status_code = 200;
@@ -460,7 +465,12 @@ void setupEventSocket() {
     };
 
     auto answer = [](const socket_message_CorrelationRequest &data, Client client) {
-        auto res = new socket_message_CorrelationResponse();
+        // Without exceptions a failed new aborts the robot; a request the heap cannot answer now times out instead.
+        auto res = new (std::nothrow) socket_message_CorrelationResponse();
+        if (!res) {
+            ESP_LOGE("main", "No memory to answer request %u", (unsigned)data.correlation_id);
+            return;
+        }
         *res = socket_message_CorrelationResponse_init_default;
         res->correlation_id = data.correlation_id;
         res->status_code = 200;

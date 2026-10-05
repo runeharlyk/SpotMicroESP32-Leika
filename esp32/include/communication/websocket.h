@@ -5,6 +5,7 @@
 #include <map>
 #include <communication/webserver.h>
 #include <communication/comm_base.hpp>
+#include <communication/stall_tracker.h>
 
 class Websocket : public CommAdapterBase {
   public:
@@ -25,6 +26,9 @@ class Websocket : public CommAdapterBase {
     std::map<int, uint32_t> sessions_;
     uint32_t nextSession_ = 1;
     std::function<void(int)> closeListener_;
+    // A client that has taken no frame for this long is closed, so the frames its socket holds are freed.
+    static constexpr uint32_t STALL_LIMIT_MS = 10000;
+    StallTracker stalls_ {STALL_LIMIT_MS};
 
     bool isSession(int cid, uint32_t session) override;
 
@@ -33,4 +37,5 @@ class Websocket : public CommAdapterBase {
     esp_err_t onFrame(httpd_req_t* req, httpd_ws_frame_t* frame);
 
     bool send(const uint8_t* data, size_t len, int cid) override;
+    bool ready(int cid) override;
 };
