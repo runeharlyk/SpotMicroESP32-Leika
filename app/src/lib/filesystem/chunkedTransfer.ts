@@ -14,6 +14,7 @@ import type {
     FSCancelTransfer
 } from '$lib/platform_shared/filesystem'
 import type { Result, DataResult, ListResult, ProgressCallback } from '$lib/types/models'
+import { saveFile } from '$lib/utilities/save-file'
 
 const MAX_CHUNK_SIZE = 2 ** 14
 
@@ -435,16 +436,7 @@ export class FileSystemClient {
             return { success: false, error: result.error }
         }
 
-        // Create blob and trigger download
-        const blob = new Blob([result.data.buffer as ArrayBuffer])
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        saveFile(result.data.buffer as ArrayBuffer, filename)
 
         return { success: true }
     }
