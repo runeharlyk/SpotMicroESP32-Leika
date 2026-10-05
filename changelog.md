@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
+- Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
+- Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
+
+### Fixed
+
+- Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request
+- Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
+
 ## [0.3.0]
 
 ### Added
