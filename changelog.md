@@ -15,9 +15,6 @@ All notable changes to this project will be documented in this file.
 
 - Requires one flash over the cable per robot for the first firmware that updates over the air, since it brings a new bootloader with rollback
 - Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
-
-### Changed
-
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
