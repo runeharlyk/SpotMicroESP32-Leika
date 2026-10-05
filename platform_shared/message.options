@@ -17,6 +17,7 @@ socket_message.FeaturesDataResponse.variant type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_version type:FT_POINTER
+socket_message.FeaturesDataResponse.firmware_elf_sha256 max_size:65
 socket_message.FeaturesDataResponse.device_id type:FT_POINTER
 socket_message.FeaturesDataResponse.robot_name max_size:33
 socket_message.FeaturesDataResponse.hostname max_size:33
@@ -25,6 +26,9 @@ socket_message.RobotSettings.name max_size:33
 socket_message.RobotNameUpdate.name max_size:33
 
 socket_message.CorrelationResponse.error_message max_size:64
+
+# A pointer, as the file chunks are (filesystem.options), so a Message stays small
+socket_message.OtaChunk.data type:FT_POINTER
 
 socket_message.ImuSample.accel max_count:3 fixed_count:true
 socket_message.ImuSample.gyro max_count:3 fixed_count:true

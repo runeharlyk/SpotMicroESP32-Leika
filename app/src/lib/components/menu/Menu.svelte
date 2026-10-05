@@ -151,6 +151,12 @@
                         feature: true
                     },
                     {
+                        title: 'Firmware Update',
+                        icon: Chip,
+                        href: withBase('/system/firmware'),
+                        feature: true
+                    },
+                    {
                         title: 'System Metrics',
                         icon: Metrics,
                         href: withBase('/system/metrics'),

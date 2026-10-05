@@ -19,6 +19,7 @@
 #include <communication/serial_link.h>
 #include <features.h>
 #include <motion.h>
+#include <ota_flash.h>
 #include <wifi_service.h>
 #include <ap_service.h>
 #include <mdns_service.h>
@@ -55,6 +56,8 @@ WiFiService wifiService;
 APService apService;
 RobotService robotService;
 Telemetry telemetry;
+EspOtaFlash otaFlash;
+OtaSession otaSession {otaFlash};
 
 // The variant the motion code and the servos run with: read at boot, switched by the control task.
 static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
@@ -111,6 +114,13 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
     }
     replyWithSettings(handler, res, tag, reply);
 }
+
+static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
+    res.status_code = reply.status;
+    strncpy(res.error_message, reply.reason, sizeof(res.error_message) - 1);
+}
+
+static uint32_t nowMs() { return esp_timer_get_time() / 1000; }
 
 using ReplyFiller = std::function<void(socket_message_CorrelationResponse &)>;
 
@@ -187,14 +197,18 @@ void setupEventSocket() {
     FileSystemWS::fsHandler.setScheduling(
         [](std::function<void()> work) { return server.queueWork(std::move(work)); },
         [](int clientId, uint32_t ms) { return WebServer::waitWritable(clientId, ms); });
-    wsSocket.onClose([](int clientId) { FileSystemWS::fsHandler.dropClient(clientId); });
+    wsSocket.onOpen([](int clientId) { confirmRunningFirmware(); });
+    wsSocket.onClose([](int clientId) {
+        FileSystemWS::fsHandler.dropClient(clientId);
+        otaSession.drop(clientId);
+    });
     wsSocket.onSubscribed([](int32_t tag, int clientId) {
         if (tag != socket_message_Message_telemetry_batch_tag) return;
         telemetry.setRecording(true);
         static socket_message_TelemetryHeader header;
         header = socket_message_TelemetryHeader_init_zero;
         header.firmware_version = const_cast<char *>(APP_VERSION);
-        header.build_target = const_cast<char *>(BUILD_TARGET);
+        header.build_target = const_cast<char *>(feature_service::buildTarget());
         header.variant = const_cast<char *>(variantName(activeVariant.load()));
         header.device_id = const_cast<char *>(deviceId().c_str());
         header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
@@ -217,8 +231,11 @@ void setupEventSocket() {
         motionService.inbox.postInput(data, now / 1000, now);
     });
 
-    wsSocket.on<socket_message_ModeData>(
-        [&](const socket_message_ModeData &data, int clientId) { motionService.inbox.postMode(data.mode); });
+    // A robot taking on a mode during an update would move with its firmware half replaced; gestures are held back
+    // in the control task for the same reason.
+    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
+        if (!otaSession.running()) motionService.inbox.postMode(data.mode);
+    });
 
     wsSocket.on<socket_message_WalkGaitData>(
         [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
@@ -455,13 +472,32 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_system_reset_tag,
          [](const auto &req, auto &res, Client client) { system_service::reset(); }},
+
+        {socket_message_CorrelationRequest_ota_start_tag,
+         [](const auto &req, auto &res, Client client) {
+             const bool deactivated = motionService.mode() == socket_message_ModesEnum_DEACTIVATED;
+             replyOta(res, otaSession.start(req.request.ota_start.size, deactivated, client.id, nowMs()));
+         }},
+
+        {socket_message_CorrelationRequest_ota_chunk_tag,
+         [](const auto &req, auto &res, Client client) {
+             const auto &chunk = req.request.ota_chunk;
+             const uint8_t *bytes = chunk.data ? chunk.data->bytes : nullptr;
+             const size_t size = chunk.data ? chunk.data->size : 0;
+             replyOta(res, otaSession.chunk(chunk.index, bytes, size, client.id, nowMs()));
+         }},
+
+        {socket_message_CorrelationRequest_ota_finish_tag,
+         [](const auto &req, auto &res, Client client) { replyOta(res, otaSession.finish(client.id)); }},
     };
 
-    // File transfer streams over the WebSocket only: the serial link carries setup, not files.
+    // File transfer and firmware updates go over the WebSocket only: the serial link carries setup, not files.
     static const pb_size_t WEBSOCKET_ONLY[] = {
         socket_message_CorrelationRequest_fs_delete_request_tag,   socket_message_CorrelationRequest_fs_mkdir_request_tag,
         socket_message_CorrelationRequest_fs_list_request_tag,     socket_message_CorrelationRequest_fs_download_request_tag,
         socket_message_CorrelationRequest_fs_upload_start_tag,     socket_message_CorrelationRequest_fs_cancel_transfer_tag,
+        socket_message_CorrelationRequest_ota_start_tag,           socket_message_CorrelationRequest_ota_chunk_tag,
+        socket_message_CorrelationRequest_ota_finish_tag,
     };
 
     auto answer = [](const socket_message_CorrelationRequest &data, Client client) {
@@ -566,7 +602,8 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
         const int64_t tickStart = esp_timer_get_time();
         const ImuSample imu = peripherals.imuSample();
-        motionService.update(imu, peripherals.takeGesture());
+        const gesture_t gesture = peripherals.takeGesture();
+        motionService.update(imu, otaSession.running() ? gesture_t::eGestureNone : gesture);
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
@@ -649,6 +686,8 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     for (;;) {
         wifiService.loop();
         apService.loop();
+
+        EXECUTE_EVERY_N_MS(1000, otaSession.expire(nowMs()));
 
         EXECUTE_EVERY_N_MS(2000, {
             if (wsSocket.hasSubscribers(socket_message_Message_analytics_tag)) {

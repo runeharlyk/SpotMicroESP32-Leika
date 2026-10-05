@@ -13,6 +13,9 @@ class Websocket : public CommAdapterBase {
 
     void begin() override;
 
+    /** Called on the socket's task when a client connects. */
+    void onOpen(std::function<void(int cid)> listener) { openListener_ = std::move(listener); }
+
     /** Called on the socket's task when a client's session ends, however it ends. */
     void onClose(std::function<void(int cid)> listener) { closeListener_ = std::move(listener); }
 
@@ -25,6 +28,7 @@ class Websocket : public CommAdapterBase {
     SemaphoreHandle_t sessionsMutex_;
     std::map<int, uint32_t> sessions_;
     uint32_t nextSession_ = 1;
+    std::function<void(int)> openListener_;
     std::function<void(int)> closeListener_;
     // A client that has taken no frame for this long is closed, so the frames its socket holds are freed.
     static constexpr uint32_t STALL_LIMIT_MS = 10000;

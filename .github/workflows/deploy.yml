@@ -54,7 +54,7 @@ jobs:
           mkdir -p "$site/firmware"
           cp flasher/index.html "$site/"
           if tag=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName); then
-            gh release download "$tag" --repo "${{ github.repository }}" --pattern '*.factory.bin' --dir "$site/firmware"
+            gh release download "$tag" --repo "${{ github.repository }}" --pattern '*.bin' --dir "$site/firmware"
           else
             tag=none
           fi

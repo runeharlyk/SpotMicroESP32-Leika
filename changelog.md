@@ -7,9 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Adds setup over USB: the hosted app talks to the robot over the cable with the same requests as over WiFi, beside a live log console, and the web flasher hands over to it after an install
+- Adds firmware updates over the air from the app, from a chosen file or from the latest release
+- Adds a rollback to the previous firmware when a new one does not come up
+- Adds the plain app image of every board to each release, beside its factory image
 
 ### Changed
 
+- Requires one flash over the cable per robot for the first firmware that updates over the air, since it brings a new bootloader with rollback
+- Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds

@@ -23,18 +23,20 @@ jobs:
         with:
           pattern: firmware-*
 
-      - name: Collect factory images
+      - name: Collect factory and app images
         run: |
           mkdir release
           for dir in firmware-*; do
-            cp "$dir/firmware.factory.bin" "release/${dir#firmware-}.factory.bin"
+            env="${dir#firmware-}"
+            cp "$dir/firmware.factory.bin" "release/$env.factory.bin"
+            cp "$dir/firmware.bin" "release/$env.bin"
           done
           ls -l release
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" release/*.factory.bin --repo "${{ github.repository }}" --generate-notes
+        run: gh release create "${{ github.ref_name }}" release/*.bin --repo "${{ github.repository }}" --generate-notes
 
       - name: Redeploy the web flasher from master
         env:

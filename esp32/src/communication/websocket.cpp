@@ -23,6 +23,7 @@ void Websocket::onWsOpen(httpd_req_t* req) {
     removeClient(sockfd);
     ESP_LOGI(TAG, "Client connected: %d", sockfd);
     sendPong(sockfd);
+    if (openListener_) openListener_(sockfd);
 }
 
 void Websocket::onWsClose(int sockfd) {

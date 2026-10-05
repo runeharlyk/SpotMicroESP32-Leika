@@ -26,6 +26,8 @@ message FeaturesDataResponse {
     string firmware_built_target = 20;
     string firmware_name = 30;
     string firmware_version = 40;
+    // Hex SHA-256 of the running image's ELF, as its app description holds it: tells two builds of a version apart.
+    string firmware_elf_sha256 = 41;
     
     // Each sensor is active when it was detected and is not disabled in the peripheral settings.
     bool camera = 50;
@@ -81,6 +83,17 @@ message SystemInformationResponse {
 message SystemRestart {}
 message SystemReset {}
 
+// A firmware update: the image goes in order, in chunks of at most 16 KB, into the app slot the robot does not run
+// from; the finish validates it and makes it the one booted next, which SystemRestart then boots.
+message OtaStart {
+    uint32 size = 1;
+}
+message OtaChunk {
+    uint32 index = 1;
+    bytes data = 2;
+}
+message OtaFinish {}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -114,6 +127,9 @@ message CorrelationRequest {
         api.PeripheralSettings peripheral_settings = 191;
         SystemRestart system_restart = 200;
         SystemReset system_reset = 201;
+        OtaStart ota_start = 210;
+        OtaChunk ota_chunk = 211;
+        OtaFinish ota_finish = 212;
     }
 }
 
