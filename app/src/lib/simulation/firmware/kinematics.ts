@@ -47,15 +47,8 @@ function solveLeg(cfg: KinConfig, x: number, y: number, z: number) {
     }
 }
 
-/**
- * Kinematics::calculate_inverse_kinematics: 12 joint angles in degrees, before MotionService's dir table. Bit `leg` of
- * `unreachable.mask` is set for a foot the leg cannot reach, which it then bends as far as it goes.
- */
-export function inverseKinematics(
-    cfg: KinConfig,
-    body: BodyState,
-    unreachable?: { mask: number }
-): number[] {
+/** Kinematics::euler2R of the body's angles: body points to world, as world = rot * body + (xm, ym, zm). */
+export function bodyRotation(body: BodyState): number[][] {
     const roll = body.omega * DEG2RAD_F
     const pitch = body.phi * DEG2RAD_F
     const yaw = body.psi * DEG2RAD_F
@@ -67,11 +60,23 @@ export function inverseKinematics(
         Math.cos(yaw),
         Math.sin(yaw)
     ]
-    const rot = [
+    return [
         [cp * cy, -sy * cp, sp],
         [sr * sp * cy + sy * cr, -sr * sp * sy + cr * cy, -sr * cp],
         [sr * sy - sp * cr * cy, sr * cy + sp * sy * cr, cr * cp]
     ]
+}
+
+/**
+ * Kinematics::calculate_inverse_kinematics: 12 joint angles in degrees, before MotionService's dir table. Bit `leg` of
+ * `unreachable.mask` is set for a foot the leg cannot reach, which it then bends as far as it goes.
+ */
+export function inverseKinematics(
+    cfg: KinConfig,
+    body: BodyState,
+    unreachable?: { mask: number }
+): number[] {
+    const rot = bodyRotation(body)
     const inv = [0, 1, 2].map(r => [0, 1, 2].map(c => rot[c][r]))
     const invTrans = inv.map(row => -row[0] * body.xm - row[1] * body.ym - row[2] * body.zm)
 
