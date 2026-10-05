@@ -49,6 +49,8 @@ inline std::set<const void *> live;
 inline std::atomic<int> devicesAdded {0};
 inline std::atomic<int> staleUses {0};
 inline std::atomic<int> transfers {0};
+// The clock the most recently added device was given.
+inline std::atomic<uint32_t> deviceSpeedHz {0};
 inline std::vector<std::vector<uint8_t>> written;
 // What each device's registers hold: reads return them, writes change them, as a register-mapped chip does.
 inline std::map<uint8_t, std::array<uint8_t, 256>> registers;
@@ -63,6 +65,7 @@ inline void reset() {
     written.clear();
     registers.clear();
     devicesAdded = staleUses = transfers = 0;
+    deviceSpeedHz = 0;
 }
 } // namespace fake_i2c
 
@@ -87,6 +90,7 @@ inline esp_err_t i2c_master_bus_add_device(i2c_master_bus_handle_t bus, const i2
     if (!fake_i2c::isLive(bus)) fake_i2c::staleUses++;
     *device = new FakeDevice {static_cast<uint8_t>(config->device_address)};
     fake_i2c::devicesAdded++;
+    fake_i2c::deviceSpeedHz = config->scl_speed_hz;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     fake_i2c::live.insert(*device);
     return ESP_OK;

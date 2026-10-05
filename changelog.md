@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
+- Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 
 ### Fixed
 

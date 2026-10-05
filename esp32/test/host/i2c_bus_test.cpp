@@ -112,8 +112,25 @@ static void aScanNeverProbesAFreedBusWhileTheBusRestarts() {
     bus.end();
 }
 
+// Every sensor here (MPU6050, HMC5883L, PAJ7620) is rated for 400 kHz; robots still store the old 1 MHz default.
+static void theBusRunsNoFasterThanItsSlowestDevices() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    uint8_t value = 0;
+    bus.begin(21, 22, 1000000);
+    CHECK(bus.writeReg(MPU6050, 0x6b, &value, 1) == ESP_OK);
+    CHECK(bus.freq() == 400000 && fake_i2c::deviceSpeedHz == 400000);
+    bus.end();
+
+    bus.begin(21, 22, 100000);
+    CHECK(bus.writeReg(MPU6050, 0x6b, &value, 1) == ESP_OK);
+    CHECK(bus.freq() == 100000 && fake_i2c::deviceSpeedHz == 100000);
+    bus.end();
+}
+
 int main() {
     devicesAreCreatedOnceNotPerTransfer();
+    theBusRunsNoFasterThanItsSlowestDevices();
     aStoppedBusRefusesTransfersAndStartsAgainClean();
     aRegisterWriteSendsTheRegisterThenTheDataInOneTransaction();
     transfersNeverUseAFreedHandleWhileTheBusRestarts();
