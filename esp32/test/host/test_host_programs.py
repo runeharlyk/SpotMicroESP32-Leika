@@ -50,11 +50,17 @@ PROGRAMS = {
     "ws_frame_test.cpp": [],
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "stall_tracker_test.cpp": [],
+    "serial_frame_test.cpp": [],
 }
 
 # Compiler flags a program needs besides the firmware's.
 FLAGS = {
     "proto_decoder_test.cpp": ["-include", os.path.join(HERE, "stubs", "counting_alloc.h")],
+}
+
+# Arguments a program runs with besides none.
+ARGUMENTS = {
+    "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
 }
 
 
@@ -64,5 +70,5 @@ def test_host_program(program, tmp_path):
     subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++20", "-Ofast", "-DPB_ENABLE_MALLOC", *FLAGS.get(program, []),
                     *[f"-I{p}" for p in INCLUDES],
                     *[f"-idirafter{p}" for p in FIRMWARE_INCLUDES], os.path.join(HERE, program), *PROGRAMS[program], "-o", binary], check=True)
-    result = subprocess.run([binary], capture_output=True, text=True, cwd=tmp_path)
+    result = subprocess.run([binary, *ARGUMENTS.get(program, [])], capture_output=True, text=True, cwd=tmp_path)
     assert result.returncode == 0, result.stdout

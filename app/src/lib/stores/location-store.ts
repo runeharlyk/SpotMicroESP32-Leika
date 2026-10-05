@@ -19,9 +19,9 @@ export function canReachRobot(pageUrl: URL, location: string): boolean {
     return pageUrl.protocol !== 'https:' || location !== ''
 }
 
-/** A robot the app can talk to: over the socket it can open, or over Bluetooth, which needs no address. */
+/** A robot the app can talk to: over the socket it can open, or over Bluetooth or USB, which need no address. */
 export function hasRobot(pageUrl: URL, location: string, transport: TransportKind | null): boolean {
-    return canReachRobot(pageUrl, location) || transport === 'bluetooth'
+    return canReachRobot(pageUrl, location) || transport === 'bluetooth' || transport === 'serial'
 }
 
 export function robotSocketUrl(address: string = get(apiLocation)): string {

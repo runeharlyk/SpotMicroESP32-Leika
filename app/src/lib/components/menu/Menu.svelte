@@ -20,9 +20,11 @@
         AP,
         Copyright,
         Metrics,
-        DNS
+        DNS,
+        Usb
     } from '$lib/components/icons'
     import { EMBEDDED_BUILD } from '$lib/build-flags'
+    import { isSerialSupported } from '$lib/transport/serial-adapter'
 
     const appName = page.data.app_name
 
@@ -56,6 +58,12 @@
                 icon: WiFi,
                 href: withBase('/connection'),
                 feature: !EMBEDDED_BUILD
+            },
+            {
+                title: 'Setup over USB',
+                icon: Usb,
+                href: withBase('/setup'),
+                feature: isSerialSupported()
             },
             {
                 title: 'Controller',

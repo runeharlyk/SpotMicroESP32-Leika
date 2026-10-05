@@ -22,3 +22,4 @@ These are the steps it takes to get a fresh new robot up and barking.
 - [Motion system](motion_system.md) (modes, controller mapping and the trot and crawl gaits)
 - [API](api.md)
 - [WebSocket](websocket.md) (the protobuf messages, subscriptions, the dead-man stop and telemetry)
+- [Serial link](serial.md) (the same requests over a USB cable, beside the log)

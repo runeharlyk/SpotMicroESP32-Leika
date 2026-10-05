@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Adds setup over USB: the hosted app talks to the robot over the cable with the same requests as over WiFi, beside a live log console, and the web flasher hands over to it after an install
+
 ### Changed
 
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
@@ -14,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
+- Fixes log lines from different tasks being spliced together on the serial port
 
 ## [0.3.0]
 

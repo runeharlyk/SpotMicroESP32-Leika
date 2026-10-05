@@ -18,8 +18,8 @@
     <div role="alert" class="alert alert-warning alert-soft w-full max-w-2xl self-center">
         <Warning class="h-6 w-6 shrink-0" />
         <span>
-            Add the robot's address on the home page, or connect over Bluetooth, to change these
-            settings.
+            Add the robot's address on the home page, or connect over Bluetooth or USB, to change
+            these settings.
         </span>
     </div>
 {/if}

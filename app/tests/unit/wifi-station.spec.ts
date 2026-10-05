@@ -4,6 +4,7 @@ import Wifi from '../../src/routes/wifi/sta/Wifi.svelte'
 import { WifiSettings, WifiStatus, type WifiNetwork } from '../../src/lib/platform_shared/api'
 import { ipToUint32 } from '../../src/lib/utilities'
 import { fakeRobot } from './fake-robot'
+import { socket } from '../../src/lib/stores/socket'
 
 // Dialogs need the modal host of the app's layout; here a confirmation is given straight away.
 vi.mock('svelte-modals', async original => ({
@@ -81,6 +82,41 @@ describe('WiFi station settings', () => {
         component = undefined
         robot?.restore()
         document.body.innerHTML = ''
+    })
+
+    // Over USB the page is open before the robot joins a network, so the status must follow the robot's reports.
+    it('shows the robot joining a network after the page opened', async () => {
+        const listeners: ((status: WifiStatus) => void)[] = []
+        const on = vi.spyOn(socket, 'on').mockImplementation(((
+            type: unknown,
+            listener: (s: WifiStatus) => void
+        ) => {
+            if (type === WifiStatus) listeners.push(listener)
+            return () => listeners.splice(listeners.indexOf(listener), 1)
+        }) as typeof socket.on)
+        robot = fakeRobot(name => {
+            if (name === 'wifiStatusRequest')
+                return { wifiStatus: WifiStatus.create({ status: 6 }) }
+            return {
+                wifiSettings: WifiSettings.create({ hostname: 'spot-micro', wifiNetworks: [home] })
+            }
+        })
+        component = mount(Wifi, { target: document.body })
+        await vi.waitFor(() => expect(document.body.textContent).toMatch('Inactive'))
+
+        listeners.forEach(report =>
+            report(
+                WifiStatus.create({ status: 3, ssid: 'Home', localIp: ipToUint32('192.168.1.39') })
+            )
+        )
+        flushSync()
+        expect(document.body.textContent).toMatch('Connected')
+        expect(document.body.textContent).toMatch('192.168.1.39')
+
+        unmount(component)
+        component = undefined
+        expect(listeners).toHaveLength(0)
+        on.mockRestore()
     })
 
     it('keeps a network on its static address when it is edited and saved', async () => {
