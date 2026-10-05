@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <driver/i2c_master.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -21,6 +22,9 @@ class I2CBus {
         return inst;
     }
 
+    // The bus is clocked for its slowest device: the IMUs, compass and gesture sensor are rated for 400 kHz.
+    static constexpr uint32_t MAX_FREQUENCY = 400000;
+
     esp_err_t begin(gpio_num_t sda, gpio_num_t scl, uint32_t freq = 100000, i2c_port_t port = I2C_NUM_0) {
         Lock lock(_mutex);
         if (_initialized) {
@@ -30,7 +34,7 @@ class I2CBus {
         _port = port;
         _sda = sda;
         _scl = scl;
-        _freq = freq;
+        _freq = std::min(freq, MAX_FREQUENCY);
 
         i2c_master_bus_config_t bus_cfg = {};
         bus_cfg.i2c_port = port;

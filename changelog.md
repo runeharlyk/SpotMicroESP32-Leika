@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
+- Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 
 ### Fixed
 
