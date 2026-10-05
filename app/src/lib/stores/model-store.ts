@@ -45,7 +45,8 @@ function enumToValuesAndLabels<T extends number>(enumObj: Record<string, T | str
 }
 
 const modesData = enumToValuesAndLabels<ModesEnum>(ModesEnum)
-export const modes = modesData.values
+// A clip puts the robot in ANIMATE and takes it out again; it is not a mode to pick.
+export const modes = modesData.values.filter(mode => mode !== ModesEnum.ANIMATE)
 export const modeLabels = modesData.labels
 
 const walkGaitsData = enumToValuesAndLabels<WalkGaits>(WalkGaits)

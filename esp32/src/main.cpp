@@ -20,6 +20,7 @@
 #include <features.h>
 #include <motion.h>
 #include <ota_flash.h>
+#include <animation/animation_store.h>
 #include <wifi_service.h>
 #include <ap_service.h>
 #include <mdns_service.h>
@@ -58,6 +59,7 @@ RobotService robotService;
 Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
+anim::AnimationStore animationStore {MOUNT_POINT "/animations"};
 
 // The variant the motion code and the servos run with: read at boot, switched by the control task.
 static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
@@ -489,6 +491,59 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_ota_finish_tag,
          [](const auto &req, auto &res, Client client) { replyOta(res, otaSession.finish(client.id)); }},
+
+        {socket_message_CorrelationRequest_animation_list_request_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_animation_list_tag;
+             auto &list = res.response.animation_list;
+             for (const auto &entry : animationStore.list()) {
+                 if (list.animations_count >= sizeof(list.animations) / sizeof(list.animations[0])) break;
+                 auto &out = list.animations[list.animations_count++];
+                 strncpy(out.name, entry.name.c_str(), sizeof(out.name) - 1);
+                 out.builtin = entry.builtin;
+                 out.size = entry.size;
+             }
+         }},
+
+        // The clamp sweep is for the robot's own legs at their default height; without a variant there are none.
+        {socket_message_CorrelationRequest_animation_validate_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_animation_report_tag;
+             auto &report = res.response.animation_report;
+             const char *error = nullptr;
+             const auto clip = animationStore.load(req.request.animation_validate.name, error);
+             report.ok = clip != nullptr;
+             if (!clip) {
+                 strncpy(report.error, error, sizeof(report.error) - 1);
+                 res.status_code = 422;
+                 return;
+             }
+             if (const KinConfig *config = kinConfigFor(activeVariant.load())) {
+                 Kinematics kin(*config);
+                 report.clamped_mask =
+                     anim::clampSweep(*clip, kin, config->default_feet_positions, config->default_body_height);
+             }
+         }},
+
+        // Loaded here, so the control task only swaps in a clip that is ready.
+        {socket_message_CorrelationRequest_animation_play_tag,
+         [](const auto &req, auto &res, Client client) {
+             const auto &play = req.request.animation_play;
+             auto refuse = [&res](uint32_t status, const char *reason) {
+                 res.status_code = status;
+                 strncpy(res.error_message, reason, sizeof(res.error_message) - 1);
+             };
+             const char *error = nullptr;
+             MotionInbox::Play request {animationStore.load(play.name, error), {}, 0};
+             if (!request.clip) return refuse(strcmp(error, "no such clip") == 0 ? 404 : 422, error);
+             if (motionService.mode() == socket_message_ModesEnum_DEACTIVATED) return refuse(409, "Stand up first");
+             for (pb_size_t i = 0; i < play.params_count && i < anim::PARAM_MAX; i++)
+                 request.params[request.paramCount++] = {static_cast<int>(play.params[i].id), play.params[i].value};
+             motionService.inbox.postPlay(request);
+         }},
+
+        {socket_message_CorrelationRequest_animation_stop_tag,
+         [](const auto &req, auto &res, Client client) { motionService.inbox.postStopAnimation(); }},
     };
 
     // File transfer and firmware updates go over the WebSocket only: the serial link carries setup, not files.
@@ -645,6 +700,25 @@ static void publishMotion() {
     wsSocket.emit(socket_message_WalkGaitData {.gait = gait});
 }
 
+// Every change of the clip or its state, and every 200 ms while a clip runs, so an app sees it progress.
+static void publishAnimationStatus() {
+    static MotionService::AnimationStatus last {"", anim::State::IDLE, 0, 0};
+    static uint32_t lastSentAt = 0;
+    if (!wsSocket.hasSubscribers(socket_message_Message_animation_status_tag)) return;
+    const MotionService::AnimationStatus now = motionService.animationStatus();
+    const uint32_t nowMs = esp_timer_get_time() / 1000;
+    const bool changed = now.state != last.state || strcmp(now.name, last.name) != 0;
+    if (!changed && (now.state == anim::State::IDLE || nowMs - lastSentAt < 200)) return;
+    last = now;
+    lastSentAt = nowMs;
+    socket_message_AnimationStatus status = socket_message_AnimationStatus_init_zero;
+    strncpy(status.name, now.name, sizeof(status.name) - 1);
+    status.state = static_cast<socket_message_AnimationState>(now.state);
+    status.t = now.t;
+    status.clamped_mask = now.clampedMask;
+    wsSocket.emit(status);
+}
+
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 #if CONFIG_IDF_TARGET_ESP32P4
@@ -699,6 +773,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
         EXECUTE_EVERY_N_MS(100, {
             publishMotion();
+            publishAnimationStatus();
 
             // Over the serial link too: a robot set up over USB shows it joining the network.
             if (wifiService.takeStatusChanged()) {

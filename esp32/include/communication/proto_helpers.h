@@ -37,6 +37,7 @@ DEFINE_MESSAGE_TRAITS(CorrelationResponse, correlation_response)
 DEFINE_MESSAGE_TRAITS(TelemetryHeader, telemetry_header)
 DEFINE_MESSAGE_TRAITS(TelemetryBatch, telemetry_batch)
 DEFINE_MESSAGE_TRAITS(TelemetryNetwork, telemetry_network)
+DEFINE_MESSAGE_TRAITS(AnimationStatus, animation_status)
 
 // Streaming file transfer messages
 DEFINE_MESSAGE_TRAITS(FSDownloadMetadata, fs_download_metadata)

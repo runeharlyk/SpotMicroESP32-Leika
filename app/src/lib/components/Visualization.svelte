@@ -80,6 +80,7 @@
         [ModesEnum.REST]: new RestState(),
         [ModesEnum.STAND]: new StandState(),
         [ModesEnum.WALK]: new BezierState(),
+        [ModesEnum.ANIMATE]: new IdleState(),
         [ModesEnum.UNRECOGNIZED]: new IdleState()
     }
     let lastTick = performance.now()
