@@ -56,6 +56,7 @@ The PlatformIO environments in `platformio.ini` define which board and I2C pins 
 | ------------------- | ---------------------------------------- | ------------------------- | -------------- |
 | `esp32-camera`      | ESP32-CAM (AI Thinker)                   | DVP                       | 14, 15         |
 | `esp32-wroom-camera`| ESP32-S3-DevKitC-1, 8 MB flash and PSRAM | DVP, ESP32-S3-EYE pinout  | 47, 21         |
+| `esp32-s3-n8r2`     | ESP32-S3 N8R2: 8 MB flash, 2 MB quad PSRAM | DVP, ESP32-S3-EYE pinout | 47, 21         |
 | `seeed-xiao-esp32s3`| Seeed XIAO ESP32S3                       | DVP                       | 5, 6           |
 | `esp32dev`          | ESP32 dev board                          | None                      | 21, 22         |
 | `esp32-p4`          | ESP32-P4                                 | MIPI CSI (OV5647)         | 7, 8           |

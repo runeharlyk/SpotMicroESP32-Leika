@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env: [esp32-camera, esp32dev, esp32-wroom-camera, seeed-xiao-esp32s3, esp32-p4]
+        env: [esp32-camera, esp32dev, esp32-wroom-camera, esp32-s3-n8r2, seeed-xiao-esp32s3, esp32-p4]
 
     steps:
       - uses: actions/checkout@v4

@@ -49,6 +49,7 @@ The default SDA and SCL pins depend on the PlatformIO environment:
 | `esp32-camera`         | 14  | 15  |
 | `esp32dev`             | 21  | 22  |
 | `esp32-wroom-camera`   | 47  | 21  |
+| `esp32-s3-n8r2`        | 47  | 21  |
 | `seeed-xiao-esp32s3`   | 5   | 6   |
 | `esp32-p4`             | 7   | 8   |
 
