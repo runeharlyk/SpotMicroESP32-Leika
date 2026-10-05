@@ -182,8 +182,24 @@ esp_err_t WebServer::wsHandler(httpd_req_t* req) {
         }
     }
 
-    if (frame.type == HTTPD_WS_TYPE_CLOSE) {
-        self->dropWsClient(httpd_req_to_sockfd(req));
+    // Control frames are answered here, as handle_ws_control_frames leaves them to us; without the close echo a client
+    // waits out its close timeout, and without the pong its keep-alive gives up on a healthy link.
+    if (frame.type & HTTPD_WS_TYPE_CLOSE) {
+        const int sockfd = httpd_req_to_sockfd(req);
+        const ws_frame::Reply reply =
+            ws_frame::controlReply(static_cast<ws_frame::Opcode>(frame.type), frame.payload, frame.len);
+        if (reply.opcode != ws_frame::NONE) {
+            httpd_ws_frame_t answer = {.final = true,
+                                       .fragmented = false,
+                                       .type = static_cast<httpd_ws_type_t>(reply.opcode),
+                                       .payload = const_cast<uint8_t*>(reply.payload),
+                                       .len = reply.len};
+            httpd_ws_send_frame(req, &answer);
+        }
+        if (reply.endsSession) {
+            self->dropWsClient(sockfd);
+            httpd_sess_trigger_close(req->handle, sockfd);
+        }
         if (frame.payload) free(frame.payload);
         return ESP_OK;
     }
