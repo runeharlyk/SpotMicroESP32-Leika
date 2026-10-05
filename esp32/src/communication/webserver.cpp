@@ -32,6 +32,11 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.global_user_ctx_free_fn = keepContext;
     config_.open_fn = openSession;
     config_.close_fn = closeSession;
+    // An idle peer that vanished without closing is found within about 11 s instead of never.
+    config_.keep_alive_enable = true;
+    config_.keep_alive_idle = 5;
+    config_.keep_alive_interval = 2;
+    config_.keep_alive_count = 3;
 }
 
 // httpd writes a socket frame's header and payload separately; with Nagle on, the payload waits for the

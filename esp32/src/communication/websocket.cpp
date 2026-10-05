@@ -1,5 +1,6 @@
 #include <communication/websocket.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
 static const char* TAG = "Websocket";
 
@@ -30,6 +31,7 @@ void Websocket::onWsClose(int sockfd) {
     xSemaphoreGive(sessionsMutex_);
     ESP_LOGI(TAG, "Client disconnected: %d", sockfd);
     removeClient(sockfd);
+    stalls_.forget(sockfd);
     if (closeListener_) closeListener_(sockfd);
 }
 
@@ -54,6 +56,15 @@ esp_err_t Websocket::onFrame(httpd_req_t* req, httpd_ws_frame_t* frame) {
     int sockfd = httpd_req_to_sockfd(req);
     handleIncoming(frame->payload, frame->len, sockfd);
     return ESP_OK;
+}
+
+bool Websocket::ready(int cid) {
+    const bool writable = WebServer::waitWritable(cid, 0);
+    if (stalls_.gone(cid, writable, esp_timer_get_time() / 1000)) {
+        ESP_LOGW(TAG, "Closing client %d: it has taken nothing for %u ms", cid, (unsigned)STALL_LIMIT_MS);
+        server_.endSession(cid);
+    }
+    return writable;
 }
 
 bool Websocket::send(const uint8_t* data, size_t len, int cid) {
