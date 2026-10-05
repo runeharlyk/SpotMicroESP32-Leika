@@ -1,6 +1,7 @@
 #ifndef Kinematics_h
 #define Kinematics_h
 
+#include <cstdint>
 #include <utils/math_utils.h>
 
 /** A variant's leg geometry (m) and the motion limits derived from it. */
@@ -74,7 +75,9 @@ class Kinematics {
   public:
     explicit Kinematics(const KinConfig &config) : config(config) {}
 
-    esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12]) {
+    /** The 12 joint angles for `body_state`; `unreachable`, when given, gets bit i for a leg i the IK could not reach
+     * and bent as far as it goes instead. */
+    esp_err_t calculate_inverse_kinematics(const body_state_t body_state, float result[12], uint8_t *unreachable = nullptr) {
         esp_err_t ret = ESP_OK;
 
         float roll = body_state.omega * DEG2RAD_F;
@@ -90,6 +93,7 @@ class Kinematics {
         inv_trans[2] =
             -inv_rot[2][0] * body_state.xm - inv_rot[2][1] * body_state.ym - inv_rot[2][2] * body_state.zm;
 
+        if (unreachable) *unreachable = 0;
         for (int i = 0; i < 4; i++) {
             float wx = body_state.feet[i][0];
             float wy = body_state.feet[i][1];
@@ -112,7 +116,7 @@ class Kinematics {
             float lz = invMountRot[2][0] * px + invMountRot[2][1] * py + invMountRot[2][2] * pz;
 
             float xLocal = (i % 2 == 1) ? -lx : lx;
-            legIK(xLocal, ly, lz, result + i * 3);
+            if (!legIK(xLocal, ly, lz, result + i * 3) && unreachable) *unreachable |= 1u << i;
         }
 
         return ret;
@@ -149,7 +153,8 @@ class Kinematics {
         inv_rot[2][2] = rot[2][2];
     }
 
-    inline void legIK(float x, float y, float z, float out[3]) {
+    // False when the foot is out of reach: the knee's cosine is clamped and the leg points at the foot instead.
+    inline bool legIK(float x, float y, float z, float out[3]) {
         const float coxa = config.coxa, coxa_offset = config.coxa_offset, femur = config.femur, tibia = config.tibia;
         float F = sqrt(fmax(0.0f, x * x + y * y - coxa * coxa));
         float G = F - coxa_offset;
@@ -162,6 +167,7 @@ class Kinematics {
         out[0] = RAD_TO_DEG_F(theta1);
         out[1] = RAD_TO_DEG_F(theta2);
         out[2] = RAD_TO_DEG_F(config.kneeFollowsFemur ? theta3 + theta2 : theta3);
+        return D >= -1.0f && D <= 1.0f && x * x + y * y >= coxa * coxa;
     }
 };
 
