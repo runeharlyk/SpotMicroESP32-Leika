@@ -25,6 +25,7 @@
         robots,
         subnetPrefix,
         variantLabel,
+        firmwareLabel,
         type Robot
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
@@ -285,7 +286,11 @@
                             <div class="min-w-0 flex-1">
                                 <div class="truncate font-medium">{robot.name}</div>
                                 <div class="truncate text-xs opacity-60">
-                                    {[variantLabel(robot.variant), statusLabel(robot)]
+                                    {[
+                                        variantLabel(robot.variant),
+                                        firmwareLabel(robot),
+                                        statusLabel(robot)
+                                    ]
                                         .filter(Boolean)
                                         .join(' - ')}
                                 </div>

@@ -126,6 +126,37 @@ describe('robots', () => {
         ])
     })
 
+    it('remembers which firmware each robot last reported, for telling which one needs an update', async () => {
+        const { robots, identify } = await loadRobots()
+
+        identify('192.168.1.40', {
+            ...pico,
+            firmwareVersion: '0.3.0',
+            buildTarget: 'esp32-s3-n8r2'
+        })
+        expect(get(robots)[0].firmware).toEqual({ version: '0.3.0', build: 'esp32-s3-n8r2' })
+
+        identify('192.168.1.40', {
+            ...pico,
+            firmwareVersion: '0.3.1',
+            buildTarget: 'esp32-s3-n8r2'
+        })
+        expect(get(robots)[0].firmware).toEqual({ version: '0.3.1', build: 'esp32-s3-n8r2' })
+    })
+
+    it('keeps the firmware it knows when a report leaves it out', async () => {
+        const { robots, identify } = await loadRobots()
+        identify('192.168.1.40', {
+            ...pico,
+            firmwareVersion: '0.3.0',
+            buildTarget: 'esp32-s3-n8r2'
+        })
+
+        identify('192.168.1.40', pico)
+
+        expect(get(robots)[0].firmware).toEqual({ version: '0.3.0', build: 'esp32-s3-n8r2' })
+    })
+
     it('lists every known address once for discovery', async () => {
         const { addRobot, identify, savedAddresses } = await loadRobots()
         identify('192.168.1.40', pico)

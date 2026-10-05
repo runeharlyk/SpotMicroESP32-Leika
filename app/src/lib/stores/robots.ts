@@ -9,6 +9,8 @@ export interface Robot {
     addresses: string[]
     lastAddress: string
     lastSeenAt: number | null
+    /** What the robot last reported running; absent for a robot saved before it was recorded. */
+    firmware?: { version: string; build: string }
 }
 
 export interface RobotIdentity {
@@ -16,6 +18,8 @@ export interface RobotIdentity {
     name: string
     variant: string
     hostname: string
+    firmwareVersion?: string
+    buildTarget?: string
 }
 
 /**
@@ -54,6 +58,9 @@ const VARIANT_LABELS: Record<string, string> = {
     SPOTMICRO_ESP32_MINI: 'Spot Micro Mini / Pico',
     SPOTMICRO_YERTLE: 'Yertle'
 }
+
+export const firmwareLabel = ({ firmware }: Robot) =>
+    firmware ? [firmware.version, firmware.build].filter(Boolean).join(' on ') : null
 
 export const variantLabel = (variant: string | null) =>
     variant ? (VARIANT_LABELS[variant.replace(/_V\d+$/, '')] ?? variant) : null
@@ -111,7 +118,11 @@ export const identify = (address: string, identity: RobotIdentity) => {
                 ...proven
             ],
             lastAddress: address,
-            lastSeenAt: Date.now()
+            lastSeenAt: Date.now(),
+            firmware:
+                identity.firmwareVersion ?
+                    { version: identity.firmwareVersion, build: identity.buildTarget ?? '' }
+                :   known?.firmware
         }
 
         let placed = false
