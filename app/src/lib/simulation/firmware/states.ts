@@ -14,6 +14,8 @@ export interface CommandMsg {
 }
 
 const SMOOTHING_OMEGA = CriticalDamper.omegaFor(0.333)
+// FEET_EASE_S of motion_states/state.h.
+const FEET_EASE_S = 0.5
 const clamp = (value: number, low: number, high: number) =>
     value < low ? low
     : value > high ? high
@@ -28,6 +30,9 @@ export abstract class MotionState {
     protected omegaOffset = 0
     protected psiOffset = 0
     protected bodyDampers = MotionState.bodyDampers()
+    private feetFrom: number[][] = []
+    private feetEasedS = 0
+    private feetCaptured = false
 
     constructor(protected readonly cfg: KinConfig) {
         this.target = new BodyState(cfg)
@@ -43,6 +48,8 @@ export abstract class MotionState {
 
     resetSmoothing() {
         this.bodyDampers = MotionState.bodyDampers()
+        this.feetCaptured = false
+        this.feetEasedS = 0
     }
 
     private static bodyDampers() {
@@ -87,6 +94,21 @@ export abstract class MotionState {
             body.feet = this.target.feet.map(foot => [...foot])
     }
 
+    /** easeFeet (motion_states/state.h): from the feet the last state left to this one's, minimum-jerk. */
+    protected easeFeet(body: BodyState, dt: number) {
+        if (!this.feetCaptured) {
+            this.feetFrom = body.feet.map(foot => [...foot])
+            this.feetCaptured = true
+        }
+        if (this.feetEasedS >= FEET_EASE_S) return this.updateFeet(body)
+        this.feetEasedS = Math.min(this.feetEasedS + dt, FEET_EASE_S)
+        const s = this.feetEasedS / FEET_EASE_S
+        const blend = s * s * s * (10 - 15 * s + 6 * s * s)
+        body.feet = this.feetFrom.map((foot, i) =>
+            foot.map((from, j) => from + (this.target.feet[i][j] - from) * blend)
+        )
+    }
+
     protected resetTarget(ym: number) {
         Object.assign(this.target, { xm: 0, ym, zm: 0, omega: 0, phi: 0, psi: 0 })
         this.target.feet = this.cfg.defaultFeet.map(foot => [...foot])
@@ -101,7 +123,7 @@ export class RestState extends MotionState {
 
     step(body: BodyState, dt: number) {
         this.smoothToBody(body, dt)
-        this.updateFeet(body)
+        this.easeFeet(body, dt)
     }
 }
 
@@ -123,7 +145,7 @@ export class StandState extends MotionState {
 
     step(body: BodyState, dt: number) {
         this.smoothToBody(body, dt, true)
-        this.updateFeet(body)
+        this.easeFeet(body, dt)
     }
 }
 
