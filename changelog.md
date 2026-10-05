@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Adds a Configuration page that saves a robot's servo calibration and peripheral settings to a file and loads them back, onto the same robot or as a starting point for another
 - Shows each saved robot's firmware version and build on the start page, as the robot last reported it
 - Adds animations: the robot plays sit, bow and wave from the new Animations page, with a slider for each clip's parameters, and plays clips uploaded there as JSON files
+- Adds an animation editor: a timeline of keyframes, body and leg poses, oscillations and sliders, previewed on the robot's 3D model as the firmware would play it, saved to the robot or downloaded as JSON
 
 ### Changed
 
@@ -28,6 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
 - Fixes log lines from different tasks being spliced together on the serial port
