@@ -64,12 +64,13 @@ This is the `Frontend Tests` workflow, triggered by changes in `app/**` and `sim
 
 ### Firmware (`esp32/`, `platform_shared/`, `boards/`, `platformio.ini`)
 
-The `PlatformIO CI` workflow builds all five environments with PlatformIO Core 6.1.19:
+The `PlatformIO CI` workflow builds all six environments with PlatformIO Core 6.1.19:
 
 ```sh
 pio run -e esp32-camera
 pio run -e esp32dev
 pio run -e esp32-wroom-camera
+pio run -e esp32-s3-n8r2
 pio run -e seeed-xiao-esp32s3
 pio run -e esp32-p4
 ```

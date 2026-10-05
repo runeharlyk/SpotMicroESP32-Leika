@@ -49,7 +49,8 @@ Without it, the build fails because `submodules/nanopb` is empty.
 |----------------------|----------------------------------------------------------------------------|-----------------|
 | `esp32-camera`       | ESP32-CAM (AI Thinker)                                                     | AI Thinker      |
 | `esp32dev`           | ESP32 DevKit                                                               | no camera       |
-| `esp32-wroom-camera` | ESP32-S3 DevKitC-1 with 8 MB flash                                         | ESP32-S3-EYE    |
+| `esp32-wroom-camera` | ESP32-S3 DevKitC-1 with 8 MB flash and octal PSRAM                         | ESP32-S3-EYE    |
+| `esp32-s3-n8r2`      | ESP32-S3 N8R2 (8 MB flash, 2 MB quad PSRAM), as in the Spot Pico           | ESP32-S3-EYE    |
 | `seeed-xiao-esp32s3` | Seeed XIAO ESP32S3 Sense                                                   | XIAO ESP32S3    |
 | `esp32-p4`           | ESP32-P4 dev board with ESP32-C6 co-processor (`boards/esp32p4_dev.json`)  | MIPI-CSI        |
 
