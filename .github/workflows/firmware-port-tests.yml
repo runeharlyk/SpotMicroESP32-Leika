@@ -16,6 +16,8 @@ on:
       - "animations/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
+      - "app/src/lib/animation/**"
+      - "app/tests/unit/animation-player.spec.ts"
       - ".github/workflows/firmware-port-tests.yml"
   pull_request:
     branches: [master]
@@ -28,6 +30,8 @@ on:
       - "animations/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
+      - "app/src/lib/animation/**"
+      - "app/tests/unit/animation-player.spec.ts"
       - ".github/workflows/firmware-port-tests.yml"
 
 permissions:
@@ -60,6 +64,9 @@ jobs:
       - name: Trace the firmware motion code
         run: python esp32/test/host/export_firmware_traces.py
 
+      - name: Trace the firmware animation player
+        run: python esp32/test/host/export_animation_traces.py
+
       - uses: arduino/setup-protoc@v3
         with:
           version: "27.x"
@@ -80,4 +87,4 @@ jobs:
           pnpm install
           pnpm proto
           pnpm exec svelte-kit sync
-          pnpm exec vitest run tests/unit/firmware-motion.spec.ts
+          pnpm exec vitest run tests/unit/firmware-motion.spec.ts tests/unit/animation-player.spec.ts
