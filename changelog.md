@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Adds a rollback to the previous firmware when a new one does not come up
 - Adds the plain app image of every board to each release, beside its factory image
 - Adds the `esp32-s3-n8r2` build for ESP32-S3 boards with 2 MB of quad PSRAM, such as the Spot Pico's, which the octal-PSRAM S3 builds left without it
+- Shows each saved robot's firmware version and build on the start page, as the robot last reported it
 
 ### Changed
 
