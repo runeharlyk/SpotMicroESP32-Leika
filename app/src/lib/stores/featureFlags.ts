@@ -27,7 +27,9 @@ export function applyFeatures(features: FeaturesDataResponse) {
         deviceId: features.deviceId,
         name: features.robotName,
         variant: features.variant,
-        hostname: features.hostname
+        hostname: features.hostname,
+        firmwareVersion: features.firmwareVersion,
+        buildTarget: features.firmwareBuiltTarget
     })
 }
 

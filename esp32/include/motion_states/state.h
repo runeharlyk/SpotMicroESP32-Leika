@@ -6,6 +6,7 @@
 #include <peripherals/imu/imu_math.h>
 #include <utils/critical_damper.h>
 #include <utils/math_utils.h>
+#include <algorithm>
 #include <cstring>
 
 class MotionState {
@@ -20,6 +21,13 @@ class MotionState {
     struct BodyDampers {
         CriticalDamper xm, ym, zm, phi, psi, omega;
     } body_dampers;
+
+    // A state taking the legs over moves the feet from where the last one left them to its own, with a minimum-jerk
+    // profile over this long: the walk can hand over a foot mid-stride, which used to snap down in one tick.
+    static constexpr float FEET_EASE_S = 0.5f;
+    float feet_from[4][4] = {};
+    float feet_eased_s = 0;
+    bool feet_captured = false;
 
     static void follow(CriticalDamper& damper, float& value, float target, float dt) {
         value = damper.step(value, target, dt, smoothing_omega);
@@ -44,6 +52,24 @@ class MotionState {
         }
     }
 
+    // Starts and ends at rest: 10s^3 - 15s^4 + 6s^5 has no velocity or acceleration at either end.
+    void easeFeet(body_state_t& body_state, float dt) {
+        if (!feet_captured) {
+            std::memcpy(feet_from, body_state.feet, sizeof(feet_from));
+            feet_captured = true;
+        }
+        if (feet_eased_s >= FEET_EASE_S) return updateFeet(body_state);
+        feet_eased_s = std::min(feet_eased_s + dt, FEET_EASE_S);
+        const float s = feet_eased_s / FEET_EASE_S;
+        const float blend = s * s * s * (10 - 15 * s + 6 * s * s);
+        float feet[4][4];
+        for (int foot = 0; foot < 4; foot++)
+            for (int axis = 0; axis < 4; axis++)
+                feet[foot][axis] =
+                    feet_from[foot][axis] + (target_body_state.feet[foot][axis] - feet_from[foot][axis]) * blend;
+        body_state.updateFeet(feet);
+    }
+
   public:
     // Measured on the Pico: a positive omega lowers REP-103 roll and a positive psi lowers REP-103 pitch, so the
     // offsets are the IMU's angles with their signs reversed.
@@ -60,7 +86,11 @@ class MotionState {
     }
 
     // A state taking over starts from the body at rest: the dampers' velocities are from when it last ran.
-    virtual void resetSmoothing() { body_dampers = {}; }
+    virtual void resetSmoothing() {
+        body_dampers = {};
+        feet_captured = false;
+        feet_eased_s = 0;
+    }
 
     virtual void begin() { ESP_LOGI("Gait Planner", "Starting %s", name()); }
 

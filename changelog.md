@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Adds the plain app image of every board to each release, beside its factory image
 - Adds the `esp32-s3-n8r2` build for ESP32-S3 boards with 2 MB of quad PSRAM, such as the Spot Pico's, which the octal-PSRAM S3 builds left without it
 - Adds a Configuration page that saves a robot's servo calibration and peripheral settings to a file and loads them back, onto the same robot or as a starting point for another
+- Shows each saved robot's firmware version and build on the start page, as the robot last reported it
 
 ### Changed
 
@@ -21,6 +22,8 @@ All notable changes to this project will be documented in this file.
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
+- Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
+- Eases the feet over half a second when stand or rest takes over, instead of snapping a foot from mid-stride: walk to stand jumped a joint up to 47 degrees in one tick
 
 ### Fixed
 
