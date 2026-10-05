@@ -77,7 +77,7 @@
                 min="0"
                 aria-label="Keyframe time"
                 disabled={current.selected === 0}
-                value={selected.time}
+                value={Number(selected.time.toPrecision(6))}
                 onchange={e => editor.setTime(current.selected, Number(e.currentTarget.value))}
             />
             s

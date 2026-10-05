@@ -44,9 +44,24 @@ describe('animation preview', () => {
         expect(fitModelFrame(feetInBody, swapped, SCALE).rotation).not.toEqual(P)
     })
 
-    it('reports a mirrored model by its residual rather than mirroring it', () => {
+    it("fits a model that is the firmware's mirror image, keeping each toe on its leg", () => {
         const mirrored = toes.map(([x, y, z]) => [x, y, -z + 2 * ORIGIN[2]])
-        expect(fitModelFrame(feetInBody, mirrored, SCALE).residual).toBeGreaterThan(0.1)
+        const fit = fitModelFrame(feetInBody, mirrored, SCALE)
+        expect(fit.residual).toBeLessThan(1e-9)
+        feetInBody.forEach((foot, leg) => close(toScene(fit, foot), mirrored[leg]))
+    })
+
+    it('carries the body of a mirrored model so its feet stay put', () => {
+        const mirror: ModelFrame = { ...truth, rotation: [P[0], P[1], P[2].map(v => -v)] }
+        const body = new BodyState(cfg)
+        Object.assign(body, { omega: -5, phi: 7, psi: 3, xm: -0.01, zm: 0.006 })
+        const { rotation, translation } = bodyTransform(mirror, body)
+        body.feet.forEach(foot => {
+            const moved = apply(rotation, toScene(mirror, worldToBody(body, foot))).map(
+                (v, i) => v + translation[i]
+            )
+            close(moved, toScene(mirror, foot))
+        })
     })
 
     it('carries the body so the feet stay where the firmware puts them', () => {

@@ -81,6 +81,8 @@
         editor.setParams([...doc.params, { id, ...spec }])
     }
 
+    // Clip values are float32: 1.3 is stored as 1.29999995, shown as typed.
+    const shown = (v: number | undefined) => (v === undefined ? '' : Number(v.toPrecision(6)))
     const number = (e: Event) => Number((e.currentTarget as HTMLInputElement).value)
 </script>
 
@@ -129,7 +131,7 @@
                 class="input input-sm"
                 step="0.1"
                 min="0"
-                value={doc.entryTime}
+                value={shown(doc.entryTime)}
                 onchange={e => editor.setClip({ entryTime: number(e) })}
             />
         </label>
@@ -140,7 +142,7 @@
                 class="input input-sm"
                 step="0.1"
                 min="0"
-                value={doc.exitTime}
+                value={shown(doc.exitTime)}
                 onchange={e => editor.setClip({ exitTime: number(e) })}
             />
         </label>
@@ -150,7 +152,7 @@
                 type="number"
                 class="input input-sm"
                 placeholder="as it stands"
-                value={doc.rideHeight ?? ''}
+                value={shown(doc.rideHeight)}
                 onchange={e =>
                     editor.setClip({
                         rideHeight: e.currentTarget.value === '' ? undefined : number(e)
@@ -179,7 +181,7 @@
                         type="number"
                         class="input input-sm w-20"
                         step="0.05"
-                        value={overlay[field as keyof Overlay]}
+                        value={shown(overlay[field as keyof Overlay] as number)}
                         onchange={e => setOverlay(i, { [field]: number(e) })}
                     />
                 </label>
@@ -224,7 +226,7 @@
                         type="number"
                         class="input input-sm w-20"
                         step="0.1"
-                        value={param[field as keyof ParamSpec]}
+                        value={shown(param[field as keyof ParamSpec] as number)}
                         onchange={e => setParam(i, { [field]: number(e) })}
                     />
                 </label>

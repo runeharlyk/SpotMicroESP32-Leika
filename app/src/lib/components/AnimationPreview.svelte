@@ -175,7 +175,9 @@
             problem = 'The 3D model did not load.'
             return
         }
-        robot = loaded.clone() as URDFRobot
+        // The shared model, not a clone: its meshes load after it does, so a clone would have none. Visualization
+        // adds it back to its own scene when it mounts.
+        robot = loaded
         body.matrixAutoUpdate = false
         body.add(robot)
         scene
