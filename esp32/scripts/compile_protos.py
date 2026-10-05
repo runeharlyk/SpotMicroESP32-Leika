@@ -34,7 +34,7 @@ def compile_nanopb():
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    proto_files = [proto_dir / "filesystem.proto", proto_dir / "message.proto", proto_dir / "api.proto"]
+    proto_files = [proto_dir / "filesystem.proto", proto_dir / "message.proto", proto_dir / "api.proto", proto_dir / "animation.proto"]
     
     print(f"Compiling protobuf files with nanopb...")
     print(f"  Proto dir: {proto_dir}")

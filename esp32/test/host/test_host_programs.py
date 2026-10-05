@@ -20,6 +20,7 @@ NANOPB = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_comm
 API_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "api.pb.c")
 MESSAGE_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "message.pb.c")
 FILESYSTEM_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "filesystem.pb.c")
+ANIMATION_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "animation.pb.c")
 
 # Each program with the sources it links besides itself.
 PROGRAMS = {
@@ -52,6 +53,8 @@ PROGRAMS = {
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "animation_test.cpp": [],
+    "animation_codec_test.cpp": [*NANOPB, ANIMATION_PROTO],
+    "animation_builtins_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "ota_session_test.cpp": [],
 }
 

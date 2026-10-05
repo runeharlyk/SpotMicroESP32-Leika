@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package animation;
+
+// One animation clip, the Hexapod's format for four legs. Offsets are relative to the standing posture, in REP-103:
+// x forward, y left, z up. Angles rad, lengths mm, time seconds. esp32/include/animation/animation.h is the reference
+// for every rule below.
+
+message BodyPose {
+  float roll = 1;   // positive lifts the left side
+  float pitch = 2;  // positive lowers the nose
+  float yaw = 3;    // positive turns left
+  float x = 4;
+  float y = 5;
+  float z = 6;      // positive raises the body
+}
+
+message FootOffset {
+  float x = 1;
+  float y = 2;
+  float z = 3;  // positive lifts the foot
+}
+
+// Degrees in the IK output convention (hip, femur, knee), before the firmware's joint directions.
+message JointAngles {
+  float coxa = 1;
+  float femur = 2;
+  float tibia = 3;
+}
+
+message LegTarget {
+  oneof target {
+    FootOffset foot = 1;
+    JointAngles joints = 2;
+  }
+}
+
+enum Ease {
+  LINEAR = 0;
+  EASE_IN = 1;
+  EASE_OUT = 2;
+  EASE_IN_OUT = 3;
+}
+
+message Keyframe {
+  float time = 1;               // strictly increasing, first keyframe at 0
+  Ease ease = 2;                // shapes the segment that ends at this keyframe
+  BodyPose body = 3;            // absent = zero offset
+  repeated LegTarget legs = 4;  // 0 entries = every foot holds stance, else exactly 4: front-left, front-right, rear-left, rear-right
+}
+
+// Additive sine on one channel. body_axis 0..5 in BodyPose field order, foot_channel = leg * 3 + axis (0..11).
+message Overlay {
+  oneof channel {
+    uint32 body_axis = 1;
+    uint32 foot_channel = 2;
+  }
+  float amplitude = 3;
+  float frequency = 4;  // Hz of animation time
+  float phase = 5;      // rad
+  float start = 6;      // active window in animation time, start < end
+  float end = 7;
+}
+
+enum ParamId {
+  SPEED = 0;              // multiplies the animation clock
+  BODY_X = 1;             // BODY_* multiply that body channel
+  BODY_Y = 2;
+  BODY_Z = 3;
+  BODY_ROLL = 4;
+  BODY_PITCH = 5;
+  BODY_YAW = 6;
+  FOOT_LIFT = 7;          // multiplies every foot offset z
+  OVERLAY_AMPLITUDE = 8;  // multiplies every overlay amplitude
+  REPEAT = 9;             // plays of a non-looping clip, rounded to an integer
+}
+
+// default_value rather than default: default is a C keyword and nanopb emits field names verbatim.
+message ParamSpec {
+  ParamId id = 1;
+  float min = 2;
+  float default_value = 3;
+  float max = 4;
+}
+
+message Animation {
+  string name = 1;         // [a-z0-9_-], unique on the robot, equals the file stem
+  string description = 2;
+  uint32 schema = 3;       // 1
+  bool loop = 4;           // repeat until stopped
+  bool hold_end = 5;       // freeze on the last keyframe until stopped, else exit to stance
+  float entry_time = 6;    // seconds; 0 means the default 0.5
+  float exit_time = 7;     // seconds; 0 means the default 0.5
+  repeated Keyframe keyframes = 8;
+  repeated Overlay overlays = 9;
+  repeated ParamSpec params = 10;  // only the ids listed are exposed
+  optional float ride_height = 11; // mm of body above the feet while playing; absent = the height at the start
+}

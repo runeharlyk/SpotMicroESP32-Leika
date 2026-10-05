@@ -44,10 +44,11 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Generate the nanopb headers the motion code includes
+      - name: Generate the nanopb headers the motion code includes, and the embedded animation clips
         run: |
           pip install protobuf grpcio-tools
           python esp32/scripts/compile_protos.py
+          python esp32/scripts/pack_animations.py
 
       - name: Test the firmware headers and scripts on the host
         run: |

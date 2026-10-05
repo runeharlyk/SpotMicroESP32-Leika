@@ -50,3 +50,11 @@ socket_message.TelemetryHeader.variant type:FT_POINTER
 socket_message.TelemetryHeader.device_id type:FT_POINTER
 socket_message.TelemetryHeader.imu_driver type:FT_POINTER
 socket_message.TelemetryHeader.joint_direction max_count:12 fixed_count:true
+
+socket_message.AnimationPlay.name max_size:33
+socket_message.AnimationPlay.params max_count:10
+socket_message.AnimationStatus.name max_size:33
+socket_message.AnimationEntry.name max_size:33
+socket_message.AnimationList.animations max_count:16
+socket_message.AnimationValidate.name max_size:33
+socket_message.AnimationReport.error max_size:64

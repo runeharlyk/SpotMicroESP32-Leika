@@ -4,6 +4,7 @@ package socket_message;
 
 import "filesystem.proto";
 import "api.proto";
+import "animation.proto";
 
 // Partial data types
 message Vector { float x = 1; float y = 2; }
@@ -94,6 +95,47 @@ message OtaChunk {
 }
 message OtaFinish {}
 
+// Animation clips (animation.proto): play and stop stream like modes, and the status goes to its subscribers.
+message AnimationParam {
+    animation.ParamId id = 1;
+    float value = 2;
+}
+message AnimationPlay {
+    string name = 1;
+    repeated AnimationParam params = 2;
+}
+message AnimationStop {}
+enum AnimationState {
+    ANIM_IDLE = 0;
+    ANIM_ENTRY = 1;
+    ANIM_PLAYING = 2;
+    ANIM_HOLD = 3;
+    ANIM_EXIT = 4;
+}
+message AnimationStatus {
+    string name = 1;
+    AnimationState state = 2;
+    float t = 3;              // seconds of clip time
+    uint32 clamped_mask = 4;  // bit leg * 3 + joint of a foot the legs could not reach
+}
+message AnimationListRequest {}
+message AnimationEntry {
+    string name = 1;
+    bool builtin = 2;  // shipped in the firmware, else a file in /littlefs/animations
+    uint32 size = 3;
+}
+message AnimationList {
+    repeated AnimationEntry animations = 1;
+}
+message AnimationValidate {
+    string name = 1;
+}
+message AnimationReport {
+    bool ok = 1;
+    string error = 2;
+    uint32 clamped_mask = 3;  // over the whole clip, sampled
+}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -130,6 +172,8 @@ message CorrelationRequest {
         OtaStart ota_start = 210;
         OtaChunk ota_chunk = 211;
         OtaFinish ota_finish = 212;
+        AnimationListRequest animation_list_request = 220;
+        AnimationValidate animation_validate = 221;
     }
 }
 
@@ -158,6 +202,8 @@ message CorrelationResponse {
         api.CameraSettings camera_settings = 170;
         api.ServoSettings servo_settings = 180;
         api.PeripheralSettings peripheral_settings = 190;
+        AnimationList animation_list = 220;
+        AnimationReport animation_report = 221;
     }
 }
 
@@ -366,5 +412,8 @@ message Message {
         TelemetryHeader telemetry_header = 270;
         TelemetryBatch telemetry_batch = 271;
         TelemetryNetwork telemetry_network = 272;
+        AnimationPlay animation_play = 290;
+        AnimationStop animation_stop = 291;
+        AnimationStatus animation_status = 292;
     }
 }

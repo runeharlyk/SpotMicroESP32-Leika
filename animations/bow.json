@@ -1,0 +1,16 @@
+{
+  "name": "bow",
+  "description": "Lowers the front into a bow and comes back up",
+  "schema": 1,
+  "keyframes": [
+    {"time": 0},
+    {"time": 0.9, "ease": "EASE_IN_OUT", "body": {"pitch": 0.3, "x": 8, "z": -8}},
+    {"time": 1.7, "ease": "EASE_IN_OUT", "body": {"pitch": 0.3, "x": 8, "z": -8}},
+    {"time": 2.6, "ease": "EASE_IN_OUT"}
+  ],
+  "params": [
+    {"id": "BODY_PITCH", "min": 0, "defaultValue": 1, "max": 1.2},
+    {"id": "SPEED", "min": 0.5, "defaultValue": 1, "max": 2},
+    {"id": "REPEAT", "min": 1, "defaultValue": 1, "max": 5}
+  ]
+}

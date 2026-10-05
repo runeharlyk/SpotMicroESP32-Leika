@@ -28,3 +28,10 @@ if result.returncode != 0:
     print("Error: Proto compilation failed. Is the nanopb submodule initialised? "
           "Run 'git submodule update --init --recursive'.", file=sys.stderr)
     env.Exit(1)
+
+# The clips in animations/ are embedded in the firmware, so an update brings them along.
+result = subprocess.run([sys.executable, str(project_dir / "esp32" / "scripts" / "pack_animations.py")],
+                        cwd=str(project_dir))
+if result.returncode != 0:
+    print("Error: Packing the animation clips failed.", file=sys.stderr)
+    env.Exit(1)

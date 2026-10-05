@@ -13,7 +13,7 @@ OUT = os.path.join(HERE, "src", "proto")
 
 
 def main() -> int:
-    files = [os.path.join(PROTOS, name) for name in ("filesystem.proto", "api.proto", "message.proto")]
+    files = [os.path.join(PROTOS, name) for name in ("filesystem.proto", "api.proto", "message.proto", "animation.proto")]
     return protoc.main(["grpc_tools.protoc", f"-I{PROTOS}", f"--python_out={OUT}", *files])
 
 

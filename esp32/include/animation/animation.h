@@ -369,6 +369,29 @@ inline uint32_t poseToAngles(const Pose &p, Kinematics &kin, const float stance[
     return mask;
 }
 
+// The clamp mask over the whole clip at its default parameters, sampled this many times per segment: a warning for the
+// author, as the clip still plays.
+constexpr int SWEEP_SAMPLES = 32;
+
+inline uint32_t clampSweep(const Clip &c, Kinematics &kin, const float stance[LEGS][4], float baseHeight) {
+    float params[PARAM_COUNT];
+    resolveParams(c, nullptr, 0, params);
+    const float height = c.hasRideHeight ? c.rideHeight * MM : baseHeight;
+    uint32_t mask = 0;
+    const int segments = c.keyframeCount > 1 ? c.keyframeCount - 1 : 1;
+    for (int s = 0; s < segments; ++s) {
+        const float t0 = c.keyframes[s].time;
+        const float t1 = c.keyframeCount > 1 ? c.keyframes[s + 1].time : t0;
+        for (int i = 0; i <= SWEEP_SAMPLES; ++i) {
+            Pose pose;
+            evaluate(c, params, t0 + (t1 - t0) * i / SWEEP_SAMPLES, kin, stance, height, pose);
+            float angles[JOINTS];
+            mask |= poseToAngles(pose, kin, stance, height, angles);
+        }
+    }
+    return mask;
+}
+
 enum class State : int { IDLE = 0, ENTRY = 1, PLAYING = 2, HOLD = 3, EXIT = 4 };
 
 // Entry -> Playing -> Hold | Exit -> Idle around evaluate(). REPEAT is max(1, floor(x + 0.5)); SPEED scales only the
