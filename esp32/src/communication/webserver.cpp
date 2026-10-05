@@ -1,10 +1,12 @@
 #include <communication/webserver.h>
 #include <communication/ws_origin.h>
 #include <esp_log.h>
+#include <cerrno>
 #include <cstring>
 #include <algorithm>
 #include <unistd.h>
 #include <lwip/sockets.h>
+#include <communication/ws_frame.h>
 
 static const char* TAG = "WebServer";
 
@@ -242,13 +244,30 @@ void WebServer::dropWsClient(int sockfd) {
     if (wasClient && wsCloseHandler_) wsCloseHandler_(sockfd);
 }
 
+// httpd writes a frame's header and payload with two sends, which with TCP_NODELAY are two segments on the air; a
+// small frame goes out whole from one buffer instead. Not writev: lwIP keeps "more data follows" set through a
+// vectored write's last part, so its segment lacks PSH, and Windows' overlapped receives then hold the data.
 esp_err_t WebServer::wsSend(int sockfd, const uint8_t* data, size_t len) {
-    httpd_ws_frame_t frame = {.final = true,
-                              .fragmented = false,
-                              .type = HTTPD_WS_TYPE_BINARY,
-                              .payload = const_cast<uint8_t*>(data),
-                              .len = len};
-    return httpd_ws_send_frame_async(server_, sockfd, &frame);
+    if (len > SINGLE_SEND_MAX) {
+        httpd_ws_frame_t frame = {.final = true, .fragmented = false, .type = HTTPD_WS_TYPE_BINARY,
+                                  .payload = const_cast<uint8_t*>(data), .len = len};
+        return httpd_ws_send_frame_async(server_, sockfd, &frame);
+    }
+    uint8_t frame[ws_frame::MAX_HEADER + SINGLE_SEND_MAX];
+    const size_t headerLen = ws_frame::binaryHeader(frame, len);
+    memcpy(frame + headerLen, data, len);
+    const ssize_t frameLen = headerLen + len;
+    const ssize_t sent = ::send(sockfd, frame, frameLen, 0);
+    if (sent == frameLen) return ESP_OK;
+    // Nothing more may go on a socket that holds part of a frame: the client would read the next frame's bytes as
+    // the rest of this one.
+    if (sent > 0) endSession(sockfd);
+    ESP_LOGW(TAG, "Frame to socket %d not sent (%d of %d bytes, errno %d)", sockfd, (int)sent, (int)frameLen, errno);
+    return ESP_FAIL;
+}
+
+void WebServer::endSession(int sockfd) {
+    if (server_) httpd_sess_trigger_close(server_, sockfd);
 }
 
 bool WebServer::queueWork(std::function<void()> work) {

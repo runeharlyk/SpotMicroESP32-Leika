@@ -47,6 +47,7 @@ PROGRAMS = {
     "stand_compensation_test.cpp": [],
     "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "proto_decoder_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
+    "ws_frame_test.cpp": [],
 }
 
 # Compiler flags a program needs besides the firmware's.
