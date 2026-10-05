@@ -13,14 +13,16 @@
 #include <motion_states/walk_state.h>
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
+#include <motion_states/animate_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
 #include <variant.h>
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <utility>
 
-enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
+enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK, ANIMATE };
 
 class MotionService {
   public:
@@ -65,10 +67,25 @@ class MotionService {
     /** Whether the dead-man stop is in force: the link fell silent and no input came since. */
     bool linkLost() const { return linkLostNow; }
 
+    /** The clip playing or last played, for the socket's task to report. */
+    struct AnimationStatus {
+        char name[anim::NAME_LEN_MAX + 1];
+        anim::State state;
+        float t;
+        uint32_t clampedMask;
+    };
+    AnimationStatus animationStatus() {
+        std::lock_guard<std::mutex> lock(animationStatusMutex);
+        return animationStatusNow;
+    }
+
   private:
     void applyMail(const MotionInbox::Mail& mail);
     // Every mode change, from the app or a gesture, goes through here.
     void setMode(socket_message_ModesEnum mode);
+    void applyMode(socket_message_ModesEnum mode);
+    void startAnimation(const MotionInbox::Play &play);
+    void recordAnimationStatus();
     void stopLocomotion();
     void switchVariant(KinematicsVariant variant);
 
@@ -89,6 +106,12 @@ class MotionService {
     MotionState* state = nullptr;
 
     RestState restState;
+    AnimateState animateState;
+    // The mode a clip hands back to when it ends: the one it started from, stand instead of walk, or one asked for
+    // while it played.
+    socket_message_ModesEnum returnMode = socket_message_ModesEnum_STAND;
+    std::mutex animationStatusMutex;
+    AnimationStatus animationStatusNow {"", anim::State::IDLE, 0, 0};
     StandState standState;
     WalkState walkState;
 

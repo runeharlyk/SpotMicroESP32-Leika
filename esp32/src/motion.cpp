@@ -1,4 +1,5 @@
 #include <motion.h>
+#include <algorithm>
 
 void MotionService::useConfig(const KinConfig* newConfig) {
     config = newConfig;
@@ -10,6 +11,7 @@ void MotionService::useConfig(const KinConfig* newConfig) {
     restState.configure(*config);
     standState.configure(*config);
     walkState.configure(*config);
+    animateState.configure(*config);
 }
 
 void MotionService::begin() {
@@ -46,6 +48,8 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
     }
     if (mail.mode) setMode(*mail.mode);
     if (mail.variant) switchVariant(*mail.variant);
+    if (mail.play) startAnimation(*mail.play);
+    if (mail.stopAnimation && state == &animateState) animateState.stop();
     if (mail.input) {
         command = *mail.input;
         commandRxUs = mail.inputAtUs;
@@ -74,7 +78,47 @@ void MotionService::stopLocomotion() {
     ESP_LOGW("MotionService", "Control link lost - locomotion stopped");
 }
 
+// A clip is left through its exit back to stance, then the mode asked for applies; deactivating is never delayed.
 void MotionService::setMode(socket_message_ModesEnum modeData) {
+    if (modeData == socket_message_ModesEnum_ANIMATE) return;
+    if (state == &animateState && modeData != socket_message_ModesEnum_DEACTIVATED) {
+        returnMode = modeData;
+        animateState.stop();
+        return;
+    }
+    applyMode(modeData);
+}
+
+// The legs must be under power: a deactivated robot refuses, which the socket's task reports before posting.
+void MotionService::startAnimation(const MotionInbox::Play &play) {
+    if (!state) {
+        ESP_LOGW("MotionService", "Deactivated - clip %s refused", play.clip->name);
+        return;
+    }
+    if (state != &animateState) {
+        const socket_message_ModesEnum from = currentMode.load();
+        returnMode = from == socket_message_ModesEnum_WALK ? socket_message_ModesEnum_STAND : from;
+        setState(&animateState);
+        currentMode = socket_message_ModesEnum_ANIMATE;
+        modeApplied = true;
+    }
+    animateState.start(play.clip, play.params, play.paramCount);
+}
+
+void MotionService::recordAnimationStatus() {
+    const AnimateState::Status now = animateState.status();
+    std::lock_guard<std::mutex> lock(animationStatusMutex);
+    strncpy(animationStatusNow.name, now.name, anim::NAME_LEN_MAX);
+    animationStatusNow.state = now.state;
+    animationStatusNow.t = now.t;
+    animationStatusNow.clampedMask = now.clampedMask;
+}
+
+void MotionService::applyMode(socket_message_ModesEnum modeData) {
+    if (state == &animateState) {
+        animateState.abandon();
+        recordAnimationStatus();
+    }
     if (!config && modeData != socket_message_ModesEnum_DEACTIVATED) {
         ESP_LOGW("MotionService", "No variant chosen - mode %d refused", static_cast<int>(modeData));
         return;
@@ -115,7 +159,13 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     lastUpdate = now;
     state->updateImuOffsets(imu);
     state->step(body_state, dt);
-    kinematics->calculate_inverse_kinematics(body_state, new_angles);
+    if (state == &animateState) {
+        std::copy(animateState.angles(), animateState.angles() + 12, new_angles);
+        recordAnimationStatus();
+        if (animateState.finished()) applyMode(returnMode);
+    } else {
+        kinematics->calculate_inverse_kinematics(body_state, new_angles);
+    }
     return update_angles(new_angles, angles);
 }
 

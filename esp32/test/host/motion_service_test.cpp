@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <memory>
 #include <motion.h>
 #include <variant.h>
 
@@ -165,7 +167,83 @@ static void leavingAWalkMovesTheLegsSmoothly() {
     CHECK(worst < 3.0f);
 }
 
+static MotionInbox::Play bob() {
+    auto clip = std::make_shared<anim::Clip>();
+    std::strcpy(clip->name, "bob");
+    clip->keyframeCount = 2;
+    clip->keyframes[1].time = 1;
+    clip->keyframes[1].body[anim::Z] = 10;
+    return {clip, {}, 0};
+}
+
+static void standAsPico(MotionService &motion) {
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
+    motion.begin();
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    for (int i = 0; i < 100; i++) tick(motion);
+}
+
+// From stand into the clip and back to stand without a jump: entry, half a second; the clip, a second; exit, half.
+static void aClipPlaysFromStandAndHandsBackToStand() {
+    MotionService motion;
+    standAsPico(motion);
+    const float standKnee = motion.getAngles()[2];
+    motion.inbox.postPlay(bob());
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    CHECK(motion.takeModeApplied() && motion.isActive());
+    CHECK(std::strcmp(motion.animationStatus().name, "bob") == 0);
+    CHECK(largestJointStep(motion, 220) < 3.0f);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    CHECK(motion.animationStatus().state == anim::State::IDLE);
+    CHECK(std::fabs(motion.getAngles()[2] - standKnee) <= 0.1f);
+}
+
+static void aClipStartedWhileWalkingHandsBackToStand() {
+    MotionService motion;
+    standAsPico(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_WALK);
+    tick(motion);
+    motion.inbox.postPlay(bob());
+    for (int i = 0; i < 300; i++) tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+}
+
+static void aDeactivatedRobotPlaysNothing() {
+    MotionService motion;
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
+    motion.begin();
+    motion.inbox.postPlay(bob());
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED && !motion.isActive());
+}
+
+// Another mode waits for the clip's exit; deactivating does not wait.
+static void aModeAskedForDuringAClipFollowsItsExit() {
+    MotionService motion;
+    standAsPico(motion);
+    motion.inbox.postPlay(bob());
+    for (int i = 0; i < 80; i++) tick(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_REST);
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    CHECK(motion.animationStatus().state == anim::State::EXIT);
+    for (int i = 0; i < 60; i++) tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_REST);
+
+    motion.inbox.postPlay(bob());
+    for (int i = 0; i < 80; i++) tick(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_DEACTIVATED);
+    tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED && !motion.isActive());
+    CHECK(motion.animationStatus().state == anim::State::IDLE);
+}
+
 int main() {
+    aClipPlaysFromStandAndHandsBackToStand();
+    aClipStartedWhileWalkingHandsBackToStand();
+    aDeactivatedRobotPlaysNothing();
+    aModeAskedForDuringAClipFollowsItsExit();
     leavingAWalkMovesTheLegsSmoothly();
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();
