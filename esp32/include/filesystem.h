@@ -11,6 +11,7 @@
 #define MOUNT_POINT "/littlefs"
 
 #define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
+#define FS_ANIMATION_DIRECTORY MOUNT_POINT "/animations"
 #define DEVICE_CONFIG_FILE MOUNT_POINT "/config/peripheral.pb"
 #define CAMERA_SETTINGS_FILE MOUNT_POINT "/config/cameraSettings.pb"
 #define AP_SETTINGS_FILE MOUNT_POINT "/config/apSettings.pb"

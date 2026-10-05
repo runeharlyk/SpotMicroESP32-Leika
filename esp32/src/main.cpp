@@ -59,7 +59,7 @@ RobotService robotService;
 Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
-anim::AnimationStore animationStore {MOUNT_POINT "/animations"};
+anim::AnimationStore animationStore {FS_ANIMATION_DIRECTORY};
 
 // The variant the motion code and the servos run with: read at boot, switched by the control task.
 static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
@@ -518,6 +518,15 @@ void setupEventSocket() {
                  res.status_code = 422;
                  return;
              }
+             strncpy(report.description, clip->description, sizeof(report.description) - 1);
+             for (int i = 0; i < clip->paramCount; i++) {
+                 const anim::ParamSpec &spec = clip->params[i];
+                 report.params[report.params_count++] = {static_cast<animation_ParamId>(spec.id), spec.min,
+                                                         spec.defaultValue, spec.max};
+             }
+             report.duration = clip->duration();
+             report.loop = clip->loop;
+             report.hold_end = clip->holdEnd;
              if (const KinConfig *config = kinConfigFor(activeVariant.load())) {
                  Kinematics kin(*config);
                  report.clamped_mask =

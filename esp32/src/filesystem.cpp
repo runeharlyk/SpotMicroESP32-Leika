@@ -33,6 +33,7 @@ bool init() {
     }
 
     mkdirRecursive(FS_CONFIG_DIRECTORY);
+    mkdirRecursive(FS_ANIMATION_DIRECTORY);
 
     return true;
 }

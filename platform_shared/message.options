@@ -58,3 +58,5 @@ socket_message.AnimationEntry.name max_size:33
 socket_message.AnimationList.animations max_count:16
 socket_message.AnimationValidate.name max_size:33
 socket_message.AnimationReport.error max_size:64
+socket_message.AnimationReport.description max_size:97
+socket_message.AnimationReport.params max_count:10

@@ -134,6 +134,12 @@ message AnimationReport {
     bool ok = 1;
     string error = 2;
     uint32 clamped_mask = 3;  // over the whole clip, sampled
+    // What the app shows for a clip that loads: the robot's copy decides, built-in or uploaded.
+    string description = 4;
+    repeated animation.ParamSpec params = 5;
+    float duration = 6;  // seconds of clip time, without the entry and exit blends
+    bool loop = 7;
+    bool hold_end = 8;
 }
 
 message CorrelationRequest {

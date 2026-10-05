@@ -22,7 +22,8 @@
         Copyright,
         Metrics,
         DNS,
-        Usb
+        Usb,
+        Paw
     } from '$lib/components/icons'
     import { EMBEDDED_BUILD } from '$lib/build-flags'
     import { isSerialSupported } from '$lib/transport/serial-adapter'
@@ -70,6 +71,12 @@
                 title: 'Controller',
                 icon: MdiController,
                 href: withBase('/controller'),
+                feature: true
+            },
+            {
+                title: 'Animations',
+                icon: Paw,
+                href: withBase('/animations'),
                 feature: true
             },
             {

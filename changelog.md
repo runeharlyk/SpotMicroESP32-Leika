@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Adds the `esp32-s3-n8r2` build for ESP32-S3 boards with 2 MB of quad PSRAM, such as the Spot Pico's, which the octal-PSRAM S3 builds left without it
 - Adds a Configuration page that saves a robot's servo calibration and peripheral settings to a file and loads them back, onto the same robot or as a starting point for another
 - Shows each saved robot's firmware version and build on the start page, as the robot last reported it
+- Adds animations: the robot plays sit, bow and wave from the new Animations page, with a slider for each clip's parameters, and plays clips uploaded there as JSON files
 
 ### Changed
 
