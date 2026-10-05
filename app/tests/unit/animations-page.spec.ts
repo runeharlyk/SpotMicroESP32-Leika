@@ -13,6 +13,7 @@ import {
 } from '../../src/lib/platform_shared/message'
 import { ParamId } from '../../src/lib/platform_shared/animation'
 import { fakeRobot } from './fake-robot'
+import { robotClips } from '../../src/lib/animation/robot'
 
 const CLIPS = [
     { name: 'bow', builtin: true, size: 167 },
@@ -51,6 +52,7 @@ describe('Animations page', () => {
     let statusListener: ((data: AnimationStatus) => void) | undefined
 
     beforeEach(() => {
+        robotClips.set(null)
         played = []
         reports = { bow: BOW }
         robot = fakeRobot((name, data) => {
@@ -82,7 +84,7 @@ describe('Animations page', () => {
 
     async function open(robotMode: ModesEnum) {
         mode.set(ModeData.create({ mode: robotMode }))
-        component = mount(Animations, { target: document.body })
+        component = mount(Animations, { target: document.body, props: { onEdit: () => {} } })
         await vi.waitFor(() => expect(text()).toMatch('nod'))
     }
 

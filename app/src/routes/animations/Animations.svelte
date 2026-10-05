@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
-    import { Delete, Paw, Play, Reload, Stop, UploadIcon } from '$lib/components/icons'
+    import { Delete, Edit, Paw, Play, Reload, Stop, UploadIcon } from '$lib/components/icons'
     import { socket } from '$lib/stores/socket'
     import { mode } from '$lib/stores/model-store'
     import {
@@ -17,11 +17,14 @@
     import {
         deleteClip,
         inspectClip,
-        listClips,
+        refreshClips,
+        robotClips,
         playClip,
         stopClip,
         uploadClip
     } from '$lib/animation/robot'
+
+    const { onEdit }: { onEdit: (clip: AnimationEntry) => void } = $props()
 
     const PARAM_LABELS: Record<ParamId, string> = {
         [ParamId.SPEED]: 'Speed',
@@ -46,7 +49,6 @@
     }
     const LEG_NAMES = ['front left', 'front right', 'rear left', 'rear right']
 
-    let clips = $state<AnimationEntry[] | null>(null)
     let selected = $state<string | null>(null)
     let report = $state<AnimationReport | null>(null)
     let values = $state<Record<number, number>>({})
@@ -57,7 +59,7 @@
 
     const deactivated = $derived($mode.mode === ModesEnum.DEACTIVATED)
     const running = $derived(!!status && status.state !== AnimationState.ANIM_IDLE)
-    const selectedEntry = $derived(clips?.find(c => c.name === selected))
+    const selectedEntry = $derived($robotClips?.find(c => c.name === selected))
     const unreachableLegs = $derived(
         report ? LEG_NAMES.filter((_, leg) => (report!.clampedMask >> (leg * 3)) & 0b111) : []
     )
@@ -76,7 +78,7 @@
 
     const refresh = () =>
         attempt(async () => {
-            clips = await listClips()
+            const clips = await refreshClips()
             if (selected && !clips.some(c => c.name === selected)) select(null)
         })
 
@@ -106,7 +108,7 @@
     const remove = (name: string) =>
         attempt(async () => {
             await deleteClip(name)
-            clips = await listClips()
+            await refreshClips()
             if (selected === name) select(null)
         })
 
@@ -120,13 +122,13 @@
             return
         }
         const { animation } = parsed
-        if (clips?.some(c => c.builtin && c.name === animation.name)) {
+        if ($robotClips?.some(c => c.builtin && c.name === animation.name)) {
             problem = `${animation.name} is built into the firmware; rename the clip to upload it`
             return
         }
         await attempt(async () => {
             await uploadClip(animation)
-            clips = await listClips()
+            await refreshClips()
         })
         if (!problem) select(animation.name)
     }
@@ -184,11 +186,11 @@
             <div class="alert alert-error" role="alert">{problem}</div>
         {/if}
 
-        {#if clips === null}
+        {#if $robotClips === null}
             <p>Asking the robot for its clips...</p>
         {:else}
             <ul class="menu bg-base-200 rounded-box w-full">
-                {#each clips as clip (clip.name)}
+                {#each $robotClips as clip (clip.name)}
                     <li>
                         <div
                             class="flex items-center gap-2"
@@ -200,6 +202,13 @@
                             <span class="badge badge-sm">
                                 {clip.builtin ? 'built-in' : `${clip.size} B`}
                             </span>
+                            <button
+                                class="btn btn-ghost btn-xs"
+                                aria-label={`Edit ${clip.name}`}
+                                onclick={() => onEdit(clip)}
+                            >
+                                <Edit class="h-4 w-4" />
+                            </button>
                             {#if !clip.builtin}
                                 <button
                                     class="btn btn-ghost btn-xs"

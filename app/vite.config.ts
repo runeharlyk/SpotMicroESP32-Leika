@@ -24,6 +24,8 @@ export default defineConfig({
         rollupOptions: { external: embeddedBuild ? [/^@mujoco\/mujoco/] : [] }
     },
     server: {
+        // The built-in animation clips live beside the app, in the repository's animations/.
+        fs: { allow: ['.', '../animations'] },
         proxy: {
             '/api': {
                 target: 'http://spot-micro.local/',
