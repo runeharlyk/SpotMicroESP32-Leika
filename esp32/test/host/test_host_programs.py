@@ -56,6 +56,7 @@ PROGRAMS = {
     "animation_codec_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "animation_builtins_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "animation_store_test.cpp": [*NANOPB, ANIMATION_PROTO],
+    "animation_validation_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "ota_session_test.cpp": [],
 }
 

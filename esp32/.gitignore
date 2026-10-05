@@ -6,3 +6,4 @@ include/WWWData.h
 **/.vscode/c_cpp_properties.json
 **/.vscode/launch.json
 include/animation/builtin_clips.h
+test/host/animation_validation_cases.h

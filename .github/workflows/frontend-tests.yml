@@ -6,11 +6,13 @@ on:
     paths:
       - "app/**"
       - "simulation/src/resources/**"
+      - "animations/**"
   pull_request:
     branches: [master]
     paths:
       - "app/**"
       - "simulation/src/resources/**"
+      - "animations/**"
 
 permissions:
   contents: read
