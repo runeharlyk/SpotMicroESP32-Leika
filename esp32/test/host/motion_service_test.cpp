@@ -1,4 +1,5 @@
 // Host test of MotionService's variant gate, built and run by test_host_programs.py.
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <motion.h>
@@ -113,7 +114,59 @@ static void aRobotWithoutAVariantCanStandOnceItIsChosen() {
     CHECK(motion.mode() == socket_message_ModesEnum_STAND);
 }
 
+static socket_message_ControllerData forward() {
+    socket_message_ControllerData data = socket_message_ControllerData_init_zero;
+    data.has_left = data.has_right = true;
+    data.left.y = 1;
+    data.height = 0.5f;
+    data.speed = 0.5f;
+    return data;
+}
+
+// The largest change of any joint's commanded angle from one tick to the next, over `ticks` ticks.
+static float largestJointStep(MotionService &motion, int ticks) {
+    float largest = 0;
+    float previous[12];
+    std::copy(motion.getAngles(), motion.getAngles() + 12, previous);
+    for (int i = 0; i < ticks; i++) {
+        tick(motion);
+        for (int joint = 0; joint < 12; joint++) {
+            largest = std::max(largest, std::fabs(motion.getAngles()[joint] - previous[joint]));
+            previous[joint] = motion.getAngles()[joint];
+        }
+    }
+    return largest;
+}
+
+// The firmware traces showed walk to stand jumping a joint 16.8 degrees in one tick: the feet snapped from mid-stride
+// to their stand positions. Switched at several points of the gait, so a foot is in the air at least once.
+static void leavingAWalkMovesTheLegsSmoothly() {
+    const KinematicsVariant pico = socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI;
+    const float standKnee = kneeOf(pico);
+    float worst = 0;
+    for (int phase = 0; phase < 6; phase++) {
+        MotionService motion;
+        motion.useConfig(kinConfigFor(pico));
+        motion.begin();
+        motion.inbox.postMode(socket_message_ModesEnum_STAND);
+        for (int i = 0; i < 100; i++) tick(motion);
+        motion.inbox.postMode(socket_message_ModesEnum_WALK);
+        for (int i = 0; i < 150 + 7 * phase; i++) {
+            motion.inbox.postInput(forward(), fake_timer::nowUs / 1000, fake_timer::nowUs);
+            tick(motion);
+        }
+        motion.inbox.postMode(socket_message_ModesEnum_STAND);
+        worst = std::max(worst, largestJointStep(motion, 100));
+        for (int i = 0; i < 100; i++) tick(motion);
+        // Within update_angles' 0.1 degree deadband, which an eased approach can stop short by.
+        CHECK(std::fabs(motion.getAngles()[2] - standKnee) <= 0.1f);
+    }
+    if (worst >= 3.0f) std::printf("largest joint step after walk to stand: %.2f deg\n", worst);
+    CHECK(worst < 3.0f);
+}
+
 int main() {
+    leavingAWalkMovesTheLegsSmoothly();
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();
     aSwitchedRobotStandsAsTheNewVariant();
