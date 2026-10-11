@@ -115,6 +115,17 @@ It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` o
 The `Proto Build` workflow compiles the schemas for the firmware (`python esp32/scripts/compile_protos.py`) and for the app (`pnpm proto`).
 A schema change must build for both, and for the simulation (`gen_protos.py`).
 
+It also checks the wire numbers against `platform_shared/wire_golden.json`, which lists every enum value and every message field with its number.
+A renumbered or removed field or enum value fails the check, because peers built from the older schemas decode by those numbers.
+Remove a field or value only by reserving its number.
+After adding to a schema, update the golden and commit it with the change:
+
+```sh
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py           # update
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py --check   # what CI runs
+uv run --with protobuf --with grpcio-tools --with pytest pytest -q platform_shared
+```
+
 ## Releases
 
 Pushing a tag `v*` runs the `Release` workflow: it builds all environments and publishes each `firmware.factory.bin` as `<environment>.factory.bin` on a GitHub release, then redeploys the web flasher.

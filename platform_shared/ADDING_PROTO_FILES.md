@@ -148,6 +148,15 @@ cd app && pnpm proto
 cd simulation && uv run python gen_protos.py
 ```
 
+Then record the new numbers in `platform_shared/wire_golden.json` and commit it with the schema change:
+
+```bash
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py
+```
+
+The `Proto Build` workflow runs it with `--check`, which fails on a golden that lacks the new numbers and on any renumbered or removed field or enum value.
+Retire a field by reserving its number, as `Message` does; the update then drops it from the golden.
+
 The generated sources are not tracked: `esp32/src/platform_shared/`, `app/src/lib/platform_shared/` and `simulation/src/proto/`.
 The firmware compiles the nanopb output because `esp32/src/CMakeLists.txt` lists `platform_shared` as a source directory.
 Nanopb comes from the `submodules/nanopb` submodule; initialise it with `git submodule update --init --recursive`.
@@ -161,6 +170,7 @@ Nanopb comes from the `submodules/nanopb` submodule; initialise it with `git sub
 | `esp32/scripts/compile_protos.py` | ESP32 proto compilation |
 | `app/scripts/compile_protos.js` | TypeScript proto compilation (`pnpm proto`) |
 | `simulation/gen_protos.py` | Python proto compilation |
+| `platform_shared/wire_golden.py` | Checks wire numbers against `wire_golden.json` |
 | `app/src/lib/stores/socket.ts` | Tag mapping for socket.on/emit |
 | `esp32/include/communication/proto_helpers.h` | MessageTraits for ESP32 emit |
 | `esp32/src/main.cpp` | Handlers for incoming messages and correlation requests |
