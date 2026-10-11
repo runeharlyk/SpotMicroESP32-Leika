@@ -297,5 +297,8 @@
                 {/each}
             </tbody>
         </table>
+        <div class="px-2 text-sm">
+            Bus recoveries: {$analytics.at(-1)?.i2cBusRecoveries ?? 0}
+        </div>
     </div>
 </SettingsCard>

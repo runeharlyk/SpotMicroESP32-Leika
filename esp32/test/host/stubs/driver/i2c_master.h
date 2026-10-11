@@ -19,9 +19,13 @@ typedef int i2c_port_t;
 #define I2C_CLK_SRC_DEFAULT 0
 #define I2C_ADDR_BIT_LEN_7 0
 
-struct FakeBus {};
+struct FakeBus {
+    gpio_num_t sda;
+    gpio_num_t scl;
+};
 struct FakeDevice {
     uint8_t address;
+    const FakeBus *bus;
 };
 typedef FakeBus *i2c_master_bus_handle_t;
 typedef FakeDevice *i2c_master_dev_handle_t;
@@ -67,6 +71,7 @@ inline bool isLive(const void *handle) {
 }
 inline void reset() {
     std::lock_guard<std::mutex> lock(mutex);
+    fake_gpio::reset();
     live.clear();
     written.clear();
     registers.clear();
@@ -78,8 +83,8 @@ inline void reset() {
 }
 } // namespace fake_i2c
 
-inline esp_err_t i2c_new_master_bus(const i2c_master_bus_config_t *, i2c_master_bus_handle_t *bus) {
-    *bus = new FakeBus();
+inline esp_err_t i2c_new_master_bus(const i2c_master_bus_config_t *config, i2c_master_bus_handle_t *bus) {
+    *bus = new FakeBus {config->sda_io_num, config->scl_io_num};
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     fake_i2c::live.insert(*bus);
     return ESP_OK;
@@ -97,7 +102,7 @@ inline esp_err_t i2c_del_master_bus(i2c_master_bus_handle_t bus) {
 inline esp_err_t i2c_master_bus_add_device(i2c_master_bus_handle_t bus, const i2c_device_config_t *config,
                                            i2c_master_dev_handle_t *device) {
     if (!fake_i2c::isLive(bus)) fake_i2c::staleUses++;
-    *device = new FakeDevice {static_cast<uint8_t>(config->device_address)};
+    *device = new FakeDevice {static_cast<uint8_t>(config->device_address), bus};
     fake_i2c::devicesAdded++;
     fake_i2c::deviceSpeedHz = config->scl_speed_hz;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
@@ -123,13 +128,15 @@ inline esp_err_t fakeTransfer(const void *handle) {
     return ESP_OK;
 }
 
-// The driver fails a transfer the device does not acknowledge with ESP_ERR_INVALID_STATE, as it does one that times out.
+// The driver fails a transfer the device does not acknowledge with ESP_ERR_INVALID_STATE, as it does one on a bus
+// with a line held low.
 inline esp_err_t fakeDeviceTransfer(i2c_master_dev_handle_t device) {
     esp_err_t result = fakeTransfer(device);
     if (result != ESP_OK) return result;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     fake_i2c::attempts[device->address]++;
-    if (!fake_i2c::absent.count(device->address)) return ESP_OK;
+    const bool held = gpio_get_level(device->bus->sda) == 0 || gpio_get_level(device->bus->scl) == 0;
+    if (!held && !fake_i2c::absent.count(device->address)) return ESP_OK;
     fake_timer::nowUs += fake_i2c::failureUs;
     return ESP_ERR_INVALID_STATE;
 }

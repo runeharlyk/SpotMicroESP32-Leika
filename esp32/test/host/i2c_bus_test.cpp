@@ -140,6 +140,7 @@ static void aDeviceThatDoesNotAnswerCountsNacks() {
     fake_i2c::reset();
     I2CBus &bus = I2CBus::instance();
     bus.begin(21, 22);
+    const auto servosBefore = errorsAt(PCA9685), imuBefore = errorsAt(MPU6050);
     fake_i2c::absent = {PCA9685};
     // The longest write here, all 16 channels at 100 kHz, takes about 4.5 ms before a last byte's NACK.
     fake_i2c::failureUs = 4500;
@@ -149,10 +150,10 @@ static void aDeviceThatDoesNotAnswerCountsNacks() {
         CHECK(bus.readReg(MPU6050, 0x3B, value, 2) == ESP_OK);
     }
     CHECK(errorsAt(PCA9685).address == PCA9685);
-    CHECK(errorsAt(PCA9685).nacks == 5);
-    CHECK(errorsAt(PCA9685).timeouts == 0);
+    CHECK(errorsAt(PCA9685).nacks == servosBefore.nacks + 5);
+    CHECK(errorsAt(PCA9685).timeouts == servosBefore.timeouts);
     CHECK(errorsAt(MPU6050).address == MPU6050);
-    CHECK(errorsAt(MPU6050).nacks == 0 && errorsAt(MPU6050).timeouts == 0);
+    CHECK(errorsAt(MPU6050).nacks == imuBefore.nacks && errorsAt(MPU6050).timeouts == imuBefore.timeouts);
     bus.end();
 }
 
@@ -193,7 +194,62 @@ static void theCountsOutliveARestartOfTheBus() {
     bus.end();
 }
 
+// The ESP32 reset while the IMU was sending a byte of zeros: the IMU holds SDA low and every transfer fails, until the
+// bus clocks out the rest of the byte and ends the transfer with a STOP.
+static void aDeviceHoldingSdaIsClockedFreeAndTheBusWorksAgain() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    fake_timer::nowUs += 2000000;
+    const uint32_t before = bus.recoveries();
+    fake_gpio::low = {21};
+    fake_gpio::stuck = {21, 22, 4};
+    uint8_t value = 0;
+    CHECK(bus.readReg(MPU6050, 0x75, &value, 1) != ESP_OK);
+    CHECK(bus.recoveries() == before + 1);
+    // Four pulses free it, and the STOP needs the clock high once more.
+    CHECK(fake_gpio::clockPulses == 5);
+    CHECK(fake_gpio::stops == 1);
+    CHECK(bus.readReg(MPU6050, 0x75, &value, 1) == ESP_OK);
+    CHECK(fake_i2c::staleUses == 0);
+    bus.end();
+}
+
+// A device that never lets go gets nine pulses, and no more than one recovery a second however often transfers fail.
+static void aDeviceThatNeverLetsGoIsRecoveredAtMostOnceASecond() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    fake_timer::nowUs += 2000000;
+    const uint32_t before = bus.recoveries();
+    fake_gpio::low = {21};
+    fake_gpio::stuck = {21, 22, 0};
+    fake_i2c::failureUs = 10000;
+    uint8_t value = 0;
+    for (int tick = 0; tick < 150; tick++) CHECK(bus.readReg(MPU6050, 0x75, &value, 1) != ESP_OK);
+    CHECK(bus.recoveries() == before + 2);
+    CHECK(fake_gpio::clockPulses == 2 * (9 + 1));
+    bus.end();
+}
+
+// SCL held low is a device stretching the clock, or one without power clamping the lines: pulses cannot free it.
+static void aHeldClockIsNotRecovered() {
+    fake_i2c::reset();
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    fake_timer::nowUs += 2000000;
+    const uint32_t before = bus.recoveries();
+    fake_gpio::low = {21, 22};
+    uint8_t value = 0;
+    CHECK(bus.readReg(MPU6050, 0x75, &value, 1) != ESP_OK);
+    CHECK(bus.recoveries() == before);
+    bus.end();
+}
+
 int main() {
+    aDeviceHoldingSdaIsClockedFreeAndTheBusWorksAgain();
+    aDeviceThatNeverLetsGoIsRecoveredAtMostOnceASecond();
+    aHeldClockIsNotRecovered();
     aDeviceThatDoesNotAnswerCountsNacks();
     aHeldLineOrASpentTimeoutCountsATimeout();
     theCountsOutliveARestartOfTheBus();

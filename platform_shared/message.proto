@@ -212,6 +212,7 @@ message AnalyticsData {
     int32 cpu1_usage = 12;
     int32 cpu_usage = 13;
     repeated I2CDeviceErrors i2c_errors = 14;
+    uint32 i2c_bus_recoveries = 15;  // times a device holding SDA low was clocked free
 }
 
 // One I2C device's failed transfers since boot.

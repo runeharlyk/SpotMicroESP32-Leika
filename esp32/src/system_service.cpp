@@ -184,6 +184,7 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     for (size_t i = 0; i < count; i++)
         analytics.i2c_errors[i] = {devices[i].address, devices[i].nacks, devices[i].timeouts};
     analytics.i2c_errors_count = count;
+    analytics.i2c_bus_recoveries = I2CBus::instance().recoveries();
 }
 
 const char *resetReason(esp_reset_reason_t reason) {

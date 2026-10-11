@@ -4,6 +4,7 @@
 #include <driver/gpio.h>
 #include <driver/i2c_master.h>
 #include <esp_log.h>
+#include <esp_rom_sys.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -127,6 +128,12 @@ class I2CBus {
         return devices;
     }
 
+    // Times since boot the bus freed a device that held SDA low.
+    uint32_t recoveries() {
+        Lock lock(_mutex);
+        return _recoveries;
+    }
+
     i2c_port_t port() const { return _port; }
     gpio_num_t sda() const { return _sda; }
     gpio_num_t scl() const { return _scl; }
@@ -148,6 +155,9 @@ class I2CBus {
     // The driver takes milliseconds, not ticks. Long enough for any transfer here; short, because a missing
     // device costs the control loop this long on every write.
     static constexpr int TIMEOUT_MS = 20;
+    // A recovery restarts the bus, which costs more than a transfer: a device that holds SDA for good is not
+    // recovered on every one.
+    static constexpr int64_t RECOVERY_INTERVAL_US = 1000000;
     i2c_port_t _port = I2C_NUM_0;
     gpio_num_t _sda = GPIO_NUM_NC;
     gpio_num_t _scl = GPIO_NUM_NC;
@@ -164,6 +174,8 @@ class I2CBus {
     std::map<uint8_t, i2c_master_dev_handle_t> _devices;
     // Kept across restarts of the bus, as the analytics count since boot.
     std::map<uint8_t, ErrorCounts> _errors;
+    int64_t _nextRecoveryUs = 0;
+    uint32_t _recoveries = 0;
 
     template <typename Transfer>
     esp_err_t transfer(uint8_t addr, Transfer &&run) {
@@ -173,7 +185,7 @@ class I2CBus {
         if (err != ESP_OK) return err;
         const int64_t start = esp_timer_get_time();
         err = run(device);
-        if (err != ESP_OK) countFailure(addr, start, err);
+        if (err != ESP_OK) afterFailure(addr, start, err);
         return err;
     }
 
@@ -182,15 +194,51 @@ class I2CBus {
      * timeout leaves a line held low or spends the transfer's whole time, which a device that does not acknowledge
      * does not. The driver waits whole ticks, so a timeout can end a tick short of TIMEOUT_MS.
      *
-     * Nothing here recovers a stuck bus: the driver resets its state machine and clocks the bus clear (nine SCL
-     * pulses) itself at the start of the transfer after a timeout, and of any transfer while the bus reads busy.
+     * A device cut off mid-read, by a reset of the ESP32 or a glitch, holds SDA low until it has clocked out its byte.
+     * The driver's own bus clear does not reach it on the ESP32-S3: it starts the hardware's nine SCL pulses and
+     * resets the whole peripheral straight after. So the bus clocks the device free on the pins itself.
      */
-    void countFailure(uint8_t addr, int64_t startUs, esp_err_t err) {
-        const bool spentTimeout = esp_timer_get_time() - startUs >= (TIMEOUT_MS - portTICK_PERIOD_MS) * 1000LL;
-        const bool lineHeldLow = gpio_get_level(_sda) == 0 || gpio_get_level(_scl) == 0;
+    void afterFailure(uint8_t addr, int64_t startUs, esp_err_t err) {
+        const int64_t now = esp_timer_get_time();
+        const bool spentTimeout = now - startUs >= (TIMEOUT_MS - portTICK_PERIOD_MS) * 1000LL;
+        const bool sdaHeld = gpio_get_level(_sda) == 0;
+        const bool sclHeld = gpio_get_level(_scl) == 0;
         ErrorCounts &counts = _errors[addr];
-        if (err == ESP_ERR_TIMEOUT || spentTimeout || lineHeldLow) counts.timeouts++;
+        if (err == ESP_ERR_TIMEOUT || spentTimeout || sdaHeld || sclHeld) counts.timeouts++;
         else counts.nacks++;
+        // A held SCL is a device stretching the clock, or one without power clamping both lines: no pulses free it.
+        if (sdaHeld && !sclHeld && now >= _nextRecoveryUs) {
+            _nextRecoveryUs = now + RECOVERY_INTERVAL_US;
+            recover();
+        }
+    }
+
+    // Up to nine SCL pulses, until the device lets SDA go, then a STOP: the standard I2C bus clear, at 100 kHz.
+    void recover() {
+        const gpio_num_t sda = _sda, scl = _scl;
+        const uint32_t freq = _freq;
+        const i2c_port_t port = _port;
+        end();
+        constexpr uint32_t HALF_PERIOD_US = 5;
+        gpio_set_level(sda, 1);
+        gpio_set_level(scl, 1);
+        gpio_set_direction(sda, GPIO_MODE_INPUT_OUTPUT_OD);
+        gpio_set_direction(scl, GPIO_MODE_INPUT_OUTPUT_OD);
+        for (int pulse = 0; pulse < 9 && gpio_get_level(sda) == 0; pulse++) {
+            gpio_set_level(scl, 0);
+            esp_rom_delay_us(HALF_PERIOD_US);
+            gpio_set_level(scl, 1);
+            esp_rom_delay_us(HALF_PERIOD_US);
+        }
+        gpio_set_level(scl, 0);
+        gpio_set_level(sda, 0);
+        esp_rom_delay_us(HALF_PERIOD_US);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(HALF_PERIOD_US);
+        gpio_set_level(sda, 1);
+        esp_rom_delay_us(HALF_PERIOD_US);
+        _recoveries++;
+        if (begin(sda, scl, freq, port) != ESP_OK) ESP_LOGE(TAG, "The bus did not start again after a recovery");
     }
 
     // Called with the lock held.
