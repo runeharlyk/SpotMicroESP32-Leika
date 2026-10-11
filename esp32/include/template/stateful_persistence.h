@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <sys/stat.h>
 #include <esp_log.h>
+#include <string>
 #include <vector>
 
 static const char *TAG_PERSISTENCE = "FSPersistencePB";
@@ -38,6 +39,8 @@ class FSPersistencePB {
         writeToFS();
     }
 
+    // Written beside the file and moved over it, so a reset or brownout during the write leaves the previous
+    // settings rather than a truncated file the next boot would replace with the defaults.
     bool writeToFS() {
         std::vector<uint8_t> buffer(_maxSize);
         pb_ostream_t stream = pb_ostream_from_buffer(buffer.data(), _maxSize);
@@ -52,17 +55,19 @@ class FSPersistencePB {
 
         mkdirs();
 
-        FILE *file = fopen(_filePath, "wb");
+        const std::string temporary = std::string(_filePath) + ".tmp";
+        FILE *file = fopen(temporary.c_str(), "wb");
         if (!file) {
-            ESP_LOGE(TAG_PERSISTENCE, "Failed to open file for writing: %s", _filePath);
+            ESP_LOGE(TAG_PERSISTENCE, "Failed to open file for writing: %s", temporary.c_str());
             return false;
         }
 
         size_t written = fwrite(buffer.data(), 1, stream.bytes_written, file);
         bool closed = fclose(file) == 0;
 
-        if (written != stream.bytes_written || !closed) {
+        if (written != stream.bytes_written || !closed || !FileSystem::replaceFile(temporary.c_str(), _filePath)) {
             ESP_LOGE(TAG_PERSISTENCE, "Failed to write %s", _filePath);
+            remove(temporary.c_str());
             return false;
         }
         return true;

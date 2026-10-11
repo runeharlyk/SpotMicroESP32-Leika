@@ -28,5 +28,7 @@ std::string readFile(const char *filename);
 bool writeFile(const char *filename, const char *content);
 bool writeFile(const char *filename, const uint8_t *content, size_t size);
 bool mkdirRecursive(const char *path);
+// Moves `from` over `to` in one step: a reset leaves either file whole, never neither.
+bool replaceFile(const char *from, const char *to);
 
 } // namespace FileSystem
