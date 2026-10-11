@@ -58,32 +58,25 @@ export function useFeatureFlags() {
 
 const base = resolve('/')
 
-/**
- * `modelYaw` turns a model whose forward axis differs from Spot Micro's. `drivable` is false where
- * the robot's joint angles cannot yet be mapped onto the model, which then holds its CAD stance.
- */
+/** `modelYaw` turns a model whose forward axis differs from Spot Micro's. */
 export const variants = {
     SPOTMICRO_ESP32: {
         model: `${base}spot_micro.urdf.xacro`,
         stl: `${base}stl.zip`,
         modelYaw: 0,
-        drivable: true,
         kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32
     },
-    // The Pico's model is generated from the simulation (scripts/build_sim_models.js). Its URDF and
-    // these firmware dimensions disagree by up to 16 mm, so it is not driven until one is confirmed.
+    // The Pico's model is generated from the simulation (scripts/build_sim_models.js).
     SPOTMICRO_ESP32_MINI: {
         model: `${base}spot_pico.urdf`,
         stl: `${base}spot_pico.zip`,
         modelYaw: Math.PI / 2,
-        drivable: false,
         kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32_MINI
     },
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
         modelYaw: 0,
-        drivable: true,
         kinematics: VARIANT_DIMENSIONS.SPOTMICRO_YERTLE
     }
 }
@@ -103,10 +96,10 @@ export const variantChoiceNeeded = derived([socket, connectionFeatures], ([$sock
     needsVariantChoice($socket, $features)
 )
 
-export const currentVariant = derived(
-    reportedVariant,
-    $variant => variants[$variant ?? 'SPOTMICRO_ESP32']
-)
+/** The variant whose model the 3D view shows: the reported one, or Spot Micro before any robot reported. */
+export const modelVariant = derived(reportedVariant, $variant => $variant ?? 'SPOTMICRO_ESP32')
+
+export const currentVariant = derived(modelVariant, $variant => variants[$variant])
 
 export const currentKinematic = derived(
     currentVariant,

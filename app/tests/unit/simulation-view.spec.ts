@@ -50,7 +50,7 @@ vi.mock('$lib/utilities/model-utilities', () => ({
     loadModel: async () => {
         const model = new Mesh(new BufferGeometry(), new MeshBasicMaterial())
         models.push(model)
-        return { isErr: () => false, inner: [model] }
+        return { isErr: () => false, inner: model }
     }
 }))
 

@@ -88,14 +88,19 @@ export class FirmwareController implements SimController {
     }
 
     private targets(servoDegrees: number[]) {
-        const { joints, sign, offset, kneeRelativeToBody } = this.map
-        const degrees =
-            kneeRelativeToBody ?
-                servoDegrees.map((angle, i) => (i % 3 === 2 ? angle - servoDegrees[i - 1] : angle))
-            :   servoDegrees
-        return named(
-            joints,
-            degrees.map((angle, i) => angle * DEG2RAD_F * sign[i] + offset[i])
-        )
+        return jointTargets(this.map, servoDegrees)
     }
+}
+
+/** The model's joint values (rad, by joint name) for the firmware's 12 servo angles (deg, after DIR). */
+export function jointTargets(map: JointMap, servoDegrees: number[]) {
+    const { joints, sign, offset, kneeRelativeToBody } = map
+    const degrees =
+        kneeRelativeToBody ?
+            servoDegrees.map((angle, i) => (i % 3 === 2 ? angle - servoDegrees[i - 1] : angle))
+        :   servoDegrees
+    return named(
+        joints,
+        degrees.map((angle, i) => angle * DEG2RAD_F * sign[i] + offset[i])
+    )
 }

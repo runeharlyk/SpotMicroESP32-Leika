@@ -30,7 +30,7 @@ const defaultViews: View[] = [
         content: {
             id: 'root',
             layout: 'column',
-            widgets: [{ id: 2, component: 'Visualization', props: { debug: true } }]
+            widgets: [{ id: 2, component: 'Visualization' }]
         }
     },
     {
@@ -47,7 +47,7 @@ const defaultViews: View[] = [
             id: 'root',
             widgets: [
                 { id: 2, component: 'Stream' },
-                { id: 2, component: 'Visualization', props: { debug: true } }
+                { id: 2, component: 'Visualization' }
             ]
         }
     },
