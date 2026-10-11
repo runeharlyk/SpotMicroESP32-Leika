@@ -20,6 +20,11 @@ CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 # to tell an update that came up from a rollback
 CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64
 
+# Sockets: httpd takes up to 10 (sessions plus its own, see MAX_SESSIONS in webserver.cpp) and the access point's DNS
+# server one; at the default of 10, with the access point up, a seventh session could not be accepted. mDNS uses raw
+# lwIP and needs none.
+CONFIG_LWIP_MAX_SOCKETS=16
+
 # mDNS
 CONFIG_MDNS_MAX_SERVICES=10
 
