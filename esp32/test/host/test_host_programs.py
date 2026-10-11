@@ -52,6 +52,7 @@ PROGRAMS = {
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "ota_session_test.cpp": [],
+    "cpu_usage_test.cpp": [],
 }
 
 # Compiler flags a program needs besides the firmware's.

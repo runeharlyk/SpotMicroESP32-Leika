@@ -6,6 +6,7 @@
 #include <esp_system.h>
 #include <mdns.h>
 #include <peripherals/i2c_bus.h>
+#include <utils/cpu_usage.h>
 #include <soc/soc.h>
 
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || \
@@ -164,6 +165,10 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
 }
 
+static CpuUsage cpuUsage;
+
+void sampleCpuUsage() { cpuUsage.sample(); }
+
 void getAnalytics(socket_message_AnalyticsData &analytics) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
@@ -178,6 +183,9 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     analytics.fs_total = fs_total;
     analytics.fs_used = fs_used;
     analytics.uptime = esp_timer_get_time() / 1000;
+    analytics.cpu0_usage = cpuUsage.core(0);
+    analytics.cpu1_usage = cpuUsage.core(1);
+    analytics.cpu_usage = cpuUsage.total();
 
     const auto devices = I2CBus::instance().errors();
     const size_t count = std::min(devices.size(), std::size(analytics.i2c_errors));

@@ -7,3 +7,6 @@ typedef uint32_t TickType_t;
 #define portMAX_DELAY 0xffffffffu
 #define pdMS_TO_TICKS(ms) ((TickType_t)((uint64_t)(ms) * configTICK_RATE_HZ / 1000))
 #define pdTRUE 1
+#define pdFALSE 0
+typedef int BaseType_t;
+#define configNUMBER_OF_CORES 2

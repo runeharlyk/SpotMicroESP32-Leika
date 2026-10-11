@@ -7,7 +7,11 @@
 
     import { daisyColor } from '$lib/utilities'
     import { analytics } from '$lib/stores/analytics'
+    import type { AnalyticsData } from '$lib/platform_shared/message'
     import { Metrics } from '$lib/components/icons'
+
+    let cpuChartElement: HTMLCanvasElement
+    let cpuChart: Chart
 
     let heapChartElement: HTMLCanvasElement
     let heapChart: Chart
@@ -22,6 +26,78 @@
 
     onMount(() => {
         analytics.listen()
+        const cpuDataset = (
+            label: string,
+            color: string,
+            usage: (data: AnalyticsData) => number
+        ) => ({
+            label,
+            borderColor: daisyColor(color),
+            backgroundColor: daisyColor(color, 50),
+            borderWidth: 2,
+            data: $analytics.map(usage),
+            yAxisID: 'y'
+        })
+        cpuChart = new Chart(cpuChartElement, {
+            type: 'line',
+            data: {
+                labels: $analytics.map(datapoint => datapoint.uptime),
+                datasets: [
+                    cpuDataset('Core 0', '--color-primary', datapoint => datapoint.cpu0Usage),
+                    cpuDataset('Core 1', '--color-secondary', datapoint => datapoint.cpu1Usage),
+                    cpuDataset('Both cores', '--color-accent', datapoint => datapoint.cpuUsage)
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 0
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: daisyColor('--color-base-content', 10)
+                        },
+                        ticks: {
+                            color: daisyColor('--color-base-content')
+                        },
+                        display: false
+                    },
+                    y: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'CPU usage [%]',
+                            color: daisyColor('--color-base-content'),
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        position: 'left',
+                        min: 0,
+                        max: 100,
+                        grid: { color: daisyColor('--color-base-content', 10) },
+                        ticks: {
+                            color: daisyColor('--color-base-content')
+                        },
+                        border: { color: daisyColor('--color-base-content', 10) }
+                    }
+                }
+            }
+        })
         heapChart = new Chart(heapChartElement, {
             type: 'line',
             data: {
@@ -228,6 +304,12 @@
     })
 
     function updateData() {
+        cpuChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
+        cpuChart.data.datasets[0].data = $analytics.map(datapoint => datapoint.cpu0Usage)
+        cpuChart.data.datasets[1].data = $analytics.map(datapoint => datapoint.cpu1Usage)
+        cpuChart.data.datasets[2].data = $analytics.map(datapoint => datapoint.cpuUsage)
+        cpuChart.update('none')
+
         heapChart.data.labels = $analytics.map(datapoint => datapoint.uptime)
         heapChart.data.datasets[0].data = $analytics.map(
             datapoint => datapoint.totalHeap - datapoint.freeHeap
@@ -254,6 +336,14 @@
         <span>System Metrics</span>
     {/snippet}
 
+    <div class="w-full overflow-x-auto">
+        <div
+            class="flex w-full flex-col space-y-1 h-60"
+            transition:slide|local={{ duration: 300, easing: cubicOut }}
+        >
+            <canvas bind:this={cpuChartElement}></canvas>
+        </div>
+    </div>
     <div class="w-full overflow-x-auto">
         <div
             class="flex w-full flex-col space-y-1 h-60"
