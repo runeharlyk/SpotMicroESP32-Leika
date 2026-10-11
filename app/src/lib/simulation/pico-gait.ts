@@ -186,7 +186,7 @@ const stanceCurve = (length: number, angle: number, depth: number, phase: number
     const step = length * (1 - 2 * phase)
     point[0] += step * Math.cos(angle)
     point[2] += step * Math.sin(angle)
-    if (length !== 0) point[1] = -depth * Math.cos((Math.PI * (point[0] + point[2])) / (2 * length))
+    if (length !== 0) point[1] = -depth * Math.cos((Math.PI * step) / (2 * length))
 }
 
 const bezierCurve = (length: number, angle: number, height: number, phase: number, point: Vec3) => {
