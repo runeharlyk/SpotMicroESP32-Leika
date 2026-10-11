@@ -108,6 +108,8 @@ uv run pytest -q
 ```
 
 It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` or `app/static/URDF/**` change.
+The workflow skips torch and its CUDA wheels, which no test imports, and runs every later `uv run` with `--no-sync` so they stay out.
+It regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware before the tests, so it also runs when `esp32/include/**` or `esp32/test/host/**` change.
 `uv run python export_gait_trace.py` regenerates `app/tests/fixtures/pico-gait-trace.json`, which the app's `pico-gait.spec.ts` checks.
 
 ### Protobuf schemas (`platform_shared/`)
