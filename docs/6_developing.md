@@ -88,13 +88,15 @@ From the repository root:
 uv run --with protobuf --with grpcio-tools python esp32/scripts/compile_protos.py
 uv run --with pytest pytest -q esp32/test/scripts esp32/test/host
 uv run python esp32/test/host/export_firmware_traces.py
+uv run python esp32/test/host/export_animation_traces.py
 cd app
 pnpm proto
-pnpm exec vitest run tests/unit/firmware-motion.spec.ts
+pnpm exec vitest run tests/unit/firmware-motion.spec.ts tests/unit/animation-player.spec.ts
 ```
 
 - `esp32/test/scripts` tests the secrets check, and `esp32/test/host` builds and runs each C++ test program.
 - `export_firmware_traces.py` regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware code. The web app's TypeScript port of the motion code is tested against them, so commit the regenerated files when the motion code changes.
+- `export_animation_traces.py` does the same for the animation player: it regenerates `app/tests/fixtures/animation-trace-*.json` from the built-in clips, which pin `app/src/lib/animation/player.ts`. Run `esp32/scripts/pack_animations.py` first when a clip in `animations/` changed.
 
 ### Simulation (`simulation/`, `platform_shared/`)
 

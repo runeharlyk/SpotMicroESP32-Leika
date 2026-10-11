@@ -20,6 +20,7 @@ These are the steps it takes to get a fresh new robot up and barking.
 - [Software description](software_description.md) (firmware tasks, sensors, feature flags and the web app)
 - [Kinematics](kinematics.md) (body pose, inverse kinematics and the hardware variants)
 - [Motion system](motion_system.md) (modes, controller mapping and the trot and crawl gaits)
+- [Animations](animation.md) (playing, writing and uploading clips, and the clip format)
 - [API](api.md)
 - [WebSocket](websocket.md) (the protobuf messages, subscriptions, the dead-man stop and telemetry)
 - [Serial link](serial.md) (the same requests over a USB cable, beside the log)
