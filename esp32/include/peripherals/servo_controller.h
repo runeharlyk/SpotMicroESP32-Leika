@@ -9,6 +9,7 @@
 #include <template/stateful_service.h>
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
+#include <esp_timer.h>
 #include <atomic>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
@@ -110,9 +111,23 @@ class ServoController : public StatefulService<ServoSettings> {
         return _pca.setMultiplePWM(_channelPwm, written) == 0;
     }
 
+    /**
+     * A board that stops answering costs every write the bus's timeout, longer than a tick: after a few failed writes
+     * in a row the controller only tries twice a second, and writes every tick again once the board answers. A
+     * skipped write is not ok.
+     */
+    static constexpr uint32_t FAILURES_BEFORE_BACKOFF = 3;
+    static constexpr int64_t RETRY_INTERVAL_US = 500000;
+
     ServoWrite update(float dt) {
         if (control_state != SERVO_CONTROL_STATE::ANGLE || !_model.load()) return {};
-        return {true, calculatePWM(dt)};
+        const int64_t now = esp_timer_get_time();
+        if (_failedWrites >= FAILURES_BEFORE_BACKOFF && now - _lastAttemptUs < RETRY_INTERVAL_US) return {};
+        _lastAttemptUs = now;
+        const bool ok = calculatePWM(dt);
+        if (ok && _failedWrites > 0) restartBoardIfReset();
+        _failedWrites = ok ? 0 : _failedWrites + 1;
+        return {true, ok};
     }
 
     const float *outputAngles() const { return angles; }
@@ -127,6 +142,14 @@ class ServoController : public StatefulService<ServoSettings> {
         };
     }
 
+    // A board that answers again after failed writes may have lost power: then it answers asleep, at its default
+    // frequency and without auto-increment, so the write that reached it landed in one register.
+    void restartBoardIfReset() {
+        if (_pca.configured()) return;
+        _pca.begin(FACTORY_SERVO_OSCILLATOR_FREQUENCY, FACTORY_SERVO_PWM_FREQUENCY);
+        if (is_active) _pca.wakeup();
+    }
+
     std::atomic<const JointModel *> _model {nullptr};
     FSPersistencePB<ServoSettings> _persistence;
 
@@ -139,6 +162,8 @@ class ServoController : public StatefulService<ServoSettings> {
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     uint16_t _outputPwm[SERVO_COUNT] = {};
     uint16_t _channelPwm[PCA9685_CHANNELS] = {};
+    uint32_t _failedWrites = 0;
+    int64_t _lastAttemptUs = 0;
 };
 
 #endif

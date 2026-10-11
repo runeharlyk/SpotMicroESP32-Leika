@@ -301,7 +301,7 @@ message TickSample {
     repeated float targets = 7;  // rad, servo space, the motion's angles before smoothing
     repeated uint32 pwm = 8;     // the 12 values written to the PCA9685
     uint32 servo_write_us = 9;
-    bool servo_ok = 10;
+    bool servo_ok = 10;          // the servo board took this tick's write; false when it failed or none was made
     repeated float command = 11; // lx, ly, rx, ry, height, speed, s1, as the motion state used them
     uint32 command_age_us = 12;  // tick start minus command_rx_us; 0 before any command
     uint64 command_rx_us = 13;
