@@ -51,6 +51,7 @@ PROGRAMS = {
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
+    "console_uart_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "ota_session_test.cpp": [],
 }
 

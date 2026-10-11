@@ -43,6 +43,27 @@
 Websocket wsSocket {server, "/api/ws"};
 SerialLink serialLink;
 
+// Every link a client can be on: each takes the same messages, and a stream goes to its subscribers on each.
+static CommAdapterBase *const links[] = {&wsSocket, &serialLink};
+
+template <typename T>
+static void onEveryLink(std::function<void(const T &, int)> handler) {
+    for (CommAdapterBase *link : links) link->on<T>(handler);
+}
+
+/** Whether every subscriber on every link got the message. */
+template <typename T>
+static bool emitToAll(const T &data) {
+    bool sent = true;
+    for (CommAdapterBase *link : links) sent = link->emit(data) && sent;
+    return sent;
+}
+
+static bool anySubscribers(int32_t tag) {
+    return std::any_of(std::begin(links), std::end(links),
+                       [tag](CommAdapterBase *link) { return link->hasSubscribers(tag); });
+}
+
 Peripherals peripherals;
 ServoController servoController;
 MotionService motionService;
@@ -188,6 +209,33 @@ void setupServer() {
     server.addDefaultHeader("Server", APP_NAME);
 }
 
+// What a recording needs to read the batches that follow, sent to a client as it subscribes to them.
+static void sendTelemetryHeader(CommAdapterBase &link, int clientId) {
+    telemetry.setRecording(true);
+    // Kept off the tasks' stacks, and both the WebSocket's and the serial link's tasks may be here.
+    static std::mutex headerMutex;
+    std::lock_guard<std::mutex> lock(headerMutex);
+    static socket_message_TelemetryHeader header;
+    header = socket_message_TelemetryHeader_init_zero;
+    header.firmware_version = const_cast<char *>(APP_VERSION);
+    header.build_target = const_cast<char *>(feature_service::buildTarget());
+    header.variant = const_cast<char *>(variantName(activeVariant.load()));
+    header.device_id = const_cast<char *>(deviceId().c_str());
+    header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
+    header.imu_rate_hz = peripherals.imuRateHz();
+    header.mag_rate_hz = peripherals.magRateHz();
+    header.control_rate_hz = 100;
+    header.has_servo_settings = true;
+    // Through the settings reader, so the header carries the variant's joint model with the centres.
+    servoController.protoHandler.read(header.servo_settings);
+    header.has_imu_settings = true;
+    header.imu_settings = effectiveImuSettings(peripherals.snapshot());
+    header.batch_ticks = Telemetry::BATCH_TICKS;
+    std::copy(std::begin(MotionService::JOINT_DIRECTION), std::end(MotionService::JOINT_DIRECTION),
+              header.joint_direction);
+    link.emit(header, clientId);
+}
+
 void setupEventSocket() {
     FileSystemWS::fsHandler.setSendCallbacks(
         [](const socket_message_FSDownloadMetadata &metadata, int clientId) { wsSocket.emit(metadata, clientId); },
@@ -202,52 +250,33 @@ void setupEventSocket() {
         FileSystemWS::fsHandler.dropClient(clientId);
         otaSession.drop(clientId);
     });
-    wsSocket.onSubscribed([](int32_t tag, int clientId) {
-        if (tag != socket_message_Message_telemetry_batch_tag) return;
-        telemetry.setRecording(true);
-        static socket_message_TelemetryHeader header;
-        header = socket_message_TelemetryHeader_init_zero;
-        header.firmware_version = const_cast<char *>(APP_VERSION);
-        header.build_target = const_cast<char *>(feature_service::buildTarget());
-        header.variant = const_cast<char *>(variantName(activeVariant.load()));
-        header.device_id = const_cast<char *>(deviceId().c_str());
-        header.imu_driver = const_cast<char *>(peripherals.imuDriverName());
-        header.imu_rate_hz = peripherals.imuRateHz();
-        header.mag_rate_hz = peripherals.magRateHz();
-        header.control_rate_hz = 100;
-        header.has_servo_settings = true;
-        // Through the settings reader, so the header carries the variant's joint model with the centres.
-        servoController.protoHandler.read(header.servo_settings);
-        header.has_imu_settings = true;
-        header.imu_settings = effectiveImuSettings(peripherals.snapshot());
-        header.batch_ticks = Telemetry::BATCH_TICKS;
-        std::copy(std::begin(MotionService::JOINT_DIRECTION), std::end(MotionService::JOINT_DIRECTION),
-                  header.joint_direction);
-        wsSocket.emit(header, clientId);
-    });
+    for (CommAdapterBase *link : links)
+        link->onSubscribed([link](int32_t tag, int clientId) {
+            if (tag == socket_message_Message_telemetry_batch_tag) sendTelemetryHeader(*link, clientId);
+        });
 
-    wsSocket.on<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
+    onEveryLink<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
         const int64_t now = esp_timer_get_time();
         motionService.inbox.postInput(data, now / 1000, now);
     });
 
     // A robot taking on a mode during an update would move with its firmware half replaced; gestures are held back
     // in the control task for the same reason.
-    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
+    onEveryLink<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
         if (!otaSession.running()) motionService.inbox.postMode(data.mode);
     });
 
-    wsSocket.on<socket_message_WalkGaitData>(
+    onEveryLink<socket_message_WalkGaitData>(
         [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
 
-    wsSocket.on<socket_message_AnglesData>(
+    onEveryLink<socket_message_AnglesData>(
         [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
 
-    wsSocket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
+    onEveryLink<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
         servoController.setServoPWM(data.servo_id, data.servo_pwm);
     });
 
-    wsSocket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
+    onEveryLink<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
         data.active ? servoController.activate() : servoController.deactivate();
     });
 
@@ -491,7 +520,7 @@ void setupEventSocket() {
          [](const auto &req, auto &res, Client client) { replyOta(res, otaSession.finish(client.id)); }},
     };
 
-    // File transfer and firmware updates go over the WebSocket only: the serial link carries setup, not files.
+    // File transfer and firmware updates go over the WebSocket only: their 16 KiB chunks outgrow a serial frame.
     static const pb_size_t WEBSOCKET_ONLY[] = {
         socket_message_CorrelationRequest_fs_delete_request_tag,   socket_message_CorrelationRequest_fs_mkdir_request_tag,
         socket_message_CorrelationRequest_fs_list_request_tag,     socket_message_CorrelationRequest_fs_download_request_tag,
@@ -529,10 +558,9 @@ void setupEventSocket() {
 
         delete res;
     };
-    wsSocket.on<socket_message_CorrelationRequest>(
-        [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&wsSocket, clientId}); });
-    serialLink.on<socket_message_CorrelationRequest>(
-        [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&serialLink, clientId}); });
+    for (CommAdapterBase *link : links)
+        link->on<socket_message_CorrelationRequest>(
+            [answer, link](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {link, clientId}); });
 }
 
 // Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which only
@@ -641,8 +669,8 @@ static void publishMotion() {
     lastMode = mode;
     lastGait = gait;
     lastSentAt = now;
-    wsSocket.emit(socket_message_ModeData {.mode = mode});
-    wsSocket.emit(socket_message_WalkGaitData {.gait = gait});
+    emitToAll(socket_message_ModeData {.mode = mode});
+    emitToAll(socket_message_WalkGaitData {.gait = gait});
 }
 
 void IRAM_ATTR serviceLoopEntry(void *) {
@@ -690,43 +718,42 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         EXECUTE_EVERY_N_MS(1000, otaSession.expire(nowMs()));
 
         EXECUTE_EVERY_N_MS(2000, {
-            if (wsSocket.hasSubscribers(socket_message_Message_analytics_tag)) {
+            if (anySubscribers(socket_message_Message_analytics_tag)) {
                 socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
                 system_service::getAnalytics(analytics);
-                wsSocket.emit(analytics);
+                emitToAll(analytics);
             }
         });
 
         EXECUTE_EVERY_N_MS(100, {
             publishMotion();
 
-            // Over the serial link too: a robot set up over USB shows it joining the network.
+            // Also on the console UART: a robot set up over its USB-serial chip shows it joining the network.
             if (wifiService.takeStatusChanged()) {
                 api_WifiStatus status = api_WifiStatus_init_zero;
                 WiFiService::status(status);
-                wsSocket.emit(status);
-                serialLink.emit(status);
+                emitToAll(status);
             }
 
-            if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
+            if (anySubscribers(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);
-                wsSocket.emit(imu);
+                emitToAll(imu);
             }
 
-            if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {
+            if (anySubscribers(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
-                wsSocket.emit(rssi);
+                emitToAll(rssi);
             }
         });
 
         // Recording follows the subscribers, so a recorder that vanished without unsubscribing stops it too.
-        const bool listening = wsSocket.hasSubscribers(socket_message_Message_telemetry_batch_tag);
+        const bool listening = anySubscribers(socket_message_Message_telemetry_batch_tag);
         telemetry.setRecording(listening);
         if (!listening) telemetry.discardUnsent();
         static socket_message_TelemetryBatch batch;
         static uint32_t batchesSent = 0, batchesFailed = 0;
-        while (telemetry.takeBatch(batch)) (wsSocket.emit(batch) ? batchesSent : batchesFailed)++;
+        while (telemetry.takeBatch(batch)) (emitToAll(batch) ? batchesSent : batchesFailed)++;
         EXECUTE_EVERY_N_MS(1000, {
             if (telemetry.recording()) {
                 socket_message_TelemetryNetwork network = socket_message_TelemetryNetwork_init_zero;
@@ -736,7 +763,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
                 network.batches_sent = batchesSent;
                 network.batches_failed = batchesFailed;
                 network.ticks_dropped = telemetry.droppedTicks();
-                wsSocket.emit(network);
+                emitToAll(network);
             }
         });
 

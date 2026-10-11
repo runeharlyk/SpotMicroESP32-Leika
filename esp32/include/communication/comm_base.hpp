@@ -103,6 +103,9 @@ class CommAdapterBase {
     /** Whether a client can take a frame now, without waiting. */
     virtual bool ready(int cid) { return true; }
 
+    /** Sends a stream's frame only if the client can take it now: a stream never waits on a client. */
+    virtual bool sendStream(const uint8_t* data, size_t len, int cid) { return ready(cid) && send(data, len, cid); }
+
     void subscribe(int32_t tag, int cid = 0) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         std::list<int>& clients = client_subscriptions_[tag];
@@ -163,7 +166,7 @@ class CommAdapterBase {
         xSemaphoreGive(mutex_);
         bool sent = true;
         for (int cid : clients) {
-            sent = ready(cid) && send(data, len, cid) && sent;
+            sent = sendStream(data, len, cid) && sent;
         }
         return sent;
     }
