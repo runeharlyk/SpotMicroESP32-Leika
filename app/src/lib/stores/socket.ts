@@ -284,8 +284,10 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
-        message_listeners_totag?.delete(listener as (data?: unknown) => void)
+        message_listeners_totag.delete(listener as (data?: unknown) => void)
         if (message_listeners_totag.size == 0) {
+            // Dropped, so the next listener for this tag subscribes again.
+            message_listeners.delete(tag)
             unsubscribeToMessageFromServer(event_type)
         }
     }
