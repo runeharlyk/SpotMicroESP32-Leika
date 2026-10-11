@@ -44,8 +44,8 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 
 | Request      | Response         | Description                                                                                         |
 | ------------ | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 501 without a second slot |
-| `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, which ends the update     |
+| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 415 when too small to be an app image, 501 without a second slot |
+| `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, 415 once the head shows a non-app (e.g. factory) image; each ends the update |
 | `ota_finish` | none (empty 200) | Validate the image and boot it next; 400 when incomplete, 422 when the robot rejects it              |
 
 ### WiFi and access point
