@@ -1,4 +1,4 @@
-"""The real robot's backend against a fake robot on a local WebSocket."""
+"""The real robot's backend against a fake robot on a local WebSocket and on a fake USB serial port."""
 import math
 import time
 
@@ -6,6 +6,7 @@ import pytest
 
 from fake_robot import FakeRobot
 from src.leika import Gait, Mode, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
+from src.leika import link
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
@@ -19,18 +20,32 @@ def _eventually(done, timeout=1.0):
         time.sleep(0.01)
 
 
+# Every robot a test makes, on the transport the test runs over; a serial port opens onto the newest.
+@pytest.fixture(params=["websocket", "serial"])
+def make_fake(request, monkeypatch):
+    made = []
+
+    def make(**options):
+        robot = FakeRobot(transport=request.param, **options)
+        monkeypatch.setattr(link, "Serial", robot.serial_class)
+        made.append(robot)
+        return robot
+
+    yield make
+    for robot in made:
+        robot.stop()
+
+
 @pytest.fixture
-def fake():
-    robot = FakeRobot()
-    yield robot
-    robot.stop()
+def fake(make_fake):
+    return make_fake()
 
 
 @pytest.fixture
 def robot(fake, monkeypatch):
     monkeypatch.setattr(real, "MODE_TIMEOUT_S", 1.0)
     monkeypatch.setattr(real, "SILENCE_S", 0.6)
-    client = Robot(backend=RealBackend(f"127.0.0.1:{fake.port}"))
+    client = Robot(backend=RealBackend(fake.target))
     client.connect()
     yield client
     client.close()
@@ -44,14 +59,11 @@ def test_connecting_reads_the_variant_and_the_state(robot):
     assert robot.max_velocity().vx == pytest.approx(0.8 * 0.12 * 1.0 / 0.75)
 
 
-def test_an_unknown_variant_is_refused():
-    fake = FakeRobot(variant="SPOTMICRO_GIANT")
-    try:
-        with pytest.raises(UnknownVariant):
-            RealBackend(f"127.0.0.1:{fake.port}").connect()
-        _eventually(lambda: fake.connections == 0)  # a failed connect leaves no subscriber on the robot
-    finally:
-        fake.stop()
+def test_an_unknown_variant_is_refused(make_fake):
+    fake = make_fake(variant="SPOTMICRO_GIANT")
+    with pytest.raises(UnknownVariant):
+        RealBackend(fake.target).connect()
+    _eventually(lambda: fake.connections == 0)  # a failed connect leaves no subscriber on the robot
 
 
 def test_stand_waits_for_the_mode_and_sends_the_height(robot, fake):
@@ -63,19 +75,16 @@ def test_stand_waits_for_the_mode_and_sends_the_height(robot, fake):
     assert (last.left.x, last.left.y, last.right.x) == (0, 0, 0)
 
 
-def test_a_mode_the_robot_never_reports_times_out(monkeypatch):
+def test_a_mode_the_robot_never_reports_times_out(make_fake, monkeypatch):
     monkeypatch.setattr(real, "MODE_TIMEOUT_S", 0.5)
-    fake = FakeRobot(obey=False)
-    try:
-        client = Robot(backend=RealBackend(f"127.0.0.1:{fake.port}"))
-        client.connect()
-        started = time.monotonic()
-        with pytest.raises(RobotTimeout):
-            client.stand()
-        assert time.monotonic() - started < 1.5
-        client.close()
-    finally:
-        fake.stop()
+    fake = make_fake(obey=False)
+    client = Robot(backend=RealBackend(fake.target))
+    client.connect()
+    started = time.monotonic()
+    with pytest.raises(RobotTimeout):
+        client.stand()
+    assert time.monotonic() - started < 1.5
+    client.close()
 
 
 def test_a_velocity_walks_with_a_keep_alive_and_a_stop_is_sent_once(robot, fake):
@@ -100,7 +109,7 @@ def test_a_velocity_walks_with_a_keep_alive_and_a_stop_is_sent_once(robot, fake)
 def test_leaving_after_an_error_stops_then_rests(fake, monkeypatch):
     monkeypatch.setattr(real, "MODE_TIMEOUT_S", 1.0)
     with pytest.raises(ValueError):
-        with Robot(backend=RealBackend(f"127.0.0.1:{fake.port}")) as client:
+        with Robot(backend=RealBackend(fake.target)) as client:
             client.stand()  # the robot boots deactivated, and a script does not wake it by walking
             client.set_velocity(0.03, 0, 0)
             raise ValueError("a bug in the script")
@@ -151,3 +160,17 @@ def test_a_dead_man_stop_between_two_reads_is_counted(robot, fake):
 def test_calibration_returns_the_robots_result(robot):
     result = robot.calibrate()
     assert (result.still, result.levelled, result.tilt_deg) == (True, True, pytest.approx(4.2))
+
+
+# A robot keeps streaming to a serial port the client closed until its buffer stays full for seconds.
+def test_closing_ends_the_telemetry_subscription(robot, fake):
+    robot.close()
+    _eventually(lambda: "unsub_notif" in fake.kinds())
+    unsubscribed = [message.unsub_notif.tag for _, message in fake.received if message.HasField("unsub_notif")]
+    assert unsubscribed == [pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number]
+
+
+# Opening a port asserts DTR and RTS unless they were cleared first, and an ESP32 resets on that.
+@pytest.mark.parametrize("make_fake", ["serial"], indirect=True)
+def test_the_usb_port_opens_without_resetting_the_board(robot, fake):
+    assert [port.opened_with for port in fake.ports] == [(False, False)]

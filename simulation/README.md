@@ -59,7 +59,7 @@ uv run python train_mj.py --randomize --zero-final --init-std 0.3 \
 
 uv run python eval_policy.py runs/residual_pure_dr --vx 0.05        # watch a trained policy (--headless prints tracking metrics)
 uv run python visionary_demo.py [address]                           # Robot API demo; an address drives the real robot
-uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file)
+uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file; --robot COM10 over USB)
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
@@ -79,6 +79,7 @@ TensorBoard: `uv run tensorboard --logdir runs`. Watch `terms/r_vel` (tracking) 
 ## Robot API
 
 `Robot("simulation")` and `Robot("<robot address>")` expose the same calls, so a script written against the simulation runs on the robot by changing its target.
+The target can also be the board's native USB port (`Robot("COM10")`, `Robot("/dev/ttyACM0")`), which carries the same protocol as WiFi, see [the serial link](../docs/serial.md); the robot's log lines from that port go to the `leika.robot_log` logger.
 Velocities are REP-103 (forward, left, counter-clockwise) in m/s and rad/s, and angles are in degrees.
 
 ```python

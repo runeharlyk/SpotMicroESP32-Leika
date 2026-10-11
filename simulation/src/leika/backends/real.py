@@ -1,6 +1,7 @@
-"""The real robot over its WebSocket (ws://<host>/api/ws): modes, controller input with a keep-alive, telemetry.
+"""The real robot over its WebSocket (ws://<host>/api/ws) or its native USB port: modes, controller input with a
+keep-alive, telemetry.
 
-One thread runs an asyncio loop that owns the socket; the public methods are synchronous and wait on what telemetry
+One thread runs an asyncio loop that owns the link; the public methods are synchronous and wait on what telemetry
 reports. While the velocity is not zero the input is re-sent every KEEPALIVE_S, inside the firmware's 500 ms dead-man.
 """
 import asyncio
@@ -8,10 +9,9 @@ import math
 import threading
 import time
 
-import websockets
-
 from ...proto import message_pb2 as pb
 from .. import speed_model
+from ..link import LinkClosed, is_serial_port, open_link
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
 
@@ -28,11 +28,12 @@ def _tag(name: str) -> int:
 
 
 class RealBackend:
-    def __init__(self, host: str):
-        self._url = f"ws://{host}/api/ws"
+    def __init__(self, target: str):
+        self._target = target
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
-        self._socket = None
+        self._link = None
+        self._tasks: list[asyncio.Task] = []
         self._changed = threading.Condition()
         self._tick = None
         self._error: RobotError | None = None
@@ -54,35 +55,46 @@ class RealBackend:
             self._run(self._open(), REQUEST_TIMEOUT_S)
             reply = self._request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest()))
             self._variant = speed_model.known_variant(reply.features_data_response.variant)
-            self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot")
+            # A USB-serial chip's port reaches the console UART, which answers requests but streams nothing.
+            hint = " (driving and telemetry need the board's native USB port)" if is_serial_port(self._target) else ""
+            self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot" + hint)
         except BaseException:
             self.close()
             raise
 
-    # Closes the socket even after the link failed, so a silent robot's connection is not left open.
+    # Closes the link even after it failed, so a silent robot's connection is not left open; closing again does nothing.
     def close(self) -> None:
-        if self._socket is not None:
-            closing = asyncio.run_coroutine_threadsafe(self._socket.close(), self._loop)
+        if not self._thread.is_alive():
+            return
+        if self._link is not None:
+            closing = asyncio.run_coroutine_threadsafe(self._close(), self._loop)
             try:
                 closing.result(2.0)
-            except (TimeoutError, OSError, websockets.ConnectionClosed):
+            except (TimeoutError, OSError):
                 pass  # already gone
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(2.0)
 
+    # A robot learns of a closed USB port only when its buffer stays full, so the subscription is ended first.
+    async def _close(self) -> None:
+        try:
+            await self._link.send(pb.Message(unsub_notif=pb.UnsubscribeNotification(tag=_tag("telemetry_batch"))).SerializeToString())
+        except LinkClosed:
+            pass
+        for task in self._tasks:
+            task.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        await self._link.close()
+
     async def _open(self) -> None:
-        self._socket = await websockets.connect(
-            self._url, open_timeout=REQUEST_TIMEOUT_S, close_timeout=1, ping_interval=None, max_size=None
-        )
-        await self._socket.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag("telemetry_batch"))).SerializeToString())
-        self._loop.create_task(self._read())
-        self._loop.create_task(self._keep_alive())
+        self._link = await open_link(self._target, REQUEST_TIMEOUT_S)
+        await self._link.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag("telemetry_batch"))).SerializeToString())
+        self._tasks = [self._loop.create_task(self._read()), self._loop.create_task(self._keep_alive())]
 
     async def _read(self) -> None:
-        reason = f"the robot at {self._url} closed the connection"
         try:
             while True:
-                frame = await asyncio.wait_for(self._socket.recv(), SILENCE_S)
+                frame = await asyncio.wait_for(self._link.recv(), SILENCE_S)
                 message = pb.Message.FromString(frame)
                 kind = message.WhichOneof("message")
                 if kind == "telemetry_batch" and message.telemetry_batch.ticks:
@@ -98,9 +110,9 @@ class RealBackend:
                     if future is not None and not future.done():
                         future.set_result(message.correlation_response)
         except TimeoutError:
-            reason = f"nothing from the robot at {self._url} for {SILENCE_S:g} s"
-        except websockets.ConnectionClosed:
-            pass
+            reason = f"nothing from the robot at {self._link.name} for {SILENCE_S:g} s"
+        except LinkClosed as error:
+            reason = f"the robot is gone: {error}"
         with self._changed:
             self._error = RobotDisconnected(reason)
             self._changed.notify_all()
@@ -121,12 +133,12 @@ class RealBackend:
             height=self._height, speed=speed_model.SPEED, s1=STEP_HEIGHT,
         )
         try:
-            await self._socket.send(pb.Message(controller_data=data).SerializeToString())
-        except websockets.ConnectionClosed:
+            await self._link.send(pb.Message(controller_data=data).SerializeToString())
+        except LinkClosed:
             pass  # the reader reports it
 
     async def _send(self, message: pb.Message) -> None:
-        await self._socket.send(message.SerializeToString())
+        await self._link.send(message.SerializeToString())
 
     async def _ask(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
         request.correlation_id = self._next_id
@@ -143,10 +155,10 @@ class RealBackend:
             raise self._error
         try:
             return asyncio.run_coroutine_threadsafe(coroutine, self._loop).result(timeout)
-        except websockets.ConnectionClosed as error:
-            raise RobotDisconnected(f"the robot at {self._url} closed the connection") from error
+        except LinkClosed as error:
+            raise RobotDisconnected(f"the robot is gone: {error}") from error
         except (TimeoutError, OSError) as error:
-            raise RobotTimeout(f"no answer from the robot at {self._url}") from error
+            raise RobotTimeout(f"no answer from the robot at {self._target}") from error
 
     def _request(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
         reply = self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
