@@ -35,6 +35,7 @@ void WiFiService::loop() {
     if (reconfigureAt && now >= reconfigureAt && _reconfigureAt.compare_exchange_strong(reconfigureAt, 0)) {
         WiFi.disconnect(false);
         read([this](const WiFiSettings &settings) { _nextNetwork = settings.selected_network; });
+        _orderCount = 0;
         _nextAttemptAt = now;
     }
     EXECUTE_EVERY_N_MS(1000, manageSTA());
@@ -46,9 +47,25 @@ void WiFiService::reconfigureWiFiConnection() {
 }
 
 void WiFiService::manageSTA() {
-    if (WiFi.isConnected()) return;
+    if (WiFi.isConnected()) {
+        // A later drop starts a new round, ranked by a fresh scan.
+        _orderCount = 0;
+        return;
+    }
     uint32_t now = esp_timer_get_time() / 1000;
     if (now < _nextAttemptAt) return;
+
+    // With the strongest preferred, each round of attempts starts with a scan and runs through the saved networks in
+    // the order it ranks them.
+    std::vector<wifi_ap_record_t> heard;
+    bool scanned = false;
+    if (_rankingScan) {
+        const int16_t found = WiFi.scanComplete();
+        if (found == -1) return;
+        _rankingScan = false;
+        scanned = true;
+        if (found > 0) heard = WiFi.scanResults();
+    }
 
     // A save from the app rewrites the networks on the socket's task: connect with one whole copy.
     // Each failed attempt moves on to the next saved network.
@@ -56,21 +73,42 @@ void WiFiService::manageSTA() {
     char hostname[sizeof(WiFiSettings::hostname)];
     uint32_t count = 0;
     uint32_t index = 0;
+    bool bySignal = false;
+    bool needScan = false;
     read([&](const WiFiSettings &settings) {
         count = settings.wifi_networks_count;
         if (count == 0) return;
-        index = _nextNetwork % count;
+        bySignal = settings.priority_rssi && count > 1;
+        if (bySignal && scanned) {
+            std::vector<SeenNetwork> seen;
+            for (const wifi_ap_record_t &record : heard)
+                seen.push_back({reinterpret_cast<const char *>(record.ssid), record.rssi});
+            _orderCount = orderBySignal(settings, seen.data(), seen.size(), _order);
+            _orderPos = 0;
+        }
+        if (bySignal && _orderPos >= _orderCount) {
+            needScan = true;
+            return;
+        }
+        index = bySignal ? _order[_orderPos++] % count : _nextNetwork % count;
         network = settings.wifi_networks[index];
         memcpy(hostname, settings.hostname, sizeof(hostname));
     });
     if (count == 0) return;
+    if (needScan) {
+        // A station still trying the last network cannot scan; an app's scan already running serves as well.
+        WiFi.disconnect(false);
+        startScan();
+        _rankingScan = true;
+        return;
+    }
 
     // The station is off after WiFi.disconnect(true) or while only the access point runs.
     wifi_mode_t mode = WiFi.getMode();
     if (!(mode & WIFI_MODE_STA)) WiFi.mode(static_cast<wifi_mode_t>(mode | WIFI_MODE_STA));
 
     _connectingTo = index;
-    _nextNetwork = index + 1;
+    if (!bySignal) _nextNetwork = index + 1;
     _nextAttemptAt = now + reconnectDelay;
     ESP_LOGI(TAG, "Connecting to %s", network.ssid);
     configureNetwork(network, hostname);
