@@ -25,10 +25,9 @@ pnpm dev          # runs `pnpm model` first, then Vite on port 5173
 ```sh
 pnpm lint         # prettier --check . && eslint .
 pnpm check        # svelte-kit sync && svelte-check
-pnpm test         # Playwright integration tests (tests/integration), then Vitest (tests/unit)
+pnpm test         # Vitest (tests/unit), once
 pnpm format       # prettier --write .
 ```
 
-The first Playwright run needs `pnpm exec playwright install chromium`.
-`pnpm test:unit` stays in watch mode in a terminal; use `pnpm exec vitest run` for one run.
+`pnpm test:unit` runs Vitest in watch mode.
 More in [Developing](../docs/6_developing.md).

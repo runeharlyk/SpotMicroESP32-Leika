@@ -51,14 +51,13 @@ pnpm install
 pnpm proto
 pnpm lint        # prettier --check . && eslint .
 pnpm check       # svelte-kit sync && svelte-check
-pnpm exec playwright install chromium
-pnpm test        # Playwright integration tests, then Vitest unit tests
+pnpm test        # Vitest unit tests, once
+pnpm build       # the hosted app, as the Deploy GitHub Pages workflow builds it
 ```
 
 - `pnpm format` rewrites the files with Prettier (`app/.prettierrc`).
-- `pnpm test:integration` builds the app and serves it with `vite preview` on port 4173 (`app/playwright.config.ts`), so it needs `protoc`.
-- `pnpm test` ends in `vitest`, which stays in watch mode in a terminal. Use `pnpm exec vitest run` for a single run, or `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
-- Unit tests are in `app/tests/unit`, integration tests in `app/tests/integration`.
+- `pnpm test:unit` runs Vitest in watch mode. Use `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
+- Tests are in `app/tests/unit`. They mount pages and components in jsdom, and the socket tests talk to a real WebSocket server.
 
 This is the `Frontend Tests` workflow, triggered by changes in `app/**` and `simulation/src/resources/**`.
 
