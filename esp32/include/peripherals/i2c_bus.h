@@ -1,8 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <driver/gpio.h>
 #include <driver/i2c_master.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <functional>
@@ -74,29 +76,22 @@ class I2CBus {
     i2c_master_bus_handle_t busHandle() const { return _bus; }
 
     esp_err_t writeBytes(uint8_t addr, const uint8_t* data, size_t len) {
-        Lock lock(_mutex);
-        i2c_master_dev_handle_t device;
-        esp_err_t err = deviceAt(addr, device);
-        if (err != ESP_OK) return err;
-        return i2c_master_transmit(device, data, len, TIMEOUT_MS);
+        return transfer(addr, [&](i2c_master_dev_handle_t device) {
+            return i2c_master_transmit(device, data, len, TIMEOUT_MS);
+        });
     }
 
     esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
-        Lock lock(_mutex);
-        i2c_master_dev_handle_t device;
-        esp_err_t err = deviceAt(addr, device);
-        if (err != ESP_OK) return err;
-
-        i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
-        return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
+        return transfer(addr, [&](i2c_master_dev_handle_t device) {
+            i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
+            return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
+        });
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
-        Lock lock(_mutex);
-        i2c_master_dev_handle_t device;
-        esp_err_t err = deviceAt(addr, device);
-        if (err != ESP_OK) return err;
-        return i2c_master_transmit_receive(device, &reg, 1, data, len, TIMEOUT_MS);
+        return transfer(addr, [&](i2c_master_dev_handle_t device) {
+            return i2c_master_transmit_receive(device, &reg, 1, data, len, TIMEOUT_MS);
+        });
     }
 
     bool probe(uint8_t addr) {
@@ -115,6 +110,20 @@ class I2CBus {
             }
         }
         ESP_LOGI(TAG, "Scan complete - Found %d device(s)", devices.size());
+        return devices;
+    }
+
+    struct DeviceErrors {
+        uint8_t address;
+        uint32_t nacks;
+        uint32_t timeouts;
+    };
+
+    // Every device the bus has transferred with since boot, in address order, with its failed transfers.
+    std::vector<DeviceErrors> errors() {
+        Lock lock(_mutex);
+        std::vector<DeviceErrors> devices;
+        for (const auto &[address, counts] : _errors) devices.push_back({address, counts.nacks, counts.timeouts});
         return devices;
     }
 
@@ -145,9 +154,44 @@ class I2CBus {
     uint32_t _freq = 100000;
     bool _initialized = false;
 
+    struct ErrorCounts {
+        uint32_t nacks = 0;
+        uint32_t timeouts = 0;
+    };
+
     SemaphoreHandle_t _mutex;
     i2c_master_bus_handle_t _bus = NULL;
     std::map<uint8_t, i2c_master_dev_handle_t> _devices;
+    // Kept across restarts of the bus, as the analytics count since boot.
+    std::map<uint8_t, ErrorCounts> _errors;
+
+    template <typename Transfer>
+    esp_err_t transfer(uint8_t addr, Transfer &&run) {
+        Lock lock(_mutex);
+        i2c_master_dev_handle_t device;
+        esp_err_t err = deviceAt(addr, device);
+        if (err != ESP_OK) return err;
+        const int64_t start = esp_timer_get_time();
+        err = run(device);
+        if (err != ESP_OK) countFailure(addr, start, err);
+        return err;
+    }
+
+    /**
+     * The driver fails a NACK and a timeout alike, with ESP_ERR_INVALID_STATE, so the bus tells them apart itself: a
+     * timeout leaves a line held low or spends the transfer's whole time, which a device that does not acknowledge
+     * does not. The driver waits whole ticks, so a timeout can end a tick short of TIMEOUT_MS.
+     *
+     * Nothing here recovers a stuck bus: the driver resets its state machine and clocks the bus clear (nine SCL
+     * pulses) itself at the start of the transfer after a timeout, and of any transfer while the bus reads busy.
+     */
+    void countFailure(uint8_t addr, int64_t startUs, esp_err_t err) {
+        const bool spentTimeout = esp_timer_get_time() - startUs >= (TIMEOUT_MS - portTICK_PERIOD_MS) * 1000LL;
+        const bool lineHeldLow = gpio_get_level(_sda) == 0 || gpio_get_level(_scl) == 0;
+        ErrorCounts &counts = _errors[addr];
+        if (err == ESP_ERR_TIMEOUT || spentTimeout || lineHeldLow) counts.timeouts++;
+        else counts.nacks++;
+    }
 
     // Called with the lock held.
     esp_err_t deviceAt(uint8_t addr, i2c_master_dev_handle_t &device) {
@@ -162,7 +206,9 @@ class I2CBus {
         dev_cfg.device_address = addr;
         dev_cfg.scl_speed_hz = _freq;
         esp_err_t err = i2c_master_bus_add_device(_bus, &dev_cfg, &device);
-        if (err == ESP_OK) _devices[addr] = device;
-        return err;
+        if (err != ESP_OK) return err;
+        _devices[addr] = device;
+        _errors.try_emplace(addr);
+        return ESP_OK;
     }
 };

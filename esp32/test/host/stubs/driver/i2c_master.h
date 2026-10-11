@@ -1,7 +1,9 @@
 #pragma once
 // Host fake of ESP-IDF's I2C master driver: records the devices and buses it hands out, and flags any
 // use of a handle that was already freed - what a race between two tasks on the bus would do.
+#include <driver/gpio.h>
 #include <esp_err.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <array>
 #include <atomic>
@@ -14,8 +16,6 @@
 
 typedef int i2c_port_t;
 #define I2C_NUM_0 0
-typedef int gpio_num_t;
-#define GPIO_NUM_NC -1
 #define I2C_CLK_SRC_DEFAULT 0
 #define I2C_ADDR_BIT_LEN_7 0
 
@@ -54,6 +54,12 @@ inline std::atomic<uint32_t> deviceSpeedHz {0};
 inline std::vector<std::vector<uint8_t>> written;
 // What each device's registers hold: reads return them, writes change them, as a register-mapped chip does.
 inline std::map<uint8_t, std::array<uint8_t, 256>> registers;
+// Devices that do not acknowledge their address, as a board without power does not.
+inline std::set<uint8_t> absent;
+// Transfers each device was sent, answered or not.
+inline std::map<uint8_t, int> attempts;
+// How long a failed transfer takes on the fake clock: a NACK ends at once, a timeout spends the transfer's whole time.
+inline int64_t failureUs = 0;
 
 inline bool isLive(const void *handle) {
     std::lock_guard<std::mutex> lock(mutex);
@@ -64,6 +70,9 @@ inline void reset() {
     live.clear();
     written.clear();
     registers.clear();
+    absent.clear();
+    attempts.clear();
+    failureUs = 0;
     devicesAdded = staleUses = transfers = 0;
     deviceSpeedHz = 0;
 }
@@ -114,8 +123,19 @@ inline esp_err_t fakeTransfer(const void *handle) {
     return ESP_OK;
 }
 
+// The driver fails a transfer the device does not acknowledge with ESP_ERR_INVALID_STATE, as it does one that times out.
+inline esp_err_t fakeDeviceTransfer(i2c_master_dev_handle_t device) {
+    esp_err_t result = fakeTransfer(device);
+    if (result != ESP_OK) return result;
+    std::lock_guard<std::mutex> lock(fake_i2c::mutex);
+    fake_i2c::attempts[device->address]++;
+    if (!fake_i2c::absent.count(device->address)) return ESP_OK;
+    fake_timer::nowUs += fake_i2c::failureUs;
+    return ESP_ERR_INVALID_STATE;
+}
+
 inline esp_err_t i2c_master_transmit(i2c_master_dev_handle_t device, const uint8_t *, size_t, int) {
-    return fakeTransfer(device);
+    return fakeDeviceTransfer(device);
 }
 
 struct i2c_master_transmit_multi_buffer_info_t {
@@ -133,7 +153,7 @@ inline esp_err_t i2c_master_multi_buffer_transmit(i2c_master_dev_handle_t device
         std::lock_guard<std::mutex> lock(fake_i2c::mutex);
         fake_i2c::written.push_back(bytes);
     }
-    esp_err_t result = fakeTransfer(device);
+    esp_err_t result = fakeDeviceTransfer(device);
     // Only a live device is read: a freed one is what the bus tests catch, not something to touch.
     if (result != ESP_OK || bytes.empty()) return result;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
@@ -144,7 +164,7 @@ inline esp_err_t i2c_master_multi_buffer_transmit(i2c_master_dev_handle_t device
 
 inline esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device, const uint8_t *write, size_t, uint8_t *read,
                                              size_t length, int) {
-    esp_err_t result = fakeTransfer(device);
+    esp_err_t result = fakeDeviceTransfer(device);
     if (result != ESP_OK) return result;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     auto &chip = fake_i2c::registers[device->address];
@@ -152,4 +172,9 @@ inline esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device, con
     return ESP_OK;
 }
 
-inline esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus, uint16_t, int) { return fakeTransfer(bus); }
+inline esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus, uint16_t address, int) {
+    esp_err_t result = fakeTransfer(bus);
+    if (result != ESP_OK) return result;
+    std::lock_guard<std::mutex> lock(fake_i2c::mutex);
+    return fake_i2c::absent.count(address) ? ESP_ERR_NOT_FOUND : ESP_OK;
+}
