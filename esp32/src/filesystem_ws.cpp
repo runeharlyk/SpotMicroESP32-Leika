@@ -1,4 +1,5 @@
 #include <filesystem_ws.h>
+#include <fs_paths.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <esp_littlefs.h>
@@ -12,6 +13,7 @@
 #include <vector>
 
 static const char* TAG = "FileSystemWS";
+static const char* PATH_REFUSED = "Path not allowed";
 
 namespace FileSystemWS {
 
@@ -64,6 +66,10 @@ void FileSystemHandler::cleanupExpiredTransfers() {
 
 socket_message_FSDeleteResponse FileSystemHandler::handleDelete(const socket_message_FSDeleteRequest& req) {
     socket_message_FSDeleteResponse response = socket_message_FSDeleteResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Delete request: %s", path.c_str());
@@ -113,6 +119,10 @@ bool FileSystemHandler::deleteRecursive(const std::string& path) {
 
 socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_message_FSMkdirRequest& req) {
     socket_message_FSMkdirResponse response = socket_message_FSMkdirResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Mkdir request: %s", path.c_str());
@@ -134,7 +144,9 @@ socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_messa
     return response;
 }
 
-void FileSystemHandler::listDirectory(const std::string& path, socket_message_FSListResponse& response) {
+// Entries the file API would refuse, /config among them, are left out, so the app does not offer to open them.
+void FileSystemHandler::listDirectory(const std::string& path, const std::string& listed,
+                                      socket_message_FSListResponse& response) {
     DIR* dir = opendir(path.c_str());
     if (!dir) {
         return;
@@ -145,9 +157,8 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr && listedFiles_.size() < MAX_LISTED &&
            listedDirectories_.size() < MAX_LISTED) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
+        const std::string child = (listed.back() == '/' ? listed : listed + "/") + entry->d_name;
+        if (!fsPathAllowed(child)) continue;
 
         std::string fullPath = path + "/" + entry->d_name;
         struct stat st;
@@ -175,11 +186,13 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
 socket_message_FSListResponse FileSystemHandler::handleList(const socket_message_FSListRequest& req) {
     socket_message_FSListResponse response = socket_message_FSListResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT);
-    if (strlen(req.path) > 0 && req.path[0] != '\0') {
-        path += req.path;
+    const std::string listed = req.path[0] ? req.path : "/";
+    if (!fsPathAllowed(listed)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
     }
 
+    std::string path = std::string(MOUNT_POINT) + listed;
     ESP_LOGI(TAG, "List request: %s", path.c_str());
 
     struct stat st;
@@ -189,7 +202,7 @@ socket_message_FSListResponse FileSystemHandler::handleList(const socket_message
         return response;
     }
 
-    listDirectory(path, response);
+    listDirectory(path, listed, response);
     response.success = true;
 
     return response;
@@ -197,6 +210,14 @@ socket_message_FSListResponse FileSystemHandler::handleList(const socket_message
 
 void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadRequest& req, int clientId) {
     cleanupExpiredTransfers();
+    if (!fsEntryAllowed(req.path)) {
+        if (sendMetadataCallback_) {
+            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+            strncpy(metadata.error, PATH_REFUSED, sizeof(metadata.error) - 1);
+            sendMetadataCallback_(metadata, clientId);
+        }
+        return;
+    }
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Download request: %s", path.c_str());
 
@@ -368,6 +389,10 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
                                                                           int clientId) {
     cleanupExpiredTransfers();
     socket_message_FSUploadStartResponse response = socket_message_FSUploadStartResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Upload start request: %s, size=%u, chunks=%u", path.c_str(), req.file_size, req.total_chunks);

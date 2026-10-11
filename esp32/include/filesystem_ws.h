@@ -94,7 +94,7 @@ class FileSystemHandler {
     RunLater runLater_;
     WaitWritable waitWritable_;
 
-    void listDirectory(const std::string& path, socket_message_FSListResponse& response);
+    void listDirectory(const std::string& path, const std::string& listed, socket_message_FSListResponse& response);
     bool deleteRecursive(const std::string& path);
     bool sendNextDownloadChunk(uint32_t transferId);
     void pumpDownload(uint32_t transferId);
