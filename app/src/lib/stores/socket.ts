@@ -200,8 +200,8 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
 
     /**
      * Web Serial asks for a port with a user gesture, so this is called from a click unless `port`
-     * was granted before. The robot answers the same requests over USB as over WiFi, but streams
-     * nothing.
+     * was granted before. On the robot's native USB port the link carries all the WebSocket does;
+     * through a USB-serial chip, on the console UART, it carries requests only.
      */
     async function connectSerial(port?: SerialPort) {
         const serial = attach(handlers => createSerialTransport(handlers, port))

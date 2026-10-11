@@ -128,7 +128,8 @@
         <div class="bg-base-200 rounded-box flex w-full max-w-2xl flex-col gap-3 self-center p-4">
             <p>
                 Connect the robot to this computer with a USB data cable to set up its wifi, variant
-                and name without joining its access point.
+                and name without joining its access point. On the board's native USB port, the
+                controller and live data work over the cable too.
             </p>
             {#if grantedPorts.length}
                 <button

@@ -398,7 +398,8 @@
                 </button>
                 <p class="mt-2 mb-4 text-xs opacity-60">
                     For a robot on this computer's USB cable: set up its wifi, variant and name, and
-                    read its log. Driving needs WiFi or Bluetooth.
+                    read its log. On a board's native USB port it also drives and streams live data;
+                    through a USB-serial chip, driving needs WiFi or Bluetooth.
                 </p>
             {/if}
 
