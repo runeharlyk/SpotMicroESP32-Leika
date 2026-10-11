@@ -49,6 +49,9 @@ class WiFiClass {
     bool init();
 
     bool mode(wifi_mode_t mode);
+    // The mode this firmware started the driver in, not the driver's own: esp_wifi_get_mode() reports the mode stored
+    // in NVS by an earlier firmware even while WiFi is stopped, which made an access point that never started look
+    // running.
     wifi_mode_t getMode();
 
     bool begin(const char* ssid, const char* password = nullptr, int32_t channel = 0, const uint8_t* bssid = nullptr);
@@ -106,7 +109,8 @@ class WiFiClass {
     bool _autoReconnect;
     bool _persistent;
     wl_status_t _status;
-    wifi_mode_t _mode;
+    // Changed on the service task, read by the socket's task for the network status.
+    std::atomic<wifi_mode_t> _mode;
 
     std::string _hostname;
     std::mutex _scanMutex;
