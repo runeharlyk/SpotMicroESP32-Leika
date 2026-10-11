@@ -58,7 +58,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     SensorStatus status() const;
 
-    // One pass of the sensor task: queued bus work, the IMU every time, the slower sensors when due.
+    // One pass of the sensor task: the oldest queued bus work, the IMU every time, the slower sensors when due. One
+    // piece of work per pass, so a backlog of probes and calibrations cannot add up past the task watchdog's timeout.
     void sensorTick();
 
     void updatePins();
@@ -117,7 +118,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     static constexpr size_t MAX_QUEUED_WORK = 4;
     std::mutex _workMutex;
     std::deque<std::function<void()>> _work;
-    void runQueuedWork();
+    void runOldestQueuedWork();
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }

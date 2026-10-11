@@ -91,7 +91,7 @@ SensorStatus Peripherals::status() const {
 }
 
 void Peripherals::sensorTick() {
-    runQueuedWork();
+    runOldestQueuedWork();
     readImu();
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
@@ -201,17 +201,15 @@ bool Peripherals::runOnSensorTask(std::function<void()> work) {
     return true;
 }
 
-void Peripherals::runQueuedWork() {
-    for (;;) {
-        std::function<void()> work;
-        {
-            std::lock_guard<std::mutex> lock(_workMutex);
-            if (_work.empty()) return;
-            work = std::move(_work.front());
-            _work.pop_front();
-        }
-        work();
+void Peripherals::runOldestQueuedWork() {
+    std::function<void()> work;
+    {
+        std::lock_guard<std::mutex> lock(_workMutex);
+        if (_work.empty()) return;
+        work = std::move(_work.front());
+        _work.pop_front();
     }
+    work();
 }
 
 Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level) {

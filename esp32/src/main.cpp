@@ -1,6 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>
+#include <esp_task_wdt.h>
 #include <esp_timer.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
@@ -549,8 +550,13 @@ void sensorLoopEntry(void *) {
     esp_timer_handle_t timer;
     ESP_ERROR_CHECK(esp_timer_create(&pace, &timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(timer, 5000));
+    // Watched from here, after the boot's probe and gyro calibration, which together come close to the watchdog's 5 s.
+    // A pass runs at most one piece of queued work; the longest, a probe that waits out a BNO055 which does not come
+    // back from its reset, takes about 3 s.
+    ESP_ERROR_CHECK(esp_task_wdt_add(nullptr));
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        esp_task_wdt_reset();
         peripherals.sensorTick();
     }
 }
@@ -596,9 +602,14 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     servoController.begin();
     motionService.begin();
 
+    // A hung tick would leave the servos holding their last pose; the watchdog restarts the board instead, and the
+    // restart puts the PCA9685 to sleep.
+    ESP_ERROR_CHECK(esp_task_wdt_add(nullptr));
+
     uint32_t tickSeq = 0;
     int64_t lastTickStart = 0;
     for (;;) {
+        esp_task_wdt_reset();
         WARN_IF_SLOW(SpotControlLoopEntry, 10);
         const int64_t tickStart = esp_timer_get_time();
         const ImuSample imu = peripherals.imuSample();
