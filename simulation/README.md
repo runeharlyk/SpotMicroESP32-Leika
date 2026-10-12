@@ -73,6 +73,8 @@ uv run python generate_scenes.py          # regenerate the spot_micro and yertle
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
 uv run python fit_pico_joint_map.py       # fit the Pico's firmware-to-MJCF joint map for the web app (app/src/lib/simulation/robots.ts)
 uv run python check_animation.py          # play the built-in clips on the Pico from the firmware's animation trace: clamps, servo speed, knocks, tips, falls
+uv run python servo_feasibility.py        # the firmware's traces against the MG92B: joint rate vs the walk cap and the servo limit, slew lag, travel
+uv run python servo_margin.py             # the same traces with the servos slowed (load, heat, a 5 V supply): the lag and the knee per motion
 uv run python check_stand_level.py        # does the stand's IMU levelling reduce the tilt on a slope, for either +z side
 uv run python check_rise.py               # does the stand's IMU levelling tip the body on the rise from REST
 uv run python export_policy.py --run residual_pure_dr   # a trained policy as esp32/include/policy/leika_policy.h
