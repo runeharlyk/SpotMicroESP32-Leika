@@ -124,9 +124,9 @@ struct FusedEstimate : OdometryEstimate {
  *
  * The feet and the gyro each measure the yaw rate. The gyro's z rate has only white noise and a residual bias left by
  * the boot calibration; the feet's has no bias, but misses what the gait does not command: the trot rocks the body in
- * yaw, and slip makes a turn come up short (by 9 % in MuJoCo). While the feet keep still, a scalar Kalman filter
- * estimates the bias from the difference of the two rates (a zero angular rate update); the heading integrates the two
- * rates weighted by their variances, the gyro's while walking and mostly the feet's while standing.
+ * yaw, and slip makes a turn come up short (by 9 % in MuJoCo). While the feet and the body's pose keep still, a scalar
+ * Kalman filter estimates the bias from the difference of the two rates (a zero angular rate update); the heading
+ * integrates the two rates weighted by their variances, the gyro's while walking and mostly the feet's while standing.
  * The position integrates the feet's displacement in the fused heading.
  *
  * The compass stays out (uncalibrated), and so does the accelerometer: at a walk the body barely accelerates on
@@ -153,6 +153,10 @@ class FusedOdometry {
     static constexpr float SETTLE_S = 0.2f;
     // Feet whose motion is worth less than this keep the robot still: then, and only then, the gyro shows its bias.
     static constexpr float STILL_RATE = 0.01f; // rad/s
+    // A body pose that moves faster than the gyro resolves (its twist, and its shift at KIN_PER_SPEED), fading over
+    // SETTLE_S as the feet's motion does, leaves the bias alone: a slow twist of the stand turns the feet by less than
+    // STILL_RATE, but the servos follow it late, and the gyro would read their lag as bias.
+    static constexpr float POSE_STILL_RATE = GYRO_NOISE; // rad/s
     // A sample older than this, or a tick longer, counts as no gyro.
     static constexpr int64_t GYRO_STALE_US = 50000;
     static constexpr float MAX_DT_S = 0.1f;
@@ -184,6 +188,13 @@ class FusedOdometry {
     BodyStep update(const body_state_t &body, const std::array<bool, 4> &stance, std::optional<float> gyroRate,
                     float dt) {
         const BodyStep step = kinematic.update(body, stance);
+        if (dt > 0) {
+            const float poseRate = std::max(std::fabs(body.phi - lastPose[0]) * DEG2RAD_F,
+                                            KIN_PER_SPEED * std::hypot(body.xm - lastPose[1], body.zm - lastPose[2])) /
+                                   dt;
+            poseVariance = std::max(square(poseRate), poseVariance * std::exp(-dt / SETTLE_S));
+        }
+        lastPose = {body.phi, body.xm, body.zm};
         float turn = step.turn;
         if (gyroRate && dt > 0 && dt <= MAX_DT_S) {
             biasVariance += BIAS_WALK * BIAS_WALK * dt;
@@ -204,6 +215,8 @@ class FusedOdometry {
     float bias = 0;
     float biasVariance = BIAS_PRIOR * BIAS_PRIOR;
     float motionVariance = 0; // of the feet's rate, from their motion
+    std::array<float, 3> lastPose {}; // the body's phi, xm and zm
+    float poseVariance = 0;           // of the yaw rate the pose's motion leaves the gyro, as motionVariance
 
     static float square(float value) { return value * value; }
 
@@ -215,7 +228,7 @@ class FusedOdometry {
         motionVariance = std::max(square(KIN_PER_SPEED * speed) + square(KIN_PER_TURN * feetRate),
                                   motionVariance * std::exp(-dt / SETTLE_S));
         const float feetVariance = square(KIN_STILL) + motionVariance;
-        if (motionVariance < square(STILL_RATE)) {
+        if (motionVariance < square(STILL_RATE) && poseVariance < square(POSE_STILL_RATE)) {
             const float gain = biasVariance / (biasVariance + square(GYRO_NOISE) + feetVariance);
             bias += gain * (gyroRate - feetRate - bias);
             biasVariance *= 1 - gain;

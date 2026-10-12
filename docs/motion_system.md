@@ -198,6 +198,7 @@ The heading fuses the feet's yaw rate with the gyro's z rate (`FusedOdometry`).
 The feet's yaw has no drift, but misses what the gait does not command: the trot rocks the body in yaw, and in MuJoCo a turn comes up 9 % short by the feet.
 The gyro has only white noise and the bias the boot calibration left.
 While the feet keep still, a scalar Kalman filter learns that bias from the difference of the two rates (a zero angular rate update); walking, it leaves the bias alone, since the difference then also holds the feet's undercount.
+It also leaves it alone while the body's pose moves (the stand's twist and shift) and for a while after: a slow twist turns the feet by less than the still threshold, but the servos follow it late, and the gyro would read their lag as bias.
 The heading integrates the two rates weighted by their variances: the gyro's while walking, mostly the feet's while standing.
 The position integrates the feet's displacement in that heading.
 Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's estimate alone.
@@ -211,6 +212,7 @@ Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's es
 | Feet yaw-rate error | 0.0002 rad/s still, plus 2 rad/s per m/s and 0.4 per rad/s turned | the standstill assumed; walking and turning from MuJoCo against its gyro (0.08 rad/s per tick at 0.04 m/s, 0.17 at 0.46 rad/s) |
 | Feet motion fades over | 0.2 s | the body coasts after the feet stop (0.74 rad/s to 0.04 in 70 ms in MuJoCo), and the servos lag the commanded feet |
 | Still below | 0.01 rad/s of feet motion | chosen: well under the 0.08 rad/s a walk shows |
+| Pose still below | 0.0012 rad/s of twist, or of shift at 2 rad/s per m/s, fading over 0.2 s | chosen: what the gyro resolves |
 
 In MuJoCo, with the gyro biased by 0.05 rad/s and given the measured noise after 2 s standing, the fused heading ends within 0.5 degrees of the base over 4 s turns of about 100 degrees each way and 8 s arcs of 124 and 248 degrees, where the feet's falls 6 to 22 degrees short.
 The compass stays out until it is calibrated, and so does the accelerometer: at a walk the body barely accelerates on average, and a degree of tilt error alone reads as 0.17 m/s^2, so a stall would not stand out.

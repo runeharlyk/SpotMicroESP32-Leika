@@ -461,6 +461,26 @@ static void aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro() {
     CHECK_NEAR(motion.odometry().yaw, motion.odometry().kinematicYaw, 0.05 * std::fabs(motion.odometry().yaw));
 }
 
+// A stand that twists or shifts the body slowly turns the feet by less than STILL_RATE, but the servos follow late, so
+// the gyro reads less than the feet: that difference is no bias. Once the pose has kept still, it learns again.
+static void aMovingBodyPoseTeachesTheBiasNothing() {
+    FusedOdometry odometry;
+    body_state_t body;
+    body.updateFeet(PICO.default_feet_positions);
+    for (int t = 0; t < 2 * TICKS_PER_S; t++) {
+        body.phi += 1.0f * DT; // degrees: 0.017 rad/s, which the feet show and the lagging gyro does not
+        odometry.update(body, ALL_DOWN, 0.0f, DT);
+    }
+    CHECK(odometry.gyroBias() == 0);
+    for (int t = 0; t < 2 * TICKS_PER_S; t++) {
+        body.xm += 0.002f * DT; // m: the feet barely move, the gyro reads the sway of a shifting body
+        odometry.update(body, ALL_DOWN, 0.01f, DT);
+    }
+    CHECK(odometry.gyroBias() == 0);
+    for (int t = 0; t < 2 * TICKS_PER_S; t++) odometry.update(body, ALL_DOWN, 0.01f, DT);
+    CHECK_NEAR(odometry.gyroBias(), 0.01, 1e-3);
+}
+
 int main() {
     aRigidArcIsRecoveredExactly();
     oneFootDownTranslatesWithoutTurning();
@@ -481,6 +501,7 @@ int main() {
     aTurnTheFeetDidNotSeeIsTheGyros();
     theServiceFusesAFreshGyro();
     aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro();
+    aMovingBodyPoseTeachesTheBiasNothing();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

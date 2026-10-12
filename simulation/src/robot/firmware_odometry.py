@@ -4,9 +4,9 @@ KinematicOdometry is the dead reckoning from the commanded feet. A foot in stanc
 frame it moves by the inverse of the body's motion: the rigid motion that best carries the stance feet from one tick
 to the next is the body's motion, inverted. The heading integrates the same fit's yaw.
 
-FusedOdometry corrects that heading with the gyro: while the feet keep still, a scalar Kalman filter learns the gyro's
-residual bias from the difference between its yaw rate and the feet's, and the heading integrates the two rates
-weighted by their variances.
+FusedOdometry corrects that heading with the gyro: while the feet and the body's pose keep still, a scalar Kalman
+filter learns the gyro's residual bias from the difference between its yaw rate and the feet's, and the heading
+integrates the two rates weighted by their variances.
 
 Input is in the firmware's frame (x forward, y up, z left; the body's xm, zm and its phi in degrees, a positive phi
 turning the body clockwise); the estimate is REP-103 (x forward, y left, yaw counter-clockwise in radians) in the frame
@@ -30,6 +30,9 @@ KIN_PER_SPEED = 2.0  # rad/s per m/s walked
 KIN_PER_TURN = 0.4  # rad/s per rad/s turned
 SETTLE_S = 0.2  # s the feet's motion takes to fade from their variance once they stop
 STILL_RATE = 0.01  # rad/s: feet whose motion is worth less keep the robot still, and the gyro shows its bias
+# rad/s: a body pose twisting faster (or shifting faster, at KIN_PER_SPEED), fading over SETTLE_S, leaves the bias alone,
+# since the servos follow it late
+POSE_STILL_RATE = GYRO_NOISE
 MAX_DT_S = 0.1  # a longer tick counts as no gyro
 
 
@@ -103,6 +106,8 @@ class FusedOdometry:
         self.bias = 0.0
         self._bias_variance = BIAS_PRIOR**2
         self._motion_variance = 0.0  # of the feet's rate, from their motion
+        self._last_pose = (0.0, 0.0, 0.0)  # the body's phi, xm and zm
+        self._pose_variance = 0.0  # of the yaw rate the pose's motion leaves the gyro, as _motion_variance
 
     @property
     def kinematic_yaw(self) -> float:
@@ -117,6 +122,12 @@ class FusedOdometry:
                gyro_rate: float | None = None, dt: float = 0.0) -> BodyStep:
         """One control tick of `dt` seconds with the gyro's yaw rate, or None; returns the step it took."""
         step = self.kinematic.update(feet, stance, xm, zm, phi_deg)
+        last_phi, last_xm, last_zm = self._last_pose
+        if dt > 0:
+            pose_rate = max(abs(math.radians(phi_deg - last_phi)),
+                            KIN_PER_SPEED * math.hypot(xm - last_xm, zm - last_zm)) / dt
+            self._pose_variance = max(pose_rate**2, self._pose_variance * math.exp(-dt / SETTLE_S))
+        self._last_pose = (phi_deg, xm, zm)
         turn = step.turn
         if gyro_rate is not None and 0 < dt <= MAX_DT_S:
             self._bias_variance += BIAS_WALK**2 * dt
@@ -134,7 +145,8 @@ class FusedOdometry:
         self._motion_variance = max((KIN_PER_SPEED * speed) ** 2 + (KIN_PER_TURN * feet_rate) ** 2,
                                     self._motion_variance * math.exp(-dt / SETTLE_S))
         feet_variance = KIN_STILL**2 + self._motion_variance
-        if self._motion_variance < STILL_RATE**2:  # moving feet would teach the bias their undercount
+        # Moving feet would teach the bias their undercount, a moving pose the servos' lag.
+        if self._motion_variance < STILL_RATE**2 and self._pose_variance < POSE_STILL_RATE**2:
             gain = self._bias_variance / (self._bias_variance + GYRO_NOISE**2 + feet_variance)
             self.bias += gain * (gyro_rate - feet_rate - self.bias)
             self._bias_variance *= 1 - gain

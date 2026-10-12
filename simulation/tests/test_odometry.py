@@ -55,6 +55,27 @@ def test_the_port_reproduces_the_firmwares_fused_odometry_tick_by_tick(variant):
     assert worst_position < 2e-4 and worst_yaw < 2e-4 and worst_bias < 1e-6
 
 
+# The traces' stand twists fast enough that the feet's motion alone keeps the bias still, so this pins the pose's own
+# gate as odometry_test.cpp's aMovingBodyPoseTeachesTheBiasNothing does: a slow twist, then a slow shift, while the
+# lagging gyro reads other than the feet, teaches nothing; once the pose keeps still the bias is learnt.
+def test_a_moving_body_pose_teaches_the_bias_nothing():
+    feet = np.array([[0.08, 0.0, 0.07], [0.08, 0.0, -0.07], [-0.08, 0.0, 0.07], [-0.08, 0.0, -0.07]])
+    stance, dt = [True] * 4, 0.01
+    odometry = FusedOdometry()
+    phi = xm = 0.0
+    for _ in range(200):
+        phi += 1.0 * dt  # degrees: 0.017 rad/s, which the feet show and the gyro does not
+        odometry.update(feet, stance, phi_deg=phi, gyro_rate=0.0, dt=dt)
+    assert odometry.bias == 0.0
+    for _ in range(200):
+        xm += 0.002 * dt
+        odometry.update(feet, stance, xm=xm, phi_deg=phi, gyro_rate=0.01, dt=dt)
+    assert odometry.bias == 0.0
+    for _ in range(200):
+        odometry.update(feet, stance, xm=xm, phi_deg=phi, gyro_rate=0.01, dt=dt)
+    assert odometry.bias == pytest.approx(0.01, abs=1e-3)
+
+
 # The commanded feet overlook what the physics adds: on spot_pico the Bezier swing starts and ends with the foot
 # still at floor height, 1.5 strokes out, so it pushes the body on beyond the stance stroke. Measured over 4 s after
 # a second's settling, the odometry falls short of MuJoCo's base by about 7 % forward (0.160 m of 0.172 m), 10 %
