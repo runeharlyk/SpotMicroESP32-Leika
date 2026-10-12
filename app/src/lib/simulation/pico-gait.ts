@@ -154,6 +154,41 @@ const TURN_RATE =
 const DEFAULT_STEP_HEIGHT = 0.015
 const DEFAULT_STEP_DEPTH = 0.002
 
+// walk_state.h's reach bound, as firmware_gait.py: the bends it keeps every knee between, the swing's furthest reach
+// along the stroke in half strokes, and the swing at SWING_SAMPLES + 1 phases (along the stroke and up).
+const MIN_KNEE_BEND_DEG = 10
+const MAX_KNEE_BEND_DEG = 148
+const bezierSamples = (points: number[], samples: number) =>
+    Array.from({ length: samples + 1 }, (_, sample) =>
+        points.reduce(
+            (sum, point, i) =>
+                sum +
+                COMBINATORIAL_VALUES[i] *
+                    (sample / samples) ** i *
+                    (1 - sample / samples) ** (11 - i) *
+                    point,
+            0
+        )
+    )
+const SWING_OVERSHOOT = Math.max(...bezierSamples(BEZIER_STEPS, 1024).map(Math.abs))
+const SWING_SAMPLES = 64
+const SWING_ALONG = bezierSamples(BEZIER_STEPS, SWING_SAMPLES)
+const SWING_LIFT = bezierSamples(BEZIER_HEIGHTS, SWING_SAMPLES)
+
+// Per leg, as _reach_spheres: its home's offset (X, Y) from the point on the hip axis level with the femur, and the
+// squared distances from that point within which the knee bends at least MIN_KNEE_BEND_DEG and beyond which at most
+// MAX_KNEE_BEND_DEG.
+const REACH_SPHERES = LEG_NAMES.map(leg => {
+    const { xOff, o0, L1, L2 } = KIN[leg]
+    const femurToFoot = (kneeBendDeg: number) =>
+        Math.sqrt(L1 * L1 + L2 * L2 + 2 * L1 * L2 * Math.cos((kneeBendDeg * Math.PI) / 180))
+    return {
+        home: [xOff, -o0[0]],
+        reachOutSq: xOff * xOff + femurToFoot(MIN_KNEE_BEND_DEG) ** 2,
+        reachInSq: xOff * xOff + (femurToFoot(MAX_KNEE_BEND_DEG) + Math.abs(o0[1])) ** 2
+    }
+})
+
 type Pose = { omega: number; phi: number; psi: number; xm: number; ym: number; zm: number }
 
 export class BodyState {
@@ -206,12 +241,53 @@ const bezierCurve = (length: number, angle: number, height: number, phase: numbe
     }
 }
 
-/** Translation and rotation composed into one stride vector at a foot: (amplitude, heading). */
-const stroke = (gait: GaitState, foot: Vec3): [number, number] => {
+/** A foot's stroke in the base frame (X, Y): the translation and rotation composed. */
+const strokeVector = (gait: GaitState, foot: Vec3): [number, number] => {
     const turn = gait.stepAngle * TURN_RATE
-    const sx = gait.stepZ + turn * foot[1]
-    const sy = -gait.stepX - turn * foot[0]
+    return [gait.stepZ + turn * foot[1], -gait.stepX - turn * foot[0]]
+}
+
+/** The stroke as one stride vector at a foot: (amplitude, heading). */
+const stroke = (gait: GaitState, foot: Vec3): [number, number] => {
+    const [sx, sy] = strokeVector(gait, foot)
     return [Math.hypot(sx, sy), Math.atan2(sx, -sy)]
+}
+
+/** _reach_bound: the share of the stroke and the step height that keep every foot within reach. */
+const reachBound = (gait: GaitState): [number, number] => {
+    const bodyHeight = STANCE_DEPTH
+    const deepest = bodyHeight + gait.stepDepth
+    let scale = 1
+    const legs = REACH_SPHERES.map(({ home, reachOutSq, reachInSq }, i) => {
+        const sidewaysHome = Math.abs(home[0])
+        const room = Math.sqrt(Math.max(0, reachOutSq - deepest * deepest))
+        const leastOffset = Math.sqrt(Math.max(0, reachInSq - bodyHeight * bodyHeight))
+        const [strokeX, strokeY] = strokeVector(gait, DEFAULT_FEET[i])
+        const length = Math.hypot(strokeX, strokeY)
+        const half = length / 2
+        const reach = SWING_OVERSHOOT * half
+        const outward = length > 0 ? (Math.sign(home[0]) * strokeX) / length : 0
+        const along = length > 0 ? Math.abs(home[0] * strokeX + home[1] * strokeY) / length : 0
+        const a = reach * reach
+        const b = along * reach
+        const c = home[0] * home[0] + home[1] * home[1] - room * room
+        const discriminant = b * b - a * c
+        if (c >= 0 || leastOffset > sidewaysHome) scale = 0
+        else if (reach > 0 && discriminant >= 0)
+            scale = Math.min(scale, -c / (b + Math.sqrt(discriminant)))
+        const inward = Math.abs(outward) * reach
+        if (leastOffset > 0 && inward > 0)
+            scale = Math.min(scale, (sidewaysHome - leastOffset) / inward)
+        return { sidewaysHome, half, outward, reachInSq }
+    })
+    let stepHeight = gait.stepHeight
+    for (const { sidewaysHome, half, outward, reachInSq } of legs)
+        for (let sample = 1; sample < SWING_SAMPLES; sample++) {
+            const offset = sidewaysHome + scale * half * SWING_ALONG[sample] * outward
+            const clear = Math.sqrt(Math.max(0, reachInSq - (offset > 0 ? offset * offset : 0)))
+            stepHeight = Math.min(stepHeight, Math.max(0, bodyHeight - clear) / SWING_LIFT[sample])
+        }
+    return [scale, stepHeight]
 }
 
 // walk_state.h's cap on joint speed (a quarter below the servos' 720 deg/s), and the parts of a tick it slows by.
@@ -265,6 +341,7 @@ export class GaitController {
 
     /** Writes body.feet at the current phase, in the base frame. */
     generateFeet(gait: GaitState, body: BodyState) {
+        const [scale, stepHeight] = reachBound(gait)
         body.feet = this.defaultPosition.map((home, i) => {
             const legPhase = (this.phase + gait.offset[i]) % 1
             const contact = legPhase <= gait.standFrac
@@ -274,8 +351,8 @@ export class GaitController {
                 :   (legPhase - gait.standFrac) / (1 - gait.standFrac)
             const [amplitude, heading] = stroke(gait, home)
             const delta: Vec3 = [0, 0, 0]
-            if (contact) stanceCurve(amplitude * 0.5, heading, gait.stepDepth, phase, delta)
-            else bezierCurve(amplitude * 0.5, heading, gait.stepHeight, phase, delta)
+            if (contact) stanceCurve(scale * amplitude * 0.5, heading, gait.stepDepth, phase, delta)
+            else bezierCurve(scale * amplitude * 0.5, heading, stepHeight, phase, delta)
             // Stride frame to base frame: forward stride to -Y, cross-stride to +X, lift to +Z.
             return [home[0] + delta[2], home[1] - delta[0], home[2] + delta[1]]
         })

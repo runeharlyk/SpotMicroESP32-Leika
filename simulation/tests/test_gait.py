@@ -11,12 +11,17 @@ import pytest
 from src.robot.firmware_gait import (
     DEFAULT_FEET,
     DEFAULT_STEP_HEIGHT,
+    LEG_NAMES,
     MAX_JOINT_SPEED,
+    MAX_KNEE_BEND_DEG,
+    MAX_LATERAL_STEP,
     MAX_STEP_LENGTH,
+    MIN_KNEE_BEND_DEG,
     BodyState,
     GaitController,
     GaitState,
     Kinematics,
+    SpotPicoKinConfig,
 )
 
 
@@ -58,9 +63,10 @@ def test_swing_lift_matches_the_configured_step_height():
     """Evaluating the curve once means the commanded step height is delivered, not doubled.
 
     The replaced code summed the vertical of two curve calls, and its second call contributed
-    bezier height even at zero rotation amplitude, so every command lifted twice as high.
+    bezier height even at zero rotation amplitude, so every command lifted twice as high. The turn is one the legs
+    reach at the full step height.
     """
-    delta = run(step_x=MAX_STEP_LENGTH, step_angle=1.0) - DEFAULT_FEET
+    delta = run(step_x=MAX_STEP_LENGTH, step_angle=0.4) - DEFAULT_FEET
     lift = delta[:, :, 2].max()
     assert lift > DEFAULT_STEP_HEIGHT * 0.9
     assert lift <= DEFAULT_STEP_HEIGHT
@@ -152,3 +158,21 @@ def test_a_diagonal_stance_starts_and_ends_on_the_ground(phase):
     controller.set_phase(phase)  # front right foot at the start, then the end, of its stance
     controller.generate_feet(gait, body)
     assert abs(body.feet[0, 2] - DEFAULT_FEET[0, 2]) < 1e-12
+
+
+@pytest.mark.parametrize("turn", [1.0, -1.0])
+def test_a_command_past_the_legs_reach_keeps_every_knee_within_its_bends(turn):
+    """Full forward, sideways and turning together folded a knee to 170 degrees before the stroke and the step height
+    were bounded to the legs' reach, as walk_state.h bounds them."""
+    cfg, kinematics = SpotPicoKinConfig(), Kinematics()
+    gait = GaitState(step_x=MAX_STEP_LENGTH, step_z=MAX_LATERAL_STEP, step_angle=turn)
+    controller, body = GaitController(), BodyState()
+    bends = []
+    for step in range(400):
+        controller.set_phase(step / 400)
+        controller.generate_feet(gait, body)
+        angles = kinematics.inverse_kinematics(body).reshape(4, 3)
+        for leg, (_, _, tibia) in zip(LEG_NAMES, angles):
+            p = cfg.legs[leg]
+            bends.append(abs(np.degrees(tibia * p["st"] + p["a2"] - p["a1"])))
+    assert MIN_KNEE_BEND_DEG - 0.1 <= min(bends) and max(bends) <= MAX_KNEE_BEND_DEG + 0.1
