@@ -25,6 +25,7 @@ ANIMATION_PROTO = os.path.join(REPO, "esp32", "src", "platform_shared", "animati
 # Each program with the sources it links besides itself.
 PROGRAMS = {
     "factory_network_test.cpp": [],
+    "network_order_test.cpp": [],
     "motion_inbox_test.cpp": [],
     "motion_service_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "servo_output_test.cpp": [],

@@ -12,6 +12,7 @@
 #include <settings/wifi_settings.h>
 #include <settings/app_network_settings.h>
 #include <settings/factory_network.h>
+#include <settings/network_order.h>
 #include <secrets.h>
 
 #define WIFI_EVENT_STA_DISCONNECTED_IDF WIFI_EVENT_STA_DISCONNECTED
@@ -60,6 +61,11 @@ class WiFiService : public StatefulService<WiFiSettings> {
     uint32_t _nextAttemptAt {0};
     uint32_t _nextNetwork {0};
     uint32_t _connectingTo {0};
+    // The saved networks in the order the last scan ranked them, and the next to try; used when the strongest is preferred.
+    uint32_t _order[sizeof(WiFiSettings::wifi_networks) / sizeof(WiFiNetwork)] {};
+    size_t _orderCount {0};
+    size_t _orderPos {0};
+    bool _rankingScan {false};
 
     constexpr static uint32_t reconnectDelay {10000};
     // Leaves time for the reply to the save that caused the change.
