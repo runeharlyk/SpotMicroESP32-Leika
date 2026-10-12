@@ -25,8 +25,13 @@ JOINT_NAMES = [f"{lg}_{j}_joint" for lg in LEG_NAMES for j in ("hip", "femur", "
 class SpotPicoSim:
     """Thin wrapper: loads the model, maps IK angles (rad) to actuators, steps physics."""
 
-    def __init__(self, model_path: str = MODEL_PATH):
-        self.model = mujoco.MjModel.from_xml_path(os.path.abspath(model_path))
+    def __init__(self, model_path: str = MODEL_PATH, floor_quat=None):
+        """`floor_quat` (w, x, y, z) tilts the floor plane about the origin; it is compiled in, since MuJoCo places
+        the world body's geoms once and ignores a later change to model.geom_quat."""
+        spec = mujoco.MjSpec.from_file(os.path.abspath(model_path))
+        if floor_quat is not None:
+            spec.geom("floor").quat = floor_quat
+        self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
         self.kin = Kinematics()
         self.frame_skip = int(round(CONTROL_DT / self.model.opt.timestep))
