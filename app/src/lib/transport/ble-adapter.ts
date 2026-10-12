@@ -1,17 +1,10 @@
 import type { ITransport, TransportHandlers } from './transport.interface'
+import { BLE_MAX_OUTGOING, BleFrameDecoder, encodeBleFrame } from './ble-framing'
 
-// Nordic UART Service, matching robot_comm_ble's ble_adapter.h.
+// Nordic UART Service, as the firmware's nimble_link.cpp serves it.
 export const BLE_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
 const BLE_CHARACTERISTIC_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e' // robot -> client (notify)
 const BLE_CHARACTERISTIC_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e' // client -> robot (write)
-
-/**
- * robot_comm_ble carries exactly one protobuf frame per notification and expects one per write:
- * no length prefix and no reassembly (see ble_adapter.cpp). A message therefore has to fit inside
- * the negotiated ATT payload, which is the firmware's MTU of 247 less the 3-byte ATT header.
- * Anything larger is dropped by the firmware with only a log line, so we refuse it here instead.
- */
-export const BLE_MAX_FRAME_SIZE = 244
 
 export const isBluetoothSupported = () =>
     typeof navigator !== 'undefined' && 'bluetooth' in navigator
@@ -32,7 +25,7 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
     return {
         kind: 'bluetooth',
         canAutoReconnect: false,
-        maxFrameSize: BLE_MAX_FRAME_SIZE,
+        maxFrameSize: BLE_MAX_OUTGOING,
 
         connect: async () => {
             if (!isBluetoothSupported()) {
@@ -49,12 +42,19 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
             const tx = await service.getCharacteristic(BLE_CHARACTERISTIC_TX)
             rx = await service.getCharacteristic(BLE_CHARACTERISTIC_RX)
 
+            // A connection starts with no partial message, whatever the previous one left.
+            const frames = new BleFrameDecoder(message => {
+                try {
+                    handlers.onData(message.buffer as ArrayBuffer)
+                } catch (error) {
+                    // Thrown on, it would end the notification's handling and lose the messages after it.
+                    console.error('A BLE message could not be handled:', error)
+                }
+            })
             tx.addEventListener('characteristicvaluechanged', event => {
                 const value = (event.target as BluetoothRemoteGATTCharacteristic).value
                 if (!value) return
-                const frame = new Uint8Array(value.byteLength)
-                frame.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength))
-                handlers.onData(frame.buffer)
+                frames.feed(new Uint8Array(value.buffer, value.byteOffset, value.byteLength))
             })
             await tx.startNotifications()
             device.addEventListener('gattserverdisconnected', onDisconnected)
@@ -73,23 +73,23 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
 
         send: data => {
             if (!rx || !connected) return
-            if (data.length > BLE_MAX_FRAME_SIZE) {
+            if (data.length > BLE_MAX_OUTGOING) {
                 console.warn(
-                    `Dropping ${data.length} byte message: BLE frames are capped at ${BLE_MAX_FRAME_SIZE} bytes. Use a WiFi connection for this.`
+                    `Dropping ${data.length} byte message: the robot takes at most ${BLE_MAX_OUTGOING} bytes over BLE. Use a WiFi connection for this.`
                 )
                 return
             }
             const characteristic = rx
-            // Copied because the write is queued: the caller is free to reuse its buffer meanwhile.
-            const frame = new Uint8Array(data.length)
-            frame.set(data)
-            writeQueue = writeQueue
-                .then(() =>
-                    typeof characteristic.writeValueWithoutResponse === 'function' ?
-                        characteristic.writeValueWithoutResponse(frame)
-                    :   characteristic.writeValue(frame)
-                )
-                .catch(error => console.error('BLE write failed:', error))
+            // The chunks are copies, so the caller is free to reuse its buffer while they wait in the queue.
+            for (const chunk of encodeBleFrame(data)) {
+                writeQueue = writeQueue
+                    .then(() =>
+                        typeof characteristic.writeValueWithoutResponse === 'function' ?
+                            characteristic.writeValueWithoutResponse(chunk)
+                        :   characteristic.writeValue(chunk)
+                    )
+                    .catch(error => console.error('BLE write failed:', error))
+            }
         }
     }
 }

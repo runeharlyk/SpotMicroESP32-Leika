@@ -1,14 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-    createBleTransport,
-    BLE_MAX_FRAME_SIZE,
-    BLE_SERVICE_UUID
-} from '$lib/transport/ble-adapter'
+import { createBleTransport, BLE_SERVICE_UUID } from '$lib/transport/ble-adapter'
+import { BLE_MAX_OUTGOING, BLE_WRITE_CHUNK, encodeBleFrame } from '$lib/transport/ble-framing'
 
 /**
- * These pin the wire contract against robot_comm_ble (ble_adapter.cpp): one protobuf frame per
- * write, one per notification, with no length prefix and no fragmentation. A mismatch here is
- * silent on the robot, which just drops the frame with a log line.
+ * These pin the wire contract against the firmware's nimble_link.cpp: each message as a uint16
+ * little-endian length and the message, in writes of at most BLE_WRITE_CHUNK bytes, and rebuilt
+ * from notifications chunked the same way.
  */
 
 type Listener = (event: unknown) => void
@@ -79,52 +76,70 @@ describe('BLE transport', () => {
         return { transport, handlers }
     }
 
-    it('reports its frame cap and that it cannot silently redial', async () => {
+    const received = (handlers: { onData: ReturnType<typeof vi.fn> }) =>
+        handlers.onData.mock.calls.map(([data]) => Array.from(new Uint8Array(data as ArrayBuffer)))
+
+    it('reports the largest message the robot takes and that it cannot silently redial', async () => {
         const { transport } = await connected()
 
         expect(transport.kind).toBe('bluetooth')
-        expect(transport.maxFrameSize).toBe(BLE_MAX_FRAME_SIZE)
+        expect(transport.maxFrameSize).toBe(BLE_MAX_OUTGOING)
         expect(transport.canAutoReconnect).toBe(false)
     })
 
-    it('writes the payload verbatim, with no length prefix', async () => {
+    it('writes a small message as one write behind its little-endian length', async () => {
         const { transport } = await connected()
-        const payload = new Uint8Array([1, 2, 3, 4, 5])
 
-        transport.send(payload)
+        transport.send(new Uint8Array([1, 2, 3, 4, 5]))
         await vi.waitFor(() => expect(fake.writes).toHaveLength(1))
 
-        expect(Array.from(fake.writes[0])).toEqual([1, 2, 3, 4, 5])
+        expect(Array.from(fake.writes[0])).toEqual([5, 0, 1, 2, 3, 4, 5])
     })
 
-    it('refuses a frame larger than the link carries rather than letting the robot drop it', async () => {
+    it('splits a long message into writes no longer than a chunk, in order', async () => {
+        const { transport } = await connected()
+        const message = Uint8Array.from({ length: 730 }, (_, i) => i % 256)
+
+        transport.send(message)
+        await vi.waitFor(() => expect(fake.writes).toHaveLength(Math.ceil(732 / BLE_WRITE_CHUNK)))
+
+        fake.writes.forEach(write => expect(write.length).toBeLessThanOrEqual(BLE_WRITE_CHUNK))
+        const wire = fake.writes.flatMap(write => Array.from(write))
+        expect(wire).toEqual([730 & 0xff, 730 >> 8, ...message])
+    })
+
+    it('refuses a message larger than the robot takes', async () => {
         const { transport } = await connected()
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-        transport.send(new Uint8Array(BLE_MAX_FRAME_SIZE + 1))
+        transport.send(new Uint8Array(BLE_MAX_OUTGOING + 1))
 
         expect(fake.writes).toHaveLength(0)
         expect(warn).toHaveBeenCalled()
         warn.mockRestore()
     })
 
-    it('accepts a frame exactly at the cap', async () => {
-        const { transport } = await connected()
+    it('hands over a message notified in several chunks once, whole', async () => {
+        const { handlers } = await connected()
+        const message = Uint8Array.from({ length: 500 }, (_, i) => (i * 7) % 256)
 
-        transport.send(new Uint8Array(BLE_MAX_FRAME_SIZE))
-        await vi.waitFor(() => expect(fake.writes).toHaveLength(1))
+        for (const chunk of encodeBleFrame(message, 244)) fake.emitNotification(chunk)
 
-        expect(fake.writes[0]).toHaveLength(BLE_MAX_FRAME_SIZE)
+        expect(received(handlers)).toEqual([Array.from(message)])
     })
 
-    it('delivers each notification as one complete frame', async () => {
+    it('still hands over the next message when handling one throws', async () => {
         const { handlers } = await connected()
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        handlers.onData.mockImplementationOnce(() => {
+            throw new Error('unknown message')
+        })
 
-        fake.emitNotification(new Uint8Array([9, 8, 7]))
+        fake.emitNotification(Uint8Array.of(1, 0, 9, 1, 0, 8))
+        fake.emitNotification(Uint8Array.of(1, 0, 7))
 
-        expect(handlers.onData).toHaveBeenCalledTimes(1)
-        const received = new Uint8Array(handlers.onData.mock.calls[0][0] as ArrayBuffer)
-        expect(Array.from(received)).toEqual([9, 8, 7])
+        expect(received(handlers)).toEqual([[9], [8], [7]])
+        error.mockRestore()
     })
 
     it('copies the outgoing buffer so a caller reusing it cannot corrupt the write', async () => {
@@ -135,6 +150,6 @@ describe('BLE transport', () => {
         payload.fill(0)
         await vi.waitFor(() => expect(fake.writes).toHaveLength(1))
 
-        expect(Array.from(fake.writes[0])).toEqual([1, 2, 3])
+        expect(Array.from(fake.writes[0])).toEqual([3, 0, 1, 2, 3])
     })
 })
