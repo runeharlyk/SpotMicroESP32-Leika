@@ -313,8 +313,7 @@ static void sendTelemetryHeader(CommAdapterBase &link, int clientId) {
     header.has_imu_settings = true;
     header.imu_settings = effectiveImuSettings(peripherals.snapshot());
     header.batch_ticks = Telemetry::BATCH_TICKS;
-    std::copy(std::begin(MotionService::JOINT_DIRECTION), std::end(MotionService::JOINT_DIRECTION),
-              header.joint_direction);
+    std::copy(std::begin(JOINT_DIRECTION), std::end(JOINT_DIRECTION), header.joint_direction);
     link.emit(header, clientId);
 }
 
