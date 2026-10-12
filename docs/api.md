@@ -65,7 +65,7 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 | Request                                                | Response              | Description                                                                                                      |
 | ------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `servo_settings_request`, `servo_settings`             | `servo_settings`      | Read or write servo centres, names and PCA9685 channels; the reply also carries the `JointModel`, which a write ignores |
-| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled and the WS2812 strip; a strip on a pin it cannot use is refused with 400 |
+| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled, the WS2812 strip and the HC-SR04 sonars; a strip or a sonar on a pin it cannot use is refused with 400 |
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
 

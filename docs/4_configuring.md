@@ -51,6 +51,10 @@ The Sensors page under Peripherals shows each sensor as active, detected but dis
 Switch off a sensor that is wired but not mounted, such as an IMU lying loose on the bench; the robot then leaves the chip alone.
 The change applies at once, except for the camera, which follows at the next restart.
 The same page enables the WS2812 strip and sets its pin; a pin on the I2C bus or one that the flash, the PSRAM or another driver holds is refused.
+It also enables the two HC-SR04 sonars and sets each one's trigger and echo pin.
+A sonar pin on the I2C bus, the strip, the camera, the other sonar, or one the chip cannot drive or read is refused.
+The echo pin carries 5 V, so wire it to a 3.3 V GPIO through a divider, such as 1 kOhm from the echo to the pin and 2 kOhm from the pin to ground.
+The sensors ping in turn, so neither hears the other, ten times a second each; the IMU page then shows each distance, or no echo within 4 m, or no sensor when the echo never rises.
 
 ## Calibrating servos
 
