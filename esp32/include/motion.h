@@ -14,6 +14,7 @@
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
 #include <motion_states/animate_state.h>
+#include <motion_states/walk_nn_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
 #include <gesture_control.h>
@@ -26,7 +27,8 @@
 #include <optional>
 #include <utility>
 
-enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK, ANIMATE };
+// Numbered as ModesEnum, which setMode casts.
+enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK, ANIMATE, WALK_NN };
 
 class MotionService {
   public:
@@ -57,6 +59,9 @@ class MotionService {
 
     float* getAngles() { return angles; }
     const float* getAngles() const { return angles; }
+
+    /** Whether WALK_NN can run at all: the firmware carries a policy and it passed its self-check in begin(). */
+    bool walkNNAvailable() const { return walkNNVerified.load(); }
 
     inline bool isActive() { return state != nullptr; }
 
@@ -122,6 +127,7 @@ class MotionService {
     void driveGoal(const BodyStep& step, float dt);
     void recordGoalStatus();
     void switchVariant(KinematicsVariant variant);
+    bool walkNNAllowed() const;
 
     std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
     std::atomic<socket_message_WalkGaits> currentGait {socket_message_WalkGaits_TROT};
@@ -150,6 +156,11 @@ class MotionService {
     AnimationStatus animationStatusNow {"", anim::State::IDLE, 0, 0};
     StandState standState;
     WalkState walkState;
+#if WALK_NN_POLICY
+    WalkNNState walkNNState;
+#endif
+    std::atomic<bool> walkNNVerified {false};
+    uint32_t lastImuValid = 0;
 
     body_state_t body_state;
 

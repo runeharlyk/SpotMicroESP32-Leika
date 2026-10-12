@@ -22,13 +22,11 @@ Each leg's 3 joints are (hip/abduction, femur, tibia).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import functools
 import math
 
 import numpy as np
 
 from src.leika import speed_model
-from src.leika.backends.base import Velocity
 from src.leika.constants import Gait
 
 
@@ -457,9 +455,8 @@ class Kinematics:
 
 
 # ---------------------------------------------------------------------------
-# Command -> gait mapping. RL command is body-frame [vx, vy, yaw]. The client turns a velocity
-# into the sticks the robot is sent (speed_model.sticks_for), and WalkState::handleCommand turns
-# those into the stroke: step_x = ly, step_z = -lx, step_angle = rx (times the max step length).
+# Command -> gait mapping. RL command is body-frame [vx, vy, yaw]; WalkState::handleCommand turns sticks into the
+# stroke: step_x = ly, step_z = -lx, step_angle = rx (times the max step length).
 # ---------------------------------------------------------------------------
 def gait_action(sticks: speed_model.Sticks, gait: GaitState) -> None:
     """WalkState::handleCommand at the client's speed and step height: the sticks -> the stroke the gait smooths
@@ -470,17 +467,15 @@ def gait_action(sticks: speed_model.Sticks, gait: GaitState) -> None:
     gait.step_depth = STEP_DEPTH
 
 
-# sticks_for searches the slowdown model for the sticks, which takes milliseconds; a command is held for many ticks.
-@functools.lru_cache(maxsize=4096)
-def _sticks_for(mode: int, vx: float, vy: float, yaw: float) -> speed_model.Sticks:
-    return speed_model.sticks_for(VARIANT, Gait.CRAWL if mode == CRAWL else Gait.TROT, Velocity(vx, vy, yaw),
-                                  STAND_HEIGHT)
-
-
 def analytic_gait_action(cmd, gait: GaitState) -> None:
-    """Deterministic command [vx, vy, yaw] -> the stroke the gait smooths towards (in place), through the sticks the
-    client sends for it."""
-    gait_action(_sticks_for(gait.mode, float(cmd[0]), float(cmd[1]), float(cmd[2])), gait)
+    """Deterministic command [vx, vy, yaw] -> the stroke the gait smooths towards (in place), through the sticks that
+    command it at the gait's nominal stroke and cadence. The slowdown and the reach bound then walk the stroke slower,
+    as on the robot; speed_model.sticks_for searches for the sticks that make up for them, which the firmware's WALK_NN
+    could not repeat every tick (esp32/include/spot_pico/residual_gait.h ports this)."""
+    linear, angular = speed_model.per_stick(VARIANT, Gait.CRAWL if gait.mode == CRAWL else Gait.TROT)
+    clamp = lambda value: max(-1.0, min(1.0, value))
+    gait_action(speed_model.Sticks(clamp(-float(cmd[1]) / linear), clamp(float(cmd[0]) / linear),
+                                   clamp(float(cmd[2]) / angular)), gait)
 
 
 if __name__ == "__main__":

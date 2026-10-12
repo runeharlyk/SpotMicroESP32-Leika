@@ -50,9 +50,9 @@ struct KinConfig {
           default_step_height(default_body_height / 2) {}
 };
 
-constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32 {0.0605f, 0.010f, 0.1112f, 0.1185f, 0.2075f, 0.078f, false};
-constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32_MINI {0.035f, 0.0f, 0.060f, 0.060f, 0.160f, 0.080f, false};
-constexpr KinConfig KIN_CONFIG_SPOTMICRO_YERTLE {0.035f, 0.0f, 0.130f, 0.130f, 0.240f, 0.078f, true};
+inline constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32 {0.0605f, 0.010f, 0.1112f, 0.1185f, 0.2075f, 0.078f, false};
+inline constexpr KinConfig KIN_CONFIG_SPOTMICRO_ESP32_MINI {0.035f, 0.0f, 0.060f, 0.060f, 0.160f, 0.080f, false};
+inline constexpr KinConfig KIN_CONFIG_SPOTMICRO_YERTLE {0.035f, 0.0f, 0.130f, 0.130f, 0.240f, 0.078f, true};
 
 struct alignas(16) body_state_t {
     float omega {0}, phi {0}, psi {0}, xm {0}, ym {0}, zm {0};

@@ -7,6 +7,7 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
       - "esp32/include/**"
       - "esp32/test/host/**"
@@ -27,6 +28,7 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
       - "esp32/include/**"
       - "esp32/test/host/**"
@@ -113,3 +115,6 @@ jobs:
       # The pytest checks the same comparison; this step prints the drift report into the log.
       - name: Compare the simulation with the virtual robot
         run: uv run python sim_vs_real.py --virtual --binary "$RUNNER_TEMP/virtual_robot"
+
+      - name: Firmware golden vectors are up to date
+        run: uv run --no-sync python export_golden.py --check

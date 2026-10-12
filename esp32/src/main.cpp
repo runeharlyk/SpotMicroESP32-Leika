@@ -139,7 +139,8 @@ static void reportFeatures(socket_message_CorrelationResponse &res) {
                                        .servosCalibrated = servoController.calibrated(),
                                        .cameraDetected = cameraDetected,
                                        .cameraActive = cameraDetected && !cameraDisabled(),
-                                       .ws2812 = effectiveLedSettings(peripherals.snapshot()).enabled},
+                                       .ws2812 = effectiveLedSettings(peripherals.snapshot()).enabled,
+                                       .walkNN = motionService.walkNNAvailable()},
                                       res.response.features_data_response);
 }
 

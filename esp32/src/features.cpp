@@ -42,6 +42,7 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.servos_calibrated = features.servosCalibrated;
     fd_res.ws2812 = features.ws2812;
     fd_res.espnow_controller_supported = SOC_WIFI_SUPPORTED;
+    fd_res.walk_nn = features.walkNN;
     fd_res.mdns = true;
     fd_res.embed_www = true;
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);

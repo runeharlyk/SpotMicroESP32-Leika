@@ -55,6 +55,9 @@ message FeaturesDataResponse {
     string device_id = 140;
     string robot_name = 150;
     string hostname = 160;
+
+    // A learned walking policy is built in and passed its self-check, so WALK_NN can be asked for.
+    bool walk_nn = 230;
 }
 
 message FeaturesDataRequest { }
@@ -305,6 +308,7 @@ enum ModesEnum {
     STAND = 4;
     WALK = 5;
     ANIMATE = 6;  // playing a clip, entered by AnimationPlay and left when it ends; not picked as a mode
+    WALK_NN = 7;  // the learned residual gait; refused unless the robot reports walk_nn
 }
 
 message StaticSystemInformation {
