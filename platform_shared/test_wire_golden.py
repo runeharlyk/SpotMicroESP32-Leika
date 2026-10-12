@@ -35,11 +35,11 @@ def test_the_committed_golden_matches_the_schemas(protos):
 
 
 def test_a_renumbered_enum_value_fails_the_check_and_the_update(protos, capsys):
-    edit(protos, "message.proto", "WALK = 5;", "WALK = 6;")
+    edit(protos, "message.proto", "WALK = 5;", "WALK = 8;")
 
     assert run(protos, "--check") == 1
     assert run(protos) == 1
-    assert "socket_message.ModesEnum.WALK was renumbered from 5 to 6" in capsys.readouterr().err
+    assert "socket_message.ModesEnum.WALK was renumbered from 5 to 8" in capsys.readouterr().err
 
 
 def test_a_renumbered_oneof_member_fails_the_check(protos, capsys):
