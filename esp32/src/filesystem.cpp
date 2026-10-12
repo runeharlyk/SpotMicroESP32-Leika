@@ -1,10 +1,43 @@
 #include <filesystem.h>
 #include <cstring>
 #include <esp_log.h>
+#ifdef SD_CMD_PIN
+#include <esp_vfs_fat.h>
+#include <driver/sdmmc_host.h>
+#include <sdmmc_cmd.h>
+#endif
 
 static const char *TAG = "FileSystem";
 
 namespace FileSystem {
+
+#ifdef SD_CMD_PIN
+// A card in a 1-bit SDMMC slot, mounted beside LittleFS and never needed: a board without a card boots as before.
+static void mountSdCard() {
+    const esp_vfs_fat_sdmmc_mount_config_t mountConfig = {
+        .format_if_mount_failed = false,
+        .max_files = 4,
+        .allocation_unit_size = 16 * 1024,
+    };
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    host.flags = SDMMC_HOST_FLAG_1BIT;
+    sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
+    slot.width = 1;
+    slot.clk = static_cast<gpio_num_t>(SD_CLK_PIN);
+    slot.cmd = static_cast<gpio_num_t>(SD_CMD_PIN);
+    slot.d0 = static_cast<gpio_num_t>(SD_D0_PIN);
+    slot.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+    sdmmc_card_t *card = nullptr;
+    const esp_err_t err = esp_vfs_fat_sdmmc_mount(SD_MOUNT_POINT, &host, &slot, &mountConfig, &card);
+    if (err != ESP_OK) {
+        ESP_LOGI(TAG, "No SD card mounted (%s)", esp_err_to_name(err));
+        return;
+    }
+    ESP_LOGI(TAG, "SD card %s, %llu MB, mounted at %s", card->cid.name,
+             static_cast<unsigned long long>(card->csd.capacity) * card->csd.sector_size / (1024 * 1024),
+             SD_MOUNT_POINT);
+}
+#endif
 
 bool init() {
     esp_vfs_littlefs_conf_t conf = {
@@ -33,6 +66,9 @@ bool init() {
     }
 
     mkdirRecursive(FS_CONFIG_DIRECTORY);
+#ifdef SD_CMD_PIN
+    mountSdCard();
+#endif
 
     return true;
 }
