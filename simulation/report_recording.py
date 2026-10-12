@@ -2,6 +2,7 @@
 
 uv run python report_recording.py recording.leika [--still]
 --still: the robot stood still throughout, so the gyro mean is its bias and the spread its noise.
+Run `uv run python gen_protos.py` once first: it generates the protocol classes in src/proto/.
 """
 import argparse
 
