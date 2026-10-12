@@ -14,21 +14,15 @@ import {
     CanvasTexture,
     type ColorRepresentation,
     type WebGLRendererParameters,
-    MeshPhongMaterial,
     EquirectangularReflectionMapping,
     ACESFilmicToneMapping,
     Group,
     MeshBasicMaterial,
-    RepeatWrapping,
-    type Material,
-    type Object3D
+    RepeatWrapping
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
-import { type URDFJoint, type URDFMimicJoint, type URDFRobot } from 'urdf-loader'
-// @ts-expect-error - urdf-loader ships this submodule without type declarations
-import { PointerURDFDragControls } from 'urdf-loader/src/URDFDragControls'
+import { type URDFRobot } from 'urdf-loader'
 
 interface position {
     x?: number
@@ -62,8 +56,6 @@ export default class SceneBuilder {
     public liveStreamTexture!: CanvasTexture
     private fog!: FogExp2
     private isLoaded: boolean = false
-    public isDragging: boolean = false
-    transformControl!: TransformControls
     public modelGroup!: Group
 
     constructor() {
@@ -239,106 +231,11 @@ export default class SceneBuilder {
         return this
     }
 
-    private setJointValue(jointName: string, angle: number) {
-        if (!this.model) return
-        if (!this.model.joints[jointName]) return
-        this.model.joints[jointName].setJointValue(angle)
-    }
-
-    isJoint = (j: URDFJoint) => j.isURDFJoint && j.jointType !== 'fixed'
-
-    highlightLinkGeometry = (m: URDFMimicJoint, revert: boolean, material: MeshPhongMaterial) => {
-        const traverse = (c: Object3D) => {
-            if (c.type === 'Mesh') {
-                const mesh = c as Mesh & { __origMaterial?: Material | Material[] }
-                if (revert) {
-                    if (mesh.__origMaterial) mesh.material = mesh.__origMaterial
-                    delete mesh.__origMaterial
-                } else {
-                    mesh.__origMaterial = mesh.material
-                    mesh.material = material
-                }
-            }
-
-            if (c === m || !this.isJoint(c as unknown as URDFJoint)) {
-                for (let i = 0; i < c.children.length; i++) {
-                    const child = c.children[i] as Object3D & { isURDFCollider?: boolean }
-                    if (!child.isURDFCollider) {
-                        traverse(c.children[i])
-                    }
-                }
-            }
-        }
-        traverse(m)
-    }
-
-    public addTransformControls = (model: Object3D) => {
-        this.transformControl = new TransformControls(this.camera, this.renderer.domElement)
-        this.transformControl.addEventListener('dragging-changed', (event: { value: unknown }) => {
-            this.orbit.enabled = !event.value
-            this.isDragging = !event.value
-        })
-        this.transformControl.attach(model)
-        // three r169+: TransformControls is no longer an Object3D; add its helper to the scene.
-        this.scene.add(this.transformControl.getHelper())
-        this.transformControl.setMode('rotate')
-        return this
-    }
-
     public addModel = (model: URDFRobot) => {
         this.modelGroup = new Group()
         this.modelGroup.add(model)
         this.model = model
         this.scene.add(this.modelGroup)
-        return this
-    }
-
-    public addDragControl = (updateAngle: (angles: Record<string, number>) => void) => {
-        const highlightColor = '#FFFFFF'
-        const highlightMaterial = new MeshPhongMaterial({
-            shininess: 10,
-            color: highlightColor,
-            emissive: highlightColor,
-            emissiveIntensity: 0.9
-        })
-
-        const dragControls = new PointerURDFDragControls(
-            this.scene,
-            this.camera,
-            this.renderer.domElement
-        )
-        dragControls.updateJoint = (joint: URDFMimicJoint, angle: number) => {
-            this.setJointValue(joint.name, angle)
-            updateAngle({ [joint.name]: angle })
-        }
-        dragControls.onDragStart = () => {
-            this.orbit.enabled = false
-            this.isDragging = true
-        }
-        dragControls.onDragEnd = () => {
-            this.orbit.enabled = true
-            this.isDragging = false
-        }
-        dragControls.onHover = (joint: URDFMimicJoint) =>
-            this.highlightLinkGeometry(joint, false, highlightMaterial)
-        dragControls.onUnhover = (joint: URDFMimicJoint) =>
-            this.highlightLinkGeometry(joint, true, highlightMaterial)
-
-        this.renderer.domElement.addEventListener(
-            'touchstart',
-            data => dragControls._mouseDown(data.touches[0]),
-            { passive: true }
-        )
-        this.renderer.domElement.addEventListener(
-            'touchmove',
-            data => dragControls._mouseMove(data.touches[0]),
-            { passive: true }
-        )
-        this.renderer.domElement.addEventListener(
-            'touchend',
-            data => dragControls._mouseUp(data.touches[0]),
-            { passive: true }
-        )
         return this
     }
 

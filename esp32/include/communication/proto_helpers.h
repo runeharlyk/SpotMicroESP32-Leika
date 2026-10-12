@@ -26,7 +26,6 @@ struct MessageTraits;
 DEFINE_MESSAGE_TRAITS(IMUData, imu)
 DEFINE_MESSAGE_TRAITS(ModeData, mode)
 DEFINE_MESSAGE_TRAITS(AnalyticsData, analytics)
-DEFINE_MESSAGE_TRAITS(AnglesData, angles)
 DEFINE_MESSAGE_TRAITS(RSSIData, rssi)
 DEFINE_MESSAGE_TRAITS(SonarData, sonar)
 DEFINE_MESSAGE_TRAITS(ControllerData, controller_data)

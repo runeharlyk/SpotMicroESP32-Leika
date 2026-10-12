@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { variants } from '../../src/lib/stores/featureFlags'
+import { VARIANT_DIMENSIONS } from '../../src/lib/kinematics-variants'
 
-// The firmware's KinConfig is what moves the robot; the app's copy drives the 3D view and gait
-// preview, so every variant the firmware knows must exist in the app with the same dimensions.
+// The firmware's KinConfig is what moves the robot; the app's copy drives the simulation's port of
+// the firmware gait, so every variant the firmware knows must exist in the app with the same dimensions.
 const firmwareKinematics = () => {
     const header = readFileSync(
         path.resolve(__dirname, '../../../esp32/include/kinematics.h'),
@@ -40,9 +41,9 @@ describe('variant kinematics', () => {
 
     for (const [variant, dimensions] of Object.entries(firmwareKinematics())) {
         it(`matches the firmware dimensions for ${variant}`, () => {
-            const app = variants[variant as keyof typeof variants]
-            expect(app, `${variant} is missing from the app`).toBeDefined()
-            expect(app.kinematics).toEqual(dimensions)
+            const name = variant as keyof typeof variants
+            expect(variants[name], `${variant} has no model in the app`).toBeDefined()
+            expect(VARIANT_DIMENSIONS[name]).toEqual(dimensions)
         })
     }
 })

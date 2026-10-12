@@ -20,12 +20,6 @@ void MotionService::begin() {
     body_state.updateFeet(config->default_feet_positions);
 }
 
-void MotionService::handleAngles(const socket_message_AnglesData& data) {
-    for (int i = 0; i < 12 && i < data.angles_count; i++) {
-        angles[i] = data.angles[i];
-    }
-}
-
 void MotionService::setState(MotionState* newState) {
     if (state) {
         state->end();

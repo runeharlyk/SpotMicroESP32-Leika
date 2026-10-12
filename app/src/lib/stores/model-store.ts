@@ -6,10 +6,7 @@ import {
     WalkGaitData,
     WalkGaits
 } from '$lib/platform_shared/message'
-import { persistentStore } from '$lib/utilities/svelte-utilities'
 import { writable, type Writable } from 'svelte/store'
-
-export const jointNames = persistentStore('joint_names', <string[]>[])
 
 export const model = writable()
 

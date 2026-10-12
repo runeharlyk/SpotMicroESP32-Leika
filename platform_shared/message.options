@@ -7,8 +7,6 @@ socket_message.StaticSystemInformation.cpu_type type:FT_POINTER
 socket_message.StaticSystemInformation.sdk_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
-socket_message.AnglesData.angles max_count:12
-
 socket_message.I2CScanData.devices max_count:16
 socket_message.AnalyticsData.i2c_errors max_count:16
 

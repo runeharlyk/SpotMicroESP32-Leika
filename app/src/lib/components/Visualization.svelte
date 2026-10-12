@@ -1,148 +1,79 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
-    import {
-        Mesh,
-        MeshBasicMaterial,
-        type Object3D,
-        SphereGeometry,
-        Vector3,
-        type Object3DEventMap,
-        Color
-    } from 'three'
-    import {
-        mode,
-        model,
-        input,
-        servoAnglesOut,
-        servoAngles,
-        mpu,
-        jointNames,
-        currentKinematic,
-        currentVariant,
-        walkGait,
-        kinematicData
-    } from '$lib/stores'
-    import { populateModelCache, getToeWorldPositions } from '$lib/utilities/model-utilities'
-    import SceneBuilder from '$lib/sceneBuilder'
-    import { lerp, degToRad } from 'three/src/math/MathUtils'
-    import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
-    import { type body_state_t } from '$lib/kinematic'
-    import {
-        BezierState,
-        CalibrationState,
-        GaitState,
-        IdleState,
-        RestState,
-        StandState
-    } from '$lib/gait'
-    import { radToDeg } from 'three/src/math/MathUtils.js'
-    import type { URDFRobot } from 'urdf-loader'
     import { get } from 'svelte/store'
-    import { AnglesData, KinematicData, ModesEnum } from '$lib/platform_shared/message'
+    import { Color, Mesh, MeshPhongMaterial, type Object3D } from 'three'
+    import { lerp } from 'three/src/math/MathUtils'
+    import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
+    import type { URDFRobot } from 'urdf-loader'
+    import { model, modelVariant, socket } from '$lib/stores'
+    import { populateModelCache, getToeWorldPositions } from '$lib/utilities/model-utilities'
+    import { followRobotPose, type JointValues } from '$lib/robot-pose'
+    import SceneBuilder from '$lib/sceneBuilder'
 
     interface Props {
         defaultColor?: string | null
         orbit?: boolean
         panel?: boolean
-        debug?: boolean
         ground?: boolean
+        /** Joints to show instead of the ones the robot reports; given, the view asks the robot for nothing. */
+        joints?: JointValues
+        /** A joint whose link, the part it turns, is drawn in the highlight colour. */
+        highlight?: string
     }
 
     let {
         defaultColor = '#0091ff',
         orbit = false,
         panel = true,
-        debug = false,
-        ground = true
+        ground = true,
+        joints,
+        highlight
     }: Props = $props()
 
-    let sceneManager = $state(new SceneBuilder())
+    const sceneManager = new SceneBuilder()
     let canvas: HTMLCanvasElement
-    const NUM_ANGLES = 12 // TODO: This number should come from the robot
-
-    let currentModelAngles: AnglesData = AnglesData.create({
-        angles: new Array(NUM_ANGLES).fill(0)
-    })
-    let modelTargetAngles: AnglesData = AnglesData.create({ angles: new Array(NUM_ANGLES).fill(0) })
-    let gui_panel: GUI
+    let gui_panel: GUI | undefined
+    // The robot reports at 10 Hz; easing towards each report keeps the picture fluid between them.
     const SMOOTH_AMOUNT = 0.2
 
-    let target: Object3D<Object3DEventMap>
+    let reportedJoints: JointValues = {}
+    let stopFollowing: (() => void) | undefined
+    let destroyed = false
 
-    let target_position = { x: 0, z: 0, yaw: 0 }
-
-    let kinematic = get(currentKinematic)
-
-    const planners: Record<ModesEnum, GaitState> = {
-        [ModesEnum.DEACTIVATED]: new IdleState(),
-        [ModesEnum.IDLE]: new IdleState(),
-        [ModesEnum.CALIBRATION]: new CalibrationState(),
-        [ModesEnum.REST]: new RestState(),
-        [ModesEnum.STAND]: new StandState(),
-        [ModesEnum.WALK]: new BezierState(),
-        [ModesEnum.ANIMATE]: new IdleState(),
-        [ModesEnum.UNRECOGNIZED]: new IdleState()
-    }
-    let lastTick = performance.now()
-    let lastRobotPosition = new Vector3()
-
-    const dir = [1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1]
-    const THREEJS_SCALE = 10
-
-    let body_state = {
-        omega: 0,
-        phi: 0,
-        psi: 0,
-        xm: 0,
-        ym: 0.15,
-        zm: 0,
-        feet: kinematic.getDefaultFeetPos(),
-        cumulative_x: 0,
-        cumulative_y: 0,
-        cumulative_z: 0,
-        cumulative_roll: 0,
-        cumulative_pitch: 0,
-        cumulative_yaw: 0
-    }
-
-    let settings = {
-        'Internal kinematic': true,
-        'Robot transform controls': false,
-        'Auto orient robot': true,
-        'Trace feet': debug,
-        'Target position': false,
-        'Trace points': 30,
+    const settings = {
         'Smooth motion': true,
-        omega: 0,
-        phi: 0,
-        psi: 0,
-        xm: 0,
-        ym: 0.15,
-        zm: 0,
         Background: defaultColor
     }
 
-    onMount(async () => {
-        await populateModelCache()
-        await createScene()
-        servoAngles.subscribe(updateAnglesFromStore)
-        walkGait.subscribe(gait => {
-            const walkPlanner = planners[ModesEnum.WALK]
-            if (!(walkPlanner instanceof BezierState)) {
-                throw new Error(
-                    `Expected BezierState for WALK mode, got ${walkPlanner.constructor.name}`
-                )
-            }
-            walkPlanner.set_mode(gait.gait)
-        })
-        if (panel) createPanel()
-        observeCanvas()
+    onMount(() => {
+        // Read with the model's loading, so the joints followed are those of the model shown.
+        if (!joints)
+            stopFollowing = followRobotPose(
+                socket,
+                get(modelVariant),
+                reported => (reportedJoints = reported)
+            )
+        void showModel()
     })
 
     onDestroy(() => {
+        destroyed = true
+        stopFollowing?.()
+        if (sceneManager.renderer) sceneManager.stopRenderLoop()
         gui_panel?.destroy()
         disconnectObservers.forEach(disconnect => disconnect())
+        // The model is shared with the next view that shows it.
+        highlighted.forEach(unhighlight)
+        HIGHLIGHT.dispose()
     })
+
+    const showModel = async () => {
+        await populateModelCache()
+        if (destroyed) return
+        createScene()
+        if (panel) createPanel()
+        observeCanvas()
+    }
 
     const disconnectObservers: (() => void)[] = []
 
@@ -168,63 +99,19 @@
         )
     }
 
-    const updateAnglesFromStore = (angles: AnglesData) => {
-        if (sceneManager.isDragging) return
-        if (settings['Internal kinematic']) return
-        modelTargetAngles = angles
-    }
-
     const createPanel = () => {
         gui_panel = new GUI({ width: 310 })
         gui_panel.close()
         gui_panel.domElement.id = 'three-gui-panel'
 
-        const general = gui_panel.addFolder('General')
-        general.add(settings, 'Internal kinematic')
-        general.add(settings, 'Robot transform controls')
-        general.add(settings, 'Auto orient robot')
-
-        const kinematic = gui_panel.addFolder('Kinematics')
-        kinematic.add(settings, 'omega', -20, 20).onChange(updateKinematicPosition).listen()
-        kinematic.add(settings, 'phi', -30, 30).onChange(updateKinematicPosition).listen()
-        kinematic.add(settings, 'psi', -20, 15).onChange(updateKinematicPosition).listen()
-        kinematic.add(settings, 'xm', -1, 1).onChange(updateKinematicPosition).listen()
-        kinematic.add(settings, 'ym', 0, 1).onChange(updateKinematicPosition).listen()
-        kinematic.add(settings, 'zm', -1.3, 1.3).onChange(updateKinematicPosition).listen()
-
         const visibility = gui_panel.addFolder('Visualization')
-        visibility.add(settings, 'Trace feet')
-        visibility.add(settings, 'Trace points', 1, 1000, 1)
-        visibility.add(settings, 'Target position')
         visibility.add(settings, 'Smooth motion')
         visibility.addColor(settings, 'Background').onChange(setSceneBackground).listen()
     }
 
-    const updateKinematicPosition = () => {
-        kinematicData.set(
-            KinematicData.create({
-                omega: settings.omega,
-                phi: settings.phi,
-                psi: settings.psi,
-                xm: settings.xm,
-                ym: settings.ym,
-                zm: settings.zm
-            })
-        )
-    }
-
     const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))
 
-    const updateAngles = (name: string, angle: number) => {
-        modelTargetAngles.angles[$jointNames.indexOf(name)] = angle * (180 / Math.PI)
-        servoAnglesOut.set(
-            AnglesData.create({
-                angles: modelTargetAngles.angles.map(num => Math.round(num))
-            })
-        )
-    }
-
-    const createScene = async () => {
+    const createScene = () => {
         sceneManager
             .addRenderer({ antialias: true, canvas, alpha: true })
             .addPerspectiveCamera({ x: -0.5, y: 0.5, z: 1 })
@@ -232,168 +119,61 @@
             .addDirectionalLight({ x: 10, y: 20, z: 10, color: 0xffffff, intensity: 3 })
             .addAmbientLight({ color: 0xffffff, intensity: 0.5 })
             .addFogExp2(0xcccccc, 0.015)
-            .addModel($model as URDFRobot)
-            .addTransformControls(sceneManager.model)
+            .addModel(get(model) as URDFRobot)
             .fillParent()
             .addRenderCb(render)
             .startRenderLoop()
 
         if (ground) sceneManager.addGroundPlane()
-
-        const geometry = new SphereGeometry(0.1, 32, 16)
-        const material = new MeshBasicMaterial({ color: 0xffff00 })
-        target = new Mesh(geometry, material)
-        sceneManager.scene.add(target)
-
-        if (debug) {
-            sceneManager.addDragControl(angles => {
-                Object.entries(angles).forEach(([name, angle]) => {
-                    updateAngles(name, angle)
-                })
-            })
-        }
         if (defaultColor) setSceneBackground(settings['Background'] || defaultColor)
     }
 
-    const calculate_kinematics = () => {
-        if (sceneManager.isDragging || !settings['Internal kinematic']) return
-        const position: body_state_t = {
-            omega: settings.omega,
-            phi: settings.phi,
-            psi: settings.psi,
-            xm: settings.xm,
-            ym: settings.ym,
-            zm: settings.zm,
-            feet: body_state.feet,
-            cumulative_x: body_state.cumulative_x,
-            cumulative_y: body_state.cumulative_y,
-            cumulative_z: body_state.cumulative_z,
-            cumulative_roll: body_state.cumulative_roll,
-            cumulative_pitch: body_state.cumulative_pitch,
-            cumulative_yaw: body_state.cumulative_yaw
+    const smooth = (start: number, end: number) =>
+        settings['Smooth motion'] ? lerp(start, end, SMOOTH_AMOUNT) : end
+
+    // Keeps the lowest toe on the ground, whatever the legs do.
+    const standOnGround = (robot: URDFRobot) => {
+        const toes = getToeWorldPositions(robot)
+        if (toes.length) robot.position.y -= Math.min(...toes.map(toe => toe.y))
+    }
+
+    const HIGHLIGHT = new MeshPhongMaterial({ color: 0xff9f1c })
+    // Each highlighted mesh keeps its own material in its userData, to get it back.
+    let highlighted: Mesh[] = []
+    const unhighlight = (mesh: Mesh) => (mesh.material = mesh.userData.unhighlighted)
+
+    // The link's own meshes, not those of the links below its child joints. Meshes load after the model, so this
+    // runs every frame and catches them as they arrive.
+    const linkMeshes = (part: Object3D, meshes: Mesh[] = []): Mesh[] => {
+        for (const child of part.children) {
+            if ((child as { isURDFJoint?: boolean }).isURDFJoint) continue
+            if (child instanceof Mesh) meshes.push(child)
+            linkMeshes(child, meshes)
         }
-
-        let new_angles = kinematic.calcIK(position).map((x, i) => radToDeg(x * dir[i]))
-        modelTargetAngles.angles = new_angles
+        return meshes
     }
 
-    const orient_robot = (robot: URDFRobot, toes: Vector3[]) => {
-        if (settings['Robot transform controls'] || !settings['Auto orient robot']) return
-        robot.position.y = robot.position.y - Math.min(...toes.map(toe => toe.y))
-
-        const cumulativeYaw = body_state.cumulative_yaw
-        const headingYaw = degToRad(-settings.phi + $mpu.heading)
-        const totalYaw = headingYaw + cumulativeYaw
-
-        const cosTotal = Math.cos(totalYaw)
-        const sinTotal = Math.sin(totalYaw)
-        const rotatedXm = settings.xm * cosTotal - settings.zm * sinTotal
-        const rotatedZm = settings.xm * sinTotal + settings.zm * cosTotal
-
-        const mpuHeadingRad = degToRad($mpu.heading)
-        const cosHead = Math.cos(mpuHeadingRad)
-        const sinHead = Math.sin(mpuHeadingRad)
-        const rotatedCumX = body_state.cumulative_x * cosHead - body_state.cumulative_z * sinHead
-        const rotatedCumZ = body_state.cumulative_x * sinHead + body_state.cumulative_z * cosHead
-
-        robot.position.x = smooth(
-            robot.position.x,
-            (-rotatedZm - rotatedCumZ) * THREEJS_SCALE,
-            SMOOTH_AMOUNT
-        )
-        robot.position.z = smooth(
-            robot.position.z,
-            (-rotatedXm - rotatedCumX) * THREEJS_SCALE,
-            SMOOTH_AMOUNT
-        )
-
-        const cosYaw = Math.cos(totalYaw)
-        const sinYaw = Math.sin(totalYaw)
-        const cmdPitch = degToRad(settings.psi)
-        const cmdRoll = degToRad(settings.omega)
-        const pitch =
-            degToRad(-90) + cmdPitch * cosYaw - cmdRoll * sinYaw + body_state.cumulative_pitch
-        const roll = cmdPitch * sinYaw + cmdRoll * cosYaw + body_state.cumulative_roll
-
-        robot.rotation.z = smooth(
-            robot.rotation.z,
-            degToRad(-settings.phi + $mpu.heading + 90) + cumulativeYaw,
-            SMOOTH_AMOUNT
-        )
-        robot.rotation.y = smooth(robot.rotation.y, roll, SMOOTH_AMOUNT)
-        robot.rotation.x = smooth(robot.rotation.x, pitch, SMOOTH_AMOUNT)
-    }
-
-    const update_camera = (robot: URDFRobot) => {
-        const delta = robot.position.clone().sub(lastRobotPosition)
-        sceneManager.orbit.target.add(delta)
-        sceneManager.camera.position.add(delta)
-        lastRobotPosition.copy(robot.position)
-    }
-
-    const smooth = (start: number, end: number, amount: number) => {
-        return settings['Smooth motion'] ? lerp(start, end, amount) : end
-    }
-
-    const update_gait = () => {
-        if (sceneManager.isDragging || !settings['Internal kinematic']) return
-        const controlData = get(input)
-
-        let planner = planners[get(mode).mode]
-        const delta = performance.now() - lastTick
-        lastTick = performance.now()
-
-        body_state = planner.step(body_state, controlData, delta)
-
-        settings.omega = body_state.omega
-        settings.phi = body_state.phi
-        settings.psi = body_state.psi
-        settings.xm = body_state.xm
-        settings.ym = body_state.ym
-        settings.zm = body_state.zm
-    }
-
-    const update_robot_position = (robot: URDFRobot) => {
-        if (!settings['Robot transform controls']) return
-        settings.omega = radToDeg(robot.rotation.y)
-        settings.phi = radToDeg(robot.rotation.z) + $mpu.heading - 90
-        settings.psi = radToDeg(robot.rotation.x) + 90
-        settings.xm = robot.position.z / THREEJS_SCALE
-        settings.zm = -robot.position.x / THREEJS_SCALE
-    }
-
-    const updateTargetPosition = () => {
-        target.visible = settings['Target position']
-        target.position.x = smooth(target.position.x, target_position.x, SMOOTH_AMOUNT)
-        target.position.z = smooth(target.position.z, target_position.z, SMOOTH_AMOUNT)
+    const showHighlight = (robot: URDFRobot) => {
+        const meshes =
+            highlight && robot.joints[highlight] ? linkMeshes(robot.joints[highlight]) : []
+        highlighted.filter(mesh => !meshes.includes(mesh)).forEach(unhighlight)
+        for (const mesh of meshes)
+            if (mesh.material !== HIGHLIGHT) {
+                mesh.userData.unhighlighted = mesh.material
+                mesh.material = HIGHLIGHT
+            }
+        highlighted = meshes
     }
 
     const render = () => {
         const robot = sceneManager.model
         if (!robot) return
-
-        const toes = getToeWorldPositions(robot)
-
-        update_camera(robot)
-        update_gait()
-        calculate_kinematics()
-        update_robot_position(robot)
-
-        sceneManager.transformControl.showX = settings['Robot transform controls']
-        sceneManager.transformControl.showY = settings['Robot transform controls']
-        sceneManager.transformControl.showZ = settings['Robot transform controls']
-
-        for (let i = 0; $currentVariant.drivable && i < $jointNames.length; i++) {
-            currentModelAngles.angles[i] = smooth(
-                (robot.joints[$jointNames[i]].angle as number) * (180 / Math.PI),
-                modelTargetAngles.angles[i],
-                SMOOTH_AMOUNT
-            )
-            robot.joints[$jointNames[i]].setJointValue(degToRad(currentModelAngles.angles[i]))
+        for (const [name, target] of Object.entries(joints ?? reportedJoints)) {
+            const joint = robot.joints[name]
+            if (joint) joint.setJointValue(smooth(joint.angle as number, target))
         }
-
-        orient_robot(robot, toes)
-        updateTargetPosition()
+        standOnGround(robot)
+        showHighlight(robot)
     }
 </script>
 

@@ -5,7 +5,6 @@
         defaultColor?: string | null
         orbit?: boolean
         panel?: boolean
-        debug?: boolean
         ground?: boolean
     }
 

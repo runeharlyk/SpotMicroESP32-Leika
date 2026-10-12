@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { get } from 'svelte/store'
 import { input } from '$lib/stores/model-store'
-import { ControllerData } from '$lib/platform_shared/message'
+import { ControllerData, ModesEnum } from '$lib/platform_shared/message'
 import { stopped } from '$lib/control-link'
+import { FirmwareMotion } from '$lib/simulation/firmware/motion'
+import { CONTROL_DT } from '$lib/simulation/timing'
 
 // Getting this wrong leaves the robot holding its last commanded gait with no operator watching.
 
@@ -35,35 +37,26 @@ describe('neutralised controller command', () => {
         expect(neutral.speed).toBe(before.speed)
     })
 
-    it('produces a command the gait treats as not moving', async () => {
-        const { BezierState } = await import('$lib/gait')
-        const { currentKinematic } = await import('$lib/stores/featureFlags')
-        const kin = get(currentKinematic)
-        const state = new BezierState()
-        const body = {
-            omega: 0,
-            phi: 0,
-            psi: 0,
-            xm: 0,
-            ym: kin.default_body_height,
-            zm: 0,
-            feet: kin.getDefaultFeetPos(),
-            cumulative_x: 0,
-            cumulative_y: 0,
-            cumulative_z: 0,
-            cumulative_roll: 0,
-            cumulative_pitch: 0,
-            cumulative_yaw: 0
+    // The firmware's motion code (simulation/firmware, pinned to the headers), as the robot runs it.
+    it('produces a command the firmware gait brings to rest', () => {
+        const motion = new FirmwareMotion('SPOTMICRO_ESP32')
+        motion.setMode(ModesEnum.WALK)
+        motion.handleInput(get(input))
+        const feet = () => motion.body.feet.map(foot => [foot[0], foot[2]])
+        const walk = (ticks: number) => {
+            for (let i = 0; i < ticks; i++) motion.update(CONTROL_DT, [0, 0])
         }
-        const defaults = kin.getDefaultFeetPos()
+        walk(100)
+        const walking = feet()
+        walk(10)
+        expect(feet()).not.toEqual(walking)
 
-        const neutral = ControllerData.create(stopped(get(input)))
-        for (let i = 0; i < 100; i++) state.step(body, neutral, 20)
-
-        body.feet.forEach((foot, i) => {
-            expect(Math.hypot(foot[0] - defaults[i][0], foot[2] - defaults[i][2])).toBeLessThan(
-                1e-9
-            )
+        motion.handleInput(stopped(get(input)))
+        walk(300)
+        const settled = feet()
+        walk(100)
+        feet().forEach((foot, i) => {
+            expect(Math.hypot(foot[0] - settled[i][0], foot[1] - settled[i][1])).toBeLessThan(1e-9)
         })
     })
 })

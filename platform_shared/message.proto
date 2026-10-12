@@ -318,8 +318,6 @@ message ServoStateData {
     bool active = 1;
 }
 
-message AnglesData { repeated int32 angles = 1; }
-
 message I2CScanData { repeated I2CDevice devices = 1; }
 
 message I2CScanDataRequest {}
@@ -449,9 +447,10 @@ message TelemetryNetwork {
 message Message {
     // Retired, and never to be reused while apps that knew them are out there: the IMU calibration (120,
     // 121), I2C scan (180, 181), peripheral settings (190, 191) and WiFi settings (240) now travel as
-    // correlation requests; the controller input (140) and kinematics (200) had no receiver.
-    reserved 120, 121, 140, 180, 181, 190, 191, 200, 240;
-    reserved "imu_calibrate", "imu_calibrate_execute", "input", "i2c_scan", "i2c_scan_data_request";
+    // correlation requests; the controller input (140) and kinematics (200) had no receiver; the servo
+    // angles (170) the app wrote into the motion's state, which the robot now reports in its telemetry.
+    reserved 120, 121, 140, 170, 180, 181, 190, 191, 200, 240;
+    reserved "imu_calibrate", "imu_calibrate_execute", "input", "angles", "i2c_scan", "i2c_scan_data_request";
     reserved "peripheral_settings", "peripheral_settings_data_request", "kinematic_data", "wifi_settings";
     oneof message {
         CorrelationRequest correlation_request = 10;
@@ -470,7 +469,6 @@ message Message {
         ModeData mode = 130;
         AnalyticsData analytics = 150;
         WalkGaitData walk_gait = 160;
-        AnglesData angles = 170;
         ServoPWMData servo_pwm = 210;
         ServoStateData servo_state = 211;
         ControllerData controller_data = 250;

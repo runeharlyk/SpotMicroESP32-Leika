@@ -39,7 +39,7 @@
         await cacheModelFiles(variant.stl)
         const result = await loadModel(variant.model, variant.modelYaw)
         if (result.isErr()) throw new Error(result.inner)
-        return result.inner[0]
+        return result.inner
     }
 
     // A load that another choice, or leaving the view, overtook builds nothing.

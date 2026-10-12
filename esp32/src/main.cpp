@@ -338,9 +338,6 @@ void setupEventSocket() {
     onEveryLink<socket_message_WalkGaitData>(
         [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
 
-    onEveryLink<socket_message_AnglesData>(
-        [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
-
     onEveryLink<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
         servoController.setServoPWM(data.servo_id, data.servo_pwm);
     });
