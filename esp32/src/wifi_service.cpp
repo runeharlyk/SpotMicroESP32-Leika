@@ -1,4 +1,5 @@
 #include <wifi_service.h>
+#include <ping/ping_sock.h>
 
 static const char *TAG = "WiFiService";
 
@@ -39,6 +40,49 @@ void WiFiService::loop() {
         _nextAttemptAt = now;
     }
     EXECUTE_EVERY_N_MS(1000, manageSTA());
+    EXECUTE_EVERY_N_MS(1000, watchLink(now));
+}
+
+// A joined station that stops reaching its gateway gets no disconnect event: after the watchdog's failures in a row it
+// is dropped, and manageSTA joins again.
+void WiFiService::watchLink(uint32_t nowMs) {
+    if (_linkChanged.exchange(false)) {
+        _linkWatchdog.linkChanged(nowMs);
+        _probeAnswered = -1; // an answer to a probe sent over the old link says nothing about the new one
+    }
+    if (!WiFi.isConnected()) return;
+    const int answered = _probeAnswered.exchange(-1);
+    if (answered >= 0 && _linkWatchdog.probeEnded(answered == 1)) {
+        ESP_LOGW(TAG, "Gateway unreachable for %d probes in a row - reconnecting", LinkWatchdog::FAILURES_TO_RECONNECT);
+        _linkWatchdog.linkChanged(nowMs);
+        WiFi.disconnect(false);
+        _nextAttemptAt = nowMs;
+        return;
+    }
+    if (!_linkWatchdog.probeDue(nowMs)) return;
+    _linkWatchdog.probeStarted(nowMs);
+    probeGateway();
+}
+
+void WiFiService::probeGateway() {
+    esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
+    config.target_addr.type = IPADDR_TYPE_V4;
+    config.target_addr.u_addr.ip4.addr = static_cast<uint32_t>(WiFi.gatewayIP());
+    config.count = 1;
+    config.timeout_ms = 1000;
+    esp_ping_callbacks_t callbacks = {};
+    callbacks.cb_args = this;
+    callbacks.on_ping_success = [](esp_ping_handle_t, void *self) {
+        static_cast<WiFiService *>(self)->_probeAnswered = 1;
+    };
+    callbacks.on_ping_timeout = [](esp_ping_handle_t, void *self) {
+        static_cast<WiFiService *>(self)->_probeAnswered = 0;
+    };
+    callbacks.on_ping_end = [](esp_ping_handle_t ping, void *) { esp_ping_delete_session(ping); };
+    esp_ping_handle_t ping;
+    if (esp_ping_new_session(&config, &callbacks, &ping) != ESP_OK || esp_ping_start(ping) != ESP_OK) {
+        _probeAnswered = 0;
+    }
 }
 
 void WiFiService::reconfigureWiFiConnection() {
@@ -118,6 +162,7 @@ void WiFiService::onStationModeDisconnected(int32_t event, void *event_data) {
     wifi_event_sta_disconnected_t *info = static_cast<wifi_event_sta_disconnected_t *>(event_data);
     ESP_LOGI(TAG, "WiFi Disconnected. Reason code=%d", info ? info->reason : 0);
     _statusChanged = true;
+    _linkChanged = true;
 }
 
 void WiFiService::onStationModeGotIP(int32_t event, void *event_data) {
@@ -125,6 +170,7 @@ void WiFiService::onStationModeGotIP(int32_t event, void *event_data) {
     _nextNetwork = _connectingTo;
     ESP_LOGI(TAG, "WiFi Got IP. localIP=%s, hostName=%s", WiFi.localIP().toString().c_str(), WiFi.getHostname());
     _statusChanged = true;
+    _linkChanged = true;
 }
 
 void WiFiService::mergeFactoryNetwork() {

@@ -80,6 +80,7 @@ PROGRAMS = {
                            os.path.join(REPO, "esp32", "src", "filesystem_ws.cpp")],
     "handheld_controller_test.cpp": [],
     "sonar_test.cpp": [*NANOPB, API_PROTO],
+    "link_watchdog_test.cpp": [],
 }
 
 # Compiler flags a program needs besides the firmware's.
