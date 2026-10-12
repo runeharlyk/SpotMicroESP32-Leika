@@ -47,6 +47,11 @@ export class FirmwareMotion {
         else if (gait === WalkGaits.CRAWL) this.walk.setModeCrawl()
     }
 
+    /** MotionService::useServoSpeedLimit: how fast the servos turn a joint (deg/s), which caps the walk. */
+    useServoSpeedLimit(limit: number) {
+        this.walk.useServoSpeedLimit(limit)
+    }
+
     /** The schedule the legs walk, TROT or CRAWL, also when AUTO picked it. */
     walkedGait() {
         return this.walk.crawling() ? WalkGaits.CRAWL : WalkGaits.TROT

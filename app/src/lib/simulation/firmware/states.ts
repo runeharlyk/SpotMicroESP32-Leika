@@ -1,6 +1,7 @@
 import type { KinConfig } from './kin-config'
 import { CriticalDamper } from './critical-damper'
 import { BodyState, DEG2RAD_F, RAD2DEG_F, inverseKinematics } from './kinematics'
+import { DEFAULT_SERVO_SUPPLY_VOLTS, servoSpeedLimit, walkJointSpeedCap } from '$lib/servo-speed'
 
 /** CommandMsg of esp32/include/message_types.h. */
 export interface CommandMsg {
@@ -268,10 +269,7 @@ const bezierCurve: Curve = (length, angle, height, phase, point) => {
     }
 }
 
-// SERVO_MAX_SPEED_DEG_S of peripherals/servo_output.h, and walk_state.h's cap below it and the parts of a tick it
-// slows by.
-const SERVO_MAX_SPEED_DEG_S = 720
-export const MAX_JOINT_SPEED_DEG_S = 0.75 * SERVO_MAX_SPEED_DEG_S
+// The parts of a tick walk_state.h slows by.
 const SLOWDOWN_PARTS = 64
 
 // walk_state.h's AUTO: the crawl below AUTO_CRAWL_MAX of a full stick, the trot from there up, each gait holding its
@@ -305,6 +303,7 @@ export class WalkState extends MotionState {
     private readonly crawlShift: number
     private reachScale = 1
     private swingHeight = 0
+    private maxJointSpeed = walkJointSpeedCap(servoSpeedLimit(DEFAULT_SERVO_SUPPLY_VOLTS))
 
     constructor(cfg: KinConfig) {
         super(cfg)
@@ -408,8 +407,13 @@ export class WalkState extends MotionState {
         this.targetGait.stepDepth = cfg.defaultStepDepth
     }
 
+    /** useServoSpeedLimit (walk_state.h): caps the joints at their share of the servos' speed limit, deg/s. */
+    useServoSpeedLimit(limit: number) {
+        this.maxJointSpeed = walkJointSpeedCap(limit)
+    }
+
     /**
-     * One tick, slowed to the most 64ths of it the joints can follow at MAX_JOINT_SPEED_DEG_S, as walk_state.h does:
+     * One tick, slowed to the most 64ths of it the joints can follow at the cap, as walk_state.h does:
      * a jump not even a 64th keeps under the cap is walked at full time.
      */
     step(body: BodyState, dt: number) {
@@ -450,7 +454,7 @@ export class WalkState extends MotionState {
     private limitedStep(body: BodyState, dt: number) {
         const before = inverseKinematics(this.cfg, body)
         const start = this.snapshot(body)
-        const allowed = f32(MAX_JOINT_SPEED_DEG_S * f32(dt))
+        const allowed = f32(this.maxJointSpeed * f32(dt))
         const followable = (parts: number) => {
             this.restore(start, body)
             this.advance(body, f32(f32(dt) * parts) / SLOWDOWN_PARTS)
