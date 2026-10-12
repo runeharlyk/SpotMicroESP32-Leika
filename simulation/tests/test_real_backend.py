@@ -151,3 +151,17 @@ def test_a_dead_man_stop_between_two_reads_is_counted(robot, fake):
 def test_calibration_returns_the_robots_result(robot):
     result = robot.calibrate()
     assert (result.still, result.levelled, result.tilt_deg) == (True, True, pytest.approx(4.2))
+
+
+# Only the offset changes: a write built from defaults would reset the pins, the bus speed and the mounting.
+def test_storing_a_compass_offset_keeps_every_other_peripheral_setting(fake):
+    backend = RealBackend(f"127.0.0.1:{fake.port}")
+    backend.connect()
+    try:
+        backend.set_mag_offset([12.5, -40.0, 7.25])
+    finally:
+        backend.close()
+    stored = fake.peripheral_settings
+    assert list(stored.imu.mag_offset) == [12.5, -40.0, 7.25]
+    assert (stored.sda, stored.scl, stored.frequency) == (21, 22, 400000)
+    assert list(stored.imu.mounting) == [0, 1, 0, -1, 0, 0, 0, 0, 1]

@@ -10,7 +10,7 @@ import time
 
 import websockets
 
-from ...proto import message_pb2 as pb
+from ...proto import api_pb2, message_pb2 as pb
 from .. import speed_model
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
@@ -207,6 +207,13 @@ class RealBackend:
             link_lost=tick.link_lost,
             link_drops=drops,
         )
+
+    def set_mag_offset(self, offset) -> None:
+        """Stores the compass's hard-iron offset (microtesla, chip frame), keeping every other peripheral setting."""
+        reply = self._request(pb.CorrelationRequest(peripheral_settings_request=api_pb2.PeripheralSettingsRequest()))
+        settings = reply.peripheral_settings
+        settings.imu.mag_offset[:] = [float(value) for value in offset]
+        self._request(pb.CorrelationRequest(peripheral_settings=settings))
 
     def calibrate(self) -> Calibration:
         data = self._request(pb.CorrelationRequest(imu_calibrate_execute=pb.IMUCalibrateExecute())).imu_calibrate_data
