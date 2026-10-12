@@ -215,7 +215,7 @@ In MuJoCo, with the gyro biased by 0.05 rad/s and given the measured noise after
 The compass stays out until it is calibrated, and so does the accelerometer: at a walk the body barely accelerates on average, and a degree of tilt error alone reads as 0.17 m/s^2, so a stall would not stand out.
 
 The estimate knows only what the gait commanded.
-On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 11 to 15 % short.
+On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 7 to 10 % short.
 Calibrate it against a tape measure before relying on a distance.
 
 ## Goal moves

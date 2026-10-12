@@ -111,7 +111,7 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
 - `stand`, `rest`, `deactivate` and `set_gait` set the mode, `set_velocity` and `stop` drive, and `move_forward`, `move_sideways` and `rotate` move a distance or an angle.
 - `state`, `calibrate` and `max_velocity` read from the robot.
 - `odometry` reads the robot's dead reckoning since the last `reset_odometry` or deactivation (metres, yaw in degrees), and `reset_odometry` starts it afresh.
-  It counts the steps the gait commanded: the simulation covers about 11 to 15 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
+  It counts the steps the gait commanded: the simulation covers about 7 to 11 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
   Its `yaw` fuses the gyro and turns within 1 % of the simulated base; `kinematic_yaw` is the feet's alone, 9 % short in a turn.
 - `goal_move` has the robot walk a distance or turn an angle itself, on its odometry, and returns once it reports the target reached (`GoalCancelled` or `RobotTimeout` otherwise); a WiFi stall cannot cut it short.
   `move_forward` and `move_sideways` are goal moves on a robot that takes them, and `rotate` turns by a goal and then closes the rest on the measured yaw.
