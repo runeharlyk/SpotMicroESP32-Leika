@@ -5,6 +5,13 @@
 #include <telemetry/telemetry.h>
 #include <algorithm>
 
+inline void odometryToProto(const OdometryEstimate &estimate, socket_message_OdometryData &proto) {
+    proto.x = estimate.x;
+    proto.y = estimate.y;
+    proto.yaw = estimate.yaw;
+    proto.distance = estimate.distance;
+}
+
 /** When a control tick's parts ran, in esp_timer microseconds. */
 struct TickTimes {
     uint32_t seq;
@@ -44,4 +51,6 @@ inline void fillTickSample(socket_message_TickSample &tick, const TickTimes &tim
     tick.mode = motion.mode();
     tick.gait = motion.gait();
     tick.link_lost = motion.linkLost();
+    tick.has_odometry = true;
+    odometryToProto(motion.odometry(), tick.odometry);
 }

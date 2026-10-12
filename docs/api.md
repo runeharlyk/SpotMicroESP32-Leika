@@ -78,6 +78,9 @@ The stored core dump; see [websocket.md](websocket.md#crash-dump) for the downlo
 | `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled, the WS2812 strip and the HC-SR04 sonars; a strip or a sonar on a pin it cannot use is refused with 400 |
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
+| `odometry_request`                                     | `odometry`            | Read the dead reckoning; with `reset`, the estimate reached before it starts afresh ([odometry](motion_system.md#odometry)) |
+| `goal_move`                                            | `goal_status`         | Walk a distance or turn an angle on the odometry; 202 with the goal's number, 409 unless in STAND or WALK or during an update, 400 for a malformed goal ([goal moves](motion_system.md#goal-moves)) |
+| `goal_cancel`, `goal_status_request`                   | `goal_status`         | Cancel the goal, or read the latest goal's state and progress                                                     |
 
 ### Optional services
 

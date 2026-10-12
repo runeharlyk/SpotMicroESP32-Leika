@@ -1,4 +1,10 @@
-"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait, stepped at the control rate."""
+"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait, odometry and goal controller,
+stepped at the control rate.
+
+A goal move runs the firmware's controller on the firmware's odometry, as the robot does, rather than the host-side
+motions: so it lands where the robot would, by its odometry, which falls 11 to 15 % short of MuJoCo's base.
+"""
+import dataclasses
 import math
 import threading
 import time
@@ -8,9 +14,14 @@ import numpy as np
 
 from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
 from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
+from ...robot.firmware_goal import BodyStep, Goal, GoalController, GoalState, body_step
+from ...robot.firmware_odometry import KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ..constants import Gait, Mode
-from .base import ZERO, Calibration, RobotError, RobotState, Velocity
+from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
+
+# The firmware's body frame is forward, up, right.
+MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]])
 
 
 class SimBackend:
@@ -22,6 +33,8 @@ class SimBackend:
         self._controller = GaitController()
         self._body = BodyState()
         self._levelling = StandCompensation()
+        self._odometry = KinematicOdometry()
+        self._goal = GoalController()
         self._mode = Mode.REST
         self._velocity = ZERO
         self._t = 0.0
@@ -58,9 +71,52 @@ class SimBackend:
             roll, pitch = imu_roll_pitch(self.sim.base_quat())
             omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
             apply_firmware_attitude(self._body, omega, psi)
+            before = dataclasses.replace(self._odometry.estimate)
+            self._odometry.update(self._body.feet @ MODEL_TO_FIRMWARE.T, self._controller.stance(self._gait))
+            if self._goal.running:
+                self._drive_goal(body_step(before, self._odometry.estimate), CONTROL_DT)
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
             self.sim.step_physics()
             self._t += CONTROL_DT
+
+    # As the firmware's MotionService: the goal's sticks for the next tick, and once reached, STAND with them centred.
+    def _drive_goal(self, step: BodyStep, dt: float) -> None:
+        sticks = self._goal.update(step, dt)
+        top = self.max_velocity()
+        self._velocity = Velocity(sticks.forward * top.vx, sticks.left * top.vy, sticks.turn * top.yaw_rate)
+        if self._goal.state is GoalState.REACHED:
+            self._mode = Mode.STAND
+
+    def _cancel_goal(self) -> None:
+        if self._goal.running:
+            self._goal.cancel()
+            self._velocity = ZERO
+
+    def supports_goals(self) -> bool:
+        return True
+
+    def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None:
+        goal = Goal(forward, sideways, math.radians(turn_deg), speed)
+        if not goal.valid():
+            raise ValueError(f"a goal takes one target at a speed up to 1, not {goal}")
+        with self._lock:
+            if self._mode not in (Mode.STAND, Mode.WALK):
+                raise RobotError(f"the robot is {self._mode.name}: a goal starts from STAND or WALK")
+            top = self.max_velocity()
+            self._goal = GoalController()
+            self._goal.start(goal, top.vy if sideways else top.vx, top.yaw_rate)
+            self._mode = Mode.WALK
+            self._drive_goal(BodyStep(), 0.0)
+        try:
+            while self._goal.running:
+                self.sleep(CONTROL_DT)
+        finally:
+            with self._lock:
+                self._cancel_goal()  # an exception, Ctrl-C included, leaves no goal walking
+        if self._goal.state is GoalState.TIMED_OUT:
+            raise RobotTimeout(f"the goal came {self._goal.progress:.3f} of {goal} in {self._goal.timeout:.1f} s")
+        if self._goal.state is GoalState.CANCELLED:
+            raise GoalCancelled("the goal was cancelled")
 
     def now(self) -> float:
         return self._t
@@ -74,9 +130,12 @@ class SimBackend:
 
     def set_mode(self, mode: Mode) -> None:
         with self._lock:
+            self._cancel_goal()
             if mode is not self._mode:
                 self._levelling.reset()
             self._mode = mode
+            if mode is Mode.DEACTIVATED:
+                self._odometry = KinematicOdometry()
 
     # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
     # reports, so a distance move would land far short.
@@ -84,6 +143,7 @@ class SimBackend:
         if gait is not Gait.TROT:
             raise RobotError(f"the simulation models the trot only, not {gait.name}")
         with self._lock:
+            self._cancel_goal()
             set_mode(self._gait, TROT)
 
     def set_height(self, height: float) -> None:
@@ -97,6 +157,11 @@ class SimBackend:
         clamp = lambda value, limit: max(-limit, min(limit, value))
         commanded = Velocity(clamp(velocity.vx, top.vx), clamp(velocity.vy, top.vy), clamp(velocity.yaw_rate, top.yaw_rate))
         with self._lock:
+            # As the app's sticks: centred ones leave a goal its own, any other takes over.
+            if self._goal.running:
+                if commanded == ZERO:
+                    return commanded
+                self._goal.cancel()
             self._velocity = commanded
         return commanded
 
@@ -123,3 +188,17 @@ class SimBackend:
 
     def calibrate(self) -> Calibration:
         return Calibration(still=True, levelled=True, tilt_deg=0.0)
+
+    def odometry(self) -> Odometry:
+        with self._lock:
+            return self._reported()
+
+    def reset_odometry(self) -> Odometry:
+        with self._lock:
+            reached = self._reported()
+            self._odometry.reset()
+            return reached
+
+    def _reported(self) -> Odometry:
+        e = self._odometry.estimate
+        return Odometry(x=e.x, y=e.y, yaw=math.degrees(e.yaw), distance=e.distance)

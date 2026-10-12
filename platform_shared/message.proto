@@ -170,6 +170,50 @@ message CoreDumpReport {
     bool riscv = 13;               // which of the two meanings exc_cause and exc_vaddr have
 }
 
+// Dead reckoning from the commanded feet: where the body has gone since the last reset or deactivation, in the floor
+// frame it faced then (REP-103: x forward, y left). It knows only what the gait commanded, so slip and short steps
+// make it overshoot the real robot; calibrate it against a tape measure.
+message OdometryData {
+    float x = 1;         // m
+    float y = 2;         // m
+    float yaw = 3;       // rad, counter-clockwise, in [-pi, pi]
+    float distance = 4;  // m along the path
+}
+
+// Answered with the estimate; with reset, the one reached before it started afresh.
+message OdometryRequest { bool reset = 1; }
+
+// A move the robot makes on its own, closed on its odometry, so a stalled link cannot cut it short: one of a distance
+// forward, sideways or a turn, at `speed` (0 to 1 of the gait's top; 0 means 0.5). From STAND or WALK it walks, and
+// once there it stands. Answered 202 with the goal's status; 409 while the robot cannot walk, 400 for a malformed goal.
+// It ends on a goal_cancel, a stick off centre, a gait or mode change, its client leaving, or taking twice as long as
+// it should plus 2 s.
+message GoalMove {
+    float forward_m = 1;
+    float sideways_m = 2;  // to the left
+    float turn_deg = 3;    // counter-clockwise
+    float speed = 4;
+}
+message GoalCancel {}
+message GoalStatusRequest {}
+enum GoalState {
+    GOAL_IDLE = 0;
+    GOAL_RUNNING = 1;
+    GOAL_REACHED = 2;
+    GOAL_CANCELLED = 3;
+    GOAL_TIMED_OUT = 4;
+}
+// The latest goal: answers each goal request, and goes to subscribers on every change of goal or state.
+message GoalStatus {
+    uint32 id = 1;  // counted from 1 since boot; 0 before the first goal
+    GoalState state = 2;
+    float forward_m = 3;
+    float sideways_m = 4;
+    float turn_deg = 5;
+    float progress = 6;   // along the target's axis: m, or degrees for a turn
+    float timeout_s = 7;  // how long it may take
+}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -213,6 +257,10 @@ message CorrelationRequest {
         CoreDumpRequest core_dump_request = 230;
         CoreDumpDownload core_dump_download = 231;
         CoreDumpErase core_dump_erase = 232;
+        OdometryRequest odometry_request = 240;
+        GoalMove goal_move = 250;
+        GoalCancel goal_cancel = 251;
+        GoalStatusRequest goal_status_request = 252;
     }
 }
 
@@ -244,6 +292,8 @@ message CorrelationResponse {
         AnimationList animation_list = 220;
         AnimationReport animation_report = 221;
         CoreDumpReport core_dump_report = 230;
+        OdometryData odometry = 240;
+        GoalStatus goal_status = 250;
     }
 }
 
@@ -411,6 +461,7 @@ message TickSample {
     ModesEnum mode = 14;
     WalkGaits gait = 15;
     bool link_lost = 16;         // the dead-man stop is in force
+    OdometryData odometry = 17;  // after this tick's motion
 }
 
 message TelemetryBatch {
@@ -480,5 +531,6 @@ message Message {
         TelemetryNetwork telemetry_network = 272;
         AnimationStatus animation_status = 292;
         SonarData sonar = 300;
+        GoalStatus goal_status = 310;
     }
 }

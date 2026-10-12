@@ -212,6 +212,16 @@ static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
 
 static uint32_t nowMs() { return esp_timer_get_time() / 1000; }
 
+static void goalStatusToProto(const MotionService::GoalStatus &status, socket_message_GoalStatus &proto) {
+    proto.id = status.id;
+    proto.state = static_cast<socket_message_GoalState>(status.state);
+    proto.forward_m = status.goal.forward;
+    proto.sideways_m = status.goal.sideways;
+    proto.turn_deg = RAD_TO_DEG_F(status.goal.turn);
+    proto.progress = status.goal.turn != 0 ? RAD_TO_DEG_F(status.progress) : status.progress;
+    proto.timeout_s = status.timeout;
+}
+
 using ReplyFiller = std::function<void(socket_message_CorrelationResponse &)>;
 
 /** Who sent a request: the link it came on, WebSocket or serial, and the client on that link. */
@@ -563,6 +573,48 @@ void setupEventSocket() {
          }},
 
         // Both defer the work by 250 ms, so this reply leaves before the device goes down.
+        {socket_message_CorrelationRequest_odometry_request_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_odometry_tag;
+             odometryToProto(
+                 req.request.odometry_request.reset ? motionService.resetOdometry() : motionService.odometry(),
+                 res.response.odometry);
+         }},
+
+        // Checked here for the reply; the control task checks the mode again when it takes the goal. The reply
+        // carries the goal's number, and its timeout follows in the status once the control task has started it.
+        {socket_message_CorrelationRequest_goal_move_tag,
+         [](const auto &req, auto &res, Client client) {
+             const auto &move = req.request.goal_move;
+             auto refuse = [&res](uint32_t status, const char *reason) {
+                 res.status_code = status;
+                 strncpy(res.error_message, reason, sizeof(res.error_message) - 1);
+             };
+             const Goal goal {move.forward_m, move.sideways_m, DEG_TO_RAD_F(move.turn_deg),
+                              move.speed == 0 ? 0.5f : move.speed};
+             if (!GoalController::valid(goal)) return refuse(400, "One target, at a speed up to 1");
+             const socket_message_ModesEnum mode = motionService.mode();
+             if (mode != socket_message_ModesEnum_STAND && mode != socket_message_ModesEnum_WALK)
+                 return refuse(409, "Stand up first");
+             if (otaSession.running()) return refuse(409, "Updating");
+             MotionService::GoalStatus accepted;
+             accepted.id = motionService.inbox.postGoal(goal, client.link == &wsSocket ? client.id : -1);
+             accepted.state = GoalState::RUNNING;
+             accepted.goal = goal;
+             res.status_code = 202;
+             res.which_response = socket_message_CorrelationResponse_goal_status_tag;
+             goalStatusToProto(accepted, res.response.goal_status);
+         }},
+
+        {socket_message_CorrelationRequest_goal_cancel_tag,
+         [](const auto &req, auto &res, Client client) { motionService.inbox.postGoalCancel(); }},
+
+        {socket_message_CorrelationRequest_goal_status_request_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_goal_status_tag;
+             goalStatusToProto(motionService.goalStatus(), res.response.goal_status);
+         }},
+
         {socket_message_CorrelationRequest_system_restart_tag,
          [](const auto &req, auto &res, Client client) { system_service::restart(); }},
 
@@ -842,6 +894,18 @@ static void publishAnimationStatus() {
     emitToAll(status);
 }
 
+// On every new goal and every change of its state, so a client waiting on one hears how it ended.
+static void publishGoalStatus() {
+    static MotionService::GoalStatus last;
+    if (!wsSocket.hasSubscribers(socket_message_Message_goal_status_tag)) return;
+    const MotionService::GoalStatus now = motionService.goalStatus();
+    if (now.id == last.id && now.state == last.state) return;
+    last = now;
+    socket_message_GoalStatus status = socket_message_GoalStatus_init_zero;
+    goalStatusToProto(now, status);
+    wsSocket.emit(status);
+}
+
 void IRAM_ATTR serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 #if CONFIG_IDF_TARGET_ESP32P4
@@ -905,6 +969,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         EXECUTE_EVERY_N_MS(100, {
             publishMotion();
             publishAnimationStatus();
+            publishGoalStatus();
 
             // Also on the console UART: a robot set up over its USB-serial chip shows it joining the network.
             if (wifiService.takeStatusChanged()) {

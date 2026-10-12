@@ -1,11 +1,15 @@
-"""A robot on a local WebSocket or on a fake USB serial port: answers pings, the variant, the calibration and the peripheral
-settings, reports its
-mode and gait in telemetry at 10 Hz, and records what it receives. `obey=False` ignores mode changes; `silent=True`
-stops all sending. Replies carry status 200 as the firmware's do; `status` changes it.
+"""A robot on a local WebSocket or on a fake USB serial port: answers pings, the variant, the calibration, the
+peripheral settings and the odometry, reports its mode and gait in telemetry at 10 Hz, and records what it receives.
+`obey=False` ignores mode changes; `silent=True` stops all sending. Replies carry status 200 as the firmware's do;
+`status` changes it.
 
 Over serial, `serial_class` stands in for pyserial's Serial: the client opens a port to this robot, which writes a log
-line before its frames, as the firmware does on its console."""
+line before its frames, as the firmware does on its console.
+
+A goal move is answered 202 and runs for `goal_s`, then ends in `goal_end`, each change broadcast unless
+`goal_quiet`; `goals=False` refuses goal requests as a firmware from before them does."""
 import asyncio
+import math
 import threading
 import time
 
@@ -19,13 +23,16 @@ SERIAL_PORT = "COM99"
 
 
 class FakeRobot:
-    def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True, transport="websocket"):
+    def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True, transport="websocket", goals=True):
         self.variant, self.obey, self.silent = variant, obey, False
         self.status = 200
         self.connections = 0
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
         self.peripheral_settings = api_pb2.PeripheralSettings(sda=21, scl=22, frequency=400000)
         self.peripheral_settings.imu.mounting[:] = [0, 1, 0, -1, 0, 0, 0, 0, 1]
+        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75)
+        self.goals, self.goal_s, self.goal_end, self.goal_quiet = goals, 0.3, pb.GOAL_REACHED, False
+        self.goal = pb.GoalStatus()
         self.received = []  # (monotonic time, Message)
         self.ports = []  # the serial ports opened to this robot
         self._loop = asyncio.new_event_loop()
@@ -63,7 +70,10 @@ class FakeRobot:
                 elif kind == "pingmsg":
                     await send(pb.Message(pongmsg=pb.PongMsg()).SerializeToString())
                 elif kind == "correlation_request":
-                    await send(self._reply(message.correlation_request).SerializeToString())
+                    reply = self._reply(message.correlation_request)
+                    await send(reply.SerializeToString())
+                    if reply.correlation_response.status_code == 202:
+                        asyncio.create_task(self._walk_goal(send, self.goal.id))
         finally:
             sender.cancel()
             self.connections -= 1
@@ -71,15 +81,44 @@ class FakeRobot:
     def _reply(self, request):
         response = pb.CorrelationResponse(correlation_id=request.correlation_id, status_code=self.status)
         kind = request.WhichOneof("request")
-        if kind == "features_data_request":
+        if kind.startswith("goal_") and not self.goals:
+            response.status_code, response.error_message = 400, "Unknown request"
+        elif kind == "goal_move" and self.status == 200:
+            move = request.goal_move
+            self.goal = pb.GoalStatus(id=self.goal.id + 1, state=pb.GOAL_RUNNING, forward_m=move.forward_m,
+                                      sideways_m=move.sideways_m, turn_deg=move.turn_deg)
+            response.status_code = 202
+            response.goal_status.CopyFrom(self.goal)
+        elif kind == "goal_status_request":
+            response.goal_status.CopyFrom(self.goal)
+        elif kind == "goal_cancel":
+            self.goal.state = pb.GOAL_CANCELLED
+        elif kind == "features_data_request":
             response.features_data_response.variant = self.variant
         elif kind in ("peripheral_settings_request", "peripheral_settings"):
             if kind == "peripheral_settings":
                 self.peripheral_settings.CopyFrom(request.peripheral_settings)
             response.peripheral_settings.CopyFrom(self.peripheral_settings)
+        elif kind == "odometry_request":
+            response.odometry.CopyFrom(self.odometry)
+            if request.odometry_request.reset:
+                self.odometry = pb.OdometryData()
         else:
             response.imu_calibrate_data.CopyFrom(pb.IMUCalibrateData(success=True, levelled=True, tilt_deg=4.2))
         return pb.Message(correlation_response=response)
+
+    async def _walk_goal(self, send, goal):
+        await asyncio.sleep(0.05)
+        self.goal.timeout_s = self.goal_s + 1.0
+        await self._broadcast_goal(send)
+        await asyncio.sleep(self.goal_s)
+        if self.goal.id == goal and self.goal.state == pb.GOAL_RUNNING:
+            self.goal.state = self.goal_end
+            await self._broadcast_goal(send)
+
+    async def _broadcast_goal(self, send):
+        if not self.goal_quiet:
+            await send(pb.Message(goal_status=self.goal).SerializeToString())
 
     def _tick(self, link_lost=False):
         tick = pb.TickSample(t_us=int(time.monotonic() * 1e6), mode=self.mode, gait=self.gait, link_lost=link_lost)

@@ -25,6 +25,8 @@ All notable changes to this project will be documented in this file.
 - Adds a controller view with the robot's reported pose beside the simulation, both driven by the same sticks
 - Gives the simulated servos the MG92B's torque-speed line, so they slow under load and give way past stall, with the supply voltage randomised between its 4.8 and 6.0 V ratings
 - Adds terrain and payload stages to the simulation's training - a payload, bumps, slopes and stairs - advanced by how many episodes succeed
+- Adds dead reckoning from the commanded feet: position, heading and distance since the last reset, in every telemetry tick, as a request that reads and resets it, and from the Python client; it counts commanded steps, so calibrate it against a tape measure
+- Adds goal moves: the robot walks a distance or turns an angle itself, closed on its odometry, so a WiFi stall no longer cuts a move short; the Python client's moves and turns use them where the firmware has them
 
 ### Changed
 

@@ -5,7 +5,7 @@ Velocities are REP-103 (forward, left, counter-clockwise) in m/s and rad/s; angl
 block, on an exception or Ctrl-C included, stops the robot and lets it rest; it never deactivates on its own.
 """
 from . import motions
-from .backends.base import ZERO, Backend, Calibration, RobotError, RobotState, Velocity
+from .backends.base import ZERO, Backend, Calibration, Odometry, RobotError, RobotState, Velocity
 from .constants import Gait, Mode
 
 # The modes a script may walk from. DEACTIVATED is the app's stop button, IDLE and CALIBRATION are the user's: walking
@@ -83,6 +83,37 @@ class Robot:
 
     def max_velocity(self) -> Velocity:
         return self._backend.max_velocity()
+
+    def odometry(self) -> Odometry:
+        """Where the robot's own dead reckoning puts it since the last reset or deactivation."""
+        return self._backend.odometry()
+
+    def reset_odometry(self) -> Odometry:
+        """Starts the dead reckoning afresh, and returns where it had got to."""
+        return self._backend.reset_odometry()
+
+    def supports_goals(self) -> bool:
+        """Whether the robot walks a distance or turns an angle itself, closed on its own odometry."""
+        return self._backend.supports_goals()
+
+    def goal_move(self, forward: float = 0.0, sideways: float = 0.0, turn_deg: float = 0.0, speed: float = 0.5) -> None:
+        """Walks `forward` or `sideways` metres, or turns `turn_deg` counter-clockwise (one of them, the others zero), at
+        `speed` of the gait's top, on the robot's own odometry: a stalled link cannot cut it short. Returns once the
+        robot reports it reached, standing; raises GoalCancelled if it ended early and RobotTimeout if it gave up.
+
+        The odometry counts what the gait commanded, so until it is calibrated the robot lands off by its error.
+        """
+        targets = (forward, sideways, turn_deg)
+        if sum(t != 0 for t in targets) > 1:
+            raise ValueError(f"a goal takes one target, not {targets}")
+        if not any(targets):
+            return
+        mode = self._backend.state().mode
+        if mode not in WALKS_FROM:
+            raise RobotError(f"the robot is {mode.name}: stand() it before a goal")
+        if mode is Mode.REST:
+            self._backend.set_mode(Mode.STAND)  # a goal starts from STAND or WALK
+        self._backend.goal_move(forward, sideways, turn_deg, speed)
 
     def time(self) -> float:
         return self._backend.now()

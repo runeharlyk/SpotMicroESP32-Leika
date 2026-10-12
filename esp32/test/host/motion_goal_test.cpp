@@ -1,0 +1,265 @@
+// Host test of the goals MotionService drives on the Pico's odometry, built and run by test_host_programs.py.
+#include <cmath>
+#include <cstdio>
+#include <motion.h>
+#include <variant.h>
+
+static int failures = 0;
+
+#define CHECK(condition)                                                     \
+    do {                                                                     \
+        if (!(condition)) {                                                  \
+            std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #condition); \
+            failures++;                                                      \
+        }                                                                    \
+    } while (0)
+
+#define CHECK_NEAR(actual, expected, tolerance)                                                              \
+    do {                                                                                                     \
+        const double a = (actual), e = (expected);                                                           \
+        if (!(std::fabs(a - e) <= (tolerance))) {                                                            \
+            std::printf("FAIL %s:%d: %s = %.6f, expected %.6f +- %.6f\n", __FILE__, __LINE__, #actual, a, e, \
+                        static_cast<double>(tolerance));                                                     \
+            failures++;                                                                                      \
+        }                                                                                                    \
+    } while (0)
+
+static const KinConfig &PICO = KIN_CONFIG_SPOTMICRO_ESP32_MINI;
+constexpr int TICKS_PER_S = 100;
+constexpr float DEG = static_cast<float>(M_PI) / 180.0f;
+
+static void tick(MotionService &motion, int ticks = 1) {
+    for (int i = 0; i < ticks; i++) {
+        fake_timer::nowUs += 10000;
+        motion.update(ImuSample {}, eGestureNone);
+    }
+}
+
+static socket_message_ControllerData sticks(float lx, float ly, float height = 0.5f) {
+    socket_message_ControllerData data = socket_message_ControllerData_init_zero;
+    data.has_left = data.has_right = true;
+    data.left.x = lx;
+    data.left.y = ly;
+    data.height = height;
+    data.speed = 0.5f;
+    data.s1 = 0.5f;
+    return data;
+}
+
+static void input(MotionService &motion, const socket_message_ControllerData &data) {
+    motion.inbox.postInput(data, fake_timer::nowUs / 1000, fake_timer::nowUs);
+    tick(motion);
+}
+
+// A Pico standing still, as after the app stood it up, unless `driven` is false: then no app ever sent input.
+static void standingPico(MotionService &motion, bool driven = true) {
+    motion.useConfig(&PICO);
+    motion.begin();
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    tick(motion);
+    if (driven) input(motion, sticks(0, 0));
+    tick(motion, TICKS_PER_S);
+}
+
+static GoalState runGoal(MotionService &motion, int maxSeconds = 30) {
+    for (int i = 0; i < maxSeconds * TICKS_PER_S && motion.goalStatus().state == GoalState::RUNNING; i++) tick(motion);
+    return motion.goalStatus().state;
+}
+
+static bool centred(const MotionService &motion) {
+    const CommandMsg &command = motion.currentCommand();
+    return command.lx == 0 && command.ly == 0 && command.rx == 0 && command.ry == 0;
+}
+
+// Through the real walk, the command filter and the odometry: once the robot has settled in STAND it ends well within
+// the goal's tolerance (measured: 0 to 1.1 mm, and 0.1 to 0.6 degrees), and leaves the odometry's other axes alone.
+constexpr float SETTLED_M = 0.003f;
+constexpr float SETTLED_RAD = 1 * DEG;
+static void aGoalWalksTheOdometryToItsTarget() {
+    struct Case {
+        Goal goal;
+        const char *name;
+    };
+    const Case cases[] = {
+        {{0.2f, 0, 0, 0.5f}, "0.2 m forward"},
+        {{0, -0.1f, 0, 0.5f}, "0.1 m to the right"},
+        {{-0.05f, 0, 0, 1}, "5 cm back at full speed"},
+        {{0, 0, 90 * DEG, 0.5f}, "90 degrees counter-clockwise"},
+        {{0, 0, -30 * DEG, 0.3f}, "30 degrees clockwise"},
+    };
+    for (const Case &c : cases) {
+        MotionService motion;
+        standingPico(motion);
+        const uint32_t id = motion.inbox.postGoal(c.goal);
+        tick(motion);
+        CHECK(motion.goalStatus().id == id);
+        CHECK(motion.goalStatus().state == GoalState::RUNNING);
+        CHECK(motion.mode() == socket_message_ModesEnum_WALK);
+        CHECK(!centred(motion)); // the goal's sticks are the command in force, as the app's would be
+        const GoalState end = runGoal(motion);
+        CHECK(end == GoalState::REACHED);
+        CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+        CHECK(centred(motion));
+        tick(motion, 2 * TICKS_PER_S);
+        const OdometryEstimate at = motion.odometry();
+        if (c.goal.turn != 0) {
+            CHECK_NEAR(at.yaw, c.goal.turn, SETTLED_RAD);
+            CHECK_NEAR(std::hypot(at.x, at.y), 0, 0.01);
+            std::printf("%s: %.2f degrees off after settling\n", c.name, (at.yaw - c.goal.turn) / DEG);
+        } else {
+            CHECK_NEAR(at.x, c.goal.forward, SETTLED_M);
+            CHECK_NEAR(at.y, c.goal.sideways, SETTLED_M);
+            CHECK_NEAR(at.yaw, 0, 1e-3);
+            std::printf("%s: %.1f mm off after settling\n", c.name,
+                        1000 * std::hypot(at.x - c.goal.forward, at.y - c.goal.sideways));
+        }
+    }
+}
+
+// The goal brings the app's defaults, rather than a body at its lowest that cannot lift a foot.
+static void aRobotNoAppHasDrivenStillWalks() {
+    MotionService motion;
+    standingPico(motion, false);
+    motion.inbox.postGoal({0.1f, 0, 0, 0.5f});
+    tick(motion);
+    CHECK(motion.currentCommand().h == 0.7f && motion.currentCommand().s1 == 0.5f);
+    CHECK(runGoal(motion) == GoalState::REACHED);
+    CHECK_NEAR(motion.odometry().x, 0.1f, 0.01);
+}
+
+static void aStickOffCentreTakesOverAndACentredOneDoesNot() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postGoal({0.3f, 0, 0, 0.5f});
+    tick(motion, 50);
+    input(motion, sticks(0, 0, 0.9f)); // only the height
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    CHECK(motion.currentCommand().h == 0.9f && motion.currentCommand().ly > 0);
+    input(motion, sticks(0.4f, 0));
+    CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+    CHECK(motion.currentCommand().lx == 0.4f && motion.currentCommand().ly == 0);
+    CHECK(motion.mode() == socket_message_ModesEnum_WALK);
+}
+
+// Anything else that ends it centres the sticks: a mode would read them as a lean, a walk would carry on.
+static void aCancelAModeOrAGaitEndsIt() {
+    {
+        MotionService motion;
+        standingPico(motion);
+        motion.inbox.postGoal({0.3f, 0, 0, 0.5f});
+        tick(motion, 50);
+        motion.inbox.postGoalCancel();
+        tick(motion);
+        CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+        CHECK(centred(motion));
+        CHECK(motion.mode() == socket_message_ModesEnum_WALK);
+        const float progress = motion.goalStatus().progress;
+        CHECK(progress > 0.01f);
+        tick(motion, TICKS_PER_S);
+        CHECK(motion.goalStatus().progress == progress);
+    }
+    {
+        MotionService motion;
+        standingPico(motion);
+        motion.inbox.postGoal({0, 0, 1, 0.5f});
+        tick(motion, 50);
+        motion.inbox.postMode(socket_message_ModesEnum_STAND);
+        tick(motion);
+        CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+        CHECK(centred(motion));
+        CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    }
+    {
+        MotionService motion;
+        standingPico(motion);
+        motion.inbox.postGoal({0.3f, 0, 0, 0.5f});
+        tick(motion, 50);
+        motion.inbox.postGait(socket_message_WalkGaits_CRAWL);
+        tick(motion);
+        CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+        CHECK(centred(motion));
+    }
+}
+
+static void itEndsWhenTheClientThatStartedItLeaves() {
+    MotionService motion;
+    standingPico(motion);
+    const uint32_t id = motion.inbox.postGoal({0.3f, 0, 0, 0.5f}, 3);
+    tick(motion, 50);
+    motion.inbox.dropClient(5);
+    tick(motion);
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    motion.inbox.dropClient(3);
+    tick(motion);
+    CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+    CHECK(motion.goalStatus().id == id);
+    CHECK(centred(motion));
+}
+
+// The dead-man stop guards the app's sticks; a goal started after the app fell silent walks on.
+static void theDeadManStopLeavesAGoalAlone() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_WALK);
+    input(motion, sticks(0, 0.5f));
+    motion.inbox.postGoal({0.2f, 0, 0, 0.5f});
+    tick(motion, TICKS_PER_S); // past the 500 ms the stop waits
+    CHECK(motion.linkLost());
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    CHECK(motion.currentCommand().ly > 0);
+    CHECK(runGoal(motion) == GoalState::REACHED);
+}
+
+// Asked from REST, or deactivated before the control task took it: it ends at once and moves nothing.
+static void aGoalTheModeNoLongerAllowsIsCancelled() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postMode(socket_message_ModesEnum_REST);
+    tick(motion, TICKS_PER_S);
+    motion.inbox.postGoal({0.2f, 0, 0, 0.5f});
+    tick(motion);
+    CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+    CHECK(motion.mode() == socket_message_ModesEnum_REST);
+    CHECK(centred(motion));
+}
+
+// A reset of the odometry from the socket's task, mid-goal, must not look like a jump back to the start.
+static void anOdometryResetMidGoalChangesNothing() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postGoal({0.2f, 0, 0, 0.5f});
+    tick(motion, TICKS_PER_S);
+    const OdometryEstimate before = motion.resetOdometry();
+    CHECK(before.x > 0.03f);
+    CHECK(runGoal(motion) == GoalState::REACHED);
+    CHECK_NEAR(before.x + motion.odometry().x, 0.2f, 0.01);
+}
+
+// A new goal replaces a running one, under its own number.
+static void aNewGoalReplacesTheRunningOne() {
+    MotionService motion;
+    standingPico(motion);
+    const uint32_t first = motion.inbox.postGoal({0.3f, 0, 0, 0.5f});
+    tick(motion, 50);
+    const uint32_t second = motion.inbox.postGoal({0, 0, 20 * DEG, 0.5f});
+    tick(motion);
+    CHECK(second == first + 1);
+    CHECK(motion.goalStatus().id == second);
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    CHECK(motion.currentCommand().ly == 0 && motion.currentCommand().rx < 0);
+    CHECK(runGoal(motion) == GoalState::REACHED);
+}
+
+int main() {
+    aGoalWalksTheOdometryToItsTarget();
+    aRobotNoAppHasDrivenStillWalks();
+    aStickOffCentreTakesOverAndACentredOneDoesNot();
+    aCancelAModeOrAGaitEndsIt();
+    itEndsWhenTheClientThatStartedItLeaves();
+    theDeadManStopLeavesAGoalAlone();
+    aGoalTheModeNoLongerAllowsIsCancelled();
+    anOdometryResetMidGoalChangesNothing();
+    aNewGoalReplacesTheRunningOne();
+    std::printf(failures ? "%d failed\n" : "all passed\n", failures);
+    return failures ? 1 : 0;
+}

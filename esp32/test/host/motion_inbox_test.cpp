@@ -156,6 +156,48 @@ static void aStoppedOrUnownedClipIgnoresLeavingClients() {
     CHECK(!inbox.take(40).stopAnimation);
 }
 
+static void aGoalIsTakenOnceUnderItsNumber() {
+    MotionInbox inbox;
+    const uint32_t first = inbox.postGoal({0.2f, 0, 0, 0.5f});
+    const uint32_t second = inbox.postGoal({0, 0.1f, 0, 0.5f});
+    CHECK(first == 1 && second == 2);
+    MotionInbox::Mail mail = inbox.take(10);
+    CHECK(mail.goal && mail.goal->sideways == 0.1f && mail.goalId == second && !mail.cancelGoal);
+    mail = inbox.take(20);
+    CHECK(!mail.goal && mail.goalId == 0);
+}
+
+// A cancel drops a goal not yet taken; a goal posted after a cancel stands.
+static void theLaterOfAGoalAndACancelWins() {
+    MotionInbox inbox;
+    inbox.postGoal({0.2f, 0, 0, 0.5f});
+    inbox.postGoalCancel();
+    MotionInbox::Mail mail = inbox.take(10);
+    CHECK(!mail.goal && mail.cancelGoal);
+    CHECK(!inbox.take(20).cancelGoal);
+    inbox.postGoalCancel();
+    inbox.postGoal({0.2f, 0, 0, 0.5f});
+    mail = inbox.take(30);
+    CHECK(mail.goal && !mail.cancelGoal);
+}
+
+static void aGoalIsCancelledWhenTheClientThatStartedTheLatestLeaves() {
+    MotionInbox inbox;
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, 3);
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, 4);
+    inbox.take(10);
+    inbox.dropClient(3);
+    CHECK(!inbox.take(20).cancelGoal);
+    inbox.dropClient(4);
+    CHECK(inbox.take(30).cancelGoal);
+    inbox.dropClient(4);
+    CHECK(!inbox.take(40).cancelGoal);
+    inbox.postGoal({0.2f, 0, 0, 0.5f}); // from a link that never leaves
+    inbox.take(50);
+    inbox.dropClient(0);
+    CHECK(!inbox.take(60).cancelGoal);
+}
+
 int main() {
     theNewestVariantIsTakenOnce();
     inputIsTakenOnce();
@@ -170,6 +212,9 @@ int main() {
     aClipNotYetTakenIsDroppedWithItsClient();
     aClipBelongsToTheClientThatStartedTheLatest();
     aStoppedOrUnownedClipIgnoresLeavingClients();
+    aGoalIsTakenOnceUnderItsNumber();
+    theLaterOfAGoalAndACancelWins();
+    aGoalIsCancelledWhenTheClientThatStartedTheLatestLeaves();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

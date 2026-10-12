@@ -274,6 +274,10 @@ class GaitController:
     def set_phase(self, phase: float) -> None:
         self.phase = math.fmod(phase, 1.0)
 
+    def stance(self, gait: GaitState) -> np.ndarray:
+        """Which feet are in stance at the current phase, so on the floor (WalkState::stance)."""
+        return np.fmod(self.phase + gait.offset, 1.0) <= gait.stand_frac
+
     def advance_phase(self, gait: GaitState, dt: float) -> None:
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
