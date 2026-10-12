@@ -44,6 +44,7 @@ class Recording:
     missing_batches: int = 0
     missing_ticks: int = 0
     dropped_ticks: int = 0
+    reboots: int = 0
 
 
 class RecordingWriter:
@@ -86,8 +87,8 @@ def load(path) -> Recording:
     ticks = {name: [] for name in (*_TICK_SCALARS, *_TICK_VECTORS)}
     imu = {name: [] for name in (*_IMU_SCALARS, *_IMU_VECTORS)}
     network = {name: [] for name in _NETWORK}
-    batch_rx_us, batch_seqs = [], []
-    link_gaps = dropped = 0
+    batch_rx_us, batch_seqs, batch_dropped = [], [], []
+    link_gaps = 0
     for host_rx_us, frame in _read_records(Path(path).read_bytes()):
         if not frame:
             link_gaps += 1
@@ -100,7 +101,7 @@ def load(path) -> Recording:
             batch = message.telemetry_batch
             batch_seqs.append(batch.batch_seq)
             batch_rx_us.append(host_rx_us)
-            dropped = batch.dropped_ticks
+            batch_dropped.append(batch.dropped_ticks)
             for tick in batch.ticks:
                 for name in _TICK_SCALARS:
                     ticks[name].append(getattr(tick, name))
@@ -124,7 +125,26 @@ def load(path) -> Recording:
         network={name: np.asarray(values) for name, values in network.items()},
         batch_rx_us=np.asarray(batch_rx_us),
         link_gaps=link_gaps,
-        missing_batches=int(np.sum(np.diff(batches) - 1)) if len(batches) > 1 else 0,
-        missing_ticks=int(np.sum(np.diff(seq) - 1)) if len(seq) > 1 else 0,
-        dropped_ticks=int(dropped),
+        missing_batches=_missing(batches),
+        missing_ticks=_missing(seq),
+        dropped_ticks=_dropped_while_recording(batches, np.asarray(batch_dropped, dtype=np.int64)),
+        reboots=int(np.sum(np.diff(batches) <= 0)),
     )
+
+
+def _missing(sequence: np.ndarray) -> int:
+    """Numbers skipped by a counter; a counter that starts over after a reboot skips nothing."""
+    steps = np.diff(sequence)
+    return int(np.sum(steps[steps > 0] - 1))
+
+
+def _dropped_while_recording(batch_seqs: np.ndarray, dropped_since_boot: np.ndarray) -> int:
+    """The robot counts dropped ticks since its boot: the recording's share is what the count grew by, plus the
+    whole count of every boot that began during the recording."""
+    if len(dropped_since_boot) == 0:
+        return 0
+    boots = np.flatnonzero(np.diff(batch_seqs) <= 0) + 1
+    total = 0
+    for i, segment in enumerate(np.split(dropped_since_boot, boots)):
+        total += int(segment[-1] - (segment[0] if i == 0 else 0))
+    return total
