@@ -37,8 +37,7 @@ class Segment:
     seconds: float
 
 
-# Half or less of the slower backend's top speed on every axis (the simulation: 0.067 m/s, 0.034 m/s, 2.3 rad/s; the
-# MINI's trot: 0.128 m/s, 1.33 rad/s), so neither clamps and both are asked for the same velocity.
+# Well inside the MINI's trot top speed (0.128 m/s, 1.33 rad/s), which the simulation shares, so neither clamps.
 SCRIPT = (
     Segment("stand", ZERO, Mode.STAND, 2.0),
     Segment("forward", Velocity(0.03, 0.0, 0.0), Mode.WALK, 4.0),
@@ -47,34 +46,36 @@ SCRIPT = (
     Segment("stop", ZERO, Mode.WALK, 2.0),
 )
 
-# The thresholds. The simulation's gait is a port of the firmware's walk on the Pico's own geometry, but the two are tuned
-# apart: the simulation stands with its feet 55 mm below the hips where the MINI stands 92 mm high (Robot.stand's 70%);
-# it maps a velocity to a shorter stride (MAX_STEP_LENGTH, gait_coef.json's gains) at a faster cadence (1.4-1.6 Hz, from
-# gait_coef.json's speed_base and speed_slope) where the robot holds 1 Hz (speed_model.SPEED); and it lifts its feet
-# 15 mm where the MINI lifts 30 mm. Against the virtual robot that measures as each threshold's comment says. Each sits
-# a margin above it, so a change on either side that widens the gap fails; lower them when the two are brought together.
+# The thresholds. The simulation's gait is the firmware's walk with the MINI's constants (src/robot/firmware_gait.py),
+# placed on the Pico's own geometry: the feet go where the firmware puts them relative to each leg, in metres, and the
+# Pico's IK turns that into joint angles where the robot's are the MINI's IK through the fitted joint map. That geometry
+# is the gap that remains, and against the virtual robot it measures as each threshold's comment says. Each sits a margin
+# above it, and well below what a single joint whose motion is reversed about the stand pose gives: about 15 degrees RMS
+# or more in some segment, by script time and over a cycle alike (the hips' in the turn, the femurs' and tibias' in
+# every walk).
 #
-# The stand pose, per joint: up to 47 degrees apart against the virtual robot (the tibias, from the stance depth).
-MAX_STAND_OFFSET_DEG = 55.0
-# The joints' motion from that stand pose, as an RMS over a segment aligned by script time: up to 17 degrees against the
-# virtual robot, mostly the cadence, as the two drift in and out of phase.
-MAX_MOTION_RMS_DEG = 20.0
+# The stand pose, per joint: up to 4 degrees apart against the virtual robot (rr_femur).
+MAX_STAND_OFFSET_DEG = 6.0
+# The joints' motion from that stand pose, as an RMS over a segment aligned by script time, with the simulation holding
+# each segment as long as the robot did: up to 3 degrees against the virtual robot (the tibias).
+MAX_MOTION_RMS_DEG = 6.0
 # The same over a mean cycle (CYCLE_BINS samples between the front-right foot's lift-offs), so the cadence and the phase
-# drop out and the stride and lift remain: up to 15 degrees against the virtual robot.
-MAX_CYCLE_RMS_DEG = 18.0
-# Feet lifted per second: 0.4-0.6 Hz apart against the virtual robot.
-MAX_CADENCE_DIFF_HZ = 0.8
+# drop out and the stride and lift remain: up to 3 degrees against the virtual robot.
+MAX_CYCLE_RMS_DEG = 6.0
+# Feet lifted per second: both step at 1 Hz (speed_model.SPEED), within 0.01 Hz; a step of 0.1 in the speed the client
+# sends changes it by 0.2 Hz.
+MAX_CADENCE_DIFF_HZ = 0.1
 # Each foot's lift-off within the cycle, relative to the front-right foot's: both trot the diagonal pairs half a cycle
 # apart and agree to 0.02 cycles. A leg in the wrong pair is 0.5 off, and the crawl's legs lift a quarter apart.
 MAX_FOOT_PHASE_DIFF = 0.1
-# Roll and pitch: the simulation sways up to 3 degrees under physics, the virtual robot reads level; a real robot adds
+# Roll and pitch: the simulation sways up to 4 degrees under physics, the virtual robot reads level; a real robot adds
 # its IMU's mounting error, so calibrate it level (robot.calibrate() or the app) before a run.
 MAX_TILT_DIFF_DEG = 6.0
 # The ticks in which the two report different modes, as a share of a segment: the robot takes a tick or two to switch.
 MAX_MODE_MISMATCH = 0.05
 
 CYCLE_BINS = 50
-LIFT_M = 0.005  # a foot this far above its stand height is in the air: a third of the simulation's 15 mm lift
+LIFT_M = 0.005  # a foot this far above its stand height is in the air: a sixth of the 30 mm lift
 JOINT_NAMES = [f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "femur", "tibia")]
 
 # The MINI's servo-space joint angles onto the Pico's MJCF joints: mjcf = sign * angle + offset, per firmware joint (legs
@@ -98,6 +99,7 @@ class Trace:
     mode: np.ndarray  # (n,) Mode values
     roll: np.ndarray  # (n,) degrees
     pitch: np.ndarray
+    held: float  # seconds until the next segment's command took effect
 
 
 def _command(robot: Robot, segment: Segment) -> None:
@@ -110,22 +112,28 @@ def _command(robot: Robot, segment: Segment) -> None:
         raise RobotError(f"{segment.name}: the robot clamped {segment.velocity} to {commanded}")
 
 
-def record_simulation() -> list[Trace]:
+def record_simulation(held: list[float] | None = None) -> list[Trace]:
+    """The script on the simulation, each segment held as long as `held` says (the robot's) or as the script says.
+
+    The gait's phase runs on from one segment into the next, so a segment the robot held a few ticks longer, as a
+    client's sleep and the link make it, starts the next one that much further into its stride.
+    """
     backend = SimBackend(realtime=False)
     robot = Robot(backend=backend)
     robot.connect()
     traces = []
     try:
         robot.set_gait(Gait.TROT)
-        for segment in SCRIPT:
+        for segment, seconds in zip(SCRIPT, held or [segment.seconds for segment in SCRIPT]):
             _command(robot, segment)
             rows = []
-            for tick in range(round(segment.seconds / CONTROL_DT)):
+            for tick in range(round(seconds / CONTROL_DT)):
                 robot.sleep(CONTROL_DT)  # tick 0 is the first to act on the command, as on the robot
-                state = robot.state()
-                rows.append((tick * CONTROL_DT, backend.sim.data.ctrl[backend.sim.act_ids].copy(), state.mode.value,
-                             state.roll, state.pitch))
-            traces.append(_trace(rows))
+                if tick * CONTROL_DT < segment.seconds:
+                    state = robot.state()
+                    rows.append((tick * CONTROL_DT, backend.sim.data.ctrl[backend.sim.act_ids].copy(),
+                                 state.mode.value, state.roll, state.pitch))
+            traces.append(_trace(rows, seconds))
     finally:
         robot.close()
     return traces
@@ -148,22 +156,26 @@ def record_robot(robot: Robot, backend: RealBackend) -> list[Trace]:
 
 def split_ticks(ticks, expected, seconds) -> list[Trace]:
     """The ticks of each segment: from the first in its (mode, sticks) after the one before, for its length."""
-    traces, start = [], 0
-    for (mode, sticks), length in zip(expected, seconds):
+    starts, start = [], 0
+    for mode, sticks in expected:
         start = next((i for i in range(start, len(ticks)) if ticks[i].mode == mode
                       and np.allclose(ticks[i].command[:3], [sticks.lx, sticks.ly, sticks.rx], atol=1e-4)), None)
         if start is None:
             raise RobotError(f"the robot's telemetry never showed mode {Mode(mode).name} with sticks {sticks}")
+        starts.append(start)
+    traces = []
+    for k, (start, length) in enumerate(zip(starts, seconds)):
         t0 = ticks[start].t_us
         rows = [((tick.t_us - t0) / 1e6, to_mjcf(tick.targets), tick.mode, *np.degrees(list(tick.imu.rpy)[:2] or [0, 0]))
                 for tick in ticks[start:] if tick.t_us - t0 < length * 1e6]
-        traces.append(_trace(rows))
+        held = (ticks[starts[k + 1]].t_us - t0) / 1e6 if k + 1 < len(starts) else length
+        traces.append(_trace(rows, held))
     return traces
 
 
-def _trace(rows) -> Trace:
+def _trace(rows, held: float) -> Trace:
     t, joints, mode, roll, pitch = zip(*rows)
-    return Trace(np.array(t), np.array(joints), np.array(mode), np.array(roll), np.array(pitch))
+    return Trace(np.array(t), np.array(joints), np.array(mode), np.array(roll), np.array(pitch), held)
 
 
 # --- comparison --------------------------------------------------------------------------------------------------------
@@ -355,7 +367,7 @@ def drive_virtual(binary: str | None) -> list[Trace]:
 
 
 def run(robot_traces: list[Trace]) -> int:
-    report = compare(record_simulation(), robot_traces)
+    report = compare(record_simulation([trace.held for trace in robot_traces]), robot_traces)
     print_report(report)
     found = breaches(report)
     for breach in found:

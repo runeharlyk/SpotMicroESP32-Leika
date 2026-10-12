@@ -17,17 +17,17 @@ WALKING = ("forward", "sideways", "turn")
 
 
 @pytest.fixture(scope="module")
-def simulation():
-    return sim_vs_real.record_simulation()
-
-
-@pytest.fixture(scope="module")
 def virtual_mini(binary):
     served = virtual_robot.VirtualRobot(binary, sim_vs_real.VARIANT)
     try:
         yield sim_vs_real.drive(f"127.0.0.1:{served.port}")
     finally:
         served.stop()
+
+
+@pytest.fixture(scope="module")
+def simulation(virtual_mini):
+    return sim_vs_real.record_simulation([trace.held for trace in virtual_mini])
 
 
 def _segments(report):
@@ -66,6 +66,39 @@ def test_a_leg_stepping_with_the_wrong_pair_breaches(simulation, virtual_mini):
     found = sim_vs_real.breaches(sim_vs_real.compare(simulation, swapped))
     for name in WALKING:
         assert any(re.match(rf"{name}: the \w\w foot lifts [+-]0\.[45]\d cycles apart", breach) for breach in found), found
+
+
+# A servo turning the wrong way, calibrated at the stand: its joint moves mirrored about the stand pose.
+@pytest.mark.parametrize("joint", sim_vs_real.JOINT_NAMES)
+def test_a_single_reversed_joint_breaches(simulation, virtual_mini, joint):
+    j = sim_vs_real.JOINT_NAMES.index(joint)
+    stand = sim_vs_real.stand_pose(virtual_mini)[j]
+    reversed_ = []
+    for trace in virtual_mini:
+        joints = trace.joints.copy()
+        joints[:, j] = 2 * stand - joints[:, j]
+        reversed_.append(replace(trace, joints=joints))
+    found = sim_vs_real.breaches(sim_vs_real.compare(simulation, reversed_))
+    assert any(f": {joint} " in breach for breach in found), found
+
+
+# The trot starting on the other diagonal pair: the cycles and the foot phases agree, only the script time tells.
+def test_a_gait_half_a_cycle_out_breaches(simulation, virtual_mini):
+    half = 0.5 / (max(speed_model.SPEED, 0.5) * speed_model.GAITS[Gait.TROT][0])
+
+    def ahead(trace):
+        kept = trace.t >= half
+        return replace(trace, t=trace.t[kept] - half, joints=trace.joints[kept], mode=trace.mode[kept],
+                       roll=trace.roll[kept], pitch=trace.pitch[kept])
+
+    shifted = [virtual_mini[0]] + [ahead(trace) for trace in virtual_mini[1:]]
+    report = sim_vs_real.compare(simulation, shifted)
+    segments = _segments(report)
+    found = sim_vs_real.breaches(report)
+    for name in WALKING:
+        assert np.abs(segments[name].foot_phase_diff).max() < sim_vs_real.MAX_FOOT_PHASE_DIFF
+        assert segments[name].cycle_rms_deg.max() < sim_vs_real.MAX_CYCLE_RMS_DEG
+        assert any(re.match(rf"{name}: \w+ moved [\d.]+ degrees RMS apart", breach) for breach in found), found
 
 
 def test_the_cycle_comparison_sees_through_a_delay_the_script_time_comparison_does_not(simulation):

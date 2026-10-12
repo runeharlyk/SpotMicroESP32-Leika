@@ -162,6 +162,7 @@ Reading the report:
 - The first table is per joint, the simulation minus the robot, in degrees.
   `stand` is the difference between the two stand poses.
   Each segment's column is the difference in the joints' motion away from each side's own stand pose, as RMS/max over the segment, aligned by script time from the tick the segment's command took effect.
+  The simulation holds each segment as long as the robot did, since the gait's phase runs on into the next segment.
   A `cycle` column compares the two mean gait cycles instead, each resampled between the front-right foot's lift-offs, so the cadence and phase drop out and only the stride and lift remain.
 - The second table is per segment.
   The cadence is each side's lift-offs per second per foot; a foot is lifted when its height by forward kinematics is 5 mm above its stand height.
@@ -171,11 +172,9 @@ Reading the report:
 - Each threshold, and why it sits where it does, is a constant at the top of `sim_vs_real.py`.
   The script prints a `BREACH` line for each one exceeded and exits 1, or exits 2 when the robot cannot be driven.
 
-The two do not agree closely today, and the thresholds pin how far apart they are rather than claim they match.
-Against the virtual robot (the firmware's own gait), the stand poses differ by up to 47 degrees in the tibias, because the simulation stands with its feet 55 mm below the hips where the MINI stands 92 mm high.
-The simulation steps at 1.4-1.6 Hz (from `gait_coef.json`) where the firmware holds 1 Hz, with a shorter stride and a 15 mm lift where the MINI lifts 30 mm; this puts the script-time joint difference at up to 17 degrees RMS and the per-cycle difference at up to 15.
-Both trot the diagonal pairs half a cycle apart, and the foot phases agree to 0.02 cycles.
-So the check catches a change that widens the gap, a change of cadence, and a leg that steps with the wrong pair, but not a single joint reversed within the current gap; tighten the thresholds when the simulation is re-pinned to the firmware.
+The simulation runs the firmware's walk with the MINI's constants, so what remains between the two is the geometry: the simulation places each foot where the firmware does relative to its leg, and the Pico's IK turns that into joint angles, where the robot's are the MINI's IK through the fitted joint map.
+Against the virtual robot the stand poses agree to 4 degrees per joint, both step at 1 Hz with the foot phases within 0.01 cycles, and the joints' motion agrees to 3 degrees RMS by script time and over a cycle.
+The thresholds sit a margin above that and below what a single joint whose motion is reversed gives (about 15 degrees RMS or more in some segment), so the check catches a reversed joint, a change of cadence, stride or stance, a leg that steps with the wrong pair, and a trot that starts on the other pair.
 On a real robot the joint targets are computed by the same firmware as on the virtual robot, so they should read as the virtual robot does, apart from the stand's IMU compensation of a tilted body; the new information is the tilt, which the virtual robot does not model.
 
 ## Follow-ups (out of scope here)
