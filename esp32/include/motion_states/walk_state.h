@@ -150,19 +150,23 @@ class WalkState : public MotionState {
     }
     const char *name() const override { return "Bezier"; }
 
+    // A walk starts from the stand's feet, every one down on its spot: with no stroke, at the start of the cycle.
+    void begin() override {
+        MotionState::begin();
+        gait_state.step_x = gait_state.step_z = gait_state.step_angle = 0;
+        restartCycle();
+    }
+
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
-        mode = WALK_GAIT::CRAWL;
-        speed_factor = 0.5;
-        stand_offset = duty;
+        std::array<float, 4> offsets;
         const float base[4] = {0.f, 0.25f, 0.5f, 0.75f};
-        for (int i = 0; i < 4; ++i) phase_offset[order[i]] = base[i];
+        for (int i = 0; i < 4; ++i) offsets[order[i]] = base[i];
+        schedule(WALK_GAIT::CRAWL, 0.5f, duty, offsets);
     }
 
     void set_mode_trot(float duty = 0.75f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
-        mode = WALK_GAIT::TROT;
-        speed_factor = 2;
-        stand_offset = duty;
-        for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
+        for (float &offset : offsets) offset = std::fmod(std::fabs(offset), 1.f);
+        schedule(WALK_GAIT::TROT, 2, duty, offsets);
     }
 
     /**
@@ -230,6 +234,24 @@ class WalkState : public MotionState {
 
   protected:
     static constexpr int SLOWDOWN_PARTS = 64;
+
+    // A new schedule restarts the cycle: the phase the walk held, read with the new offsets, can put a foot in the air,
+    // which then went up in one tick. The same schedule again keeps its phase.
+    void schedule(WALK_GAIT gait, float factor, float duty, const std::array<float, 4> &offsets) {
+        const bool changed =
+            gait != mode || duty != stand_offset || !std::equal(offsets.begin(), offsets.end(), phase_offset);
+        mode = gait;
+        speed_factor = factor;
+        stand_offset = duty;
+        std::copy(offsets.begin(), offsets.end(), phase_offset);
+        if (changed) restartCycle();
+    }
+
+    // Phase 0 has every foot of either gait down (no offset passes its duty), and no crawl shift is under way.
+    void restartCycle() {
+        phase_time = 0;
+        shift_state = {};
+    }
 
     void advance(body_state_t &body_state, float dt) {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);

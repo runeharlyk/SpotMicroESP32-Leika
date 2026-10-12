@@ -330,19 +330,46 @@ export class WalkState extends MotionState {
         }
     }
 
+    // A walk starts from the stand's feet, every one down on its spot: with no stroke, at the start of the cycle.
+    begin() {
+        this.gait.stepX = this.gait.stepZ = this.gait.stepAngle = 0
+        this.restartCycle()
+    }
+
     setModeCrawl(duty = 0.85, order = [3, 0, 2, 1]) {
-        this.crawl = true
-        this.speedFactor = 0.5
-        this.standOffset = duty
         const base = [0, 0.25, 0.5, 0.75]
-        order.forEach((leg, i) => (this.phaseOffset[leg] = base[i]))
+        const offsets = [0, 0, 0, 0]
+        order.forEach((leg, i) => (offsets[leg] = base[i]))
+        this.schedule(true, 0.5, duty, offsets)
     }
 
     setModeTrot(duty = 0.75, offsets = [0, 0.5, 0.5, 0]) {
-        this.crawl = false
-        this.speedFactor = 2
+        this.schedule(
+            false,
+            2,
+            duty,
+            offsets.map(offset => Math.abs(offset) % 1)
+        )
+    }
+
+    // schedule (walk_state.h): a new schedule restarts the cycle, as the held phase read with the new offsets can put a
+    // foot in the air; the same schedule again keeps its phase.
+    private schedule(crawl: boolean, speedFactor: number, duty: number, offsets: number[]) {
+        const changed =
+            crawl !== this.crawl ||
+            duty !== this.standOffset ||
+            offsets.some((offset, i) => offset !== this.phaseOffset[i])
+        this.crawl = crawl
+        this.speedFactor = speedFactor
         this.standOffset = duty
-        this.phaseOffset = offsets.map(offset => Math.abs(offset) % 1)
+        this.phaseOffset = offsets
+        if (changed) this.restartCycle()
+    }
+
+    // Phase 0 has every foot of either gait down, and no crawl shift is under way.
+    private restartCycle() {
+        this.phaseTime = 0
+        this.shift = { startX: 0, startZ: 0, targetX: 0, targetZ: 0, startTime: 0, leg: -1 }
     }
 
     handleCommand(cmd: CommandMsg) {

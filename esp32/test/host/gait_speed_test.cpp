@@ -71,6 +71,16 @@ struct Walk {
         walk.begin();
     }
 
+    // Out to the stand and back, as MotionService switches states: the stand has put every foot back on its spot.
+    void reenter() {
+        walk.end();
+        body.updateFeet(config.default_feet_positions);
+        kinematics.calculate_inverse_kinematics(body, commanded);
+        std::memcpy(output, commanded, sizeof(output));
+        walk.resetSmoothing();
+        walk.begin();
+    }
+
     void hold(const CommandMsg &cmd, float seconds) {
         static_cast<MotionState &>(walk).handleCommand(cmd);
         const float max_step = SERVO_MAX_SPEED_DEG_S * DT;
@@ -228,6 +238,60 @@ void stoppingLandsEveryFootWithoutAJump() {
     }
 }
 
+// A walk entered from the stand, or switched to the other gait while it stands, starts with every foot down: the phase
+// it held, left mid-stride or read with the other gait's offsets, had a foot in the air, which went up in one tick at
+// up to 3,700 deg/s. The same gait sent again mid-stride keeps its step.
+void enteringOrSwitchingAGaitLiftsNoFootAtOnce() {
+    const CommandMsg forward = command(0, 1, 0, DEFAULT_H, 0.5f, DEFAULT_S1);
+    const CommandMsg still = command(0, 0, 0, DEFAULT_H, 0.5f, DEFAULT_S1);
+    for (const KinematicsVariant variant : VARIANTS) {
+        const KinConfig &config = *kinConfigFor(variant);
+        const auto checkUnderCap = [&](const Walk &walk, Gait gait, const char *how, int moment) {
+            const bool under = walk.speeds.peak_deg_s <= WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S;
+            if (!under)
+                std::printf("%s %s %s at %d/16: %.0f deg/s\n", variantName(variant), gaitName(gait), how, moment,
+                            walk.speeds.peak_deg_s);
+            CHECK(under);
+        };
+        for (const Gait gait : {TROT, CRAWL}) {
+            const float cycle = gait == CRAWL ? 4.f : 1.f;
+            for (int moment = 0; moment < 16; moment++) {
+                const float walked = cycle * (1 + moment / 16.f);
+
+                Walk reentered(config, gait);
+                reentered.hold(forward, walked);
+                reentered.reenter();
+                reentered.speeds = Speeds();
+                reentered.hold(still, 0.5f);
+                reentered.hold(forward, cycle);
+                checkUnderCap(reentered, gait, "left mid-stride and entered again", moment);
+
+                Walk switched(config, gait);
+                switched.hold(forward, walked);
+                switched.hold(still, 2 * cycle);
+                switched.speeds = Speeds();
+                if (gait == TROT)
+                    switched.walk.set_mode_crawl();
+                else
+                    switched.walk.set_mode_trot();
+                switched.hold(still, 0.5f);
+                switched.hold(forward, cycle);
+                checkUnderCap(switched, gait, "stopped and switched", moment);
+
+                Walk resent(config, gait);
+                resent.hold(forward, walked);
+                resent.speeds = Speeds();
+                if (gait == TROT)
+                    resent.walk.set_mode_trot();
+                else
+                    resent.walk.set_mode_crawl();
+                resent.hold(forward, cycle);
+                checkUnderCap(resent, gait, "sent its gait again mid-stride", moment);
+            }
+        }
+    }
+}
+
 void report() {
     std::printf("variant gait s: forward full stick at h %g, s1 %g: peak deg/s, ticks clipped at %.0f deg/s, cycles/s, m/s | "
                 "every reachable full stick, h and s1: worst peak, worst clipped share, unreachable commands\n",
@@ -271,6 +335,7 @@ int main(int argc, char **argv) {
     aShortStepKeepsItsCadence();
     aFullForwardTrotKeepsItsStroke();
     stoppingLandsEveryFootWithoutAJump();
+    enteringOrSwitchingAGaitLiftsNoFootAtOnce();
     if (failures) std::printf("%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }
