@@ -71,7 +71,9 @@ static void theJointsMoveNoFasterThanTheServos() {
     wireReversed(controller);
     float start[12], targets[12];
     std::copy(controller.outputAngles(), controller.outputAngles() + 12, start);
-    for (int i = 0; i < 12; i++) targets[i] = start[i] + (i % 2 ? 100.0f : -100.0f);
+    // A stance inside every joint's travel, at least 20 degrees from where the joints start.
+    const float stance[3] = {20, -40, 60};
+    for (int i = 0; i < 12; i++) targets[i] = stance[i % 3] * JOINT_DIRECTION[i];
     controller.setAngles(targets);
     CHECK(controller.calculatePWM(0.01f));
     for (int i = 0; i < 12; i++) CHECK(std::fabs(std::fabs(controller.outputAngles()[i] - start[i]) - 7.2f) < 1e-3f);
@@ -79,6 +81,41 @@ static void theJointsMoveNoFasterThanTheServos() {
     CHECK(controller.calculatePWM(1.0f));
     for (int i = 0; i < 12; i++)
         CHECK(std::fabs(controller.outputAngles()[i] - start[i]) <= SERVO_MAX_SPEED_DEG_S * ServoController::MAX_TICK_S + 1e-3f);
+    I2CBus::instance().end();
+}
+
+// Where the joints settle after long enough to reach their targets, in the IK convention.
+static void settle(ServoController &controller, const float ik[3], float settled[12]) {
+    float targets[12];
+    for (int i = 0; i < 12; i++) targets[i] = ik[i % 3] * JOINT_DIRECTION[i];
+    controller.setAngles(targets);
+    for (int tick = 0; tick < 100; tick++) controller.calculatePWM(0.02f);
+    for (int i = 0; i < 12; i++) settled[i] = controller.outputAngles()[i] * JOINT_DIRECTION[i];
+}
+
+// Whatever asks for it, a joint goes no further than its variant's travel, on every leg alike, and a target inside
+// the travel passes as it is.
+static void aTargetPastTheTravelIsHeldAtItsEnd() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    float settled[12];
+    const float beyond[3] = {-120, 80, 170};
+    settle(controller, beyond, settled);
+    const JointRange *travel = JOINT_MODEL_SPOTMICRO_ESP32.travel;
+    for (int i = 0; i < 12; i += 3) {
+        CHECK(std::fabs(settled[i] - travel[0].min) < 1e-3f);
+        CHECK(std::fabs(settled[i + 1] - travel[1].max) < 1e-3f);
+        CHECK(std::fabs(settled[i + 2] - travel[2].max) < 1e-3f);
+    }
+    const float inside[3] = {-30, -60, 120};
+    settle(controller, inside, settled);
+    for (int i = 0; i < 12; i++) CHECK(std::fabs(settled[i] - inside[i % 3]) < 1e-3f);
+    // The Pico's knee folds further than the full-size robot's.
+    controller.useJointModel(&JOINT_MODEL_SPOTMICRO_ESP32_MINI);
+    settle(controller, beyond, settled);
+    for (int i = 2; i < 12; i += 3) CHECK(std::fabs(settled[i] - JOINT_MODEL_SPOTMICRO_ESP32_MINI.travel[2].max) < 1e-3f);
     I2CBus::instance().end();
 }
 
@@ -142,6 +179,7 @@ int main() {
     allServosMeansEveryMappedChannel();
     eachJointsAngleReachesItsChannel();
     theJointsMoveNoFasterThanTheServos();
+    aTargetPastTheTravelIsHeldAtItsEnd();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

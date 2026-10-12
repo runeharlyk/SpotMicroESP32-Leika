@@ -167,6 +167,55 @@ static void leavingAWalkMovesTheLegsSmoothly() {
     CHECK(worst < 3.0f);
 }
 
+static socket_message_ControllerData stick(float lx, float ly, float rx, float ry) {
+    socket_message_ControllerData data = socket_message_ControllerData_init_zero;
+    data.has_left = data.has_right = true;
+    data.left = {lx, ly};
+    data.right = {rx, ry};
+    data.height = 0.5f;
+    data.speed = 0.5f;
+    data.s1 = 0.5f;
+    return data;
+}
+
+// The servos hold every joint inside its travel (joint_model.h); rest, stand and the walk in every direction, in both
+// gaits, must not need that, or the robot would move differently than its gait says. The walk is at 0.7 of full
+// stick: walking backward, the Pico asks its front left femur for 51 degrees at 0.8 and 67 at full stick, past the
+// servo's travel.
+static void everyModeStaysInsideTheJointTravel() {
+    constexpr float WALK = 0.7f;
+    for (KinematicsVariant variant :
+         {socket_message_KinematicsVariant_SPOTMICRO_ESP32, socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI,
+          socket_message_KinematicsVariant_SPOTMICRO_YERTLE}) {
+        const JointModel &model = *jointModelFor(variant);
+        MotionService motion;
+        motion.useConfig(kinConfigFor(variant));
+        motion.begin();
+        int outside = 0;
+        auto run = [&](socket_message_ModesEnum mode, socket_message_ControllerData input, int ticks) {
+            motion.inbox.postMode(mode);
+            for (int i = 0; i < ticks; i++) {
+                motion.inbox.postInput(input, fake_timer::nowUs / 1000, fake_timer::nowUs);
+                tick(motion);
+                for (size_t joint = 0; joint < 12; joint++)
+                    if (!withinTravel(model, joint, motion.getAngles()[joint] * JOINT_DIRECTION[joint])) outside++;
+            }
+        };
+        run(socket_message_ModesEnum_REST, stick(0, 0, 0, 0), 100);
+        run(socket_message_ModesEnum_STAND, stick(1, -1, 1, -1), 100);
+        run(socket_message_ModesEnum_STAND, stick(-1, 1, -1, 1), 100);
+        for (auto gait : {socket_message_WalkGaits_TROT, socket_message_WalkGaits_CRAWL}) {
+            motion.inbox.postGait(gait);
+            for (auto input : {stick(0, WALK, 0, 0), stick(0, -WALK, 0, 0), stick(WALK, 0, 0, 0), stick(-WALK, 0, 0, 0),
+                               stick(0, 0, WALK, 0), stick(0, 0, -WALK, 0)})
+                run(socket_message_ModesEnum_WALK, input, 200);
+        }
+        run(socket_message_ModesEnum_REST, stick(0, 0, 0, 0), 100);
+        if (outside) std::printf("%s: %d joint commands outside the travel\n", variantName(variant), outside);
+        CHECK(outside == 0);
+    }
+}
+
 static MotionInbox::Play bob() {
     auto clip = std::make_shared<anim::Clip>();
     std::strcpy(clip->name, "bob");
@@ -250,6 +299,7 @@ int main() {
     aSwitchedRobotStandsAsTheNewVariant();
     aSwitchArrivingWithAModeDeactivates();
     aRobotWithoutAVariantCanStandOnceItIsChosen();
+    everyModeStaysInsideTheJointTravel();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }
