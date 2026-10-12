@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <esp_task_wdt.h>
 #include <esp_timer.h>
+#include <esp_heap_caps.h>
 #include <nvs_flash.h>
 #include <wifi/wifi_idf.h>
 #include <functional>
@@ -20,6 +21,7 @@
 #include <communication/serial_link.h>
 #include <communication/espnow_adapter.h>
 #include <communication/handheld_controller.h>
+#include <communication/nimble_link.h>
 #include <features.h>
 #include <motion.h>
 #include <ota_flash.h>
@@ -47,6 +49,29 @@
 
 Websocket wsSocket {server, "/api/ws"};
 SerialLink serialLink;
+#if CONFIG_BT_NIMBLE_ENABLED
+// A link holds an encode buffer and a decoded message, 11 KB, and internal RAM is what Bluetooth runs short of.
+static NimbleLink &bleLink =
+    *new (heap_caps_malloc_prefer(sizeof(NimbleLink), 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_INTERNAL)) NimbleLink();
+#endif
+
+// The links an app drives the robot over and hears its streams on; the serial link carries setup only.
+static CommAdapterBase *const appLinks[] = {
+    &wsSocket,
+#if CONFIG_BT_NIMBLE_ENABLED
+    &bleLink,
+#endif
+};
+
+template <typename T>
+static void emitOnAppLinks(const T &data) {
+    for (CommAdapterBase *link : appLinks) link->emit(data);
+}
+
+static bool anyAppLinkSubscribes(int32_t tag) {
+    return std::any_of(std::begin(appLinks), std::end(appLinks),
+                       [tag](CommAdapterBase *link) { return link->hasSubscribers(tag); });
+}
 
 Peripherals peripherals;
 ServoController servoController;
@@ -268,27 +293,29 @@ void setupEventSocket() {
         wsSocket.emit(header, clientId);
     });
 
-    wsSocket.on<socket_message_ControllerData>([&](const socket_message_ControllerData &data, int clientId) {
-        const int64_t now = esp_timer_get_time();
-        motionService.inbox.postInput(data, now / 1000, now);
-    });
+    for (CommAdapterBase *link : appLinks) {
+        link->on<socket_message_ControllerData>([](const socket_message_ControllerData &data, int clientId) {
+            const int64_t now = esp_timer_get_time();
+            motionService.inbox.postInput(data, now / 1000, now);
+        });
 
-    wsSocket.on<socket_message_ModeData>(
-        [&](const socket_message_ModeData &data, int clientId) { requestMode(data.mode); });
+        link->on<socket_message_ModeData>(
+            [](const socket_message_ModeData &data, int clientId) { requestMode(data.mode); });
 
-    wsSocket.on<socket_message_WalkGaitData>(
-        [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
+        link->on<socket_message_WalkGaitData>(
+            [](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
 
-    wsSocket.on<socket_message_AnglesData>(
-        [&](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
+        link->on<socket_message_AnglesData>(
+            [](const socket_message_AnglesData &data, int clientId) { motionService.handleAngles(data); });
 
-    wsSocket.on<socket_message_ServoPWMData>([&](const socket_message_ServoPWMData &data, int clientId) {
-        servoController.setServoPWM(data.servo_id, data.servo_pwm);
-    });
+        link->on<socket_message_ServoPWMData>([](const socket_message_ServoPWMData &data, int clientId) {
+            servoController.setServoPWM(data.servo_id, data.servo_pwm);
+        });
 
-    wsSocket.on<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
-        data.active ? servoController.activate() : servoController.deactivate();
-    });
+        link->on<socket_message_ServoStateData>([](const socket_message_ServoStateData &data, int clientId) {
+            data.active ? servoController.activate() : servoController.deactivate();
+        });
+    }
 
     wsSocket.on<socket_message_FSUploadData>(
         [&](const socket_message_FSUploadData &data, int clientId) { FileSystemWS::fsHandler.handleUploadData(data); });
@@ -626,7 +653,7 @@ void setupEventSocket() {
     };
 
     // File transfer, the core dump download and firmware updates go over the WebSocket only: the serial link carries
-    // setup, not files.
+    // setup, not files, and a firmware image would take minutes over Bluetooth.
     static const pb_size_t WEBSOCKET_ONLY[] = {
         socket_message_CorrelationRequest_fs_delete_request_tag,   socket_message_CorrelationRequest_fs_mkdir_request_tag,
         socket_message_CorrelationRequest_fs_list_request_tag,     socket_message_CorrelationRequest_fs_download_request_tag,
@@ -651,7 +678,7 @@ void setupEventSocket() {
                                              data.which_request) != std::end(WEBSOCKET_ONLY);
         if (client.link != &wsSocket && websocketOnly) {
             res->status_code = 400;
-            strncpy(res->error_message, "Not available over serial", sizeof(res->error_message) - 1);
+            strncpy(res->error_message, "Only available over WiFi", sizeof(res->error_message) - 1);
             client.link->emit(*res, client.id);
         } else if (it != correlationHandlers.end()) {
             it->second(data, *res, client);
@@ -668,6 +695,10 @@ void setupEventSocket() {
         [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&wsSocket, clientId}); });
     serialLink.on<socket_message_CorrelationRequest>(
         [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&serialLink, clientId}); });
+#if CONFIG_BT_NIMBLE_ENABLED
+    bleLink.on<socket_message_CorrelationRequest>(
+        [answer](const socket_message_CorrelationRequest &data, int clientId) { answer(data, {&bleLink, clientId}); });
+#endif
 }
 
 // Sensors wait on conversions, resets and echoes for up to seconds; they run below the control loop, which only
@@ -792,15 +823,15 @@ static void publishMotion() {
     lastMode = mode;
     lastGait = gait;
     lastSentAt = now;
-    wsSocket.emit(socket_message_ModeData {.mode = mode});
-    wsSocket.emit(socket_message_WalkGaitData {.gait = gait});
+    emitOnAppLinks(socket_message_ModeData {.mode = mode});
+    emitOnAppLinks(socket_message_WalkGaitData {.gait = gait});
 }
 
 // Every change of the clip or its state, and every 200 ms while a clip runs, so an app sees it progress.
 static void publishAnimationStatus() {
     static MotionService::AnimationStatus last {"", anim::State::IDLE, 0, 0};
     static uint32_t lastSentAt = 0;
-    if (!wsSocket.hasSubscribers(socket_message_Message_animation_status_tag)) return;
+    if (!anyAppLinkSubscribes(socket_message_Message_animation_status_tag)) return;
     const MotionService::AnimationStatus now = motionService.animationStatus();
     const uint32_t nowMs = esp_timer_get_time() / 1000;
     const bool changed = now.state != last.state || strcmp(now.name, last.name) != 0;
@@ -812,7 +843,7 @@ static void publishAnimationStatus() {
     status.state = static_cast<socket_message_AnimationState>(now.state);
     status.t = now.t;
     status.clamped_mask = now.clampedMask;
-    wsSocket.emit(status);
+    emitOnAppLinks(status);
 }
 
 void IRAM_ATTR serviceLoopEntry(void *) {
@@ -849,6 +880,10 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     setupServer();
     setupEventSocket();
     serialLink.listen();
+#if CONFIG_BT_NIMBLE_ENABLED
+    const std::string robotName = robotService.name();
+    bleLink.start(robotName.empty() ? wifiService.getHostname() : robotName);
+#endif
     server.listen(80);
 
     ESP_LOGI("main", "Service task started");
@@ -864,10 +899,10 @@ void IRAM_ATTR serviceLoopEntry(void *) {
 
         EXECUTE_EVERY_N_MS(2000, {
             system_service::sampleCpuUsage();
-            if (wsSocket.hasSubscribers(socket_message_Message_analytics_tag)) {
+            if (anyAppLinkSubscribes(socket_message_Message_analytics_tag)) {
                 socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
                 system_service::getAnalytics(analytics);
-                wsSocket.emit(analytics);
+                emitOnAppLinks(analytics);
             }
         });
 
@@ -879,29 +914,30 @@ void IRAM_ATTR serviceLoopEntry(void *) {
             if (wifiService.takeStatusChanged()) {
                 api_WifiStatus status = api_WifiStatus_init_zero;
                 WiFiService::status(status);
-                wsSocket.emit(status);
+                emitOnAppLinks(status);
                 serialLink.emit(status);
             }
 
-            if (wsSocket.hasSubscribers(socket_message_Message_imu_tag)) {
+            if (anyAppLinkSubscribes(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);
-                wsSocket.emit(imu);
+                emitOnAppLinks(imu);
             }
 
-            if (wsSocket.hasSubscribers(socket_message_Message_sonar_tag)) {
+            if (anyAppLinkSubscribes(socket_message_Message_sonar_tag)) {
                 socket_message_SonarData sonar = socket_message_SonarData_init_zero;
                 peripherals.getSonarProto(sonar);
-                wsSocket.emit(sonar);
+                emitOnAppLinks(sonar);
             }
 
-            if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {
+            if (anyAppLinkSubscribes(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
-                wsSocket.emit(rssi);
+                emitOnAppLinks(rssi);
             }
         });
 
-        // Recording follows the subscribers, so a recorder that vanished without unsubscribing stops it too.
+        // Recording follows the subscribers, so a recorder that vanished without unsubscribing stops it too. Over the
+        // WebSocket only: a batch a second of 100 ticks is more than Bluetooth carries.
         const bool listening = wsSocket.hasSubscribers(socket_message_Message_telemetry_batch_tag);
         telemetry.setRecording(listening);
         if (!listening) telemetry.discardUnsent();

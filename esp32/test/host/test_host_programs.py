@@ -59,6 +59,8 @@ PROGRAMS = {
     "animation_builtins_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "animation_store_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "animation_validation_test.cpp": [*NANOPB, ANIMATION_PROTO],
+    "ble_frame_test.cpp": [],
+    "ble_link_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "ota_session_test.cpp": [],
     "gesture_control_test.cpp": [],
     "cpu_usage_test.cpp": [],
@@ -78,6 +80,7 @@ FLAGS = {
 # Arguments a program runs with besides none.
 ARGUMENTS = {
     "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
+    "ble_frame_test.cpp": [os.path.join(REPO, "platform_shared", "ble_frame_vectors.json")],
 }
 
 

@@ -183,8 +183,8 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
 
     /**
      * Web Bluetooth needs a user gesture, so this is called from a click rather than on mount.
-     * BLE carries the same protobuf envelope as the WebSocket (robot_comm_ble attaches to the same
-     * broker), but only messages that fit in one ATT frame.
+     * BLE carries the same protobuf envelope as the WebSocket, length-prefixed and chunked to the
+     * ATT payload; the robot streams no telemetry over it and moves no files or firmware.
      */
     async function connectBluetooth() {
         const ble = attach(createBleTransport)
