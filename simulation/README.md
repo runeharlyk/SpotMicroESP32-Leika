@@ -108,6 +108,7 @@ The firmware streams every control tick to subscribers: its timing, the IMU samp
 Three seconds without a frame count as a lost link.
 `report_recording.py` prints the recording's latencies and IMU noise beside the ranges `src/sim/domain_rand.py` assumes.
 Pass `--still` for a robot that stood still throughout, so the gyro mean is its bias and the spread its noise.
+The app's System Metrics page records the same `.leika` file, for download, and shows the same summary when the recording stops.
 
 `calibrate_compass.py` fits the compass's hard-iron offset to a recording made while the robot is turned slowly through every orientation (`src/sim/compass_fit.py`).
 It undoes the mounting and the calibration the recording's header holds, fits a sphere to the raw readings, and refuses a recording that does not cover enough directions or whose field is not Earth's (25-65 uT).

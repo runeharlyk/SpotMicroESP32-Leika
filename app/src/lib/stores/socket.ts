@@ -99,7 +99,8 @@ export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
 }
 
 export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
-    const message_listeners = new Map<number, Set<(data?: unknown) => void>>()
+    // Listeners also get the frame as it arrived, for a recorder that keeps the robot's bytes.
+    const message_listeners = new Map<number, Set<(data: unknown, frame: ArrayBuffer) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
     const pending_requests = new Map<number, PendingRequest>()
     const queued_requests = new Map<
@@ -271,7 +272,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         }
         if (tag) {
             const key = MESSAGE_TAG_TO_KEY.get(tag)!
-            message_listeners.get(tag)?.forEach(listener => listener(msg[key as keyof typeof msg]))
+            message_listeners
+                .get(tag)
+                ?.forEach(listener => listener(msg[key as keyof typeof msg], data))
         }
     }
 
@@ -279,12 +282,15 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         attach(handlers => createWebSocketTransport(socketUrl, handlers)).connect()
     }
 
-    function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
+    function unsubscribe<MT>(
+        event_type: MessageFns<MT>,
+        listener: (data: MT, frame: ArrayBuffer) => void
+    ) {
         const tag = getTagFromMessageType(event_type)
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
-        message_listeners_totag.delete(listener as (data?: unknown) => void)
+        message_listeners_totag.delete(listener as (data: unknown, frame: ArrayBuffer) => void)
         if (message_listeners_totag.size == 0) {
             // Dropped, so the next listener for this tag subscribes again.
             message_listeners.delete(tag)
@@ -381,7 +387,10 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         connectBluetooth,
         connectSerial,
         transport: { subscribe: activeTransport.subscribe },
-        on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
+        on: <MT>(
+            event_type: MessageFns<MT>,
+            listener: (data: MT, frame: ArrayBuffer) => void
+        ): (() => void) => {
             const tag = getTagFromMessageType(event_type)
 
             let message_listeners_totag = message_listeners.get(tag)
@@ -390,7 +399,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                 message_listeners.set(tag, message_listeners_totag)
                 subscribeToEvent(event_type)
             }
-            message_listeners_totag.add(listener as (data: unknown) => void)
+            message_listeners_totag.add(listener as (data: unknown, frame: ArrayBuffer) => void)
 
             return () => {
                 unsubscribe(event_type, listener)

@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Adds a receiver for the ESP-NOW handheld controller, ported from the Hexapod: sticks, mode, gait and body height without the app, switched on in the peripheral settings
 - Adds an ESP-IDF driver for two HC-SR04 sonars, set up on the Sensors page and shown on the IMU page: they ping in turn ten times a second each, timed by a GPIO interrupt, and report no echo or no sensor apart from a distance
 - Adds a Bluetooth LE link on the S3 boards with PSRAM (`esp32-wroom-camera`, `esp32-s3-n8r2`): the app drives the robot, hears its mode, gait and IMU, and changes its settings over Bluetooth, in Hexapod's framing; telemetry, files and firmware updates stay on WiFi
+- Adds telemetry recording to the System Metrics page: record, stop and download a `.leika` file the simulation tools read, with its latency and IMU-noise report shown when it stops
 
 ### Changed
 
