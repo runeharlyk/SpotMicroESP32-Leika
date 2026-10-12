@@ -22,7 +22,15 @@ const stored = () =>
         bmpDisabled: true,
         ws2812: { enabled: true, pin: 12 },
         leftSonar: { enabled: true, triggerPin: 1, echoPin: 2 },
-        rightSonar: { enabled: false, triggerPin: -1, echoPin: -1 }
+        rightSonar: { enabled: false, triggerPin: -1, echoPin: -1 },
+        powerSensor: {
+            address: 0x41,
+            shuntOhms: 0.1,
+            maxCurrentA: 3.2,
+            cutoffVoltage: 0,
+            stallCurrentA: 3,
+            stallTimeMs: 1000
+        }
     })
 
 // The magnetometer answers but is switched off; the barometer is switched off and so never probed.
@@ -47,6 +55,7 @@ describe('sensor rows', () => {
             ['mag', 'detected-but-disabled'],
             ['bmp', 'disabled'],
             ['gesture', 'absent'],
+            ['power', 'absent'],
             ['camera', 'active'],
             ['servo', 'active']
         ])
@@ -61,6 +70,7 @@ describe('sensor rows', () => {
             'mag',
             'bmp',
             'gesture',
+            'power',
             'camera'
         ])
     })
@@ -83,6 +93,7 @@ describe('peripheral settings form', () => {
             mag: false,
             bmp: false,
             gesture: true,
+            power: true,
             camera: true
         })
         expect(form.espnowController).toBe(false)
@@ -92,10 +103,13 @@ describe('peripheral settings form', () => {
         form.use.mag = true
         form.use.bmp = true
         form.use.gesture = false
+        form.use.power = false
         form.use.camera = false
         form.ws2812!.pin = 13
         form.espnowController = true
         form.rightSonar = { enabled: true, triggerPin: 3, echoPin: 34 }
+        form.powerSensor!.cutoffVoltage = 6.5
+        form.powerSensor!.address = 0x44
 
         // Through the wire format, as the robot will read it.
         const saved = PeripheralSettings.decode(
@@ -107,9 +121,17 @@ describe('peripheral settings form', () => {
             magDisabled: false,
             bmpDisabled: false,
             gestureDisabled: true,
+            powerDisabled: true,
             cameraDisabled: true,
             ws2812: { enabled: true, pin: 13 },
             rightSonar: { enabled: true, triggerPin: 3, echoPin: 34 },
+            powerSensor: {
+                ...stored().powerSensor,
+                shuntOhms: expect.closeTo(0.1, 6),
+                maxCurrentA: expect.closeTo(3.2, 6),
+                cutoffVoltage: 6.5,
+                address: 0x44
+            },
             espnowController: true
         })
     })
@@ -195,6 +217,48 @@ describe('peripheral settings form', () => {
         form.leftSonar = { enabled: false, triggerPin: 21, echoPin: 21 }
         form.rightSonar = { enabled: false, triggerPin: 12, echoPin: 21 }
 
+        expect(formProblem(settings, form)).toBeNull()
+    })
+
+    it('leaves the stored power sensor alone when the robot reported none', () => {
+        const settings = { ...stored(), powerSensor: undefined }
+
+        expect(settingsFromForm(settings, formFromSettings(settings)).powerSensor).toBeUndefined()
+    })
+
+    it('refuses power sensor settings the robot would refuse', () => {
+        const settings = stored()
+        const form = formFromSettings(settings)
+        const power = form.powerSensor!
+        expect(formProblem(settings, form)).toBeNull()
+
+        power.address = 0x40
+        expect(formProblem(settings, form)).toMatch(/address from 0x41 to 0x4F/)
+        power.address = 0x4f
+        expect(formProblem(settings, form)).toBeNull()
+
+        power.shuntOhms = 0
+        expect(formProblem(settings, form)).toMatch(/shunt resistance above 0/)
+        // A cleared number input binds null.
+        power.shuntOhms = null as unknown as number
+        expect(formProblem(settings, form)).toMatch(/shunt resistance above 0/)
+        power.shuntOhms = 0.1
+
+        power.maxCurrentA = 3.3
+        expect(formProblem(settings, form)).toMatch(/more than 0.32 V across the shunt/)
+        power.shuntOhms = 0.01
+        power.maxCurrentA = 20
+        expect(formProblem(settings, form)).toBeNull()
+
+        power.cutoffVoltage = 27
+        expect(formProblem(settings, form)).toMatch(/cut-off voltage/)
+        power.cutoffVoltage = 6.4
+        power.stallCurrentA = -1
+        expect(formProblem(settings, form)).toMatch(/stall current/)
+        power.stallCurrentA = 0
+        power.stallTimeMs = 0.5
+        expect(formProblem(settings, form)).toMatch(/stall time/)
+        power.stallTimeMs = 0
         expect(formProblem(settings, form)).toBeNull()
     })
 
@@ -309,6 +373,54 @@ describe('Sensors page', () => {
         expect(saves[0]).toMatchObject({
             leftSonar: { enabled: true, triggerPin: 1, echoPin: 2 },
             rightSonar: { enabled: true, triggerPin: 4, echoPin: 5 }
+        })
+    })
+
+    it('saves the power sensor at another address with a cut-off, and holds back too large a current', async () => {
+        const saves: PeripheralSettings[] = []
+        robot = fakeRobot((name, data) => {
+            if (name === 'featuresDataRequest') return { featuresDataResponse: reported() }
+            if (name === 'peripheralSettings') {
+                saves.push(data.peripheralSettings!)
+                return { peripheralSettings: data.peripheralSettings }
+            }
+            return { peripheralSettings: stored() }
+        })
+        component = mount(Sensors, { target: document.body })
+        await vi.waitFor(() =>
+            expect(document.body.querySelector('[aria-label="Cut-off voltage"]')).not.toBeNull()
+        )
+        const field = (label: string) =>
+            document.body.querySelector<HTMLInputElement | HTMLSelectElement>(
+                `[aria-label="${label}"]`
+            )!
+        const set = (label: string, value: string, event: string) => {
+            field(label).value = value
+            field(label).dispatchEvent(new Event(event, { bubbles: true }))
+            flushSync()
+        }
+        const saveButton = () =>
+            [...document.body.querySelectorAll('button')].find(b => /Save/.test(b.textContent!))!
+
+        const address = field('Power sensor address') as HTMLSelectElement
+        // 0x40 is the servo board's.
+        expect([...address.options].map(option => option.textContent)).not.toContain('0x40')
+        address.selectedIndex = [...address.options].findIndex(o => o.textContent === '0x44')
+        address.dispatchEvent(new Event('change', { bubbles: true }))
+        flushSync()
+        set('Cut-off voltage', '6.5', 'input')
+        set('Maximum current in amperes', '4', 'input')
+        expect(document.body.querySelector('[role="alert"]')!.textContent).toMatch(/0.32 V/)
+        expect(saveButton().disabled).toBe(true)
+
+        set('Maximum current in amperes', '3', 'input')
+        saveButton().click()
+        await vi.waitFor(() => expect(saves).toHaveLength(1))
+        expect(saves[0].powerSensor).toMatchObject({
+            address: 0x44,
+            cutoffVoltage: 6.5,
+            maxCurrentA: 3,
+            stallTimeMs: 1000
         })
     })
 

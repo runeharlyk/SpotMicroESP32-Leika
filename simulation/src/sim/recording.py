@@ -34,7 +34,8 @@ _TICK_SCALARS = ("seq", "t_us", "period_us", "compute_us", "servo_write_us", "se
 _TICK_VECTORS = ("angles", "targets", "pwm", "command")
 _IMU_SCALARS = ("t_us", "mag_t_us", "temperature", "valid")
 _IMU_VECTORS = ("accel", "gyro", "mag", "gravity", "quat", "rpy")
-_NETWORK = ("t_us", "rssi", "channel", "batches_sent", "batches_failed", "ticks_dropped")
+_NETWORK = ("t_us", "rssi", "channel", "batches_sent", "batches_failed", "ticks_dropped", "rail_voltage",
+            "rail_voltage_min", "rail_current")
 
 
 def to_model_frame(vectors) -> np.ndarray:

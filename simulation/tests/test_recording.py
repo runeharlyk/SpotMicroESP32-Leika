@@ -16,6 +16,9 @@ def test_the_firmware_fixture_loads_with_its_header_and_ticks():
     assert rec.ticks["accel"].shape == (30, 3)
     np.testing.assert_allclose(rec.ticks["angles"][0], 0.1 * np.arange(12), rtol=1e-6)
     assert rec.network["rssi"].tolist() == [-57]
+    assert rec.network["rail_voltage"].tolist() == [7.25]
+    assert rec.network["rail_voltage_min"].tolist() == [6.5]
+    assert rec.network["rail_current"].tolist() == [1.75]
 
 
 def test_a_lost_batch_and_a_gap_marker_are_reported():

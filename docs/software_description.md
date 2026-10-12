@@ -69,7 +69,21 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 - A separate HMC5883L compass (75 Hz) supplies the compass for a chip without one. Its alignment, hard-iron offset and soft-iron matrix are IMU settings. A compass that has been silent for three of its periods is ignored. A disabled compass is left out of the fusion, the chip's own as well as a separate one; the BNO055's own fusion keeps using its compass.
 - The tilt of a still robot can be folded into the stored mounting from the app, so that a robot on a level surface reads level. The tilt must be under 15 degrees.
 
-The other sensors are a PAJ7620U2 gesture sensor (read every 100 ms) and a BMP180 barometer (every 500 ms).
+The other sensors are read when due:
+
+| Chip | Address | Rate | Reports |
+| --- | --- | --- | --- |
+| PAJ7620U2 gesture sensor | 0x73 | 100 ms | A gesture, which steps the modes |
+| BMP180 barometer | 0x77 | 500 ms | Pressure, temperature and altitude |
+| INA219 power sensor | 0x41 by default, 0x41 - 0x4F | 100 ms | The servo rail's voltage and current |
+
+The INA219 sits in the servo rail; 0x40 is the PCA9685's, so its A0 is tied high, and its address is a peripheral setting.
+Its calibration follows from the shunt resistance and the largest current expected, both settings (0.1 Ohm and 3.2 A by default): the current's resolution is that current over 2^15, and the shunt range the narrowest of 40 - 320 mV that holds it.
+The bus voltage is averaged over 8.5 ms so that a dip shows, the shunt over 68 ms so that the current is the mean between reads.
+A chip that reset, by a dip on its own supply, is configured again on the next read.
+Below the cut-off voltage (a setting, 0 for off by default) for 2 s, the robot deactivates and logs why, and it is held deactivated until the rail rises 0.2 V above the cut-off; the servos going limp take their load off, so only a battery with charge left recovers that far.
+A current above the stall current (3 A by default) for the stall time (1 s) sets a stall flag, which is only reported.
+The readings stream as `PowerData`, and each telemetry network sample carries the rail's voltage, its lowest voltage since the previous sample and its current, so a recording shows the supply dips.
 A gesture steps along the ladder rest - sit - stand (`esp32/include/gesture_control.h`): down from walk stands, down from stand plays the built-in `sit` clip and holds it, down again rests, and up steps back up to stand; left and right select walk.
 From stand or walk, forward and backward walk 10 cm and anticlockwise and clockwise turn a full circle, as [goal moves](motion_system.md#goal-moves) on the odometry.
 A gesture that arrives while a clip moves the legs or a goal runs is discarded, not queued.
@@ -111,7 +125,7 @@ The protocol also travels over the serial link, beside the log, see [Serial link
 A `SerialLink` adapter handles both ports, each as one client, and the log goes out through its writer so a line never splits a frame.
 The firmware registers every handler on every link and sends each stream to its subscribers on each.
 On the S3 boards with PSRAM, a `NimbleLink` adapter serves the app over a Bluetooth LE Nordic UART Service, with the commands, requests and broadcasts of the WebSocket but no telemetry and no file or firmware transfer, see [Bluetooth link](bluetooth.md).
-The service task broadcasts the IMU, the sonars and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed on any link.
+The service task broadcasts the IMU, the sonars, the servo rail and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed on any link.
 The analytics include every task's least free stack since it started, tightest first (System metrics), which is what a stack can be trimmed by; the serial link's 8 KB read task is the one the heap budget points at.
 
 The telemetry stream is recorded only while a client is subscribed.

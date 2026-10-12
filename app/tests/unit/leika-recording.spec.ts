@@ -109,7 +109,10 @@ async function appFixture() {
                 channel: 6,
                 batchesSent: 41,
                 batchesFailed: 1,
-                ticksDropped: 7
+                ticksDropped: 7,
+                railVoltage: 7.25,
+                railVoltageMin: 6.5,
+                railCurrent: 1.75
             }
         })
     )

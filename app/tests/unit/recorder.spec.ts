@@ -29,7 +29,10 @@ const network = frame({
         channel: 1,
         batchesSent: 1,
         batchesFailed: 0,
-        ticksDropped: 0
+        ticksDropped: 0,
+        railVoltage: 0,
+        railVoltageMin: 0,
+        railCurrent: 0
     }
 })
 const unrelated = frame({

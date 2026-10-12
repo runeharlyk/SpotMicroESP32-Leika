@@ -7,6 +7,7 @@
 #include <peripherals/gpio_pins.h>
 #include <settings/imu_settings.h>
 #include <settings/sonar_settings.h>
+#include <settings/power_settings.h>
 
 // Use proto types directly
 using PinConfig = api_PinConfig;
@@ -42,6 +43,8 @@ inline PeripheralsConfiguration PeripheralsConfiguration_defaults() {
     settings.has_ws2812 = true;
     settings.ws2812 = effectiveLedSettings(settings);
     setSonarSettings(settings, effectiveSonarSettings(settings));
+    settings.has_power_sensor = true;
+    settings.power_sensor = powerSensorDefaults();
     return settings;
 }
 
@@ -50,21 +53,27 @@ inline void PeripheralsConfiguration_read(const PeripheralsConfiguration& settin
     proto.has_ws2812 = true;
     proto.ws2812 = effectiveLedSettings(settings);
     setSonarSettings(proto, effectiveSonarSettings(settings));
+    proto.has_power_sensor = true;
+    proto.power_sensor = effectivePowerSettings(settings);
 }
 
-// A save without IMU, LED or sonar settings, such as the app's pin editor, keeps those in force.
+// A save without IMU, LED, sonar or power sensor settings, such as the app's pin editor, keeps those in force.
 inline StateUpdateResult PeripheralsConfiguration_update(const PeripheralsConfiguration& proto,
                                                          PeripheralsConfiguration& settings) {
     if (proto.has_imu && !validImuSettings(proto.imu)) return StateUpdateResult::ERROR;
+    if (proto.has_power_sensor && !validPowerSettings(proto.power_sensor)) return StateUpdateResult::ERROR;
     const api_LedSettings led = proto.has_ws2812 ? proto.ws2812 : effectiveLedSettings(settings);
     const api_ImuSettings imu = proto.has_imu ? proto.imu : effectiveImuSettings(settings);
     const std::array<api_SonarSettings, 2> sonars = sonarSettingsAfter(proto, settings);
+    const api_PowerSensorSettings power = proto.has_power_sensor ? proto.power_sensor : effectivePowerSettings(settings);
     settings = proto;
     settings.has_imu = true;
     settings.imu = imu;
     settings.has_ws2812 = true;
     settings.ws2812 = led;
     setSonarSettings(settings, sonars);
+    settings.has_power_sensor = true;
+    settings.power_sensor = power;
     return StateUpdateResult::CHANGED;
 }
 

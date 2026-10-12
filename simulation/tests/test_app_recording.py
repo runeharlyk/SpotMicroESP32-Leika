@@ -17,6 +17,7 @@ def test_a_recording_made_by_the_app_loads():
     assert rec.header.imu_rate_hz == 200
     assert len(rec.ticks["seq"]) == 40
     assert len(rec.network["rssi"]) == 1
+    assert rec.network["rail_voltage_min"].tolist() == [6.5]
     assert rec.link_gaps == 1
     assert rec.missing_batches == 1
 

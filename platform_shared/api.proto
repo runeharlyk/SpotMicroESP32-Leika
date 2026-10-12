@@ -243,6 +243,18 @@ message SonarSettings {
     int32 echo_pin = 3;
 }
 
+// An INA219 on the servo rail: its bus voltage, and the current through its shunt. A settings file without it gets the
+// defaults: 0x41 (A0 tied high, as 0x40 is the servo board's), a 0.1 Ohm shunt rated for 3.2 A, no cut-off and a stall
+// above 3 A held for 1 s.
+message PowerSensorSettings {
+    uint32 address = 1;          // 0x41 to 0x4F
+    float shunt_ohms = 2;
+    float max_current_a = 3;     // sets the current's resolution and the shunt range; at most 0.32 V across the shunt
+    float cutoff_voltage = 4;    // below it for 2 s the robot deactivates; 0 turns the cut-off off
+    float stall_current_a = 5;   // above it for stall_time_ms the stall flag is reported; 0 turns it off
+    uint32 stall_time_ms = 6;
+}
+
 // The I2C sensors and the camera are used when detected; a disabled one is not probed, for a chip that is wired
 // but not mounted. Disabled rather than enabled flags, so a settings file from before them leaves all in use.
 message PeripheralSettings {
@@ -261,6 +273,8 @@ message PeripheralSettings {
     bool espnow_controller = 12;
     SonarSettings left_sonar = 20;
     SonarSettings right_sonar = 21;
+    bool power_disabled = 13;
+    PowerSensorSettings power_sensor = 22;
 }
 
 message PeripheralSettingsRequest {}

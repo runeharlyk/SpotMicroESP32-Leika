@@ -995,6 +995,14 @@ static void publishGoalStatus() {
     wsSocket.emit(status);
 }
 
+// Held deactivated while the rail stays under the cut-off: an activation from the app or a gesture is undone here.
+static void cutOffOnLowVoltage() {
+    if (!peripherals.powerCutoff() || motionService.mode() == socket_message_ModesEnum_DEACTIVATED) return;
+    ESP_LOGW("main", "Servo rail under the cut-off voltage for %u ms: deactivating",
+             (unsigned)PowerGuard::CUTOFF_HOLD_MS);
+    motionService.inbox.postMode(socket_message_ModesEnum_DEACTIVATED);
+}
+
 void serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 #if CONFIG_IDF_TARGET_ESP32P4
@@ -1056,6 +1064,7 @@ void serviceLoopEntry(void *) {
         });
 
         EXECUTE_EVERY_N_MS(100, {
+            cutOffOnLowVoltage();
             publishMotion();
             publishAnimationStatus();
 #if USE_OTA_DOWNLOAD
@@ -1082,6 +1091,12 @@ void serviceLoopEntry(void *) {
                 emitToAll(sonar);
             }
 
+            if (peripherals.status().powerActive && anySubscribers(socket_message_Message_power_tag)) {
+                socket_message_PowerData power = socket_message_PowerData_init_zero;
+                peripherals.getPowerProto(power);
+                emitToAll(power);
+            }
+
             if (anySubscribers(socket_message_Message_rssi_tag)) {
                 socket_message_RSSIData rssi = {.rssi = WiFi.RSSI()};
                 emitToAll(rssi);
@@ -1104,6 +1119,10 @@ void serviceLoopEntry(void *) {
                 network.batches_sent = batchesSent;
                 network.batches_failed = batchesFailed;
                 network.ticks_dropped = telemetry.droppedTicks();
+                const RailSample rail = peripherals.takeRailSample();
+                network.rail_voltage = rail.voltage;
+                network.rail_voltage_min = rail.voltageMin;
+                network.rail_current = rail.current;
                 emitTelemetry(network);
             }
         });

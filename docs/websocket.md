@@ -65,6 +65,7 @@ Subscriptions end with the connection and must be sent again after a reconnect.
 | `telemetry_network` | 272 | Every second while telemetry is recorded                                          |
 | `wifi_status`       | 280 | When the station gets an address or loses the network; also over the [serial link](serial.md) |
 | `sonar`             | 300 | Every 100 ms: each HC-SR04's distance, or no echo within 4 m, no sensor, or off   |
+| `power`             | 330 | Every 100 ms while the INA219 is active: the servo rail's voltage, current and power, the cut-off and the stall flag |
 | `goal_status`       | 310 | On every new [goal move](motion_system.md#goal-moves) and every change of its state |
 
 `telemetry_header` (270) is not subscribed to; it is sent to a client each time that client subscribes to 271.
@@ -103,7 +104,7 @@ The control task records one `TickSample` every 10 ms.
 The service task sends them in `TelemetryBatch` messages of 10 ticks, so about 10 batches a second.
 Each tick holds the IMU sample the tick used, the servo angles and targets in radians, the 12 PWM values, the command the motion state used and its age, the mode, the gait, `link_lost` and the [odometry](motion_system.md#odometry) after the tick.
 A full ring drops ticks rather than waiting; `dropped_ticks` counts them since boot and `batch_seq` numbers the batches.
-`TelemetryNetwork` adds RSSI, channel, batches sent and failed, and dropped ticks.
+`TelemetryNetwork` adds RSSI, channel, batches sent and failed, and dropped ticks, and with an INA219 the servo rail's voltage, its lowest voltage since the previous sample and its current.
 Vectors are in the body frame (x forward, y left, z up), and times are `esp_timer` microseconds.
 
 ## File transfer

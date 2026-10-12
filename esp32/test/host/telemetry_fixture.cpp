@@ -85,6 +85,9 @@ int main(int argc, char **argv) {
     message.message.telemetry_network.t_us = 1400000;
     message.message.telemetry_network.rssi = -57;
     message.message.telemetry_network.batches_sent = 4;
+    message.message.telemetry_network.rail_voltage = 7.25f;
+    message.message.telemetry_network.rail_voltage_min = 6.5f;
+    message.message.telemetry_network.rail_current = 1.75f;
     writeRecord(file, 1600000, message);
     std::fclose(file);
     return 0;

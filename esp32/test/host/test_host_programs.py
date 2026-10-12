@@ -81,6 +81,7 @@ PROGRAMS = {
                            os.path.join(REPO, "esp32", "src", "filesystem_ws.cpp")],
     "handheld_controller_test.cpp": [],
     "sonar_test.cpp": [*NANOPB, API_PROTO],
+    "power_sensor_test.cpp": [*NANOPB, API_PROTO],
     "link_watchdog_test.cpp": [],
 }
 
@@ -89,6 +90,7 @@ FLAGS = {
     "proto_decoder_test.cpp": ["-include", os.path.join(HERE, "stubs", "counting_alloc.h")],
     # global.h, through the peripheral settings, needs a target.
     "sonar_test.cpp": ["-DCONFIG_IDF_TARGET_ESP32S3=1"],
+    "power_sensor_test.cpp": ["-DCONFIG_IDF_TARGET_ESP32S3=1"],
     # A firmware built with a policy: the synthetic one simulation/export_golden.py writes for the tests.
     "walk_nn_test.cpp": [f"-I{os.path.join(HERE, 'fixtures')}"],
 }
