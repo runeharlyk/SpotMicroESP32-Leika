@@ -14,6 +14,8 @@ static const uint8_t BROADCAST[ESP_NOW_ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 // The receive callback runs on the WiFi task and the beacon on the timer task, neither of which can carry the adapter.
 static EspNowAdapter *adapter = nullptr;
 static std::atomic<bool> heard {false};
+// Touched by the receive callback only, and reset by start() before that callback is registered.
+static ControllerLock controllerLock;
 // Only the beacon touches these once it runs; start() sets them before it does.
 static wifi_interface_t peerInterface = WIFI_IF_STA;
 static uint8_t announcedChannel = 0;
@@ -40,6 +42,7 @@ bool EspNowAdapter::start() {
         return false;
     }
     heard = false;
+    controllerLock.reset();
     peerInterface = interfaceFor(mode);
     announcedChannel = 0;
     esp_now_register_recv_cb(onReceive);
@@ -82,7 +85,10 @@ void EspNowAdapter::onReceive(const esp_now_recv_info_t *info, const uint8_t *da
         ESP_LOGI(TAG, "Controller heard: %02x:%02x:%02x:%02x:%02x:%02x len=%d ver=%u", m[0], m[1], m[2], m[3], m[4],
                  m[5], len, len > 0 ? data[0] : 0);
     }
-    adapter->_onFrame(data, len);
+    if (!info || !info->src_addr) return;
+    uint8_t mac[ESP_NOW_ETH_ALEN];
+    std::memcpy(mac, info->src_addr, sizeof(mac));
+    if (controllerLock.admit(mac, data, len)) adapter->_onFrame(data, len);
 }
 
 void EspNowAdapter::sendBeacon(void *) {

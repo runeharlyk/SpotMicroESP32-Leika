@@ -112,7 +112,8 @@ The control task puts one sample per tick in a ring of 64 ticks, and the service
 #### Handheld controller
 
 The robot can be driven without the app by the ESP-NOW handheld controller (the separate `esp-now-controller` firmware, shared with the Hexapod).
-The receiver is switched on in the peripheral settings (the Sensors page) and is off by default: it takes frames from any controller in range, since ESP-NOW broadcasts have no pairing, and it beacons ten times a second.
+The receiver is switched on in the peripheral settings (the Sensors page) and is off by default, since it beacons ten times a second.
+ESP-NOW broadcasts have no pairing, so the robot obeys the first controller whose frame it hears after the receiver starts and ignores every other sender; switching the receiver off and on lets another controller take over.
 The switch applies at once.
 The ESP32-P4 has no radio of its own for ESP-NOW, so it builds without the receiver and reports it unsupported (`espnow_controller_supported` in the features).
 

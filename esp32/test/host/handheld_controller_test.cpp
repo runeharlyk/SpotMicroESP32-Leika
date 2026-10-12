@@ -208,7 +208,25 @@ static void theAuxiliaryButtonsAreUnmapped() {
     CHECK(!actions.mode && !actions.gait && !actions.input);
 }
 
+// Broadcasts carry no pairing: the first controller claims the robot, and neither a second controller nor another
+// ESP-NOW device's frame takes it over until the receiver restarts.
+static void theFirstControllerHeardKeepsTheRobot() {
+    const uint8_t first[6] = {1, 2, 3, 4, 5, 6}, second[6] = {1, 2, 3, 4, 5, 7}, other[6] = {9, 9, 9, 9, 9, 9};
+    uint8_t frame[14] = {CONTROLLER_PACKET_VERSION};
+    const uint8_t beaconLike[4] = {HEXAPOD_BEACON_MAGIC, HEXAPOD_BEACON_VERSION, 6, 0};
+    ControllerLock lock;
+    CHECK(!lock.admit(other, beaconLike, sizeof(beaconLike)));  // not a controller frame: claims nothing
+    CHECK(lock.admit(first, frame, sizeof(frame)));
+    CHECK(!lock.admit(second, frame, sizeof(frame)));
+    CHECK(!lock.admit(other, frame, sizeof(frame)));
+    CHECK(lock.admit(first, frame, sizeof(frame)));
+    lock.reset();
+    CHECK(lock.admit(second, frame, sizeof(frame)));
+    CHECK(!lock.admit(first, frame, sizeof(frame)));
+}
+
 int main() {
+    theFirstControllerHeardKeepsTheRobot();
     theFrameDecodesAsTheControllerLaysItOut();
     aFrameOfAnotherVersionOrLengthIsRefused();
     theBeaconIsFourBytesAndNeverAControllerFrame();

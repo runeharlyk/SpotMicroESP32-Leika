@@ -113,6 +113,31 @@ class HandheldController {
     std::optional<socket_message_ControllerData> posted;
 };
 
+/**
+ * Pairs the robot with the first controller it hears: ESP-NOW broadcasts carry no pairing, so without this any
+ * controller in range would drive the robot. Only a valid controller frame claims the robot, so another ESP-NOW device
+ * nearby cannot; a different controller is taken after the receiver is switched off and on again.
+ */
+class ControllerLock {
+  public:
+    /** Whether a frame from `mac` may drive the robot; the first valid frame since the last reset claims it. */
+    bool admit(const uint8_t (&mac)[6], const uint8_t *data, int len) {
+        if (!_locked) {
+            if (!HandheldController::decode(data, len)) return false;
+            std::memcpy(_mac, mac, sizeof(_mac));
+            _locked = true;
+            return true;
+        }
+        return std::memcmp(_mac, mac, sizeof(_mac)) == 0;
+    }
+
+    void reset() { _locked = false; }
+
+  private:
+    bool _locked = false;
+    uint8_t _mac[6] {};
+};
+
 /** The beacon announcing the channel the robot's radio is on, for the controller to find it. */
 inline hexapod_beacon_t beaconFor(uint8_t channel) {
     return {HEXAPOD_BEACON_MAGIC, HEXAPOD_BEACON_VERSION, channel, 0};

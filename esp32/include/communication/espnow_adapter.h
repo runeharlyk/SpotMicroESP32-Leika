@@ -13,7 +13,8 @@
 
 /**
  * Listens for the ESP-NOW handheld controller and hands each frame it hears on; it only ever sends its beacon.
- * The controller broadcasts and the robot takes frames from any sender, as Hexapod does: there is no pairing.
+ * The controller broadcasts, and the robot takes frames from the first controller it hears until it is stopped
+ * (ControllerLock); Hexapod takes them from any sender.
  *
  * ESP-NOW only hears the channel the radio is on, and one radio serves the station, the access point and ESP-NOW, so the
  * channel is the router's while the station is joined and the access point's otherwise. Hexapod pins the radio to a
