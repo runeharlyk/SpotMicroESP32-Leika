@@ -143,7 +143,7 @@ message CorrelationRequest {
         OtaStart ota_start = 210;
         OtaChunk ota_chunk = 211;
         OtaFinish ota_finish = 212;
-        OdometryRequest odometry_request = 220;
+        OdometryRequest odometry_request = 240;
     }
 }
 
@@ -172,7 +172,7 @@ message CorrelationResponse {
         api.CameraSettings camera_settings = 170;
         api.ServoSettings servo_settings = 180;
         api.PeripheralSettings peripheral_settings = 190;
-        OdometryData odometry = 220;
+        OdometryData odometry = 240;
     }
 }
 
