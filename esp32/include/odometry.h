@@ -49,12 +49,13 @@ class KinematicOdometry {
         bool contact[4];
         float lowest = body.feet[0][1];
         for (int leg = 1; leg < 4; leg++) lowest = std::min(lowest, body.feet[leg][1]);
-        // The body stands at (xm, zm) in the feet's frame, turned by phi about the vertical; z points right.
+        // The body stands at (xm, zm) in the feet's frame (x forward, y up, z left: the left legs mount at +z), turned
+        // by phi about the vertical, clockwise (YAW_TO_PHI in animation.h): it sees the feet turned by phi the other way.
         const float c = std::cos(body.phi * DEG2RAD_F), s = std::sin(body.phi * DEG2RAD_F);
         for (int leg = 0; leg < 4; leg++) {
-            const float forward = body.feet[leg][0] - body.xm, left = body.zm - body.feet[leg][2];
-            feet[leg][0] = c * forward + s * left;
-            feet[leg][1] = -s * forward + c * left;
+            const float forward = body.feet[leg][0] - body.xm, left = body.feet[leg][2] - body.zm;
+            feet[leg][0] = c * forward - s * left;
+            feet[leg][1] = s * forward + c * left;
             contact[leg] = stance[leg] && body.feet[leg][1] - lowest < LIFTED_M;
         }
         sawTurn = false;

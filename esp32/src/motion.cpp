@@ -100,10 +100,10 @@ void MotionService::startGoal(const Goal& next, uint32_t id) {
 void MotionService::driveGoal(const BodyStep& step, float dt) {
     const GoalSticks sticks = goal.update(step, dt);
     if (goal.running()) {
-        // As the app's sticks (speed_model.py): ly forward, lx to the left, rx clockwise.
-        command.lx = sticks.left;
+        // As the walk takes the sticks (speed_model.py): ly forward, lx to the right, rx counter-clockwise.
+        command.lx = -sticks.left;
         command.ly = sticks.forward;
-        command.rx = -sticks.turn;
+        command.rx = sticks.turn;
         command.ry = 0;
         if (state) state->handleCommand(command);
     } else {

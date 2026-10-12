@@ -38,7 +38,7 @@ static void aRigidArcIsRecoveredExactly() {
     float floor[4][2];                  // the feet on the floor, REP-103, where the body started
     for (int leg = 0; leg < 4; leg++) {
         floor[leg][0] = PICO.default_feet_positions[leg][0];
-        floor[leg][1] = -PICO.default_feet_positions[leg][2];
+        floor[leg][1] = PICO.default_feet_positions[leg][2];
     }
     KinematicOdometry odometry;
     float yaw = 0, x = 0, y = 0;
@@ -52,7 +52,7 @@ static void aRigidArcIsRecoveredExactly() {
             const float dx = floor[leg][0] - x, dy = floor[leg][1] - y;
             body.feet[leg][0] = std::cos(yaw) * dx + std::sin(yaw) * dy;
             body.feet[leg][1] = 0;
-            body.feet[leg][2] = -(-std::sin(yaw) * dx + std::cos(yaw) * dy);
+            body.feet[leg][2] = -std::sin(yaw) * dx + std::cos(yaw) * dy;
             body.feet[leg][3] = 1;
         }
         // Alternating diagonal pairs, as a trot lifts them; a lifted foot's position must not matter.
@@ -107,10 +107,10 @@ static void aFootInTheAirDoesNotCountWhateverThePhase() {
 static body_state_t bodyAt(float x, float y, float yaw) {
     body_state_t body;
     for (int leg = 0; leg < 4; leg++) {
-        const float dx = PICO.default_feet_positions[leg][0] - x, dy = -PICO.default_feet_positions[leg][2] - y;
+        const float dx = PICO.default_feet_positions[leg][0] - x, dy = PICO.default_feet_positions[leg][2] - y;
         body.feet[leg][0] = std::cos(yaw) * dx + std::sin(yaw) * dy;
         body.feet[leg][1] = 0;
-        body.feet[leg][2] = -(-std::sin(yaw) * dx + std::cos(yaw) * dy);
+        body.feet[leg][2] = -std::sin(yaw) * dx + std::cos(yaw) * dy;
         body.feet[leg][3] = 1;
     }
     return body;
@@ -347,13 +347,13 @@ static void aForwardTrotGoesStraightAtTheStanceSpeed() {
     CHECK_NEAR(leg.distance, leg.x, 1e-4);
 }
 
-// The left stick to the right steps to the right (speed_model.py: vy = lx x speed, and REP-103's y is left).
+// The left stick to the right steps to the right (step_z = -lx: the left legs mount at +z), and REP-103's y is left.
 static void aSidewaysTrotGoesSidewaysAtTheStanceSpeed() {
     MotionService motion;
     walkingPico(motion);
     const OdometryEstimate leg = walked(motion, sticks(STICK, 0, 0), 3);
     CHECK_NEAR(leg.x, 0, 1e-4);
-    CHECK_NEAR(leg.y, 3 * TROT_SPEED, 0.005 * 3 * TROT_SPEED);
+    CHECK_NEAR(leg.y, -3 * TROT_SPEED, 0.005 * 3 * TROT_SPEED);
     CHECK_NEAR(leg.yaw, 0, 1e-4);
 }
 
@@ -368,16 +368,17 @@ static void aForwardCrawlGoesStraightOverWholeCycles() {
     CHECK(leg.distance > leg.x);
 }
 
-// The right stick to the right turns clockwise. Each foot strokes along a straight chord as long as step_angle x its
-// radius, so it sweeps 2 atan(STICK / 2) about the centre per stance where speed_model.py's linear model says STICK
-// rad: the turn rate lies a little under STICK x rate / duty.
-static void aTurnInPlaceTurnsClockwiseWithoutTravelling() {
+// A positive rx turns counter-clockwise: each foot strokes along step_angle x (-z, x), from forward towards the left.
+// It strokes along a straight chord as long as step_angle x its radius, so it sweeps 2 atan(STICK / 2) about the
+// centre per stance where speed_model.py's linear model says STICK rad: the turn rate lies a little under
+// STICK x rate / duty.
+static void aTurnInPlaceTurnsCounterClockwiseWithoutTravelling() {
     MotionService motion;
     walkingPico(motion);
     const OdometryEstimate leg = walked(motion, sticks(0, 0, STICK), 2);
-    const float linearModel = -STICK / 0.75f;
-    CHECK(leg.yaw / 2 < 0.92f * linearModel);
-    CHECK(leg.yaw / 2 > 1.01f * linearModel);
+    const float linearModel = STICK / 0.75f;
+    CHECK(leg.yaw / 2 > 0.92f * linearModel);
+    CHECK(leg.yaw / 2 < 1.01f * linearModel);
     CHECK_NEAR(leg.x, 0, 2e-3);
     CHECK_NEAR(leg.y, 0, 2e-3);
 }
@@ -396,9 +397,9 @@ static void standingStill() {
     run(motion, sticks(0, 0, 0), 2 * TICKS_PER_S);
     CHECK_NEAR(motion.odometry().x, 0, 1e-4);
 
-    // So does twisting it: the stand's phi turns the body counter-clockwise about the vertical, over planted feet.
+    // So does twisting it: a positive phi turns the body clockwise about the vertical (YAW_TO_PHI), over planted feet.
     run(motion, sticks(0, 0, 1), 2 * TICKS_PER_S);
-    CHECK_NEAR(motion.odometry().yaw, PICO.max_roll * DEG2RAD_F, 1e-4);
+    CHECK_NEAR(motion.odometry().yaw, -PICO.max_roll * DEG2RAD_F, 1e-4);
     CHECK_NEAR(motion.odometry().x, 0, 1e-4);
     run(motion, sticks(0, 0, 0), 2 * TICKS_PER_S);
     CHECK_NEAR(motion.odometry().yaw, 0, 1e-4);
@@ -432,13 +433,32 @@ static void theServiceFusesAFreshGyro() {
     motion.resetOdometry();
     run(motion, sticks(0, 0, 1), 2 * TICKS_PER_S, 0.02f);
     const FusedEstimate held = motion.odometry();
-    CHECK(held.kinematicYaw < -1.5f);
+    CHECK(held.kinematicYaw > 1.5f);
     CHECK_NEAR(held.yaw, 0, 0.02);
 
     motion.resetOdometry();
     run(motion, sticks(0, 0, 1), TICKS_PER_S, 0.02f, FusedOdometry::GYRO_STALE_US + 10000);
     const FusedEstimate stale = motion.odometry();
-    CHECK(stale.kinematicYaw < -0.75f && stale.yaw == stale.kinematicYaw);
+    CHECK(stale.kinematicYaw > 0.75f && stale.yaw == stale.kinematicYaw);
+}
+
+// The feet and a gyro read the same turn: on a counter-clockwise turn by a positive rx, a gyro in the body frame
+// (x forward, y left, z up) reads a positive yaw rate, and the feet's heading must turn the same way and as far, or the
+// fused heading would follow one of two opposite turns.
+static void aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro() {
+    MotionService motion;
+    walkingPico(motion);
+    const float gyroRate = 0.96f * STICK / 0.75f; // the turn the stroke chords give (above)
+    run(motion, sticks(0, 0, STICK), TICKS_PER_S, gyroRate);
+    const FusedEstimate start = motion.odometry();
+    run(motion, sticks(0, 0, STICK), 2 * TICKS_PER_S, gyroRate);
+    const FusedEstimate end = motion.odometry();
+    const float feet = std::remainder(end.kinematicYaw - start.kinematicYaw, 2 * M_PI);
+    const float fused = std::remainder(end.yaw - start.yaw, 2 * M_PI);
+    CHECK(feet > 0);
+    CHECK_NEAR(feet, 2 * gyroRate, 0.05 * 2 * gyroRate);
+    CHECK_NEAR(fused, 2 * gyroRate, 0.02 * 2 * gyroRate);
+    CHECK_NEAR(motion.odometry().yaw, motion.odometry().kinematicYaw, 0.05 * std::fabs(motion.odometry().yaw));
 }
 
 int main() {
@@ -447,7 +467,7 @@ int main() {
     aForwardTrotGoesStraightAtTheStanceSpeed();
     aSidewaysTrotGoesSidewaysAtTheStanceSpeed();
     aForwardCrawlGoesStraightOverWholeCycles();
-    aTurnInPlaceTurnsClockwiseWithoutTravelling();
+    aTurnInPlaceTurnsCounterClockwiseWithoutTravelling();
     standingStill();
     aFootInTheAirDoesNotCountWhateverThePhase();
     resetting();
@@ -460,6 +480,7 @@ int main() {
     aStaleOrMissingGyroIsNone();
     aTurnTheFeetDidNotSeeIsTheGyros();
     theServiceFusesAFreshGyro();
+    aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

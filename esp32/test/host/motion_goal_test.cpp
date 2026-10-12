@@ -75,6 +75,7 @@ static bool centred(const MotionService &motion) {
 // the goal's tolerance (measured: 0 to 1.1 mm, and 0.1 to 0.6 degrees), and leaves the odometry's other axes alone.
 constexpr float SETTLED_M = 0.003f;
 constexpr float SETTLED_RAD = 1 * DEG;
+static int sign(float value) { return (value > 0) - (value < 0); }
 static void aGoalWalksTheOdometryToItsTarget() {
     struct Case {
         Goal goal;
@@ -96,6 +97,11 @@ static void aGoalWalksTheOdometryToItsTarget() {
         CHECK(motion.goalStatus().state == GoalState::RUNNING);
         CHECK(motion.mode() == socket_message_ModesEnum_WALK);
         CHECK(!centred(motion)); // the goal's sticks are the command in force, as the app's would be
+        // On the sticks as the walk takes them: ly forward, lx to the right, rx counter-clockwise.
+        const CommandMsg &command = motion.currentCommand();
+        CHECK(sign(command.ly) == sign(c.goal.forward));
+        CHECK(sign(command.lx) == -sign(c.goal.sideways));
+        CHECK(sign(command.rx) == sign(c.goal.turn));
         const GoalState end = runGoal(motion);
         CHECK(end == GoalState::REACHED);
         CHECK(motion.mode() == socket_message_ModesEnum_STAND);
@@ -246,7 +252,7 @@ static void aNewGoalReplacesTheRunningOne() {
     CHECK(second == first + 1);
     CHECK(motion.goalStatus().id == second);
     CHECK(motion.goalStatus().state == GoalState::RUNNING);
-    CHECK(motion.currentCommand().ly == 0 && motion.currentCommand().rx < 0);
+    CHECK(motion.currentCommand().ly == 0 && motion.currentCommand().rx > 0);
     CHECK(runGoal(motion) == GoalState::REACHED);
 }
 
@@ -273,7 +279,8 @@ static void aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile() {
     CHECK(motion.goalStatus().id == 1);
 }
 
-// A clockwise circle turns the robot a full turn the other way round from an anticlockwise one.
+// A clockwise circle turns the robot a full turn the other way round from an anticlockwise one: to the right, on a
+// negative rx.
 static void aClockwiseGestureTurnsAFullCircle() {
     MotionService motion;
     standingPico(motion);
@@ -281,6 +288,7 @@ static void aClockwiseGestureTurnsAFullCircle() {
     gesture(motion, eGestureClockwise);
     tick(motion);
     CHECK(motion.goalStatus().goal.turn == -GESTURE_TURN_RAD);
+    CHECK(motion.currentCommand().rx < 0);
     CHECK(runGoal(motion, 60) == GoalState::REACHED);
     tick(motion, TICKS_PER_S);
     CHECK_NEAR(std::remainder(motion.odometry().yaw, 2 * static_cast<float>(M_PI)), 0, SETTLED_RAD);

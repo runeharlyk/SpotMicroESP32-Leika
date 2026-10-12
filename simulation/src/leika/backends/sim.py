@@ -23,8 +23,8 @@ from ..constants import Gait, Mode
 from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
 
 NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
-# The frame odometry.h takes the feet in: forward, up, right.
-MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]])
+# The frame odometry.h takes the feet in: forward, up, left.
+MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
 # The firmware's odometry sees its own feet: each foot's offset from its home, about the firmware's home.
 TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAULT_FEET
 

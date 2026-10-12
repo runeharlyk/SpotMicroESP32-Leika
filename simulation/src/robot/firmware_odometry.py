@@ -8,8 +8,9 @@ FusedOdometry corrects that heading with the gyro: while the feet keep still, a 
 residual bias from the difference between its yaw rate and the feet's, and the heading integrates the two rates
 weighted by their variances.
 
-Input is in the firmware's frame (x forward, y up, z right; the body's xm, zm and its phi in degrees); the estimate is
-REP-103 (x forward, y left, yaw counter-clockwise in radians) in the frame the body faced at the reset.
+Input is in the firmware's frame (x forward, y up, z left; the body's xm, zm and its phi in degrees, a positive phi
+turning the body clockwise); the estimate is REP-103 (x forward, y left, yaw counter-clockwise in radians) in the frame
+the body faced at the reset.
 """
 from __future__ import annotations
 
@@ -63,8 +64,8 @@ class KinematicOdometry:
         """One control tick; returns the step it took."""
         feet = np.asarray(feet, dtype=float)[:, :3]
         c, s = math.cos(math.radians(phi_deg)), math.sin(math.radians(phi_deg))
-        forward, left = feet[:, 0] - xm, zm - feet[:, 2]
-        planar = np.stack([c * forward + s * left, -s * forward + c * left], axis=1)
+        forward, left = feet[:, 0] - xm, feet[:, 2] - zm
+        planar = np.stack([c * forward - s * left, s * forward + c * left], axis=1)
         contact = np.asarray(stance, dtype=bool) & (feet[:, 1] - feet[:, 1].min() < LIFTED_M)
         self.turn_seen = False
         step = BodyStep()

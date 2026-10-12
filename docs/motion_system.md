@@ -189,6 +189,7 @@ A foot in stance is fixed to the floor, so in the body frame it moves by the inv
 Each control tick, the rigid motion that best carries the feet that were on the floor in both ticks from the last tick to this one is the body's motion, inverted.
 A foot counts while the walk has it in stance (every foot outside the walk), unless it is more than 3 mm above the lowest foot, as one is that a state eases down from mid-stride.
 The body's own shift and twist over the feet (`xm`, `zm`, `phi`) count as motion too.
+The body state's z axis points left (the left legs mount at +z) and a positive `phi` turns the body clockwise, as the animation module's `YAW_TO_PHI` has it, so the estimate is REP-103 and its yaw rate has the sign of the gyro's.
 
 The estimate is x and y in metres, yaw in radians counter-clockwise and the distance along the path, in the floor frame the robot faced at the last reset (REP-103: x forward, y left).
 It starts afresh on deactivation and on an `odometry_request` with `reset`; telemetry carries it in every `TickSample`.
@@ -223,6 +224,7 @@ Calibrate it against a tape measure before relying on a distance.
 A goal move walks a distance forward or sideways, or turns an angle, on the [odometry](#odometry) rather than on the link (`esp32/include/goal_controller.h`).
 The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall cannot cut the move short as the dead-man stop cuts a host-side move.
 From STAND or WALK the motion service switches to WALK and sets the sticks itself each control tick, through the same command the app's input sets; the app's height, cadence and step height stay in force.
+It sets them as the walk takes them: a goal to the left sets a negative `lx`, since the walk strafes right on a positive one, and a counter-clockwise turn sets a positive `rx`.
 The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
 The stick slows in proportion over the last 5 cm or 30 degrees, down to a fifth of the asked speed, and the robot walks on until it is past the target; within 1 cm or 3 degrees then it has arrived, centres the sticks and stands.
 On the Pico in the host test it settles within 1.1 mm and 0.6 degrees of the target, by its odometry.
