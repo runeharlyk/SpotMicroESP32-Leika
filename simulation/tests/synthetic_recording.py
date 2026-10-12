@@ -36,7 +36,7 @@ def joint_commands(stand_s: float, walk_s: float, command) -> np.ndarray:
     walk = []
     for _ in range(round(walk_s / CONTROL_DT)):
         analytic_gait_action(np.asarray(command, dtype=float), gait)
-        controller.advance_phase(gait, CONTROL_DT)
+        controller.step(gait, CONTROL_DT)
         controller.generate_feet(gait, body)
         walk.append(sim.body_targets_from_feet(body))
     return np.array(stand + walk)
