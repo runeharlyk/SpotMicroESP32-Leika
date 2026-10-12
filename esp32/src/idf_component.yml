@@ -20,6 +20,14 @@ dependencies:
       - if: "idf_version >=5.0.0"
       - if: "target not in [esp32p4]"
       
+  # The Bluetooth link, on the S3 boards, whose builds all enable NimBLE (sdkconfig.defaults.ble): the classic ESP32
+  # boards have too little heap for it beside WiFi.
+  # The P4 has no radio of its own: its BLE would run on the C6 through ESP-Hosted, which this firmware does not set up.
+  h2zero/esp-nimble-cpp:
+    version: "^2.5.0"
+    rules:
+      - if: "target in [esp32s3]"
+
   espressif/esp_wifi_remote:
     version: ">=0.3.0"
     rules:

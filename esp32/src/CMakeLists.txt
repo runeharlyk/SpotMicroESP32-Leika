@@ -22,6 +22,10 @@ else()
     list(APPEND COMPONENT_REQUIRES esp32-camera)
 endif()
 
+if(IDF_TARGET STREQUAL "esp32s3")
+    list(APPEND COMPONENT_REQUIRES esp-nimble-cpp)
+endif()
+
 idf_component_register(
     SRC_DIRS 
         "."
