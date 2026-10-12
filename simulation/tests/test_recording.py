@@ -61,3 +61,45 @@ def _records(path):
     from src.sim.recording import _read_records
 
     return [frame for _, frame in _read_records(Path(path).read_bytes())]
+
+
+def _batch(batch_seq: int, first_tick: int, dropped_since_boot: int) -> bytes:
+    from src.proto import message_pb2
+
+    batch = message_pb2.TelemetryBatch(batch_seq=batch_seq, dropped_ticks=dropped_since_boot)
+    for seq in range(first_tick, first_tick + 10):
+        batch.ticks.add(seq=seq)
+    return message_pb2.Message(telemetry_batch=batch).SerializeToString()
+
+
+def _write(path, frames):
+    writer = RecordingWriter(path)
+    for frame in frames:
+        writer.write(frame, host_rx_us=1)
+    writer.close()
+    return load(path)
+
+
+# The robot's counters start over at a reboot: the restart is neither a run of missing ticks nor a negative one, and
+# the dropped count is what dropped during the recording, not since the robot's boot.
+def test_a_reboot_mid_recording_counts_neither_missing_nor_earlier_drops(tmp_path):
+    rec = _write(tmp_path / "reboot.leika", [
+        _batch(500, 5000, dropped_since_boot=40),
+        _batch(502, 5020, dropped_since_boot=43),  # batch 501 lost
+        _batch(0, 0, dropped_since_boot=0),  # rebooted
+        _batch(1, 10, dropped_since_boot=2),
+    ])
+    assert rec.reboots == 1
+    assert rec.missing_batches == 1
+    assert rec.missing_ticks == 10
+    assert rec.dropped_ticks == 3 + 2
+
+
+def test_a_recording_without_ticks_loads_and_summarizes(tmp_path):
+    from src.sim.telemetry_stats import summarize
+
+    path = tmp_path / "empty.leika"
+    RecordingWriter(path).close()
+    stats = summarize(load(path))
+    assert stats["ticks"] == 0
+    assert stats["dropped_ticks"] == 0

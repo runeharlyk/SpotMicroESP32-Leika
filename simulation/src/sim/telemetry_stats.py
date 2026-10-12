@@ -16,7 +16,10 @@ def _percentiles(name: str, values_ms: np.ndarray, stats: dict) -> None:
 def summarize(rec: Recording) -> dict[str, float]:
     t = rec.ticks
     stats: dict[str, float] = {"ticks": len(t["seq"]), "missing_ticks": rec.missing_ticks,
-                               "dropped_ticks": rec.dropped_ticks, "link_gaps": rec.link_gaps}
+                               "dropped_ticks": rec.dropped_ticks, "link_gaps": rec.link_gaps,
+                               "reboots": rec.reboots}
+    if len(t["seq"]) == 0:
+        return stats
     periods = t["period_us"][t["period_us"] > 0] / 1000.0
     _percentiles("period", periods, stats)
     if len(periods):

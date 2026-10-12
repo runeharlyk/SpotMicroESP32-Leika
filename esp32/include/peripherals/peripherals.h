@@ -9,6 +9,7 @@
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
 
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <list>
@@ -84,9 +85,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     /**
      * The gyro bias of a still robot; with `level`, also its tilt folded into the stored mounting, so a robot lying
-     * on a level surface reads level. Runs on the sensor task; the robot must stay still for about a second.
+     * on a level surface reads level. Runs on the sensor task, which `waitForNextRead` blocks until the next read is
+     * due; the robot must stay still for about a second.
      */
-    ImuCalibration calibrateIMU(bool level);
+    ImuCalibration calibrateIMU(bool level, const std::function<void()> &waitForNextRead);
 
     /**
      * Queues bus work too slow for the socket task, such as a scan or a calibration, to run on the sensor task
@@ -106,6 +108,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     SensorOptions _probedOptions {};
 
     void readImu();
+    void applyImuSettings();
     ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
@@ -114,6 +117,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     std::mutex _readingsMutex;
     SensorReadings _readings;
+
+    // Set by a settings save, taken by the sensor task: a flag, unlike the bounded work queue, cannot drop a save.
+    std::atomic<bool> _imuSettingsChanged {false};
 
     static constexpr size_t MAX_QUEUED_WORK = 4;
     std::mutex _workMutex;

@@ -36,3 +36,33 @@ def test_a_link_that_falls_silent_is_marked_and_reconnected(tmp_path, monkeypatc
     assert len(connections) >= 2
     assert rec.link_gaps >= 1
     assert frames >= 2
+
+
+# A robot that is still booting, or an httpd out of sockets, refuses the upgrade: the recorder must try again rather
+# than end the recording.
+def test_a_refused_handshake_is_retried(tmp_path):
+    batch = [frame for _, frame in _read_records(FIXTURE.read_bytes()) if frame][1]
+    attempts = []
+
+    def refuse_first(connection, request):
+        attempts.append(request)
+        if len(attempts) == 1:
+            return connection.respond(503, "booting\n")
+        return None
+
+    async def robot(socket):
+        await socket.send(batch)
+        await socket.wait_closed()
+
+    async def run(path):
+        async with serve(robot, "127.0.0.1", 0, process_request=refuse_first) as server:
+            port = server.sockets[0].getsockname()[1]
+            writer = RecordingWriter(path)
+            try:
+                return await record.record(f"ws://127.0.0.1:{port}", writer, seconds=2.5)
+            finally:
+                writer.close()
+
+    frames = asyncio.run(run(tmp_path / "refused.leika"))
+    assert len(attempts) >= 2
+    assert frames >= 1
