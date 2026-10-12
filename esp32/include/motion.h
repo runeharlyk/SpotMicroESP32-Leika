@@ -29,8 +29,6 @@ class MotionService {
 
     void begin();
 
-    void handleAngles(const socket_message_AnglesData& data);
-
     /** Input, mode and gait from the socket's task; the control task applies them in update(). */
     MotionInbox inbox;
 

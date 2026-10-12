@@ -1,12 +1,11 @@
 import { notifications } from '$lib/components/toasts/notifications'
-import Kinematic from '$lib/kinematic'
 import { persistentStore } from '$lib/utilities'
 import { derived, get, writable, type Writable } from 'svelte/store'
 import { resolve } from '$app/paths'
 import { socket } from './socket'
 import { apiLocation } from './location-store'
 import { identify } from './robots'
-import { VARIANT_DIMENSIONS, knownVariant } from '$lib/kinematics-variants'
+import { knownVariant } from '$lib/kinematics-variants'
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 
 let featureFlagsStore: Writable<Record<string, boolean | string>>
@@ -63,21 +62,18 @@ export const variants = {
     SPOTMICRO_ESP32: {
         model: `${base}spot_micro.urdf.xacro`,
         stl: `${base}stl.zip`,
-        modelYaw: 0,
-        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32
+        modelYaw: 0
     },
     // The Pico's model is generated from the simulation (scripts/build_sim_models.js).
     SPOTMICRO_ESP32_MINI: {
         model: `${base}spot_pico.urdf`,
         stl: `${base}spot_pico.zip`,
-        modelYaw: Math.PI / 2,
-        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_ESP32_MINI
+        modelYaw: Math.PI / 2
     },
     SPOTMICRO_YERTLE: {
         model: `${base}yertle.URDF`,
         stl: `${base}URDF.zip`,
-        modelYaw: 0,
-        kinematics: VARIANT_DIMENSIONS.SPOTMICRO_YERTLE
+        modelYaw: 0
     }
 }
 
@@ -100,8 +96,3 @@ export const variantChoiceNeeded = derived([socket, connectionFeatures], ([$sock
 export const modelVariant = derived(reportedVariant, $variant => $variant ?? 'SPOTMICRO_ESP32')
 
 export const currentVariant = derived(modelVariant, $variant => variants[$variant])
-
-export const currentKinematic = derived(
-    currentVariant,
-    $variant => new Kinematic($variant.kinematics)
-)

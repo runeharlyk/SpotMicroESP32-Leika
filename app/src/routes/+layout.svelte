@@ -14,21 +14,13 @@
         telemetry,
         mode,
         input,
-        servoAngles,
-        servoAnglesOut,
         socket,
         robotSocketUrl,
         apiLocation,
         canReachRobot,
         walkGait
     } from '$lib/stores'
-    import {
-        AnglesData,
-        ControllerData,
-        ModeData,
-        RSSIData,
-        WalkGaitData
-    } from '$lib/platform_shared/message'
+    import { ControllerData, ModeData, RSSIData, WalkGaitData } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
     import { keepControlAlive, stopped } from '$lib/control-link'
     import { mirrorRobot } from '$lib/robot-mirror'
@@ -39,9 +31,7 @@
 
     let { children }: Props = $props()
 
-    // One per stream, so a burst of servo angles cannot hold back the next joystick command.
     const inputThrottler = new Throttler()
-    const anglesThrottler = new Throttler()
 
     onMount(async () => {
         if (canReachRobot(page.url, $apiLocation)) socket.init(robotSocketUrl())
@@ -72,9 +62,6 @@
             socket.on(ModeData, modeMirror.report),
             socket.on(WalkGaitData, gaitMirror.report)
         )
-        servoAnglesOut.subscribe(data =>
-            anglesThrottler.throttle(() => socket.emit(AnglesData, data), 100)
-        )
     })
 
     let stopKeepAlive: (() => void) | undefined
@@ -94,10 +81,7 @@
             socket.onEvent('error', handleClose),
             socket.onEvent('unresponsive', handleClose),
             socket.onEvent('error', handleError),
-            socket.on(RSSIData, data => telemetry.setRSSI(data)),
-            socket.on(AnglesData, data => {
-                servoAngles.set(data)
-            })
+            socket.on(RSSIData, data => telemetry.setRSSI(data))
         )
     }
 
