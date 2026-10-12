@@ -2,7 +2,7 @@
 stepped at the control rate.
 
 A goal move runs the firmware's controller on the firmware's odometry, as the robot does, rather than the host-side
-motions: so it lands where the robot would, by its odometry, which falls 11 to 15 % short of MuJoCo's base.
+motions: so it lands where the robot would, by its odometry, which falls 7 to 10 % short of MuJoCo's base.
 """
 import dataclasses
 import math
@@ -12,16 +12,21 @@ import time
 import mujoco
 import numpy as np
 
-from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...robot.firmware_gait import (DEFAULT_FEET, FIRMWARE_FEET, STAND_HEIGHT, TROT, VARIANT, BodyState, GaitController,
+                                    GaitState, gait_action, set_mode)
 from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
 from ...robot.firmware_goal import BodyStep, Goal, GoalController, GoalState, body_step
 from ...robot.firmware_odometry import KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
+from .. import speed_model
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
 
-# The firmware's body frame is forward, up, right.
+NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
+# The frame odometry.h takes the feet in: forward, up, right.
 MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]])
+# The firmware's odometry sees its own feet: each foot's offset from its home, about the firmware's home.
+TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAULT_FEET
 
 
 class SimBackend:
@@ -36,7 +41,8 @@ class SimBackend:
         self._odometry = KinematicOdometry()
         self._goal = GoalController()
         self._mode = Mode.REST
-        self._velocity = ZERO
+        self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT)
+        self._sticks = NO_STICKS
         self._t = 0.0
         self._lock = threading.Lock()
         self._running = False
@@ -64,15 +70,20 @@ class SimBackend:
     # in STAND the body levels itself against the IMU's tilt, as the firmware's stand state does.
     def _step(self) -> None:
         with self._lock:
-            v = self._velocity if self._mode is Mode.WALK else ZERO
-            analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
-            self._controller.advance_phase(self._gait, CONTROL_DT)
+            walking = self._mode is Mode.WALK
+            gait_action(self._sticks if walking else NO_STICKS, self._gait)
+            if not walking:
+                # The firmware's walk state is not running, so no stroke eases out; a raised foot lands along its swing.
+                self._gait.step_x = self._gait.step_z = self._gait.step_angle = 0.0
+                self._gait.smoothing = np.zeros(3)
+            self._controller.step(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
             roll, pitch = imu_roll_pitch(self.sim.base_quat())
             omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
             apply_firmware_attitude(self._body, omega, psi)
             before = dataclasses.replace(self._odometry.estimate)
-            self._odometry.update(self._body.feet @ MODEL_TO_FIRMWARE.T, self._controller.stance(self._gait))
+            self._odometry.update((self._body.feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T,
+                                  self._controller.stance(self._gait))
             if self._goal.running:
                 self._drive_goal(body_step(before, self._odometry.estimate), CONTROL_DT)
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
@@ -82,15 +93,14 @@ class SimBackend:
     # As the firmware's MotionService: the goal's sticks for the next tick, and once reached, STAND with them centred.
     def _drive_goal(self, step: BodyStep, dt: float) -> None:
         sticks = self._goal.update(step, dt)
-        top = self.max_velocity()
-        self._velocity = Velocity(sticks.forward * top.vx, sticks.left * top.vy, sticks.turn * top.yaw_rate)
+        self._sticks = speed_model.Sticks(-sticks.left, sticks.forward, sticks.turn)
         if self._goal.state is GoalState.REACHED:
             self._mode = Mode.STAND
 
     def _cancel_goal(self) -> None:
         if self._goal.running:
             self._goal.cancel()
-            self._velocity = ZERO
+            self._sticks = NO_STICKS
 
     def supports_goals(self) -> bool:
         return True
@@ -102,9 +112,10 @@ class SimBackend:
         with self._lock:
             if self._mode not in (Mode.STAND, Mode.WALK):
                 raise RobotError(f"the robot is {self._mode.name}: a goal starts from STAND or WALK")
-            top = self.max_velocity()
+            # As MotionService::goalMove, at the speeds a full stick commands (WalkState::stanceRate).
+            linear, angular = speed_model.per_stick(VARIANT, Gait.TROT)
             self._goal = GoalController()
-            self._goal.start(goal, top.vy if sideways else top.vx, top.yaw_rate)
+            self._goal.start(goal, linear, angular)
             self._mode = Mode.WALK
             self._drive_goal(BodyStep(), 0.0)
         try:
@@ -137,8 +148,7 @@ class SimBackend:
             if mode is Mode.DEACTIVATED:
                 self._odometry = KinematicOdometry()
 
-    # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
-    # reports, so a distance move would land far short.
+    # The port has the trot only: it lacks the crawl's body shift over the stance feet (WalkState::updateBodyPosition).
     def set_gait(self, gait: Gait) -> None:
         if gait is not Gait.TROT:
             raise RobotError(f"the simulation models the trot only, not {gait.name}")
@@ -147,22 +157,23 @@ class SimBackend:
             set_mode(self._gait, TROT)
 
     def set_height(self, height: float) -> None:
-        """The simulated gait stands at one height."""
+        """The simulated gait stands at the one height the client defaults to (firmware_gait.STAND_HEIGHT)."""
 
     def max_velocity(self) -> Velocity:
-        return Velocity(GAIT_COEF["gain_x"], GAIT_COEF["gain_y"], GAIT_COEF["gain_yaw"])
+        return self._top
 
     def set_velocity(self, velocity: Velocity) -> Velocity:
         top = self.max_velocity()
         clamp = lambda value, limit: max(-limit, min(limit, value))
         commanded = Velocity(clamp(velocity.vx, top.vx), clamp(velocity.vy, top.vy), clamp(velocity.yaw_rate, top.yaw_rate))
+        sticks = speed_model.sticks_for(VARIANT, Gait.TROT, commanded, STAND_HEIGHT)
         with self._lock:
             # As the app's sticks: centred ones leave a goal its own, any other takes over.
             if self._goal.running:
                 if commanded == ZERO:
                     return commanded
                 self._goal.cancel()
-            self._velocity = commanded
+            self._sticks = sticks
         return commanded
 
     def state(self) -> RobotState:

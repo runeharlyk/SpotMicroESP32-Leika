@@ -8,8 +8,8 @@ from src.leika import GoalCancelled, Mode, Robot, RobotError
 from src.leika.backends.sim import MODEL_TO_REP
 from test_odometry import CROSS_TRACK_M, SHORTFALL
 
-# Measured: the goal ends 0 mm and 0.3 degrees off on the odometry once settled; the base, which the odometry
-# undercounts, walked 0.216 m for 0.2 and turned 103.8 degrees for 90.
+# Measured: the goal ends 1.5 mm and 0.7 degrees off on the odometry once settled, the walk's smoothing carrying it on
+# past the goal; the base, which the odometry undercounts, walked 0.214 m for 0.2 and turned 100.0 degrees for 90.
 SETTLED_M = 0.003
 SETTLED_DEG = 1.0
 

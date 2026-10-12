@@ -34,8 +34,8 @@ def test_the_port_reproduces_the_firmwares_odometry_tick_by_tick(variant):
 
 # The commanded feet overlook what the physics adds: on spot_pico the Bezier swing starts and ends with the foot
 # still at floor height, 1.5 strokes out, so it pushes the body on beyond the stance stroke. Measured over 4 s after
-# a second's settling, the odometry falls short of MuJoCo's base by about 11 % forward (0.148 m of 0.166 m), 15 %
-# sideways (0.127 m of 0.149 m) and 13 % in a turn (105 of 121 degrees); a real robot's servos shorten its steps the
+# a second's settling, the odometry falls short of MuJoCo's base by about 7 % forward (0.160 m of 0.172 m), 10 %
+# sideways (0.120 m of 0.133 m) and 9 % in a turn (136 of 149 degrees); a real robot's servos shorten its steps the
 # other way, so either needs calibrating against a measurement. The bounds below hold those with some margin.
 SHORTFALL = (0.78, 1.0)  # odometry / ground truth along the commanded direction
 CROSS_TRACK_M = 0.02
@@ -90,7 +90,7 @@ def test_walking_sideways_tracks_the_simulated_base(robot):
 
 
 def test_turning_in_place_tracks_the_simulated_heading(robot):
-    odometry, (x, y, yaw) = _walk(robot, 0.0, 0.0, 1.0)
+    odometry, (x, y, yaw) = _walk(robot, 0.0, 0.0, 0.6)
     assert 90 < yaw < 180
     assert SHORTFALL[0] < odometry.yaw / yaw < SHORTFALL[1]
     assert np.hypot(odometry.x - x, odometry.y - y) < CROSS_TRACK_M

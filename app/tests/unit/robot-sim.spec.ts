@@ -35,7 +35,6 @@ const SCENES: Record<RobotId, () => SimScene> = {
         meshes: meshesIn(path.join(repo, 'app/static/URDF'))
     })
 }
-const gaitCoef = JSON.parse(readFileSync(path.join(resources, 'spot_pico/gait_coef.json'), 'utf8'))
 
 const controls = (mode: ModesEnum, ly = 0): SimControls => ({
     input: ControllerData.create({
@@ -80,7 +79,7 @@ describe('robot simulation', () => {
         ({ robot, controller }) => {
             let targets: Record<string, number> = {}
             const create = () => {
-                const inner = controller.create({ gaitCoef })
+                const inner = controller.create()
                 const recording = {
                     reset: () => inner.reset(),
                     tick: (frame: SimControls) => (targets = inner.tick(frame))
@@ -127,7 +126,7 @@ describe('robot simulation', () => {
 
     it('never advances more than one frame budget at a time', () => {
         const pico = ROBOTS.find(robot => robot.id === 'pico')!
-        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create({ gaitCoef }))
+        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create())
         const before = sim.time()
         sim.step(120)
         expect(sim.time() - before).toBeLessThanOrEqual(0.05 + 1e-9)
@@ -135,7 +134,7 @@ describe('robot simulation', () => {
 
     it('starts over on reset', () => {
         const pico = ROBOTS.find(robot => robot.id === 'pico')!
-        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create({ gaitCoef }))
+        sim = new RobotSim(mujoco, SCENES.pico(), pico.controllers[0].create())
         run(2, controls(ModesEnum.WALK, 1))
         sim.reset()
         expect(sim.time()).toBe(0)

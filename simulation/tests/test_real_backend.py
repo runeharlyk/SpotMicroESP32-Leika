@@ -93,16 +93,18 @@ def test_a_mode_the_robot_never_reports_times_out(make_fake, monkeypatch):
 
 def test_a_velocity_walks_with_a_keep_alive_and_a_stop_is_sent_once(robot, fake):
     robot.stand()
-    commanded = robot.set_velocity(0.04, 0.0, -0.3)
+    commanded = robot.set_velocity(0.04, 0.02, -0.3)
     assert fake.mode == pb.WALK
     robot.sleep(0.6)
     moving = [(t, data) for t, data in fake.inputs() if data.left.y]
     assert len(moving) >= 5
     assert max(b - a for (a, _), (b, _) in zip(moving, moving[1:])) < 0.15
     _, data = moving[-1]
-    sticks = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(0.04, 0.0, -0.3), 0.7)
-    assert (data.left.y, data.right.x) == pytest.approx((sticks.ly, sticks.rx))
-    assert (commanded.vx, commanded.yaw_rate) == pytest.approx((0.04, -0.3))
+    sticks = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(0.04, 0.02, -0.3), 0.7)
+    # The firmware strafes right on a positive left.x and turns left on a positive right.x.
+    assert sticks.lx < 0 and sticks.rx < 0
+    assert (data.left.x, data.left.y, data.right.x) == pytest.approx((sticks.lx, sticks.ly, sticks.rx))
+    assert (commanded.vx, commanded.vy, commanded.yaw_rate) == pytest.approx((0.04, 0.02, -0.3))
     robot.stop()
     _eventually(lambda: fake.inputs()[-1][1].left.y == 0)
     before = len(fake.inputs())

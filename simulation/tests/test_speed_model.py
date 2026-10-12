@@ -51,8 +51,11 @@ def _body_velocity(trace, ticks) -> Velocity:
 
     A stance foot is fixed on the ground, so in the body frame it moves as -(v + w x r), r its home: each tick's stance
     feet give v and w by least squares. The firmware slows its clock in the fast part of a step, so the velocity varies
-    through a cycle and only whole cycles average to the model's. The trace's body frame is x forward, y up, z right;
-    REP-103 is x, -z. A foot is in stance while it is not lifted, and a cycle runs from one foot's lift to its next.
+    through a cycle and only whole cycles average to the model's. The trace's body frame is x forward, y up, z left;
+    REP-103 is x, z. The trace cannot tell z left from right (mirroring it flips the model's lateral and yaw signs
+    alike), so the side is from the robot: state.h's IMU offsets, measured on the Pico, have a positive omega tilt the
+    body's top to +z and lower REP-103 roll, and the app's keys strafe left on a = -lx and turn left on ArrowLeft = +rx.
+    A foot is in stance while it is not lifted, and a cycle runs from one foot's lift to its next.
     """
     rest = np.array(trace["ticks"][0]["body"]["feet"])
     feet = np.array([t["body"]["feet"] for t in ticks])
@@ -63,8 +66,8 @@ def _body_velocity(trace, ticks) -> Velocity:
     for i in range(lifts[0] + 1, lifts[-1] + 1):
         stance = [leg for leg in range(4) if max(feet[i - 1, leg, 1], feet[i, leg, 1]) <= 1e-6]
         moved = (feet[i] - feet[i - 1]) / trace["dt"]
-        rows = [row for leg in stance for row in ([-1, 0, -rest[leg, 2]], [0, -1, -rest[leg, 0]])]
-        observed = [value for leg in stance for value in (moved[leg, 0], -moved[leg, 2])]
+        rows = [row for leg in stance for row in ([-1, 0, rest[leg, 2]], [0, -1, -rest[leg, 0]])]
+        observed = [value for leg in stance for value in (moved[leg, 0], moved[leg, 2])]
         velocities.append(np.linalg.lstsq(np.array(rows), np.array(observed), rcond=None)[0])
     return Velocity(*np.mean(velocities, axis=0))
 
@@ -103,7 +106,7 @@ def test_a_full_trot_on_the_pico_is_slowed_and_its_top_speed_says_so():
 
 def test_sticks_for_a_velocity_beyond_the_gait_reach_the_rim_in_its_direction():
     top = max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, HEIGHT)
-    sticks = sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(10 * top.vx, 0, -10 * top.yaw_rate), HEIGHT)
+    sticks = sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(10 * top.vx, 0, 10 * top.yaw_rate), HEIGHT)
     assert max(abs(sticks.ly), abs(sticks.rx)) == pytest.approx(1.0)
     assert sticks.lx == 0 and sticks.ly > 0 and sticks.rx > 0
 

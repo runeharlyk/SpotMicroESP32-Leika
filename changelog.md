@@ -43,10 +43,12 @@ All notable changes to this project will be documented in this file.
 - Holds the stand's IMU compensation until the feet are eased in, so it no longer levels against, and integrates, the tilt the rise from rest causes by itself
 - Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
 - Shortens the walk's stroke, the crawl's body shift and the step height where they would put a foot out of reach, through each variant's leg geometry: at full stick, 259 of the Pico's 325 trot commands and 307 of its 325 crawl commands straightened a knee or folded a foot onto its hip. A forward trot at the app's settings keeps its whole stroke; sideways and turning full sticks, and the crawl, walk slower
+- Runs the simulation, its training and the app's Training controller on the firmware's own walk for the Spot Pico (the MINI's stand height, stride, lift, 1 Hz cadence and command smoothing, from the same velocity-to-sticks map the Python client sends the robot, with the walk's joint speed cap, stop and reach bound) instead of a gait tuned apart from it, and turns the Training controller the way the firmware does
 
 ### Fixed
 
 - Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
+- Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
 - Fixes log lines from different tasks being spliced together on the serial port

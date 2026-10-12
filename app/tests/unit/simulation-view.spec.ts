@@ -39,7 +39,7 @@ vi.mock('$lib/simulation/load', () => ({
         new Promise(resolve => {
             loads.push({
                 robotId: robot.id,
-                finish: () => resolve({ mujoco: {}, scene: { id: robot.id }, gaitCoef: {} })
+                finish: () => resolve({ mujoco: {}, scene: { id: robot.id } })
             })
         })
 }))

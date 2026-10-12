@@ -1,9 +1,10 @@
 """The firmware walk gait's velocity (esp32/include/motion_states/walk_state.h), for driving the real robot.
 
-The sticks set the stroke: step_x = ly * max_step_length, step_z = -lx * max_step_length, step_angle = rx. A stance sweeps
-each foot through the stroke in the stance part of the cycle (duty), and the body moves at the stance feet's speed, so
-vx = step_x * rate / duty. The cycle rate is max(s, 0.5) * speed_factor; the client holds s at 0.5, the slowest the gait
-allows.
+The sticks set the stroke: step_x = ly * max_step_length, step_z = -lx * max_step_length, step_angle = rx, in the
+firmware's body frame (x forward, y up, z left), so a stick to the right strafes right and a positive rx turns left. A
+stance sweeps each foot through the stroke in the stance part of the cycle (duty), and the body moves at the stance
+feet's speed, so vx = step_x * rate / duty. The cycle rate is max(s, 0.5) * speed_factor; the client holds s at 0.5,
+the slowest the gait allows.
 
 That holds while every foot stays in reach and the joints keep under walk_state.h's MAX_JOINT_SPEED_DEG_S. Where the
 stroke would take a foot out of reach, the firmware shortens it, and its step height, as WalkState::boundToReach does,
@@ -21,7 +22,7 @@ from .backends.base import UnknownVariant, Velocity
 from .constants import Gait
 
 SPEED = 0.5
-STEP_HEIGHT = 0.5
+STEP_HEIGHT = 0.5  # s1: the swing lifts each foot this share of the firmware's max_step_height
 MAX_JOINT_SPEED_DEG_S = 0.75 * 720
 # coxa, coxa offset, femur, tibia, length, width (metres) per variant, from esp32/include/kinematics.h; pinned by
 # tests/test_speed_model.py.
@@ -80,20 +81,20 @@ def known_variant(reported: str) -> str:
     return variant
 
 
-def _reach(variant: str) -> float:
+def max_leg_reach(variant: str) -> float:
     _, coxa_offset, femur, tibia, _, _ = GEOMETRY[variant]
     return femur + tibia - coxa_offset
 
 
 def max_step_length(variant: str) -> float:
-    return 0.8 * _reach(variant)
+    return 0.8 * max_leg_reach(variant)
 
 
 def _rate(gait: Gait) -> float:
     return max(SPEED, 0.5) * GAITS[gait][0]
 
 
-def _per_stick(variant: str, gait: Gait) -> tuple[float, float]:
+def per_stick(variant: str, gait: Gait) -> tuple[float, float]:
     """Metres per second of body speed, and radians per second of turn, for a full stick."""
     duty = GAITS[gait][1]
     return max_step_length(variant) * _rate(gait) / duty, _rate(gait) / duty
@@ -114,18 +115,25 @@ def _strokes(variant: str, sticks: Sticks) -> tuple[np.ndarray, np.ndarray]:
             -sticks.lx * max_step_length(variant) + sticks.rx * homes[:, 0])
 
 
-def reach_bound(variant: str, gait: Gait, sticks: Sticks, height: float) -> tuple[float, float]:
-    """The share of the stroke the firmware walks these sticks with, and the step height (m), as
-    WalkState::boundToReach keeps every foot in reach."""
+def reach_spheres(variant: str) -> tuple[float, float]:
+    """WalkState::configure: the squared distances from a leg's mount within which a foot is reachable with the knee
+    bent at least MIN_KNEE_BEND_DEG, and beyond which with it bent at most MAX_KNEE_BEND_DEG."""
     coxa, coxa_offset, femur, tibia, _, _ = GEOMETRY[variant]
 
     def femur_to_foot(knee_bend_deg: float) -> float:
         return float(np.sqrt(femur ** 2 + tibia ** 2 + 2 * femur * tibia * np.cos(knee_bend_deg * DEG2RAD_F)))
 
-    reach_out_sq = coxa ** 2 + femur_to_foot(MIN_KNEE_BEND_DEG) ** 2
-    reach_in_sq = coxa ** 2 + (femur_to_foot(MAX_KNEE_BEND_DEG) + coxa_offset) ** 2
+    return (coxa ** 2 + femur_to_foot(MIN_KNEE_BEND_DEG) ** 2,
+            coxa ** 2 + (femur_to_foot(MAX_KNEE_BEND_DEG) + coxa_offset) ** 2)
+
+
+def reach_bound(variant: str, gait: Gait, sticks: Sticks, height: float) -> tuple[float, float]:
+    """The share of the stroke the firmware walks these sticks with, and the step height (m), as
+    WalkState::boundToReach keeps every foot in reach."""
+    coxa = GEOMETRY[variant][0]
+    reach_out_sq, reach_in_sq = reach_spheres(variant)
     shift = float(np.hypot(*_legs(variant)[1].T).max() / 3) if gait is Gait.CRAWL else 0.0
-    body_height = _reach(variant) * (0.45 + 0.45 * height)
+    body_height = max_leg_reach(variant) * (0.45 + 0.45 * height)
     room = np.sqrt(max(0.0, reach_out_sq - (body_height + STEP_DEPTH) ** 2))
     least_offset = np.sqrt(max(0.0, reach_in_sq - body_height ** 2))
 
@@ -148,10 +156,10 @@ def reach_bound(variant: str, gait: Gait, sticks: Sticks, height: float) -> tupl
     offset = coxa + scale * (half[:, None] * SWING_ALONG[swing] * outward[:, None] - shift)
     clear = np.sqrt(np.maximum(0.0, reach_in_sq - np.where(offset > 0, offset, 0.0) ** 2))
     allowed = np.maximum(0.0, body_height - clear) / SWING_LIFT[swing]
-    return scale, float(min(STEP_HEIGHT * _reach(variant) / 2, allowed.min()))
+    return scale, float(min(STEP_HEIGHT * max_leg_reach(variant) / 2, allowed.min()))
 
 
-def _leg_angles(variant: str, x, y, z) -> np.ndarray:
+def leg_angles(variant: str, x, y, z) -> np.ndarray:
     """Kinematics::legIK in degrees, for feet at (x, y, z) in their legs' frames."""
     coxa, coxa_offset, femur, tibia, _, _ = GEOMETRY[variant]
     f = np.sqrt(np.maximum(0.0, x * x + y * y - coxa * coxa))
@@ -172,7 +180,7 @@ def joint_speeds(variant: str, gait: Gait, sticks: Sticks, height: float) -> np.
     stroke and step height bounded to the legs' reach; the crawl's body shift is left out.
     """
     duty = GAITS[gait][1]
-    reach = _reach(variant)
+    reach = max_leg_reach(variant)
     mounts, homes = _legs(variant)
     scale, step_height = reach_bound(variant, gait, sticks, height)
     stroke_x, stroke_z = _strokes(variant, sticks)
@@ -195,7 +203,7 @@ def joint_speeds(variant: str, gait: Gait, sticks: Sticks, height: float) -> np.
     outward = homes[:, 1:] - mounts[:, 1:] + along * np.sin(heading)
     up = lift - reach * (0.45 + 0.45 * height)
     x = np.where(np.arange(4)[:, None] % 2 == 1, outward, -outward)
-    angles = _leg_angles(variant, x, up, forward)
+    angles = leg_angles(variant, x, up, forward)
     return np.abs(np.diff(angles, axis=-1)).max(axis=(0, 1)) * SAMPLES * _rate(gait)
 
 
@@ -216,9 +224,9 @@ def walked_share(variant: str, gait: Gait, sticks: Sticks, height: float) -> flo
 
 
 def velocity_of(variant: str, gait: Gait, sticks: Sticks, height: float) -> Velocity:
-    linear, angular = _per_stick(variant, gait)
+    linear, angular = per_stick(variant, gait)
     share = walked_share(variant, gait, sticks, height)
-    return Velocity(sticks.ly * linear * share, sticks.lx * linear * share, -sticks.rx * angular * share)
+    return Velocity(sticks.ly * linear * share, -sticks.lx * linear * share, sticks.rx * angular * share)
 
 
 def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float) -> Sticks:
@@ -227,8 +235,8 @@ def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float) -> S
     A longer stick in the same direction walks no slower even where the firmware slows it or bounds its stroke, so the
     stick is found by halving between none and the longest in that direction.
     """
-    linear, angular = _per_stick(variant, gait)
-    wanted = Sticks(velocity.vy / linear, velocity.vx / linear, -velocity.yaw_rate / angular)
+    linear, angular = per_stick(variant, gait)
+    wanted = Sticks(-velocity.vy / linear, velocity.vx / linear, velocity.yaw_rate / angular)
     longest = max(abs(wanted.lx), abs(wanted.ly), abs(wanted.rx))
     if longest == 0:
         return wanted
@@ -247,5 +255,5 @@ def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float) -> S
 def max_velocity(variant: str, gait: Gait, height: float) -> Velocity:
     """The fastest the gait walks along each axis on its own, at this body height."""
     return Velocity(velocity_of(variant, gait, Sticks(0.0, 1.0, 0.0), height).vx,
-                    velocity_of(variant, gait, Sticks(1.0, 0.0, 0.0), height).vy,
-                    -velocity_of(variant, gait, Sticks(0.0, 0.0, 1.0), height).yaw_rate)
+                    velocity_of(variant, gait, Sticks(-1.0, 0.0, 0.0), height).vy,
+                    velocity_of(variant, gait, Sticks(0.0, 0.0, 1.0), height).yaw_rate)

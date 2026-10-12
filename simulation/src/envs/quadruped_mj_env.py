@@ -204,7 +204,7 @@ class QuadrupedMjEnv(gym.Env):
         # analytic baseline gait from the command (mirrors the firmware), then advance phase,
         # generate the foot targets, and add the policy's per-leg foot residuals.
         analytic_gait_action(self.cmd, self.gait)
-        self.gc.advance_phase(self.gait, CONTROL_DT)
+        self.gc.step(self.gait, CONTROL_DT)
         self.gait_phase = self.gc.phase
         self.gc.generate_feet(self.gait, self.body)
         res = action.reshape(4, 3) * FOOT_RESIDUAL

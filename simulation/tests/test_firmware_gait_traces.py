@@ -2,12 +2,13 @@
 
 esp32/test/host/export_firmware_traces.py replays a control script through the firmware headers once per variant and
 writes app/tests/fixtures/firmware-trace-*.json. This replays the walking ticks of the same script through the port,
-retargeted to the traced variant's stance feet and turn scale, and compares the feet. Joint angles are not compared:
+retargeted to the traced variant's stance feet, and compares the feet. Joint angles are not compared:
 the port's inverse kinematics is spot_pico's MJCF chain, which is none of the traced variants.
 
-The port leaves out the firmware's command filter, its phase-clock rules (the slowdown for the servos' speed and the
-stop) and its reach bound through each variant's own kinematics, so the replay takes the filtered steps, the phase and
-the bound from the trace, and a separate test, marked as a known divergence, shows the port without them.
+The port runs the firmware's command filter, its phase-clock rules (the slowdown for the servos' speed and the stop)
+and its reach bound through the MINI's legs at one body height rather than each traced variant's own, so the replay
+takes the filtered steps, the phase and the bound from the trace, and a separate test, marked as a known divergence,
+shows the port driven as its callers drive it.
 """
 import json
 from pathlib import Path
@@ -28,10 +29,11 @@ TOLERANCE = 5e-6
 SWITCH_MARGIN = 1e-5
 
 
-def _to_port_frame(points):
-    """The trace's body frame is x forward, y up, z right; the port's base frame is X left, Y rear, Z up."""
-    points = np.asarray(points, dtype=float)[..., :3]
-    return np.stack([-points[..., 2], -points[..., 0], points[..., 1]], axis=-1)
+def _to_port_frame(feet):
+    """The trace's body frame is x forward, y up, z left, its legs fl, fr, rl, rr; the port's base frame is X left,
+    Y rear, Z up, its legs fr, fl, rr, rl."""
+    feet = np.asarray(feet, dtype=float)[[1, 0, 3, 2], :3]
+    return np.stack([feet[:, 2], -feet[:, 0], feet[:, 1]], axis=-1)
 
 
 def _replay(variant, firmware_filter):
@@ -39,9 +41,9 @@ def _replay(variant, firmware_filter):
 
     With firmware_filter the steps (after the command smoothing), the phase and the reach bound are the firmware's own
     from the trace: its clock and its smoothing slow where a joint would outrun the servos and its bound shrinks a
-    stroke past the legs' reach, both through each variant's own kinematics, which this spot_pico port does not have;
-    what is pinned is the feet's paths. Without, the port takes walk_state.h's handleCommand mapping of the sticks at
-    once and is driven as its own callers drive it.
+    stroke past the legs' reach, both through each variant's own kinematics, which this port has for the MINI only;
+    what is pinned is the feet's paths. Without, the port follows walk_state.h's handleCommand mapping of the sticks
+    and is driven as its own callers drive it.
     """
     trace = json.loads((TRACES / f"firmware-trace-{variant}.json").read_text())
     kin = trace["kin"]
@@ -50,6 +52,7 @@ def _replay(variant, firmware_filter):
 
     controller, gait, body = fg.GaitController(), fg.GaitState(), fg.BodyState()
     controller.default_position = _to_port_frame(trace["ticks"][0]["body"]["feet"])
+    controller.firmware_feet = controller.default_position[:, :2]
     port_bound = fg._reach_bound
     try:
         yield from _replay_ticks(trace, controller, gait, body, step_length, step_height, firmware_filter)
@@ -68,23 +71,23 @@ def _replay_ticks(trace, controller, gait, body, step_length, step_height, firmw
             step_x, step_z, step_angle = walk["step_x"], walk["step_z"], walk["step_angle"]
         else:
             step_x, step_z, step_angle = cmd["ly"] * step_length, -cmd["lx"] * step_length, cmd["rx"]
-        # The port's step_z is to the left, the firmware's to the right.
-        gait.step_x, gait.step_z, gait.step_angle = step_x, -step_z, step_angle
         gait.step_velocity = cmd["s"]
         gait.step_height = cmd["s1"] * step_height
-        gait.step_depth = fg.DEFAULT_STEP_DEPTH
+        gait.step_depth = fg.STEP_DEPTH
 
         if firmware_filter:
+            gait.step_x, gait.step_z, gait.step_angle = step_x, step_z, step_angle
             controller.set_phase(walk["phase"])
             fg._reach_bound = lambda _gait, bound=(walk["share"], walk["swing_height"]): bound
         else:
-            controller.advance_phase(gait, trace["dt"])
+            gait.target = np.array([step_x, step_z, step_angle])
+            controller.step(gait, trace["dt"])
         controller.generate_feet(gait, body)
 
         leg_phase = np.fmod(controller.phase + gait.offset, 1.0)
         stance = leg_phase <= gait.stand_frac
         near_switch = np.minimum(np.abs(leg_phase - gait.stand_frac), np.minimum(leg_phase, 1.0 - leg_phase))
-        headings = np.array([fg._stroke(gait, foot)[1] for foot in controller.default_position])
+        headings = np.array([fg._stroke(gait, foot)[1] for foot in controller.firmware_feet])
         yield body.feet.copy(), _to_port_frame(tick["body"]["feet"]), stance, headings, near_switch < SWITCH_MARGIN
 
 
@@ -108,9 +111,7 @@ def _errors(variant, firmware_filter, compare):
 
 
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_the_port_strides_like_the_firmware(variant, monkeypatch):
-    # The firmware turns each foot by step_angle times its radius; the port scales that for spot_pico.
-    monkeypatch.setattr(fg, "TURN_RATE", 1.0)
+def test_the_port_strides_like_the_firmware(variant):
     horizontal = _errors(variant, firmware_filter=True, compare="horizontal")
     vertical = _errors(variant, firmware_filter=True, compare="vertical")
     assert len(horizontal) > 800 and len(vertical) > 400
@@ -119,16 +120,14 @@ def test_the_port_strides_like_the_firmware(variant, monkeypatch):
 
 
 @pytest.mark.xfail(strict=True, reason=(
-    "firmware_gait.py applies the command to its steps at once, while walk_state.h follows step_x, step_z and "
-    "step_angle with a critically damped spring settling in 333 ms, and slows that spring and its phase clock where a "
-    "joint of the traced variant would outrun the servos, which the port measures on spot_pico's legs instead"))
+    "walk_state.h slows its command smoothing and its phase clock where a joint of the traced variant would outrun "
+    "the servos, bounds the stroke to that variant's reach at the trace's body height and shifts the crawl's body, "
+    "while the port measures both through the MINI's legs at the client's stand height and has no crawl shift"))
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_the_port_without_the_firmware_command_filter(variant, monkeypatch):
-    monkeypatch.setattr(fg, "TURN_RATE", 1.0)
+def test_the_port_without_the_firmware_command_filter(variant):
     assert _errors(variant, firmware_filter=False, compare="horizontal").max() < TOLERANCE
 
 
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_the_port_sinks_stance_feet_like_the_firmware(variant, monkeypatch):
-    monkeypatch.setattr(fg, "TURN_RATE", 1.0)
+def test_the_port_sinks_stance_feet_like_the_firmware(variant):
     assert _errors(variant, firmware_filter=True, compare="stance vertical").max() < TOLERANCE

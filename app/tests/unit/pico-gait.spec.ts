@@ -7,8 +7,7 @@ import {
     STAND_Z,
     inverseKinematics,
     legIk,
-    type Command,
-    type GaitCoef,
+    type Sticks,
     type Vec3
 } from '../../src/lib/simulation/pico-gait'
 
@@ -27,9 +26,9 @@ describe('Pico gait port', () => {
     })
 
     it('reproduces every tick of the Python gait: feet and joint targets', () => {
-        const controller = new PicoController(trace.gait_coef as GaitCoef)
+        const controller = new PicoController()
         for (const [index, tick] of trace.ticks.entries()) {
-            const angles = controller.tick(tick.cmd as Command)
+            const angles = controller.tick(tick.sticks as Sticks)
             const where = `tick ${index} (${tick.segment})`
             expect(Math.abs(controller.phase - tick.phase), where).toBeLessThan(TOLERANCE)
             expect(

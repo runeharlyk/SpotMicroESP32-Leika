@@ -14,7 +14,7 @@ import math
 import mujoco
 import numpy as np
 
-from src.robot.firmware_gait import _CFG, STANCE_DEPTH, STAND_Z, BodyState
+from src.robot.firmware_gait import _CFG, BODY_HEIGHT, STAND_Z, BodyState
 from src.robot.stand_compensation import (
     FEET_EASE_S,
     SMOOTHING_OMEGA,
@@ -31,7 +31,7 @@ REST_DEPTH = 0.45 * REACH
 STAND_DEPTH = 0.675 * REACH
 SERVO_MAX_SPEED_DEG_S = 720.0
 # The rear right leg's servos turning at 30 deg/s, as servos lagging under load might: the rise then tips the body by
-# about 4 degrees, which lets the simulation show what the compensation does with a tilt the rise causes.
+# about 5 degrees, which lets the simulation show what the compensation does with a tilt the rise causes.
 LAGGING_LEG = np.where(np.arange(12) // 3 == 2, 30.0, SERVO_MAX_SPEED_DEG_S)
 REST_S = 1.0
 
@@ -46,7 +46,7 @@ def rise_to_stand(compensate: bool, seconds: float = 4.0, servo_speed_deg_s=SERV
     sim.model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
     sim.model.opt.impratio = IMPRATIO
     sim.reset_to_stand()
-    body = BodyState(zm=REST_DEPTH - STANCE_DEPTH)
+    body = BodyState(zm=REST_DEPTH - BODY_HEIGHT)
     joints = sim.body_targets_from_feet(body)
     floor = np.zeros(9)
     mujoco.mju_quat2Mat(floor, np.array([1.0, 0.0, 0.0, 0.0]) if floor_quat is None else np.asarray(floor_quat))
@@ -64,7 +64,7 @@ def rise_to_stand(compensate: bool, seconds: float = 4.0, servo_speed_deg_s=SERV
         if tick == rest_ticks:
             compensation.reset()
             height = CriticalDamper()
-        target_zm = (STAND_DEPTH if standing else REST_DEPTH) - STANCE_DEPTH
+        target_zm = (STAND_DEPTH if standing else REST_DEPTH) - BODY_HEIGHT
         body.zm = height.step(body.zm, target_zm, CONTROL_DT, SMOOTHING_OMEGA)
         roll, pitch = imu_roll_pitch(sim.base_quat())
         if standing:

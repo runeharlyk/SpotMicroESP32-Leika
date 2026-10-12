@@ -31,7 +31,7 @@ def rollout(sim, cmd, seconds, viewer=None):
     n = int(seconds / CONTROL_DT)
     for _ in range(n):
         analytic_gait_action(cmd, gait)
-        gc.advance_phase(gait, CONTROL_DT)
+        gc.step(gait, CONTROL_DT)
         gc.generate_feet(gait, body)
         sim.set_joint_targets(sim.body_targets_from_feet(body))
         sim.step_physics()
@@ -66,7 +66,7 @@ def main():
             d, h = rollout(sim, cmd, args.seconds)
             note = "FELL" if h < 0.03 else "ok"
             print(f"{name:9s} {d[0]:8.3f} {d[1]:10.3f} {d[2]:8.3f} {h:8.4f}   {note}")
-        print("\nExpected: forward -> dy negative; back -> dy positive; left -> dx positive; upright height ~0.06.")
+        print("\nExpected: forward -> dy negative; back -> dy positive; left -> dx positive; upright height ~0.10.")
         return
 
     import mujoco.viewer

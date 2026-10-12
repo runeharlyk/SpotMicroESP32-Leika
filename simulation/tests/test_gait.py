@@ -10,19 +10,16 @@ import pytest
 
 from src.robot.firmware_gait import (
     DEFAULT_FEET,
-    DEFAULT_STEP_HEIGHT,
-    LEG_NAMES,
-    MAX_JOINT_SPEED,
-    MAX_KNEE_BEND_DEG,
-    MAX_LATERAL_STEP,
+    FIRMWARE_FEET,
+    MAX_JOINT_SPEED_DEG_S,
     MAX_STEP_LENGTH,
-    MIN_KNEE_BEND_DEG,
+    STEP_HEIGHT,
     BodyState,
     GaitController,
     GaitState,
-    Kinematics,
-    SpotPicoKinConfig,
+    firmware_joint_angles,
 )
+from src.leika.speed_model import MAX_KNEE_BEND_DEG, MIN_KNEE_BEND_DEG
 
 
 def run(steps=200, dt=0.02, **command):
@@ -34,8 +31,8 @@ def run(steps=200, dt=0.02, **command):
     frames = []
     for _ in range(steps):
         controller.generate_feet(gait, body)
-        # The commanded clock rather than advance_phase: these tests are about the stroke's geometry, and the speed
-        # cap's slowing would move the samples off the ends of the stroke.
+        # The commanded clock rather than step: these tests are about the stroke's geometry, and the speed cap's
+        # slowing would move the samples off the ends of the stroke.
         controller.set_phase(controller.phase + dt * max(gait.step_velocity, 0.5) * gait.speed_factor)
         frames.append(body.feet.copy())
     return np.array(frames)
@@ -68,14 +65,13 @@ def test_swing_lift_matches_the_configured_step_height():
     """
     delta = run(step_x=MAX_STEP_LENGTH, step_angle=0.4) - DEFAULT_FEET
     lift = delta[:, :, 2].max()
-    assert lift > DEFAULT_STEP_HEIGHT * 0.9
-    assert lift <= DEFAULT_STEP_HEIGHT
+    assert lift > STEP_HEIGHT * 0.9
+    assert lift <= STEP_HEIGHT
 
 
 def test_pure_yaw_drives_every_foot_tangentially():
     delta = run(step_angle=1.0) - DEFAULT_FEET
-    for i, foot in enumerate(DEFAULT_FEET):
-        radius = np.array([foot[0], foot[1]])
+    for i, radius in enumerate(FIRMWARE_FEET):
         horizontal = delta[:, i, :2]
         moved = np.linalg.norm(horizontal, axis=1) > 1e-12
         assert moved.any()
@@ -83,17 +79,19 @@ def test_pure_yaw_drives_every_foot_tangentially():
         assert np.abs(radial).max() < 1e-12
 
 
-def test_yaw_stroke_scales_with_stance_radius():
-    """Rotation is rigid, so a foot twice as far from the centre sweeps twice as far.
+def test_yaw_strokes_each_foot_about_the_firmware_body_centre():
+    """A turn sweeps each foot by step_angle times its radius about the firmware's body centre.
 
-    The stance is not symmetric front to rear, so the four radii genuinely differ here and a
-    uniform turn amplitude would fail this.
+    The Pico's own feet sit unevenly about its base origin (its front hips sit further from it than its
+    rear ones), so strokes taken at the Pico's feet would differ front to rear; the firmware's
+    feet are symmetric, so on the robot all four sweep alike.
     """
-    delta = run(step_angle=1.0) - DEFAULT_FEET
-    radii = np.hypot(DEFAULT_FEET[:, 0], DEFAULT_FEET[:, 1])
-    strokes = np.linalg.norm(delta[:, :, :2], axis=2).max(axis=0)
-    ratios = strokes / radii
-    assert ratios.std() < 1e-12
+    pico_radii = np.hypot(DEFAULT_FEET[:, 0], DEFAULT_FEET[:, 1])
+    assert pico_radii.max() / pico_radii.min() > 1.05
+    strokes = {angle: np.linalg.norm((run(step_angle=angle) - DEFAULT_FEET)[:, :, :2], axis=2).max(axis=0)
+               for angle in (0.1, 0.2)}
+    assert strokes[0.2] == pytest.approx(np.full(4, strokes[0.2][0]), rel=1e-9)
+    assert strokes[0.2] == pytest.approx(2 * strokes[0.1], rel=1e-9)
 
 
 def test_yaw_reverses_with_the_command_sign():
@@ -109,7 +107,7 @@ def test_diagonal_trot_pairs_sweep_in_opposite_senses():
     radius x displacement must agree within a pair and differ between them.
     """
     delta = run(steps=1, step_angle=1.0)[0] - DEFAULT_FEET
-    sense = np.sign(DEFAULT_FEET[:, 0] * delta[:, 1] - DEFAULT_FEET[:, 1] * delta[:, 0])
+    sense = np.sign(FIRMWARE_FEET[:, 0] * delta[:, 1] - FIRMWARE_FEET[:, 1] * delta[:, 0])
 
     # TROT_OFFSET groups the legs as {fr, rl} and {fl, rr}.
     assert sense[0] == sense[3]
@@ -118,17 +116,20 @@ def test_diagonal_trot_pairs_sweep_in_opposite_senses():
 
 
 def joint_speeds(dt=0.01, steps=300, **command):
-    """Peak joint speed (rad/s) and cycles walked, through advance_phase as the simulation drives it."""
+    """Peak speed (deg/s) of the firmware's joints, the MINI's legs that walk_state.h caps, and cycles walked, through
+    step as the simulation drives it."""
     gait = GaitState(**command)
-    controller, body, kinematics = GaitController(), BodyState(), Kinematics()
+    # Commanded and settled, so the smoothing holds the stroke.
+    gait.target = np.array([gait.step_x, gait.step_z, gait.step_angle])
+    controller, body = GaitController(), BodyState()
     controller.generate_feet(gait, body)
-    previous, peak, cycles = kinematics.inverse_kinematics(body), 0.0, 0
+    previous, peak, cycles = firmware_joint_angles(body.feet), 0.0, 0
     for _ in range(steps):
         phase = controller.phase
-        controller.advance_phase(gait, dt)
+        controller.step(gait, dt)
         cycles += controller.phase < phase
         controller.generate_feet(gait, body)
-        angles = kinematics.inverse_kinematics(body)
+        angles = firmware_joint_angles(body.feet)
         peak = max(peak, float(np.abs(angles - previous).max()) / dt)
         previous = angles
     return peak, cycles
@@ -136,13 +137,13 @@ def joint_speeds(dt=0.01, steps=300, **command):
 
 def test_a_full_command_is_slowed_to_the_joint_speed_cap():
     peak, _ = joint_speeds(step_x=MAX_STEP_LENGTH, step_angle=1.0, step_velocity=1.0)
-    assert MAX_JOINT_SPEED * 0.9 < peak <= MAX_JOINT_SPEED + 1e-9
+    assert MAX_JOINT_SPEED_DEG_S * 0.9 < peak <= MAX_JOINT_SPEED_DEG_S + 1e-9
 
 
 def test_a_short_step_keeps_its_cadence():
     """At full speed a trot cycle takes 0.5 s, so 3 s walk six cycles when the cap leaves the step alone."""
-    peak, cycles = joint_speeds(step_x=0.1 * MAX_STEP_LENGTH, step_height=0.2 * DEFAULT_STEP_HEIGHT, step_velocity=1.0)
-    assert peak < MAX_JOINT_SPEED
+    peak, cycles = joint_speeds(step_x=0.1 * MAX_STEP_LENGTH, step_height=0.2 * STEP_HEIGHT, step_velocity=1.0)
+    assert peak < MAX_JOINT_SPEED_DEG_S
     assert cycles == 6
 
 
@@ -155,24 +156,20 @@ def test_a_diagonal_stance_starts_and_ends_on_the_ground(phase):
     """
     gait = GaitState(step_x=MAX_STEP_LENGTH, step_z=MAX_STEP_LENGTH)
     controller, body = GaitController(), BodyState()
-    controller.set_phase(phase)  # front right foot at the start, then the end, of its stance
+    controller.set_phase(phase)  # front left foot at the start, then the end, of its stance
     controller.generate_feet(gait, body)
-    assert abs(body.feet[0, 2] - DEFAULT_FEET[0, 2]) < 1e-12
+    assert abs(body.feet[1, 2] - DEFAULT_FEET[1, 2]) < 1e-12
 
 
 @pytest.mark.parametrize("turn", [1.0, -1.0])
 def test_a_command_past_the_legs_reach_keeps_every_knee_within_its_bends(turn):
-    """Full forward, sideways and turning together folded a knee to 170 degrees before the stroke and the step height
-    were bounded to the legs' reach, as walk_state.h bounds them."""
-    cfg, kinematics = SpotPicoKinConfig(), Kinematics()
-    gait = GaitState(step_x=MAX_STEP_LENGTH, step_z=MAX_LATERAL_STEP, step_angle=turn)
+    """Full forward, sideways and turning together straightened or folded the firmware's knees past its bends before
+    the stroke and the step height were bounded to the legs' reach, as walk_state.h bounds them."""
+    gait = GaitState(step_x=MAX_STEP_LENGTH, step_z=MAX_STEP_LENGTH, step_angle=turn)
     controller, body = GaitController(), BodyState()
     bends = []
     for step in range(400):
         controller.set_phase(step / 400)
         controller.generate_feet(gait, body)
-        angles = kinematics.inverse_kinematics(body).reshape(4, 3)
-        for leg, (_, _, tibia) in zip(LEG_NAMES, angles):
-            p = cfg.legs[leg]
-            bends.append(abs(np.degrees(tibia * p["st"] + p["a2"] - p["a1"])))
+        bends.extend(firmware_joint_angles(body.feet)[2])
     assert MIN_KNEE_BEND_DEG - 0.1 <= min(bends) and max(bends) <= MAX_KNEE_BEND_DEG + 0.1
