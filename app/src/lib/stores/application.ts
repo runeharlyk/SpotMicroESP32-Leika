@@ -58,15 +58,28 @@ const defaultViews: View[] = [
             layout: 'column',
             widgets: [{ id: 3, component: 'Simulation' }]
         }
+    },
+    {
+        // The robot's reported pose beside the simulation, both driven by the same sticks: how far apart they move.
+        name: 'Robot and simulation',
+        content: {
+            id: 'root',
+            layout: 'column',
+            widgets: [
+                { id: 2, component: 'Visualization' },
+                { id: 3, component: 'Simulation' }
+            ]
+        }
     }
 ]
 
 export const views: Writable<View[]> = persistentStore('views', defaultViews)
 
-// Views persist per browser, so a view list saved before the simulation existed gains it here.
-views.update(list =>
-    list.some(view => view.name === 'Simulation') ? list : [...list, defaultViews.at(-1)!]
-)
+// Views persist per browser, so a view list saved before a view was added gains it here.
+views.update(list => [
+    ...list,
+    ...defaultViews.filter(view => !list.some(saved => saved.name === view.name))
+])
 
 export const selectedView = persistentStore('selected_view', get(views)[0].name)
 

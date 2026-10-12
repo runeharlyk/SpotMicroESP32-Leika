@@ -44,7 +44,7 @@ Bluetooth carries the controls and telemetry only; WiFi setup, file transfers an
 Navigate to `/controller`.
 
 The controller shows two virtual sticks, a body height slider and a row of mode buttons.
-The background is the selected view: 3D representation, Stream (the camera), Split screen or Simulation.
+The background is the selected view: 3D representation, Stream (the camera), Split screen, Simulation, or Robot and simulation, which shows the pose the robot reports beside the simulation, both driven by the same sticks.
 With no robot connected, the view defaults to the simulation.
 
 | Mode        | What the robot does                                                    |
