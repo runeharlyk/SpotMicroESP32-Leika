@@ -52,6 +52,7 @@ PROGRAMS = {
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "ble_frame_test.cpp": [],
+    "ble_link_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "ota_session_test.cpp": [],
 }
 
