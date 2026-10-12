@@ -112,7 +112,7 @@ class QuadrupedMjEnv(gym.Env):
         if seed is not None:
             self.np_random_, _ = gym.utils.seeding.np_random(seed)
         if self.randomize:
-            self.dr.reset_episode(self.sim.model, self.np_random_)
+            self.dr.reset_episode(self.sim.model, self.sim.servo, self.np_random_)
         if self.terrain > 0:
             randomize_hfield(self.sim.model, self.np_random_, self.terrain)
         self.sim.reset_to_stand()

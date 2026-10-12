@@ -6,6 +6,7 @@ Verified facts:
   - IK matches MuJoCo forward kinematics to 0.0 mm (see the module self-test), so
     ctrl[joint] = ik_angle_in_radians directly.
   - Physics timestep 0.002 s; gait/policy control at 0.01 s (100 Hz, firmware rate) -> frame_skip = 5.
+  - The position actuators follow the servos' torque-speed line (src/sim/servo.py).
 """
 
 import os
@@ -14,6 +15,7 @@ import numpy as np
 import mujoco
 
 from src.robot.firmware_gait import Kinematics, BodyState, STAND_Z
+from src.sim.servo import Servos
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "resources", "spot_pico", "scene.xml")
 TERRAIN_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "resources", "spot_pico", "scene_terrain.xml")
@@ -33,9 +35,9 @@ class SpotPicoSim:
 
         nid = lambda kind, n: mujoco.mj_name2id(self.model, kind, n)
         self.act_ids = np.array([nid(mujoco.mjtObj.mjOBJ_ACTUATOR, n) for n in JOINT_NAMES])
-        self.qpos_adr = np.array(
-            [self.model.jnt_qposadr[nid(mujoco.mjtObj.mjOBJ_JOINT, n)] for n in JOINT_NAMES]
-        )
+        joint_ids = np.array([nid(mujoco.mjtObj.mjOBJ_JOINT, n) for n in JOINT_NAMES])
+        self.qpos_adr = self.model.jnt_qposadr[joint_ids]
+        self.servo = Servos(self.model, self.act_ids, joint_ids)
         self.base_id = nid(mujoco.mjtObj.mjOBJ_BODY, "base_link")
         self.base_qposadr = self.model.jnt_qposadr[nid(mujoco.mjtObj.mjOBJ_JOINT, "root")]
         self.imu_site = nid(mujoco.mjtObj.mjOBJ_SITE, "imu")
