@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Shows each saved robot's firmware version and build on the start page, as the robot last reported it
 - Gives the simulated servos the MG92B's torque-speed line, so they slow under load and give way past stall, with the supply voltage randomised between its 4.8 and 6.0 V ratings
 - Adds terrain and payload stages to the simulation's training - a payload, bumps, slopes and stairs - advanced by how many episodes succeed
+- Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
 
 ### Changed
 
