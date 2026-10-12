@@ -246,6 +246,8 @@ message PeripheralSettings {
     bool gesture_disabled = 9;
     bool camera_disabled = 10;
     LedSettings ws2812 = 11;
+    // Listen for the ESP-NOW handheld controller; off by default, since it drives the robot from any sender in range.
+    bool espnow_controller = 12;
 }
 
 message PeripheralSettingsRequest {}

@@ -2,6 +2,7 @@
 #include <communication/webserver.h>
 #include <settings/placeholders.h>
 #include <esp_app_desc.h>
+#include <soc/soc_caps.h>
 
 namespace feature_service {
 
@@ -30,6 +31,7 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.servo = features.servoDetected;
     fd_res.servo_detected = features.servoDetected;
     fd_res.ws2812 = features.ws2812;
+    fd_res.espnow_controller_supported = SOC_WIFI_SUPPORTED;
     fd_res.mdns = true;
     fd_res.embed_www = true;
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);

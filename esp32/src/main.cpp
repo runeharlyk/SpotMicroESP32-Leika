@@ -17,6 +17,8 @@
 #include <communication/webserver.h>
 #include <communication/websocket.h>
 #include <communication/serial_link.h>
+#include <communication/espnow_adapter.h>
+#include <communication/handheld_controller.h>
 #include <features.h>
 #include <motion.h>
 #include <ota_flash.h>
@@ -114,6 +116,37 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
     }
     replyWithSettings(handler, res, tag, reply);
 }
+
+// A robot taking on a mode during an update would move with its firmware half replaced; gestures are held back in the
+// control task for the same reason.
+static void requestMode(socket_message_ModesEnum mode) {
+    if (!otaSession.running()) motionService.inbox.postMode(mode);
+}
+
+#if SOC_WIFI_SUPPORTED
+// Posts what the handheld controller asks for as the socket's handlers post the app's messages, so the dead-man stop,
+// the update's hold on the mode and the mode rules apply to it alike. Frames arrive on the WiFi task only.
+static void handleControllerFrame(const uint8_t *data, int len) {
+    static HandheldController controller;
+    const auto packet = HandheldController::decode(data, len);
+    if (!packet) return;
+    const ControllerActions actions = controller.handle(*packet, motionService.mode(), motionService.gait());
+    if (actions.input) {
+        const int64_t now = esp_timer_get_time();
+        motionService.inbox.postInput(*actions.input, now / 1000, now);
+    }
+    if (actions.mode) requestMode(*actions.mode);
+    if (actions.gait) motionService.inbox.postGait(*actions.gait);
+}
+
+EspNowAdapter espNow {handleControllerFrame};
+
+static bool espNowControllerEnabled() {
+    bool enabled = false;
+    peripherals.read([&enabled](const PeripheralsConfiguration &settings) { enabled = settings.espnow_controller; });
+    return enabled;
+}
+#endif
 
 static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
     res.status_code = reply.status;
@@ -231,11 +264,8 @@ void setupEventSocket() {
         motionService.inbox.postInput(data, now / 1000, now);
     });
 
-    // A robot taking on a mode during an update would move with its firmware half replaced; gestures are held back
-    // in the control task for the same reason.
-    wsSocket.on<socket_message_ModeData>([&](const socket_message_ModeData &data, int clientId) {
-        if (!otaSession.running()) motionService.inbox.postMode(data.mode);
-    });
+    wsSocket.on<socket_message_ModeData>(
+        [&](const socket_message_ModeData &data, int clientId) { requestMode(data.mode); });
 
     wsSocket.on<socket_message_WalkGaitData>(
         [&](const socket_message_WalkGaitData &data, int clientId) { motionService.inbox.postGait(data.gait); });
@@ -686,6 +716,9 @@ void IRAM_ATTR serviceLoopEntry(void *) {
     for (;;) {
         wifiService.loop();
         apService.loop();
+#if SOC_WIFI_SUPPORTED
+        espNow.follow(espNowControllerEnabled());
+#endif
 
         EXECUTE_EVERY_N_MS(1000, otaSession.expire(nowMs()));
 
