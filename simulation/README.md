@@ -63,6 +63,7 @@ uv run python record.py --robot 192.168.1.39 --seconds 60           # record the
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
 uv run python virtual_robot.py --port 8765                          # a robot on this computer, from the firmware's C++
 uv run python release_smoke.py 192.168.1.39                         # the check before a release; exits non-zero on a breach
+uv run python sim_vs_real.py 192.168.1.39                           # how far the simulation drifts from a Pico (--virtual: the virtual robot)
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
@@ -137,6 +138,45 @@ It then deactivates the robot and exits 1 when a tick overran the 10 ms period m
 It exits 2 when the robot cannot be reached or driven.
 The robot walks during the check, so give it room.
 CI runs it against the virtual robot.
+
+## Sim versus real
+
+`sim_vs_real.py` replays one velocity script on the simulation and on a robot through the Robot API and reports how far the two drift apart.
+The script stands for 2 s, walks forward at 0.03 m/s, sideways at 0.015 m/s and turns at 0.5 rad/s for 4 s each, and stops in place for 2 s, all in the trot.
+Each control tick records the commanded joint targets (the simulation's actuator targets, and the robot's telemetry `targets`), the mode, and the roll and pitch (the simulation's from physics, and the robot's from its IMU).
+The simulation models the Pico only, so the robot must be a `SPOTMICRO_ESP32_MINI`; its targets are mapped onto the Pico's MJCF joints with the map `fit_pico_joint_map.py` fitted, the one the app's simulation uses.
+
+Against a robot:
+
+```bash
+uv run python sim_vs_real.py 192.168.1.39
+```
+
+The robot walks for about 14 s, some 12 cm forward and 6 cm sideways, and turns about 115 degrees, so give it room and keep a hand near the power.
+Calibrate its IMU level first (the app's IMU calibration, or `Robot.calibrate()` on a still robot), or the mounting error shows up as tilt.
+It ends at rest; a robot that is deactivated when it fails stays deactivated.
+`--virtual` runs the robot side on the virtual robot instead (`--binary <path>` reuses a build); CI does this, and `tests/test_sim_vs_real.py` asserts it stays within the thresholds.
+
+Reading the report:
+
+- The first table is per joint, the simulation minus the robot, in degrees.
+  `stand` is the difference between the two stand poses.
+  Each segment's column is the difference in the joints' motion away from each side's own stand pose, as RMS/max over the segment, aligned by script time from the tick the segment's command took effect.
+  A `cycle` column compares the two mean gait cycles instead, each resampled between the front-right foot's lift-offs, so the cadence and phase drop out and only the stride and lift remain.
+- The second table is per segment.
+  The cadence is each side's lift-offs per second per foot; a foot is lifted when its height by forward kinematics is 5 mm above its stand height.
+  The foot phase is each foot's lift-off within the cycle the front-right foot starts, the simulation's minus the robot's, in cycles (front-right, front-left, rear-right, rear-left).
+  The first lift lag is how much later the robot's feet first lifted than the simulation's.
+  Then the roll and pitch differences, and the share of ticks in which the two reported different modes.
+- Each threshold, and why it sits where it does, is a constant at the top of `sim_vs_real.py`.
+  The script prints a `BREACH` line for each one exceeded and exits 1, or exits 2 when the robot cannot be driven.
+
+The two do not agree closely today, and the thresholds pin how far apart they are rather than claim they match.
+Against the virtual robot (the firmware's own gait), the stand poses differ by up to 47 degrees in the tibias, because the simulation stands with its feet 55 mm below the hips where the MINI stands 92 mm high.
+The simulation steps at 1.4-1.6 Hz (from `gait_coef.json`) where the firmware holds 1 Hz, with a shorter stride and a 15 mm lift where the MINI lifts 30 mm; this puts the script-time joint difference at up to 17 degrees RMS and the per-cycle difference at up to 15.
+Both trot the diagonal pairs half a cycle apart, and the foot phases agree to 0.02 cycles.
+So the check catches a change that widens the gap, a change of cadence, and a leg that steps with the wrong pair, but not a single joint reversed within the current gap; tighten the thresholds when the simulation is re-pinned to the firmware.
+On a real robot the joint targets are computed by the same firmware as on the virtual robot, so they should read as the virtual robot does, apart from the stand's IMU compensation of a tilted body; the new information is the tilt, which the virtual robot does not model.
 
 ## Follow-ups (out of scope here)
 
