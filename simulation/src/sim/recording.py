@@ -48,6 +48,13 @@ def to_model_joints(angles) -> np.ndarray:
     return legs.reshape(mjcf.shape)
 
 
+def from_model_joints(targets) -> np.ndarray:
+    """to_model_joints inverted: the spot_pico model's actuator targets (rad) as the MINI firmware's joint angles."""
+    mjcf = np.asarray(targets, dtype=float)
+    legs = mjcf.reshape(*mjcf.shape[:-1], 4, 3)[..., FIRMWARE_LEGS_IN_MODEL_ORDER, :]  # the swap is its own inverse
+    return (legs.reshape(mjcf.shape) - PICO_JOINT_OFFSET) * PICO_JOINT_SIGN
+
+
 @dataclass
 class Recording:
     header: message_pb2.TelemetryHeader | None

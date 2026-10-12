@@ -10,8 +10,11 @@ import math
 import threading
 import time
 
+import numpy as np
+
 from ...proto import api_pb2, message_pb2 as pb
 from .. import speed_model
+from ..joint_scale import ServoSetup
 from ..link import LinkClosed, is_serial_port, open_link
 from ..constants import Gait, Mode
 from .base import (
@@ -254,6 +257,30 @@ class RealBackend:
     def features(self) -> pb.FeaturesDataResponse:
         """What the robot reported about itself on connecting."""
         return self._features
+
+    def servo_settings(self) -> ServoSetup:
+        """The robot's servo calibration and its variant's joint model."""
+        settings = self.request(pb.CorrelationRequest(servo_settings_request=api_pb2.ServoSettingsRequest())).servo_settings
+        model = settings.model
+        return ServoSetup(center_pwm=tuple(servo.center_pwm for servo in settings.servos),
+                          channels=tuple(settings.channels) if len(settings.channels) == 12 else tuple(range(12)),
+                          direction=tuple(model.direction), center_angle=tuple(model.center_angle),
+                          pwm_per_degree=model.pwm_per_degree)
+
+    def servo_output(self) -> tuple[np.ndarray, np.ndarray]:
+        """The last write's joint angles (degrees, servo space) and PWMs, in joint order, from telemetry. A raw PWM
+        stops the writes, so these stay what they were before it until a mode applies again."""
+        with self._changed:
+            if self._error is not None:
+                raise self._error
+            tick = self._tick
+        return np.degrees(np.asarray(tick.angles, dtype=float)), np.asarray(tick.pwm, dtype=float)
+
+    def set_servo_pwm(self, channel: int, pwm: int) -> None:
+        """One PCA9685 channel, or every joint's for -1, to a raw PWM. The servo controller then stops writing the
+        motion's angles, every other servo holding its last PWM, until a mode applies again."""
+        message = pb.Message(servo_pwm=pb.ServoPWMData(servo_id=channel, servo_pwm=int(pwm)))
+        self._run(self._send(message), REQUEST_TIMEOUT_S)
 
     def start_recording(self) -> None:
         """Keeps every telemetry tick from now on."""

@@ -18,7 +18,9 @@ from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_f
 from ...robot.firmware_goal import Goal, GoalController, GoalState
 from ...robot.firmware_odometry import BodyStep, FusedOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
+from ...sim.recording import from_model_joints, to_model_joints
 from .. import speed_model
+from ..joint_scale import PWM_MAX, PWM_MIN, ServoSetup
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
 
@@ -27,12 +29,25 @@ NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
 MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
 # The firmware's odometry sees its own feet: each foot's offset from its home, about the firmware's home.
 TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAULT_FEET
+# The MINI's joint model (joint_model.h) at the factory centre PWM, each joint on its own channel: the PWM the simulated
+# firmware writes, through the fitted joint map (src/sim/recording.py) between its angles and the model's joints.
+PICO_SERVOS = ServoSetup(center_pwm=(306.0,) * 12, channels=tuple(range(12)),
+                         direction=(1, 1, -1, 1, -1, 1, -1, 1, -1, -1, -1, 1),
+                         center_angle=(0, -45, -90, 0, 45, 90, 0, -45, -90, 0, 45, 90), pwm_per_degree=2.0)
 
 
 class SimBackend:
-    def __init__(self, realtime: bool = True):
+    """`servo_scale` is the servos' true PWM counts per degree, where the firmware writes the joint model's: given, every
+    joint goes where its PWM turns such a servo; None keeps each joint at its target, as without the PWM."""
+
+    def __init__(self, realtime: bool = True, servo_scale: float | None = None):
         self.realtime = realtime
         self.sim = SpotPicoSim()
+        self.servos = PICO_SERVOS
+        self._servo_scale = servo_scale
+        self._output_angles = np.zeros(12)  # degrees, servo space, as the firmware's telemetry reports them
+        self._output_pwm = np.zeros(12)
+        self._held_pwm = None  # while a raw PWM holds the servos, as ServoController's PWM state
         self._gait = GaitState()
         set_mode(self._gait, TROT)
         self._controller = GaitController()
@@ -87,9 +102,22 @@ class SimBackend:
                                          self._controller.stance(self._gait), gyro_rate=gyro_rate, dt=CONTROL_DT)
             if self._goal.running:
                 self._drive_goal(step, CONTROL_DT)
-            self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
+            self.sim.set_joint_targets(self._servo_targets(self.sim.body_targets_from_feet(self._body)))
             self.sim.step_physics()
             self._t += CONTROL_DT
+
+    # As ServoController: the motion's angles become PWMs, which a raw PWM replaces until a mode applies again; the
+    # telemetry's angles and PWMs stay those of the last write the motion made.
+    def _servo_targets(self, targets: np.ndarray) -> np.ndarray:
+        if self._held_pwm is not None:
+            return self._joints_at(self._held_pwm)
+        self._output_angles = np.degrees(from_model_joints(targets))
+        self._output_pwm = self.servos.pwm(self._output_angles)
+        return targets if self._servo_scale is None else self._joints_at(self._output_pwm)
+
+    def _joints_at(self, pwm: np.ndarray) -> np.ndarray:
+        scale = self._servo_scale or self.servos.pwm_per_degree
+        return to_model_joints(np.radians(self.servos.servo_angles(pwm, scale)))
 
     # As the firmware's MotionService: the goal's sticks for the next tick, and once reached, STAND with them centred.
     def _drive_goal(self, step: BodyStep, dt: float) -> None:
@@ -143,8 +171,9 @@ class SimBackend:
     def set_mode(self, mode: Mode) -> None:
         with self._lock:
             self._cancel_goal()
-            if mode is not self._mode:
+            if mode is not self._mode or self._held_pwm is not None:
                 self._levelling.reset()
+            self._held_pwm = None
             self._mode = mode
             if mode is Mode.DEACTIVATED:
                 self._odometry = FusedOdometry()
@@ -197,6 +226,28 @@ class SimBackend:
                 link_lost=False,
                 link_drops=0,
             )
+
+    # --- beyond the backend interface: the servos, as RealBackend reaches them -----------------------------------
+    def servo_settings(self) -> ServoSetup:
+        return self.servos
+
+    def servo_output(self) -> tuple[np.ndarray, np.ndarray]:
+        """The last write's joint angles (degrees, servo space) and PWMs, in joint order."""
+        with self._lock:
+            return self._output_angles.copy(), self._output_pwm.copy()
+
+    def set_servo_pwm(self, channel: int, pwm: int) -> None:
+        """ServoController::setServoPWM: one channel, or every joint's for -1, to a raw PWM; the others hold theirs."""
+        if not -1 <= channel < 16:
+            raise ValueError(f"no channel {channel}")
+        with self._lock:
+            if self._held_pwm is None:
+                self._held_pwm = self._output_pwm.copy()
+            bounded = float(np.clip(pwm, PWM_MIN, PWM_MAX))
+            if channel == -1:
+                self._held_pwm[:] = bounded
+            elif channel < 12:
+                self._held_pwm[channel] = bounded
 
     def calibrate(self) -> Calibration:
         return Calibration(still=True, levelled=True, tilt_deg=0.0)
