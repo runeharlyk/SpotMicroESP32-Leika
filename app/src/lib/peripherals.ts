@@ -64,13 +64,15 @@ export interface PeripheralsForm {
     use: Record<ToggleableSensor, boolean>
     /** Undefined when the robot did not report it, so a save leaves the stored one alone. */
     ws2812: LedSettings | undefined
+    espnowController: boolean
 }
 
 export const formFromSettings = (settings: PeripheralSettings): PeripheralsForm => ({
     use: Object.fromEntries(
         TOGGLEABLE.map(sensor => [sensor, !settings[disabledFlag(sensor)]])
     ) as Record<ToggleableSensor, boolean>,
-    ws2812: settings.ws2812 && { ...settings.ws2812 }
+    ws2812: settings.ws2812 && { ...settings.ws2812 },
+    espnowController: settings.espnowController
 })
 
 /** The whole message to save: the robot takes the disabled flags as sent, so every one is set. */
@@ -82,7 +84,8 @@ export const settingsFromForm = (
     ...(Object.fromEntries(
         TOGGLEABLE.map(sensor => [disabledFlag(sensor), !form.use[sensor]])
     ) as Record<DisabledFlag, boolean>),
-    ws2812: form.ws2812 && { ...form.ws2812 }
+    ws2812: form.ws2812 && { ...form.ws2812 },
+    espnowController: form.espnowController
 })
 
 /** Why the form cannot be saved, or null; the I2C pins are edited on the I2C page and only checked against here. */

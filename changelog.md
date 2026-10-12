@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Adds animations: the robot plays sit, bow and wave from the new Animations page, with a slider for each clip's parameters, and plays clips uploaded there as JSON files
 - Adds an animation editor: a timeline of keyframes, body and leg poses, oscillations and sliders, previewed on the robot's 3D model as the firmware would play it, saved to the robot or downloaded as JSON
 - Shows the last crash on the System Status page: the summary of the core dump the robot kept, a download of the dump to decode with esp-coredump, and an erase
+- Adds a receiver for the ESP-NOW handheld controller, ported from the Hexapod: sticks, mode, gait and body height without the app, switched on in the peripheral settings
 
 ### Changed
 

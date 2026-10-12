@@ -47,6 +47,7 @@ message FeaturesDataResponse {
     bool gesture = 105;
     bool gesture_detected = 106;
     bool ws2812 = 110;
+    bool espnow_controller_supported = 115; // the board has a radio for the ESP-NOW handheld controller
     bool mdns = 120;
     bool embed_www = 130;
 
