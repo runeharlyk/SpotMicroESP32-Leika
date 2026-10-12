@@ -36,6 +36,8 @@ _IMU_SCALARS = ("t_us", "mag_t_us", "temperature", "valid")
 _IMU_VECTORS = ("accel", "gyro", "mag", "gravity", "quat", "rpy")
 _NETWORK = ("t_us", "rssi", "channel", "batches_sent", "batches_failed", "ticks_dropped", "rail_voltage",
             "rail_voltage_min", "rail_current")
+_ODOMETRY = ("x", "y", "yaw", "distance", "kinematic_yaw")
+_GOAL = ("id", "state", "forward_m", "sideways_m", "turn_deg", "progress", "timeout_s")
 
 
 def to_model_frame(vectors) -> np.ndarray:
@@ -49,12 +51,22 @@ def to_model_joints(angles) -> np.ndarray:
     return legs.reshape(mjcf.shape)
 
 
+def from_model_joints(targets) -> np.ndarray:
+    """to_model_joints inverted: the spot_pico model's actuator targets (rad) as the MINI firmware's joint angles."""
+    mjcf = np.asarray(targets, dtype=float)
+    legs = mjcf.reshape(*mjcf.shape[:-1], 4, 3)[..., FIRMWARE_LEGS_IN_MODEL_ORDER, :]  # the swap is its own inverse
+    return (legs.reshape(mjcf.shape) - PICO_JOINT_OFFSET) * PICO_JOINT_SIGN
+
+
 @dataclass
 class Recording:
     header: message_pb2.TelemetryHeader | None
     ticks: dict[str, np.ndarray]
     network: dict[str, np.ndarray]
     batch_rx_us: np.ndarray
+    batch_t_us: np.ndarray  # each batch's newest tick, NaN for none
+    # Each goal status as it arrived (host_rx_us, and GoalStatus's fields): the robot stamps none with its own clock.
+    goals: dict[str, np.ndarray]
     link_gaps: int = 0
     missing_batches: int = 0
     missing_ticks: int = 0
@@ -102,7 +114,9 @@ def load(path) -> Recording:
     ticks = {name: [] for name in (*_TICK_SCALARS, *_TICK_VECTORS)}
     imu = {name: [] for name in (*_IMU_SCALARS, *_IMU_VECTORS)}
     network = {name: [] for name in _NETWORK}
-    batch_rx_us, batch_seqs, batch_dropped = [], [], []
+    odometry = {name: [] for name in _ODOMETRY}
+    goals = {name: [] for name in ("host_rx_us", *_GOAL)}
+    batch_rx_us, batch_t_us, batch_seqs, batch_dropped = [], [], [], []
     link_gaps = 0
     for host_rx_us, frame in _read_records(Path(path).read_bytes()):
         if not frame:
@@ -116,6 +130,7 @@ def load(path) -> Recording:
             batch = message.telemetry_batch
             batch_seqs.append(batch.batch_seq)
             batch_rx_us.append(host_rx_us)
+            batch_t_us.append(batch.ticks[-1].t_us if batch.ticks else np.nan)
             batch_dropped.append(batch.dropped_ticks)
             for tick in batch.ticks:
                 for name in _TICK_SCALARS:
@@ -126,12 +141,19 @@ def load(path) -> Recording:
                     imu[name].append(getattr(tick.imu, name))
                 for name in _IMU_VECTORS:
                     imu[name].append(list(getattr(tick.imu, name)))
+                for name in _ODOMETRY:
+                    odometry[name].append(getattr(tick.odometry, name))
         elif kind == "telemetry_network":
             for name in _NETWORK:
                 network[name].append(getattr(message.telemetry_network, name))
+        elif kind == "goal_status":
+            goals["host_rx_us"].append(host_rx_us)
+            for name in _GOAL:
+                goals[name].append(getattr(message.goal_status, name))
     arrays = {name: np.asarray(values) for name, values in ticks.items()}
     arrays.update({("imu_" + name if name in _IMU_SCALARS else name): np.asarray(values)
                    for name, values in imu.items()})
+    arrays.update({"odometry_" + name: np.asarray(values) for name, values in odometry.items()})
     seq = arrays["seq"].astype(np.int64)
     batches = np.asarray(batch_seqs, dtype=np.int64)
     return Recording(
@@ -139,6 +161,8 @@ def load(path) -> Recording:
         ticks=arrays,
         network={name: np.asarray(values) for name, values in network.items()},
         batch_rx_us=np.asarray(batch_rx_us),
+        batch_t_us=np.asarray(batch_t_us, dtype=float),
+        goals={name: np.asarray(values) for name, values in goals.items()},
         link_gaps=link_gaps,
         missing_batches=_missing(batches),
         missing_ticks=_missing(seq),

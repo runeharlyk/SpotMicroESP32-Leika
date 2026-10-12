@@ -1,6 +1,6 @@
 """Records the robot's telemetry to a .leika file: uv run python record.py --robot 192.168.1.39 --seconds 60
 
-Subscribes to the telemetry batches and network samples, appends every frame as it arrives, and reconnects after a
+Subscribes to the telemetry batches, network samples and goal statuses, appends every frame as it arrives, and reconnects after a
 dropped link, marking the gap. Ctrl-C ends the recording; the file is complete up to the last frame. --robot COM10
 records over the board's native USB port instead of WiFi.
 Run `uv run python gen_protos.py` once first: it generates the protocol classes in src/proto/.
@@ -14,7 +14,7 @@ from src.leika.link import LinkClosed, open_link
 from src.proto import message_pb2
 from src.sim.recording import RecordingWriter
 
-TAGS = ("telemetry_batch", "telemetry_network")
+TAGS = ("telemetry_batch", "telemetry_network", "goal_status")
 KINDS = {"telemetry_header", *TAGS}
 OPEN_TIMEOUT_S = 10.0
 # The robot sends a network sample every second while recording: this long without a frame means the link is gone,

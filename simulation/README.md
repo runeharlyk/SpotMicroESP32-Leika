@@ -69,6 +69,9 @@ uv run python virtual_robot.py --port 8765                          # a robot on
 uv run python release_smoke.py 192.168.1.39                         # the check before a release; exits non-zero on a breach
 uv run python sim_vs_real.py 192.168.1.39                           # how far the simulation drifts from a Pico (--virtual: the virtual robot)
 uv run python identify.py recording.leika                           # fit servo model, lag and IMU noise; writes recording.sysid.json
+uv run python ground_truth.py course.json --camera 0 --out run.csv  # the body's floor track from an overhead camera (docs/benchmark.md)
+uv run python score_track.py run.leika run.csv                      # the odometry and goal moves against that track
+uv run python measure_pwm_per_degree.py 192.168.1.39                # the servos' PWM counts per degree from the IMU (docs/kinematics.md)
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)

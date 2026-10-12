@@ -106,3 +106,24 @@ def test_a_recording_without_ticks_loads_and_summarizes(tmp_path):
     stats = summarize(load(path))
     assert stats["ticks"] == 0
     assert stats["dropped_ticks"] == 0
+
+
+def test_each_ticks_odometry_and_each_goal_status_load_with_their_arrival(tmp_path):
+    from src.proto import message_pb2 as pb
+
+    path = tmp_path / "goal.leika"
+    writer = RecordingWriter(path)
+    ticks = [pb.TickSample(seq=k, t_us=10_000 * k, odometry=pb.OdometryData(x=0.01 * k, yaw=-0.02 * k, distance=0.01 * k))
+             for k in range(3)]
+    writer.write(pb.Message(telemetry_batch=pb.TelemetryBatch(batch_seq=1, ticks=ticks)).SerializeToString(), 100)
+    for host_rx_us, state in ((150, pb.GOAL_RUNNING), (900, pb.GOAL_REACHED)):
+        status = pb.GoalStatus(id=4, state=state, forward_m=0.5, progress=0.5 if state == pb.GOAL_REACHED else 0.0)
+        writer.write(pb.Message(goal_status=status).SerializeToString(), host_rx_us)
+    writer.close()
+    rec = load(path)
+    np.testing.assert_allclose(rec.ticks["odometry_x"], [0.0, 0.01, 0.02], rtol=1e-6)
+    np.testing.assert_allclose(rec.ticks["odometry_yaw"], [0.0, -0.02, -0.04], rtol=1e-6)
+    assert rec.goals["host_rx_us"].tolist() == [150, 900]
+    assert rec.goals["state"].tolist() == [pb.GOAL_RUNNING, pb.GOAL_REACHED]
+    assert rec.goals["id"].tolist() == [4, 4]
+    np.testing.assert_allclose(rec.goals["forward_m"], [0.5, 0.5])

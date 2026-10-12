@@ -75,3 +75,35 @@ The maximum leg reach is the femur plus the tibia minus the coxa offset, and the
 - Body height: 45% to 90% of the maximum leg reach
 - Maximum step length: 80% of the maximum leg reach
 - Maximum step height: 50% of the maximum leg reach
+
+## Measuring the PWM counts per degree
+
+Every variant's joint model assumes 2.0 PWM counts per degree.
+A servo that sweeps 180 degrees over 500-2500 us takes 2.28 at the PCA9685's 50 Hz (4.88 us per count), and every commanded angle would then come out 12 % short.
+`simulation/measure_pwm_per_degree.py <address>` measures the figure with the IMU alone.
+
+The robot must stand (STAND) still on a flat, level floor; the script refuses otherwise.
+It checks the floor through the joints: the stand's IMU levelling holds the body level on a slope, so the IMU alone cannot see one, but the tilt the legs hold the body at against the floor can.
+It then writes both left hips raw PWMs (`ServoPWMData`), one count every 40 ms, in steps of 6, 12 and 18 counts either way with a return to the stand's PWM between them, and averages the IMU's roll for 2 s at each.
+The left feet rise or sink together, so the four feet stay in one plane and the body rolls on the floor by an angle the firmware's kinematics predict for each counts per degree; the fit picks the one that matches.
+At the end the hips ramp back and STAND is applied afresh, which hands the servos back to the motion.
+
+The hips, because they drive their legs directly and tilt the body most: about 0.25 degrees of roll per degree of hip on the MINI.
+The knees tilt it as much, but on the Pico the knee servo reaches the tibia through a four-bar linkage of about 1.6 times gain at the stand, which would fold into the result.
+The femurs mostly swing the feet fore and aft and tilt the body a tenth as much.
+
+### Identifiability
+
+With the IMU's roll noise $\sigma$ (0.22 degrees per sample, recorded standing on the Pico) and $N$ samples per step, each step's roll, less the mean of the baselines on either side, is known to $\sigma\sqrt{1.5/N}$: 0.06 degrees for 20 samples 100 ms apart.
+The fit's relative error is that over the root sum of squares of the steps' rolls, so a precision $p$ needs
+
+$$\sqrt{\textstyle\sum_k \text{roll}_k^2} \geq \frac{\sigma\sqrt{1.5/N}}{p}$$
+
+which is 3 degrees for 2 % and 6 degrees for 1 %.
+The default steps roll a MINI about 0.1 degrees per count, 3.2 degrees root sum of squares at 2.28 counts per degree, for about 2 %: enough to tell 2.0 from 2.28 six times over.
+More precision costs larger steps, or longer dwells, since $N$ grows with the square of the precision.
+
+Beyond the noise lies the model.
+The fit takes the firmware's leg geometry for the robot's, so a coxa or a mount off by x % scales the predicted roll, and the result, by about x %.
+In the MuJoCo model of the Pico, whose legs the firmware's geometry only approximates, an injected 2.28 or 1.8 comes back 1 to 1.5 % high without IMU noise, and within 4 % with the Pico's noise (`simulation/tests/test_measure_pwm_per_degree.py`).
+On the robot, friction under the feet, which slide sideways as the hips turn, a loose horn and the servos' deadband add to it; a fit residual well above the IMU's noise says the body did not roll as the kinematics expect.

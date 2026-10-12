@@ -11,8 +11,7 @@ import numpy as np
 from src.proto import message_pb2 as pb
 from src.robot.firmware_gait import BodyState, GaitController, GaitState, TROT, analytic_gait_action, set_mode
 from src.sim.mj_runtime import CONTROL_DT, SpotPicoSim
-from src.sim.recording import (BODY_TO_MODEL, FIRMWARE_LEGS_IN_MODEL_ORDER, PICO_JOINT_OFFSET, PICO_JOINT_SIGN,
-                               RecordingWriter)
+from src.sim.recording import BODY_TO_MODEL, RecordingWriter, from_model_joints
 
 TICK_US = 10_000
 COMPUTE_US = 1_000
@@ -20,12 +19,6 @@ SERVO_WRITE_US = 1_000
 IMU_AGE_US = 4_000
 BATCH_TICKS = 10
 PRE_SETTLE_S = 1.0  # the robot stood before the recording began
-
-
-def firmware_angles(ctrl: np.ndarray) -> np.ndarray:
-    """The inverse of recording.to_model_joints."""
-    legs = ctrl.reshape(-1, 4, 3)[:, FIRMWARE_LEGS_IN_MODEL_ORDER, :].reshape(-1, 12)
-    return (legs - PICO_JOINT_OFFSET) * PICO_JOINT_SIGN
 
 
 def joint_commands(stand_s: float, walk_s: float, command) -> np.ndarray:
@@ -76,7 +69,7 @@ def write(path, *, volts, strength, lag_ms, gyro_bias, gyro_noise, tilt_noise_de
     rpy = np.column_stack([np.arctan2(-gravity[:, 1], -gravity[:, 2]), np.arcsin(np.clip(gravity[:, 0], -1, 1)),
                            np.zeros(len(ctrl))]) + rng.normal(0.0, tilt, (len(ctrl), 3))
     gravity = gravity + rng.normal(0.0, tilt, (len(ctrl), 3))
-    angles = firmware_angles(ctrl)
+    angles = from_model_joints(ctrl)
 
     writer = RecordingWriter(path)
     header = pb.TelemetryHeader(variant=variant, imu_driver="synthetic", control_rate_hz=100, batch_ticks=BATCH_TICKS)
