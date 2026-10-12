@@ -137,6 +137,31 @@ static Clip twoKeyframes(float bodyZ) {
     return c;
 }
 
+static const JointModel &picoJoints = JOINT_MODEL_SPOTMICRO_ESP32_MINI;
+
+// The knee folds as the body sinks, while the foot stays well within the reach of femur and tibia: only the travel
+// tells a crouch that folds a leg into the body from one the robot can make.
+static void theSweepSeesACrouchFoldingTheKneesPastTheirTravel() {
+    Pose deepest;
+    deepest.body[Z] = -60;
+    float angles[JOINTS];
+    CHECK(poseToAngles(deepest, kin, pico.default_feet_positions, base, angles) == 0);
+    for (int leg = 0; leg < LEGS; ++leg) CHECK(angles[leg * 3 + 2] > picoJoints.travel[2].max);
+    const uint32_t everyKnee = 1u << 2 | 1u << 5 | 1u << 8 | 1u << 11;
+    CHECK(clampSweep(twoKeyframes(-60), kin, picoJoints, pico.default_feet_positions, base) == everyKnee);
+    CHECK(clampSweep(twoKeyframes(-20), kin, picoJoints, pico.default_feet_positions, base) == 0);
+}
+
+// A leg given its joints' angles is held to the same travel, and only the joint past it is flagged.
+static void theSweepFlagsAJointTargetPastItsTravel() {
+    Clip c = twoKeyframes(0);
+    c.keyframes[1].legCount = LEGS;
+    c.keyframes[1].legs[FR] = {true, {picoJoints.travel[0].min - 10, -45, 90}};
+    CHECK(clampSweep(c, kin, picoJoints, pico.default_feet_positions, base) == 1u << (FR * 3));
+    c.keyframes[1].legs[FR].v[0] = picoJoints.travel[0].min + 10;
+    CHECK(clampSweep(c, kin, picoJoints, pico.default_feet_positions, base) == 0);
+}
+
 static void theValidatorKnowsFourLegs() {
     Clip c = twoKeyframes(10);
     CHECK(validate(c) == nullptr);
@@ -242,6 +267,8 @@ int main() {
     aBodyShiftIsTheOppositeShiftOfEveryFoot();
     aCapturedPoseMapsBackToItsBodyState();
     anUnreachableFootIsReported();
+    theSweepSeesACrouchFoldingTheKneesPastTheirTravel();
+    theSweepFlagsAJointTargetPastItsTravel();
     theValidatorKnowsFourLegs();
     evaluationInterpolatesAndAppliesOverlaysAndLift();
     aClipEntersPlaysAndExitsToStance();

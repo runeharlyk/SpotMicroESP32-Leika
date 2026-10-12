@@ -10,6 +10,7 @@
 #include <utils/math_utils.h>
 #include <platform_shared/api.pb.h>
 #include <atomic>
+#include <esp_timer.h>
 
 #ifndef FACTORY_SERVO_PWM_FREQUENCY
 #define FACTORY_SERVO_PWM_FREQUENCY 50
@@ -80,10 +81,15 @@ class ServoController : public StatefulService<ServoSettings> {
 
     void setMode(SERVO_CONTROL_STATE newMode) { control_state = newMode; }
 
-    // A non-finite target is dropped: smoothing towards it would leave the joint NaN for good.
-    void setAngles(float new_angles[12]) {
-        for (int i = 0; i < 12; i++) {
-            if (isFinite(new_angles[i])) target_angles[i] = new_angles[i];
+    /**
+     * Targets in servo space. A non-finite target is dropped: smoothing towards it would leave the joint NaN for good.
+     * A target past the joint's travel (joint_model.h) is held at its end, from the gait, a clip or the app alike.
+     */
+    void setAngles(const float new_angles[12]) {
+        const JointModel *model = _model.load();
+        for (size_t i = 0; i < SERVO_COUNT; i++) {
+            if (!isFinite(new_angles[i])) continue;
+            target_angles[i] = model ? toTravel(*model, i, new_angles[i]) : new_angles[i];
         }
     }
 
@@ -121,6 +127,35 @@ class ServoController : public StatefulService<ServoSettings> {
     StatefulProtoHandler<ServoSettings, ServoSettings> protoHandler;
 
   private:
+    // The travel is in the IK convention, which JOINT_DIRECTION turns into servo space and back.
+    float toTravel(const JointModel &model, size_t joint, float angle) {
+        const float ik = angle * JOINT_DIRECTION[joint];
+        const float held = clampToTravel(model, joint, ik);
+        if (held != ik) noteClamp(jointTravel(model, joint), joint, ik);
+        return held * JOINT_DIRECTION[joint];
+    }
+
+    static constexpr int64_t CLAMP_LOG_PERIOD_US = 2000000;
+
+    // A clamped target means the motion asks for more than the legs can do; it says so with the furthest it asked
+    // for, but not at 100 Hz.
+    void noteClamp(const JointRange &range, size_t joint, float ik) {
+        const float past = std::max(range.min - ik, ik - range.max);
+        _clampsSinceLog++;
+        if (past > _worstPast) {
+            _worstPast = past;
+            _worstJoint = joint;
+            _worstAngle = ik;
+        }
+        const int64_t now = esp_timer_get_time();
+        if (now - _lastClampLog < CLAMP_LOG_PERIOD_US) return;
+        ESP_LOGW("SERVO_CONTROLLER", "%lu targets held at joint travel; furthest joint %u at %.1f deg (IK)",
+                 static_cast<unsigned long>(_clampsSinceLog), static_cast<unsigned>(_worstJoint), _worstAngle);
+        _lastClampLog = now;
+        _clampsSinceLog = 0;
+        _worstPast = 0;
+    }
+
     std::function<void(const ServoSettings &, ServoSettings &)> readWithModel() {
         return [this](const ServoSettings &settings, ServoSettings &proto) {
             ServoSettings_read(settings, proto, _model.load());
@@ -139,6 +174,11 @@ class ServoController : public StatefulService<ServoSettings> {
     float target_angles[12] = {0, 90, -145, 0, 90, -145, 0, 90, -145, 0, 90, -145};
     uint16_t _outputPwm[SERVO_COUNT] = {};
     uint16_t _channelPwm[PCA9685_CHANNELS] = {};
+    int64_t _lastClampLog = -CLAMP_LOG_PERIOD_US;
+    uint32_t _clampsSinceLog = 0;
+    float _worstPast = 0;
+    size_t _worstJoint = 0;
+    float _worstAngle = 0;
 };
 
 #endif

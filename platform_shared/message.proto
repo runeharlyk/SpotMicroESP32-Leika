@@ -133,7 +133,7 @@ message AnimationValidate {
 message AnimationReport {
     bool ok = 1;
     string error = 2;
-    uint32 clamped_mask = 3;  // over the whole clip, sampled
+    uint32 clamped_mask = 3;  // over the whole clip, sampled; also a joint driven past its travel
     // What the app shows for a clip that loads: the robot's copy decides, built-in or uploaded.
     string description = 4;
     repeated animation.ParamSpec params = 5;

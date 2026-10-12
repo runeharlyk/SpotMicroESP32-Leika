@@ -51,7 +51,6 @@ struct Motion {
     body_state_t body;
     float new_angles[12] = {0};
     float angles[12] = {0};
-    const float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
 
     explicit Motion(const KinConfig &config) : config(config), kinematics(config) {
         rest.configure(config);
@@ -83,7 +82,7 @@ struct Motion {
         state->step(body, DT);
         kinematics.calculate_inverse_kinematics(body, new_angles);
         for (int i = 0; i < 12; i++) {
-            const float angle = new_angles[i] * dir[i];
+            const float angle = new_angles[i] * JOINT_DIRECTION[i];
             if (!isEqual(angle, angles[i], 0.1)) angles[i] = angle;
         }
     }

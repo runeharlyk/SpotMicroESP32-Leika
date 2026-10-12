@@ -224,8 +224,7 @@ void setupEventSocket() {
         header.has_imu_settings = true;
         header.imu_settings = effectiveImuSettings(peripherals.snapshot());
         header.batch_ticks = Telemetry::BATCH_TICKS;
-        std::copy(std::begin(MotionService::JOINT_DIRECTION), std::end(MotionService::JOINT_DIRECTION),
-                  header.joint_direction);
+        std::copy(std::begin(JOINT_DIRECTION), std::end(JOINT_DIRECTION), header.joint_direction);
         wsSocket.emit(header, clientId);
     });
 
@@ -528,10 +527,11 @@ void setupEventSocket() {
              report.duration = clip->duration();
              report.loop = clip->loop;
              report.hold_end = clip->holdEnd;
-             if (const KinConfig *config = kinConfigFor(activeVariant.load())) {
+             const KinematicsVariant variant = activeVariant.load();
+             if (const KinConfig *config = kinConfigFor(variant)) {
                  Kinematics kin(*config);
-                 report.clamped_mask =
-                     anim::clampSweep(*clip, kin, config->default_feet_positions, config->default_body_height);
+                 report.clamped_mask = anim::clampSweep(*clip, kin, *jointModelFor(variant),
+                                                        config->default_feet_positions, config->default_body_height);
              }
          }},
 

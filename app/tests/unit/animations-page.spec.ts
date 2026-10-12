@@ -117,10 +117,10 @@ describe('Animations page', () => {
         })
     })
 
-    it('names the feet the clip cannot reach', async () => {
+    it('names the legs that cannot follow the clip', async () => {
         await open(ModesEnum.STAND)
         await choose('bow')
-        expect(text()).toMatch('The front right foot cannot reach')
+        expect(text()).toMatch('The front right leg cannot follow')
     })
 
     it('asks to stand up before playing on a deactivated robot', async () => {
