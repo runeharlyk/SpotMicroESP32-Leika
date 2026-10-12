@@ -88,7 +88,7 @@ def test_the_model_is_the_body_velocity_the_firmware_walks(variant):
 
 @pytest.mark.parametrize("gait", list(Gait))
 def test_sticks_invert_the_model(gait):
-    v = Velocity(0.02, -0.01, 0.1)
+    v = Velocity(0.008, -0.004, 0.04)  # inside what the reach bound leaves the Pico's crawl in this direction
     sticks = sticks_for("SPOTMICRO_ESP32_MINI", gait, v, HEIGHT)
     assert astuple(velocity_of("SPOTMICRO_ESP32_MINI", gait, sticks, HEIGHT)) == pytest.approx(astuple(v))
 

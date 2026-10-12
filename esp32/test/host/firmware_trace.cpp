@@ -34,6 +34,8 @@ const Segment SCRIPT[] = {
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    // Both sticks to the rim on a raised body, where the legs reach only a fraction of the stroke.
+    {WALK, TROT, {1, 1, 1, 0, 1, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 600},
     {STAND, CRAWL, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 50},
