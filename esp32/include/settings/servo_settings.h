@@ -10,15 +10,24 @@
 using ServoSettings = api_ServoSettings;
 
 constexpr uint32_t PCA9685_CHANNELS = 16;
+constexpr float FACTORY_CENTER_PWM = 306;
 
 inline ServoSettings ServoSettings_defaults() {
     ServoSettings settings = api_ServoSettings_init_zero;
     settings.servos_count = SERVO_COUNT;
     for (size_t i = 0; i < SERVO_COUNT; i++) {
-        settings.servos[i].center_pwm = 306;
+        settings.servos[i].center_pwm = FACTORY_CENTER_PWM;
         std::snprintf(settings.servos[i].name, sizeof(settings.servos[i].name), "Servo%u", unsigned(i + 1));
     }
     return settings;
+}
+
+/** Whether the robot's centres were calibrated: a robot still on the factory centres for every joint was not. */
+inline bool servosCalibrated(const ServoSettings &settings) {
+    for (size_t i = 0; i < settings.servos_count; i++) {
+        if (settings.servos[i].center_pwm != FACTORY_CENTER_PWM) return true;
+    }
+    return false;
 }
 
 /** The channel that drives a joint: the stored map, or joint j on channel j when there is none. */

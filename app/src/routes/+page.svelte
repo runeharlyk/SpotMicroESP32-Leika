@@ -26,6 +26,7 @@
         subnetPrefix,
         variantLabel,
         firmwareLabel,
+        calibrationLabel,
         type Robot
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
@@ -289,6 +290,7 @@
                                     {[
                                         variantLabel(robot.variant),
                                         firmwareLabel(robot),
+                                        calibrationLabel(robot),
                                         statusLabel(robot)
                                     ]
                                         .filter(Boolean)

@@ -47,6 +47,12 @@ class ServoController : public StatefulService<ServoSettings> {
 
     bool detected() const { return _pca.isInitialized(); }
 
+    bool calibrated() {
+        bool result = false;
+        read([&](const ServoSettings &settings) { result = servosCalibrated(settings); });
+        return result;
+    }
+
     void activate() {
         if (is_active || !_model.load()) return;
         control_state = SERVO_CONTROL_STATE::ANGLE;

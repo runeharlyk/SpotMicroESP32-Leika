@@ -119,7 +119,19 @@ static void aTodaysSettingsFileKeepsItsCentres() {
     CHECK(jointChannel(current, 7) == 7);
 }
 
+// The fleet view asks whether a robot was calibrated; nothing stores that, but a calibration moves some centre.
+static void onlyAMovedCentreCountsAsCalibrated() {
+    ServoSettings settings = ServoSettings_defaults();
+    CHECK(!servosCalibrated(settings));
+    settings.channels_count = SERVO_COUNT;
+    for (size_t i = 0; i < SERVO_COUNT; i++) settings.channels[i] = SERVO_COUNT - 1 - i;
+    CHECK(!servosCalibrated(settings));  // rewired, not calibrated
+    settings.servos[11].center_pwm = 243;
+    CHECK(servosCalibrated(settings));
+}
+
 int main() {
+    onlyAMovedCentreCountsAsCalibrated();
     theDefaultsWireJointToChannelInOrder();
     aChannelMapRoutesEachJoint();
     aBrokenChannelMapIsRefused();
