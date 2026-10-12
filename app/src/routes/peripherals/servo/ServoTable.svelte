@@ -12,6 +12,7 @@
         servoJoint
     } from '$lib/calibration/leg-pose'
     import LegDiagram from './LegDiagram.svelte'
+    import { HAS_3D_VIEW } from '$lib/build-flags'
     import { connectionFeatures } from '$lib/stores/featureFlags'
 
     interface Props {
@@ -86,12 +87,13 @@
 
 {#if servoSettings}
     {#if servoSettings.model}
-        <LegDiagram
-            model={servoSettings.model}
-            centers={servoSettings.servos.map(servo => servo.centerPwm)}
-            {jointId}
-            {pwm}
-        />
+        {@const centers = servoSettings.servos.map(servo => servo.centerPwm)}
+        <LegDiagram model={servoSettings.model} {centers} {jointId} {pwm} />
+        {#if HAS_3D_VIEW}
+            {#await import('./CalibrationModel.svelte') then { default: CalibrationModel }}
+                <CalibrationModel model={servoSettings.model} {centers} {jointId} {pwm} />
+            {/await}
+        {/if}
     {:else}
         <div role="alert" class="alert alert-warning alert-soft">
             {#if $connectionFeatures?.variant === ''}

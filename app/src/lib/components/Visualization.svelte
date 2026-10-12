@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import { get } from 'svelte/store'
-    import { Color } from 'three'
+    import { Color, Mesh, MeshPhongMaterial, type Object3D } from 'three'
     import { lerp } from 'three/src/math/MathUtils'
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
     import type { URDFRobot } from 'urdf-loader'
@@ -15,9 +15,20 @@
         orbit?: boolean
         panel?: boolean
         ground?: boolean
+        /** Joints to show instead of the ones the robot reports; given, the view asks the robot for nothing. */
+        joints?: JointValues
+        /** A joint whose link, the part it turns, is drawn in the highlight colour. */
+        highlight?: string
     }
 
-    let { defaultColor = '#0091ff', orbit = false, panel = true, ground = true }: Props = $props()
+    let {
+        defaultColor = '#0091ff',
+        orbit = false,
+        panel = true,
+        ground = true,
+        joints,
+        highlight
+    }: Props = $props()
 
     const sceneManager = new SceneBuilder()
     let canvas: HTMLCanvasElement
@@ -25,7 +36,7 @@
     // The robot reports at 10 Hz; easing towards each report keeps the picture fluid between them.
     const SMOOTH_AMOUNT = 0.2
 
-    let targetJoints: JointValues = {}
+    let reportedJoints: JointValues = {}
     let stopFollowing: (() => void) | undefined
     let destroyed = false
 
@@ -36,11 +47,12 @@
 
     onMount(() => {
         // Read with the model's loading, so the joints followed are those of the model shown.
-        stopFollowing = followRobotPose(
-            socket,
-            get(modelVariant),
-            joints => (targetJoints = joints)
-        )
+        if (!joints)
+            stopFollowing = followRobotPose(
+                socket,
+                get(modelVariant),
+                reported => (reportedJoints = reported)
+            )
         void showModel()
     })
 
@@ -50,6 +62,9 @@
         if (sceneManager.renderer) sceneManager.stopRenderLoop()
         gui_panel?.destroy()
         disconnectObservers.forEach(disconnect => disconnect())
+        // The model is shared with the next view that shows it.
+        highlighted.forEach(unhighlight)
+        HIGHLIGHT.dispose()
     })
 
     const showModel = async () => {
@@ -122,14 +137,43 @@
         if (toes.length) robot.position.y -= Math.min(...toes.map(toe => toe.y))
     }
 
+    const HIGHLIGHT = new MeshPhongMaterial({ color: 0xff9f1c })
+    // Each highlighted mesh keeps its own material in its userData, to get it back.
+    let highlighted: Mesh[] = []
+    const unhighlight = (mesh: Mesh) => (mesh.material = mesh.userData.unhighlighted)
+
+    // The link's own meshes, not those of the links below its child joints. Meshes load after the model, so this
+    // runs every frame and catches them as they arrive.
+    const linkMeshes = (part: Object3D, meshes: Mesh[] = []): Mesh[] => {
+        for (const child of part.children) {
+            if ((child as { isURDFJoint?: boolean }).isURDFJoint) continue
+            if (child instanceof Mesh) meshes.push(child)
+            linkMeshes(child, meshes)
+        }
+        return meshes
+    }
+
+    const showHighlight = (robot: URDFRobot) => {
+        const meshes =
+            highlight && robot.joints[highlight] ? linkMeshes(robot.joints[highlight]) : []
+        highlighted.filter(mesh => !meshes.includes(mesh)).forEach(unhighlight)
+        for (const mesh of meshes)
+            if (mesh.material !== HIGHLIGHT) {
+                mesh.userData.unhighlighted = mesh.material
+                mesh.material = HIGHLIGHT
+            }
+        highlighted = meshes
+    }
+
     const render = () => {
         const robot = sceneManager.model
         if (!robot) return
-        for (const [name, target] of Object.entries(targetJoints)) {
+        for (const [name, target] of Object.entries(joints ?? reportedJoints)) {
             const joint = robot.joints[name]
             if (joint) joint.setJointValue(smooth(joint.angle as number, target))
         }
         standOnGround(robot)
+        showHighlight(robot)
     }
 </script>
 
