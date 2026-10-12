@@ -22,6 +22,55 @@ static void tick(MotionService &motion, gesture_t gesture = eGestureNone) {
     motion.update(ImuSample {}, gesture);
 }
 
+static ImuSample tilted(float degrees) {
+    ImuSample imu;
+    imu.valid = ImuValid::ACCEL | ImuValid::GYRO | ImuValid::ORIENTATION;
+    const float rad = degrees * 3.14159265f / 180.0f;
+    imu.gravity = {0, std::sin(rad), -std::cos(rad)};  // rolled about x
+    return imu;
+}
+
+static void standPico(MotionService &motion) {
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
+    motion.begin();
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    tick(motion);
+    motion.takeModeApplied();
+}
+
+// On its side, servos pushing against the floor stall and drain the battery: the robot lets go, and says so through
+// the mode change the control loop turns into a sleeping servo board.
+static void aRobotLyingOnItsSideDeactivates() {
+    MotionService motion;
+    standPico(motion);
+    for (int i = 0; i < 29; i++) {
+        fake_timer::nowUs += 10000;
+        motion.update(tilted(80), eGestureNone);
+    }
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);  // 290 ms: a stumble may still right itself
+    fake_timer::nowUs += 20000;
+    motion.update(tilted(80), eGestureNone);
+    CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED);
+    CHECK(!motion.isActive());
+    CHECK(motion.takeModeApplied());
+}
+
+// A slope or the stand's own levelling tilts the body far less; a brief knock past the limit does not add up.
+static void aTiltedOrKnockedRobotKeepsStanding() {
+    MotionService motion;
+    standPico(motion);
+    for (int i = 0; i < 300; i++) {
+        fake_timer::nowUs += 10000;
+        motion.update(tilted(i % 25 < 20 ? 35 : 90), eGestureNone);
+    }
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    for (int i = 0; i < 100; i++) {
+        fake_timer::nowUs += 10000;
+        motion.update(ImuSample {}, eGestureNone);  // no IMU: nothing to tell a fall by
+    }
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+}
+
 static void withoutAVariantEveryModeButDeactivatedIsRefused() {
     MotionService motion;
     motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET));
@@ -324,6 +373,8 @@ int main() {
     aClipStartedWhileWalkingHandsBackToStand();
     aDeactivatedRobotPlaysNothing();
     aModeAskedForDuringAClipFollowsItsExit();
+    aRobotLyingOnItsSideDeactivates();
+    aTiltedOrKnockedRobotKeepsStanding();
     leavingAWalkMovesTheLegsSmoothly();
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();

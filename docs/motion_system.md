@@ -59,6 +59,12 @@ If the robot has not heard from the controller for 500 ms while a stick was off 
 The mode, gait, height and step height are kept.
 The next controller input clears the condition.
 
+### Fall detection
+
+In rest, stand and walk, a body that leans more than 60 degrees from upright for 300 ms counts as fallen (`esp32/include/fall_detector.h`).
+The robot then deactivates, so the servo board sleeps and the legs go limp instead of pushing against the floor; selecting a mode again stands it up.
+Without an IMU orientation nothing is detected.
+
 ## Command smoothing
 
 Each motion state follows its targets through a critically damped smoother (`utils/critical_damper.h`).

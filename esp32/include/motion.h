@@ -17,6 +17,7 @@
 #include <message_types.h>
 #include <motion_inbox.h>
 #include <gesture_control.h>
+#include <fall_detector.h>
 #include <variant.h>
 #include <atomic>
 #include <mutex>
@@ -101,6 +102,7 @@ class MotionService {
     CommandMsg command = {0, 0, 0, 0, 0, 0, 0};
     int64_t commandRxUs = 0;
     bool linkLostNow = false;
+    FallDetector fallDetector;
 
     friend class MotionState;
 
