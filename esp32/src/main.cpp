@@ -809,7 +809,7 @@ static void recordTick(const TickTimes &times, const ImuSample &imu, ServoWrite 
     telemetry.record(tick);
 }
 
-void IRAM_ATTR SpotControlLoopEntry(void *) {
+void SpotControlLoopEntry(void *) {
     ESP_LOGI("main", "Control task starting");
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
@@ -906,7 +906,7 @@ static void publishGoalStatus() {
     wsSocket.emit(status);
 }
 
-void IRAM_ATTR serviceLoopEntry(void *) {
+void serviceLoopEntry(void *) {
     ESP_LOGI("main", "Service task starting");
 #if CONFIG_IDF_TARGET_ESP32P4
     ESP_LOGI("main", "Initializing ESP-Hosted for C6 coprocessor WiFi...");
