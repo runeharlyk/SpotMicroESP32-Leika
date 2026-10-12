@@ -49,6 +49,7 @@ class MotionService {
     bool update_angles(float new_angles[12], float angles[12]);
 
     float* getAngles() { return angles; }
+    const float* getAngles() const { return angles; }
 
     inline bool isActive() { return state != nullptr; }
 
