@@ -4,6 +4,7 @@ import math
 import numpy as np
 import pytest
 
+from src.robot import stand_compensation
 from src.robot.firmware_gait import BodyState
 from src.robot.stand_compensation import (
     MAX_PITCH_DEG,
@@ -38,14 +39,25 @@ def test_the_damper_settles_a_step_to_95_percent_in_a_third_of_a_second():
 
 def test_a_tilt_is_answered_with_the_reversed_offsets_like_the_firmware_host_test():
     """stand_compensation_test.cpp: left side up rolls the body back (omega > 0), nose down lifts it (psi > 0)."""
-    omega, psi = settle(5 * DEG, 0)
-    assert omega == pytest.approx(5, abs=1e-3) and abs(psi) < 1e-6
-    omega, psi = settle(0, 5 * DEG)
-    assert psi == pytest.approx(5, abs=1e-3) and abs(omega) < 1e-6
+    omega, psi = settle(5 * DEG, 0, ticks=20)
+    assert omega > 1 and abs(psi) < 1e-6
+    omega, psi = settle(0, 5 * DEG, ticks=20)
+    assert psi > 1 and abs(omega) < 1e-6
 
 
-def test_the_answer_is_clamped_to_the_roll_and_pitch_limits():
-    assert settle(-40 * DEG, 40 * DEG) == pytest.approx((-MAX_ROLL_DEG, MAX_PITCH_DEG), abs=1e-3)
+def test_a_tilt_that_does_not_go_away_winds_the_answer_up_to_the_limits_and_no_further():
+    assert settle(-5 * DEG, 5 * DEG, ticks=3000) == pytest.approx((-MAX_ROLL_DEG, MAX_PITCH_DEG), abs=1e-3)
+
+
+def test_a_state_taking_over_starts_without_the_last_ones_integral():
+    compensation = StandCompensation()
+    for _ in range(300):
+        compensation.step(5 * DEG, 5 * DEG, CONTROL_DT, True)
+    assert compensation.psi_integral > 1
+    compensation.reset()
+    for _ in range(100):
+        attitude = compensation.step(0, 0, CONTROL_DT, True)
+    assert attitude == pytest.approx((0, 0), abs=1e-3)
 
 
 def test_outside_stand_the_attitude_eases_back_to_level():
@@ -78,10 +90,25 @@ def test_the_attitude_moves_the_simulated_body_as_measured_on_the_pico():
 
 
 @pytest.mark.parametrize("axis, column", [(NOSE_DOWN, 1), (LEFT_UP, 0)])
-def test_on_a_slope_the_compensation_levels_the_body_halfway(axis, column):
-    """The compensation is proportional with gain 1, so it leaves body = -slope / 2 and the IMU reads half the slope."""
+def test_on_a_slope_the_proportional_term_alone_levels_the_body_halfway(axis, column, monkeypatch):
+    """At gain 1 it leaves body = -slope / 2, so the IMU reads half the slope: what the integral action is for."""
+    monkeypatch.setattr(stand_compensation, "IMU_INTEGRAL_GAIN", 0.0)
     off = stand_on_slope(axis, 8, False)[-100:, column]
     on = stand_on_slope(axis, 8, True)[-100:, column]
     assert off.mean() == pytest.approx(8, abs=0.5)
     assert on.mean() == pytest.approx(off.mean() / 2, abs=0.3)
     assert np.ptp(on) < 0.1
+
+
+@pytest.mark.parametrize("axis, column", [(NOSE_DOWN, 1), (LEFT_UP, 0)])
+def test_on_a_slope_the_integral_action_levels_the_body_fully_without_overshoot(axis, column):
+    tilt = stand_on_slope(axis, 8, True, seconds=10)[:, column]
+    assert abs(tilt[400]) < 1.0
+    assert abs(tilt[-100:]).max() < 0.1
+    assert tilt.min() > -0.1
+
+
+def test_on_a_flat_floor_the_levelled_stand_holds_still():
+    tilt = stand_on_slope(NOSE_DOWN, 0, True, seconds=8)
+    assert np.abs(tilt[-500:]).max() < 0.05
+    assert np.ptp(tilt[-500:], axis=0).max() < 0.01

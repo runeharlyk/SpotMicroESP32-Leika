@@ -1,8 +1,9 @@
 """Port of the firmware stand state's IMU compensation (esp32/include/motion_states/state.h, stand_state.h).
 
 In STAND the firmware turns the body against the tilt the IMU measures: the roll and pitch offsets are the IMU's
-REP-103 angles with their signs reversed, subtracted from the commanded attitude, clamped to the variant's roll and
-pitch limits and followed through the same critically damped smoothing as every other body target. In every other
+REP-103 angles with their signs reversed, subtracted from the commanded attitude, plus the integral of that error
+(anti-windup, cleared when a state takes over), clamped to the variant's roll and pitch limits and followed through
+the same critically damped smoothing as every other body target. In every other
 mode the attitude follows the commanded one (zero here) through the same smoothing.
 
 The firmware's attitude lives in its body frame (x forward, y up, z lateral): omega turns about x, psi about z.
@@ -29,6 +30,9 @@ MAX_ROLL_DEG = 20.0
 MAX_PITCH_DEG = 15.0
 # MotionState::smoothing_omega: a step settles to 95% in a third of a second.
 SMOOTHING_OMEGA = 4.744 / 0.333
+# MotionState::IMU_INTEGRAL_GAIN (1/s) and MAX_INTEGRATION_DT (s).
+IMU_INTEGRAL_GAIN = 1.0
+MAX_INTEGRATION_DT = 0.05
 
 
 class CriticalDamper:
@@ -66,6 +70,15 @@ def firmware_rotation(omega_deg: float, phi_deg: float, psi_deg: float) -> np.nd
     return rx @ ry @ rz
 
 
+def level_target(target: float, offset: float, integral: float, limit: float, dt: float) -> tuple[float, float]:
+    """MotionState::levelTarget: (attitude target, new integral) for a commanded angle and its measured offset."""
+    error = target - offset
+    raw = error + integral
+    if not (abs(raw) >= limit and raw * error > 0):
+        integral = min(max(integral + IMU_INTEGRAL_GAIN * error * min(dt, MAX_INTEGRATION_DT), -limit), limit)
+    return min(max(error + integral, -limit), limit), integral
+
+
 def apply_firmware_attitude(body: BodyState, omega_deg: float, psi_deg: float,
                             firmware_from_rep: np.ndarray = FIRMWARE_FROM_REP) -> None:
     """Sets body's model-frame attitude to the firmware's (omega, psi), seen through the given +z side.
@@ -89,16 +102,22 @@ class StandCompensation:
         self.reset()
 
     def reset(self) -> None:
-        """MotionState::resetSmoothing: a state taking over starts its dampers at rest. The attitude carries over."""
+        """MotionState::resetSmoothing: a state taking over starts its dampers at rest and its integrals at zero.
+        The attitude carries over."""
         self._omega_damper = CriticalDamper()
         self._psi_damper = CriticalDamper()
+        self.omega_integral = 0.0
+        self.psi_integral = 0.0
 
     def step(self, roll: float, pitch: float, dt: float, compensate: bool) -> tuple[float, float]:
         """One control tick from the IMU's REP-103 roll and pitch (rad); returns (omega, psi) in degrees."""
-        omega_offset = -math.degrees(roll)
-        psi_offset = -math.degrees(pitch)
-        target_psi = min(max(-compensate * psi_offset, -MAX_PITCH_DEG), MAX_PITCH_DEG)
-        target_omega = min(max(-compensate * omega_offset, -MAX_ROLL_DEG), MAX_ROLL_DEG)
+        if compensate:
+            target_psi, self.psi_integral = level_target(0.0, -math.degrees(pitch), self.psi_integral,
+                                                         MAX_PITCH_DEG, dt)
+            target_omega, self.omega_integral = level_target(0.0, -math.degrees(roll), self.omega_integral,
+                                                             MAX_ROLL_DEG, dt)
+        else:
+            target_psi = target_omega = 0.0
         self.psi = self._psi_damper.step(self.psi, target_psi, dt, SMOOTHING_OMEGA)
         self.omega = self._omega_damper.step(self.omega, target_omega, dt, SMOOTHING_OMEGA)
         return self.omega, self.psi

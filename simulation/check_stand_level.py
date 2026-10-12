@@ -14,6 +14,7 @@ from src.robot.stand_compensation import FIRMWARE_FROM_REP, MIRRORED_FIRMWARE_FR
 from src.sim.slope_stand import LEFT_UP, NOSE_DOWN, stand_on_slope
 
 SLOPE_DEG = 8.0
+SECONDS = 10.0
 SETTLED_TICKS = 100
 
 
@@ -24,7 +25,7 @@ def main() -> None:
         print(f"{label} {SLOPE_DEG:.0f} deg: settled IMU {'pitch' if column else 'roll'}")
         off = None
         for name, levelling, frame in configs:
-            tilt = stand_on_slope(axis, SLOPE_DEG, levelling, firmware_from_rep=frame)[-SETTLED_TICKS:, column]
+            tilt = stand_on_slope(axis, SLOPE_DEG, levelling, SECONDS, frame)[-SETTLED_TICKS:, column]
             settled = float(np.mean(tilt))
             off = settled if off is None else off
             verdict = "" if not levelling else ("reduces" if abs(settled) < abs(off) else "increases")
