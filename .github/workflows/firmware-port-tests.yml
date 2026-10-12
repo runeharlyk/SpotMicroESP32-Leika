@@ -3,7 +3,8 @@ name: Firmware Host Tests
 # Firmware code tested on the host. The web app's TypeScript port of the motion code is pinned to
 # traces of the firmware's own headers: this regenerates them from the current firmware and tests the
 # port against them, so a change to the motion code fails here instead of leaving the traces stale.
-# The secrets check and the merge of secrets.h's network into the stored ones run here too.
+# The secrets check, the merge of secrets.h's network into the stored ones and the release index the app's firmware
+# page reads run here too.
 on:
   push:
     branches: [master]
@@ -12,6 +13,7 @@ on:
       - "esp32/include/**"
       - "esp32/test/**"
       - "esp32/scripts/secrets_file.py"
+      - "flasher/generate_manifests.py"
       - "platform_shared/**"
       - "animations/**"
       - "app/src/lib/simulation/firmware/**"
@@ -26,6 +28,7 @@ on:
       - "esp32/include/**"
       - "esp32/test/**"
       - "esp32/scripts/secrets_file.py"
+      - "flasher/generate_manifests.py"
       - "platform_shared/**"
       - "animations/**"
       - "app/src/lib/simulation/firmware/**"
