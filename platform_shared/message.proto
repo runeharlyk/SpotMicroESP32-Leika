@@ -94,6 +94,19 @@ message OtaChunk {
 }
 message OtaFinish {}
 
+// Dead reckoning from the commanded feet: where the body has gone since the last reset or deactivation, in the floor
+// frame it faced then (REP-103: x forward, y left). It knows only what the gait commanded, so slip and short steps
+// make it overshoot the real robot; calibrate it against a tape measure.
+message OdometryData {
+    float x = 1;         // m
+    float y = 2;         // m
+    float yaw = 3;       // rad, counter-clockwise, in [-pi, pi]
+    float distance = 4;  // m along the path
+}
+
+// Answered with the estimate; with reset, the one reached before it started afresh.
+message OdometryRequest { bool reset = 1; }
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -130,6 +143,7 @@ message CorrelationRequest {
         OtaStart ota_start = 210;
         OtaChunk ota_chunk = 211;
         OtaFinish ota_finish = 212;
+        OdometryRequest odometry_request = 220;
     }
 }
 
@@ -158,6 +172,7 @@ message CorrelationResponse {
         api.CameraSettings camera_settings = 170;
         api.ServoSettings servo_settings = 180;
         api.PeripheralSettings peripheral_settings = 190;
+        OdometryData odometry = 220;
     }
 }
 
@@ -299,6 +314,7 @@ message TickSample {
     ModesEnum mode = 14;
     WalkGaits gait = 15;
     bool link_lost = 16;         // the dead-man stop is in force
+    OdometryData odometry = 17;  // after this tick's motion
 }
 
 message TelemetryBatch {

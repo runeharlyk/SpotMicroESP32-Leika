@@ -122,6 +122,13 @@ static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
 
 static uint32_t nowMs() { return esp_timer_get_time() / 1000; }
 
+static void odometryToProto(const OdometryEstimate &estimate, socket_message_OdometryData &proto) {
+    proto.x = estimate.x;
+    proto.y = estimate.y;
+    proto.yaw = estimate.yaw;
+    proto.distance = estimate.distance;
+}
+
 using ReplyFiller = std::function<void(socket_message_CorrelationResponse &)>;
 
 /** Who sent a request: the link it came on, WebSocket or serial, and the client on that link. */
@@ -467,6 +474,14 @@ void setupEventSocket() {
          }},
 
         // Both defer the work by 250 ms, so this reply leaves before the device goes down.
+        {socket_message_CorrelationRequest_odometry_request_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_odometry_tag;
+             odometryToProto(
+                 req.request.odometry_request.reset ? motionService.resetOdometry() : motionService.odometry(),
+                 res.response.odometry);
+         }},
+
         {socket_message_CorrelationRequest_system_restart_tag,
          [](const auto &req, auto &res, Client client) { system_service::restart(); }},
 
@@ -584,6 +599,8 @@ static void recordTick(uint32_t seq, int64_t start, int64_t previousStart, int64
     tick.mode = motionService.mode();
     tick.gait = motionService.gait();
     tick.link_lost = motionService.linkLost();
+    tick.has_odometry = true;
+    odometryToProto(motionService.odometry(), tick.odometry);
     telemetry.record(tick);
 }
 

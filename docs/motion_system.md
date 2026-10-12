@@ -152,3 +152,21 @@ The two pairs never swing together, and all four feet are on the ground in the q
 Each foot follows the stance and swing controller above, with the stance controller implementing a cosine curve to control the depth of steps and the swing controller a bezier curve using 12 control points centered around the robot leg.
 
 Rotation is calculated using the same curve.
+
+## Odometry
+
+The motion service keeps a dead-reckoning estimate of where the body has gone (`esp32/include/odometry.h`).
+A foot in stance is fixed to the floor, so in the body frame it moves by the inverse of the body's motion.
+Each control tick, the rigid motion that best carries the feet that were on the floor in both ticks from the last tick to this one is the body's motion, inverted.
+A foot counts while the walk has it in stance (every foot outside the walk), unless it is more than 3 mm above the lowest foot, as one is that a state eases down from mid-stride.
+The body's own shift and twist over the feet (`xm`, `zm`, `phi`) count as motion too.
+
+The estimate is x and y in metres, yaw in radians counter-clockwise and the distance along the path, in the floor frame the robot faced at the last reset (REP-103: x forward, y left).
+It starts afresh on deactivation and on an `odometry_request` with `reset`; telemetry carries it in every `TickSample`.
+
+The heading integrates the feet's own yaw rather than the IMU's.
+The Pico's compass is uncalibrated and the gyro's yaw drifts with a bias nothing estimates yet, while the feet's yaw has no drift; fusing the gyro is left to a filter.
+
+The estimate knows only what the gait commanded.
+On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 11 to 15 % short.
+Calibrate it against a tape measure before relying on a distance.
