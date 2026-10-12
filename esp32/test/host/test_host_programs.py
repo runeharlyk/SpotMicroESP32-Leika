@@ -38,6 +38,7 @@ PROGRAMS = {
     "robot_settings_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO,
                                 os.path.join(REPO, "esp32", "src", "robot_service.cpp")],
     "ws_origin_test.cpp": [],
+    "fs_paths_test.cpp": [],
     "app_network_settings_test.cpp": [],
     "dns_reply_test.cpp": [],
     "imu_math_test.cpp": [],

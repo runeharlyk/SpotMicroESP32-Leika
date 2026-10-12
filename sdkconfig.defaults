@@ -16,6 +16,11 @@ CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=16
 # A new firmware boots on probation and rolls back unless it accepts a socket client first (ota_flash.h)
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 
+# Sockets: httpd takes up to 10 (sessions plus its own, see MAX_SESSIONS in webserver.cpp) and the access point's DNS
+# server one; at the default of 10, with the access point up, a seventh session could not be accepted. mDNS uses raw
+# lwIP and needs none.
+CONFIG_LWIP_MAX_SOCKETS=16
+
 # mDNS
 CONFIG_MDNS_MAX_SERVICES=10
 
@@ -50,6 +55,10 @@ CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
 # without that partition (default_8MB.csv) only log that there is none
 CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+
+# A task the watchdog watches (the control and sensor tasks, and the idle tasks) that stops for 5 s restarts the
+# board, which puts the PCA9685 to sleep, instead of only logging while the legs hold their last pose
+CONFIG_ESP_TASK_WDT_PANIC=y
 
 # Partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y

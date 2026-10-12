@@ -167,14 +167,7 @@ bool WiFiClass::mode(wifi_mode_t m) {
     return false;
 }
 
-wifi_mode_t WiFiClass::getMode() {
-    if (!_initialized) return WIFI_MODE_NULL;
-    wifi_mode_t m;
-    if (esp_wifi_get_mode(&m) == ESP_OK) {
-        return m;
-    }
-    return WIFI_MODE_NULL;
-}
+wifi_mode_t WiFiClass::getMode() { return _mode; }
 
 bool WiFiClass::begin(const char* ssid, const char* password, int32_t channel, const uint8_t* bssid) {
     if (!_initialized) init();

@@ -7,6 +7,7 @@
 namespace FileSystem {
 // The settings file cannot be written on the host; the service keeps working from memory.
 bool mkdirRecursive(const char *) { return false; }
+bool replaceFile(const char *, const char *) { return false; }
 } // namespace FileSystem
 
 static int failures = 0;

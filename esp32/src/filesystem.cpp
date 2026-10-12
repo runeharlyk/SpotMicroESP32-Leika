@@ -160,4 +160,8 @@ bool mkdirRecursive(const char *path) {
     return true;
 }
 
+// LittleFS commits a rename over an existing file as one metadata update. Removing `to` first when this fails would
+// trade a refused write for lost settings.
+bool replaceFile(const char *from, const char *to) { return rename(from, to) == 0; }
+
 } // namespace FileSystem

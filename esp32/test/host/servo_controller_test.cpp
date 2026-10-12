@@ -5,6 +5,7 @@
 
 namespace FileSystem {
 bool mkdirRecursive(const char *) { return true; }
+bool replaceFile(const char *, const char *) { return false; }
 } // namespace FileSystem
 
 static int failures = 0;
