@@ -58,6 +58,10 @@ class RobotDisconnected(RobotError):
     pass
 
 
+class GoalCancelled(RobotError):
+    """A goal the robot ended early: a cancel, the app's sticks, a mode or gait change, or a newer goal."""
+
+
 class UnknownVariant(RobotError):
     pass
 
@@ -74,5 +78,9 @@ class Backend(Protocol):
     def calibrate(self) -> Calibration: ...
     def odometry(self) -> Odometry: ...
     def reset_odometry(self) -> Odometry: ...  # starts afresh; returns where it had got to
+    def supports_goals(self) -> bool: ...  # whether the robot drives goal moves itself
+    # One target, the others zero; speed 0 to 1 of the gait's top. Returns once reached, else raises GoalCancelled or
+    # RobotTimeout.
+    def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None: ...
     def now(self) -> float: ...
     def sleep(self, seconds: float) -> None: ...

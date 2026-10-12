@@ -1,4 +1,9 @@
-"""Distance and turn motions, written once against the Robot's velocity, state and clock."""
+"""Distance and turn motions, written once against the Robot's velocity, state and clock, or its goal moves.
+
+A robot that takes goal moves walks a distance itself, closed on its odometry, so a WiFi stall that trips the dead-man
+stop no longer cuts the move short. A turn goes the same way, then closes the rest on the measured yaw: the odometry's
+yaw counts what the gait commanded and lands off by its error, the IMU's does not.
+"""
 import math
 
 from .backends.base import RobotError, RobotTimeout
@@ -23,6 +28,9 @@ def move(robot, forward: float, sideways: float, speed: float | None) -> None:
     v = speed if speed is not None else (top.vx if sideways == 0 else top.vy) / 2
     if v <= 0:
         raise ValueError(f"a move needs a positive speed, not {v}")
+    if robot.supports_goals():
+        robot.goal_move(forward, sideways, 0.0, min(1.0, v / (top.vx if sideways == 0 else top.vy)))
+        return
     drops = robot.state().link_drops
     commanded = robot.set_velocity(v * forward / distance, v * sideways / distance, 0.0)
     robot.sleep(distance / math.hypot(commanded.vx, commanded.vy))
@@ -40,6 +48,14 @@ def rotate(robot, degrees: float, rate: float | None) -> None:
     top = rate if rate is not None else robot.max_velocity().yaw_rate / 2
     if top <= 0:
         raise ValueError(f"a turn needs a positive rate, not {top}")
+    if robot.supports_goals():
+        start = robot.state().yaw
+        robot.goal_move(turn_deg=degrees, speed=min(1.0, top / robot.max_velocity().yaw_rate))
+        robot.sleep(SETTLE_S)
+        missed = (start + degrees - robot.state().yaw + 180) % 360 - 180  # the goal lands well within half a turn
+        if abs(missed) <= TOLERANCE_DEG:
+            return
+        degrees = missed
     expected = math.radians(abs(degrees)) / top + math.radians(SLOW_DOWN_DEG) / (MIN_RATE_FRACTION * top)
     start = robot.time()
     last = robot.state().yaw

@@ -111,6 +111,40 @@ def test_an_exception_stops_and_rests():
     assert backend.closed
 
 
+# A robot that takes goals walks the move itself: nothing for a WiFi stall to cut short.
+def test_a_move_on_a_robot_that_takes_goals_is_one_goal_at_the_same_speed():
+    robot, backend = _robot(goal_scale=1.0)
+    robot.stand()
+    robot.move_forward(0.5)
+    robot.move_sideways(-0.1, speed=0.12)
+    assert backend.goals == [(0.5, 0.0, 0.0, 0.5), (0.0, -0.1, 0.0, 1.0)]
+    assert [v for _, v in backend.commands if v != ZERO] == []
+    assert (backend.x, backend.y) == pytest.approx((0.5, -0.1))
+
+
+# The goal's turn lands off by the odometry's error; the measured yaw closes the rest.
+def test_a_turn_on_a_robot_that_takes_goals_closes_the_rest_on_the_yaw():
+    robot, backend = _robot(goal_scale=1.15, yaw=170.0)
+    robot.stand()
+    robot.rotate(90, rate=0.3)
+    assert backend.goals == [(0.0, 0.0, 90, pytest.approx(0.25))]
+    assert backend.yaw - 170 == pytest.approx(90, abs=3)
+    assert any(v.yaw_rate < 0 for _, v in backend.commands)  # it turned back the 13.5 degrees it overshot
+    start = backend.yaw
+    robot.rotate(-30)
+    assert backend.yaw - start == pytest.approx(-30, abs=3)
+
+
+# One within the tolerance needs no trim.
+def test_a_goal_turn_that_lands_needs_no_trim():
+    robot, backend = _robot(goal_scale=1.02)
+    robot.stand()
+    commands = len(backend.commands)
+    robot.rotate(90)
+    assert backend.yaw == pytest.approx(91.8)
+    assert len(backend.commands) == commands
+
+
 def _sim_position(backend):
     a = backend.sim.base_qposadr
     return MODEL_TO_REP @ backend.sim.data.qpos[a : a + 3]

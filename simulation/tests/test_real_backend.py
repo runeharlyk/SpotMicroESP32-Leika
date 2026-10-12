@@ -5,7 +5,9 @@ import time
 import pytest
 
 from fake_robot import FakeRobot
-from src.leika import Gait, Mode, Odometry, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
+from src.leika import (
+    Gait, GoalCancelled, Mode, Odometry, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant,
+)
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
@@ -157,3 +159,80 @@ def test_odometry_is_read_in_degrees_and_a_reset_returns_where_it_had_got_to(rob
     assert robot.odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
     assert robot.reset_odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
     assert robot.odometry() == Odometry(0.0, 0.0, 0.0, 0.0)
+
+
+def _goal_moves(fake):
+    return [m.correlation_request.goal_move for _, m in fake.received
+            if m.WhichOneof("message") == "correlation_request" and m.correlation_request.HasField("goal_move")]
+
+
+def test_a_goal_move_is_sent_once_and_returns_when_the_robot_reports_it_reached(robot, fake):
+    assert robot.supports_goals()
+    robot.stand()
+    started = time.monotonic()
+    robot.goal_move(turn_deg=-45, speed=0.7)
+    assert time.monotonic() - started >= fake.goal_s
+    [move] = _goal_moves(fake)
+    assert (move.forward_m, move.sideways_m, move.turn_deg, move.speed) == pytest.approx((0, 0, -45, 0.7))
+    assert fake.inputs()[-1][1].left.y == 0  # the robot walks it: no sticks, no keep-alive
+    assert "goal_status" in [_sub_tag_name(m) for _, m in fake.received if m.WhichOneof("message") == "sub_notif"]
+
+
+def _sub_tag_name(message):
+    return pb.Message.DESCRIPTOR.fields_by_number[message.sub_notif.tag].name
+
+
+# A broadcast that never arrives still ends the wait: the client asks for the status itself.
+def test_a_goal_whose_end_was_not_heard_is_asked_after(robot, fake, monkeypatch):
+    monkeypatch.setattr(real, "GOAL_POLL_S", 0.2)
+    fake.goal_quiet = True
+    robot.stand()
+    robot.goal_move(forward=0.1)
+    assert fake.goal.state == pb.GOAL_REACHED
+
+
+def test_a_goal_the_robot_gives_up_or_cancels_raises(robot, fake):
+    robot.stand()
+    fake.goal_end = pb.GOAL_TIMED_OUT
+    with pytest.raises(RobotTimeout):
+        robot.goal_move(forward=0.1)
+    fake.goal_end = pb.GOAL_CANCELLED
+    with pytest.raises(GoalCancelled):
+        robot.goal_move(sideways=0.1)
+
+
+def test_a_goal_the_robot_refuses_raises(robot, fake):
+    robot.stand()
+    fake.status = 409
+    with pytest.raises(RobotError):
+        robot.goal_move(forward=0.1)
+
+
+def test_an_interrupted_goal_is_cancelled_on_the_robot(robot, fake, monkeypatch):
+    robot.stand()
+    fake.goal_s = 5.0
+
+    def interrupt(goal):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(robot._backend, "_await_goal", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        robot.goal_move(forward=0.1)
+    _eventually(lambda: fake.goal.state == pb.GOAL_CANCELLED)
+
+
+def test_a_firmware_without_goals_moves_host_side():
+    fake = FakeRobot(goals=False)
+    try:
+        client = Robot(backend=RealBackend(f"127.0.0.1:{fake.port}"))
+        client.connect()
+        try:
+            assert not client.supports_goals()
+            client.stand()
+            client.move_forward(0.01, speed=0.05)
+            assert _goal_moves(fake) == []
+            assert any(data.left.y > 0 for _, data in fake.inputs())
+        finally:
+            client.close()
+    finally:
+        fake.stop()
