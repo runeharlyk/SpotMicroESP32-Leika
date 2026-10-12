@@ -6,6 +6,8 @@ import pytest
 
 from fake_robot import FakeRobot
 from src.leika import Gait, Mode, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
+from src.leika.backends.base import Velocity
+from src.leika import speed_model
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
@@ -41,7 +43,7 @@ def test_connecting_reads_the_variant_and_the_state(robot):
     assert state.mode is Mode.DEACTIVATED
     assert (state.roll, state.yaw) == pytest.approx((math.degrees(0.1), math.degrees(1.0)))
     assert state.joints[0] == pytest.approx(math.degrees(0.5))
-    assert robot.max_velocity().vx == pytest.approx(0.8 * 0.12 * 1.0 / 0.75)
+    assert robot.max_velocity() == speed_model.max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, 0.7)
 
 
 def test_an_unknown_variant_is_refused():
@@ -80,15 +82,16 @@ def test_a_mode_the_robot_never_reports_times_out(monkeypatch):
 
 def test_a_velocity_walks_with_a_keep_alive_and_a_stop_is_sent_once(robot, fake):
     robot.stand()
-    commanded = robot.set_velocity(0.064, 0.0, -0.5)
+    commanded = robot.set_velocity(0.04, 0.0, -0.3)
     assert fake.mode == pb.WALK
     robot.sleep(0.6)
     moving = [(t, data) for t, data in fake.inputs() if data.left.y]
     assert len(moving) >= 5
     assert max(b - a for (a, _), (b, _) in zip(moving, moving[1:])) < 0.15
     _, data = moving[-1]
-    assert (data.left.y, data.right.x) == pytest.approx((0.5, 0.5 * 0.75))
-    assert (commanded.vx, commanded.yaw_rate) == pytest.approx((0.064, -0.5))
+    sticks = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(0.04, 0.0, -0.3), 0.7)
+    assert (data.left.y, data.right.x) == pytest.approx((sticks.ly, sticks.rx))
+    assert (commanded.vx, commanded.yaw_rate) == pytest.approx((0.04, -0.3))
     robot.stop()
     _eventually(lambda: fake.inputs()[-1][1].left.y == 0)
     before = len(fake.inputs())
@@ -137,8 +140,10 @@ def test_a_gait_change_keeps_the_velocity(robot, fake):
     robot.stand()
     robot.set_velocity(0.02, 0, 0)
     robot.set_gait(Gait.CRAWL)
-    crawl_per_stick = 0.8 * 0.12 * 0.25 / 0.85
-    _eventually(lambda: fake.inputs()[-1][1].left.y == pytest.approx(0.02 / crawl_per_stick, rel=1e-3))
+    crawl = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.CRAWL, Velocity(0.02, 0.0, 0.0), 0.7)
+    trot = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(0.02, 0.0, 0.0), 0.7)
+    assert crawl.ly != pytest.approx(trot.ly, rel=1e-3)
+    _eventually(lambda: fake.inputs()[-1][1].left.y == pytest.approx(crawl.ly, rel=1e-3))
 
 
 # A stall shorter than a batch trips and clears the dead-man between two newest ticks: it must still be counted.
