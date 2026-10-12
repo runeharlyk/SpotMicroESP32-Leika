@@ -26,6 +26,8 @@ command [vx, vy, yaw]  ->  analytic_gait_action  ->  firmware gait (phase clock,
 
 - `src/robot/firmware_gait.py` - NumPy port of `esp32/include/motion_states/walk_state.h` + spot_pico analytic IK
   (verified to 0.0 mm against MuJoCo forward kinematics) + command-to-gait map.
+- `src/robot/stand_compensation.py` - port of the stand state's IMU levelling (`motion_states/state.h`), used by the
+  simulation backend in STAND; `src/sim/slope_stand.py` stands the robot on a tilted floor with it.
 - `src/sim/mj_runtime.py` — MuJoCo runtime wrapper (load model, IK→ctrl, IMU/contacts).
 - `src/sim/domain_rand.py` — per-episode/step domain randomization for sim-to-real.
 - `src/sim/terrain.py` - per-episode heightfield ground for `scene_terrain.xml`: random bumps, a slope or stairs.
@@ -68,6 +70,8 @@ uv run python generate_scenes.py          # regenerate the spot_micro and yertle
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
 uv run python fit_pico_joint_map.py       # fit the Pico's firmware-to-MJCF joint map for the web app (app/src/lib/simulation/robots.ts)
 uv run python check_animation.py          # play the built-in clips on the Pico from the firmware's animation trace: clamps, servo speed, knocks, tips, falls
+uv run python check_stand_level.py        # does the stand's IMU levelling reduce the tilt on a slope, for either +z side
+uv run python check_rise.py               # does the stand's IMU levelling tip the body on the rise from REST
 
 uv run pytest -q                                                    # regression tests
 ```

@@ -7,12 +7,10 @@ import mujoco
 import numpy as np
 
 from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, RobotError, RobotState, Velocity
-
-# The model's axes are +X left, +Y rear, +Z up; REP-103 is forward, left, up.
-MODEL_TO_REP = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 
 
 class SimBackend:
@@ -23,6 +21,7 @@ class SimBackend:
         set_mode(self._gait, TROT)
         self._controller = GaitController()
         self._body = BodyState()
+        self._levelling = StandCompensation()
         self._mode = Mode.REST
         self._velocity = ZERO
         self._t = 0.0
@@ -48,13 +47,17 @@ class SimBackend:
             self._step()
             time.sleep(max(0.0, CONTROL_DT - (time.monotonic() - start)))
 
-    # One control tick: the gait follows the velocity while walking, as the firmware's does, and holds still otherwise.
+    # One control tick: the gait follows the velocity while walking, as the firmware's does, and holds still otherwise;
+    # in STAND the body levels itself against the IMU's tilt, as the firmware's stand state does.
     def _step(self) -> None:
         with self._lock:
             v = self._velocity if self._mode is Mode.WALK else ZERO
             analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
             self._controller.advance_phase(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
+            roll, pitch = imu_roll_pitch(self.sim.base_quat())
+            omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
+            apply_firmware_attitude(self._body, omega, psi)
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
             self.sim.step_physics()
             self._t += CONTROL_DT
@@ -71,6 +74,8 @@ class SimBackend:
 
     def set_mode(self, mode: Mode) -> None:
         with self._lock:
+            if mode is not self._mode:
+                self._levelling.reset()
             self._mode = mode
 
     # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it

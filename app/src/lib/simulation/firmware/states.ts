@@ -14,6 +14,9 @@ export interface CommandMsg {
 }
 
 const SMOOTHING_OMEGA = CriticalDamper.omegaFor(0.333)
+// IMU_INTEGRAL_GAIN (1/s) and MAX_INTEGRATION_DT (s) of motion_states/state.h.
+const IMU_INTEGRAL_GAIN = 1
+const MAX_INTEGRATION_DT = 0.05
 // FEET_EASE_S of motion_states/state.h.
 const FEET_EASE_S = 0.5
 const clamp = (value: number, low: number, high: number) =>
@@ -29,6 +32,8 @@ export abstract class MotionState {
     protected target: BodyState
     protected omegaOffset = 0
     protected psiOffset = 0
+    protected omegaIntegral = 0
+    protected psiIntegral = 0
     protected bodyDampers = MotionState.bodyDampers()
     private feetFrom: number[][] = []
     private feetEasedS = 0
@@ -48,6 +53,8 @@ export abstract class MotionState {
 
     resetSmoothing() {
         this.bodyDampers = MotionState.bodyDampers()
+        this.omegaIntegral = 0
+        this.psiIntegral = 0
         this.feetCaptured = false
         this.feetEasedS = 0
     }
@@ -67,26 +74,58 @@ export abstract class MotionState {
     handleCommand() {}
     abstract step(body: BodyState, dt: number): void
 
+    /** levelTarget (motion_states/state.h): [attitude target, new integral], with anti-windup. */
+    private static levelTarget(
+        target: number,
+        offset: number,
+        integral: number,
+        limit: number,
+        dt: number
+    ): [number, number] {
+        const error = target - offset
+        const raw = error + integral
+        if (!(Math.abs(raw) >= limit && raw * error > 0))
+            integral = clamp(
+                integral + IMU_INTEGRAL_GAIN * error * Math.min(dt, MAX_INTEGRATION_DT),
+                -limit,
+                limit
+            )
+        return [clamp(error + integral, -limit, limit), integral]
+    }
+
     protected smoothToBody(body: BodyState, dt: number, imuCompensate = false) {
-        const { follow } = MotionState
+        const { follow, levelTarget } = MotionState
         const dampers = this.bodyDampers
         body.xm = follow(dampers.xm, body.xm, this.target.xm, dt)
         body.ym = follow(dampers.ym, body.ym, this.target.ym, dt)
         body.zm = follow(dampers.zm, body.zm, this.target.zm, dt)
         body.phi = follow(dampers.phi, body.phi, this.target.phi, dt)
-        const compensate = imuCompensate ? 1 : 0
-        const targetPsi = clamp(
-            this.target.psi - compensate * this.psiOffset,
-            -this.cfg.maxPitch,
-            this.cfg.maxPitch
-        )
-        const targetOmega = clamp(
-            this.target.omega - compensate * this.omegaOffset,
-            -this.cfg.maxRoll,
-            this.cfg.maxRoll
-        )
+        const { maxPitch, maxRoll } = this.cfg
+        let targetPsi = clamp(this.target.psi, -maxPitch, maxPitch)
+        let targetOmega = clamp(this.target.omega, -maxRoll, maxRoll)
+        if (imuCompensate) {
+            ;[targetPsi, this.psiIntegral] = levelTarget(
+                this.target.psi,
+                this.psiOffset,
+                this.psiIntegral,
+                maxPitch,
+                dt
+            )
+            ;[targetOmega, this.omegaIntegral] = levelTarget(
+                this.target.omega,
+                this.omegaOffset,
+                this.omegaIntegral,
+                maxRoll,
+                dt
+            )
+        }
         body.psi = follow(dampers.psi, body.psi, targetPsi, dt)
         body.omega = follow(dampers.omega, body.omega, targetOmega, dt)
+    }
+
+    /** takeoverSettled (motion_states/state.h): the stand's IMU compensation holds until the feet are eased in. */
+    protected takeoverSettled() {
+        return this.feetEasedS >= FEET_EASE_S
     }
 
     protected updateFeet(body: BodyState) {
@@ -144,7 +183,7 @@ export class StandState extends MotionState {
     }
 
     step(body: BodyState, dt: number) {
-        this.smoothToBody(body, dt, true)
+        this.smoothToBody(body, dt, this.takeoverSettled())
         this.easeFeet(body, dt)
     }
 }
