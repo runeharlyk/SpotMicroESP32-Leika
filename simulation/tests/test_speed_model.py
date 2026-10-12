@@ -45,7 +45,10 @@ def test_the_leg_lengths_are_the_firmwares(variant):
 
 # A stance foot is fixed on the ground, so in the body frame it moves as -(v + w x r): the stance feet's motion in the
 # trace is the body velocity the firmware commands. Stance is most of each cycle at constant speed, so the median of a
-# foot's velocity is its stance velocity. The trace's body frame is x forward, y up, z right; REP-103 is x, -z.
+# foot's velocity is its stance velocity. The trace's body frame is x forward, y up, z left; REP-103 is x, z. The trace
+# cannot tell z left from right (mirroring it flips the model's lateral and yaw signs alike), so the side is from the robot:
+# state.h's IMU offsets, measured on the Pico, have a positive omega tilt the body's top to +z and lower REP-103 roll, and
+# the app's keys strafe left on a = -lx and turn left on ArrowLeft = +rx.
 @pytest.mark.parametrize("variant", VARIANTS)
 def test_the_model_is_the_body_velocity_the_stance_feet_imply(variant):
     trace = _trace(variant)
@@ -56,9 +59,9 @@ def test_the_model_is_the_body_velocity_the_stance_feet_imply(variant):
         feet = np.array([t["body"]["feet"] for t in ticks])
         velocity = np.diff(feet, axis=0) / trace["dt"]
         for leg in range(4):
-            x, y = rest[leg, 0], -rest[leg, 2]
+            x, y = rest[leg, 0], rest[leg, 2]
             expected = (-(model.vx - model.yaw_rate * y), -(model.vy + model.yaw_rate * x))
-            measured = (np.median(velocity[:, leg, 0]), -np.median(velocity[:, leg, 2]))
+            measured = (np.median(velocity[:, leg, 0]), np.median(velocity[:, leg, 2]))
             scale = max(abs(expected[0]), abs(expected[1]))
             assert measured == pytest.approx(expected, abs=0.02 * scale + 1e-4), (gait, cmd, leg)
         checked += 1
@@ -74,7 +77,7 @@ def test_sticks_invert_the_model():
 def test_sticks_clamp_and_report_what_the_gait_can_do():
     top = max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT)
     assert top.vx == pytest.approx(max_step_length("SPOTMICRO_ESP32_MINI") * 1.0 / 0.75)
-    sticks = sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(10 * top.vx, 0, -10 * top.yaw_rate))
+    sticks = sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, Velocity(10 * top.vx, 0, 10 * top.yaw_rate))
     assert (sticks.ly, sticks.rx) == (1.0, 1.0)
 
 

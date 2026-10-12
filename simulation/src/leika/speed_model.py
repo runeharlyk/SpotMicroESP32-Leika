@@ -1,9 +1,10 @@
 """The firmware walk gait's velocity (esp32/include/motion_states/walk_state.h), for driving the real robot.
 
-The sticks set the stroke: step_x = ly * max_step_length, step_z = -lx * max_step_length, step_angle = rx. A stance sweeps
-each foot through the stroke in the stance part of the cycle (duty), and the body moves at the stance feet's speed, so
-vx = step_x * rate / duty. The cycle rate is max(s, 0.5) * speed_factor; the client holds s at 0.5, the slowest the gait
-allows, since faster cycles make the swings outrun the servos.
+The sticks set the stroke: step_x = ly * max_step_length, step_z = -lx * max_step_length, step_angle = rx, in the
+firmware's body frame (x forward, y up, z left), so a stick to the right strafes right and a positive rx turns left. A
+stance sweeps each foot through the stroke in the stance part of the cycle (duty), and the body moves at the stance
+feet's speed, so vx = step_x * rate / duty. The cycle rate is max(s, 0.5) * speed_factor; the client holds s at 0.5,
+the slowest the gait allows, since faster cycles make the swings outrun the servos.
 """
 import re
 from dataclasses import dataclass
@@ -51,13 +52,13 @@ def _per_stick(variant: str, gait: Gait) -> tuple[float, float]:
 
 def velocity_of(variant: str, gait: Gait, sticks: Sticks) -> Velocity:
     linear, angular = _per_stick(variant, gait)
-    return Velocity(sticks.ly * linear, sticks.lx * linear, -sticks.rx * angular)
+    return Velocity(sticks.ly * linear, -sticks.lx * linear, sticks.rx * angular)
 
 
 def sticks_for(variant: str, gait: Gait, velocity: Velocity) -> Sticks:
     linear, angular = _per_stick(variant, gait)
     clamp = lambda value: max(-1.0, min(1.0, value))
-    return Sticks(clamp(velocity.vy / linear), clamp(velocity.vx / linear), clamp(-velocity.yaw_rate / angular))
+    return Sticks(clamp(-velocity.vy / linear), clamp(velocity.vx / linear), clamp(velocity.yaw_rate / angular))
 
 
 def max_velocity(variant: str, gait: Gait) -> Velocity:

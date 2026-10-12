@@ -80,15 +80,16 @@ def test_a_mode_the_robot_never_reports_times_out(monkeypatch):
 
 def test_a_velocity_walks_with_a_keep_alive_and_a_stop_is_sent_once(robot, fake):
     robot.stand()
-    commanded = robot.set_velocity(0.064, 0.0, -0.5)
+    commanded = robot.set_velocity(0.064, 0.032, -0.5)
     assert fake.mode == pb.WALK
     robot.sleep(0.6)
     moving = [(t, data) for t, data in fake.inputs() if data.left.y]
     assert len(moving) >= 5
     assert max(b - a for (a, _), (b, _) in zip(moving, moving[1:])) < 0.15
     _, data = moving[-1]
-    assert (data.left.y, data.right.x) == pytest.approx((0.5, 0.5 * 0.75))
-    assert (commanded.vx, commanded.yaw_rate) == pytest.approx((0.064, -0.5))
+    # The firmware strafes right on a positive left.x and turns left on a positive right.x.
+    assert (data.left.x, data.left.y, data.right.x) == pytest.approx((-0.25, 0.5, -0.5 * 0.75))
+    assert (commanded.vx, commanded.vy, commanded.yaw_rate) == pytest.approx((0.064, 0.032, -0.5))
     robot.stop()
     _eventually(lambda: fake.inputs()[-1][1].left.y == 0)
     before = len(fake.inputs())
