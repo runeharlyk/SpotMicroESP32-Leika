@@ -68,10 +68,9 @@ jobs:
         with:
           python-version: "3.13"
 
-      # Core 6.2 requires SCons 4.11, which dropped SCons.Tool.FortranCommon that the pinned
-      # pioarduino release (esp32-p4) still imports.
+      # The esp32-p4's pioarduino release requires core 6.2, whose SCons 4.11 an older pioarduino could not import.
       - name: Install PlatformIO and build script dependencies
-        run: pip install "platformio==6.1.19" protobuf grpcio-tools -r esp32/scripts/requirements.txt
+        run: pip install "platformio==6.2.0" protobuf grpcio-tools -r esp32/scripts/requirements.txt
 
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
