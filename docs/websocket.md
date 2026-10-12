@@ -127,6 +127,36 @@ A failed request, the client's socket closing, or 30 s without a chunk ends the 
 The new firmware boots on probation and confirms itself when the first socket client connects; a reset before that rolls back to the previous firmware.
 After the reconnect the app compares `firmware_elf_sha256` in the features with the image's to tell the new firmware from a rollback.
 
+## Crash dump
+
+On a panic the robot writes an ELF core dump to its `coredump` partition before it resets (`CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH`).
+The dump stays until it is erased or the next crash replaces it; the partition tables without a `coredump` partition (`default_8MB.csv`) keep none.
+The app's System Status page shows it as Last Crash, with buttons to download and erase it.
+
+1. `core_dump_request` is answered with a `core_dump_report`: whether the partition exists, whether a dump is stored and its size.
+   When the dump's checksum holds, the report also carries the summary `esp_core_dump_get_summary` reads from it: the task that crashed, the PC, the exception cause and address, up to 16 backtrace addresses (Xtensa only; a RISC-V dump holds the stack instead), the ELF SHA-256 of the firmware that crashed, and the message an abort, an assert or a watchdog leaves.
+2. `core_dump_download` streams the dump as a file download, over the WebSocket only: a 202 reply, then `fs_download_metadata`, `fs_download_data` chunks of up to 16 KiB and `fs_download_complete`.
+   Each chunk is read from flash as it is sent, so a board without PSRAM never holds the whole dump.
+   The bytes are the partition's from its first one, header and checksum included: the format esp-coredump calls raw.
+3. `core_dump_erase` erases the partition and is answered with the report that follows.
+   It is refused with 409 unless the robot is deactivated, since erasing flash stalls everything that runs from it, the control loop included.
+
+### Decoding a dump
+
+Decoding needs the ELF of the firmware that crashed.
+Its SHA-256 is the report's `app_elf_sha256`, which `sha256sum firmware.elf` reproduces; the app warns when it differs from the running firmware's `firmware_elf_sha256`.
+A PlatformIO build leaves the ELF at `.pio/build/<env>/firmware.elf`; the releases publish only the `.bin` images, so a crash in a release firmware needs a build of the same commit, and only a build whose hash matches decodes reliably.
+
+esp-coredump comes with PlatformIO's ESP-IDF platform (`~/.platformio/penv/Scripts/esp-coredump`) and is on PyPI as `esp-coredump`.
+It runs the toolchain's GDB, which PlatformIO keeps in `~/.platformio/packages/tool-xtensa-esp-elf-gdb/bin` (`tool-riscv32-esp-elf-gdb` for the ESP32-P4):
+
+```sh
+esp-coredump info_corefile --core coredump-1a2b3c4d.bin --core-format raw     --gdb ~/.platformio/packages/tool-xtensa-esp-elf-gdb/bin/xtensa-esp32-elf-gdb     .pio/build/esp32-s3-n8r2/firmware.elf
+```
+
+It prints the crashed task's registers and backtrace with source lines, then every task's stack; `dbg_corefile` instead of `info_corefile` opens the dump in GDB.
+In an ESP-IDF build of the project, `idf.py coredump-info --core coredump-1a2b3c4d.bin` does the same against the build's own ELF.
+
 ## Examples
 
 Send controller input with the app's socket store:
