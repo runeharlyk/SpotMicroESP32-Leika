@@ -5,7 +5,7 @@ import time
 import pytest
 
 from fake_robot import FakeRobot
-from src.leika import Gait, Mode, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
+from src.leika import Gait, Mode, Odometry, Robot, RobotDisconnected, RobotError, RobotTimeout, UnknownVariant
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
@@ -151,3 +151,9 @@ def test_a_dead_man_stop_between_two_reads_is_counted(robot, fake):
 def test_calibration_returns_the_robots_result(robot):
     result = robot.calibrate()
     assert (result.still, result.levelled, result.tilt_deg) == (True, True, pytest.approx(4.2))
+
+
+def test_odometry_is_read_in_degrees_and_a_reset_returns_where_it_had_got_to(robot):
+    assert robot.odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
+    assert robot.reset_odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
+    assert robot.odometry() == Odometry(0.0, 0.0, 0.0, 0.0)

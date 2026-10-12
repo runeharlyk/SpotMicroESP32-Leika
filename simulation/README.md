@@ -93,6 +93,8 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
 
 - `stand`, `rest`, `deactivate` and `set_gait` set the mode, `set_velocity` and `stop` drive, and `move_forward`, `move_sideways` and `rotate` move a distance or an angle.
 - `state`, `calibrate` and `max_velocity` read from the robot.
+- `odometry` reads the robot's dead reckoning since the last `reset_odometry` or deactivation (metres, yaw in degrees), and `reset_odometry` starts it afresh.
+  It counts the steps the gait commanded: the simulation covers about 11 to 15 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
 - Leaving the `with` block, on an exception or Ctrl-C included, stops the robot and lets it rest.
   A robot the user deactivated stays deactivated, and the robot never deactivates on its own.
 - The real robot is driven over its WebSocket (`ws://<host>/api/ws`).

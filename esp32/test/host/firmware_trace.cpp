@@ -1,9 +1,11 @@
 // Replays a fixed control script through the firmware's own motion code and prints the result as
-// JSON, so the web app's TypeScript port (app/src/lib/simulation/firmware) can be pinned to it.
+// JSON, so the web app's TypeScript port (app/src/lib/simulation/firmware) can be pinned to it, and the
+// simulation's port of the odometry (simulation/src/robot/firmware_odometry.py) too.
 // Run once per kinematics variant by export_firmware_traces.py, which passes the variant's name.
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <odometry.h>
 #include <variant.h>
 #include <motion_states/rest_state.h>
 #include <motion_states/stand_state.h>
@@ -49,6 +51,8 @@ struct Motion {
     Kinematics kinematics;
     MotionState *state = nullptr;
     body_state_t body;
+    std::array<bool, 4> stance {};
+    KinematicOdometry odometry;
     float new_angles[12] = {0};
     float angles[12] = {0};
     const float dir[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
@@ -81,6 +85,8 @@ struct Motion {
         imu.rpy = {imu_x, imu_y, 0};
         state->updateImuOffsets(imu);
         state->step(body, DT);
+        stance = state == &walk ? walk.stance() : std::array<bool, 4> {true, true, true, true};
+        odometry.update(body, stance);
         kinematics.calculate_inverse_kinematics(body, new_angles);
         for (int i = 0; i < 12; i++) {
             const float angle = new_angles[i] * dir[i];
@@ -148,7 +154,11 @@ int main(int argc, char **argv) {
                 printFloats(b.feet[leg], 3);
                 printf("]");
             }
-            printf("]},\"ik\":[");
+            printf("]},\"stance\":[%d,%d,%d,%d],", motion.stance[0], motion.stance[1], motion.stance[2],
+                   motion.stance[3]);
+            const OdometryEstimate &o = motion.odometry.estimate();
+            printf("\"odometry\":{\"x\":%.9g,\"y\":%.9g,\"yaw\":%.9g,\"distance\":%.9g},", o.x, o.y, o.yaw, o.distance);
+            printf("\"ik\":[");
             printFloats(motion.new_angles, 12);
             printf("],\"angles\":[");
             printFloats(motion.angles, 12);

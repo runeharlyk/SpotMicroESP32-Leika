@@ -1,4 +1,5 @@
-"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait, stepped at the control rate."""
+"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait and odometry, stepped at the
+control rate."""
 import math
 import threading
 import time
@@ -7,12 +8,15 @@ import mujoco
 import numpy as np
 
 from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...robot.firmware_odometry import KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ..constants import Gait, Mode
-from .base import ZERO, Calibration, RobotError, RobotState, Velocity
+from .base import ZERO, Calibration, Odometry, RobotError, RobotState, Velocity
 
 # The model's axes are +X left, +Y rear, +Z up; REP-103 is forward, left, up.
 MODEL_TO_REP = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+# The firmware's body frame is forward, up, right.
+MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]])
 
 
 class SimBackend:
@@ -23,6 +27,7 @@ class SimBackend:
         set_mode(self._gait, TROT)
         self._controller = GaitController()
         self._body = BodyState()
+        self._odometry = KinematicOdometry()
         self._mode = Mode.REST
         self._velocity = ZERO
         self._t = 0.0
@@ -55,6 +60,7 @@ class SimBackend:
             analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
             self._controller.advance_phase(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
+            self._odometry.update(self._body.feet @ MODEL_TO_FIRMWARE.T, self._controller.stance(self._gait))
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
             self.sim.step_physics()
             self._t += CONTROL_DT
@@ -72,6 +78,8 @@ class SimBackend:
     def set_mode(self, mode: Mode) -> None:
         with self._lock:
             self._mode = mode
+            if mode is Mode.DEACTIVATED:
+                self._odometry = KinematicOdometry()
 
     # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
     # reports, so a distance move would land far short.
@@ -118,3 +126,17 @@ class SimBackend:
 
     def calibrate(self) -> Calibration:
         return Calibration(still=True, levelled=True, tilt_deg=0.0)
+
+    def odometry(self) -> Odometry:
+        with self._lock:
+            return self._reported()
+
+    def reset_odometry(self) -> Odometry:
+        with self._lock:
+            reached = self._reported()
+            self._odometry.reset()
+            return reached
+
+    def _reported(self) -> Odometry:
+        e = self._odometry.estimate
+        return Odometry(x=e.x, y=e.y, yaw=math.degrees(e.yaw), distance=e.distance)

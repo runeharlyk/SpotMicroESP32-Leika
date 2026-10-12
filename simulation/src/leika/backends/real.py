@@ -13,7 +13,7 @@ import websockets
 from ...proto import message_pb2 as pb
 from .. import speed_model
 from ..constants import Gait, Mode
-from .base import ZERO, Calibration, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
+from .base import ZERO, Calibration, Odometry, RobotDisconnected, RobotError, RobotState, RobotTimeout, Velocity
 
 KEEPALIVE_S = 0.1
 MODE_TIMEOUT_S = 3.0
@@ -211,6 +211,17 @@ class RealBackend:
     def calibrate(self) -> Calibration:
         data = self._request(pb.CorrelationRequest(imu_calibrate_execute=pb.IMUCalibrateExecute())).imu_calibrate_data
         return Calibration(still=data.success, levelled=data.levelled, tilt_deg=data.tilt_deg)
+
+    # Asked for rather than read from telemetry: a batch in flight would still show the estimate from before a reset.
+    def odometry(self) -> Odometry:
+        return self._odometry(reset=False)
+
+    def reset_odometry(self) -> Odometry:
+        return self._odometry(reset=True)
+
+    def _odometry(self, reset: bool) -> Odometry:
+        data = self._request(pb.CorrelationRequest(odometry_request=pb.OdometryRequest(reset=reset))).odometry
+        return Odometry(x=data.x, y=data.y, yaw=math.degrees(data.yaw), distance=data.distance)
 
     def now(self) -> float:
         return time.monotonic()

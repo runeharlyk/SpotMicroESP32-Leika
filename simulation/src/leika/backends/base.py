@@ -29,6 +29,16 @@ class RobotState:
     link_drops: int  # dead-man stops since connecting, each counted once
 
 
+# Dead reckoning from the commanded feet since the last reset or deactivation, in the frame the robot faced then. It
+# counts the steps the gait commanded, so on the real robot it runs ahead of a tape measure.
+@dataclass(frozen=True)
+class Odometry:
+    x: float  # m forward
+    y: float  # m to the left
+    yaw: float  # degrees counter-clockwise, -180 to 180
+    distance: float  # m along the path
+
+
 @dataclass(frozen=True)
 class Calibration:
     still: bool  # the gyro bias was taken
@@ -62,5 +72,7 @@ class Backend(Protocol):
     def max_velocity(self) -> Velocity: ...
     def state(self) -> RobotState: ...
     def calibrate(self) -> Calibration: ...
+    def odometry(self) -> Odometry: ...
+    def reset_odometry(self) -> Odometry: ...  # starts afresh; returns where it had got to
     def now(self) -> float: ...
     def sleep(self, seconds: float) -> None: ...

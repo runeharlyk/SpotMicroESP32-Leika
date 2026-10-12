@@ -4,7 +4,7 @@ Velocities are REP-103 (forward, left, counter-clockwise) in m/s and rad/s; angl
 block, on an exception or Ctrl-C included, stops the robot and lets it rest; it never deactivates on its own.
 """
 from . import motions
-from .backends.base import ZERO, Backend, Calibration, RobotError, RobotState, Velocity
+from .backends.base import ZERO, Backend, Calibration, Odometry, RobotError, RobotState, Velocity
 from .constants import Gait, Mode
 
 # The modes a script may walk from. DEACTIVATED is the app's stop button, IDLE and CALIBRATION are the user's: walking
@@ -82,6 +82,14 @@ class Robot:
 
     def max_velocity(self) -> Velocity:
         return self._backend.max_velocity()
+
+    def odometry(self) -> Odometry:
+        """Where the robot's own dead reckoning puts it since the last reset or deactivation."""
+        return self._backend.odometry()
+
+    def reset_odometry(self) -> Odometry:
+        """Starts the dead reckoning afresh, and returns where it had got to."""
+        return self._backend.reset_odometry()
 
     def time(self) -> float:
         return self._backend.now()

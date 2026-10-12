@@ -1,7 +1,8 @@
-"""A robot on a local WebSocket: answers the variant and the calibration, reports its mode and gait in telemetry at
+"""A robot on a local WebSocket: answers the variant, the calibration and the odometry, reports its mode and gait in telemetry at
 10 Hz, and records what it receives. `obey=False` ignores mode changes; `silent=True` stops all sending. Replies carry
 status 200 as the firmware's do; `status` changes it."""
 import asyncio
+import math
 import threading
 import time
 
@@ -16,6 +17,7 @@ class FakeRobot:
         self.status = 200
         self.connections = 0
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
+        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75)
         self.received = []  # (monotonic time, Message)
         self._loop = asyncio.new_event_loop()
         self._socket = None
@@ -47,8 +49,13 @@ class FakeRobot:
 
     def _reply(self, request):
         response = pb.CorrelationResponse(correlation_id=request.correlation_id, status_code=self.status)
-        if request.WhichOneof("request") == "features_data_request":
+        kind = request.WhichOneof("request")
+        if kind == "features_data_request":
             response.features_data_response.variant = self.variant
+        elif kind == "odometry_request":
+            response.odometry.CopyFrom(self.odometry)
+            if request.odometry_request.reset:
+                self.odometry = pb.OdometryData()
         else:
             response.imu_calibrate_data.CopyFrom(pb.IMUCalibrateData(success=True, levelled=True, tilt_deg=4.2))
         return pb.Message(correlation_response=response)
