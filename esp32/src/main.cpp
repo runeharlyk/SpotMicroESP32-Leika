@@ -203,6 +203,7 @@ void setupEventSocket() {
     wsSocket.onClose([](int clientId) {
         FileSystemWS::fsHandler.dropClient(clientId);
         otaSession.drop(clientId);
+        motionService.inbox.dropClient(clientId);
     });
     wsSocket.onSubscribed([](int32_t tag, int clientId) {
         if (tag != socket_message_Message_telemetry_batch_tag) return;
@@ -548,7 +549,7 @@ void setupEventSocket() {
              if (motionService.mode() == socket_message_ModesEnum_DEACTIVATED) return refuse(409, "Stand up first");
              for (pb_size_t i = 0; i < play.params_count && i < anim::PARAM_MAX; i++)
                  request.params[request.paramCount++] = {static_cast<int>(play.params[i].id), play.params[i].value};
-             motionService.inbox.postPlay(request);
+             motionService.inbox.postPlay(request, client.link == &wsSocket ? client.id : -1);
          }},
 
         {socket_message_CorrelationRequest_animation_stop_tag,
