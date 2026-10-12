@@ -19,6 +19,7 @@ from src.robot.firmware_gait import (
     GaitState,
     firmware_joint_angles,
 )
+from src.leika import speed_model
 from src.leika.speed_model import MAX_KNEE_BEND_DEG, MIN_KNEE_BEND_DEG
 
 
@@ -115,13 +116,13 @@ def test_diagonal_trot_pairs_sweep_in_opposite_senses():
     assert sense[0] == -sense[1]
 
 
-def joint_speeds(dt=0.01, steps=300, **command):
+def joint_speeds(dt=0.01, steps=300, supply_volts=speed_model.DEFAULT_SUPPLY_VOLTS, **command):
     """Peak speed (deg/s) of the firmware's joints, the MINI's legs that walk_state.h caps, and cycles walked, through
-    step as the simulation drives it."""
+    step as the simulation drives it, with the servos at this supply."""
     gait = GaitState(**command)
     # Commanded and settled, so the smoothing holds the stroke.
     gait.target = np.array([gait.step_x, gait.step_z, gait.step_angle])
-    controller, body = GaitController(), BodyState()
+    controller, body = GaitController(supply_volts), BodyState()
     controller.generate_feet(gait, body)
     previous, peak, cycles = firmware_joint_angles(body.feet), 0.0, 0
     for _ in range(steps):
@@ -138,6 +139,14 @@ def joint_speeds(dt=0.01, steps=300, **command):
 def test_a_full_command_is_slowed_to_the_joint_speed_cap():
     peak, _ = joint_speeds(step_x=MAX_STEP_LENGTH, step_angle=1.0, step_velocity=1.0)
     assert MAX_JOINT_SPEED_DEG_S * 0.9 < peak <= MAX_JOINT_SPEED_DEG_S + 1e-9
+
+
+def test_a_lower_servo_supply_slows_a_full_command_to_its_lower_cap():
+    low_cap = speed_model.max_joint_speed(4.8)
+    peak, cycles = joint_speeds(step_x=MAX_STEP_LENGTH, step_angle=1.0, step_velocity=1.0, supply_volts=4.8)
+    _, nominal_cycles = joint_speeds(step_x=MAX_STEP_LENGTH, step_angle=1.0, step_velocity=1.0)
+    assert low_cap * 0.9 < peak <= low_cap + 1e-9
+    assert cycles < nominal_cycles
 
 
 def test_a_short_step_keeps_its_cadence():

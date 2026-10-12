@@ -1,5 +1,5 @@
-"""A robot on a local WebSocket or on a fake USB serial port: answers pings, the variant, the calibration, the
-peripheral settings and the odometry, reports its mode and gait in telemetry at 10 Hz, and records what it receives.
+"""A robot on a local WebSocket or on a fake USB serial port: answers pings, the variant, the servo supply
+(`supply_voltage`, 0 as a firmware from before it), the calibration, the peripheral settings and the odometry, reports its mode and gait in telemetry at 10 Hz, and records what it receives.
 `obey=False` ignores mode changes; `silent=True` stops all sending. Replies carry status 200 as the firmware's do;
 `status` changes it.
 
@@ -23,8 +23,10 @@ SERIAL_PORT = "COM99"
 
 
 class FakeRobot:
-    def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True, transport="websocket", goals=True):
+    def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True, transport="websocket", goals=True,
+                 supply_voltage=6.0):
         self.variant, self.obey, self.silent = variant, obey, False
+        self.supply_voltage = supply_voltage
         self.status = 200
         self.connections = 0
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
@@ -95,6 +97,8 @@ class FakeRobot:
             self.goal.state = pb.GOAL_CANCELLED
         elif kind == "features_data_request":
             response.features_data_response.variant = self.variant
+        elif kind == "servo_settings_request":
+            response.servo_settings.supply_voltage = self.supply_voltage
         elif kind in ("peripheral_settings_request", "peripheral_settings"):
             if kind == "peripheral_settings":
                 self.peripheral_settings.CopyFrom(request.peripheral_settings)

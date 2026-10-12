@@ -200,7 +200,8 @@ TROT, CRAWL = 0, 1
 # in a third of a second, without overshoot.
 SMOOTHING_OMEGA = 4.744 / 0.333
 
-# walk_state.h's cap on joint speed (deg/s, a quarter below the servos' 720 deg/s), and the parts of a tick it slows by.
+# walk_state.h's cap on joint speed at the default servo supply (deg/s, a quarter below the servos' 720 deg/s), and the
+# parts of a tick it slows by.
 MAX_JOINT_SPEED_DEG_S = speed_model.MAX_JOINT_SPEED_DEG_S
 SLOWDOWN_PARTS = 64
 
@@ -348,9 +349,10 @@ def _stroke(gait, radius):
 
 
 class GaitController:
-    """Port of WalkState gait generation (walk_state.h)."""
+    """Port of WalkState gait generation (walk_state.h), its joints capped as at this servo supply (volts)."""
 
-    def __init__(self):
+    def __init__(self, supply_volts: float = speed_model.DEFAULT_SUPPLY_VOLTS):
+        self.max_joint_speed = speed_model.max_joint_speed(supply_volts)
         self.phase = 0.0
         self.default_position = DEFAULT_FEET.copy()
         self.firmware_feet = FIRMWARE_FEET.copy()
@@ -364,7 +366,7 @@ class GaitController:
 
     def step(self, gait: GaitState, dt: float) -> None:
         """WalkState::step up to the feet: the stroke follows the command, then the phase advances, both by dt or by
-        the most 64ths of it the joints can follow at MAX_JOINT_SPEED_DEG_S; a jump not even a 64th keeps under the cap
+        the most 64ths of it the joints can follow at max_joint_speed; a jump not even a 64th keeps under the cap
         is walked at full time. The joints are the firmware's, of the MINI's legs (firmware_joint_angles), whose speed
         the Pico's servos follow; this port's body pose is applied only by the caller's IK."""
         start = self.phase, gait.step_x, gait.step_z, gait.step_angle, gait.smoothing.copy()
@@ -374,7 +376,7 @@ class GaitController:
             self.phase, gait.step_x, gait.step_z, gait.step_angle, smoothing = start
             gait.smoothing = smoothing.copy()
             self._advance(gait, dt * parts / SLOWDOWN_PARTS)
-            return float(np.abs(self._joint_angles(gait) - before).max()) <= MAX_JOINT_SPEED_DEG_S * dt
+            return float(np.abs(self._joint_angles(gait) - before).max()) <= self.max_joint_speed * dt
 
         if followable(SLOWDOWN_PARTS):
             return

@@ -4,9 +4,10 @@ esp32/test/host/export_firmware_traces.py and export_animation_traces.py run the
 animation player on the host for every variant and write the joint angles they command (app/tests/fixtures). This
 measures those angles against the envelope the hardware has, every constant read from the firmware's headers:
 
-- speed: the joint rate against the walk's cap (walk_state.h's MAX_JOINT_SPEED_DEG_S, three quarters of the servo
-  limit, since the MG92B slows under load and on a lower supply) and against the servo controller's slew limit
-  (servo_output.h's SERVO_MAX_SPEED_DEG_S), which nothing but the walk keeps under on its own;
+- speed: the joint rate against the walk's cap (walk_state.h's JOINT_SPEED_SHARE, three quarters of the servo
+  limit, since the MG92B slows under load) and against the servo controller's slew limit (servo_output.h's
+  SERVO_MAX_SPEED_DEG_S), which nothing but the walk keeps under on its own; both at the default 6 V supply, which
+  the traces are walked at;
 - lag: how far the servo controller's output trails the command when it clips a faster one, the readout of "the
   servo could not keep up" an open-loop robot inherits as a pose error, at any fraction of the servo's speed;
 - travel: the joint angle against the variant's travel in joint_model.h.
@@ -37,7 +38,7 @@ def _servo_max_speed() -> float:
 
 def _walk_cap_share() -> float:
     text = (FIRMWARE / "motion_states" / "walk_state.h").read_text()
-    return float(re.search(r"MAX_JOINT_SPEED_DEG_S\s*=\s*([\d.]+)f?\s*\*\s*SERVO_MAX_SPEED_DEG_S", text).group(1))
+    return float(re.search(r"JOINT_SPEED_SHARE\s*=\s*([\d.]+)f?;", text).group(1))
 
 
 def travel_limits() -> dict[str, np.ndarray]:

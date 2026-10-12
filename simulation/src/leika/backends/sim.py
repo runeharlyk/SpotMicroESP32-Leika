@@ -30,18 +30,19 @@ TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAUL
 
 
 class SimBackend:
-    def __init__(self, realtime: bool = True):
+    def __init__(self, realtime: bool = True, supply_volts: float = speed_model.DEFAULT_SUPPLY_VOLTS):
         self.realtime = realtime
+        self._supply_volts = supply_volts
         self.sim = SpotPicoSim()
         self._gait = GaitState()
         set_mode(self._gait, TROT)
-        self._controller = GaitController()
+        self._controller = GaitController(supply_volts)
         self._body = BodyState()
         self._levelling = StandCompensation()
         self._odometry = FusedOdometry()
         self._goal = GoalController()
         self._mode = Mode.REST
-        self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT)
+        self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT, supply_volts)
         self._sticks = NO_STICKS
         self._t = 0.0
         self._lock = threading.Lock()
@@ -167,7 +168,7 @@ class SimBackend:
         top = self.max_velocity()
         clamp = lambda value, limit: max(-limit, min(limit, value))
         commanded = Velocity(clamp(velocity.vx, top.vx), clamp(velocity.vy, top.vy), clamp(velocity.yaw_rate, top.yaw_rate))
-        sticks = speed_model.sticks_for(VARIANT, Gait.TROT, commanded, STAND_HEIGHT)
+        sticks = speed_model.sticks_for(VARIANT, Gait.TROT, commanded, STAND_HEIGHT, self._supply_volts)
         with self._lock:
             # As the app's sticks: centred ones leave a goal its own, any other takes over.
             if self._goal.running:

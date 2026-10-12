@@ -51,6 +51,7 @@ class RealBackend:
         self._height = 0.7
         self._gait = Gait.TROT
         self._variant = None
+        self._supply_volts = speed_model.DEFAULT_SUPPLY_VOLTS
         self._features: pb.FeaturesDataResponse | None = None
         self._recording: list[pb.TickSample] | None = None
         self._goal_status = pb.GoalStatus()
@@ -65,6 +66,10 @@ class RealBackend:
             self._run(self._open(), REQUEST_TIMEOUT_S)
             self._features = self.request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest())).features_data_response
             self._variant = speed_model.known_variant(self._features.variant)
+            # How fast the servos turn, so how much the walk slows, follows the supply the robot was told; a firmware
+            # from before the setting reports none and runs at the default.
+            servo = self.request(pb.CorrelationRequest(servo_settings_request=api_pb2.ServoSettingsRequest())).servo_settings
+            self._supply_volts = servo.supply_voltage or speed_model.DEFAULT_SUPPLY_VOLTS
             # A USB-serial chip's port reaches the console UART, which answers requests but streams nothing.
             hint = " (driving and telemetry need the board's native USB port)" if is_serial_port(self._target) else ""
             self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot" + hint)
@@ -212,12 +217,12 @@ class RealBackend:
 
     def set_velocity(self, velocity: Velocity) -> Velocity:
         self._requested = velocity
-        self._sticks = speed_model.sticks_for(self._variant, self._gait, velocity, self._height)
+        self._sticks = speed_model.sticks_for(self._variant, self._gait, velocity, self._height, self._supply_volts)
         self._run(self._send_input(), REQUEST_TIMEOUT_S)
-        return speed_model.velocity_of(self._variant, self._gait, self._sticks, self._height)
+        return speed_model.velocity_of(self._variant, self._gait, self._sticks, self._height, self._supply_volts)
 
     def max_velocity(self) -> Velocity:
-        return speed_model.max_velocity(self._variant, self._gait, self._height)
+        return speed_model.max_velocity(self._variant, self._gait, self._height, self._supply_volts)
 
     def state(self) -> RobotState:
         with self._changed:
