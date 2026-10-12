@@ -43,6 +43,7 @@ message FeaturesDataResponse {
     bool servo_detected = 101;
     bool gesture = 105;
     bool gesture_detected = 106;
+    bool sonar = 170;  // a sonar is enabled on usable pins; whether one answers is in SonarData
     bool ws2812 = 110;
     bool mdns = 120;
     bool embed_www = 130;
@@ -230,7 +231,25 @@ message I2CScanDataRequest {}
 
 message RSSIData { int32 rssi = 1; }
 
-message SonarData { string dummy_field = 1; }
+enum SonarStatus {
+    SONAR_OFF = 0;        // disabled, or on pins it cannot use
+    SONAR_DISTANCE = 1;
+    SONAR_NO_ECHO = 2;    // nothing within 4 m
+    SONAR_NO_SENSOR = 3;  // the echo pin never rose: no sensor, or a wiring fault
+}
+
+message SonarReading {
+    SonarStatus status = 1;
+    float distance_cm = 2;  // only with SONAR_DISTANCE
+}
+
+// The HC-SR04s' latest pings; each sensor pings ten times a second, taking turns with the other.
+message SonarData {
+    reserved 1;
+    reserved "dummy_field";
+    SonarReading left = 2;
+    SonarReading right = 3;
+}
 
 message ControllerData {
     Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
@@ -366,5 +385,6 @@ message Message {
         TelemetryHeader telemetry_header = 270;
         TelemetryBatch telemetry_batch = 271;
         TelemetryNetwork telemetry_network = 272;
+        SonarData sonar = 300;
     }
 }

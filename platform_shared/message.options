@@ -11,8 +11,6 @@ socket_message.AnglesData.angles max_count:12
 
 socket_message.I2CScanData.devices max_count:16
 
-socket_message.SonarData.dummy_field max_size:16
-
 socket_message.FeaturesDataResponse.variant type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_name type:FT_POINTER
