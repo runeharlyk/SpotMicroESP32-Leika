@@ -61,6 +61,7 @@ uv run python eval_policy.py runs/residual_pure_dr --vx 0.05        # watch a tr
 uv run python visionary_demo.py [address]                           # Robot API demo; an address drives the real robot
 uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file)
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
+uv run python calibrate_compass.py recording.leika [--write <address>]  # fit the compass's hard-iron offset, optionally store it
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
@@ -107,6 +108,10 @@ The firmware streams every control tick to subscribers: its timing, the IMU samp
 Three seconds without a frame count as a lost link.
 `report_recording.py` prints the recording's latencies and IMU noise beside the ranges `src/sim/domain_rand.py` assumes.
 Pass `--still` for a robot that stood still throughout, so the gyro mean is its bias and the spread its noise.
+
+`calibrate_compass.py` fits the compass's hard-iron offset to a recording made while the robot is turned slowly through every orientation (`src/sim/compass_fit.py`).
+It undoes the mounting and the calibration the recording's header holds, fits a sphere to the raw readings, and refuses a recording that does not cover enough directions or whose field is not Earth's (25-65 uT).
+With `--write <address>` it stores the offset in the robot's peripheral settings, keeping the rest.
 
 ## Follow-ups (out of scope here)
 
