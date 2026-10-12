@@ -49,9 +49,20 @@ constexpr std::array<float, SAMPLES + 1> bezierSamples(const float (&points)[12]
 
 enum class WALK_GAIT { TROT, CRAWL };
 
+// AUTO's choice from how far the stick asks the walk to go, 0 to 1 of a full stride or turn: the crawl below
+// AUTO_CRAWL_MAX, the trot from there up. The gait in force keeps its band AUTO_HYSTERESIS further, so a stick held at
+// the boundary does not swap the schedules back and forth.
+inline constexpr float AUTO_CRAWL_MAX = 0.30f, AUTO_HYSTERESIS = 0.06f;
+constexpr WALK_GAIT selectAutoGait(float demand, WALK_GAIT current) {
+    const float crawl_max = current == WALK_GAIT::CRAWL ? AUTO_CRAWL_MAX + AUTO_HYSTERESIS : AUTO_CRAWL_MAX;
+    return demand < crawl_max ? WALK_GAIT::CRAWL : WALK_GAIT::TROT;
+}
+
 class WalkState : public MotionState {
   private:
     WALK_GAIT mode = WALK_GAIT::TROT;
+    bool auto_gait = false;
+    float auto_settled_s = 0; // how long AUTO has held a standstill against a command
     float phase_time = 0.0f;
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
     float stand_offset = 0.75f;
@@ -170,6 +181,19 @@ class WalkState : public MotionState {
     }
 
     /**
+     * AUTO: the walk picks its gait from the command (selectAutoGait). It swaps the schedule only at a standstill on
+     * all four feet, since a swap reassigns every leg's phase, which mid-stride lifts a loaded foot or drops a swinging
+     * one; a command that leaves the band of the gait in force mid-walk brings the walk to a stop first, and it walks
+     * on in the other gait. A start waits AUTO_SETTLE_S, as a stick pushed from the centre passes through the crawl's
+     * band on its way, and a trot waits for the body to centre to within AUTO_CENTRED_M: the crawl leaves it over three
+     * feet, and the trot's reach bound leaves no room for a shift.
+     */
+    void set_auto_gait(bool on) { auto_gait = on; }
+    static constexpr float AUTO_SETTLE_S = 0.25f, AUTO_CENTRED_M = 0.001f;
+    /** The schedule the legs walk, also the one AUTO picked. */
+    WALK_GAIT gait() const { return mode; }
+
+    /**
      * The gait's phase, 0 to 1, its steps after the command smoothing, and the share of the stroke and the step height
      * the legs' reach left this tick.
      */
@@ -208,6 +232,19 @@ class WalkState : public MotionState {
      * walked at full time: creeping up to it would freeze the walk.
      */
     void step(body_state_t &body_state, float dt = 0.02f) override {
+        if (!auto_gait || !autoHolds(body_state, dt)) return limitedStep(body_state, dt);
+        const gait_state_t commanded = target_gait_state;
+        target_gait_state.step_x = target_gait_state.step_z = target_gait_state.step_angle = 0;
+        limitedStep(body_state, dt);
+        target_gait_state.step_x = commanded.step_x;
+        target_gait_state.step_z = commanded.step_z;
+        target_gait_state.step_angle = commanded.step_angle;
+    }
+
+  protected:
+    static constexpr int SLOWDOWN_PARTS = 64;
+
+    void limitedStep(body_state_t &body_state, float dt) {
         Kinematics kinematics(*kin);
         float before[12];
         kinematics.calculate_inverse_kinematics(body_state, before);
@@ -232,9 +269,6 @@ class WalkState : public MotionState {
         followable(fast_enough > 0 ? fast_enough : SLOWDOWN_PARTS);
     }
 
-  protected:
-    static constexpr int SLOWDOWN_PARTS = 64;
-
     // A new schedule restarts the cycle: the phase the walk held, read with the new offsets, can put a foot in the air,
     // which then went up in one tick. The same schedule again keeps its phase.
     void schedule(WALK_GAIT gait, float factor, float duty, const std::array<float, 4> &offsets) {
@@ -255,6 +289,10 @@ class WalkState : public MotionState {
 
     void advance(body_state_t &body_state, float dt) {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
+        if (auto_gait && mode != WALK_GAIT::CRAWL) {
+            follow(body_dampers.xm, body_state.xm, 0, dt);
+            follow(body_dampers.zm, body_state.zm, 0, dt);
+        }
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
         gait_state.step_height = target_gait_state.step_height;
         follow(gait_dampers.step_x, gait_state.step_x, target_gait_state.step_x, dt);
@@ -341,11 +379,39 @@ class WalkState : public MotionState {
 
     static inline bool isZero(float num) { return std::fabs(num) < 0.001; }
 
+    bool moving() const {
+        return !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
+    }
+
+    // Whether AUTO holds the walk to a standstill this tick (set_auto_gait), swapping the schedule once it stands.
+    // The new schedule restarts the cycle (schedule), and a foot stands on its own spot while the stroke is zero.
+    bool autoHolds(const body_state_t &body_state, float dt) {
+        const float demand =
+            std::max(std::hypot(target_gait_state.step_x, target_gait_state.step_z) / kin->max_step_length,
+                     std::fabs(target_gait_state.step_angle));
+        if (demand == 0) {
+            auto_settled_s = 0;
+            return false;
+        }
+        const WALK_GAIT next = selectAutoGait(demand, mode);
+        if (moving() || getLegStates().swing_count != 0) return next != mode;
+        if (auto_settled_s < AUTO_SETTLE_S) {
+            auto_settled_s += dt;
+            return true;
+        }
+        if (next != mode) {
+            if (next == WALK_GAIT::CRAWL)
+                set_mode_crawl();
+            else
+                set_mode_trot();
+        }
+        return mode == WALK_GAIT::TROT && std::hypot(body_state.xm, body_state.zm) > AUTO_CENTRED_M;
+    }
+
     // A stopped walk holds its phase once every foot is down; a foot still in the air lands along the rest of its
     // swing first, where resetting the phase dropped it from its full height in one tick.
     void updatePhase(float dt) {
-        const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
-        if (!moving && getLegStates().swing_count == 0) return;
+        if (!moving() && getLegStates().swing_count == 0) return;
         const float velocity = std::max(gait_state.step_velocity, 0.5f);
         phase_time = std::fmod(phase_time + dt * velocity * speed_factor, 1.0f);
     }
@@ -411,8 +477,7 @@ class WalkState : public MotionState {
     }
 
     void shiftTowardsSupport(body_state_t &body_state) {
-        const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
-        if (!moving) return;
+        if (!moving()) return;
 
         LegStates leg_states = getLegStates();
 

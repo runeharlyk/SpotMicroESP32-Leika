@@ -45,9 +45,10 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
         ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(*mail.gait));
         if (*mail.gait == socket_message_WalkGaits_TROT)
             walkState.set_mode_trot();
-        else
+        else if (*mail.gait == socket_message_WalkGaits_CRAWL)
             walkState.set_mode_crawl();
         currentGait = *mail.gait;
+        resumeAutoGait();
     }
     if (mail.mode) setMode(*mail.mode);
     if (mail.variant) switchVariant(*mail.variant);
@@ -88,6 +89,9 @@ void MotionService::startGoal(const Goal& next, uint32_t id) {
         command.s = 0.5f;
         command.s1 = 0.5f;
     }
+    // A goal slows its stick near the target, which AUTO would answer with a stop and the crawl: it keeps the gait it
+    // starts in, whose pace its timeout is reckoned at.
+    walkState.set_auto_gait(false);
     const float rate = walkState.stanceRate(command.s);
     goal.start(next, walkable ? config->max_step_length * rate : 1, rate);
     if (walkable)
@@ -109,6 +113,7 @@ void MotionService::driveGoal(const BodyStep& step, float dt) {
     } else {
         if (goal.state() == GoalState::REACHED) setMode(socket_message_ModesEnum_STAND);
         centreSticks();
+        resumeAutoGait();
     }
     recordGoalStatus();
 }
@@ -117,8 +122,11 @@ void MotionService::cancelGoal() {
     if (!goal.running()) return;
     goal.cancel();
     centreSticks();
+    resumeAutoGait();
     recordGoalStatus();
 }
+
+void MotionService::resumeAutoGait() { walkState.set_auto_gait(currentGait.load() == socket_message_WalkGaits_AUTO); }
 
 void MotionService::centreSticks() {
     command.lx = command.ly = command.rx = command.ry = 0;

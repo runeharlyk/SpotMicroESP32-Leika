@@ -9,7 +9,7 @@ import pytest
 from src.leika.backends.base import UnknownVariant, Velocity
 from src.leika.constants import Gait
 from src.leika.speed_model import (
-    GEOMETRY, SPEED, STEP_HEIGHT, Sticks, known_variant, max_velocity, slowdown, sticks_for, velocity_of,
+    GAITS, GEOMETRY, SPEED, STEP_HEIGHT, Sticks, known_variant, max_velocity, slowdown, sticks_for, velocity_of,
 )
 
 TRACES = Path(__file__).resolve().parents[2] / "app" / "tests" / "fixtures"
@@ -23,7 +23,7 @@ def _trace(variant):
 
 
 def _walk_runs(trace):
-    """Runs of ticks walking with one constant, non-zero command."""
+    """Runs of ticks walking one fixed gait with one constant, non-zero command; AUTO stops a walk to swap its gait."""
     runs, current, key = [], [], None
     for tick in trace["ticks"]:
         this = (tick["mode"], tick["gait"], tuple(sorted(tick["cmd"].items())))
@@ -35,7 +35,7 @@ def _walk_runs(trace):
     runs.append((key, current))
     for (mode, gait, cmd), ticks in runs:
         cmd = dict(cmd)
-        if mode == WALK and (cmd["lx"] or cmd["ly"] or cmd["rx"]):
+        if mode == WALK and Gait(gait) in GAITS and (cmd["lx"] or cmd["ly"] or cmd["rx"]):
             yield Gait(gait), cmd, ticks[SETTLE_TICKS:]
 
 
@@ -89,7 +89,7 @@ def test_the_model_is_the_body_velocity_the_firmware_walks(variant):
     assert checked >= 4  # forward, sideways and turning trot, and a crawl
 
 
-@pytest.mark.parametrize("gait", list(Gait))
+@pytest.mark.parametrize("gait", list(GAITS))
 def test_sticks_invert_the_model(gait):
     v = Velocity(0.008, -0.004, 0.04)  # inside what the reach bound leaves the Pico's crawl in this direction
     sticks = sticks_for("SPOTMICRO_ESP32_MINI", gait, v, HEIGHT)

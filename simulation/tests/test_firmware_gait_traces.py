@@ -62,7 +62,7 @@ def _replay(variant, firmware_filter):
 
 def _replay_ticks(trace, controller, gait, body, step_length, step_height, firmware_filter):
     for tick in trace["ticks"]:
-        fg.set_mode(gait, tick["gait"])
+        fg.set_mode(gait, tick["walked"])
         if tick["mode"] != WALK:
             continue
         cmd = tick["cmd"]

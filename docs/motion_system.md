@@ -13,7 +13,7 @@ Rest, stand and walk have a motion state; the others have none.
 | Deactivated, idle, calibration | None         | Asleep      | No motion is computed                                                                      |
 | Rest                           | `RestState`  | Awake       | Flat body at the lowest height (45% of the maximum leg reach). Controller input is ignored |
 | Stand                          | `StandState` | Awake       | Static posing from the controller, levelled against the IMU                                |
-| Walk                           | `WalkState`  | Awake       | Trot or crawl gait, selected separately                                                    |
+| Walk                           | `WalkState`  | Awake       | Trot, crawl or AUTO gait, selected separately                                              |
 
 A mode change replaces the motion state and resets its smoothing, so that a state taking over starts from a body at rest.
 A gesture from the optional gesture sensor also changes the mode: down selects rest, up selects stand, and left and right select walk.
@@ -172,6 +172,18 @@ The shift is a smoothstep from the body's current position, so the weight has le
 The trot has no body shift.
 
 This gait is derived from [mike4192 spotMicro](https://github.com/mike4192/spotMicro)
+
+## AUTO gait
+
+AUTO picks the crawl for a short stick and the trot for a long one, by the larger of the stroke and the turn as a share of a full stick (`selectAutoGait` in `walk_state.h`).
+The crawl holds below 0.36 and the trot down to 0.30, so a stick held near the boundary does not swap the schedules back and forth.
+A swap reassigns every leg's phase, which mid-stride would lift a loaded foot or drop a swinging one, so the walk swaps only at a standstill with all four feet down, and restarts at phase 0, where every foot is down in both schedules.
+A stick that leaves the band of the gait in force mid-walk therefore brings the walk to a stop first, as releasing the stick would, and it walks on in the other gait.
+A start from a standstill waits 0.25 s for the stick to settle, since a stick pushed from the centre to the rim passes through the crawl's band on its way.
+A trot also waits for the body to centre to within 1 mm: the crawl leaves it shifted over three feet, and the trot's reach bound leaves no room for a shift.
+A goal move keeps the gait AUTO had when it started, since its stick slows into the crawl's band near the target and its timeout is reckoned at the starting gait's pace.
+The robot reports AUTO as its gait, and each telemetry tick's `walked` field says which schedule the legs walk.
+This follows the Hexapod's AUTO gait (e1bdc83), which swaps only while it is not stepping, for the same reason.
 
 ## Trot gait (12 point bezier curve)
 

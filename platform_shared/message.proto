@@ -411,6 +411,7 @@ message SystemInformation {
 enum WalkGaits {
     TROT = 0;
     CRAWL = 1;
+    AUTO = 2;  // the crawl for a short stick, the trot for a long one, picked each time the walk stands still
 }
 
 message WalkGaitData {
@@ -466,6 +467,7 @@ message TickSample {
     uint64 command_rx_us = 13;
     ModesEnum mode = 14;
     WalkGaits gait = 15;
+    WalkGaits walked = 18;       // the schedule the legs walk, TROT or CRAWL: under AUTO, the one it picked
     bool link_lost = 16;         // the dead-man stop is in force
     OdometryData odometry = 17;  // after this tick's motion
 }

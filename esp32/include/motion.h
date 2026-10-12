@@ -68,6 +68,10 @@ class MotionService {
     /** The mode and gait in force, for the socket's task to report: the robot, not the app, owns them. */
     socket_message_ModesEnum mode() const { return currentMode.load(); }
     socket_message_WalkGaits gait() const { return currentGait.load(); }
+    /** The schedule the legs walk, which under AUTO the walk picks itself; for the control task. */
+    socket_message_WalkGaits walkedGait() const {
+        return walkState.gait() == WALK_GAIT::CRAWL ? socket_message_WalkGaits_CRAWL : socket_message_WalkGaits_TROT;
+    }
 
     const CommandMsg& currentCommand() const { return command; }
     /** When the command in use arrived, in esp_timer microseconds; 0 before the first. */
@@ -124,6 +128,7 @@ class MotionService {
     void centreSticks();
     void startGoal(const Goal& goal, uint32_t id);
     void cancelGoal();
+    void resumeAutoGait();
     void driveGoal(const BodyStep& step, float dt);
     void recordGoalStatus();
     void switchVariant(KinematicsVariant variant);

@@ -318,6 +318,34 @@ static void aTurnClosesOnTheFusedHeading() {
     CHECK_NEAR(at.kinematicYaw, 90 * DEG / 1.15f, 3 * DEG);
 }
 
+// A goal slows its stick near the target, into the crawl's band: under AUTO it keeps the trot it started in, rather
+// than stopping to swap, and AUTO picks again once it has ended.
+static void aGoalKeepsTheGaitAutoHadWhenItStarted() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postGait(socket_message_WalkGaits_AUTO);
+    tick(motion);
+    CHECK(motion.gait() == socket_message_WalkGaits_AUTO);
+    CHECK(motion.walkedGait() == socket_message_WalkGaits_TROT);
+    motion.inbox.postGoal({0.1f, 0, 0, 0.6f});
+    tick(motion);
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    bool crawled = false;
+    for (int i = 0; i < 30 * TICKS_PER_S && motion.goalStatus().state == GoalState::RUNNING; i++) {
+        tick(motion);
+        crawled |= motion.walkedGait() == socket_message_WalkGaits_CRAWL;
+    }
+    CHECK(motion.goalStatus().state == GoalState::REACHED);
+    CHECK(!crawled);
+    motion.inbox.postMode(socket_message_ModesEnum_WALK);
+    tick(motion);
+    for (int i = 0; i < 20; i++) {
+        input(motion, sticks(0, 0.2f));
+        tick(motion, TICKS_PER_S / 10);
+    }
+    CHECK(motion.walkedGait() == socket_message_WalkGaits_CRAWL);
+}
+
 int main() {
     aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile();
     aClockwiseGestureTurnsAFullCircle();
@@ -331,6 +359,7 @@ int main() {
     anOdometryResetMidGoalChangesNothing();
     aNewGoalReplacesTheRunningOne();
     aTurnClosesOnTheFusedHeading();
+    aGoalKeepsTheGaitAutoHadWhenItStarted();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

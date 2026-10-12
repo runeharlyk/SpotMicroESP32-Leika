@@ -42,8 +42,14 @@ export class FirmwareMotion {
     }
 
     setGait(gait: WalkGaits) {
+        this.walk.setAutoGait(gait === WalkGaits.AUTO)
         if (gait === WalkGaits.TROT) this.walk.setModeTrot()
-        else this.walk.setModeCrawl()
+        else if (gait === WalkGaits.CRAWL) this.walk.setModeCrawl()
+    }
+
+    /** The schedule the legs walk, TROT or CRAWL, also when AUTO picked it. */
+    walkedGait() {
+        return this.walk.crawling() ? WalkGaits.CRAWL : WalkGaits.TROT
     }
 
     handleInput(data: ControllerData) {

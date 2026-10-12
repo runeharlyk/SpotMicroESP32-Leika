@@ -15,7 +15,7 @@
 namespace {
 
 enum Mode { REST = 3, STAND = 4, WALK = 5 };
-enum Gait { TROT = 0, CRAWL = 1 };
+enum Gait { TROT = 0, CRAWL = 1, AUTO = 2 };
 
 struct Segment {
     Mode mode;
@@ -46,6 +46,12 @@ const Segment SCRIPT[] = {
     {STAND, CRAWL, {0, 0, 0, 0, 1, 0, 0}, 0, 0, 10},
     {WALK, CRAWL, {0, 0, 0, 0, 0, 0.5f, 0.5f}, 0, 0, 5},
     {STAND, CRAWL, {0, 0, 0, 0, 0, 0, 0}, 0, 0, 40},
+    // AUTO: a short stick starts the crawl once it has settled, a long one mid-walk stops it and walks on in the trot,
+    // which centres the body the crawl shifted, and a short one again stops the trot for the crawl.
+    {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 50},
+    {WALK, AUTO, {0, 0.2f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0.2f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
 };
 
 // MotionService's state and angle handling (esp32/src/motion.cpp), without its timer and peripherals.
@@ -81,9 +87,10 @@ struct Motion {
     }
 
     void setGait(Gait gait) {
+        walk.set_auto_gait(gait == AUTO);
         if (gait == TROT)
             walk.set_mode_trot();
-        else
+        else if (gait == CRAWL)
             walk.set_mode_crawl();
     }
 
@@ -157,7 +164,8 @@ int main(int argc, char **argv) {
             const std::optional<float> gyro = motion.gyro;
             motion.update(segment.imu_x, segment.imu_y, gait == CRAWL, step);
             const body_state_t &b = motion.body;
-            printf("%s{\"step\":%d,\"mode\":%d,\"gait\":%d,", first ? "" : ",", step, mode, gait);
+            printf("%s{\"step\":%d,\"mode\":%d,\"gait\":%d,\"walked\":%d,", first ? "" : ",", step, mode, gait,
+                   static_cast<int>(motion.walk.gait()));
             printf("\"cmd\":{\"lx\":%.9g,\"ly\":%.9g,\"rx\":%.9g,\"ry\":%.9g,\"h\":%.9g,\"s\":%.9g,\"s1\":%.9g},", cmd.lx,
                    cmd.ly, cmd.rx, cmd.ry, cmd.h, cmd.s, cmd.s1);
             printf("\"imu\":[%.9g,%.9g],", segment.imu_x, segment.imu_y);

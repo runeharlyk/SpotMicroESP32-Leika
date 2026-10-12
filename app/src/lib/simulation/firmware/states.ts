@@ -274,9 +274,23 @@ const SERVO_MAX_SPEED_DEG_S = 720
 export const MAX_JOINT_SPEED_DEG_S = 0.75 * SERVO_MAX_SPEED_DEG_S
 const SLOWDOWN_PARTS = 64
 
+// walk_state.h's AUTO: the crawl below AUTO_CRAWL_MAX of a full stick, the trot from there up, each gait holding its
+// band AUTO_HYSTERESIS further; a start waits AUTO_SETTLE_S for the stick to settle, and a trot for the body to centre
+// to within AUTO_CENTRED_M.
+const AUTO_CRAWL_MAX = f32(0.3)
+const AUTO_HYSTERESIS = f32(0.06)
+const AUTO_SETTLE_S = 0.25
+const AUTO_CENTRED_M = f32(0.001)
+
+/** selectAutoGait (walk_state.h): whether AUTO crawls at this demand, 0 to 1 of a full stride or turn. */
+const autoCrawls = (demand: number, crawling: boolean) =>
+    demand < (crawling ? f32(AUTO_CRAWL_MAX + AUTO_HYSTERESIS) : AUTO_CRAWL_MAX)
+
 /** WalkState (motion_states/walk_state.h): trot and crawl, with the crawl's body shift. */
 export class WalkState extends MotionState {
     private crawl = false
+    private autoGait = false
+    private autoSettled = 0
     private phaseTime = 0
     private phaseOffset = [0, 0.5, 0.5, 0]
     private standOffset = 0.75
@@ -372,6 +386,16 @@ export class WalkState extends MotionState {
         this.shift = { startX: 0, startZ: 0, targetX: 0, targetZ: 0, startTime: 0, leg: -1 }
     }
 
+    /** AUTO (walk_state.h set_auto_gait): the walk picks its gait from the command, swapping it at a standstill. */
+    setAutoGait(on: boolean) {
+        this.autoGait = on
+    }
+
+    /** Whether the legs walk the crawl, also when AUTO picked it. */
+    crawling() {
+        return this.crawl
+    }
+
     handleCommand(cmd: CommandMsg) {
         const { cfg } = this
         this.target.ym = cfg.minBodyHeight + cmd.h * cfg.bodyHeightRange
@@ -389,6 +413,41 @@ export class WalkState extends MotionState {
      * a jump not even a 64th keeps under the cap is walked at full time.
      */
     step(body: BodyState, dt: number) {
+        if (!this.autoGait || !this.autoHolds(body, dt)) return this.limitedStep(body, dt)
+        const { stepX, stepZ, stepAngle } = this.targetGait
+        Object.assign(this.targetGait, { stepX: 0, stepZ: 0, stepAngle: 0 })
+        this.limitedStep(body, dt)
+        Object.assign(this.targetGait, { stepX, stepZ, stepAngle })
+    }
+
+    // autoHolds (walk_state.h): whether AUTO holds the walk to a standstill this tick, swapping the schedule once it
+    // stands.
+    private autoHolds(body: BodyState, dt: number) {
+        const { stepX, stepZ, stepAngle } = this.targetGait
+        const demand = f32(
+            Math.max(
+                f32(f32(Math.hypot(stepX, stepZ)) / this.cfg.maxStepLength),
+                Math.abs(stepAngle)
+            )
+        )
+        if (demand === 0) {
+            this.autoSettled = 0
+            return false
+        }
+        const crawl = autoCrawls(demand, this.crawl)
+        if (this.moving() || this.legStates().swingCount !== 0) return crawl !== this.crawl
+        if (this.autoSettled < AUTO_SETTLE_S) {
+            this.autoSettled = f32(this.autoSettled + f32(dt))
+            return true
+        }
+        if (crawl !== this.crawl) {
+            if (crawl) this.setModeCrawl()
+            else this.setModeTrot()
+        }
+        return !this.crawl && f32(Math.hypot(body.xm, body.zm)) > AUTO_CENTRED_M
+    }
+
+    private limitedStep(body: BodyState, dt: number) {
         const before = inverseKinematics(this.cfg, body)
         const start = this.snapshot(body)
         const allowed = f32(MAX_JOINT_SPEED_DEG_S * f32(dt))
@@ -441,6 +500,10 @@ export class WalkState extends MotionState {
         const { follow } = MotionState
         const { gait, targetGait, gaitDampers, bodyDampers } = this
         body.ym = follow(bodyDampers.ym, body.ym, this.target.ym, dt)
+        if (this.autoGait && !this.crawl) {
+            body.xm = follow(bodyDampers.xm, body.xm, 0, dt)
+            body.zm = follow(bodyDampers.zm, body.zm, 0, dt)
+        }
         body.psi = follow(bodyDampers.psi, body.psi, this.target.psi, dt)
         gait.stepHeight = targetGait.stepHeight
         gait.stepX = follow(gaitDampers.stepX, gait.stepX, targetGait.stepX, dt)

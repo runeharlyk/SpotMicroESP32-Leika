@@ -159,6 +159,15 @@ def test_a_gait_change_keeps_the_velocity(robot, fake):
     _eventually(lambda: fake.inputs()[-1][1].left.y == pytest.approx(crawl.ly, rel=1e-3))
 
 
+# AUTO swaps the gait by the sticks, which a velocity's sticks depend on: the client refuses it rather than walk
+# another velocity than asked, and the robot keeps its gait.
+def test_auto_is_refused_and_the_gait_kept(robot, fake):
+    robot.stand()
+    with pytest.raises(RobotError, match="AUTO"):
+        robot.set_gait(Gait.AUTO)
+    assert "walk_gait" not in fake.kinds()
+
+
 # A stall shorter than a batch trips and clears the dead-man between two newest ticks: it must still be counted.
 def test_a_dead_man_stop_between_two_reads_is_counted(robot, fake):
     assert robot.state().link_drops == 0

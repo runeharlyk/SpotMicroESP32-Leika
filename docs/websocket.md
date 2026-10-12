@@ -39,7 +39,7 @@ A frame that does not decode, or whose member has no handler, is logged and drop
 | ----------------- | --- | -------------------------------------------------------------------------------------------- |
 | `controller_data` | 250 | Sticks `left` and `right` in [-1, 1]; `height`, `speed` and `s1` in [0, 1]. Values outside the range are clamped |
 | `mode`            | 130 | Sets the mode: `DEACTIVATED`, `IDLE`, `CALIBRATION`, `REST`, `STAND` or `WALK`               |
-| `walk_gait`       | 160 | Sets the gait: `TROT` or `CRAWL`                                                             |
+| `walk_gait`       | 160 | Sets the gait: `TROT`, `CRAWL` or `AUTO`                                                     |
 | `angles`          | 170 | Sets up to 12 joint angles                                                                   |
 | `servo_pwm`       | 210 | Sets the PWM of one servo, by `servo_id`                                                     |
 | `servo_state`     | 211 | Activates or deactivates the servo outputs                                                   |

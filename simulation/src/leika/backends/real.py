@@ -199,6 +199,8 @@ class RealBackend:
         self._wait(lambda: self._tick.mode == mode.value, MODE_TIMEOUT_S, f"the robot did not report {mode.name}")
 
     def set_gait(self, gait: Gait) -> None:
+        if gait is Gait.AUTO:
+            raise RobotError("AUTO picks the gait from the sticks, so the speed model cannot choose sticks for a velocity")
         self._run(self._send(pb.Message(walk_gait=pb.WalkGaitData(gait=gait.value))), REQUEST_TIMEOUT_S)
         self._wait(lambda: self._tick.gait == gait.value, MODE_TIMEOUT_S, f"the robot did not report {gait.name}")
         self._gait = gait

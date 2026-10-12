@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - Adds dead reckoning from the commanded feet: position, heading and distance since the last reset, in every telemetry tick, as a request that reads and resets it, and from the Python client; it counts commanded steps, so calibrate it against a tape measure
 - Adds goal moves: the robot walks a distance or turns an angle itself, closed on its odometry, so a WiFi stall no longer cuts a move short; the Python client's moves and turns use them where the firmware has them
 - Fuses the gyro into the odometry's heading, learning its bias while the robot stands: in the simulation a turn's heading is now within 1 % instead of 9 % short, and goal turns land on it; the feet's own heading stays in the odometry as `kinematic_yaw`
+- Adds an AUTO gait, ported from the Hexapod: the crawl for a short stick and the trot for a long one, with hysteresis, swapped only at a standstill on all four feet; the telemetry reports the gait walked
 
 ### Changed
 

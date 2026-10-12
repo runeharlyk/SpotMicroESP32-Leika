@@ -51,6 +51,7 @@ inline void fillTickSample(socket_message_TickSample &tick, const TickTimes &tim
         tick.command_rx_us ? std::min<int64_t>(times.start - static_cast<int64_t>(tick.command_rx_us), UINT32_MAX) : 0;
     tick.mode = motion.mode();
     tick.gait = motion.gait();
+    tick.walked = motion.walkedGait();
     tick.link_lost = motion.linkLost();
     tick.has_odometry = true;
     odometryToProto(motion.odometry(), tick.odometry);
