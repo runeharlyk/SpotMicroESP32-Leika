@@ -2,6 +2,7 @@
 
 Subscribes to the telemetry batches and network samples, appends every frame as it arrives, and reconnects after a
 dropped link, marking the gap. Ctrl-C ends the recording; the file is complete up to the last frame.
+Run `uv run python gen_protos.py` once first: it generates the protocol classes in src/proto/.
 """
 import argparse
 import asyncio
@@ -57,7 +58,7 @@ async def record(url: str, writer: RecordingWriter, seconds: float | None) -> in
             if deadline is not None and time.monotonic() >= deadline:
                 break
             print("no answer from the robot; retrying")
-        except (OSError, websockets.ConnectionClosed) as error:
+        except (OSError, websockets.ConnectionClosed, websockets.InvalidHandshake) as error:
             print(f"link lost ({error}); reconnecting")
             await asyncio.sleep(1)
     return frames
