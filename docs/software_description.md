@@ -120,6 +120,7 @@ What the board fixes stays a define in the environment's `build_flags`:
 | USE_CAMERA | Camera and its stream, with the camera model's pins (`CAMERA_MODEL_*`); 0 when undefined |
 | SDA_PIN, SCL_PIN | Default I2C pins, until the peripheral settings change them |
 | WS2812_PIN | Default LED strip pin, until the peripheral settings change it |
+| SD_CMD_PIN, SD_CLK_PIN, SD_D0_PIN | A 1-bit SD card slot (the ESP32-S3-EYE's, in `esp32-wroom-camera`); a card that answers at boot is mounted at `/sdcard` beside LittleFS, and a board without one boots as before |
 
 ### 📲 Controller
 

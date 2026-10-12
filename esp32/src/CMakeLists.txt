@@ -13,6 +13,8 @@ set(COMPONENT_REQUIRES
     esp_psram
     spi_flash
     littlefs
+    fatfs
+    sdmmc
     esp-dsp
 )
 

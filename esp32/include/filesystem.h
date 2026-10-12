@@ -9,6 +9,8 @@
 #include <platform_shared/api.pb.h>
 
 #define MOUNT_POINT "/littlefs"
+// Boards with a 1-bit SD slot name its pins (SD_CMD_PIN, SD_CLK_PIN, SD_D0_PIN) in their build flags.
+#define SD_MOUNT_POINT "/sdcard"
 
 #define FS_CONFIG_DIRECTORY MOUNT_POINT "/config"
 #define FS_ANIMATION_DIRECTORY MOUNT_POINT "/animations"
