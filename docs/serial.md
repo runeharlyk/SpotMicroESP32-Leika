@@ -26,7 +26,7 @@ A reader that starts in the middle of a frame takes its tail for log text and fi
 
 ## What it carries
 
-- `CorrelationRequest` and its `CorrelationResponse`, as listed in [API](api.md#requests-over-the-websocket), with one exception: the filesystem requests are refused with 400 "Not available over serial".
+- `CorrelationRequest` and its `CorrelationResponse`, as listed in [API](api.md#requests-over-the-websocket), with one exception: the filesystem and firmware update requests are refused with 400 "Only available over WiFi".
 - `PingMsg` and `PongMsg`.
 - Subscriptions are accepted; of the broadcasts, only `wifi_status` is sent over the serial link, so a robot set up over USB shows it joining the network.
 

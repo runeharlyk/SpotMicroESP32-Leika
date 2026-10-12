@@ -104,6 +104,7 @@ An invalid settings write is refused and leaves the stored settings unchanged.
 Apart from the camera stream (`/api/camera/stream`, MJPEG) and the embedded web app, the robot's API is the WebSocket at `/api/ws`, carrying protobuf messages from `platform_shared/message.proto`.
 Commands, periodic broadcasts, settings, file transfer and the per-tick telemetry stream all travel over it, see [WebSocket](websocket.md).
 The same requests also arrive over the serial link on the console port, beside the log, for setup over a USB cable, see [Serial link](serial.md); a `SerialLink` adapter answers them, and the log goes out through its writer so a line never splits a frame.
+On the S3 boards with PSRAM, a `NimbleLink` adapter serves the app over a Bluetooth LE Nordic UART Service, with the commands, requests and broadcasts of the WebSocket but no telemetry and no file or firmware transfer, see [Bluetooth link](bluetooth.md).
 The service task broadcasts the IMU and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed.
 
 The telemetry stream is recorded only while a client is subscribed.

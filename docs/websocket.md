@@ -22,8 +22,7 @@ The upgrade is allowed when any of these holds:
 - The origin's host is `localhost`, `[::1]`, a `.local` name, or an IPv4 address in 127/8, 10/8, 172.16/12, 192.168/16 or 169.254/16.
 - The origin's authority equals the request's `Host` header.
 
-The web app also has a Web Bluetooth transport for robots that expose the Nordic UART service.
-This firmware does not implement it.
+The same messages, apart from telemetry and file and firmware transfer, also travel over Bluetooth LE on boards with PSRAM, see [Bluetooth link](bluetooth.md).
 
 ## Message flow
 

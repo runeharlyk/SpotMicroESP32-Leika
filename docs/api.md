@@ -7,7 +7,7 @@ There is no authentication; reach the robot only from a network you trust.
 Everything except the camera stream travels over the WebSocket at `/api/ws` as binary Protocol Buffers.
 The former per-feature REST endpoints (`/api/system/*`, `/api/wifi/*`, `/api/servo/*`, `/api/files`, and so on) no longer exist.
 See [websocket.md](websocket.md) for the framing, subscriptions, reply codes and telemetry.
-Over a USB cable, the same requests travel over the serial link, see [serial.md](serial.md).
+Over a USB cable, the same requests travel over the serial link, see [serial.md](serial.md), and over Bluetooth LE on boards with PSRAM, see [bluetooth.md](bluetooth.md).
 
 ## HTTP
 
@@ -101,7 +101,7 @@ The firmware starts every reply at 200 and overrides it as follows.
 | ---- | ----------------------------------------------------------------------------------------------------------------------------- |
 | 200  | Done. `error_message` is empty.                                                                                               |
 | 202  | Accepted: a download has started, or a WiFi scan result is not ready yet.                                                     |
-| 400  | Refused. `error_message` is "Invalid state" for a rejected settings write, "Unknown request" for an unhandled request and "Not available over serial" for a filesystem request on the serial link; a refused rename sets no message. |
+| 400  | Refused. `error_message` is "Invalid state" for a rejected settings write, "Unknown request" for an unhandled request and "Only available over WiFi" for a filesystem or firmware update request over serial or Bluetooth; a refused rename sets no message. |
 | 409  | "Deactivate first": a variant change while the robot is in a mode other than deactivated.                                     |
 | 503  | "Sensor task busy": the I2C scan or the IMU calibration could not be queued.                                                  |
 
