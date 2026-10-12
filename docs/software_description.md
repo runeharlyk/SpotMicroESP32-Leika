@@ -27,7 +27,7 @@ An mDNS query (priority 3) and the restart sequence (priority 10) each run in a 
 
 The tasks share state in three ways, none of which can stall the control loop:
 
-- The socket's handlers post controller input, mode and gait to a mutex-guarded inbox (`motion_inbox.h`) that holds only the newest of each. The control task takes it once per tick, so only the control task touches the motion state.
+- The socket's handlers and the handheld controller's receiver post controller input, mode and gait to a mutex-guarded inbox (`motion_inbox.h`) that holds only the newest of each. The control task takes it once per tick, so only the control task touches the motion state.
 - The sensor task writes its latest readings under a lock that is held only for the copy. The control and service tasks copy them out.
 - The control task pushes telemetry ticks into a lock-free single-producer, single-consumer ring (`telemetry/spsc_ring.h`). A full ring refuses the tick and counts it as dropped; the control task never waits.
 
@@ -108,6 +108,37 @@ The service task broadcasts the IMU and RSSI every 100 ms and the system analyti
 
 The telemetry stream is recorded only while a client is subscribed.
 The control task puts one sample per tick in a ring of 64 ticks, and the service task sends them in batches of 10, preceded by a header describing the robot's firmware, variant, IMU and settings.
+
+#### Handheld controller
+
+The robot can be driven without the app by the ESP-NOW handheld controller (the separate `esp-now-controller` firmware, shared with the Hexapod).
+The receiver is switched on in the peripheral settings (the Sensors page) and is off by default: it takes frames from any controller in range, since ESP-NOW broadcasts have no pairing, and it beacons ten times a second.
+The switch applies at once.
+The ESP32-P4 has no radio of its own for ESP-NOW, so it builds without the receiver and reports it unsupported (`espnow_controller_supported` in the features).
+
+The controller broadcasts a 14-byte packet (`communication/controller_packet.h`, kept byte-identical with the controller firmware): a version, a button mask and four sticks in -1000 to 1000.
+A frame of another length or version is ignored.
+`HandheldController` (`communication/handheld_controller.h`) maps it as the Hexapod does:
+
+| Input | Effect |
+| --- | --- |
+| Sticks | The app's sticks, scaled to -1 to 1 |
+| Left stick button | The next mode of deactivated, rest, stand and walk, and from walk back to deactivated; from idle or calibration it selects rest |
+| Right stick button | Toggles trot and crawl, except in stand |
+| Right stick button held in stand | The right stick's y sets the body height instead of the pitch: centred is the default 0.7, the ends are the lowest and the highest; the height stays when the button is released |
+| Both stick buttons | Deactivates, and does nothing else |
+| Buttons A, B and C | Not used |
+
+A button acts when it goes down; a press of both that lands one frame apart first acts as the single button.
+The controller has no sliders, so the speed and the step height are the app's defaults of 0.5.
+The receiver posts to the motion inbox as the socket's handlers do, so the controller is held to the same rules: no mode change during a firmware update, none but deactivated without a variant, and the dead-man stop when it falls silent while a stick is off centre.
+It posts the input with every frame while a stick is off centre, and otherwise only when it changes, so an idle controller does not override the app; whichever of the two moved last is followed.
+
+ESP-NOW hears only the channel the radio is on, and one radio serves the station, the access point and ESP-NOW: the channel is the router's while the station is joined and the access point's otherwise.
+The robot broadcasts a beacon with its channel every 100 ms, and the controller hunts the channels until it hears it.
+The beacon reads the channel at every send, so it follows every join and drop of the station, and the log reports each change.
+Unlike the Hexapod, the robot does not pin the radio to a fixed channel, which would move the access point off its configured channel and drop the app.
+While the station retries a network it cannot reach, its scans take the radio off the channel for a moment, and the controller may lose frames.
 
 #### Build-time options
 
