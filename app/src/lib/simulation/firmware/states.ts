@@ -176,9 +176,9 @@ export class StandState extends MotionState {
         const { cfg, target } = this
         target.ym = cfg.minBodyHeight + cmd.h * cfg.bodyHeightRange
         target.psi = cmd.ry * cfg.maxPitch
-        target.phi = cmd.rx * cfg.maxRoll
+        target.phi = -cmd.rx * cfg.maxRoll
         target.xm = cmd.ly * cfg.maxBodyShiftX
-        target.zm = cmd.lx * cfg.maxBodyShiftZ
+        target.zm = -cmd.lx * cfg.maxBodyShiftZ
         target.feet = cfg.defaultFeet.map(foot => [...foot])
     }
 

@@ -19,9 +19,11 @@ class StandState : public MotionState {
     void handleCommand(const CommandMsg &cmd) override {
         target_body_state.ym = kin->min_body_height + cmd.h * kin->body_height_range;
         target_body_state.psi = cmd.ry * kin->max_pitch;
-        target_body_state.phi = cmd.rx * kin->max_roll;
+        // The body's +z is left and a positive phi turns it clockwise: the stick leans it the way the walk steps, right
+        // for +lx, and twists it the way the walk turns, anticlockwise for +rx.
+        target_body_state.phi = -cmd.rx * kin->max_roll;
         target_body_state.xm = cmd.ly * kin->max_body_shift_x;
-        target_body_state.zm = cmd.lx * kin->max_body_shift_z;
+        target_body_state.zm = -cmd.lx * kin->max_body_shift_z;
         target_body_state.updateFeet(kin->default_feet_positions);
     }
 

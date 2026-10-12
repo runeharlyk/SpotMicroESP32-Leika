@@ -397,9 +397,9 @@ static void standingStill() {
     run(motion, sticks(0, 0, 0), 2 * TICKS_PER_S);
     CHECK_NEAR(motion.odometry().x, 0, 1e-4);
 
-    // So does twisting it: a positive phi turns the body clockwise about the vertical (YAW_TO_PHI), over planted feet.
+    // So does twisting it: +rx twists the body anticlockwise, as the walk turns, over planted feet.
     run(motion, sticks(0, 0, 1), 2 * TICKS_PER_S);
-    CHECK_NEAR(motion.odometry().yaw, -PICO.max_roll * DEG2RAD_F, 1e-4);
+    CHECK_NEAR(motion.odometry().yaw, PICO.max_roll * DEG2RAD_F, 1e-4);
     CHECK_NEAR(motion.odometry().x, 0, 1e-4);
     run(motion, sticks(0, 0, 0), 2 * TICKS_PER_S);
     CHECK_NEAR(motion.odometry().yaw, 0, 1e-4);

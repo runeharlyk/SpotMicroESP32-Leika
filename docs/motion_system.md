@@ -8,12 +8,12 @@ It runs in the control task every 10 ms, see [Software description](software_des
 The app selects one of six modes.
 Rest, stand and walk have a motion state; the others have none.
 
-| Mode | Motion state | Servo board | Behaviour |
-| ---- | ------------ | ----------- | --------- |
-| Deactivated, idle, calibration | None | Asleep | No motion is computed |
-| Rest | `RestState` | Awake | Flat body at the lowest height (45% of the maximum leg reach). Controller input is ignored |
-| Stand | `StandState` | Awake | Static posing from the controller, levelled against the IMU |
-| Walk | `WalkState` | Awake | Trot or crawl gait, selected separately |
+| Mode                           | Motion state | Servo board | Behaviour                                                                                  |
+| ------------------------------ | ------------ | ----------- | ------------------------------------------------------------------------------------------ |
+| Deactivated, idle, calibration | None         | Asleep      | No motion is computed                                                                      |
+| Rest                           | `RestState`  | Awake       | Flat body at the lowest height (45% of the maximum leg reach). Controller input is ignored |
+| Stand                          | `StandState` | Awake       | Static posing from the controller, levelled against the IMU                                |
+| Walk                           | `WalkState`  | Awake       | Trot or crawl gait, selected separately                                                    |
 
 A mode change replaces the motion state and resets its smoothing, so that a state taking over starts from a body at rest.
 A gesture from the optional gesture sensor also changes the mode: down selects rest, up selects stand, and left and right select walk.
@@ -24,28 +24,28 @@ The controller input is interpreted differently between the modes.
 Sticks are in the range -1 to 1, and the sliders in 0 to 1.
 For walking, it looks like this:
 
-| Controller Input | Mapped to Gait Step | Range   |
-| ---------------- | ------------------- | ------- |
+| Controller Input | Mapped to Gait Step         | Range   |
+| ---------------- | --------------------------- | ------- |
 | Left x joystick  | Step z (sideways), inverted | -1 to 1 |
-| Left y joystick  | Step x (forward)    | -1 to 1 |
-| Right x joystick | Step angle (turn)   | -1 to 1 |
-| Right y joystick | Body pitch angle    | -1 to 1 |
-| Height slider    | Body height         | 0 to 1  |
-| Speed slider     | Step velocity       | 0 to 1  |
-| S1 slider        | Step height         | 0 to 1  |
+| Left y joystick  | Step x (forward)            | -1 to 1 |
+| Right x joystick | Step angle (turn)           | -1 to 1 |
+| Right y joystick | Body pitch angle            | -1 to 1 |
+| Height slider    | Body height                 | 0 to 1  |
+| Speed slider     | Step velocity               | 0 to 1  |
+| S1 slider        | Step height                 | 0 to 1  |
 
 The step length is scaled by 80% of the maximum leg reach, the step height by 50% of it, the body pitch by 15 degrees, and the body height spans 45% to 90% of it.
 The limits per variant are in [Kinematics](kinematics.md#motion-limits).
 
 For standing, the sticks and the height slider pose the body:
 
-| Controller Input | Mapped to Body Pose                           | Limit                   |
-| ---------------- | --------------------------------------------- | ----------------------- |
-| Left x joystick  | Shift sideways                                | One third of body width |
-| Left y joystick  | Shift forward                                 | One third of body width |
-| Right x joystick | Rotation about the vertical axis (`phi`)      | 20 degrees              |
-| Right y joystick | Body pitch (`psi`)                            | 15 degrees              |
-| Height slider    | Body height                                   | 45% to 90% of leg reach |
+| Controller Input | Mapped to Body Pose                                                                          | Limit                   |
+| ---------------- | -------------------------------------------------------------------------------------------- | ----------------------- |
+| Left x joystick  | Shift sideways, right for a positive value, as the walk steps                                | One third of body width |
+| Left y joystick  | Shift forward                                                                                | One third of body width |
+| Right x joystick | Twist about the vertical axis (`phi`), anticlockwise for a positive value, as the walk turns | 20 degrees              |
+| Right y joystick | Body pitch (`psi`)                                                                           | 15 degrees              |
+| Height slider    | Body height                                                                                  | 45% to 90% of leg reach |
 
 The speed and S1 sliders are not used when standing.
 
@@ -124,13 +124,13 @@ Leg $i$ has a phase $t_i=(t+o_i) \bmod 1$, where $o_i$ is its phase offset.
 The leg is in stance while $t_i\le d$ and in swing otherwise, where $d$ is the duty factor, the share of the cycle spent in stance.
 The progress through stance is $t_i/d$, and through swing $(t_i-d)/(1-d)$.
 
-| Parameter                     | Trot                | Crawl                  |
-| ----------------------------- | ------------------- | ---------------------- |
-| Duty factor $d$               | 0.75                | 0.85                   |
-| Offsets $o_0, o_1, o_2, o_3$  | 0, 0.5, 0.5, 0      | 0.25, 0.75, 0.5, 0     |
-| Rate factor $k$               | 2                   | 0.5                    |
-| Cycle time at speed 0.5       | 1 s                 | 4 s                    |
-| Cycle time at speed 1         | 0.5 s               | 2 s                    |
+| Parameter                    | Trot           | Crawl              |
+| ---------------------------- | -------------- | ------------------ |
+| Duty factor $d$              | 0.75           | 0.85               |
+| Offsets $o_0, o_1, o_2, o_3$ | 0, 0.5, 0.5, 0 | 0.25, 0.75, 0.5, 0 |
+| Rate factor $k$              | 2              | 0.5                |
+| Cycle time at speed 0.5      | 1 s            | 4 s                |
+| Cycle time at speed 1        | 0.5 s          | 2 s                |
 
 ### Stance and swing controller
 
@@ -204,15 +204,15 @@ The position integrates the feet's displacement in that heading.
 Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's estimate alone.
 `OdometryData.kinematic_yaw` carries the feet's own heading, so their ratio over a turn on the real robot measures the gait's turn scale without a protractor.
 
-| Parameter | Value | Source |
-| --- | --- | --- |
-| Gyro z noise | 0.0012 rad/s | a still Pico, measured 2026-10-01 |
-| Bias prior | 0.05 rad/s | `domain_rand.py`'s per-episode gyro bias, the scale a boot calibration that saw the robot move leaves |
-| Bias random walk | 1e-4 rad/s per square-root second | assumed: about 0.006 rad/s over an hour |
-| Feet yaw-rate error | 0.0002 rad/s still, plus 2 rad/s per m/s and 0.4 per rad/s turned | the standstill assumed; walking and turning from MuJoCo against its gyro (0.08 rad/s per tick at 0.04 m/s, 0.17 at 0.46 rad/s) |
-| Feet motion fades over | 0.2 s | the body coasts after the feet stop (0.74 rad/s to 0.04 in 70 ms in MuJoCo), and the servos lag the commanded feet |
-| Still below | 0.01 rad/s of feet motion | chosen: well under the 0.08 rad/s a walk shows |
-| Pose still below | 0.0012 rad/s of twist, or of shift at 2 rad/s per m/s, fading over 0.2 s | chosen: what the gyro resolves |
+| Parameter              | Value                                                                    | Source                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Gyro z noise           | 0.0012 rad/s                                                             | a still Pico, measured 2026-10-01                                                                                              |
+| Bias prior             | 0.05 rad/s                                                               | `domain_rand.py`'s per-episode gyro bias, the scale a boot calibration that saw the robot move leaves                          |
+| Bias random walk       | 1e-4 rad/s per square-root second                                        | assumed: about 0.006 rad/s over an hour                                                                                        |
+| Feet yaw-rate error    | 0.0002 rad/s still, plus 2 rad/s per m/s and 0.4 per rad/s turned        | the standstill assumed; walking and turning from MuJoCo against its gyro (0.08 rad/s per tick at 0.04 m/s, 0.17 at 0.46 rad/s) |
+| Feet motion fades over | 0.2 s                                                                    | the body coasts after the feet stop (0.74 rad/s to 0.04 in 70 ms in MuJoCo), and the servos lag the commanded feet             |
+| Still below            | 0.01 rad/s of feet motion                                                | chosen: well under the 0.08 rad/s a walk shows                                                                                 |
+| Pose still below       | 0.0012 rad/s of twist, or of shift at 2 rad/s per m/s, fading over 0.2 s | chosen: what the gyro resolves                                                                                                 |
 
 In MuJoCo, with the gyro biased by 0.05 rad/s and given the measured noise after 2 s standing, the fused heading ends within 0.5 degrees of the base over 4 s turns of about 100 degrees each way and 8 s arcs of 124 and 248 degrees, where the feet's falls 6 to 22 degrees short.
 The compass stays out until it is calibrated, and so does the accelerometer: at a walk the body barely accelerates on average, and a degree of tilt error alone reads as 0.17 m/s^2, so a stall would not stand out.
