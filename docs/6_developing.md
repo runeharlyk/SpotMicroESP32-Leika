@@ -111,6 +111,9 @@ uv run pytest -q
 It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` or `app/static/URDF/**` change.
 The workflow skips torch and its CUDA wheels, which no test imports, and runs every later `uv run` with `--no-sync` so they stay out.
 It regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware before the tests, so it also runs when `esp32/include/**` or `esp32/test/host/**` change.
+It also runs for changes in the firmware code the virtual robot is built from (`esp32/src/**`, `esp32/include/**`, `esp32/test/host/**`).
+The virtual robot's tests need the nanopb submodule and its headers: run `uv run python ../esp32/scripts/compile_protos.py` in `simulation/` first.
+The workflow builds the virtual robot, a robot on this computer from the firmware's own C++, and runs `release_smoke.py` against it; `uv run python virtual_robot.py --port 8765` serves it for `pnpm dev` at the address `localhost:8765`, without WiFi, the web server, I2C timing or FreeRTOS scheduling (see `simulation/README.md`).
 `uv run python export_gait_trace.py` regenerates `app/tests/fixtures/pico-gait-trace.json`, which the app's `pico-gait.spec.ts` checks.
 
 ### Protobuf schemas (`platform_shared/`)

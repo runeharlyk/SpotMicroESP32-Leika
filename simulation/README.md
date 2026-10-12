@@ -65,6 +65,8 @@ uv run python visionary_demo.py [address]                           # Robot API 
 uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file; --robot COM10 over USB)
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
 uv run python calibrate_compass.py recording.leika [--write <address>]  # fit the compass's hard-iron offset, optionally store it
+uv run python virtual_robot.py --port 8765                          # a robot on this computer, from the firmware's C++
+uv run python release_smoke.py 192.168.1.39                         # the check before a release; exits non-zero on a breach
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
@@ -123,6 +125,35 @@ The app's System Metrics page records the same `.leika` file, for download, and 
 `calibrate_compass.py` fits the compass's hard-iron offset to a recording made while the robot is turned slowly through every orientation (`src/sim/compass_fit.py`).
 It undoes the mounting and the calibration the recording's header holds, fits a sphere to the raw readings, and refuses a recording that does not cover enough directions or whose field is not Earth's (25-65 uT).
 With `--write <address>` it stores the offset in the robot's peripheral settings, keeping the rest.
+
+## Virtual robot
+
+`virtual_robot.py` builds `esp32/test/host/virtual_robot.cpp` from the firmware's own code and serves it on `ws://localhost:<port>/api/ws`, so the app and the Robot API drive it as they drive a robot.
+It runs `MotionService` every 10 ms, with its gaits and its dead-man stop, the `ServoController` writing to a fake I2C bus, and the socket's decoder, subscriptions and telemetry.
+It answers the features (the variant, the firmware's name and version, and the SHA-256 of the program as its ELF hash) and the servo settings, and refuses every other request with status 400.
+The IMU reads level and still.
+
+It needs a C++20 compiler (`$CXX`, or `g++`; on Windows MSYS2's UCRT64 `g++`) and the firmware's nanopb headers:
+
+```bash
+uv run python ../esp32/scripts/compile_protos.py
+uv run python virtual_robot.py --port 8765 [--variant SPOTMICRO_ESP32_MINI]
+```
+
+It builds on every start; `--build <path>` builds once and `--binary <path>` runs that build.
+To drive it from the app, run `pnpm dev` in `app/` and set the address to `localhost:8765` on the start page or on `/connection`.
+From Python, `Robot("localhost:8765")` connects to it.
+
+It does not cover WiFi, the web server, the I2C bus's timing, the sensors or FreeRTOS scheduling: the period it reports is this computer's, not the ESP32's.
+The program speaks to the Python wrapper over stdin and stdout; `tests/test_virtual_robot.py` stands it up, walks it and checks its dead-man stop.
+
+## Release smoke check
+
+`release_smoke.py <address>` checks a robot before a release: it reads the features and the ELF hash, stands, walks two seconds in each gait, plays `wave` where the firmware has animations (it skips this when the protocol has none or the robot refuses), and records at least 500 ticks of telemetry.
+It then deactivates the robot and exits 1 when a tick overran the 10 ms period more often than `--max-overruns` allows (default 5), a servo write failed, a joint was written to a PWM limit, an angle was not finite, the dead-man stop fired, or the legs did not swing while walking.
+It exits 2 when the robot cannot be reached or driven.
+The robot walks during the check, so give it room.
+CI runs it against the virtual robot.
 
 ## Follow-ups (out of scope here)
 

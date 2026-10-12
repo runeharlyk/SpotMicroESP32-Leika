@@ -46,6 +46,8 @@ class RealBackend:
         self._height = 0.7
         self._gait = Gait.TROT
         self._variant = None
+        self._features: pb.FeaturesDataResponse | None = None
+        self._recording: list[pb.TickSample] | None = None
 
     # --- connection --------------------------------------------------------------------------------------------
     # A connect that fails partway closes what it opened: the robot would otherwise keep streaming to a dead subscriber.
@@ -53,8 +55,8 @@ class RealBackend:
         self._thread.start()
         try:
             self._run(self._open(), REQUEST_TIMEOUT_S)
-            reply = self._request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest()))
-            self._variant = speed_model.known_variant(reply.features_data_response.variant)
+            self._features = self.request(pb.CorrelationRequest(features_data_request=pb.FeaturesDataRequest())).features_data_response
+            self._variant = speed_model.known_variant(self._features.variant)
             # A USB-serial chip's port reaches the console UART, which answers requests but streams nothing.
             hint = " (driving and telemetry need the board's native USB port)" if is_serial_port(self._target) else ""
             self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot" + hint)
@@ -103,6 +105,8 @@ class RealBackend:
                         for tick in message.telemetry_batch.ticks:
                             self._drops += tick.link_lost and not self._lost
                             self._lost = tick.link_lost
+                        if self._recording is not None:
+                            self._recording.extend(message.telemetry_batch.ticks)
                         self._tick = message.telemetry_batch.ticks[-1]
                         self._changed.notify_all()
                 elif kind == "correlation_response":
@@ -160,7 +164,8 @@ class RealBackend:
         except (TimeoutError, OSError) as error:
             raise RobotTimeout(f"no answer from the robot at {self._target}") from error
 
-    def _request(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
+    def request(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
+        """Sends a request and returns the robot's reply; a refusal raises RobotError."""
         reply = self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
         if reply.status_code >= 400:  # the firmware answers 200 (or 202 while it works) on success
             raise RobotError(f"the robot refused the request: {reply.status_code} {reply.error_message}")
@@ -222,14 +227,30 @@ class RealBackend:
 
     def set_mag_offset(self, offset) -> None:
         """Stores the compass's hard-iron offset (microtesla, chip frame), keeping every other peripheral setting."""
-        reply = self._request(pb.CorrelationRequest(peripheral_settings_request=api_pb2.PeripheralSettingsRequest()))
+        reply = self.request(pb.CorrelationRequest(peripheral_settings_request=api_pb2.PeripheralSettingsRequest()))
         settings = reply.peripheral_settings
         settings.imu.mag_offset[:] = [float(value) for value in offset]
-        self._request(pb.CorrelationRequest(peripheral_settings=settings))
+        self.request(pb.CorrelationRequest(peripheral_settings=settings))
 
     def calibrate(self) -> Calibration:
-        data = self._request(pb.CorrelationRequest(imu_calibrate_execute=pb.IMUCalibrateExecute())).imu_calibrate_data
+        data = self.request(pb.CorrelationRequest(imu_calibrate_execute=pb.IMUCalibrateExecute())).imu_calibrate_data
         return Calibration(still=data.success, levelled=data.levelled, tilt_deg=data.tilt_deg)
+
+    # --- beyond the backend interface: what a check of the firmware reads -------------------------------------
+    @property
+    def features(self) -> pb.FeaturesDataResponse:
+        """What the robot reported about itself on connecting."""
+        return self._features
+
+    def start_recording(self) -> None:
+        """Keeps every telemetry tick from now on."""
+        with self._changed:
+            self._recording = []
+
+    def recorded(self) -> list[pb.TickSample]:
+        """The ticks kept since start_recording(), oldest first."""
+        with self._changed:
+            return list(self._recording or [])
 
     def now(self) -> float:
         return time.monotonic()

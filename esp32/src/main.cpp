@@ -33,6 +33,7 @@
 #include <robot_service.h>
 #include <system_service.h>
 #include <telemetry/telemetry.h>
+#include <telemetry/tick_sample.h>
 #include <settings/placeholders.h>
 #include <settings/imu_settings.h>
 #include <variant.h>
@@ -750,38 +751,9 @@ void sensorLoopEntry(void *) {
     }
 }
 
-// One control tick as the simulation needs it; angles leave the robot in radians.
-static void recordTick(uint32_t seq, int64_t start, int64_t previousStart, int64_t computed, int64_t written,
-                       const ImuSample &imu, ServoWrite write) {
+static void recordTick(const TickTimes &times, const ImuSample &imu, ServoWrite write) {
     static socket_message_TickSample tick;  // about 340 bytes: kept off the control task's stack
-    tick = socket_message_TickSample_init_zero;
-    tick.seq = seq;
-    tick.t_us = start;
-    tick.period_us = previousStart ? start - previousStart : 0;
-    tick.compute_us = computed - start;
-    tick.has_imu = true;
-    imuToProto(imu, tick.imu);
-    const float *targets = motionService.getAngles();
-    const float *angles = servoController.outputAngles();
-    const uint16_t *pwm = servoController.outputPwm();
-    for (int i = 0; i < 12; i++) {
-        tick.angles[i] = DEG_TO_RAD_F(angles[i]);
-        tick.targets[i] = DEG_TO_RAD_F(targets[i]);
-        tick.pwm[i] = pwm[i];
-    }
-    tick.servo_write_us = write.attempted ? written - computed : 0;
-    tick.servo_ok = write.ok;
-    const CommandMsg &command = motionService.currentCommand();
-    const float values[7] = {command.lx, command.ly, command.rx, command.ry, command.h, command.s, command.s1};
-    std::copy(values, values + 7, tick.command);
-    tick.command_rx_us = motionService.commandReceivedAt();
-    // Saturates rather than wrapping after 71.6 minutes without a command.
-    tick.command_age_us = tick.command_rx_us ? std::min<int64_t>(start - static_cast<int64_t>(tick.command_rx_us),
-                                                                 UINT32_MAX)
-                                             : 0;
-    tick.mode = motionService.mode();
-    tick.gait = motionService.gait();
-    tick.link_lost = motionService.linkLost();
+    fillTickSample(tick, times, imu, write, motionService, servoController);
     telemetry.record(tick);
 }
 
@@ -823,7 +795,7 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
         const int64_t computed = esp_timer_get_time();
         const ServoWrite write = servoController.update((tickStart - lastTickStart) / 1e6f);
         const int64_t written = esp_timer_get_time();
-        if (telemetry.recording()) recordTick(tickSeq, tickStart, lastTickStart, computed, written, imu, write);
+        if (telemetry.recording()) recordTick({tickSeq, tickStart, lastTickStart, computed, written}, imu, write);
         tickSeq++;
         lastTickStart = tickStart;
         ledService.loop();

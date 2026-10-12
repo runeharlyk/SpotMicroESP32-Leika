@@ -13,11 +13,13 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
       - "app/src/lib/simulation/robots.ts"
       - "animations/**"
-      - "esp32/include/**"
       - "esp32/scripts/**"
-      - "esp32/test/host/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
@@ -29,11 +31,13 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
       - "app/src/lib/simulation/robots.ts"
       - "animations/**"
-      - "esp32/include/**"
       - "esp32/scripts/**"
-      - "esp32/test/host/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -75,6 +79,7 @@ jobs:
       - name: Generate the protocol classes the recording loader reads
         run: uv run --no-sync python gen_protos.py
 
+      # The nanopb headers this generates also build the virtual robot.
       - name: Trace the firmware motion code
         run: |
           uv run --no-sync python ../esp32/scripts/compile_protos.py
@@ -91,3 +96,12 @@ jobs:
 
       - name: Run tests
         run: uv run --no-sync pytest -q
+
+      # The host's g++, as the Firmware Host Tests workflow builds the firmware code with.
+      - name: Run the release smoke check against the virtual robot
+        run: |
+          uv run --no-sync python virtual_robot.py --build "$RUNNER_TEMP/virtual_robot"
+          uv run --no-sync python virtual_robot.py --binary "$RUNNER_TEMP/virtual_robot" --port 8765 > "$RUNNER_TEMP/virtual_robot.log" 2>&1 &
+          timeout 30 sh -c 'until grep -q api/ws "$RUNNER_TEMP/virtual_robot.log"; do sleep 0.2; done'
+          uv run --no-sync python release_smoke.py localhost:8765
+          kill %1
