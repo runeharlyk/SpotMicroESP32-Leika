@@ -33,6 +33,8 @@
     const working = $derived(['busy', 'sending', 'downloading', 'restarting'].includes(step.kind))
     // A station with an address: the robot can reach the release site itself (WifiStatus 3 is connected).
     let robotOnline = $state(false)
+    // Builds whose app slot has no room for TLS (esp32-camera, esp32dev) cannot download their own update.
+    const canDownload = $derived($connectionFeatures?.otaDownload ?? false)
 
     onMount(() => {
         robotRequest({ wifiStatusRequest: {} })
@@ -146,7 +148,7 @@
             <button class="btn" disabled={working || !robotEnv} onclick={fetchRelease}>
                 <DownloadIcon class="mr-2 h-5 w-5" />Latest release
             </button>
-            {#if robotOnline}
+            {#if canDownload && robotOnline}
                 <button
                     class="btn"
                     disabled={working || !robotEnv || !deactivated}

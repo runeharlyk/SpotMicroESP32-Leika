@@ -578,7 +578,8 @@
       "robot_name": 150,
       "hostname": 160,
       "sonar": 170,
-      "walk_nn": 230
+      "walk_nn": 230,
+      "ota_download": 240
     },
     "socket_message.File": {
       "name": 10,

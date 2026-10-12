@@ -131,6 +131,8 @@ After the reconnect the app compares `firmware_elf_sha256` in the features with 
 ### The robot's own download
 
 A robot on a WiFi network can fetch the image itself, which the Firmware page offers as "Install the latest release on the robot" when the robot's station is connected; it is a small request, so it also works over Bluetooth and USB.
+The `esp32-camera` and `esp32dev` builds leave it out (`USE_OTA_DOWNLOAD=0`): TLS, the HTTP client and the certificate bundle take about 165 KB of flash, more than their 1.9 MB app slots (`min_spiffs.csv`) have left, and growing the slots would move the partitions under robots already flashed.
+Their features say `ota_download: false`, the Firmware page offers only the update through the app, and `ota_download` is answered 400.
 
 1. `ota_download` with an `https://` URL; plain http is refused, as an unauthenticated image would be a flash write anyone on the network could make.
    The robot answers 202 with an `ota_status`, and refuses unless deactivated or while an update runs.

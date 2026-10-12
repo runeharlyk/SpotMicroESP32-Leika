@@ -58,6 +58,8 @@ message FeaturesDataResponse {
 
     // A learned walking policy is built in and passed its self-check, so WALK_NN can be asked for.
     bool walk_nn = 230;
+    // The robot can download its own update over HTTPS (OtaDownload); esp32-camera and esp32dev have no room for it.
+    bool ota_download = 240;
 }
 
 message FeaturesDataRequest { }

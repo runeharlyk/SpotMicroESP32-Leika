@@ -62,11 +62,12 @@ describe('Firmware page', () => {
         vi.unstubAllGlobals()
     })
 
-    function open(robotMode: ModesEnum) {
+    function open(robotMode: ModesEnum, otaDownload = true) {
         connectionFeatures.set(
             FeaturesDataResponse.create({
                 firmwareVersion: '0.3.0',
-                firmwareBuiltTarget: 'esp32-wroom-camera'
+                firmwareBuiltTarget: 'esp32-wroom-camera',
+                otaDownload
             })
         )
         mode.set(ModeData.create({ mode: robotMode }))
@@ -86,6 +87,17 @@ describe('Firmware page', () => {
         open(ModesEnum.STAND)
         await vi.waitFor(() => expect(installButton()).toBeDefined())
         expect(installButton().disabled).toBe(true)
+    })
+
+    it('does not offer the install on the robot when its build cannot download', async () => {
+        wifi = 3
+        open(ModesEnum.DEACTIVATED, false)
+        await vi.waitFor(() => expect(robot.sent).toContain('wifiStatusRequest'))
+        // A macrotask, so the WiFi status reply has landed and only the feature flag holds the button back.
+        await new Promise(resolve => setTimeout(resolve, 0))
+        flushSync()
+        expect(installButton()).toBeUndefined()
+        expect(button(/Latest release/)).toBeDefined()
     })
 
     it('has the robot download the latest release for its board and shows why it failed', async () => {
