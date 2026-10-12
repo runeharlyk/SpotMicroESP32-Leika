@@ -95,6 +95,9 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
 - `state`, `calibrate` and `max_velocity` read from the robot.
 - `odometry` reads the robot's dead reckoning since the last `reset_odometry` or deactivation (metres, yaw in degrees), and `reset_odometry` starts it afresh.
   It counts the steps the gait commanded: the simulation covers about 11 to 15 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
+- `goal_move` has the robot walk a distance or turn an angle itself, on its odometry, and returns once it reports the target reached (`GoalCancelled` or `RobotTimeout` otherwise); a WiFi stall cannot cut it short.
+  `move_forward` and `move_sideways` are goal moves on a robot that takes them, and `rotate` turns by a goal and then closes the rest on the measured yaw.
+  The simulation runs the firmware's goal controller on its odometry, so it lands where the robot would by that odometry: about 8 % long on a distance and 15 % on a turn by MuJoCo's base (`tests/test_goal_moves.py`).
 - Leaving the `with` block, on an exception or Ctrl-C included, stops the robot and lets it rest.
   A robot the user deactivated stays deactivated, and the robot never deactivates on its own.
 - The real robot is driven over its WebSocket (`ws://<host>/api/ws`).

@@ -170,3 +170,18 @@ The Pico's compass is uncalibrated and the gyro's yaw drifts with a bias nothing
 The estimate knows only what the gait commanded.
 On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 11 to 15 % short.
 Calibrate it against a tape measure before relying on a distance.
+
+## Goal moves
+
+A goal move walks a distance forward or sideways, or turns an angle, on the [odometry](#odometry) rather than on the link (`esp32/include/goal_controller.h`).
+The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall cannot cut the move short as the dead-man stop cuts a host-side move.
+From STAND or WALK the motion service switches to WALK and sets the sticks itself each control tick, through the same command the app's input sets; the app's height, cadence and step height stay in force.
+The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
+The stick slows in proportion over the last 5 cm or 30 degrees, down to a fifth of the asked speed, and the robot walks on until it is past the target; within 1 cm or 3 degrees then it has arrived, centres the sticks and stands.
+On the Pico in the host test it settles within 1.1 mm and 0.6 degrees of the target, by its odometry.
+
+The dead-man stop guards the app's input and leaves a goal alone.
+A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it closing its socket, or a newer goal; it gives up after twice the time it should take plus 2 s.
+Every end but the app taking over centres the sticks.
+
+The goal is only as good as the odometry: until that is calibrated against a tape measure, the robot lands off by the odometry's error.

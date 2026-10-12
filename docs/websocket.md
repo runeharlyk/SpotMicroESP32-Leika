@@ -65,6 +65,7 @@ Subscriptions end with the connection and must be sent again after a reconnect.
 | `telemetry_batch`   | 271 | In batches, see [Telemetry](#telemetry)                                           |
 | `telemetry_network` | 272 | Every second while telemetry is recorded                                          |
 | `wifi_status`       | 280 | When the station gets an address or loses the network; also over the [serial link](serial.md) |
+| `goal_status`       | 310 | On every new [goal move](motion_system.md#goal-moves) and every change of its state |
 
 `telemetry_header` (270) is not subscribed to; it is sent to a client each time that client subscribes to 271.
 The robot never sends `angles`, `servo_pwm`, `servo_state` or `controller_data`.

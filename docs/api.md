@@ -69,6 +69,8 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
 | `odometry_request`                                     | `odometry`            | Read the dead reckoning; with `reset`, the estimate reached before it starts afresh ([odometry](motion_system.md#odometry)) |
+| `goal_move`                                            | `goal_status`         | Walk a distance or turn an angle on the odometry; 202 with the goal's number, 409 unless in STAND or WALK or during an update, 400 for a malformed goal ([goal moves](motion_system.md#goal-moves)) |
+| `goal_cancel`, `goal_status_request`                   | `goal_status`         | Cancel the goal, or read the latest goal's state and progress                                                     |
 
 ### Optional services
 
