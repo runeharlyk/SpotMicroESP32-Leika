@@ -39,6 +39,7 @@ DEFINE_MESSAGE_TRAITS(TelemetryBatch, telemetry_batch)
 DEFINE_MESSAGE_TRAITS(TelemetryNetwork, telemetry_network)
 DEFINE_MESSAGE_TRAITS(AnimationStatus, animation_status)
 DEFINE_MESSAGE_TRAITS(GoalStatus, goal_status)
+DEFINE_MESSAGE_TRAITS(OtaStatus, ota_status)
 
 // Streaming file transfer messages
 DEFINE_MESSAGE_TRAITS(FSDownloadMetadata, fs_download_metadata)

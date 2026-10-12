@@ -63,3 +63,5 @@ socket_message.AnimationReport.error max_size:64
 socket_message.AnimationReport.description max_size:97
 socket_message.AnimationReport.params max_count:10
 socket_message.AnimationPose.legs max_count:4
+socket_message.OtaDownload.url max_size:256
+socket_message.OtaStatus.error max_size:64

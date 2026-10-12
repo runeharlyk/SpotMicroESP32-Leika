@@ -10,6 +10,8 @@ interface ReleaseIndex {
 export interface Release {
     tag: string
     version: string
+    /** Where the app image lies, for a robot to download it itself. */
+    url: string
     download: () => Promise<Uint8Array>
 }
 
@@ -24,6 +26,7 @@ export async function latestRelease(
     return {
         tag: index.tag,
         version: index.version ?? index.tag.replace(/^v/, ''),
+        url: RELEASE_SITE + file,
         download: async () => new Uint8Array(await (await get(fetcher, file)).arrayBuffer())
     }
 }

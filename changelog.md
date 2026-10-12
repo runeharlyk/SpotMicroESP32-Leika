@@ -30,6 +30,7 @@ All notable changes to this project will be documented in this file.
 - Fuses the gyro into the odometry's heading, learning its bias while the robot stands: in the simulation a turn's heading is now within 1 % instead of 9 % short, and goal turns land on it; the feet's own heading stays in the odometry as `kinematic_yaw`
 - Adds an AUTO gait, ported from the Hexapod: the crawl for a short stick and the trot for a long one, with hysteresis, swapped only at a standstill on all four feet; the telemetry reports the gait walked
 - Adds Show on robot to the animation editor, ported from the Hexapod: the robot holds the pose being edited and follows it, from stand, until switched off, its client leaves or another mode is chosen, easing back to stance
+- Adds firmware updates the robot downloads itself over its own WiFi, from an https URL checked against ESP-IDF's certificate bundle, ported from the Hexapod: the Firmware page offers to install the latest release on the robot when it has WiFi
 
 ### Changed
 

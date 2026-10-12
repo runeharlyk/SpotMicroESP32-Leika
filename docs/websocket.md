@@ -128,6 +128,19 @@ A failed request, the client's socket closing, or 30 s without a chunk ends the 
 The new firmware boots on probation and confirms itself when the first socket client connects; a reset before that rolls back to the previous firmware.
 After the reconnect the app compares `firmware_elf_sha256` in the features with the image's to tell the new firmware from a rollback.
 
+### The robot's own download
+
+A robot on a WiFi network can fetch the image itself, which the Firmware page offers as "Install the latest release on the robot" when the robot's station is connected; it is a small request, so it also works over Bluetooth and USB.
+
+1. `ota_download` with an `https://` URL; plain http is refused, as an unauthenticated image would be a flash write anyone on the network could make.
+   The robot answers 202 with an `ota_status`, and refuses unless deactivated or while an update runs.
+2. The robot follows redirects, checks the server against ESP-IDF's certificate bundle, and writes the body through the same session as `ota_chunk`, under a client of its own: an upload from the app and the download exclude each other, and the factory-image check, the validation and the 30 s timeout are the same.
+   It refuses a server that does not give the image's size.
+3. `ota_status` (320) goes to subscribers on every change of state and every 500 ms while it downloads: `written` of `size` bytes, then `OTA_DOWNLOADED` or `OTA_DOWNLOAD_FAILED` with the reason.
+4. `system_restart`, as after an upload.
+
+The app never holds the image, so it tells the new firmware from a rollback by the robot coming back with another `firmware_elf_sha256` than before; installing the release the robot already runs therefore reads as a rollback.
+
 ## Crash dump
 
 On a panic the robot writes an ELF core dump to its `coredump` partition before it resets (`CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH`).

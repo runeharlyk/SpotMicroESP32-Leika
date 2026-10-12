@@ -34,6 +34,7 @@ describe('latestRelease', () => {
         const release = await latestRelease('esp32-wroom-camera', fetcher)
 
         expect(release?.tag).toBe('v0.3.1')
+        expect(release?.url).toBe(`${RELEASE_SITE}esp32-wroom-camera.bin`)
         expect(release && [...(await release.download())]).toEqual([0xe9, 1, 2])
         expect(asked).toEqual(['ota.json', 'esp32-wroom-camera.bin'])
     })

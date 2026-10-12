@@ -101,6 +101,24 @@ message OtaChunk {
     bytes data = 2;
 }
 message OtaFinish {}
+// The robot downloads an app image from an https URL itself and writes it as OtaStart, OtaChunk and OtaFinish do,
+// refused unless deactivated or while an update runs. Answered with 202 and an OtaStatus; the progress goes to
+// subscribers as OtaStatus, and once DOWNLOADED, SystemRestart boots the new image.
+message OtaDownload {
+    string url = 1;
+}
+enum OtaDownloadState {
+    OTA_DOWNLOAD_IDLE = 0;
+    OTA_DOWNLOADING = 1;
+    OTA_DOWNLOADED = 2;
+    OTA_DOWNLOAD_FAILED = 3;
+}
+message OtaStatus {
+    OtaDownloadState state = 1;
+    uint32 written = 2;  // bytes in the update slot
+    uint32 size = 3;     // bytes the server announced; 0 until it answered
+    string error = 4;    // why it failed
+}
 
 // Animation clips (animation.proto): play and stop are requests, so a refusal says why; the status goes to subscribers.
 message AnimationParam {
@@ -273,6 +291,7 @@ message CorrelationRequest {
         GoalMove goal_move = 250;
         GoalCancel goal_cancel = 251;
         GoalStatusRequest goal_status_request = 252;
+        OtaDownload ota_download = 270;
         AnimationPose animation_pose = 271;
     }
 }
@@ -307,6 +326,7 @@ message CorrelationResponse {
         CoreDumpReport core_dump_report = 230;
         OdometryData odometry = 240;
         GoalStatus goal_status = 250;
+        OtaStatus ota_status = 270;
     }
 }
 
@@ -548,5 +568,6 @@ message Message {
         AnimationStatus animation_status = 292;
         SonarData sonar = 300;
         GoalStatus goal_status = 310;
+        OtaStatus ota_status = 320;
     }
 }

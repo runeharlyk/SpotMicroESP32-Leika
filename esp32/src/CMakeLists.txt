@@ -4,6 +4,8 @@ set(COMPONENT_REQUIRES
     esp_driver_uart
     esp_driver_usb_serial_jtag
     esp_http_server
+    esp_http_client
+    mbedtls
     nvs_flash
     esp_wifi
     esp_event

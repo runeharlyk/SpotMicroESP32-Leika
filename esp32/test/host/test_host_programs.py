@@ -73,6 +73,7 @@ PROGRAMS = {
     "ble_link_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "console_uart_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "ota_session_test.cpp": [],
+    "ota_download_test.cpp": [],
     "gesture_control_test.cpp": [],
     "cpu_usage_test.cpp": [],
     "core_dump_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO,

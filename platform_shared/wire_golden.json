@@ -58,6 +58,12 @@
       "ANIMATE": 6,
       "WALK_NN": 7
     },
+    "socket_message.OtaDownloadState": {
+      "OTA_DOWNLOAD_IDLE": 0,
+      "OTA_DOWNLOADING": 1,
+      "OTA_DOWNLOADED": 2,
+      "OTA_DOWNLOAD_FAILED": 3
+    },
     "socket_message.SonarStatus": {
       "SONAR_OFF": 0,
       "SONAR_DISTANCE": 1,
@@ -435,6 +441,7 @@
       "goal_move": 250,
       "goal_cancel": 251,
       "goal_status_request": 252,
+      "ota_download": 270,
       "animation_pose": 271
     },
     "socket_message.CorrelationResponse": {
@@ -464,7 +471,8 @@
       "animation_report": 221,
       "core_dump_report": 230,
       "odometry": 240,
-      "goal_status": 250
+      "goal_status": 250,
+      "ota_status": 270
     },
     "socket_message.Directory": {
       "name": 1
@@ -668,7 +676,8 @@
       "wifi_status": 280,
       "animation_status": 292,
       "sonar": 300,
-      "goal_status": 310
+      "goal_status": 310,
+      "ota_status": 320
     },
     "socket_message.ModeData": {
       "mode": 1
@@ -687,9 +696,18 @@
       "index": 1,
       "data": 2
     },
+    "socket_message.OtaDownload": {
+      "url": 1
+    },
     "socket_message.OtaFinish": {},
     "socket_message.OtaStart": {
       "size": 1
+    },
+    "socket_message.OtaStatus": {
+      "state": 1,
+      "written": 2,
+      "size": 3,
+      "error": 4
     },
     "socket_message.PingMsg": {},
     "socket_message.PongMsg": {},

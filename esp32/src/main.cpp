@@ -25,6 +25,7 @@
 #include <features.h>
 #include <motion.h>
 #include <ota_flash.h>
+#include <ota_http.h>
 #include <animation/animation_store.h>
 #include <core_dump_flash.h>
 #include <wifi_service.h>
@@ -114,6 +115,8 @@ RobotService robotService;
 Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
+EspHttpSource otaSource;
+OtaDownload otaDownload {otaSession, otaSource};
 anim::AnimationStore animationStore {FS_ANIMATION_DIRECTORY};
 EspCoreDumpStore coreDumpStore;
 
@@ -175,10 +178,13 @@ static void applySettings(Handler &handler, const Proto &settings, socket_messag
     replyWithSettings(handler, res, tag, reply);
 }
 
+// An upload from the app, or the robot's own download from its claim on.
+static bool updating() { return otaSession.running() || otaDownload.busy(); }
+
 // A robot taking on a mode during an update would move with its firmware half replaced; gestures are held back in the
 // control task for the same reason.
 static void requestMode(socket_message_ModesEnum mode) {
-    if (!otaSession.running()) motionService.inbox.postMode(mode);
+    if (!updating()) motionService.inbox.postMode(mode);
 }
 
 #if SOC_WIFI_SUPPORTED
@@ -212,6 +218,29 @@ static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
 }
 
 static uint32_t nowMs() { return esp_timer_get_time() / 1000; }
+
+static void otaStatusToProto(const OtaDownload::Status &status, socket_message_OtaStatus &proto) {
+    proto.state = static_cast<socket_message_OtaDownloadState>(status.state);
+    proto.written = status.written;
+    proto.size = status.size;
+    strncpy(proto.error, status.error, sizeof(proto.error) - 1);
+}
+
+// Every change of state, and every 500 ms while the robot downloads, so an app sees it progress.
+static void publishOtaStatus() {
+    static OtaDownload::Status last;
+    static uint32_t lastSentAt = 0;
+    if (!anySubscribers(socket_message_Message_ota_status_tag)) return;
+    const OtaDownload::Status now = otaDownload.status();
+    const uint32_t nowAt = nowMs();
+    const bool changed = now.state != last.state;
+    if (!changed && (now.state != OtaDownloadState::DOWNLOADING || nowAt - lastSentAt < 500)) return;
+    last = now;
+    lastSentAt = nowAt;
+    socket_message_OtaStatus status = socket_message_OtaStatus_init_zero;
+    otaStatusToProto(now, status);
+    emitToAll(status);
+}
 
 static void goalStatusToProto(const MotionService::GoalStatus &status, socket_message_GoalStatus &proto) {
     proto.id = status.id;
@@ -596,7 +625,7 @@ void setupEventSocket() {
              const socket_message_ModesEnum mode = motionService.mode();
              if (mode != socket_message_ModesEnum_STAND && mode != socket_message_ModesEnum_WALK)
                  return refuse(409, "Stand up first");
-             if (otaSession.running()) return refuse(409, "Updating");
+             if (updating()) return refuse(409, "Updating");
              MotionService::GoalStatus accepted;
              accepted.id = motionService.inbox.postGoal(goal, client.link == &wsSocket ? client.id : -1);
              accepted.state = GoalState::RUNNING;
@@ -623,6 +652,7 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_ota_start_tag,
          [](const auto &req, auto &res, Client client) {
+             if (otaDownload.busy()) return replyOta(res, {409, "An update is already running"});
              const bool deactivated = motionService.mode() == socket_message_ModesEnum_DEACTIVATED;
              replyOta(res, otaSession.start(req.request.ota_start.size, deactivated, client.id, nowMs()));
          }},
@@ -637,6 +667,25 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_ota_finish_tag,
          [](const auto &req, auto &res, Client client) { replyOta(res, otaSession.finish(client.id)); }},
+
+        // TLS and the HTTP client want a deep stack, 8 KB as in ESP-IDF's OTA examples; the task ends with the download.
+        {socket_message_CorrelationRequest_ota_download_tag,
+         [](const auto &req, auto &res, Client client) {
+             const bool deactivated = motionService.mode() == socket_message_ModesEnum_DEACTIVATED;
+             const OtaReply claimed = otaDownload.claim(req.request.ota_download.url, deactivated);
+             replyOta(res, claimed);
+             if (claimed.status != 202) return;
+             const auto download = [](void *) {
+                 otaDownload.run([] { return motionService.mode() == socket_message_ModesEnum_DEACTIVATED; }, nowMs);
+                 vTaskDelete(nullptr);
+             };
+             if (xTaskCreate(download, "ota_download", 8192, nullptr, 4, nullptr) != pdPASS) {
+                 otaDownload.abandon("Out of memory");
+                 return replyOta(res, {500, "Could not start the download"});
+             }
+             res.which_response = socket_message_CorrelationResponse_ota_status_tag;
+             otaStatusToProto(otaDownload.status(), res.response.ota_status);
+         }},
 
         {socket_message_CorrelationRequest_animation_list_request_tag,
          [](const auto &req, auto &res, Client client) {
@@ -852,7 +901,7 @@ void SpotControlLoopEntry(void *) {
         const int64_t tickStart = esp_timer_get_time();
         const ImuSample imu = peripherals.imuSample();
         const gesture_t gesture = peripherals.takeGesture();
-        motionService.update(imu, otaSession.running() ? gesture_t::eGestureNone : gesture);
+        motionService.update(imu, updating() ? gesture_t::eGestureNone : gesture);
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
@@ -988,6 +1037,7 @@ void serviceLoopEntry(void *) {
         EXECUTE_EVERY_N_MS(100, {
             publishMotion();
             publishAnimationStatus();
+            publishOtaStatus();
             publishGoalStatus();
 
             // Also on the console UART: a robot set up over its USB-serial chip shows it joining the network.

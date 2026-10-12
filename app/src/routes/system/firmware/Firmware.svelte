@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onMount } from 'svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { Chip, UploadIcon, DownloadIcon } from '$lib/components/icons'
     import { connectionFeatures } from '$lib/stores/featureFlags'
@@ -6,13 +7,20 @@
     import { ModeData, ModesEnum } from '$lib/platform_shared/message'
     import { readFirmwareImage, type FirmwareImage } from '$lib/firmware/image'
     import { latestRelease } from '$lib/firmware/release'
-    import { bootNewFirmware, sendFirmware, type BootOutcome } from '$lib/firmware/ota'
+    import {
+        bootNewFirmware,
+        downloadFirmwareOnRobot,
+        sendFirmware,
+        type BootOutcome
+    } from '$lib/firmware/ota'
+    import { robotRequest } from '$lib/robot-request'
 
     type Step =
         | { kind: 'idle' }
         | { kind: 'busy'; doing: string }
         | { kind: 'chosen'; image: FirmwareImage; source: string }
         | { kind: 'sending'; fraction: number }
+        | { kind: 'downloading'; tag: string; fraction: number }
         | { kind: 'restarting' }
         | { kind: 'done'; outcome: BootOutcome }
         | { kind: 'failed'; message: string }
@@ -22,7 +30,15 @@
 
     const robotEnv = $derived($connectionFeatures?.firmwareBuiltTarget)
     const deactivated = $derived($mode.mode === ModesEnum.DEACTIVATED)
-    const working = $derived(['busy', 'sending', 'restarting'].includes(step.kind))
+    const working = $derived(['busy', 'sending', 'downloading', 'restarting'].includes(step.kind))
+    // A station with an address: the robot can reach the release site itself (WifiStatus 3 is connected).
+    let robotOnline = $state(false)
+
+    onMount(() => {
+        robotRequest({ wifiStatusRequest: {} })
+            .then(reply => (robotOnline = reply.wifiStatus?.status === 3))
+            .catch(() => (robotOnline = false))
+    })
 
     function choose(bytes: Uint8Array, source: string) {
         try {
@@ -63,7 +79,37 @@
         try {
             await sendFirmware(image.bytes, fraction => (step = { kind: 'sending', fraction }))
             step = { kind: 'restarting' }
-            step = { kind: 'done', outcome: await bootNewFirmware(image.elfSha256) }
+            const outcome = await bootNewFirmware(hash => hash === image.elfSha256)
+            step = { kind: 'done', outcome }
+        } catch (error) {
+            step = { kind: 'failed', message: (error as Error).message }
+        }
+    }
+
+    // The robot downloads the image itself, over its own WiFi, rather than the app sending it over this link. The app
+    // never sees the image's hash, so the robot runs it if it comes back with another hash than it had.
+    async function installOnRobot() {
+        if (!robotEnv) return
+        step = { kind: 'busy', doing: 'Looking for the latest release' }
+        try {
+            const release = await latestRelease(robotEnv)
+            if (!release) {
+                step = {
+                    kind: 'failed',
+                    message: `The latest release has no image for ${robotEnv}`
+                }
+                return
+            }
+            const running = $connectionFeatures?.firmwareElfSha256
+            const tag = release.tag
+            step = { kind: 'downloading', tag, fraction: 0 }
+            await downloadFirmwareOnRobot(
+                release.url,
+                fraction => (step = { kind: 'downloading', tag, fraction })
+            )
+            step = { kind: 'restarting' }
+            const outcome = await bootNewFirmware(hash => hash !== running)
+            step = { kind: 'done', outcome }
         } catch (error) {
             step = { kind: 'failed', message: (error as Error).message }
         }
@@ -100,6 +146,15 @@
             <button class="btn" disabled={working || !robotEnv} onclick={fetchRelease}>
                 <DownloadIcon class="mr-2 h-5 w-5" />Latest release
             </button>
+            {#if robotOnline}
+                <button
+                    class="btn"
+                    disabled={working || !robotEnv || !deactivated}
+                    onclick={installOnRobot}
+                >
+                    <DownloadIcon class="mr-2 h-5 w-5" />Install the latest release on the robot
+                </button>
+            {/if}
             <input
                 type="file"
                 accept=".bin"
@@ -140,6 +195,12 @@
         {:else if step.kind === 'sending'}
             <div class="flex flex-col gap-1">
                 <span>Sending the image: {(step.fraction * 100).toFixed(0)} %</span>
+                <progress class="progress progress-primary w-full" value={step.fraction} max="1"
+                ></progress>
+            </div>
+        {:else if step.kind === 'downloading'}
+            <div class="flex flex-col gap-1">
+                <span>The robot downloads {step.tag}: {(step.fraction * 100).toFixed(0)} %</span>
                 <progress class="progress progress-primary w-full" value={step.fraction} max="1"
                 ></progress>
             </div>
