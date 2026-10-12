@@ -9,6 +9,7 @@ interface ReleaseIndex {
 
 export interface Release {
     tag: string
+    version: string
     download: () => Promise<Uint8Array>
 }
 
@@ -22,8 +23,36 @@ export async function latestRelease(
     if (!index.tag || !file) return undefined
     return {
         tag: index.tag,
+        version: index.version ?? index.tag.replace(/^v/, ''),
         download: async () => new Uint8Array(await (await get(fetcher, file)).arrayBuffer())
     }
+}
+
+/**
+ * Whether release `candidate` is newer than the `running` firmware, compared as dotted numbers with a leading v
+ * ignored; a version that does not start with a number is never newer, so a development build is not nagged.
+ */
+export function isNewerVersion(candidate: string, running: string): boolean {
+    const parse = (version: string) =>
+        /^v?(\d+(?:\.\d+)*)/.exec(version)?.[1].split('.').map(Number)
+    const a = parse(candidate)
+    const b = parse(running)
+    if (!a || !b) return false
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const difference = (a[i] ?? 0) - (b[i] ?? 0)
+        if (difference !== 0) return difference > 0
+    }
+    return false
+}
+
+/** The latest release when it is newer than the `running` version and has an image for `env`. */
+export async function newerRelease(
+    env: string,
+    running: string,
+    fetcher: typeof fetch = fetch
+): Promise<Release | undefined> {
+    const release = await latestRelease(env, fetcher)
+    return release && isNewerVersion(release.version, running) ? release : undefined
 }
 
 async function get(fetcher: typeof fetch, path: string) {

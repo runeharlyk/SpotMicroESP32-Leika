@@ -8,6 +8,7 @@
     import FullscreenButton from './FullscreenButton.svelte'
     import StopButton from './StopButton.svelte'
     import ViewSelector from './ViewSelector.svelte'
+    import UpdateIndicator from './UpdateIndicator.svelte'
     import { Hamburger } from '../icons'
 </script>
 
@@ -26,6 +27,8 @@
             <h1 class="px-2 text-xl font-bold lg:text-2xl">{page.data.title}</h1>
         {/if}
     </div>
+
+    <UpdateIndicator />
 
     <FullscreenButton />
 
