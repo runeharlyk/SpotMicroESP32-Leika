@@ -8,6 +8,7 @@ dependencies = [
     "gymnasium>=1.2.3",
     "mujoco>=3.10.0",
     "numpy>=2.4.4",
+    "opencv-python>=4.13.0",
     "protobuf>=7.34.1",
     "pyserial>=3.5",
     "scipy>=1.18.0",
