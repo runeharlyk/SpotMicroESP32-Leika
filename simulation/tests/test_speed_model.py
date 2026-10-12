@@ -1,5 +1,6 @@
 """The firmware walk gait's velocity model, against the firmware's own motion traces."""
 import json
+import re
 from dataclasses import astuple
 from pathlib import Path
 
@@ -8,11 +9,14 @@ import pytest
 
 from src.leika.backends.base import UnknownVariant, Velocity
 from src.leika.constants import Gait
+from src.leika import speed_model
 from src.leika.speed_model import (
     GAITS, GEOMETRY, SPEED, STEP_HEIGHT, Sticks, known_variant, max_velocity, slowdown, sticks_for, velocity_of,
 )
 
-TRACES = Path(__file__).resolve().parents[2] / "app" / "tests" / "fixtures"
+REPO = Path(__file__).resolve().parents[2]
+TRACES = REPO / "app" / "tests" / "fixtures"
+FIRMWARE = REPO / "esp32" / "include"
 VARIANTS = ["SPOTMICRO_ESP32", "SPOTMICRO_ESP32_MINI", "SPOTMICRO_YERTLE"]
 WALK, SETTLE_TICKS = 5, 60  # the 333 ms command filter has settled after 60 ticks
 HEIGHT = 0.7
@@ -102,6 +106,40 @@ def test_a_full_trot_on_the_pico_is_slowed_and_its_top_speed_says_so():
     top = max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, HEIGHT)
     assert 0 < share < 1
     assert top.vx == pytest.approx(velocity_of("SPOTMICRO_ESP32_MINI", Gait.TROT, full, HEIGHT).vx)
+
+
+def test_the_servo_ratings_and_the_walk_share_are_the_firmwares():
+    servo_output = (FIRMWARE / "peripherals" / "servo_output.h").read_text()
+    walk_state = (FIRMWARE / "motion_states" / "walk_state.h").read_text()
+
+    def number(pattern, text):
+        return float(re.search(pattern, text).group(1))
+
+    assert speed_model.MG92B_LOW_VOLTS == number(r"MG92B_LOW_VOLTS = ([\d.]+)f", servo_output)
+    assert speed_model.MG92B_HIGH_VOLTS == number(r"MG92B_HIGH_VOLTS = ([\d.]+)f", servo_output)
+    assert speed_model.MG92B_LOW_SPEED_DEG_S == 60 / number(r"MG92B_LOW_SPEED_DEG_S = 60 / ([\d.]+)f", servo_output)
+    assert speed_model.MG92B_HIGH_SPEED_DEG_S == 60 / number(r"MG92B_HIGH_SPEED_DEG_S = 60 / ([\d.]+)f", servo_output)
+    assert speed_model.SERVO_MAX_SPEED_DEG_S == number(r"SERVO_MAX_SPEED_DEG_S = ([\d.]+);", servo_output)
+    assert speed_model.JOINT_SPEED_SHARE == number(r"JOINT_SPEED_SHARE = ([\d.]+)f;", walk_state)
+
+
+def test_the_cap_follows_the_supply_between_the_ratings_and_holds_outside():
+    assert speed_model.max_joint_speed() == speed_model.MAX_JOINT_SPEED_DEG_S == 540
+    assert speed_model.servo_speed_limit(4.8) == pytest.approx(60 / 0.13 * 720 / 750)
+    assert speed_model.servo_speed_limit(5.4) == pytest.approx((60 / 0.13 + 750) / 2 * 720 / 750)
+    assert speed_model.servo_speed_limit(7.4) == 720
+    assert speed_model.servo_speed_limit(3.0) == speed_model.servo_speed_limit(4.8)
+
+
+def test_a_lower_supply_slows_the_pico_and_asks_for_longer_sticks():
+    full = Sticks(0.0, 1.0, 0.0)
+    nominal = slowdown("SPOTMICRO_ESP32_MINI", Gait.TROT, full, HEIGHT)
+    low = slowdown("SPOTMICRO_ESP32_MINI", Gait.TROT, full, HEIGHT, supply_volts=4.8)
+    assert low < 0.9 * nominal
+    v = Velocity(0.5 * max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, HEIGHT, supply_volts=4.8).vx, 0.0, 0.0)
+    sticks = sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, v, HEIGHT, supply_volts=4.8)
+    assert velocity_of("SPOTMICRO_ESP32_MINI", Gait.TROT, sticks, HEIGHT, supply_volts=4.8).vx == pytest.approx(v.vx)
+    assert sticks.ly >= sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, v, HEIGHT).ly
 
 
 def test_sticks_for_a_velocity_beyond_the_gait_reach_the_rim_in_its_direction():

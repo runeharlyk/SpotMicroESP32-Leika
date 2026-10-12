@@ -58,4 +58,57 @@ describe('ServoTable', () => {
         )
         expect(toasts().map(t => t.type)).not.toContain('success')
     })
+    // The supply input is the first number input, above the table.
+    const supplyInput = () => document.body.querySelector<HTMLInputElement>('input[step="0.1"]')!
+    const speeds = () => document.body.querySelector('[data-testid="servo-speeds"]')!.textContent!
+
+    it('shows the supply and the speeds it allows, and a robot without a supply at 6 V', async () => {
+        robot = fakeRobot(() => ({ servoSettings: { ...servoSettings, supplyVoltage: 0 } }))
+        component = mount(ServoTable, { target: document.body })
+        await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
+
+        expect(supplyInput().value).toBe('6')
+        expect(speeds()).toMatch(/720 deg\/s.* 540 deg\/s/)
+    })
+
+    it('saves an edited supply and shows the slower speeds it derives', async () => {
+        const saved: ServoSettings[] = []
+        robot = fakeRobot((name, data) => {
+            if (name === 'servoSettings') saved.push(data.servoSettings!)
+            return name === 'servoSettings' ?
+                    {}
+                :   { servoSettings: { ...servoSettings, supplyVoltage: 6 } }
+        })
+        component = mount(ServoTable, { target: document.body })
+        await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
+
+        supplyInput().value = '4.8'
+        supplyInput().dispatchEvent(new Event('input', { bubbles: true }))
+        supplyInput().dispatchEvent(new Event('blur'))
+        flushSync()
+
+        await vi.waitFor(() => expect(saved).toHaveLength(1))
+        expect(saved[0].supplyVoltage).toBe(4.8)
+        expect(speeds()).toMatch(/443 deg\/s.* 332 deg\/s/)
+    })
+
+    it('sends no supply while the field is empty, so the robot keeps its own', async () => {
+        const saved: ServoSettings[] = []
+        robot = fakeRobot((name, data) => {
+            if (name === 'servoSettings') saved.push(data.servoSettings!)
+            return name === 'servoSettings' ?
+                    {}
+                :   { servoSettings: { ...servoSettings, supplyVoltage: 5 } }
+        })
+        component = mount(ServoTable, { target: document.body })
+        await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
+
+        supplyInput().value = ''
+        supplyInput().dispatchEvent(new Event('input', { bubbles: true }))
+        supplyInput().dispatchEvent(new Event('blur'))
+        flushSync()
+
+        await vi.waitFor(() => expect(saved).toHaveLength(1))
+        expect(saved[0].supplyVoltage).toBe(5)
+    })
 })

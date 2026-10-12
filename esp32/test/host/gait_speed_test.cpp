@@ -1,6 +1,6 @@
 // Host test of the walk's reach and joint speeds, built and run by test_host_programs.py: no gait, at any full stick,
 // speed, step height or body height, puts a foot where its leg cannot reach or commands a joint faster than
-// WalkState::MAX_JOINT_SPEED_DEG_S.
+// WalkState::MAX_JOINT_SPEED_DEG_S, or its cap at a lower servo supply.
 // With the argument "report" it prints each gait's peak commanded joint speed, how often the servos' speed limit
 // (SERVO_MAX_SPEED_DEG_S) holds a joint back, its forward speed at the app's settings and the commands out of reach.
 #include <cmath>
@@ -292,6 +292,47 @@ void enteringOrSwitchingAGaitLiftsNoFootAtOnce() {
     }
 }
 
+// A lower supply, told to the walk mid-stride, caps the joints at its own share from the next tick on, and the walk
+// keeps its stroke and steps slower; every full stick stays under the lower cap.
+void aLowerSupplyCapsTheWalkFromTheNextTick() {
+    constexpr float LOW_VOLTS = 4.8f;
+    const float lowCap = WalkState::JOINT_SPEED_SHARE * servoSpeedLimit(LOW_VOLTS);
+    const CommandMsg forward = command(0, 1, 0, DEFAULT_H, 0.5f, DEFAULT_S1);
+    const KinConfig &mini = *kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    Walk nominal(mini, TROT), lowered(mini, TROT);
+    nominal.hold(forward, 2);
+    lowered.hold(forward, 2);
+    CHECK(lowered.speeds.peak_deg_s > lowCap + ROUNDING_DEG_S);  // the full supply's walk would outrun the low cap
+    lowered.walk.useServoSpeedLimit(servoSpeedLimit(LOW_VOLTS));
+    CHECK(lowered.walk.maxJointSpeed() == lowCap);
+    nominal.speeds = lowered.speeds = Speeds();
+    nominal.hold(forward, 8);
+    lowered.hold(forward, 8);
+    CHECK(lowered.speeds.peak_deg_s <= lowCap + ROUNDING_DEG_S);
+    CHECK(lowered.speeds.cyclesPerSecond(DT) < 0.9f * nominal.speeds.cyclesPerSecond(DT));
+    const float nominalStroke = nominal.speeds.forwardSpeed(DT) / nominal.speeds.cyclesPerSecond(DT);
+    const float loweredStroke = lowered.speeds.forwardSpeed(DT) / lowered.speeds.cyclesPerSecond(DT);
+    CHECK(std::fabs(loweredStroke / nominalStroke - 1) < 0.02f);
+
+    for (const KinematicsVariant variant : VARIANTS)
+        for (const Gait gait : {TROT, CRAWL})
+            for (const auto &stick : STICKS) {
+                Walk walk(*kinConfigFor(variant), gait);
+                walk.walk.useServoSpeedLimit(servoSpeedLimit(LOW_VOLTS));
+                walk.hold(command(stick[0], stick[1], stick[2], DEFAULT_H, 1, 1), gait == CRAWL ? 8.f : 2.f);
+                CHECK(walk.speeds.peak_deg_s <= lowCap + ROUNDING_DEG_S);
+            }
+}
+
+// A walk never told a supply caps at the default's share, as before the supply was a setting.
+void theDefaultSupplyKeepsTheCap() {
+    WalkState walk;
+    CHECK(walk.maxJointSpeed() == WalkState::MAX_JOINT_SPEED_DEG_S);
+    CHECK(WalkState::MAX_JOINT_SPEED_DEG_S == 540);
+    walk.useServoSpeedLimit(servoSpeedLimit(DEFAULT_SERVO_SUPPLY_VOLTS));
+    CHECK(walk.maxJointSpeed() == WalkState::MAX_JOINT_SPEED_DEG_S);
+}
+
 void report() {
     std::printf("variant gait s: forward full stick at h %g, s1 %g: peak deg/s, ticks clipped at %.0f deg/s, cycles/s, m/s | "
                 "every reachable full stick, h and s1: worst peak, worst clipped share, unreachable commands\n",
@@ -336,6 +377,8 @@ int main(int argc, char **argv) {
     aFullForwardTrotKeepsItsStroke();
     stoppingLandsEveryFootWithoutAJump();
     enteringOrSwitchingAGaitLiftsNoFootAtOnce();
+    theDefaultSupplyKeepsTheCap();
+    aLowerSupplyCapsTheWalkFromTheNextTick();
     if (failures) std::printf("%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }

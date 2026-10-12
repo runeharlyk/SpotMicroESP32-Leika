@@ -63,6 +63,36 @@ def test_connecting_reads_the_variant_and_the_state(robot):
     assert robot.max_velocity() == speed_model.max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, 0.7)
 
 
+# A robot told its servos run at 4.8 V walks slower, and the client asks it for faster sticks to make up for it.
+def test_the_speed_model_runs_at_the_robots_servo_supply(make_fake):
+    fake = make_fake(supply_voltage=4.8)
+    client = Robot(backend=RealBackend(fake.target))
+    client.connect()
+    try:
+        low = speed_model.max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, 0.7, supply_volts=4.8)
+        assert client.max_velocity() == low
+        assert low.vx < 0.9 * speed_model.max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, 0.7).vx
+        wanted = Velocity(0.8 * low.vx, 0.0, 0.0)
+        client.stand()
+        client.set_velocity(wanted.vx, wanted.vy, wanted.yaw_rate)
+        sticks = speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, wanted, 0.7, supply_volts=4.8)
+        assert sticks.ly > speed_model.sticks_for("SPOTMICRO_ESP32_MINI", Gait.TROT, wanted, 0.7).ly
+        _eventually(lambda: fake.inputs() and fake.inputs()[-1][1].left.y == pytest.approx(sticks.ly))
+    finally:
+        client.close()
+
+
+# A firmware from before the setting reports no supply: the client takes the 6 V the firmware then runs at.
+def test_a_robot_without_a_supply_runs_at_the_default(make_fake):
+    fake = make_fake(supply_voltage=0.0)
+    client = Robot(backend=RealBackend(fake.target))
+    client.connect()
+    try:
+        assert client.max_velocity() == speed_model.max_velocity("SPOTMICRO_ESP32_MINI", Gait.TROT, 0.7)
+    finally:
+        client.close()
+
+
 def test_an_unknown_variant_is_refused(make_fake):
     fake = make_fake(variant="SPOTMICRO_GIANT")
     with pytest.raises(UnknownVariant):

@@ -49,6 +49,9 @@ class MotionService {
 
     bool update(const ImuSample& imu, gesture_t gesture);
 
+    /** How fast the servos turn a joint (deg/s), which caps the walk; from the control task, before update(). */
+    void useServoSpeedLimit(float limit) { walkState.useServoSpeedLimit(limit); }
+
     /** Whether update() applied a mode message since the last call. */
     bool takeModeApplied() { return std::exchange(modeApplied, false); }
 

@@ -86,6 +86,24 @@ static void aJumpTakesAsLongAsTheServoWould() {
     CHECK(slewToward(180, 0, SERVO_MAX_SPEED_DEG_S * 0.01f) < 180);
 }
 
+// The MG92B's ratings at its two supplies, linear between them, and the controller's 720 deg/s at 6 V exactly, so a
+// robot that never set its supply moves as before.
+static void theSpeedLimitFollowsTheSupply() {
+    CHECK(servoSpeedLimit(DEFAULT_SERVO_SUPPLY_VOLTS) == SERVO_MAX_SPEED_DEG_S);
+    CHECK(std::fabs(mg92bRatedSpeed(4.8f) - 461.54f) < 0.01f);
+    CHECK(std::fabs(mg92bRatedSpeed(6.0f) - 750) < 0.01f);
+    CHECK(std::fabs(mg92bRatedSpeed(5.4f) - (461.54f + 750) / 2) < 0.01f);
+    CHECK(std::fabs(servoSpeedLimit(4.8f) - 461.54f * 720 / 750) < 0.01f);
+    CHECK(std::fabs(servoSpeedLimit(5.0f) - (461.54f + (750 - 461.54f) / 6) * 720 / 750) < 0.01f);
+}
+
+// Outside its ratings the speed is held at the nearer one: a 7.4 V rail is not taken to be faster than 6 V.
+static void theSpeedLimitHoldsOutsideTheRatings() {
+    CHECK(servoSpeedLimit(7.4f) == SERVO_MAX_SPEED_DEG_S);
+    CHECK(servoSpeedLimit(3.0f) == servoSpeedLimit(4.8f));
+    CHECK(servoSpeedLimit(0.0f) == servoSpeedLimit(4.8f));
+}
+
 int main() {
     eachVariantTableReproducesTheSettingsItReplaces();
     theOutputStaysInsideTheServoRange();
@@ -93,6 +111,8 @@ int main() {
     aRawCalibrationPwmIsBounded();
     aMotionTheServosCanFollowPassesUntouched();
     aJumpTakesAsLongAsTheServoWould();
+    theSpeedLimitFollowsTheSupply();
+    theSpeedLimitHoldsOutsideTheRatings();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

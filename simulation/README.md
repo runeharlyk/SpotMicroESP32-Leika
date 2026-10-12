@@ -113,6 +113,7 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
 
 - `stand`, `rest`, `deactivate` and `set_gait` set the mode, `set_velocity` and `stop` drive, and `move_forward`, `move_sideways` and `rotate` move a distance or an angle.
 - `state`, `calibrate` and `max_velocity` read from the robot.
+- The real backend reads the servo supply from the robot's servo settings when it connects, and its speed model slows the walk as the firmware does at that supply; a firmware without the setting, and the simulation, run at 6 V (`SimBackend(supply_volts=...)` takes another).
 - `odometry` reads the robot's dead reckoning since the last `reset_odometry` or deactivation (metres, yaw in degrees), and `reset_odometry` starts it afresh.
   It counts the steps the gait commanded: the simulation covers about 7 to 11 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
   Its `yaw` fuses the gyro and turns within 1 % of the simulated base; `kinematic_yaw` is the feet's alone, 9 % short in a turn.

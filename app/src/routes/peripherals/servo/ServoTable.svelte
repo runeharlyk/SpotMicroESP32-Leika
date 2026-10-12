@@ -13,6 +13,7 @@
     } from '$lib/calibration/leg-pose'
     import LegDiagram from './LegDiagram.svelte'
     import { HAS_3D_VIEW } from '$lib/build-flags'
+    import { servoSpeedLimit, servoSupplyVolts, walkJointSpeedCap } from '$lib/servo-speed'
     import { connectionFeatures } from '$lib/stores/featureFlags'
 
     interface Props {
@@ -33,7 +34,8 @@
         const saved: ServoSettings = {
             servos: servoSettings.servos,
             channels: channelsEdited ? [...channels] : servoSettings.channels,
-            model: undefined
+            model: undefined,
+            supplyVoltage: servoSettings.supplyVoltage
         }
         notifications.info('Uploading servo config...', 3000)
         try {
@@ -65,6 +67,11 @@
     const editChannel = (joint: number, value: number) => {
         channels[joint] = value
         channelsEdited = true
+    }
+
+    // Only a supply above 0 is sent: 0 tells the robot to keep the one it has.
+    const editSupply = (volts: number) => {
+        if (servoSettings && volts > 0) servoSettings.supplyVoltage = volts
     }
 
     const jointName = (joint: number) => {
@@ -104,6 +111,28 @@
             {/if}
         </div>
     {/if}
+    {@const servoLimit = servoSpeedLimit(servoSupplyVolts(servoSettings))}
+    <div class="flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-2">
+            Servo supply
+            <input
+                type="number"
+                class="input input-sm input-bordered w-20"
+                value={servoSupplyVolts(servoSettings)}
+                onblur={syncConfig}
+                oninput={event => editSupply(Number((event.target as HTMLInputElement).value))}
+                min="4"
+                max="8.4"
+                step="0.1"
+            />
+            V
+        </label>
+        <span class="text-sm opacity-70" data-testid="servo-speeds">
+            Servos turn up to {Math.round(servoLimit)} deg/s, the walk up to {Math.round(
+                walkJointSpeedCap(servoLimit)
+            )} deg/s (MG92B rated 4.8 to 6 V, held at the nearer rating outside)
+        </span>
+    </div>
     {#if channelError}
         <div role="alert" class="alert alert-error alert-soft">{channelError}; not saved.</div>
     {/if}

@@ -6,7 +6,8 @@ stance sweeps each foot through the stroke in the stance part of the cycle (duty
 feet's speed, so vx = step_x * rate / duty. The cycle rate is max(s, 0.5) * speed_factor; the client holds s at 0.5,
 the slowest the gait allows.
 
-That holds while every foot stays in reach and the joints keep under walk_state.h's MAX_JOINT_SPEED_DEG_S. Where the
+That holds while every foot stays in reach and the joints keep under walk_state.h's cap: three quarters of the servo
+controller's slew limit, which follows the servos' supply (servo_output.h); 540 deg/s at the default 6 V. Where the
 stroke would take a foot out of reach, the firmware shortens it, and its step height, as WalkState::boundToReach does,
 and the model does the same. Where the stroke or the lift would turn a joint faster, the firmware runs its clock only
 the 64ths of each tick that keep the fastest joint at the cap, so the cycle takes longer and the body walks slower than
@@ -23,7 +24,13 @@ from .constants import Gait
 
 SPEED = 0.5
 STEP_HEIGHT = 0.5  # s1: the swing lifts each foot this share of the firmware's max_step_height
-MAX_JOINT_SPEED_DEG_S = 0.75 * 720
+# servo_output.h: the MG92B's rated speed at 4.8 and 6 V (0.13 and 0.08 s per 60 degrees), the supply the robot takes
+# until its servo settings hold another, and the servo controller's slew limit there; walk_state.h's share of it.
+MG92B_LOW_VOLTS, MG92B_HIGH_VOLTS = 4.8, 6.0
+MG92B_LOW_SPEED_DEG_S, MG92B_HIGH_SPEED_DEG_S = 60 / 0.13, 60 / 0.08
+DEFAULT_SUPPLY_VOLTS = MG92B_HIGH_VOLTS
+SERVO_MAX_SPEED_DEG_S = 720.0
+JOINT_SPEED_SHARE = 0.75
 # coxa, coxa offset, femur, tibia, length, width (metres) per variant, from esp32/include/kinematics.h; pinned by
 # tests/test_speed_model.py.
 GEOMETRY = {
@@ -47,6 +54,23 @@ HALVINGS = 24
 BEZIER_STEPS = np.array([-1.0, -1.4, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5, 1.5, 1.4, 1.0])
 BEZIER_HEIGHTS = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0])
 BINOMIALS = np.array([1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1], dtype=float)
+
+
+def servo_speed_limit(supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> float:
+    """servoSpeedLimit: the MG92B's rated speed at this supply, linear between its ratings and held at them outside,
+    with the servo controller's margin below it at 6 V."""
+    below = MG92B_HIGH_VOLTS - min(max(supply_volts, MG92B_LOW_VOLTS), MG92B_HIGH_VOLTS)
+    rated = MG92B_HIGH_SPEED_DEG_S - (MG92B_HIGH_SPEED_DEG_S - MG92B_LOW_SPEED_DEG_S) * below / (
+        MG92B_HIGH_VOLTS - MG92B_LOW_VOLTS)
+    return rated / MG92B_HIGH_SPEED_DEG_S * SERVO_MAX_SPEED_DEG_S
+
+
+def max_joint_speed(supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> float:
+    """The fastest the walk turns a joint at this servo supply (deg/s), as WalkState::useServoSpeedLimit caps it."""
+    return JOINT_SPEED_SHARE * servo_speed_limit(supply_volts)
+
+
+MAX_JOINT_SPEED_DEG_S = max_joint_speed()
 
 
 def _bezier_samples(points: np.ndarray, samples: int) -> np.ndarray:
@@ -207,29 +231,34 @@ def joint_speeds(variant: str, gait: Gait, sticks: Sticks, height: float) -> np.
     return np.abs(np.diff(angles, axis=-1)).max(axis=(0, 1)) * SAMPLES * _rate(gait)
 
 
-def slowdown(variant: str, gait: Gait, sticks: Sticks, height: float) -> float:
+def slowdown(variant: str, gait: Gait, sticks: Sticks, height: float,
+             supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> float:
     """The share of the commanded cadence the firmware walks these sticks at: 1 when the servos follow all of it.
 
-    Each stretch runs at the most 64ths of the clock that keep its fastest joint at the cap, as WalkState::step finds.
+    Each stretch runs at the most 64ths of the clock that keep its fastest joint at the cap the servos' supply sets, as
+    WalkState::step finds.
     """
-    allowed = MAX_JOINT_SPEED_DEG_S / np.maximum(joint_speeds(variant, gait, sticks, height), 1e-9)
+    allowed = max_joint_speed(supply_volts) / np.maximum(joint_speeds(variant, gait, sticks, height), 1e-9)
     parts = np.where(allowed >= 1, SLOWDOWN_PARTS, np.maximum(np.floor(allowed * SLOWDOWN_PARTS), 1))
     return float(1 / np.mean(SLOWDOWN_PARTS / parts))
 
 
-def walked_share(variant: str, gait: Gait, sticks: Sticks, height: float) -> float:
+def walked_share(variant: str, gait: Gait, sticks: Sticks, height: float,
+                 supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> float:
     """The share of the sticks' velocity the firmware walks: its stroke bounded to the legs' reach, at its slowed
     cadence."""
-    return reach_bound(variant, gait, sticks, height)[0] * slowdown(variant, gait, sticks, height)
+    return reach_bound(variant, gait, sticks, height)[0] * slowdown(variant, gait, sticks, height, supply_volts)
 
 
-def velocity_of(variant: str, gait: Gait, sticks: Sticks, height: float) -> Velocity:
+def velocity_of(variant: str, gait: Gait, sticks: Sticks, height: float,
+                supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> Velocity:
     linear, angular = per_stick(variant, gait)
-    share = walked_share(variant, gait, sticks, height)
+    share = walked_share(variant, gait, sticks, height, supply_volts)
     return Velocity(sticks.ly * linear * share, -sticks.lx * linear * share, sticks.rx * angular * share)
 
 
-def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float) -> Sticks:
+def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float,
+               supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> Sticks:
     """The sticks that walk this velocity, or as near as the gait gets in its direction.
 
     A longer stick in the same direction walks no slower even where the firmware slows it or bounds its stroke, so the
@@ -241,19 +270,19 @@ def sticks_for(variant: str, gait: Gait, velocity: Velocity, height: float) -> S
     if longest == 0:
         return wanted
     low, high = 0.0, 1.0 / longest
-    if high * walked_share(variant, gait, wanted.scaled(high), height) <= 1:
+    if high * walked_share(variant, gait, wanted.scaled(high), height, supply_volts) <= 1:
         return wanted.scaled(high)
     for _ in range(HALVINGS):
         share = (low + high) / 2
-        if share * walked_share(variant, gait, wanted.scaled(share), height) < 1:
+        if share * walked_share(variant, gait, wanted.scaled(share), height, supply_volts) < 1:
             low = share
         else:
             high = share
     return wanted.scaled(low)
 
 
-def max_velocity(variant: str, gait: Gait, height: float) -> Velocity:
+def max_velocity(variant: str, gait: Gait, height: float, supply_volts: float = DEFAULT_SUPPLY_VOLTS) -> Velocity:
     """The fastest the gait walks along each axis on its own, at this body height."""
-    return Velocity(velocity_of(variant, gait, Sticks(0.0, 1.0, 0.0), height).vx,
-                    velocity_of(variant, gait, Sticks(-1.0, 0.0, 0.0), height).vy,
-                    velocity_of(variant, gait, Sticks(0.0, 0.0, 1.0), height).yaw_rate)
+    return Velocity(velocity_of(variant, gait, Sticks(0.0, 1.0, 0.0), height, supply_volts).vx,
+                    velocity_of(variant, gait, Sticks(-1.0, 0.0, 0.0), height, supply_volts).vy,
+                    velocity_of(variant, gait, Sticks(0.0, 0.0, 1.0), height, supply_volts).yaw_rate)

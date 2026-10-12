@@ -1,7 +1,8 @@
 """How much servo speed margin does each motion leave? Ported from the Hexapod's servo_margin.py.
 
 A real MG92B is slower than its rating when it is loaded, hot or on a sagging battery: 750 deg/s unloaded at 6 V,
-460 at 5 V (servo_output.h), and the servo controller's 720 deg/s assumes the better end. A motion that only follows
+461 at 4.8 V (servo_output.h), and the servo controller's 720 deg/s assumes 6 V unless the servo settings hold a lower
+supply. A motion that only follows
 at the full speed will lag on the robot. The Hexapod sweeps its sim servo's stall torque down and watches the score;
 the speed is what limits Leika's open-loop motion, so this sweeps the servo controller's speed limit down over the
 firmware's own traces (src/robot/servo_envelope.py) and watches how far the servos trail the command.

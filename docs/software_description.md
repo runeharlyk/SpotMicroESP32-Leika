@@ -95,7 +95,9 @@ Each joint's PWM follows from three parts:
 1. A clamp to 125 - 600 counts, the range the servos accept.
 
 The joints do not follow their targets directly.
-Each moves toward its target by at most 720 degrees per second, the rated speed of an MG92B servo, and a tick counts as at most 20 ms long so that a stall does not release a jump.
+Each moves toward its target by at most 96 % of the MG92B's rated speed at the servo supply stored in the servo settings (`supply_voltage`, 6 V when never set): 720 degrees per second at 6 V, 443 at 4.8 V, linear in between and held at the nearer rating outside (`servoSpeedLimit` in `peripherals/servo_output.h`).
+A tick counts as at most 20 ms long so that a stall does not release a jump.
+A new supply holds from the next tick, and the control task hands the same limit to the walk, which caps its joints at three quarters of it.
 This limit is the only filtering between the motion state's angles and the servos; the smoothing of the commands is done in the motion states.
 
 #### Settings and communication

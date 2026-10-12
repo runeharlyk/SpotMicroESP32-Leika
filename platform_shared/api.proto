@@ -63,6 +63,9 @@ message ServoSettings {
     repeated Servo servos = 1; // max 12 servos
     repeated uint32 channels = 2; // PCA9685 channel of each joint; empty means joint j on channel j
     JointModel model = 3;
+    // Volts the servos run at, from which the robot takes how fast they turn; 0, from an app before it, keeps the
+    // supply in force, and a robot that never stored one reports 6.
+    float supply_voltage = 4;
 }
 
 message ServoSettingsRequest {}

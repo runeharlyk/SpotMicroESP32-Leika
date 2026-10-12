@@ -76,7 +76,7 @@ In walk the body height, pitch and the step length, sideways step, turn and dept
 The speed and the step height act at once.
 
 The smoother is not the only limit on motion.
-The servo controller also limits each joint to 720 degrees per second, see [Software description](software_description.md#servo-output).
+The servo controller also limits each joint to 720 degrees per second at the default 6 V servo supply, and less at a lower one, see [Software description](software_description.md#servo-output).
 
 ## Walking gait
 
@@ -97,8 +97,9 @@ While the step length, sideways step and turn all are zero, the phase is held at
 
 ### Joint speed limit
 
-A tick of the walk may not turn any joint faster than 540 degrees per second, three quarters of the servo controller's 720.
-The MG92B is rated 750 degrees per second only unloaded at 6 V; it slows under load and at a lower supply (460 degrees per second at 5 V), and the quarter in hand keeps the servo controller's own limit from clipping the steps.
+A tick of the walk may not turn any joint faster than three quarters of the servo controller's limit: 540 degrees per second at the default 6 V supply, 332 at 4.8 V.
+The MG92B's ratings (750 degrees per second at 6 V, 461 at 4.8 V) are unloaded; it slows under load, and the quarter in hand keeps the servo controller's own limit from clipping the steps.
+The limit follows the servo supply in the servo settings from the next tick, without a restart.
 Where a tick would turn a joint faster, the walk runs its clock (the phase above and its command smoothing) only for the largest number of 64ths of the tick that keep every joint under the limit, found by bisection through the kinematics of the variant.
 A long or high step so keeps its shape and duty and takes longer, mostly in its swing, while a step the servos can follow is walked as commanded.
 A jump that even a 64th of the tick does not keep under the limit, such as a foot lifted to its hip, is walked at full time, since creeping up to it would freeze the walk.

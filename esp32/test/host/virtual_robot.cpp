@@ -206,6 +206,7 @@ void streamTelemetry() {
 // The control task's tick (main.cpp's SpotControlLoopEntry), with the level IMU and no gestures.
 void controlTick(uint32_t seq, int64_t previousStart, int64_t start) {
     const ImuSample imu = levelImu(start);
+    motionService.useServoSpeedLimit(servoController.speedLimit());
     motionService.update(imu, eGestureNone);
     if (motionService.takeModeApplied()) {
         servoController.setMode(SERVO_CONTROL_STATE::ANGLE);

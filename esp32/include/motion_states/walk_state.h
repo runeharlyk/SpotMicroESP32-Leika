@@ -128,6 +128,7 @@ class WalkState : public MotionState {
     float reach_out_sq = 0, reach_in_sq = 0, crawl_shift = 0;
     // This tick's share of the commanded stroke and crawl shift, and its step height, that keep every foot in reach.
     float reach_scale = 1, swing_height = 0;
+    float max_joint_speed_deg_s = MAX_JOINT_SPEED_DEG_S;
 
   public:
     WalkState() = default;
@@ -215,9 +216,15 @@ class WalkState : public MotionState {
      */
     float stanceRate(float s) const { return std::max(s, 0.5f) * speed_factor / stand_offset; }
 
-    // The fastest the walk turns a joint: a quarter below the servos' limit. The MG92B's 750 deg/s are unloaded at 6 V;
-    // it slows under load and on a lower supply (460 deg/s at 5 V), and the steps must not hit the servos' own limit.
-    static constexpr float MAX_JOINT_SPEED_DEG_S = 0.75f * SERVO_MAX_SPEED_DEG_S;
+    // The fastest the walk turns a joint: a quarter below the servos' limit, which follows their supply
+    // (servo_output.h). The MG92B's ratings are unloaded; it slows under load, and the steps must not hit the servos'
+    // own limit. MAX_JOINT_SPEED_DEG_S is the cap at the default supply, which the walk keeps until told another.
+    static constexpr float JOINT_SPEED_SHARE = 0.75f;
+    static constexpr float MAX_JOINT_SPEED_DEG_S = JOINT_SPEED_SHARE * SERVO_MAX_SPEED_DEG_S;
+
+    /** Caps the joints at JOINT_SPEED_SHARE of the servos' speed limit (deg/s); from the next tick on. */
+    void useServoSpeedLimit(float limit) { max_joint_speed_deg_s = JOINT_SPEED_SHARE * limit; }
+    float maxJointSpeed() const { return max_joint_speed_deg_s; }
 
     // The bends the walk keeps every knee between: short of straight, where the kinematics clamp a foot beyond reach,
     // and a degree short of the full-size robot's tibia folding onto its femur (its URDF's 2.6 rad, 149 degrees), the
@@ -225,7 +232,7 @@ class WalkState : public MotionState {
     static constexpr float MIN_KNEE_BEND_DEG = 10, MAX_KNEE_BEND_DEG = 148;
 
     /**
-     * One tick of the walk, slowed where it would turn a joint faster than MAX_JOINT_SPEED_DEG_S: the walk's own clock
+     * One tick of the walk, slowed where it would turn a joint faster than maxJointSpeed(): the walk's own clock
      * (its phase and its command smoothing) then runs only the most 64ths of the tick the joints can follow, found by
      * bisection. A long or high step so keeps its shape and takes longer, while a step the servos can follow is walked
      * as commanded. A jump that even a 64th of the tick does not keep under the limit (a foot lifted to its hip) is
@@ -257,7 +264,7 @@ class WalkState : public MotionState {
             float after[12];
             kinematics.calculate_inverse_kinematics(body_state, after);
             for (int joint = 0; joint < 12; joint++)
-                if (std::fabs(after[joint] - before[joint]) > MAX_JOINT_SPEED_DEG_S * dt) return false;
+                if (std::fabs(after[joint] - before[joint]) > max_joint_speed_deg_s * dt) return false;
             return true;
         };
         if (followable(SLOWDOWN_PARTS)) return;
