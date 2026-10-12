@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wifi/wifi_idf.h>
+#include <wifi/link_watchdog.h>
 #include <string>
 #include <atomic>
 
@@ -52,6 +53,8 @@ class WiFiService : public StatefulService<WiFiSettings> {
     void reconfigureWiFiConnection();
     void manageSTA();
     void configureNetwork(const WiFiNetwork &network, const char *hostname);
+    void watchLink(uint32_t nowMs);
+    void probeGateway();
 
     // Set from the socket's task when settings change; the service task applies it.
     std::atomic<uint32_t> _reconfigureAt {0};
@@ -60,6 +63,11 @@ class WiFiService : public StatefulService<WiFiSettings> {
     uint32_t _nextAttemptAt {0};
     uint32_t _nextNetwork {0};
     uint32_t _connectingTo {0};
+    LinkWatchdog _linkWatchdog;
+    // The last probe's answer, set on the ping task: -1 while none has ended since the service task took it.
+    std::atomic<int> _probeAnswered {-1};
+    // Set on the event loop's task when the station joins or drops, so the watchdog counts afresh.
+    std::atomic<bool> _linkChanged {false};
 
     constexpr static uint32_t reconnectDelay {10000};
     // Leaves time for the reply to the save that caused the change.

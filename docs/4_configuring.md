@@ -27,6 +27,7 @@ With the factory settings the access point runs whenever the robot is not connec
 1. Navigate to WiFi, then WiFi Station, scan for your network and add it.
 
 The robot keeps the networks it stores and reconnects to them after a restart.
+While joined it pings its router every 5 seconds, and after three unanswered pings in a row it drops the network and joins again, since a link that silently stops working sends no disconnect.
 
 ### Finding the robot
 
