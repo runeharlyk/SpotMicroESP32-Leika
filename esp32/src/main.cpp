@@ -788,6 +788,7 @@ void IRAM_ATTR serviceLoopEntry(void *) {
         EXECUTE_EVERY_N_MS(1000, otaSession.expire(nowMs()));
 
         EXECUTE_EVERY_N_MS(2000, {
+            system_service::sampleCpuUsage();
             if (wsSocket.hasSubscribers(socket_message_Message_analytics_tag)) {
                 socket_message_AnalyticsData analytics = socket_message_AnalyticsData_init_zero;
                 system_service::getAnalytics(analytics);

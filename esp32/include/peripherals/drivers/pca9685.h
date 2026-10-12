@@ -76,6 +76,9 @@ class PCA9685Driver {
 
     bool isInitialized() const { return _initialized; }
 
+    // begin() sets auto-increment, which the chip clears when it powers up.
+    bool configured() { return readReg(REG_MODE1) & MODE1_AI; }
+
   private:
     static constexpr uint8_t REG_MODE1 = 0x00;
     static constexpr uint8_t REG_MODE2 = 0x01;

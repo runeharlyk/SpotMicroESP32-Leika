@@ -173,7 +173,70 @@ static void aSwitchedJointModelIsUsedAndReported() {
     I2CBus::instance().end();
 }
 
+// One 10 ms control tick: the controller's write, as the control task makes it.
+static ServoWrite tick(ServoController &controller) {
+    fake_timer::nowUs += 10000;
+    return controller.update(0.01f);
+}
+
+// A dropped board fails three writes, then is tried twice a second; every tick in between reports its write not ok.
+static void aBoardThatStopsAnsweringIsTriedTwiceASecond() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    controller.activate();
+    CHECK(tick(controller).ok);
+    fake_i2c::absent = {0x40};
+    fake_i2c::attempts.clear();
+    int attempted = 0, ok = 0;
+    // 1.5 s of ticks.
+    for (int i = 0; i < 150; i++) {
+        const ServoWrite write = tick(controller);
+        attempted += write.attempted;
+        ok += write.ok;
+    }
+    // Three in a row, then one 0.5 s after the last and one 0.5 s after that.
+    CHECK(attempted == 5);
+    CHECK(fake_i2c::attempts[0x40] == 5);
+    CHECK(ok == 0);
+
+    fake_i2c::absent.clear();
+    int ticksUntilOk = 1;
+    while (!tick(controller).ok && ticksUntilOk < 100) ticksUntilOk++;
+    CHECK(ticksUntilOk <= 50);
+    for (int i = 0; i < 10; i++) CHECK(tick(controller).ok);
+    I2CBus::instance().end();
+}
+
+// A board that lost power answers again asleep, at its power-on frequency and without auto-increment: it is started
+// and woken again, and the next tick's write reaches every channel.
+static void aBoardThatLostPowerIsStartedAgain() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    controller.activate();
+    CHECK(tick(controller).ok);
+    fake_i2c::absent = {0x40};
+    for (int i = 0; i < 3; i++) CHECK(!tick(controller).ok);
+    auto &chip = fake_i2c::registers[0x40];
+    chip = {};
+    chip[0x00] = 0x11;
+    chip[0xFE] = 0x1E;
+    fake_i2c::absent.clear();
+    while (!tick(controller).ok && fake_timer::nowUs < 100000000) {}
+    CHECK(!asleep());
+    CHECK(chip[0x00] & 0x20);
+    CHECK(chip[0xFE] == 131);
+    CHECK(tick(controller).ok);
+    for (size_t joint = 0; joint < 12; joint++) CHECK(offCount(REVERSED[joint]) == controller.outputPwm()[joint]);
+    I2CBus::instance().end();
+}
+
 int main() {
+    aBoardThatStopsAnsweringIsTriedTwiceASecond();
+    aBoardThatLostPowerIsStartedAgain();
     aSwitchedJointModelIsUsedAndReported();
     withoutAVariantTheServosStayAsleep();
     withAVariantActivatingWakesTheServos();

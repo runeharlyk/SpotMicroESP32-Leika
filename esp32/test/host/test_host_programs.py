@@ -61,6 +61,7 @@ PROGRAMS = {
     "animation_validation_test.cpp": [*NANOPB, ANIMATION_PROTO],
     "ota_session_test.cpp": [],
     "gesture_control_test.cpp": [],
+    "cpu_usage_test.cpp": [],
 }
 
 # Compiler flags a program needs besides the firmware's.

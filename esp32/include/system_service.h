@@ -14,6 +14,8 @@
 namespace system_service {
 void reset();
 void restart();
+// Measures each core's CPU usage since the previous call; one task calls it, every two seconds.
+void sampleCpuUsage();
 void getAnalytics(socket_message_AnalyticsData &analytics);
 void getStaticSystemInformation(socket_message_StaticSystemInformation &info);
 
