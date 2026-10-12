@@ -149,6 +149,9 @@ static std::function<void(const ReplyFiller &)> replyLater(const socket_message_
     };
 }
 
+// Sleeps the sensor task until its 5 ms pacing timer fires; called on the sensor task only.
+static void waitForSensorPace() { ulTaskNotifyTake(pdTRUE, portMAX_DELAY); }
+
 // Runs bus work on the sensor task and replies from there, so the socket is not held up for its duration.
 static void replyFromSensorTask(const socket_message_CorrelationRequest &req, socket_message_CorrelationResponse &res,
                                 Client client, ReplyFiller work) {
@@ -301,7 +304,7 @@ void setupEventSocket() {
          [](const auto &req, auto &res, Client client) {
              replyFromSensorTask(req, res, client, [](socket_message_CorrelationResponse &reply) {
                  reply.which_response = socket_message_CorrelationResponse_imu_calibrate_data_tag;
-                 const Peripherals::ImuCalibration result = peripherals.calibrateIMU(true);
+                 const Peripherals::ImuCalibration result = peripherals.calibrateIMU(true, waitForSensorPace);
                  reply.response.imu_calibrate_data.success = result.still;
                  reply.response.imu_calibrate_data.levelled = result.levelled;
                  reply.response.imu_calibrate_data.tilt_deg = result.tiltDeg;
@@ -539,18 +542,18 @@ void setupEventSocket() {
 // copies out their latest readings. A 5 ms timer paces them, since the 100 Hz FreeRTOS tick cannot.
 void sensorLoopEntry(void *) {
     static TaskHandle_t sensorTask = xTaskGetCurrentTaskHandle();
-    peripherals.beginSensors();
-    // Only the gyro at boot: the robot may be standing anywhere.
-    if (peripherals.imuRateHz() && !peripherals.calibrateIMU(false).still)
-        ESP_LOGW("main", "Robot moved during gyro calibration; bias left at zero");
     const esp_timer_create_args_t pace = {
         .callback = [](void *) { xTaskNotifyGive(sensorTask); }, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK,
         .name = "sensor pace", .skip_unhandled_events = true};
     esp_timer_handle_t timer;
     ESP_ERROR_CHECK(esp_timer_create(&pace, &timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(timer, 5000));
+    peripherals.beginSensors();
+    // Only the gyro at boot: the robot may be standing anywhere.
+    if (peripherals.imuRateHz() && !peripherals.calibrateIMU(false, waitForSensorPace).still)
+        ESP_LOGW("main", "Robot moved during gyro calibration; bias left at zero");
     for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        waitForSensorPace();
         peripherals.sensorTick();
     }
 }
@@ -580,7 +583,10 @@ static void recordTick(uint32_t seq, int64_t start, int64_t previousStart, int64
     const float values[7] = {command.lx, command.ly, command.rx, command.ry, command.h, command.s, command.s1};
     std::copy(values, values + 7, tick.command);
     tick.command_rx_us = motionService.commandReceivedAt();
-    tick.command_age_us = tick.command_rx_us ? start - static_cast<int64_t>(tick.command_rx_us) : 0;
+    // Saturates rather than wrapping after 71.6 minutes without a command.
+    tick.command_age_us = tick.command_rx_us ? std::min<int64_t>(start - static_cast<int64_t>(tick.command_rx_us),
+                                                                 UINT32_MAX)
+                                             : 0;
     tick.mode = motionService.mode();
     tick.gait = motionService.gait();
     tick.link_lost = motionService.linkLost();

@@ -1,5 +1,4 @@
 #include <peripherals/peripherals.h>
-#include <utils/sleep.h>
 #include <esp_timer.h>
 #include <cmath>
 
@@ -13,12 +12,7 @@ Peripherals::Peripherals()
     addUpdateHandler(
         [&](const std::string &originId) {
             updatePins();
-            runOnSensorTask([this] {
-                _imu.configure(imuConfig());
-                // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
-                const SensorOptions options = sensorOptions();
-                if (!(options == _probedOptions)) probeSensors(options);
-            });
+            _imuSettingsChanged.store(true);
         },
         false);
 }
@@ -91,6 +85,7 @@ SensorStatus Peripherals::status() const {
 }
 
 void Peripherals::sensorTick() {
+    if (_imuSettingsChanged.exchange(false)) applyImuSettings();
     runQueuedWork();
     readImu();
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
@@ -139,6 +134,13 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
     data.altitude = _readings.altitude;
     data.bmp_temp = _readings.temperature;
     data.pressure = _readings.pressure;
+}
+
+void Peripherals::applyImuSettings() {
+    _imu.configure(imuConfig());
+    // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
+    const SensorOptions options = sensorOptions();
+    if (!(options == _probedOptions)) probeSensors(options);
 }
 
 void Peripherals::readImu() {
@@ -214,13 +216,13 @@ void Peripherals::runQueuedWork() {
     }
 }
 
-Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level) {
+Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level, const std::function<void()> &waitForNextRead) {
     ImuCalibration result;
     Vec3 up {};
     beginTransaction();
     result.still = _imu.estimateGyroBias(
-        [] {
-            sleepAtLeastMs(5);
+        [&] {
+            waitForNextRead();
             return esp_timer_get_time();
         },
         level ? &up : nullptr);
