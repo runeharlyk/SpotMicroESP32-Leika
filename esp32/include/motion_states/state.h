@@ -99,4 +99,8 @@ class MotionState {
     virtual void handleCommand(const CommandMsg& cmd) {}
 
     virtual void step(body_state_t& body_state, float dt = 0.02f) {}
+
+    // A state that drives the joints itself writes their IK-space angles (degrees) over the last tick's and returns
+    // true; the others leave them to the inverse kinematics of the body state.
+    virtual bool jointAngles(float degrees[12]) { return false; }
 };

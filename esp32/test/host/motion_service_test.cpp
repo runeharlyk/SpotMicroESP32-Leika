@@ -58,6 +58,25 @@ static void withAVariantTheRobotStandsOnItsOwnGeometry() {
     CHECK(std::fabs(knees[0] - knees[1]) > 1);
 }
 
+// This firmware carries no policy: WALK_NN is refused even on the Mini with a working IMU, and the robot stays as it was.
+static void withoutAPolicyWalkNNIsRefused() {
+    static_assert(!WALK_NN_POLICY, "built without a policy header");
+    MotionService motion;
+    motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
+    motion.begin();
+    CHECK(!motion.walkNNAvailable());
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    tick(motion);
+    CHECK(motion.takeModeApplied());
+    ImuSample imu;
+    imu.valid = ImuValid::ACCEL | ImuValid::GYRO | ImuValid::ORIENTATION;
+    motion.inbox.postMode(socket_message_ModesEnum_WALK_NN);
+    fake_timer::nowUs += 10000;
+    motion.update(imu, eGestureNone);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    CHECK(!motion.takeModeApplied());
+}
+
 static float standingKnee(MotionService &motion) {
     motion.inbox.postMode(socket_message_ModesEnum_STAND);
     for (int i = 0; i < 200; i++) tick(motion);
@@ -172,6 +191,7 @@ int main() {
     aSwitchedRobotStandsAsTheNewVariant();
     aSwitchArrivingWithAModeDeactivates();
     aRobotWithoutAVariantCanStandOnceItIsChosen();
+    withoutAPolicyWalkNNIsRefused();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

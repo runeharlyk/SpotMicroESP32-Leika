@@ -10,9 +10,15 @@ void MotionService::useConfig(const KinConfig* newConfig) {
     restState.configure(*config);
     standState.configure(*config);
     walkState.configure(*config);
+#if WALK_NN_POLICY
+    walkNNState.configure(*config);
+#endif
 }
 
 void MotionService::begin() {
+#if WALK_NN_POLICY
+    walkNNVerified = WalkNNState::verifyPolicy();
+#endif
     if (!config) return;
     body_state.ym = config->default_body_height;
     body_state.updateFeet(config->default_feet_positions);
@@ -74,11 +80,30 @@ void MotionService::stopLocomotion() {
     ESP_LOGW("MotionService", "Control link lost - locomotion stopped");
 }
 
+// The policy was trained on the Mini's spot_pico geometry and observes the IMU's orientation and rates.
+bool MotionService::walkNNAllowed() const {
+    if (!walkNNVerified) {
+        ESP_LOGW("MotionService", "WALK_NN refused: no policy that passed its self-check");
+        return false;
+    }
+    if (config != &KIN_CONFIG_SPOTMICRO_ESP32_MINI) {
+        ESP_LOGW("MotionService", "WALK_NN refused: the policy drives the Mini only");
+        return false;
+    }
+    constexpr uint32_t needed = ImuValid::ORIENTATION | ImuValid::GYRO;
+    if ((lastImuValid & needed) != needed) {
+        ESP_LOGW("MotionService", "WALK_NN refused: no IMU orientation and rates");
+        return false;
+    }
+    return true;
+}
+
 void MotionService::setMode(socket_message_ModesEnum modeData) {
     if (!config && modeData != socket_message_ModesEnum_DEACTIVATED) {
         ESP_LOGW("MotionService", "No variant chosen - mode %d refused", static_cast<int>(modeData));
         return;
     }
+    if (modeData == socket_message_ModesEnum_WALK_NN && !walkNNAllowed()) return;
     modeApplied = true;
     currentMode = modeData;
     MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
@@ -87,6 +112,9 @@ void MotionService::setMode(socket_message_ModesEnum modeData) {
         case MOTION_STATE::REST: setState(&restState); break;
         case MOTION_STATE::STAND: setState(&standState); break;
         case MOTION_STATE::WALK: setState(&walkState); break;
+#if WALK_NN_POLICY
+        case MOTION_STATE::WALK_NN: setState(&walkNNState); break;
+#endif
         case MOTION_STATE::DEACTIVATED: setState(nullptr); break;
         default: setState(nullptr); break;
     }
@@ -108,14 +136,18 @@ void MotionService::handleGestures(const gesture_t ges) {
 
 bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     int64_t now = esp_timer_get_time();
+    lastImuValid = imu.valid;
     applyMail(inbox.take(now / 1000));
     handleGestures(gesture);
     if (!state) return false;
     float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
     state->updateImuOffsets(imu);
+#if WALK_NN_POLICY
+    if (state == &walkNNState) walkNNState.observe(imu);
+#endif
     state->step(body_state, dt);
-    kinematics->calculate_inverse_kinematics(body_state, new_angles);
+    if (!state->jointAngles(new_angles)) kinematics->calculate_inverse_kinematics(body_state, new_angles);
     return update_angles(new_angles, angles);
 }
 

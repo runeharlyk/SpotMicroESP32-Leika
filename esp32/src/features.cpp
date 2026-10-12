@@ -30,6 +30,7 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.servo = features.servoDetected;
     fd_res.servo_detected = features.servoDetected;
     fd_res.ws2812 = features.ws2812;
+    fd_res.walk_nn = features.walkNN;
     fd_res.mdns = true;
     fd_res.embed_www = true;
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);

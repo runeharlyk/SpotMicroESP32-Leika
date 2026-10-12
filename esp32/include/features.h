@@ -21,6 +21,7 @@ struct RuntimeFeatures {
     bool cameraDetected;
     bool cameraActive;
     bool ws2812;
+    bool walkNN;
 };
 
 /** The PlatformIO env this firmware was built for. */

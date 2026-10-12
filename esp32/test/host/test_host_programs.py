@@ -27,6 +27,7 @@ PROGRAMS = {
     "motion_inbox_test.cpp": [],
     "motion_service_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "spot_pico_test.cpp": [],
+    "walk_nn_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "servo_output_test.cpp": [],
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],
@@ -58,6 +59,8 @@ PROGRAMS = {
 # Compiler flags a program needs besides the firmware's.
 FLAGS = {
     "proto_decoder_test.cpp": ["-include", os.path.join(HERE, "stubs", "counting_alloc.h")],
+    # A firmware built with a policy: the synthetic one simulation/export_golden.py writes for the tests.
+    "walk_nn_test.cpp": [f"-I{os.path.join(HERE, 'fixtures')}"],
 }
 
 # Arguments a program runs with besides none.

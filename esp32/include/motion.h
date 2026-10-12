@@ -13,6 +13,7 @@
 #include <motion_states/walk_state.h>
 #include <motion_states/stand_state.h>
 #include <motion_states/rest_state.h>
+#include <motion_states/walk_nn_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
 #include <variant.h>
@@ -20,7 +21,8 @@
 #include <optional>
 #include <utility>
 
-enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK };
+// Numbered as ModesEnum, which setMode casts: ANIMATE (6) belongs to the animations branch.
+enum class MOTION_STATE { DEACTIVATED, IDLE, CALIBRATION, REST, STAND, WALK, WALK_NN = 7 };
 
 class MotionService {
   public:
@@ -50,6 +52,9 @@ class MotionService {
 
     float* getAngles() { return angles; }
 
+    /** Whether WALK_NN can run at all: the firmware carries a policy and it passed its self-check in begin(). */
+    bool walkNNAvailable() const { return walkNNVerified.load(); }
+
     inline bool isActive() { return state != nullptr; }
 
     /** The mode and gait in force, for the socket's task to report: the robot, not the app, owns them. */
@@ -71,6 +76,7 @@ class MotionService {
     void setMode(socket_message_ModesEnum mode);
     void stopLocomotion();
     void switchVariant(KinematicsVariant variant);
+    bool walkNNAllowed() const;
 
     std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
     std::atomic<socket_message_WalkGaits> currentGait {socket_message_WalkGaits_TROT};
@@ -91,6 +97,11 @@ class MotionService {
     RestState restState;
     StandState standState;
     WalkState walkState;
+#if WALK_NN_POLICY
+    WalkNNState walkNNState;
+#endif
+    std::atomic<bool> walkNNVerified {false};
+    uint32_t lastImuValid = 0;
 
     body_state_t body_state;
 
