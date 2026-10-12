@@ -54,7 +54,7 @@ def pico_joint_map(path: Path = REPO / "app" / "src" / "lib" / "simulation" / "r
 
 SERVO_MAX_SPEED_DEG_S = float(cpp_constant(REPO / "esp32" / "include" / "peripherals" / "servo_output.h",
                                            "SERVO_MAX_SPEED_DEG_S")[0])
-JOINT_DIRECTION = cpp_constant(REPO / "esp32" / "include" / "motion.h", "JOINT_DIRECTION")
+JOINT_DIRECTION = cpp_constant(REPO / "esp32" / "include" / "joint_model.h", "JOINT_DIRECTION")
 MODEL_JOINTS, MODEL_SIGN, MODEL_OFFSET = pico_joint_map()
 # The simulation's joint order, as indices into the firmware's.
 TO_SIM = np.array([MODEL_JOINTS.index(name) for name in JOINT_NAMES])

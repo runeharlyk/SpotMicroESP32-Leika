@@ -164,7 +164,7 @@ def test_calibration_returns_the_robots_result(robot):
 
 # Only the offset changes: a write built from defaults would reset the pins, the bus speed and the mounting.
 def test_storing_a_compass_offset_keeps_every_other_peripheral_setting(fake):
-    backend = RealBackend(f"127.0.0.1:{fake.port}")
+    backend = RealBackend(fake.target)
     backend.connect()
     try:
         backend.set_mag_offset([12.5, -40.0, 7.25])
