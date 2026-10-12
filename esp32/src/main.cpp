@@ -78,6 +78,7 @@ static void reportFeatures(socket_message_CorrelationResponse &res) {
                                        .variant = activeVariant.load(),
                                        .sensors = peripherals.status(),
                                        .servoDetected = servoController.detected(),
+                                       .servosCalibrated = servoController.calibrated(),
                                        .cameraDetected = cameraDetected,
                                        .cameraActive = cameraDetected && !cameraDisabled(),
                                        .ws2812 = effectiveLedSettings(peripherals.snapshot()).enabled},

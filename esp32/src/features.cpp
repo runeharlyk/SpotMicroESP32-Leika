@@ -29,6 +29,8 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.gesture_detected = sensors.gestureDetected;
     fd_res.servo = features.servoDetected;
     fd_res.servo_detected = features.servoDetected;
+    fd_res.has_servos_calibrated = true;
+    fd_res.servos_calibrated = features.servosCalibrated;
     fd_res.ws2812 = features.ws2812;
     fd_res.mdns = true;
     fd_res.embed_www = true;

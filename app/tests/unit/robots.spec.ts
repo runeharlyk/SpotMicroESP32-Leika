@@ -157,6 +157,22 @@ describe('robots', () => {
         expect(get(robots)[0].firmware).toEqual({ version: '0.3.0', build: 'esp32-s3-n8r2' })
     })
 
+    it('remembers whether each robot was calibrated, and says so only when it was not', async () => {
+        const { robots, identify, calibrationLabel } = await loadRobots()
+
+        identify('192.168.1.40', pico)
+        expect(calibrationLabel(get(robots)[0])).toBeNull() // older firmware: unknown, not uncalibrated
+
+        identify('192.168.1.40', { ...pico, servosCalibrated: false })
+        expect(calibrationLabel(get(robots)[0])).toBe('Servos not calibrated')
+
+        identify('192.168.1.40', pico)
+        expect(get(robots)[0].servosCalibrated).toBe(false)
+
+        identify('192.168.1.40', { ...pico, servosCalibrated: true })
+        expect(calibrationLabel(get(robots)[0])).toBeNull()
+    })
+
     it('lists every known address once for discovery', async () => {
         const { addRobot, identify, savedAddresses } = await loadRobots()
         identify('192.168.1.40', pico)

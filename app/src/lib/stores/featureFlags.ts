@@ -29,7 +29,8 @@ export function applyFeatures(features: FeaturesDataResponse) {
         variant: features.variant,
         hostname: features.hostname,
         firmwareVersion: features.firmwareVersion,
-        buildTarget: features.firmwareBuiltTarget
+        buildTarget: features.firmwareBuiltTarget,
+        servosCalibrated: features.servosCalibrated
     })
 }
 

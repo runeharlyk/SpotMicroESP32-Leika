@@ -41,6 +41,8 @@ message FeaturesDataResponse {
     reserved 90;
     bool servo = 100;
     bool servo_detected = 101;
+    // Whether any joint's centre differs from the factory one; absent from firmware that did not report it.
+    optional bool servos_calibrated = 102;
     bool gesture = 105;
     bool gesture_detected = 106;
     bool ws2812 = 110;

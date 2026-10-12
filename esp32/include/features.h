@@ -18,6 +18,7 @@ struct RuntimeFeatures {
     KinematicsVariant variant;
     SensorStatus sensors;
     bool servoDetected;
+    bool servosCalibrated;
     bool cameraDetected;
     bool cameraActive;
     bool ws2812;
