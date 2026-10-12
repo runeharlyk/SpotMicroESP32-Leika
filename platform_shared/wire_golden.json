@@ -260,7 +260,8 @@
     "api.ServoSettings": {
       "servos": 1,
       "channels": 2,
-      "model": 3
+      "model": 3,
+      "supply_voltage": 4
     },
     "api.ServoSettingsRequest": {},
     "api.SonarSettings": {

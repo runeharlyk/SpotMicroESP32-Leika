@@ -47,6 +47,13 @@ class ServoController : public StatefulService<ServoSettings> {
 
     bool detected() const { return _pca.isInitialized(); }
 
+    /** How fast the servos turn a joint at the supply the settings hold (deg/s); a new supply holds from the next tick. */
+    float speedLimit() const {
+        float limit = SERVO_MAX_SPEED_DEG_S;
+        read([&](const ServoSettings &settings) { limit = servoSpeedLimit(servoSupplyVolts(settings)); });
+        return limit;
+    }
+
     bool calibrated() {
         bool result = false;
         read([&](const ServoSettings &settings) { result = servosCalibrated(settings); });
@@ -102,14 +109,14 @@ class ServoController : public StatefulService<ServoSettings> {
     // The longest tick the speed limit spans: after a stall the joints still move no more than two ticks' worth.
     static constexpr float MAX_TICK_S = 0.02f;
 
-    // Each joint moves toward its target no faster than the servos can, and its PWM goes to its channel; channels no
-    // joint uses are written off.
+    // Each joint moves toward its target no faster than the servos can at their supply, and its PWM goes to its
+    // channel; channels no joint uses are written off.
     bool calculatePWM(float dt) {
         const JointModel *model = _model.load();
         if (!model) return false;
-        const float maxStep = SERVO_MAX_SPEED_DEG_S * std::clamp(dt, 0.0f, MAX_TICK_S);
         uint32_t written = 0;
         read([&](const ServoSettings &settings) {
+            const float maxStep = servoSpeedLimit(servoSupplyVolts(settings)) * std::clamp(dt, 0.0f, MAX_TICK_S);
             std::fill(std::begin(_channelPwm), std::end(_channelPwm), 0);
             for (size_t i = 0; i < SERVO_COUNT; i++) {
                 angles[i] = slewToward(angles[i], target_angles[i], maxStep);

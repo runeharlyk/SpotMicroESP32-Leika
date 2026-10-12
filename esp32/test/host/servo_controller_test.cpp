@@ -85,6 +85,33 @@ static void theJointsMoveNoFasterThanTheServos() {
     I2CBus::instance().end();
 }
 
+// A supply saved through the settings slows the joints from the next tick, without a restart, and the walk reads the
+// same limit.
+static void aSavedSupplySlowsTheJointsAtOnce() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    CHECK(controller.speedLimit() == SERVO_MAX_SPEED_DEG_S);
+    ServoSettings save = ServoSettings_defaults();
+    save.supply_voltage = 4.8f;
+    CHECK(controller.protoHandler.update(save) == StateUpdateResult::CHANGED);
+    CHECK(controller.speedLimit() == servoSpeedLimit(4.8f));
+    float start[12], targets[12];
+    std::copy(controller.outputAngles(), controller.outputAngles() + 12, start);
+    const float stance[3] = {20, -40, 60};
+    for (int i = 0; i < 12; i++) targets[i] = stance[i % 3] * JOINT_DIRECTION[i];
+    controller.setAngles(targets);
+    CHECK(controller.calculatePWM(0.01f));
+    const float step = servoSpeedLimit(4.8f) * 0.01f;
+    CHECK(step < 4.5f);
+    for (int i = 0; i < 12; i++) CHECK(std::fabs(std::fabs(controller.outputAngles()[i] - start[i]) - step) < 1e-3f);
+    ServoSettings reply = api_ServoSettings_init_zero;
+    controller.protoHandler.read(reply);
+    CHECK(reply.supply_voltage == 4.8f);
+    I2CBus::instance().end();
+}
+
 // Where the joints settle after long enough to reach their targets, in the IK convention.
 static void settle(ServoController &controller, const float ik[3], float settled[12]) {
     float targets[12];
@@ -243,6 +270,7 @@ int main() {
     allServosMeansEveryMappedChannel();
     eachJointsAngleReachesItsChannel();
     theJointsMoveNoFasterThanTheServos();
+    aSavedSupplySlowsTheJointsAtOnce();
     aTargetPastTheTravelIsHeldAtItsEnd();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;

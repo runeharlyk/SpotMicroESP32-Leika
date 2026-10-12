@@ -921,6 +921,7 @@ void SpotControlLoopEntry(void *) {
         const int64_t tickStart = esp_timer_get_time();
         const ImuSample imu = peripherals.imuSample();
         const gesture_t gesture = peripherals.takeGesture();
+        motionService.useServoSpeedLimit(servoController.speedLimit());
         motionService.update(imu, updating() ? gesture_t::eGestureNone : gesture);
         if (motionService.takeModeApplied()) {
             servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
