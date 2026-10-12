@@ -327,7 +327,8 @@
       "cpu1_usage": 12,
       "cpu_usage": 13,
       "i2c_errors": 14,
-      "i2c_bus_recoveries": 15
+      "i2c_bus_recoveries": 15,
+      "task_stacks": 16
     },
     "socket_message.AnimationEntry": {
       "name": 1,
@@ -768,6 +769,10 @@
     },
     "socket_message.SystemReset": {},
     "socket_message.SystemRestart": {},
+    "socket_message.TaskStack": {
+      "name": 1,
+      "stack_free_min": 2
+    },
     "socket_message.TelemetryBatch": {
       "batch_seq": 1,
       "dropped_ticks": 2,

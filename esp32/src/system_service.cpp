@@ -7,6 +7,8 @@
 #include <mdns.h>
 #include <peripherals/i2c_bus.h>
 #include <utils/cpu_usage.h>
+#include <utils/task_stacks.h>
+#include <cstring>
 #include <soc/soc.h>
 
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || \
@@ -193,6 +195,19 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
         analytics.i2c_errors[i] = {devices[i].address, devices[i].nacks, devices[i].timeouts};
     analytics.i2c_errors_count = count;
     analytics.i2c_bus_recoveries = I2CBus::instance().recoveries();
+
+    // One snapshot of every task, kept off the service task's stack.
+    static TaskStatus_t statuses[40];
+    static TaskStack stacks[40];
+    const UBaseType_t tasks = uxTaskGetSystemState(statuses, std::size(statuses), nullptr);
+    for (UBaseType_t i = 0; i < tasks; i++)
+        stacks[i] = {statuses[i].pcTaskName, static_cast<uint32_t>(statuses[i].usStackHighWaterMark)};
+    const size_t shown = tightestStacks(stacks, tasks, std::size(analytics.task_stacks));
+    for (size_t i = 0; i < shown; i++) {
+        strncpy(analytics.task_stacks[i].name, stacks[i].name, sizeof(analytics.task_stacks[i].name) - 1);
+        analytics.task_stacks[i].stack_free_min = stacks[i].freeMin;
+    }
+    analytics.task_stacks_count = shown;
 }
 
 const char *resetReason(esp_reset_reason_t reason) {

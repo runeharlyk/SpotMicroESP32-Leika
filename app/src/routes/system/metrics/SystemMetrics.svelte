@@ -391,4 +391,22 @@
             Bus recoveries: {$analytics.at(-1)?.i2cBusRecoveries ?? 0}
         </div>
     </div>
+    <div class="w-full overflow-x-auto">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Least free stack</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each $analytics.at(-1)?.taskStacks ?? [] as task (task.name)}
+                    <tr>
+                        <td>{task.name}</td>
+                        <td>{task.stackFreeMin} B</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    </div>
 </SettingsCard>

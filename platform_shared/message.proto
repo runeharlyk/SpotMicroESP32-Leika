@@ -386,6 +386,13 @@ message AnalyticsData {
     int32 cpu_usage = 13;
     repeated I2CDeviceErrors i2c_errors = 14;
     uint32 i2c_bus_recoveries = 15;  // times a device holding SDA low was clocked free
+    repeated TaskStack task_stacks = 16;  // the tasks with the least stack to spare first
+}
+
+// A task's least free stack since it started: how close it came to overflowing, and how much a trim could take.
+message TaskStack {
+    string name = 1;
+    uint32 stack_free_min = 2;  // bytes
 }
 
 // One I2C device's failed transfers since boot.

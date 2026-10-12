@@ -9,6 +9,8 @@ socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
 socket_message.I2CScanData.devices max_count:16
 socket_message.AnalyticsData.i2c_errors max_count:16
+socket_message.AnalyticsData.task_stacks max_count:24
+socket_message.TaskStack.name max_size:16
 
 socket_message.FeaturesDataResponse.variant type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
