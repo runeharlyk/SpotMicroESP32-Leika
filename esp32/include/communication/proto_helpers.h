@@ -61,10 +61,14 @@ class ProtoDecoder {
     using SubscribeHandler = std::function<void(int32_t tag, int clientId)>;
     using UnsubscribeHandler = std::function<void(int32_t tag, int clientId)>;
     using PingHandler = std::function<void(int clientId)>;
+    using Filter = std::function<bool(const socket_message_Message& message, int clientId)>;
 
     void onSubscribe(SubscribeHandler handler) { subscribeHandler_ = handler; }
     void onUnsubscribe(UnsubscribeHandler handler) { unsubscribeHandler_ = handler; }
     void onPing(PingHandler handler) { pingHandler_ = handler; }
+
+    /** Lets through only the messages `filter` accepts; the rest are dropped as handled. */
+    void filter(Filter filter) { filter_ = std::move(filter); }
 
     template <typename T>
     void on(std::function<void(const T&, int)> handler) {
@@ -81,7 +85,7 @@ class ProtoDecoder {
             return false;
         }
 
-        const bool handled = dispatch(clientId);
+        const bool handled = (filter_ && !filter_(msg_, clientId)) || dispatch(clientId);
         pb_release(socket_message_Message_fields, &msg_);
         return handled;
     }
@@ -116,5 +120,6 @@ class ProtoDecoder {
     SubscribeHandler subscribeHandler_;
     UnsubscribeHandler unsubscribeHandler_;
     PingHandler pingHandler_;
+    Filter filter_;
     std::map<pb_size_t, std::function<void(int)>> handlers_;
 };

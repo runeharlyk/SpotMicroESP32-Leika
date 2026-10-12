@@ -7,7 +7,7 @@ There is no authentication; reach the robot only from a network you trust.
 Everything except the camera stream travels over the WebSocket at `/api/ws` as binary Protocol Buffers.
 The former per-feature REST endpoints (`/api/system/*`, `/api/wifi/*`, `/api/servo/*`, `/api/files`, and so on) no longer exist.
 See [websocket.md](websocket.md) for the framing, subscriptions, reply codes and telemetry.
-Over a USB cable, the same requests travel over the serial link, see [serial.md](serial.md), and over Bluetooth LE on boards with PSRAM, see [bluetooth.md](bluetooth.md).
+Over a USB cable, the same requests travel over the serial link, and on the board's native USB port the streams and controls too, see [serial.md](serial.md); over Bluetooth LE on boards with PSRAM, see [bluetooth.md](bluetooth.md).
 
 ## HTTP
 

@@ -76,7 +76,7 @@ The robot stops walking when its controller falls silent.
 If the last `controller_data` had a stick off centre and no further `controller_data` arrives for 500 ms, the robot zeroes the sticks and the speed, stops locomotion, and reports `link_lost` in its telemetry.
 The mode, gait, height and `s1` are unchanged.
 The next `controller_data` clears the condition.
-A closed or dropped connection is recognised the same way, by this silence.
+A closed or dropped connection, over WiFi or over the [USB serial link](serial.md), is recognised the same way, by this silence.
 
 A client must therefore re-send its input while a stick is held off centre.
 The web app sends on every change, throttled to 100 ms, and re-sends every 200 ms; the Python client re-sends every 100 ms.

@@ -1,18 +1,20 @@
 #pragma once
 
-#include <atomic>
 #include <cstdarg>
 #include <communication/comm_base.hpp>
 #include <communication/serial_frame.h>
+#include <communication/stall_tracker.h>
 
 /**
- * The app's protocol over the USB serial port, beside the firmware's log on the same port: settings and status, for
- * setting up a robot or one whose WiFi fails. Frames and log lines go out through one writer, so a line never splits a
- * frame. It listens on the console UART and, where the chip has one, the USB-Serial-JTAG port, and answers on the port
- * the last frame came from; there is one client, id 0.
+ * The app's protocol over the USB serial ports, beside the firmware's log on the same ports. Frames and log lines go
+ * out through one writer, so a line never splits a frame. Each port is one client, whose id is the port: the console
+ * UART takes requests only (console_uart.h), and the USB-Serial-JTAG port, where the chip has one, carries the whole
+ * protocol as the WebSocket does, streams included.
  */
 class SerialLink : public CommAdapterBase {
   public:
+    enum Port : int { UART = 0, USB = 1 };
+
     SerialLink();
 
     /** Takes over the console ports and the log; call first thing at boot. */
@@ -22,17 +24,20 @@ class SerialLink : public CommAdapterBase {
     void listen();
 
   private:
-    enum class Port { UART, USB };
+    // A USB host that has taken no stream frame for this long no longer reads the port: its subscriptions are dropped.
+    static constexpr uint32_t STALL_LIMIT_MS = 10000;
 
-    std::atomic<Port> _replyPort {Port::UART};
     SemaphoreHandle_t _writeMutex;
     serial_frame::Decoder _uartDecoder;
     serial_frame::Decoder _usbDecoder;
+    StallTracker _stalls {STALL_LIMIT_MS};
 
     bool send(const uint8_t *data, size_t len, int cid) override;
-    void write(Port port, const uint8_t *data, size_t len, TickType_t wait);
+    bool sendStream(const uint8_t *data, size_t len, int cid) override;
+    bool writeFrame(Port port, const uint8_t *data, size_t len, TickType_t wait);
+    bool write(Port port, const uint8_t *data, size_t len, TickType_t wait);
     void writeLog(const char *line, size_t len);
-    void received(Port port, const uint8_t *message, size_t len);
+    void dropUsbClient(const char *reason);
 
     static int logLine(const char *format, va_list args);
     static void readTask(void *self);

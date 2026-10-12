@@ -1,4 +1,5 @@
-"""One Robot for the simulation and the real robot: Robot("simulation") or Robot("192.168.1.39").
+"""One Robot for the simulation and the real robot: Robot("simulation"), Robot("192.168.1.39") over WiFi, or
+Robot("COM10") / Robot("/dev/ttyACM0") over the board's native USB port.
 
 Velocities are REP-103 (forward, left, counter-clockwise) in m/s and rad/s; angles in degrees. Leaving the `with`
 block, on an exception or Ctrl-C included, stops the robot and lets it rest; it never deactivates on its own.

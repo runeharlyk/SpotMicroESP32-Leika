@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { get } from 'svelte/store'
-import { Message } from '../../src/lib/platform_shared/message'
-import { socket } from '../../src/lib/stores/socket'
+import { ControllerData, IMUData, Message } from '../../src/lib/platform_shared/message'
+import { MESSAGE_KEY_TO_TAG, socket } from '../../src/lib/stores/socket'
 import { FakeSerialPort, fakeSerial, serialRobot } from './fake-serial'
 
 // Answers pings and the features request, as the firmware does over serial.
@@ -35,6 +35,30 @@ describe.sequential('socket over USB serial', () => {
 
         const reply = await socket.request({ featuresDataRequest: {} })
         expect(reply.featuresDataResponse?.robotName).toBe('leika')
+    })
+
+    // The robot's native USB port carries the whole protocol, as its WebSocket does.
+    it('subscribes to a stream and drives over the port', async () => {
+        const port = new FakeSerialPort()
+        vi.stubGlobal('navigator', { serial: fakeSerial([], port).serial })
+        const imuTag = MESSAGE_KEY_TO_TAG.get('imu')
+        const reading = { x: 1, y: 2, z: 3, heading: 90, altitude: 0, bmpTemp: 0, pressure: 0 }
+        const { received } = serialRobot(port, message =>
+            message.subNotif?.tag === imuTag ? Message.create({ imu: reading }) : robot(message)
+        )
+
+        await socket.connectSerial()
+        await vi.waitFor(() => expect(get(socket)).toBe(true), { timeout: 2500 })
+        const readings: IMUData[] = []
+        const off = socket.on(IMUData, data => readings.push(data))
+        await vi.waitFor(() => expect(readings).toEqual([reading]))
+
+        const input = ControllerData.create({ left: { x: 0, y: 0.5 }, height: 0.75 })
+        socket.emit(ControllerData, input)
+        await vi.waitFor(() =>
+            expect(received.map(message => message.controllerData).filter(Boolean)).toEqual([input])
+        )
+        off()
     })
 
     it('comes back by itself after the board resets and its port returns', async () => {

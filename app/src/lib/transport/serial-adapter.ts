@@ -81,7 +81,8 @@ export const createSerialTransport = (
 
     const decoder = new SerialFrameDecoder({
         onFrame: message => {
-            // The first frame only answers a probe, as nothing else is sent before it.
+            // The first frame answers a probe, or belongs to a stream an earlier session left
+            // subscribed: nothing of this session's is lost by dropping it.
             if (!answering) {
                 answering = true
                 clearInterval(probeId)
