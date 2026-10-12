@@ -172,6 +172,10 @@ BEZIER_HEIGHTS = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0
 
 TROT, CRAWL = 0, 1
 
+# walk_state.h's cap on joint speed (a quarter below the servos' 720 deg/s), and the parts of a tick it slows by.
+MAX_JOINT_SPEED = math.radians(0.75 * 720.0)
+SLOWDOWN_PARTS = 64
+
 # Firmware step parameters (meters). Scaled to spot_pico's small legs (~0.11 m 2-link span)
 # and kept inside the reachable workspace so the zero-residual baseline stays feasible.
 MAX_STEP_LENGTH = 0.030
@@ -264,13 +268,42 @@ class GaitController:
     def __init__(self):
         self.phase = 0.0
         self.default_position = DEFAULT_FEET.copy()
+        self.kinematics = Kinematics()
 
     def set_phase(self, phase: float) -> None:
         self.phase = math.fmod(phase, 1.0)
 
     def advance_phase(self, gait: GaitState, dt: float) -> None:
+        """Advances the phase by dt, or by the most 64ths of it the joints can follow at MAX_JOINT_SPEED, as
+        walk_state.h's step does; a jump not even a 64th keeps under the cap is walked at full time. The joints are
+        those of the feet in the base frame: this port's body pose is applied only by the caller's IK."""
+        start = self.phase
+        before = self._joint_angles(gait)
+
+        def followable(parts: int) -> bool:
+            self.phase = start
+            self._advance(gait, dt * parts / SLOWDOWN_PARTS)
+            return float(np.abs(self._joint_angles(gait) - before).max()) <= MAX_JOINT_SPEED * dt
+
+        if followable(SLOWDOWN_PARTS):
+            return
+        fast_enough, too_fast = 0, SLOWDOWN_PARTS
+        while too_fast - fast_enough > 1:
+            parts = (fast_enough + too_fast) // 2
+            if followable(parts):
+                fast_enough = parts
+            else:
+                too_fast = parts
+        followable(fast_enough if fast_enough > 0 else SLOWDOWN_PARTS)
+
+    def _advance(self, gait: GaitState, dt: float) -> None:
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
+
+    def _joint_angles(self, gait: GaitState) -> np.ndarray:
+        body = BodyState()
+        self.generate_feet(gait, body)
+        return self.kinematics.inverse_kinematics(body)
 
     def generate_feet(self, gait: GaitState, body: BodyState) -> None:
         """Write body.feet at the CURRENT phase (does not advance it). Base-frame targets."""

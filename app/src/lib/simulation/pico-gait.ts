@@ -214,13 +214,50 @@ const stroke = (gait: GaitState, foot: Vec3): [number, number] => {
     return [Math.hypot(sx, sy), Math.atan2(sx, -sy)]
 }
 
+// walk_state.h's cap on joint speed (a quarter below the servos' 720 deg/s), and the parts of a tick it slows by.
+const MAX_JOINT_SPEED = (0.75 * 720 * Math.PI) / 180
+const SLOWDOWN_PARTS = 64
+
 export class GaitController {
     phase = 0
     private readonly defaultPosition = DEFAULT_FEET
 
+    /**
+     * Advances the phase by dt, or by the most 64ths of it the joints can follow at MAX_JOINT_SPEED, as advance_phase
+     * does; a jump not even a 64th keeps under the cap is walked at full time.
+     */
     advancePhase(gait: GaitState, dt: number) {
+        const start = this.phase
+        const before = this.jointAngles(gait)
+        const followable = (parts: number) => {
+            this.phase = start
+            this.advance(gait, (dt * parts) / SLOWDOWN_PARTS)
+            const after = this.jointAngles(gait)
+            return (
+                Math.max(...after.map((angle, i) => Math.abs(angle - before[i]))) <=
+                MAX_JOINT_SPEED * dt
+            )
+        }
+        if (followable(SLOWDOWN_PARTS)) return
+        let fastEnough = 0
+        let tooFast = SLOWDOWN_PARTS
+        while (tooFast - fastEnough > 1) {
+            const parts = Math.trunc((fastEnough + tooFast) / 2)
+            if (followable(parts)) fastEnough = parts
+            else tooFast = parts
+        }
+        followable(fastEnough > 0 ? fastEnough : SLOWDOWN_PARTS)
+    }
+
+    private advance(gait: GaitState, dt: number) {
         const velocity = Math.max(gait.stepVelocity, 0.5)
         this.phase = (this.phase + dt * velocity * gait.speedFactor) % 1
+    }
+
+    private jointAngles(gait: GaitState) {
+        const body = new BodyState()
+        this.generateFeet(gait, body)
+        return inverseKinematics(body)
     }
 
     /** Writes body.feet at the current phase, in the base frame. */

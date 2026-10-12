@@ -11,10 +11,12 @@ import pytest
 from src.robot.firmware_gait import (
     DEFAULT_FEET,
     DEFAULT_STEP_HEIGHT,
+    MAX_JOINT_SPEED,
     MAX_STEP_LENGTH,
     BodyState,
     GaitController,
     GaitState,
+    Kinematics,
 )
 
 
@@ -27,7 +29,9 @@ def run(steps=200, dt=0.02, **command):
     frames = []
     for _ in range(steps):
         controller.generate_feet(gait, body)
-        controller.advance_phase(gait, dt)
+        # The commanded clock rather than advance_phase: these tests are about the stroke's geometry, and the speed
+        # cap's slowing would move the samples off the ends of the stroke.
+        controller.set_phase(controller.phase + dt * max(gait.step_velocity, 0.5) * gait.speed_factor)
         frames.append(body.feet.copy())
     return np.array(frames)
 
@@ -105,6 +109,35 @@ def test_diagonal_trot_pairs_sweep_in_opposite_senses():
     assert sense[0] == sense[3]
     assert sense[1] == sense[2]
     assert sense[0] == -sense[1]
+
+
+def joint_speeds(dt=0.01, steps=300, **command):
+    """Peak joint speed (rad/s) and cycles walked, through advance_phase as the simulation drives it."""
+    gait = GaitState(**command)
+    controller, body, kinematics = GaitController(), BodyState(), Kinematics()
+    controller.generate_feet(gait, body)
+    previous, peak, cycles = kinematics.inverse_kinematics(body), 0.0, 0
+    for _ in range(steps):
+        phase = controller.phase
+        controller.advance_phase(gait, dt)
+        cycles += controller.phase < phase
+        controller.generate_feet(gait, body)
+        angles = kinematics.inverse_kinematics(body)
+        peak = max(peak, float(np.abs(angles - previous).max()) / dt)
+        previous = angles
+    return peak, cycles
+
+
+def test_a_full_command_is_slowed_to_the_joint_speed_cap():
+    peak, _ = joint_speeds(step_x=MAX_STEP_LENGTH, step_angle=1.0, step_velocity=1.0)
+    assert MAX_JOINT_SPEED * 0.9 < peak <= MAX_JOINT_SPEED + 1e-9
+
+
+def test_a_short_step_keeps_its_cadence():
+    """At full speed a trot cycle takes 0.5 s, so 3 s walk six cycles when the cap leaves the step alone."""
+    peak, cycles = joint_speeds(step_x=0.1 * MAX_STEP_LENGTH, step_height=0.2 * DEFAULT_STEP_HEIGHT, step_velocity=1.0)
+    assert peak < MAX_JOINT_SPEED
+    assert cycles == 6
 
 
 @pytest.mark.parametrize("phase", [0.0, 0.75])
