@@ -27,6 +27,8 @@ PROGRAMS = {
     "motion_inbox_test.cpp": [],
     "motion_service_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "odometry_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
+    "goal_controller_test.cpp": [],
+    "motion_goal_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "servo_output_test.cpp": [],
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],

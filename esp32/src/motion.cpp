@@ -35,8 +35,11 @@ void MotionService::setState(MotionState* newState) {
     }
 }
 
+// A goal ends on anything the app sends that changes the walk: a cancel, a gait, a mode, or a stick off centre.
 void MotionService::applyMail(const MotionInbox::Mail& mail) {
+    if (mail.cancelGoal) cancelGoal();
     if (mail.gait) {
+        cancelGoal(); // its timeout was reckoned at the old gait's pace
         ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(*mail.gait));
         if (*mail.gait == socket_message_WalkGaits_TROT)
             walkState.set_mode_trot();
@@ -47,15 +50,80 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
     if (mail.mode) setMode(*mail.mode);
     if (mail.variant) switchVariant(*mail.variant);
     if (mail.input) {
-        command = *mail.input;
+        if (goal.running() && !mail.input->steering()) {
+            // Centred sticks leave the goal its own, and give it the height, cadence and step height.
+            command.h = mail.input->h;
+            command.s = mail.input->s;
+            command.s1 = mail.input->s1;
+        } else {
+            cancelGoal();
+            command = *mail.input;
+        }
         commandRxUs = mail.inputAtUs;
         linkLostNow = false;
         if (state) state->handleCommand(command);
     }
+    // The dead-man stop guards the app's input; a goal is the robot's own, and stops on its own terms.
     if (mail.linkLost) {
         linkLostNow = true;
-        stopLocomotion();
+        if (!goal.running()) stopLocomotion();
     }
+    if (mail.goal) startGoal(*mail.goal, mail.goalId);
+}
+
+// From STAND or WALK, into the walk; the socket's task checked the mode, and one that came since wins.
+void MotionService::startGoal(const Goal& next, uint32_t id) {
+    cancelGoal();
+    goalId = id;
+    const socket_message_ModesEnum mode = currentMode.load();
+    const bool walkable = mode == socket_message_ModesEnum_STAND || mode == socket_message_ModesEnum_WALK;
+    if (mode == socket_message_ModesEnum_STAND) setMode(socket_message_ModesEnum_WALK);
+    if (!commandRxUs) {
+        // No app has driven it yet: the app's own defaults, rather than a body at its lowest that cannot lift a foot.
+        command.h = 0.7f;
+        command.s = 0.5f;
+        command.s1 = 0.5f;
+    }
+    const float rate = walkState.stanceRate(command.s);
+    goal.start(next, walkable ? config->max_step_length * rate : 1, rate);
+    if (walkable)
+        driveGoal({}, 0);
+    else
+        cancelGoal();
+    recordGoalStatus();
+}
+
+void MotionService::driveGoal(const BodyStep& step, float dt) {
+    const GoalSticks sticks = goal.update(step, dt);
+    if (goal.running()) {
+        // As the app's sticks (speed_model.py): ly forward, lx to the left, rx clockwise.
+        command.lx = sticks.left;
+        command.ly = sticks.forward;
+        command.rx = -sticks.turn;
+        command.ry = 0;
+        if (state) state->handleCommand(command);
+    } else {
+        if (goal.state() == GoalState::REACHED) setMode(socket_message_ModesEnum_STAND);
+        centreSticks();
+    }
+    recordGoalStatus();
+}
+
+void MotionService::cancelGoal() {
+    if (!goal.running()) return;
+    goal.cancel();
+    centreSticks();
+    recordGoalStatus();
+}
+
+void MotionService::centreSticks() {
+    command.lx = command.ly = command.rx = command.ry = 0;
+    if (state) state->handleCommand(command);
+}
+
+void MotionService::recordGoalStatus() {
+    std::lock_guard<std::mutex> lock(goalStatusMutex);
+    goalStatusNow = {goalId, goal.state(), goal.goal(), goal.progress(), goal.timeout()};
 }
 
 // The socket's task refuses a switch while a mode moves the legs; one that arrives with such a mode still deactivates
@@ -79,6 +147,7 @@ void MotionService::setMode(socket_message_ModesEnum modeData) {
         ESP_LOGW("MotionService", "No variant chosen - mode %d refused", static_cast<int>(modeData));
         return;
     }
+    cancelGoal();
     modeApplied = true;
     currentMode = modeData;
     MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
@@ -122,13 +191,17 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     lastUpdate = now;
     state->updateImuOffsets(imu);
     state->step(body_state, dt);
+    BodyStep step;
     {
         // Outside the walk every foot stands; one a state eases down from mid-stride counts once it is down.
         const std::array<bool, 4> stance =
             state == &walkState ? walkState.stance() : std::array<bool, 4> {true, true, true, true};
         std::lock_guard<std::mutex> lock(odometryMutex);
+        const OdometryEstimate before = kinematicOdometry.estimate();
         kinematicOdometry.update(body_state, stance);
+        step = bodyStep(before, kinematicOdometry.estimate());
     }
+    if (goal.running()) driveGoal(step, dt);
     kinematics->calculate_inverse_kinematics(body_state, new_angles);
     return update_angles(new_angles, angles);
 }

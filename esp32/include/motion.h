@@ -15,6 +15,7 @@
 #include <motion_states/rest_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
+#include <goal_controller.h>
 #include <odometry.h>
 #include <variant.h>
 #include <atomic>
@@ -80,11 +81,29 @@ class MotionService {
         return reached;
     }
 
+    /** The latest goal and how far it has come; safe to call from any task. */
+    struct GoalStatus {
+        uint32_t id = 0; // 0 before the first goal
+        GoalState state = GoalState::IDLE;
+        Goal goal;
+        float progress = 0; // along the target's axis: m, or rad for a turn
+        float timeout = 0;  // s the goal may take
+    };
+    GoalStatus goalStatus() const {
+        std::lock_guard<std::mutex> lock(goalStatusMutex);
+        return goalStatusNow;
+    }
+
   private:
     void applyMail(const MotionInbox::Mail& mail);
     // Every mode change, from the app or a gesture, goes through here.
     void setMode(socket_message_ModesEnum mode);
     void stopLocomotion();
+    void centreSticks();
+    void startGoal(const Goal& goal, uint32_t id);
+    void cancelGoal();
+    void driveGoal(const BodyStep& step, float dt);
+    void recordGoalStatus();
     void switchVariant(KinematicsVariant variant);
 
     std::atomic<socket_message_ModesEnum> currentMode {socket_message_ModesEnum_DEACTIVATED};
@@ -111,6 +130,11 @@ class MotionService {
 
     mutable std::mutex odometryMutex;
     KinematicOdometry kinematicOdometry;
+
+    GoalController goal;
+    uint32_t goalId = 0;
+    mutable std::mutex goalStatusMutex;
+    GoalStatus goalStatusNow;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

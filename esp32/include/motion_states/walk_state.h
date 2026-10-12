@@ -108,6 +108,12 @@ class WalkState : public MotionState {
         return feet;
     }
 
+    /**
+     * Stances per second at the command's speed `s`. A stance sweeps a foot through the whole stroke, so a full stick
+     * moves the body max_step_length per stance, and turns it by about a radian.
+     */
+    float stanceRate(float s) const { return std::max(s, 0.5f) * speed_factor / stand_offset; }
+
     void step(body_state_t &body_state, float dt = 0.02f) override {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
