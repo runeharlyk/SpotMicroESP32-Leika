@@ -169,12 +169,11 @@ class WalkState : public MotionState {
 
     static inline bool isZero(float num) { return std::fabs(num) < 0.001; }
 
+    // A stopped walk holds its phase once every foot is down; a foot still in the air lands along the rest of its
+    // swing first, where resetting the phase dropped it from its full height in one tick.
     void updatePhase(float dt) {
         const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
-        if (!moving) {
-            phase_time = 0;
-            return;
-        }
+        if (!moving && getLegStates().swing_count == 0) return;
         const float velocity = std::max(gait_state.step_velocity, 0.5f);
         phase_time = std::fmod(phase_time + dt * velocity * speed_factor, 1.0f);
     }
@@ -303,8 +302,8 @@ class WalkState : public MotionState {
         curve(stroke * 0.5f, std::atan2(stroke_z, stroke_x), arg, phase, delta);
 
         body_state.feet[index][0] += delta[0];
+        body_state.feet[index][1] += delta[1];
         body_state.feet[index][2] += delta[2];
-        if (stroke != 0.0f) body_state.feet[index][1] += delta[1];
     }
 
     static void stanceCurve(const float length, const float angle, const float *depth, const float phase,

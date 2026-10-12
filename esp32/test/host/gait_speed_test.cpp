@@ -160,6 +160,34 @@ void aShortStepKeepsItsCadence() {
     }
 }
 
+// Letting go of the stick mid-stride lands every raised foot along its swing and then holds still: resetting the phase
+// dropped a foot from its full height in one tick, 3,585 deg/s on the Pico.
+void stoppingLandsEveryFootWithoutAJump() {
+    for (const KinematicsVariant variant : VARIANTS) {
+        const KinConfig &config = *kinConfigFor(variant);
+        for (const Gait gait : {TROT, CRAWL}) {
+            const float cycle = gait == CRAWL ? 4.f : 1.f;
+            for (int moment = 0; moment < 16; moment++) {
+                Walk walk(config, gait);
+                walk.hold(command(0, 1, 0, DEFAULT_H, 0.5f, DEFAULT_S1), cycle * (1 + moment / 16.f));
+                walk.speeds = Speeds();
+                walk.hold(command(0, 0, 0, DEFAULT_H, 0.5f, DEFAULT_S1), 2 * cycle);
+                const body_state_t settled = walk.body;
+                walk.hold(command(0, 0, 0, DEFAULT_H, 0.5f, DEFAULT_S1), 0.5f);
+                if (walk.speeds.peak_deg_s > WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S)
+                    std::printf("%s %s stopped at %d/16: %.0f deg/s\n", variantName(variant), gaitName(gait), moment,
+                                walk.speeds.peak_deg_s);
+                CHECK(walk.speeds.peak_deg_s <= WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S);
+                for (int leg = 0; leg < 4; leg++) {
+                    CHECK(std::fabs(walk.body.feet[leg][1] - config.default_feet_positions[leg][1]) < 0.003f);
+                    for (int axis = 0; axis < 3; axis++)
+                        CHECK(std::fabs(walk.body.feet[leg][axis] - settled.feet[leg][axis]) < 1e-5f);
+                }
+            }
+        }
+    }
+}
+
 void report() {
     std::printf("variant gait s: forward full stick at h %g, s1 %g: peak deg/s, ticks clipped at %.0f deg/s, cycles/s | every "
                 "reachable full stick, h and s1: worst peak, worst clipped share, unreachable commands\n",
@@ -201,6 +229,7 @@ int main(int argc, char **argv) {
     }
     noReachableFullStickOutrunsTheCap();
     aShortStepKeepsItsCadence();
+    stoppingLandsEveryFootWithoutAJump();
     if (failures) std::printf("%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }

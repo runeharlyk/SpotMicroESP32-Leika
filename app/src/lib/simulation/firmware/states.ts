@@ -352,11 +352,9 @@ export class WalkState extends MotionState {
         return !isZero(this.gait.stepX) || !isZero(this.gait.stepZ) || !isZero(this.gait.stepAngle)
     }
 
+    // A stopped walk holds its phase once every foot is down; a foot in the air lands along its swing first.
     private updatePhase(dt: number) {
-        if (!this.moving()) {
-            this.phaseTime = 0
-            return
-        }
+        if (!this.moving() && this.legStates().swingCount === 0) return
         const velocity = f32(Math.max(this.gait.stepVelocity, 0.5))
         const advance = f32(f32(f32(dt) * velocity) * this.speedFactor)
         this.phaseTime = f32(f32(this.phaseTime + advance) % 1)
@@ -447,7 +445,7 @@ export class WalkState extends MotionState {
         const stroke = Math.hypot(strokeX, strokeZ)
         curve(stroke * 0.5, Math.atan2(strokeZ, strokeX), amplitude, phase, delta)
         body.feet[index][0] += delta[0]
+        body.feet[index][1] += delta[1]
         body.feet[index][2] += delta[2]
-        if (stroke !== 0) body.feet[index][1] += delta[1]
     }
 }

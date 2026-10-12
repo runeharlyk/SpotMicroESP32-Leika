@@ -247,6 +247,10 @@ def _bezier_curve(length, angle, height, phase, point):
         point[1] += b * BEZIER_HEIGHTS[i] * height
 
 
+def _moving(gait) -> bool:
+    return abs(gait.step_x) >= 0.001 or abs(gait.step_z) >= 0.001 or abs(gait.step_angle) >= 0.001
+
+
 def _stroke(gait, foot):
     """Rigid-body velocity field at a foot's stance position, as (amplitude, stride heading).
 
@@ -297,8 +301,14 @@ class GaitController:
         followable(fast_enough if fast_enough > 0 else SLOWDOWN_PARTS)
 
     def _advance(self, gait: GaitState, dt: float) -> None:
+        # walk_state.h: a stopped walk holds its phase once every foot is down; a foot in the air lands first.
+        if not _moving(gait) and not any(self._swinging(gait, i) for i in range(4)):
+            return
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
+
+    def _swinging(self, gait: GaitState, leg: int) -> bool:
+        return math.fmod(self.phase + gait.offset[leg], 1.0) > gait.stand_frac
 
     def _joint_angles(self, gait: GaitState) -> np.ndarray:
         body = BodyState()
@@ -308,7 +318,6 @@ class GaitController:
     def generate_feet(self, gait: GaitState, body: BodyState) -> None:
         """Write body.feet at the CURRENT phase (does not advance it). Base-frame targets."""
         new_feet = self.default_position.copy()
-        moving = (abs(gait.step_x) > 1e-6) or (abs(gait.step_z) > 1e-6) or (abs(gait.step_angle) > 1e-6)
         for i in range(4):
             leg_phase = math.fmod(self.phase + gait.offset[i], 1.0)
             contact = leg_phase <= gait.stand_frac
@@ -328,13 +337,7 @@ class GaitController:
             dx = delta[2]     # cross-stride -> lateral X
             dy = -delta[0]    # along-stride -> fore-aft Y (forward = -Y)
             dz = delta[1]     # vertical -> Z
-            new_feet[i, 0] = self.default_position[i, 0] + dx
-            if moving:
-                new_feet[i, 1] = self.default_position[i, 1] + dy
-                new_feet[i, 2] = self.default_position[i, 2] + dz
-            else:
-                new_feet[i, 1] = self.default_position[i, 1]
-                new_feet[i, 2] = self.default_position[i, 2]
+            new_feet[i] = self.default_position[i] + (dx, dy, dz)
         body.feet = new_feet
 
 

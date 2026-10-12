@@ -249,7 +249,10 @@ export class GaitController {
         followable(fastEnough > 0 ? fastEnough : SLOWDOWN_PARTS)
     }
 
+    // walk_state.h: a stopped walk holds its phase once every foot is down; a foot in the air lands first.
     private advance(gait: GaitState, dt: number) {
+        const swinging = gait.offset.some(offset => (this.phase + offset) % 1 > gait.standFrac)
+        if (!moving(gait) && !swinging) return
         const velocity = Math.max(gait.stepVelocity, 0.5)
         this.phase = (this.phase + dt * velocity * gait.speedFactor) % 1
     }
@@ -262,10 +265,6 @@ export class GaitController {
 
     /** Writes body.feet at the current phase, in the base frame. */
     generateFeet(gait: GaitState, body: BodyState) {
-        const moving =
-            Math.abs(gait.stepX) > 1e-6 ||
-            Math.abs(gait.stepZ) > 1e-6 ||
-            Math.abs(gait.stepAngle) > 1e-6
         body.feet = this.defaultPosition.map((home, i) => {
             const legPhase = (this.phase + gait.offset[i]) % 1
             const contact = legPhase <= gait.standFrac
@@ -278,12 +277,15 @@ export class GaitController {
             if (contact) stanceCurve(amplitude * 0.5, heading, gait.stepDepth, phase, delta)
             else bezierCurve(amplitude * 0.5, heading, gait.stepHeight, phase, delta)
             // Stride frame to base frame: forward stride to -Y, cross-stride to +X, lift to +Z.
-            return moving ?
-                    [home[0] + delta[2], home[1] - delta[0], home[2] + delta[1]]
-                :   [home[0] + delta[2], home[1], home[2]]
+            return [home[0] + delta[2], home[1] - delta[0], home[2] + delta[1]]
         })
     }
 }
+
+const moving = (gait: GaitState) =>
+    Math.abs(gait.stepX) >= 0.001 ||
+    Math.abs(gait.stepZ) >= 0.001 ||
+    Math.abs(gait.stepAngle) >= 0.001
 
 /** 12 joint angles for the feet, after shifting them by the body pose (identity by default). */
 export function inverseKinematics(body: BodyState): number[] {
