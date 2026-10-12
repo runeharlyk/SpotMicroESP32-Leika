@@ -26,6 +26,7 @@ PROGRAMS = {
     "factory_network_test.cpp": [],
     "motion_inbox_test.cpp": [],
     "motion_service_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
+    "spot_pico_test.cpp": [],
     "servo_output_test.cpp": [],
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],

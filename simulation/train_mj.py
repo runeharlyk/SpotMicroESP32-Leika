@@ -12,6 +12,7 @@ Examples:
 """
 
 import argparse
+import json
 import os
 
 import numpy as np
@@ -20,6 +21,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMoni
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
 
 from src.envs.quadruped_mj_env import make_env
+from src.robot.firmware_gait import GAIT_COEF
 
 _TERM_KEYS = ("r_vel", "r_yaw", "p_upright", "p_height", "p_vz", "p_energy", "p_power",
               "p_arate", "p_slip", "p_angvel", "p_res")
@@ -107,6 +109,9 @@ def main():
                        f"{'_terrain' if args.terrain > 0 else ''}")
     rundir = os.path.join(args.logdir, tag)
     os.makedirs(rundir, exist_ok=True)
+    # The baseline gait is part of the policy: export_policy.py bakes exactly these coefficients.
+    with open(os.path.join(rundir, "gait_coef.json"), "w") as f:
+        json.dump(GAIT_COEF, f, indent=2)
 
     vn_load = os.path.join(args.init_from, "vecnormalize.pkl") if args.init_from else None
     train_env = build_vecenv(args.num_envs, args.randomize, args.seed, not args.no_subproc,

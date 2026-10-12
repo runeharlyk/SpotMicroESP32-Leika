@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
@@ -14,6 +15,7 @@ on:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
@@ -46,3 +48,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
+
+      - name: Firmware golden vectors are up to date
+        run: uv run python export_golden.py --check
