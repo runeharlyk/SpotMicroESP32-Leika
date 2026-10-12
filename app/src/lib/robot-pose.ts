@@ -1,5 +1,8 @@
 import type { Readable } from 'svelte/store'
+import type { JointModel } from '$lib/platform_shared/api'
 import { TelemetryBatch } from '$lib/platform_shared/message'
+import { calibrationPose, referencePose } from '$lib/calibration/leg-pose'
+import { crankFromTibia, tibiaFromCrank } from '$lib/pico-knee'
 import { jointTargets } from '$lib/simulation/controllers'
 import { JOINT_MAPS } from '$lib/simulation/robots'
 import { kinConfig, type Variant } from '$lib/simulation/firmware/kin-config'
@@ -26,6 +29,56 @@ export function stanceJointValues(variant: Variant): JointValues {
         JOINT_MAPS[variant],
         inverseKinematics(cfg, new BodyState(cfg)).map((angle, i) => angle * DIR[i])
     )
+}
+
+// The Pico model's tibia joints turn about +x on its left legs (fl, rl) and -x on its right legs, its femur joints all
+// about -x; the four-bar's angles turn about +x (pico-knee.ts).
+const PICO_TIBIA_AXIS = [1, -1, 1, -1]
+const PICO_FEMUR_AXIS = -1
+
+/**
+ * The Pico's tibia joints where its knee servos put them, through the four-bar. The calibration ties each knee to the
+ * firmware's angles at one pose: with every joint at its centre PWM the knee is where JOINT_MAPS puts the firmware's
+ * reference angle, which is what the user lines the real knee up with. From there the servo horn turns a degree per
+ * degree of servo angle, the way JOINT_MAPS turns the tibia, and the tibia follows the horn's angle to the femur.
+ */
+function picoKnees(joints: JointValues, servo: number[], reference: number[]) {
+    const { joints: names, sign, offset } = JOINT_MAPS.SPOTMICRO_ESP32_MINI
+    const modelAngle = (i: number, degrees: number) => degrees * DEG2RAD_F * sign[i] + offset[i]
+    const knees = { ...joints }
+    for (let leg = 0; leg < 4; leg++) {
+        const femur = leg * 3 + 1
+        const knee = leg * 3 + 2
+        const tibiaAxis = PICO_TIBIA_AXIS[leg]
+        const femurAt = (degrees: number) => PICO_FEMUR_AXIS * modelAngle(femur, degrees)
+        const referenceHorn =
+            crankFromTibia(tibiaAxis * modelAngle(knee, reference[knee])) +
+            femurAt(reference[femur])
+        const horn =
+            referenceHorn + tibiaAxis * sign[knee] * (servo[knee] - reference[knee]) * DEG2RAD_F
+        knees[names[knee]] = tibiaAxis * tibiaFromCrank(horn - femurAt(servo[femur]))
+    }
+    return knees
+}
+
+/**
+ * The model's joints for the servo angles the calibration page sets (leg-pose.ts calibrationPose): the selected joint
+ * at the angle its PWM means through the robot's joint model, the others in the stand pose. On the Pico each knee goes
+ * through its four-bar, so the model shows where the real tibia goes, not where the firmware means it to.
+ */
+export function calibrationJointValues(
+    variant: Variant,
+    model: JointModel,
+    centers: number[],
+    jointId: number,
+    pwm: number
+): JointValues {
+    const cfg = kinConfig(variant)
+    const servoAngles = (legIk: number[]) => legIk.map((angle, i) => angle * DIR[i])
+    const servo = servoAngles(calibrationPose(cfg, model, centers, jointId, pwm))
+    const joints = jointTargets(JOINT_MAPS[variant], servo)
+    if (variant !== 'SPOTMICRO_ESP32_MINI') return joints
+    return picoKnees(joints, servo, servoAngles(referencePose(cfg, model, -1)))
 }
 
 /** The robot link: whether it is open, and its telemetry stream. */
