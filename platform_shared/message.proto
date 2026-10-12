@@ -47,6 +47,8 @@ message FeaturesDataResponse {
     bool gesture = 105;
     bool gesture_detected = 106;
     bool sonar = 170;  // a sonar is enabled on usable pins; whether one answers is in SonarData
+    bool power = 250;  // the servo rail's INA219, streamed as PowerData
+    bool power_detected = 251;
     bool ws2812 = 110;
     bool espnow_controller_supported = 115; // the board has a radio for the ESP-NOW handheld controller
     bool mdns = 120;
@@ -422,6 +424,16 @@ message SonarReading {
     float distance_cm = 2;  // only with SONAR_DISTANCE
 }
 
+// The servo rail as its INA219 last read it, ten times a second; streamed only while the sensor is active.
+message PowerData {
+    float bus_voltage = 1;    // V, on the load side of the shunt
+    float shunt_voltage = 2;  // V
+    float current = 3;        // A
+    float power = 4;          // W
+    bool low_voltage = 5;     // below the cut-off voltage for 2 s: the robot is held deactivated until the rail recovers
+    bool stalled = 6;         // above the stall current for the stall time; reported only
+}
+
 // The HC-SR04s' latest pings; each sensor pings ten times a second, taking turns with the other.
 message SonarData {
     reserved 1;
@@ -530,6 +542,10 @@ message TelemetryNetwork {
     uint32 batches_sent = 4;
     uint32 batches_failed = 5;
     uint32 ticks_dropped = 6;
+    // The servo rail from its INA219, 0 without one: the latest reading, and the lowest since the previous sample.
+    float rail_voltage = 7;      // V
+    float rail_voltage_min = 8;  // V
+    float rail_current = 9;      // A
 }
 
 // WebSocket message wrapper
@@ -571,5 +587,6 @@ message Message {
         SonarData sonar = 300;
         GoalStatus goal_status = 310;
         OtaStatus ota_status = 320;
+        PowerData power = 330;
     }
 }

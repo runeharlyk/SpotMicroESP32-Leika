@@ -36,6 +36,8 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.gesture = sensors.gestureActive;
     fd_res.gesture_detected = sensors.gestureDetected;
     fd_res.sonar = sensors.sonarActive;
+    fd_res.power = sensors.powerActive;
+    fd_res.power_detected = sensors.powerDetected;
     fd_res.servo = features.servoDetected;
     fd_res.servo_detected = features.servoDetected;
     fd_res.has_servos_calibrated = true;

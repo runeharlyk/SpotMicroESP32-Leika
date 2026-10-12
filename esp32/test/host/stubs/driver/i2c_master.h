@@ -58,6 +58,8 @@ inline std::atomic<uint32_t> deviceSpeedHz {0};
 inline std::vector<std::vector<uint8_t>> written;
 // What each device's registers hold: reads return them, writes change them, as a register-mapped chip does.
 inline std::map<uint8_t, std::array<uint8_t, 256>> registers;
+// Devices whose registers are 16 bits wide, as the INA219's: register r is bytes 2r and 2r + 1 of `registers`.
+inline std::set<uint8_t> wordAddressed;
 // Devices that do not acknowledge their address, as a board without power does not.
 inline std::set<uint8_t> absent;
 // Transfers each device was sent, answered or not.
@@ -76,6 +78,7 @@ inline void reset() {
     written.clear();
     registers.clear();
     absent.clear();
+    wordAddressed.clear();
     attempts.clear();
     failureUs = 0;
     devicesAdded = staleUses = transfers = 0;
@@ -165,7 +168,8 @@ inline esp_err_t i2c_master_multi_buffer_transmit(i2c_master_dev_handle_t device
     if (result != ESP_OK || bytes.empty()) return result;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     auto &chip = fake_i2c::registers[device->address];
-    for (size_t i = 1; i < bytes.size(); i++) chip[(bytes[0] + i - 1) & 0xFF] = bytes[i];
+    const size_t first = fake_i2c::wordAddressed.count(device->address) ? bytes[0] * 2 : bytes[0];
+    for (size_t i = 1; i < bytes.size(); i++) chip[(first + i - 1) & 0xFF] = bytes[i];
     return result;
 }
 
@@ -175,7 +179,8 @@ inline esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device, con
     if (result != ESP_OK) return result;
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     auto &chip = fake_i2c::registers[device->address];
-    for (size_t i = 0; i < length; i++) read[i] = chip[(write[0] + i) & 0xFF];
+    const size_t first = fake_i2c::wordAddressed.count(device->address) ? write[0] * 2 : write[0];
+    for (size_t i = 0; i < length; i++) read[i] = chip[(first + i) & 0xFF];
     return ESP_OK;
 }
 

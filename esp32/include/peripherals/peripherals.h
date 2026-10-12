@@ -24,6 +24,8 @@
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
 #include <peripherals/sonar.h>
+#include <peripherals/drivers/ina219.h>
+#include <peripherals/power_guard.h>
 
 /**
  * The sensors' latest values. The sensor task writes them; the control and service tasks copy them out
@@ -36,6 +38,14 @@ struct SensorReadings {
     float pressure {0};
     gesture_t gesture {eGestureNone};
     std::array<sonar::Reading, sonar::COUNT> sonars {};  // left, right
+    PowerReading power;
+    bool lowVoltage = false, stalled = false;
+    float railVoltageMin = 0;  // since the last takeRailSample(), whose reading it starts from
+};
+
+/** The servo rail for a telemetry sample: all 0 without an active power sensor. */
+struct RailSample {
+    float voltage = 0, voltageMin = 0, current = 0;
 };
 
 /** What the last probe found: a sensor is detected when it answered, and active when it is also not disabled. */
@@ -44,6 +54,7 @@ struct SensorStatus {
     bool magDetected = false, magActive = false;
     bool bmpDetected = false, bmpActive = false;
     bool gestureDetected = false, gestureActive = false;
+    bool powerDetected = false, powerActive = false;
     bool sonarActive = false;  // a sonar is enabled on pins it could take
     const char *imuDriver = "none";
     uint32_t imuRateHz = 0, magRateHz = 0;
@@ -73,6 +84,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
     void getSonarProto(socket_message_SonarData &data);
+    void getPowerProto(socket_message_PowerData &data);
+
+    /** The rail has been under the cut-off voltage long enough that the robot must not stay active. */
+    bool powerCutoff();
+
+    /** The latest rail reading and the lowest voltage since the previous call, which starts the next window. */
+    RailSample takeRailSample();
 
     ImuSample imuSample();
     const char *imuDriverName() const;
@@ -111,6 +129,17 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void probeSensors(const SensorOptions &options);
     SensorOptions _probedOptions {};
 
+    struct PowerOptions {
+        bool disabled;
+        uint32_t address;
+        float shuntOhms, maxCurrentA;
+        bool operator==(const PowerOptions &) const = default;
+    };
+    PowerOptions powerOptions() const;
+    void probePower(const PowerOptions &options);
+    PowerOptions _probedPower {};
+    PowerGuardConfig powerGuardConfig() const;
+
     using SonarWiring = std::array<SonarPins::Wiring, sonar::COUNT>;
     SonarWiring sonarWiring() const;
     void applySonars(const SonarWiring &wiring);
@@ -121,6 +150,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
+    void readPower();
 
     FSPersistencePB<PeripheralsConfiguration> _persistence;
 
@@ -147,6 +177,9 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Imu _imu;
     Barometer _bmp;
     GestureSensor _gesture;
+    INA219Driver _ina;
+    PowerGuard _powerGuard;
+    bool _powerRead = false;  // under _readingsMutex: a reading came since the sensor started
     SonarPins _sonarPins;
     sonar::Ranger<SonarPins> _ranger {_sonarPins};
 

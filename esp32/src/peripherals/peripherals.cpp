@@ -26,6 +26,8 @@ void Peripherals::begin() {
 void Peripherals::beginSensors() {
     _imu.configure(imuConfig());
     probeSensors(sensorOptions());
+    probePower(powerOptions());
+    _powerGuard.configure(powerGuardConfig());
     applySonars(sonarWiring());
 }
 
@@ -103,12 +105,55 @@ void Peripherals::probeSensors(const SensorOptions &options) {
     {
         std::lock_guard<std::mutex> lock(_statusMutex);
         status.sonarActive = _status.sonarActive;
+        status.powerDetected = _status.powerDetected;
+        status.powerActive = _status.powerActive;
         _status = status;
     }
     ESP_LOGI("Peripherals", "IMU %s %s at %u Hz, compass %s at %u Hz, barometer %s, gesture sensor %s",
              status.imuDriver, describe(status.imuDetected, status.imuActive), status.imuRateHz,
              describe(status.magDetected, status.magActive), status.magRateHz,
              describe(status.bmpDetected, status.bmpActive), describe(status.gestureDetected, status.gestureActive));
+}
+
+Peripherals::PowerOptions Peripherals::powerOptions() const {
+    PowerOptions options;
+    read([&options](const PeripheralsConfiguration &settings) {
+        const api_PowerSensorSettings power = effectivePowerSettings(settings);
+        options = {settings.power_disabled, power.address, power.shunt_ohms, power.max_current_a};
+    });
+    return options;
+}
+
+PowerGuardConfig Peripherals::powerGuardConfig() const {
+    PowerGuardConfig config;
+    read([&config](const PeripheralsConfiguration &settings) {
+        config = powerGuardConfigFrom(effectivePowerSettings(settings));
+    });
+    return config;
+}
+
+// Probed apart from the other sensors, so a change of its address or shunt does not restart the IMU's fusion.
+void Peripherals::probePower(const PowerOptions &options) {
+    bool detected, active = false;
+    beginTransaction();
+    _ina.setAddress(options.address);
+    if (options.disabled) detected = _ina.identify();
+    else active = detected = _ina.begin(options.shuntOhms, options.maxCurrentA);
+    endTransaction();
+    _probedPower = options;
+    if (!active) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.power = {};
+        _readings.lowVoltage = _readings.stalled = false;
+        _readings.railVoltageMin = 0;
+        _powerRead = false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(_statusMutex);
+        _status.powerDetected = detected;
+        _status.powerActive = active;
+    }
+    ESP_LOGI("Peripherals", "Power sensor at 0x%02X %s", (unsigned)options.address, describe(detected, active));
 }
 
 SensorStatus Peripherals::status() const {
@@ -124,7 +169,10 @@ void Peripherals::sensorTick() {
         std::lock_guard<std::mutex> lock(_readingsMutex);
         _readings.sonars = _ranger.readings();
     }
-    EXECUTE_EVERY_N_MS(100, { readGesture(); });
+    EXECUTE_EVERY_N_MS(100, {
+        readGesture();
+        readPower();
+    });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
 }
 
@@ -179,6 +227,9 @@ void Peripherals::applySensorSettings() {
     // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
     const SensorOptions options = sensorOptions();
     if (!(options == _probedOptions)) probeSensors(options);
+    const PowerOptions power = powerOptions();
+    if (!(power == _probedPower)) probePower(power);
+    _powerGuard.configure(powerGuardConfig());
 }
 
 static socket_message_SonarStatus sonarStatusProto(sonar::Status status) {
@@ -246,6 +297,44 @@ void Peripherals::readGesture() {
         _readings.gesture = _gesture.getGesture();
     }
     endTransaction();
+}
+
+void Peripherals::readPower() {
+    PowerReading reading;
+    beginTransaction();
+    const bool fresh = _ina.read(reading);
+    endTransaction();
+    if (!fresh) return;
+    _powerGuard.update(static_cast<uint32_t>(esp_timer_get_time() / 1000), reading.busVoltage, reading.current);
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    const bool firstReading = !_powerRead;
+    _powerRead = true;
+    _readings.power = reading;
+    _readings.lowVoltage = _powerGuard.lowVoltage();
+    _readings.stalled = _powerGuard.stalled();
+    if (firstReading || reading.busVoltage < _readings.railVoltageMin) _readings.railVoltageMin = reading.busVoltage;
+}
+
+void Peripherals::getPowerProto(socket_message_PowerData &data) {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    data.bus_voltage = _readings.power.busVoltage;
+    data.shunt_voltage = _readings.power.shuntVoltage;
+    data.current = _readings.power.current;
+    data.power = _readings.power.power;
+    data.low_voltage = _readings.lowVoltage;
+    data.stalled = _readings.stalled;
+}
+
+bool Peripherals::powerCutoff() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.lowVoltage;
+}
+
+RailSample Peripherals::takeRailSample() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    const RailSample sample {_readings.power.busVoltage, _readings.railVoltageMin, _readings.power.current};
+    _readings.railVoltageMin = _readings.power.busVoltage;
+    return sample;
 }
 
 gesture_t Peripherals::takeGesture() {

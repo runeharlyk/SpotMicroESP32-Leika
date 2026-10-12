@@ -243,8 +243,10 @@
       "camera_disabled": 10,
       "ws2812": 11,
       "espnow_controller": 12,
+      "power_disabled": 13,
       "left_sonar": 20,
-      "right_sonar": 21
+      "right_sonar": 21,
+      "power_sensor": 22
     },
     "api.PeripheralSettingsRequest": {},
     "api.PinConfig": {
@@ -252,6 +254,14 @@
       "mode": 2,
       "type": 3,
       "role": 4
+    },
+    "api.PowerSensorSettings": {
+      "address": 1,
+      "shunt_ohms": 2,
+      "max_current_a": 3,
+      "cutoff_voltage": 4,
+      "stall_current_a": 5,
+      "stall_time_ms": 6
     },
     "api.Servo": {
       "center_pwm": 1,
@@ -579,7 +589,9 @@
       "hostname": 160,
       "sonar": 170,
       "walk_nn": 230,
-      "ota_download": 240
+      "ota_download": 240,
+      "power": 250,
+      "power_detected": 251
     },
     "socket_message.File": {
       "name": 10,
@@ -678,7 +690,8 @@
       "animation_status": 292,
       "sonar": 300,
       "goal_status": 310,
-      "ota_status": 320
+      "ota_status": 320,
+      "power": 330
     },
     "socket_message.ModeData": {
       "mode": 1
@@ -712,6 +725,14 @@
     },
     "socket_message.PingMsg": {},
     "socket_message.PongMsg": {},
+    "socket_message.PowerData": {
+      "bus_voltage": 1,
+      "shunt_voltage": 2,
+      "current": 3,
+      "power": 4,
+      "low_voltage": 5,
+      "stalled": 6
+    },
     "socket_message.RSSIData": {
       "rssi": 1
     },
@@ -793,7 +814,10 @@
       "channel": 3,
       "batches_sent": 4,
       "batches_failed": 5,
-      "ticks_dropped": 6
+      "ticks_dropped": 6,
+      "rail_voltage": 7,
+      "rail_voltage_min": 8,
+      "rail_current": 9
     },
     "socket_message.TickSample": {
       "seq": 1,
