@@ -15,6 +15,9 @@ vi.mock('../../src/lib/utilities/save-file', () => ({ saveFile: vi.fn() }))
 
 const { default: AnimationsPage } = await import('../../src/routes/animations/+page.svelte')
 
+// jsdom has no pointer capture, which dragging a keyframe on the timeline takes.
+Element.prototype.setPointerCapture = () => {}
+
 const CLIPS = [
     { name: 'bow', builtin: true, size: 167 },
     { name: 'wave', builtin: true, size: 302 },
