@@ -71,7 +71,8 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 
 The other sensors are a PAJ7620U2 gesture sensor (read every 100 ms) and a BMP180 barometer (every 500 ms).
 A gesture steps along the ladder rest - sit - stand (`esp32/include/gesture_control.h`): down from walk stands, down from stand plays the built-in `sit` clip and holds it, down again rests, and up steps back up to stand; left and right select walk.
-A gesture that arrives while a clip moves the legs is discarded, not queued.
+From stand or walk, forward and backward walk 10 cm and anticlockwise and clockwise turn a full circle, as [goal moves](motion_system.md#goal-moves) on the odometry.
+A gesture that arrives while a clip moves the legs or a goal runs is discarded, not queued.
 
 #### Variant
 

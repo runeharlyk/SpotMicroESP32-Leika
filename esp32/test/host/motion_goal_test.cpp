@@ -250,7 +250,45 @@ static void aNewGoalReplacesTheRunningOne() {
     CHECK(runGoal(motion) == GoalState::REACHED);
 }
 
+static void gesture(MotionService &motion, gesture_t which) {
+    fake_timer::nowUs += 10000;
+    motion.update(ImuSample {}, which);
+}
+
+// A forward gesture walks GESTURE_STEP_M and stands again; another arriving while it walks is dropped, not queued.
+static void aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile() {
+    MotionService motion;
+    standingPico(motion);
+    motion.resetOdometry();
+    gesture(motion, eGestureForward);
+    tick(motion);
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    tick(motion, TICKS_PER_S / 2);
+    gesture(motion, eGestureForward);
+    gesture(motion, eGestureDown);
+    CHECK(runGoal(motion) == GoalState::REACHED);
+    tick(motion, TICKS_PER_S);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    CHECK_NEAR(motion.odometry().x, GESTURE_STEP_M, SETTLED_M);
+    CHECK(motion.goalStatus().id == 1);
+}
+
+// A clockwise circle turns the robot a full turn the other way round from an anticlockwise one.
+static void aClockwiseGestureTurnsAFullCircle() {
+    MotionService motion;
+    standingPico(motion);
+    motion.resetOdometry();
+    gesture(motion, eGestureClockwise);
+    tick(motion);
+    CHECK(motion.goalStatus().goal.turn == -GESTURE_TURN_RAD);
+    CHECK(runGoal(motion, 60) == GoalState::REACHED);
+    tick(motion, TICKS_PER_S);
+    CHECK_NEAR(std::remainder(motion.odometry().yaw, 2 * static_cast<float>(M_PI)), 0, SETTLED_RAD);
+}
+
 int main() {
+    aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile();
+    aClockwiseGestureTurnsAFullCircle();
     aGoalWalksTheOdometryToItsTarget();
     aRobotNoAppHasDrivenStillWalks();
     aStickOffCentreTakesOverAndACentredOneDoesNot();

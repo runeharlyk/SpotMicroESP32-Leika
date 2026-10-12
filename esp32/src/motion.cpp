@@ -240,13 +240,19 @@ void MotionService::applyMode(socket_message_ModesEnum modeData) {
 
 void MotionService::handleGestures(const gesture_t ges) {
     if (ges == gesture_t::eGestureNone) return;
-    const GestureAction action = gestureAction(ges, currentMode.load(), animateState.status().state, sitClip != nullptr);
+    const GestureAction action =
+        gestureAction(ges, currentMode.load(), animateState.status().state, sitClip != nullptr, goal.running());
     ESP_LOGI("Motion", "Gesture: %d, action %d", ges, static_cast<int>(action));
     switch (action) {
         case GestureAction::SIT: startAnimation({sitClip, {}, 0}); break;
         case GestureAction::REST: setMode(socket_message_ModesEnum_REST); break;
         case GestureAction::STAND: setMode(socket_message_ModesEnum_STAND); break;
         case GestureAction::WALK: setMode(socket_message_ModesEnum_WALK); break;
+        // Through the inbox, as the socket's goals go, so each gets its number; it starts on the next tick.
+        case GestureAction::STEP_FORWARD: inbox.postGoal({GESTURE_STEP_M, 0, 0}); break;
+        case GestureAction::STEP_BACK: inbox.postGoal({-GESTURE_STEP_M, 0, 0}); break;
+        case GestureAction::TURN_LEFT: inbox.postGoal({0, 0, GESTURE_TURN_RAD}); break;
+        case GestureAction::TURN_RIGHT: inbox.postGoal({0, 0, -GESTURE_TURN_RAD}); break;
         case GestureAction::NONE: break;
     }
 }
