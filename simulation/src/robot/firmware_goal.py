@@ -14,6 +14,8 @@ import math
 from dataclasses import dataclass
 from enum import IntEnum
 
+from .firmware_odometry import BodyStep
+
 SLOW_DOWN_M = 0.05
 REACHED_M = 0.01
 SLOW_DOWN_RAD = math.radians(30.0)
@@ -44,25 +46,10 @@ class Goal:
 
 
 @dataclass(frozen=True)
-class BodyStep:
-    """The body's motion over one tick, in the frame it faced at the start of the tick."""
-    forward: float = 0.0
-    left: float = 0.0
-    turn: float = 0.0
-
-
-@dataclass(frozen=True)
 class GoalSticks:
     forward: float = 0.0
     left: float = 0.0
     turn: float = 0.0
-
-
-def body_step(before, after) -> BodyStep:
-    """The step between two estimates of the same odometry (x, y, yaw in radians)."""
-    dx, dy = after.x - before.x, after.y - before.y
-    c, s = math.cos(before.yaw), math.sin(before.yaw)
-    return BodyStep(c * dx + s * dy, -s * dx + c * dy, math.remainder(after.yaw - before.yaw, 2 * math.pi))
 
 
 class GoalController:

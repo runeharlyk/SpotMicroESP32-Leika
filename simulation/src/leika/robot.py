@@ -100,7 +100,8 @@ class Robot:
         `speed` of the gait's top, on the robot's own odometry: a stalled link cannot cut it short. Returns once the
         robot reports it reached, standing; raises GoalCancelled if it ended early and RobotTimeout if it gave up.
 
-        The odometry counts what the gait commanded, so until it is calibrated the robot lands off by its error.
+        The odometry's distances count what the gait commanded, so until they are calibrated the robot lands off by
+        their error; its heading fuses the gyro.
         """
         targets = (forward, sideways, turn_deg)
         if sum(t != 0 for t in targets) > 1:

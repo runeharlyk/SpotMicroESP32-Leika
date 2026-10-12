@@ -20,7 +20,7 @@ class FakeRobot:
         self.status = 200
         self.connections = 0
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
-        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75)
+        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75, kinematic_yaw=math.pi / 3)
         self.goals, self.goal_s, self.goal_end, self.goal_quiet = goals, 0.3, pb.GOAL_REACHED, False
         self.goal = pb.GoalStatus()
         self.received = []  # (monotonic time, Message)

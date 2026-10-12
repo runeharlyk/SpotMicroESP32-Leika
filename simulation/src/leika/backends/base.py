@@ -35,8 +35,9 @@ class RobotState:
 class Odometry:
     x: float  # m forward
     y: float  # m to the left
-    yaw: float  # degrees counter-clockwise, -180 to 180
+    yaw: float  # degrees counter-clockwise, -180 to 180, the gyro fused in
     distance: float  # m along the path
+    kinematic_yaw: float  # degrees, the feet's alone: against yaw over a turn, the gait's turn scale
 
 
 @dataclass(frozen=True)

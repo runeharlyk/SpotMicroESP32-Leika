@@ -156,9 +156,10 @@ def test_calibration_returns_the_robots_result(robot):
 
 
 def test_odometry_is_read_in_degrees_and_a_reset_returns_where_it_had_got_to(robot):
-    assert robot.odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
-    assert robot.reset_odometry() == Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75)
-    assert robot.odometry() == Odometry(0.0, 0.0, 0.0, 0.0)
+    reached = Odometry(x=0.5, y=-0.25, yaw=pytest.approx(90.0), distance=0.75, kinematic_yaw=pytest.approx(60.0))
+    assert robot.odometry() == reached
+    assert robot.reset_odometry() == reached
+    assert robot.odometry() == Odometry(0.0, 0.0, 0.0, 0.0, 0.0)
 
 
 def _goal_moves(fake):

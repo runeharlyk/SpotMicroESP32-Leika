@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.robot.firmware_goal import BodyStep, Goal, GoalController, GoalState, body_step
-from src.robot.firmware_odometry import OdometryEstimate
+from src.robot.firmware_goal import BodyStep, Goal, GoalController, GoalState
 
 TRACE = Path(__file__).parent / "fixtures" / "firmware-goal-trace.json"
 SCENARIOS = json.loads(TRACE.read_text())["scenarios"]
@@ -38,10 +37,3 @@ def test_only_one_finite_target_at_a_sane_speed_is_valid():
     for goal in (Goal(), Goal(0.2, 0.1), Goal(math.nan), Goal(0.2, speed=0), Goal(0.2, speed=1.01)):
         assert not goal.valid()
 
-
-def test_a_body_step_is_taken_in_the_frame_it_started_in():
-    c, s = math.cos(3.0), math.sin(3.0)
-    before = OdometryEstimate(1.0, 2.0, 3.0)
-    after = OdometryEstimate(1 + c * 0.02 - s * 0.01, 2 + s * 0.02 + c * 0.01, 3.5 - 2 * math.pi)
-    step = body_step(before, after)
-    assert (step.forward, step.left, step.turn) == pytest.approx((0.02, 0.01, 0.5))

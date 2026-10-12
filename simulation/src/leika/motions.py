@@ -1,8 +1,8 @@
 """Distance and turn motions, written once against the Robot's velocity, state and clock, or its goal moves.
 
 A robot that takes goal moves walks a distance itself, closed on its odometry, so a WiFi stall that trips the dead-man
-stop no longer cuts the move short. A turn goes the same way, then closes the rest on the measured yaw: the odometry's
-yaw counts what the gait commanded and lands off by its error, the IMU's does not.
+stop no longer cuts the move short. A turn goes the same way, then closes what is left on the IMU's yaw, against
+whatever error the odometry's heading still has.
 """
 import math
 

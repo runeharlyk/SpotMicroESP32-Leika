@@ -2,9 +2,9 @@
 stepped at the control rate.
 
 A goal move runs the firmware's controller on the firmware's odometry, as the robot does, rather than the host-side
-motions: so it lands where the robot would, by its odometry, which falls 11 to 15 % short of MuJoCo's base.
+motions: so it lands where the robot would, by its odometry, whose distances fall 11 to 15 % short of MuJoCo's base
+and whose heading, fused with MuJoCo's gyro, turns within 1 % of it.
 """
-import dataclasses
 import math
 import threading
 import time
@@ -13,8 +13,8 @@ import mujoco
 import numpy as np
 
 from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
-from ...robot.firmware_goal import BodyStep, Goal, GoalController, GoalState, body_step
-from ...robot.firmware_odometry import KinematicOdometry
+from ...robot.firmware_goal import Goal, GoalController, GoalState
+from ...robot.firmware_odometry import BodyStep, FusedOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
@@ -33,7 +33,7 @@ class SimBackend:
         set_mode(self._gait, TROT)
         self._controller = GaitController()
         self._body = BodyState()
-        self._odometry = KinematicOdometry()
+        self._odometry = FusedOdometry()
         self._goal = GoalController()
         self._mode = Mode.REST
         self._velocity = ZERO
@@ -67,10 +67,12 @@ class SimBackend:
             analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
             self._controller.advance_phase(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
-            before = dataclasses.replace(self._odometry.estimate)
-            self._odometry.update(self._body.feet @ MODEL_TO_FIRMWARE.T, self._controller.stance(self._gait))
+            # The gyro's yaw rate as the firmware reads it, from the IMU sample the physics left; MuJoCo's has no bias.
+            gyro_rate = float((MODEL_TO_REP @ self.sim.gyro())[2])
+            step = self._odometry.update(self._body.feet @ MODEL_TO_FIRMWARE.T, self._controller.stance(self._gait),
+                                         gyro_rate=gyro_rate, dt=CONTROL_DT)
             if self._goal.running:
-                self._drive_goal(body_step(before, self._odometry.estimate), CONTROL_DT)
+                self._drive_goal(step, CONTROL_DT)
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
             self.sim.step_physics()
             self._t += CONTROL_DT
@@ -129,7 +131,7 @@ class SimBackend:
             self._cancel_goal()
             self._mode = mode
             if mode is Mode.DEACTIVATED:
-                self._odometry = KinematicOdometry()
+                self._odometry = FusedOdometry()
 
     # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
     # reports, so a distance move would land far short.
@@ -195,4 +197,5 @@ class SimBackend:
 
     def _reported(self) -> Odometry:
         e = self._odometry.estimate
-        return Odometry(x=e.x, y=e.y, yaw=math.degrees(e.yaw), distance=e.distance)
+        return Odometry(x=e.x, y=e.y, yaw=math.degrees(e.yaw), distance=e.distance,
+                        kinematic_yaw=math.degrees(self._odometry.kinematic_yaw))
