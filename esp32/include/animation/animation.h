@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <joint_model.h>
 #include <kinematics.h>
 
 namespace anim {
@@ -369,11 +370,21 @@ inline uint32_t poseToAngles(const Pose &p, Kinematics &kin, const float stance[
     return mask;
 }
 
-// The clamp mask over the whole clip at its default parameters, sampled this many times per segment: a warning for the
-// author, as the clip still plays.
+// Bit leg * 3 + joint of every angle (deg, IK order) outside its joint's travel, which the servos then hold it at.
+inline uint32_t travelMask(const JointModel &model, const float angles[JOINTS]) {
+    uint32_t mask = 0;
+    for (int j = 0; j < JOINTS; ++j)
+        if (!withinTravel(model, j, angles[j])) mask |= 1u << j;
+    return mask;
+}
+
+// The clamp mask over the whole clip at its default parameters, sampled this many times per segment: a foot out of
+// reach, or a joint driven past its travel, as a deep crouch folding a leg into the body is. A warning for the author,
+// as the clip still plays.
 constexpr int SWEEP_SAMPLES = 32;
 
-inline uint32_t clampSweep(const Clip &c, Kinematics &kin, const float stance[LEGS][4], float baseHeight) {
+inline uint32_t clampSweep(const Clip &c, Kinematics &kin, const JointModel &model, const float stance[LEGS][4],
+                           float baseHeight) {
     float params[PARAM_COUNT];
     resolveParams(c, nullptr, 0, params);
     const float height = c.hasRideHeight ? c.rideHeight * MM : baseHeight;
@@ -387,6 +398,7 @@ inline uint32_t clampSweep(const Clip &c, Kinematics &kin, const float stance[LE
             evaluate(c, params, t0 + (t1 - t0) * i / SWEEP_SAMPLES, kin, stance, height, pose);
             float angles[JOINTS];
             mask |= poseToAngles(pose, kin, stance, height, angles);
+            mask |= travelMask(model, angles);
         }
     }
     return mask;

@@ -16,7 +16,8 @@ static int failures = 0;
         }                                                                    \
     } while (0)
 
-// Every clip shipped in the firmware decodes, validates, and keeps every foot within reach on every variant.
+// Every clip shipped in the firmware decodes, validates, and keeps every foot within reach and every joint within its
+// travel on every variant.
 static void everyBuiltinClipPlaysOnEveryVariant() {
     static animation_Animation message;
     static anim::Clip clip;
@@ -34,7 +35,8 @@ static void everyBuiltinClipPlaysOnEveryVariant() {
               socket_message_KinematicsVariant_SPOTMICRO_YERTLE}) {
             const KinConfig &config = *kinConfigFor(variant);
             Kinematics kin(config);
-            const uint32_t mask = anim::clampSweep(clip, kin, config.default_feet_positions, config.default_body_height);
+            const uint32_t mask = anim::clampSweep(clip, kin, *jointModelFor(variant), config.default_feet_positions,
+                                                   config.default_body_height);
             if (mask) std::printf("%s on %s: clamp mask 0x%03x\n", builtin.name, variantName(variant), (unsigned)mask);
             CHECK(mask == 0);
         }

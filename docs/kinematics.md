@@ -42,6 +42,11 @@ The PWM is the servo angle times the PWM counts per degree plus the robot's cali
 The direction, the centre angle and the counts per degree belong to the variant, because the variants mount their servos differently.
 The centre PWM and the channel of each joint belong to the individual robot, and are calibrated from the app.
 
+Before the PWM, the servo controller holds every joint inside its travel: a range per joint kind in the IK convention, which the variant's joint model carries.
+Each bound is the servos' travel or a frame collision read off the variant's simulation model; `joint_model.h` notes which, and none of them is measured on a robot yet.
+The servo controller logs, at most every two seconds, how many targets it held and the furthest one asked for.
+The animation reachability sweep flags a joint a clip drives past its travel as it flags a foot out of reach.
+
 The limits under Motion limits bound roll by the maximum roll and pitch by the maximum pitch.
 In the stand mode the right stick's x axis, which turns the body about the vertical axis, is scaled by the maximum roll.
 

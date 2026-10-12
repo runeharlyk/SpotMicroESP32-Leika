@@ -526,10 +526,11 @@ void setupEventSocket() {
              report.duration = clip->duration();
              report.loop = clip->loop;
              report.hold_end = clip->holdEnd;
-             if (const KinConfig *config = kinConfigFor(activeVariant.load())) {
+             const KinematicsVariant variant = activeVariant.load();
+             if (const KinConfig *config = kinConfigFor(variant)) {
                  Kinematics kin(*config);
-                 report.clamped_mask =
-                     anim::clampSweep(*clip, kin, config->default_feet_positions, config->default_body_height);
+                 report.clamped_mask = anim::clampSweep(*clip, kin, *jointModelFor(variant),
+                                                        config->default_feet_positions, config->default_body_height);
              }
          }},
 

@@ -60,7 +60,7 @@
     const deactivated = $derived($mode.mode === ModesEnum.DEACTIVATED)
     const running = $derived(!!status && status.state !== AnimationState.ANIM_IDLE)
     const selectedEntry = $derived($robotClips?.find(c => c.name === selected))
-    const unreachableLegs = $derived(
+    const clampedLegs = $derived(
         report ? LEG_NAMES.filter((_, leg) => (report!.clampedMask >> (leg * 3)) & 0b111) : []
     )
 
@@ -236,11 +236,12 @@
                         ', holds its last pose until stopped'
                     :   ''}
                 </p>
-                {#if unreachableLegs.length}
+                {#if clampedLegs.length}
                     <div class="alert alert-warning" role="alert">
-                        The {unreachableLegs.join(', ')}
-                        {unreachableLegs.length === 1 ? 'foot' : 'feet'} cannot reach every pose of this
-                        clip on this robot; those legs stop at full stretch.
+                        The {clampedLegs.join(', ')}
+                        {clampedLegs.length === 1 ? 'leg' : 'legs'} cannot follow every pose of this
+                        clip on this robot: a foot out of reach or a joint past its travel stops at its
+                        limit.
                     </div>
                 {/if}
                 {#each report.params as param (param.id)}
