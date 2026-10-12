@@ -154,9 +154,9 @@ message CorrelationRequest {
         OtaStart ota_start = 210;
         OtaChunk ota_chunk = 211;
         OtaFinish ota_finish = 212;
-        CoreDumpRequest core_dump_request = 220;
-        CoreDumpDownload core_dump_download = 221;
-        CoreDumpErase core_dump_erase = 222;
+        CoreDumpRequest core_dump_request = 230;
+        CoreDumpDownload core_dump_download = 231;
+        CoreDumpErase core_dump_erase = 232;
     }
 }
 
@@ -185,7 +185,7 @@ message CorrelationResponse {
         api.CameraSettings camera_settings = 170;
         api.ServoSettings servo_settings = 180;
         api.PeripheralSettings peripheral_settings = 190;
-        CoreDumpReport core_dump_report = 220;
+        CoreDumpReport core_dump_report = 230;
     }
 }
 
