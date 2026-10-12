@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 - Adds the `esp32-s3-n8r2` build for ESP32-S3 boards with 2 MB of quad PSRAM, such as the Spot Pico's, which the octal-PSRAM S3 builds left without it
 - Adds a Configuration page that saves a robot's servo calibration and peripheral settings to a file and loads them back, onto the same robot or as a starting point for another
 - Shows each saved robot's firmware version and build on the start page, as the robot last reported it
+- Gives the simulated servos the MG92B's torque-speed line, so they slow under load and give way past stall, with the supply voltage randomised between its 4.8 and 6.0 V ratings
+- Adds terrain and payload stages to the simulation's training - a payload, bumps, slopes and stairs - advanced by how many episodes succeed
 
 ### Changed
 
