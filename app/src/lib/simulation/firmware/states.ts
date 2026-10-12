@@ -123,6 +123,11 @@ export abstract class MotionState {
         body.omega = follow(dampers.omega, body.omega, targetOmega, dt)
     }
 
+    /** takeoverSettled (motion_states/state.h): the stand's IMU compensation holds until the feet are eased in. */
+    protected takeoverSettled() {
+        return this.feetEasedS >= FEET_EASE_S
+    }
+
     protected updateFeet(body: BodyState) {
         if (!sameFeet(this.target.feet, body.feet))
             body.feet = this.target.feet.map(foot => [...foot])
@@ -178,7 +183,7 @@ export class StandState extends MotionState {
     }
 
     step(body: BodyState, dt: number) {
-        this.smoothToBody(body, dt, true)
+        this.smoothToBody(body, dt, this.takeoverSettled())
         this.easeFeet(body, dt)
     }
 }

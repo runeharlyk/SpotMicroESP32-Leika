@@ -3,8 +3,9 @@
 In STAND the firmware turns the body against the tilt the IMU measures: the roll and pitch offsets are the IMU's
 REP-103 angles with their signs reversed, subtracted from the commanded attitude, plus the integral of that error
 (anti-windup, cleared when a state takes over), clamped to the variant's roll and pitch limits and followed through
-the same critically damped smoothing as every other body target. In every other
-mode the attitude follows the commanded one (zero here) through the same smoothing.
+the same critically damped smoothing as every other body target. It holds until the takeover has settled (the feet's
+ease, FEET_EASE_S), so it does not chase the tilt the rise from REST causes. In every other mode, and while it holds,
+the attitude follows the commanded one (zero here) through the same smoothing.
 
 The firmware's attitude lives in its body frame (x forward, y up, z lateral): omega turns about x, psi about z.
 Which side z points to is the open "+z side" question; FIRMWARE_FROM_REP takes the repository's answer (z left, as
@@ -33,6 +34,8 @@ SMOOTHING_OMEGA = 4.744 / 0.333
 # MotionState::IMU_INTEGRAL_GAIN (1/s) and MAX_INTEGRATION_DT (s).
 IMU_INTEGRAL_GAIN = 1.0
 MAX_INTEGRATION_DT = 0.05
+# MotionState::FEET_EASE_S: the stand's compensation holds until a takeover has eased the feet in.
+FEET_EASE_S = 0.5
 
 
 class CriticalDamper:
@@ -94,24 +97,27 @@ def apply_firmware_attitude(body: BodyState, omega_deg: float, psi_deg: float,
 
 
 class StandCompensation:
-    """The firmware body attitude (omega, psi; degrees) as MotionState::smoothToBody steps it, commanded level."""
+    """The firmware body attitude (omega, psi; degrees) as MotionState::smoothToBody steps it, commanded level.
+    `hold_s` is how long after a takeover the compensation holds; 0 levels from the first tick, as before the hold."""
 
-    def __init__(self):
+    def __init__(self, hold_s: float = FEET_EASE_S):
+        self.hold_s = hold_s
         self.omega = 0.0
         self.psi = 0.0
         self.reset()
 
     def reset(self) -> None:
-        """MotionState::resetSmoothing: a state taking over starts its dampers at rest and its integrals at zero.
-        The attitude carries over."""
+        """MotionState::resetSmoothing: a state taking over starts its dampers at rest, its integrals at zero and
+        its hold again. The attitude carries over."""
         self._omega_damper = CriticalDamper()
         self._psi_damper = CriticalDamper()
         self.omega_integral = 0.0
         self.psi_integral = 0.0
+        self.since_takeover_s = 0.0
 
     def step(self, roll: float, pitch: float, dt: float, compensate: bool) -> tuple[float, float]:
         """One control tick from the IMU's REP-103 roll and pitch (rad); returns (omega, psi) in degrees."""
-        if compensate:
+        if compensate and self.since_takeover_s >= self.hold_s:
             target_psi, self.psi_integral = level_target(0.0, -math.degrees(pitch), self.psi_integral,
                                                          MAX_PITCH_DEG, dt)
             target_omega, self.omega_integral = level_target(0.0, -math.degrees(roll), self.omega_integral,
@@ -120,4 +126,5 @@ class StandCompensation:
             target_psi = target_omega = 0.0
         self.psi = self._psi_damper.step(self.psi, target_psi, dt, SMOOTHING_OMEGA)
         self.omega = self._omega_damper.step(self.omega, target_omega, dt, SMOOTHING_OMEGA)
+        self.since_takeover_s = min(self.since_takeover_s + dt, self.hold_s)
         return self.omega, self.psi

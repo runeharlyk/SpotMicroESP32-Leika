@@ -132,10 +132,33 @@ static void aStateTakingOverStartsWithoutTheIntegral() {
 
 // The first tick after the motion loop was idle can carry a long dt; it integrates no more than MAX_INTEGRATION_DT.
 static void aLongGapBetweenTicksDoesNotKickTheIntegral() {
-    Slope slope(0, 8);
+    Slope slope(0, 0);
+    slope.run(1);
+    slope.pitch = 8;
     slope.run(2, 2);
     CHECK(slope.stand.pitchIntegral() > 0);
     CHECK(slope.stand.pitchIntegral() <= 8 * 0.05f + 1e-4f);
+}
+
+// Until the takeover has settled (the feet's 0.5 s ease) a tilt moves neither the attitude nor the integral.
+static void theCompensationHoldsUntilTheTakeoverHasSettled() {
+    Slope slope(6, 8);
+    slope.run(0.48f);
+    CHECK(slope.body.omega == 0 && slope.body.psi == 0);
+    CHECK(slope.stand.rollIntegral() == 0 && slope.stand.pitchIntegral() == 0);
+    slope.run(0.5f);
+    CHECK(slope.body.omega > 1 && slope.body.psi > 1);
+}
+
+// The rise from REST tipped the Pico for a moment (2026-10-01: roll -13 and pitch +8 degrees). A tilt that is over by
+// the time the rise is leaves the body level at once, instead of tilted by what the compensation had integrated.
+static void aTiltDuringTheRiseLeavesNothingBehind() {
+    Slope slope(-13, 8);
+    slope.run(0.4f);
+    slope.roll = slope.pitch = 0;
+    slope.run(0.2f);
+    CHECK(std::fabs(slope.body.omega) < 0.01f && std::fabs(slope.body.psi) < 0.01f);
+    CHECK(slope.stand.rollIntegral() == 0 && slope.stand.pitchIntegral() == 0);
 }
 
 int main() {
@@ -146,6 +169,8 @@ int main() {
     aSlopeBeyondTheLimitDoesNotWindTheIntegralUp();
     aStateTakingOverStartsWithoutTheIntegral();
     aLongGapBetweenTicksDoesNotKickTheIntegral();
+    theCompensationHoldsUntilTheTakeoverHasSettled();
+    aTiltDuringTheRiseLeavesNothingBehind();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

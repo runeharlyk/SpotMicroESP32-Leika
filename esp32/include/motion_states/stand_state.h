@@ -26,7 +26,7 @@ class StandState : public MotionState {
     }
 
     void step(body_state_t &body_state, float dt = 0.02f) override {
-        smoothToBody(body_state, dt, true);
+        smoothToBody(body_state, dt, takeoverSettled());
         easeFeet(body_state, dt);
     }
 };

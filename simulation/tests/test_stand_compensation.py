@@ -7,6 +7,7 @@ import pytest
 from src.robot import stand_compensation
 from src.robot.firmware_gait import BodyState
 from src.robot.stand_compensation import (
+    FEET_EASE_S,
     MAX_PITCH_DEG,
     MAX_ROLL_DEG,
     CriticalDamper,
@@ -39,14 +40,25 @@ def test_the_damper_settles_a_step_to_95_percent_in_a_third_of_a_second():
 
 def test_a_tilt_is_answered_with_the_reversed_offsets_like_the_firmware_host_test():
     """stand_compensation_test.cpp: left side up rolls the body back (omega > 0), nose down lifts it (psi > 0)."""
-    omega, psi = settle(5 * DEG, 0, ticks=20)
+    omega, psi = settle(5 * DEG, 0, ticks=70)
     assert omega > 1 and abs(psi) < 1e-6
-    omega, psi = settle(0, 5 * DEG, ticks=20)
+    omega, psi = settle(0, 5 * DEG, ticks=70)
     assert psi > 1 and abs(omega) < 1e-6
 
 
 def test_a_tilt_that_does_not_go_away_winds_the_answer_up_to_the_limits_and_no_further():
     assert settle(-5 * DEG, 5 * DEG, ticks=3000) == pytest.approx((-MAX_ROLL_DEG, MAX_PITCH_DEG), abs=1e-3)
+
+
+def test_the_compensation_holds_until_the_takeover_has_settled_like_the_firmware_host_test():
+    compensation = StandCompensation()
+    for _ in range(round(FEET_EASE_S / CONTROL_DT)):
+        attitude = compensation.step(6 * DEG, 8 * DEG, CONTROL_DT, True)
+    assert attitude == (0, 0)
+    assert compensation.omega_integral == compensation.psi_integral == 0
+    for _ in range(50):
+        attitude = compensation.step(6 * DEG, 8 * DEG, CONTROL_DT, True)
+    assert min(attitude) > 1
 
 
 def test_a_state_taking_over_starts_without_the_last_ones_integral():
@@ -112,3 +124,4 @@ def test_on_a_flat_floor_the_levelled_stand_holds_still():
     tilt = stand_on_slope(NOSE_DOWN, 0, True, seconds=8)
     assert np.abs(tilt[-500:]).max() < 0.05
     assert np.ptp(tilt[-500:], axis=0).max() < 0.01
+

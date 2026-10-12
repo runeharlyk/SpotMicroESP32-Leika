@@ -21,9 +21,9 @@ class MotionState {
 
     // The IMU compensation's integral action: the proportional term alone, at gain 1, leaves half the attitude error
     // (on a slope the body settled at -slope / 2, and a commanded tilt came out halved). Slow next to the smoothing,
-    // so the loop stays damped: in the simulation an 8 degree slope is levelled to 0.5 degrees in 4 s without
-    // overshoot, where a gain of 20/s overshoots (not yet tried on the robot). The step is capped so a long gap
-    // between ticks cannot kick it.
+    // so the loop stays damped: in the simulation an 8 degree slope is levelled to 0.5 degrees 4 s after the
+    // compensation starts, without overshoot, where a gain of 20/s overshoots (not yet tried on the robot). The step
+    // is capped so a long gap between ticks cannot kick it.
     static constexpr float IMU_INTEGRAL_GAIN = 1.0f;  // 1/s
     static constexpr float MAX_INTEGRATION_DT = 0.05f;
     float omega_integral = 0, psi_integral = 0;
@@ -67,6 +67,12 @@ class MotionState {
         follow(body_dampers.psi, body_state.psi, target_psi, dt);
         follow(body_dampers.omega, body_state.omega, target_omega, dt);
     }
+
+    // A takeover has settled once the feet are eased in; the body's height is then within 1% of its step as well.
+    // Until then the stand holds its IMU compensation: the rise from REST can tip the body by itself (the Pico tipped
+    // by up to 13 degrees), and levelling against that tilt winds the integral up, which leaves the body tilted the
+    // other way for seconds after the rise (in the simulation, with one leg's servos lagging).
+    bool takeoverSettled() const { return feet_eased_s >= FEET_EASE_S; }
 
     void updateFeet(body_state_t& body_state) {
         if (std::memcmp(target_body_state.feet, body_state.feet, sizeof(body_state.feet)) != 0) {

@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 - Eases the feet over half a second when stand or rest takes over, instead of snapping a foot from mid-stride: walk to stand jumped a joint up to 47 degrees in one tick
 - Levels the standing body fully on a slope with integral action in its IMU compensation, which left half the tilt, and holds a commanded stand tilt in full instead of half of it
+- Holds the stand's IMU compensation until the feet are eased in, so it no longer levels against, and integrates, the tilt the rise from rest causes by itself
 
 ### Fixed
 
