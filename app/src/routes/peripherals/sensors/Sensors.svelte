@@ -170,7 +170,7 @@
                 Listen for the ESP-NOW controller
             </label>
             <p class="text-xs opacity-70">
-                Any ESP-NOW controller in range can drive the robot while this is on.
+                The robot obeys the first controller it hears after this is switched on.
             </p>
         {/if}
 
