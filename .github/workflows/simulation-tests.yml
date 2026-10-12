@@ -9,6 +9,12 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
@@ -18,6 +24,12 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -32,6 +44,8 @@ jobs:
         working-directory: ./simulation
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -44,5 +58,17 @@ jobs:
       - name: Generate the protocol classes the recording loader reads
         run: uv run python gen_protos.py
 
+      - name: Generate the nanopb headers the virtual robot is built with
+        run: uv run python ../esp32/scripts/compile_protos.py
+
       - name: Run tests
         run: uv run pytest -q
+
+      # The host's g++, as the Firmware Host Tests workflow builds the firmware code with.
+      - name: Run the release smoke check against the virtual robot
+        run: |
+          uv run python virtual_robot.py --build "$RUNNER_TEMP/virtual_robot"
+          uv run python virtual_robot.py --binary "$RUNNER_TEMP/virtual_robot" --port 8765 > "$RUNNER_TEMP/virtual_robot.log" 2>&1 &
+          timeout 30 sh -c 'until grep -q api/ws "$RUNNER_TEMP/virtual_robot.log"; do sleep 0.2; done'
+          uv run python release_smoke.py localhost:8765
+          kill %1
