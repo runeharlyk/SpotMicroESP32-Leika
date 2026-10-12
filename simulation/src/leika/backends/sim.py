@@ -6,8 +6,9 @@ import time
 import mujoco
 import numpy as np
 
-from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...robot.firmware_gait import TROT, VARIANT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
+from .. import speed_model
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, RobotError, RobotState, Velocity
 
@@ -53,7 +54,7 @@ class SimBackend:
         with self._lock:
             v = self._velocity if self._mode is Mode.WALK else ZERO
             analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
-            self._controller.advance_phase(self._gait, CONTROL_DT)
+            self._controller.step(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
             self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
             self.sim.step_physics()
@@ -73,8 +74,7 @@ class SimBackend:
         with self._lock:
             self._mode = mode
 
-    # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
-    # reports, so a distance move would land far short.
+    # The port has the trot only: it lacks the crawl's body shift over the stance feet (WalkState::updateBodyPosition).
     def set_gait(self, gait: Gait) -> None:
         if gait is not Gait.TROT:
             raise RobotError(f"the simulation models the trot only, not {gait.name}")
@@ -82,10 +82,10 @@ class SimBackend:
             set_mode(self._gait, TROT)
 
     def set_height(self, height: float) -> None:
-        """The simulated gait stands at one height."""
+        """The simulated gait stands at the one height the client defaults to (firmware_gait.STAND_HEIGHT)."""
 
     def max_velocity(self) -> Velocity:
-        return Velocity(GAIT_COEF["gain_x"], GAIT_COEF["gain_y"], GAIT_COEF["gain_yaw"])
+        return speed_model.max_velocity(VARIANT, Gait.TROT)
 
     def set_velocity(self, velocity: Velocity) -> Velocity:
         top = self.max_velocity()

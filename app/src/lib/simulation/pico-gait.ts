@@ -1,7 +1,8 @@
 /**
  * TypeScript port of simulation/src/robot/firmware_gait.py: the firmware's walk_state.h gait
- * engine with inverse kinematics derived from the Pico's MJCF, which is the controller the
- * Python simulation and the training use. tests/unit/pico-gait.spec.ts pins it to that file.
+ * with the SPOTMICRO_ESP32_MINI's constants, placed on the Pico's geometry with inverse
+ * kinematics derived from its MJCF, which is the controller the Python simulation and the
+ * training use. tests/unit/pico-gait.spec.ts pins it to that file.
  *
  * Base frame of spot_pico: +X left, +Y rear, +Z up (forward is -Y). Angles are radians in MJCF
  * order [fr, fl, rr, rl] x [hip, femur, tibia].
@@ -68,7 +69,19 @@ const LEG_GEOM: Record<Leg, LegGeometry> = {
     }
 }
 
-const STANCE_DEPTH = 0.055
+// The firmware's KinConfig for SPOTMICRO_ESP32_MINI (esp32/include/kinematics.h) and what the
+// client commands it (simulation/src/leika/speed_model.py): height 0.7, speed 0.5, s1 0.5.
+const COXA = 0.035
+const BODY_LENGTH = 0.16
+const BODY_WIDTH = 0.08
+const MAX_LEG_REACH = 0.06 + 0.06 - 0
+const MIN_BODY_HEIGHT = 0.45 * MAX_LEG_REACH
+const MAX_BODY_HEIGHT = 0.9 * MAX_LEG_REACH
+const BODY_HEIGHT = MIN_BODY_HEIGHT + 0.7 * (MAX_BODY_HEIGHT - MIN_BODY_HEIGHT)
+const MAX_STEP_LENGTH = 0.8 * MAX_LEG_REACH
+const STEP_HEIGHT = (0.5 * MAX_LEG_REACH) / 2
+const STEP_DEPTH = 0.002
+const SPEED = 0.5
 const FOOT_RADIUS = 0.009
 
 const rotX = (a: number, [x, y, z]: Vec3): Vec3 => {
@@ -133,26 +146,29 @@ export function legIk(leg: Leg, target: Vec3): Vec3 {
     return [q1, alpha / sf, beta / st]
 }
 
+// Each foot BODY_HEIGHT below its leg's mount and COXA outboard of it: the Pico's hip axis
+// laterally, its femur pivot fore-aft.
 export const DEFAULT_FEET: Vec3[] = LEG_NAMES.map(leg => {
-    const { H } = LEG_GEOM[leg]
-    return [H[0] + KIN[leg].xOff, H[1], H[2] - STANCE_DEPTH]
+    const { H, pFemur } = LEG_GEOM[leg]
+    return [H[0] + Math.sign(KIN[leg].xOff) * COXA, H[1] + pFemur[1], H[2] - BODY_HEIGHT]
 })
 export const STAND_Z = FOOT_RADIUS - Math.min(...DEFAULT_FEET.map(foot => foot[2]))
 
-const TROT_OFFSET = [0, 0.5, 0.5, 0]
+// The firmware's feet about its body centre, where a turn takes each foot's stroke.
+const FIRMWARE_FEET = LEG_NAMES.map(leg => [
+    Math.sign(KIN[leg].xOff) * (BODY_WIDTH / 2 + COXA),
+    Math.sign(LEG_GEOM[leg].H[1]) * (BODY_LENGTH / 2)
+])
+
+// walk_state.h's offsets, from its leg order (fl, fr, rl, rr) into this one.
+const TROT_OFFSET = [0.5, 0, 0, 0.5]
 const TROT_STAND_FRAC = 0.75
 const TROT_SPEED_FACTOR = 2.0
 const COMBINATORIAL_VALUES = [1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1]
 const BEZIER_STEPS = [-1.0, -1.4, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5, 1.5, 1.4, 1.0]
 const BEZIER_HEIGHTS = [0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0]
-const MAX_STEP_LENGTH = 0.03
-const MAX_LATERAL_STEP = 0.018
-const MAX_TURN_STEP = 0.026
-const TURN_RATE =
-    (2 * MAX_TURN_STEP) /
-    (DEFAULT_FEET.reduce((sum, [x, y]) => sum + Math.hypot(x, y), 0) / DEFAULT_FEET.length)
-const DEFAULT_STEP_HEIGHT = 0.015
-const DEFAULT_STEP_DEPTH = 0.002
+// The 333 ms smoothing of state.h and utils/critical_damper.h.
+const SMOOTHING_OMEGA = 4.744 / 0.333
 
 type Pose = { omega: number; phi: number; psi: number; xm: number; ym: number; zm: number }
 
@@ -171,15 +187,18 @@ export class BodyState {
 }
 
 export class GaitState {
-    stepHeight = DEFAULT_STEP_HEIGHT
+    stepHeight = STEP_HEIGHT
     stepX = 0
     stepZ = 0
     stepAngle = 0
-    stepVelocity = 0.5
-    stepDepth = DEFAULT_STEP_DEPTH
+    stepVelocity = SPEED
+    stepDepth = STEP_DEPTH
     standFrac = TROT_STAND_FRAC
     offset = [...TROT_OFFSET]
     speedFactor = TROT_SPEED_FACTOR
+    /** [stepX, stepZ, stepAngle] as commanded, which the smoothing follows, and its velocities. */
+    target = [0, 0, 0]
+    smoothing = [0, 0, 0]
 }
 
 const stanceCurve = (length: number, angle: number, depth: number, phase: number, point: Vec3) => {
@@ -207,28 +226,43 @@ const bezierCurve = (length: number, angle: number, height: number, phase: numbe
 }
 
 /** Translation and rotation composed into one stride vector at a foot: (amplitude, heading). */
-const stroke = (gait: GaitState, foot: Vec3): [number, number] => {
-    const turn = gait.stepAngle * TURN_RATE
-    const sx = gait.stepZ + turn * foot[1]
-    const sy = -gait.stepX - turn * foot[0]
+const stroke = (gait: GaitState, radius: number[]): [number, number] => {
+    const sx = gait.stepZ - gait.stepAngle * radius[1]
+    const sy = -gait.stepX + gait.stepAngle * radius[0]
     return [Math.hypot(sx, sy), Math.atan2(sx, -sy)]
 }
+
+const moving = (gait: GaitState) =>
+    Math.abs(gait.stepX) >= 0.001 ||
+    Math.abs(gait.stepZ) >= 0.001 ||
+    Math.abs(gait.stepAngle) >= 0.001
 
 export class GaitController {
     phase = 0
     private readonly defaultPosition = DEFAULT_FEET
 
-    advancePhase(gait: GaitState, dt: number) {
+    /** The stroke follows the command, then the phase advances; standing still rests it at 0. */
+    step(gait: GaitState, dt: number) {
+        const decay = Math.exp(-SMOOTHING_OMEGA * dt)
+        const [stepX, stepZ, stepAngle] = [gait.stepX, gait.stepZ, gait.stepAngle].map(
+            (value, i) => {
+                const offset = value - gait.target[i]
+                const drive = gait.smoothing[i] + SMOOTHING_OMEGA * offset
+                gait.smoothing[i] = (gait.smoothing[i] - SMOOTHING_OMEGA * drive * dt) * decay
+                return gait.target[i] + (offset + drive * dt) * decay
+            }
+        )
+        Object.assign(gait, { stepX, stepZ, stepAngle })
+        if (!moving(gait)) {
+            this.phase = 0
+            return
+        }
         const velocity = Math.max(gait.stepVelocity, 0.5)
         this.phase = (this.phase + dt * velocity * gait.speedFactor) % 1
     }
 
     /** Writes body.feet at the current phase, in the base frame. */
     generateFeet(gait: GaitState, body: BodyState) {
-        const moving =
-            Math.abs(gait.stepX) > 1e-6 ||
-            Math.abs(gait.stepZ) > 1e-6 ||
-            Math.abs(gait.stepAngle) > 1e-6
         body.feet = this.defaultPosition.map((home, i) => {
             const legPhase = (this.phase + gait.offset[i]) % 1
             const contact = legPhase <= gait.standFrac
@@ -236,14 +270,16 @@ export class GaitController {
                 contact ?
                     legPhase / gait.standFrac
                 :   (legPhase - gait.standFrac) / (1 - gait.standFrac)
-            const [amplitude, heading] = stroke(gait, home)
+            const [amplitude, heading] = stroke(gait, FIRMWARE_FEET[i])
             const delta: Vec3 = [0, 0, 0]
             if (contact) stanceCurve(amplitude * 0.5, heading, gait.stepDepth, phase, delta)
             else bezierCurve(amplitude * 0.5, heading, gait.stepHeight, phase, delta)
             // Stride frame to base frame: forward stride to -Y, cross-stride to +X, lift to +Z.
-            return moving ?
-                    [home[0] + delta[2], home[1] - delta[0], home[2] + delta[1]]
-                :   [home[0] + delta[2], home[1], home[2]]
+            return [
+                home[0] + delta[2],
+                home[1] - delta[0],
+                home[2] + (amplitude !== 0 ? delta[1] : 0)
+            ]
         })
     }
 }
@@ -258,25 +294,27 @@ export function inverseKinematics(body: BodyState): number[] {
     })
 }
 
-export interface GaitCoef {
-    gain_x: number
-    gain_y: number
-    gain_yaw: number
-    speed_base: number
-    speed_slope: number
-    step_height: number
-    step_depth: number
-}
+const RATE = Math.max(SPEED, 0.5) * TROT_SPEED_FACTOR
+/** The trot's top speed, a full stick on each axis, as speed_model.max_velocity. */
+export const MAX_VELOCITY: Command = [
+    (MAX_STEP_LENGTH * RATE) / TROT_STAND_FRAC,
+    (MAX_STEP_LENGTH * RATE) / TROT_STAND_FRAC,
+    RATE / TROT_STAND_FRAC
+]
 
-/** Command [vx, vy, yaw] (m/s, m/s, rad/s) to gait parameters, as analytic_gait_action. */
-export function analyticGaitAction([vx, vy, yaw]: Command, gait: GaitState, coef: GaitCoef) {
-    gait.stepX = clip(vx / coef.gain_x, -1, 1) * MAX_STEP_LENGTH
-    gait.stepZ = clip(vy / coef.gain_y, -1, 1) * MAX_LATERAL_STEP
-    gait.stepAngle = clip(-yaw / coef.gain_yaw, -1, 1)
-    const speed = Math.hypot(vx, vy) + Math.abs(yaw) * 0.1
-    gait.stepVelocity = clip(coef.speed_base + coef.speed_slope * speed, 0, 1)
-    gait.stepHeight = coef.step_height
-    gait.stepDepth = coef.step_depth
+/**
+ * Command [vx, vy, yaw] (m/s, m/s, rad/s) to the stroke the gait smooths towards, as
+ * analytic_gait_action: the sticks of speed_model.sticks_for, then walk_state.h's step_x = ly,
+ * step_z = -lx, step_angle = rx.
+ */
+export function analyticGaitAction([vx, vy, yaw]: Command, gait: GaitState) {
+    const lx = clip(-vy / MAX_VELOCITY[1], -1, 1)
+    const ly = clip(vx / MAX_VELOCITY[0], -1, 1)
+    const rx = clip(yaw / MAX_VELOCITY[2], -1, 1)
+    gait.target = [ly * MAX_STEP_LENGTH, -lx * MAX_STEP_LENGTH, rx]
+    gait.stepVelocity = SPEED
+    gait.stepHeight = STEP_HEIGHT
+    gait.stepDepth = STEP_DEPTH
 }
 
 /** One controller instance per simulated robot: the loop body of leika/robot.py. */
@@ -285,16 +323,14 @@ export class PicoController {
     readonly body = new BodyState()
     private readonly gaitController = new GaitController()
 
-    constructor(private readonly coef: GaitCoef) {}
-
     get phase() {
         return this.gaitController.phase
     }
 
     /** One 10 ms control tick; returns the 12 actuator targets in radians. */
     tick(cmd: Command): number[] {
-        analyticGaitAction(cmd, this.gait, this.coef)
-        this.gaitController.advancePhase(this.gait, CONTROL_DT)
+        analyticGaitAction(cmd, this.gait)
+        this.gaitController.step(this.gait, CONTROL_DT)
         this.gaitController.generateFeet(this.gait, this.body)
         return inverseKinematics(this.body)
     }

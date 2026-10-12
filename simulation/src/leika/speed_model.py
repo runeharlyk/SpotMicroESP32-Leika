@@ -13,6 +13,7 @@ from .backends.base import UnknownVariant, Velocity
 from .constants import Gait
 
 SPEED = 0.5
+STEP_HEIGHT = 0.5  # s1: the swing lifts each foot this share of the firmware's max_step_height
 # femur, tibia, coxa offset (metres) per variant, from esp32/include/kinematics.h; pinned by tests/test_speed_model.py.
 LEGS = {
     "SPOTMICRO_ESP32": (0.1112, 0.1185, 0.01),
@@ -38,9 +39,13 @@ def known_variant(reported: str) -> str:
     return variant
 
 
-def max_step_length(variant: str) -> float:
+def max_leg_reach(variant: str) -> float:
     femur, tibia, coxa_offset = LEGS[variant]
-    return 0.8 * (femur + tibia - coxa_offset)
+    return femur + tibia - coxa_offset
+
+
+def max_step_length(variant: str) -> float:
+    return 0.8 * max_leg_reach(variant)
 
 
 def _per_stick(variant: str, gait: Gait) -> tuple[float, float]:

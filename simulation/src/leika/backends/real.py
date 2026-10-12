@@ -19,7 +19,6 @@ KEEPALIVE_S = 0.1
 MODE_TIMEOUT_S = 3.0
 REQUEST_TIMEOUT_S = 5.0
 SILENCE_S = 3.0  # telemetry arrives every 100 ms: this long without a frame means the link is gone
-STEP_HEIGHT = 0.5
 NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
 
 
@@ -122,7 +121,7 @@ class RealBackend:
         s = self._sticks
         data = pb.ControllerData(
             left=pb.Vector(x=s.lx, y=s.ly), right=pb.Vector(x=s.rx, y=0.0),
-            height=self._height, speed=speed_model.SPEED, s1=STEP_HEIGHT,
+            height=self._height, speed=speed_model.SPEED, s1=speed_model.STEP_HEIGHT,
         )
         try:
             await self._socket.send(pb.Message(controller_data=data).SerializeToString())

@@ -68,7 +68,7 @@ def test_forward_gait_within_joint_limits():
     body = fg.BodyState()
     worst = 0.0
     for _ in range(300):
-        gc.advance_phase(gait, CONTROL_DT)
+        gc.step(gait, CONTROL_DT)
         gc.generate_feet(gait, body)
         q = kin.inverse_kinematics(body)
         over = np.maximum(np.maximum(JOINT_RANGES[:, 0] - q, 0), np.maximum(q - JOINT_RANGES[:, 1], 0))

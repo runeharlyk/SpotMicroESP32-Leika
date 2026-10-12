@@ -1,5 +1,4 @@
 import type { Variant } from '$lib/kinematics-variants'
-import type { GaitCoef } from './pico-gait'
 import { FirmwareController, TrainingController, type JointMap } from './controllers'
 import type { SimController } from './robot-sim'
 
@@ -8,7 +7,7 @@ export type RobotId = 'pico' | 'spot_micro' | 'yertle'
 export interface ControllerDefinition {
     id: 'firmware' | 'training'
     label: string
-    create(assets: { gaitCoef: GaitCoef }): SimController
+    create(): SimController
 }
 
 export interface RobotDefinition {
@@ -70,7 +69,7 @@ export const ROBOTS: RobotDefinition[] = [
             {
                 id: 'training',
                 label: 'Training (Python)',
-                create: ({ gaitCoef }) => new TrainingController(gaitCoef)
+                create: () => new TrainingController()
             }
         ]
     },

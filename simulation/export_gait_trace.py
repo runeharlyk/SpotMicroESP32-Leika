@@ -11,7 +11,6 @@ import numpy as np
 
 from src.robot.firmware_gait import (
     DEFAULT_FEET,
-    GAIT_COEF,
     STAND_Z,
     BodyState,
     GaitController,
@@ -23,13 +22,15 @@ from src.robot.firmware_gait import (
 )
 
 CONTROL_DT = 0.01
-# (name, [vx, vy, yaw], ticks): stand, then each command direction, then a mixed one.
+# (name, [vx, vy, yaw], ticks): stand, then each command direction (the turn beyond the gait's top
+# speed), then a mixed one, then a stop the smoothing eases out of until the phase rests.
 SEGMENTS = [
     ("stand", [0.0, 0.0, 0.0], 50),
     ("forward", [0.06, 0.0, 0.0], 150),
     ("strafe", [0.0, 0.03, 0.0], 100),
     ("turn", [0.0, 0.0, 2.0], 100),
     ("mixed", [0.04, -0.02, 1.0], 100),
+    ("stop", [0.0, 0.0, 0.0], 100),
 ]
 POSE = dict(omega=0.1, phi=-0.05, psi=0.08, xm=0.005, ym=-0.004, zm=0.01)
 UNREACHABLE = ("fr", [-0.2, -0.1, -0.3])
@@ -42,7 +43,7 @@ def main() -> None:
     for name, cmd, count in SEGMENTS:
         for _ in range(count):
             analytic_gait_action(cmd, gait)
-            controller.advance_phase(gait, CONTROL_DT)
+            controller.step(gait, CONTROL_DT)
             controller.generate_feet(gait, body)
             ticks.append({
                 "segment": name,
@@ -56,7 +57,6 @@ def main() -> None:
     leg, target = UNREACHABLE
     trace = {
         "control_dt": CONTROL_DT,
-        "gait_coef": GAIT_COEF,
         "default_feet": DEFAULT_FEET.tolist(),
         "stand_z": STAND_Z,
         "ticks": ticks,

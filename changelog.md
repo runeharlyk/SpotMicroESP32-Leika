@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 - Eases the feet over half a second when stand or rest takes over, instead of snapping a foot from mid-stride: walk to stand jumped a joint up to 47 degrees in one tick
+- Runs the simulation, its training and the app's Training controller on the firmware's own walk for the Spot Pico (the MINI's stand height, stride, lift, 1 Hz cadence and command smoothing, from the same velocity-to-sticks map the Python client sends the robot) instead of a gait tuned apart from it, and turns the Training controller the way the firmware does
 
 ### Fixed
 

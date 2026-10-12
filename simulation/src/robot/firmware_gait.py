@@ -1,11 +1,13 @@
 """NumPy port of the ESP32 FIRMWARE gait, retargeted to the spot_pico robot.
 
-The gait *engine* is a faithful port of `esp32/include/motion_states/walk_state.h`
-(phase clock, per-leg offsets, stance/Bezier curves, stroke composition, command->gait mapping);
-it applies no command smoothing. The *kinematics* are NOT the firmware's SPOTMICRO_ESP32 constants
-(that is a different, larger robot) but are derived directly from the spot_pico MJCF, since
-that is the model we train on. So a "zero residual" reproduces the firmware gait *shape*
-executed on spot_pico's geometry.
+The gait is the firmware's `esp32/include/motion_states/walk_state.h` with the constants of the
+variant the Pico runs, SPOTMICRO_ESP32_MINI (`esp32/include/kinematics.h`): its stand height at
+the client's height command, its stride, lift and stance depth, its cadence, its 333 ms command
+smoothing, and the velocity->sticks map the client sends the robot (src/leika/speed_model.py).
+The *kinematics* are derived from the spot_pico MJCF, since that is the model we train on: a foot
+target the firmware places relative to its leg's mount is placed the same, in metres, relative to
+the Pico's leg. So a "zero residual" reproduces the firmware gait the Pico is sent, on spot_pico's
+geometry; sim_vs_real.py measures how closely.
 
 Coordinate frame (spot_pico `base_link`, MuJoCo world at identity):
     +X = left, +Y = rear, +Z = up   (so forward = -Y, right = -X).
@@ -19,11 +21,14 @@ Each leg's 3 joints are (hip/abduction, femur, tibia).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import json
 import math
-import os
 
 import numpy as np
+
+from src.leika import speed_model
+from src.leika.backends.base import Velocity
+from src.leika.constants import Gait
+
 
 # ---------------------------------------------------------------------------
 # spot_pico leg geometry (extracted from src/resources/spot_pico/scene.xml).
@@ -45,9 +50,17 @@ _LEG_GEOM = {
            np.array([-0.0143, 0.043903, -0.037783]),  1.0, np.array([0.006, -0.037123, -0.037123])),
 }
 
-# Nominal stance depth (m): how far below the hip each foot rests. Chosen reachable
-# (2-link span ~0.11 m) and stable; feet sit at their natural lateral offset, under the hip.
-STANCE_DEPTH = 0.055
+# The firmware's KinConfig for the variant the Pico runs (esp32/include/kinematics.h), and what the
+# client commands it: Robot.stand's and the app's height 0.7, speed_model's speed and step height.
+VARIANT = "SPOTMICRO_ESP32_MINI"
+COXA, BODY_LENGTH, BODY_WIDTH = 0.035, 0.160, 0.080
+MAX_LEG_REACH = speed_model.max_leg_reach(VARIANT)
+MIN_BODY_HEIGHT, MAX_BODY_HEIGHT = 0.45 * MAX_LEG_REACH, 0.9 * MAX_LEG_REACH
+STAND_HEIGHT = 0.7
+BODY_HEIGHT = MIN_BODY_HEIGHT + STAND_HEIGHT * (MAX_BODY_HEIGHT - MIN_BODY_HEIGHT)  # 92 mm
+MAX_STEP_LENGTH = speed_model.max_step_length(VARIANT)
+STEP_HEIGHT = speed_model.STEP_HEIGHT * MAX_LEG_REACH / 2  # 30 mm
+STEP_DEPTH = 0.002
 
 
 def _rot_x(a):
@@ -142,16 +155,25 @@ def leg_ik(cfg: SpotPicoKinConfig, leg: str, target: np.ndarray, knee_up: bool =
     return np.array([q1, q2, q3])
 
 
-# Default stance feet (base frame): each foot at its natural lateral offset (hip x + coxa
-# offset), directly under the hip fore-aft, STANCE_DEPTH below the hip.
+
+# Default stance feet (base frame). The firmware stands each foot BODY_HEIGHT below its leg's mount
+# and COXA outboard of it, level with it fore-aft; the Pico's mount is its hip axis laterally and
+# its femur pivot fore-aft (p_femur's y), where the MINI's leg plane sits.
 _CFG = SpotPicoKinConfig()
 DEFAULT_FEET = np.array(
-    [np.array([_CFG.legs[n]["H"][0] + _CFG.legs[n]["x_off"],
-               _CFG.legs[n]["H"][1],
-               _CFG.legs[n]["H"][2] - STANCE_DEPTH]) for n in LEG_NAMES]
+    [np.array([_CFG.legs[n]["H"][0] + math.copysign(COXA, _CFG.legs[n]["x_off"]),
+               _CFG.legs[n]["H"][1] + _LEG_GEOM[n][2][1],
+               _CFG.legs[n]["H"][2] - BODY_HEIGHT]) for n in LEG_NAMES]
 )
 FOOT_RADIUS = 0.009
 STAND_Z = float(FOOT_RADIUS - DEFAULT_FEET[:, 2].min())  # base height so lowest foot rests on floor
+
+# The firmware's default feet about its body centre, in this base frame: a turn strokes each foot
+# along the rotation's velocity field at these, as the firmware does, not at the Pico's own feet.
+FIRMWARE_FEET = np.array(
+    [[math.copysign(BODY_WIDTH / 2 + COXA, _CFG.legs[n]["x_off"]),
+      math.copysign(BODY_LENGTH / 2, _CFG.legs[n]["H"][1])] for n in LEG_NAMES]
+)
 
 
 # ---------------------------------------------------------------------------
@@ -159,8 +181,10 @@ STAND_Z = float(FOOT_RADIUS - DEFAULT_FEET[:, 2].min())  # base height so lowest
 # (along-stride, vertical, cross-stride) exactly as the firmware curves, then mapped
 # into the spot_pico base frame:  forward stride -> -Y, cross -> +X, lift -> +Z.
 # ---------------------------------------------------------------------------
-TROT_OFFSET = np.array([0.0, 0.5, 0.5, 0.0])   # fr, fl, rr, rl  (diagonal pairs {fr,rl},{fl,rr})
-CRAWL_OFFSET = np.array([0.25, 0.75, 0.5, 0.0])
+# walk_state.h's phase offsets, from its leg order (fl, fr, rl, rr) into this one (fr, fl, rr, rl):
+# the trot lifts the diagonal pair {fr, rl} first, the crawl the legs fr, rl, fl, rr in turn.
+TROT_OFFSET = np.array([0.5, 0.0, 0.0, 0.5])
+CRAWL_OFFSET = np.array([0.75, 0.25, 0.0, 0.5])
 TROT_STAND_FRAC = 0.75
 CRAWL_STAND_FRAC = 0.85
 TROT_SPEED_FACTOR = 2.0
@@ -172,18 +196,9 @@ BEZIER_HEIGHTS = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0
 
 TROT, CRAWL = 0, 1
 
-# Firmware step parameters (meters). Scaled to spot_pico's small legs (~0.11 m 2-link span)
-# and kept inside the reachable workspace so the zero-residual baseline stays feasible.
-MAX_STEP_LENGTH = 0.030
-MAX_LATERAL_STEP = 0.018       # abduction workspace is tighter than the sagittal stride
-MAX_TURN_STEP = 0.026          # mean tangential half-stroke at full step_angle
-# Yaw command -> rotation amplitude. A foot's tangential half-stroke is TURN_RATE * radius / 2,
-# calibrated so the mean still lands on MAX_TURN_STEP. Note MAX_TURN_STEP is a half-stroke while
-# MAX_STEP_LENGTH is a full stroke: the curve takes half-amplitudes, and the old code passed the
-# turn amplitude straight through while halving the linear one.
-TURN_RATE = 2.0 * MAX_TURN_STEP / float(np.hypot(DEFAULT_FEET[:, 0], DEFAULT_FEET[:, 1]).mean())
-DEFAULT_STEP_HEIGHT = 0.015
-DEFAULT_STEP_DEPTH = 0.002
+# MotionState's smoothing (state.h, utils/critical_damper.h): a step in the stroke settles to 95%
+# in a third of a second, without overshoot.
+SMOOTHING_OMEGA = 4.744 / 0.333
 
 
 @dataclass
@@ -199,16 +214,19 @@ class BodyState:
 
 @dataclass
 class GaitState:
-    step_height: float = DEFAULT_STEP_HEIGHT
-    step_x: float = 0.0        # forward step (m)
-    step_z: float = 0.0        # lateral step (m)
-    step_angle: float = 0.0    # turn command (~-1..1)
-    step_velocity: float = 0.5  # cadence scalar (0..1)
-    step_depth: float = DEFAULT_STEP_DEPTH
+    step_height: float = STEP_HEIGHT
+    step_x: float = 0.0        # forward stroke (m)
+    step_z: float = 0.0        # leftward stroke (m)
+    step_angle: float = 0.0    # turn: each foot strokes step_angle times its FIRMWARE_FEET radius
+    step_velocity: float = speed_model.SPEED  # cadence scalar (0..1)
+    step_depth: float = STEP_DEPTH
     stand_frac: float = TROT_STAND_FRAC
     offset: np.ndarray = field(default_factory=lambda: TROT_OFFSET.copy())
     speed_factor: float = TROT_SPEED_FACTOR
     mode: int = TROT
+    # (step_x, step_z, step_angle) as commanded, which the smoothing follows, and its velocities
+    target: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    smoothing: np.ndarray = field(default_factory=lambda: np.zeros(3))
 
 
 def set_mode(gait: GaitState, mode: int) -> None:
@@ -248,19 +266,22 @@ def _bezier_curve(length, angle, height, phase, point):
             inv_phase_power /= one_minus
 
 
-def _stroke(gait, foot):
-    """Rigid-body velocity field at a foot's stance position, as (amplitude, stride heading).
+def _stroke(gait, radius):
+    """Rigid-body velocity field at a foot's firmware stance position, as (amplitude, stride heading).
 
     The commanded translation and the rotation about the body centre compose into one vector
     before the curve is evaluated, matching walk_state.h. In the base frame a stride of length
     ``step`` at heading ``a`` displaces the foot by (step*sin a, -step*cos a), so forward
-    (+step_x) maps to -Y and lateral (+step_z) to +X. The rotational part is omega x r, signed
-    so that a positive step_angle keeps its historical turn direction.
+    (+step_x) maps to -Y and lateral (+step_z) to +X. The rotational part is omega x r, as
+    walk_state.h composes it: a positive step_angle turns counter-clockwise.
     """
-    turn = gait.step_angle * TURN_RATE
-    sx = gait.step_z + turn * foot[1]
-    sy = -gait.step_x - turn * foot[0]
+    sx = gait.step_z - gait.step_angle * radius[1]
+    sy = -gait.step_x + gait.step_angle * radius[0]
     return math.hypot(sx, sy), math.atan2(sx, -sy)
+
+
+def _moving(gait: GaitState) -> bool:
+    return abs(gait.step_x) >= 0.001 or abs(gait.step_z) >= 0.001 or abs(gait.step_angle) >= 0.001
 
 
 class GaitController:
@@ -273,14 +294,25 @@ class GaitController:
     def set_phase(self, phase: float) -> None:
         self.phase = math.fmod(phase, 1.0)
 
-    def advance_phase(self, gait: GaitState, dt: float) -> None:
+    def step(self, gait: GaitState, dt: float) -> None:
+        """WalkState::step up to the feet: the stroke follows the command, then the phase advances.
+
+        Standing still holds the phase at 0, so every walk starts on the same feet, as on the robot.
+        """
+        offset = np.array([gait.step_x, gait.step_z, gait.step_angle]) - gait.target
+        drive = gait.smoothing + SMOOTHING_OMEGA * offset
+        decay = math.exp(-SMOOTHING_OMEGA * dt)
+        gait.smoothing = (gait.smoothing - SMOOTHING_OMEGA * drive * dt) * decay
+        gait.step_x, gait.step_z, gait.step_angle = (gait.target + (offset + drive * dt) * decay).tolist()
+        if not _moving(gait):
+            self.phase = 0.0
+            return
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
 
     def generate_feet(self, gait: GaitState, body: BodyState) -> None:
         """Write body.feet at the CURRENT phase (does not advance it). Base-frame targets."""
         new_feet = self.default_position.copy()
-        moving = (abs(gait.step_x) > 1e-6) or (abs(gait.step_z) > 1e-6) or (abs(gait.step_angle) > 1e-6)
         for i in range(4):
             leg_phase = math.fmod(self.phase + gait.offset[i], 1.0)
             contact = leg_phase <= gait.stand_frac
@@ -292,21 +324,15 @@ class GaitController:
                 curve, amp = _bezier_curve, gait.step_height
 
             # stride frame delta: [0]=along-stride, [1]=vertical, [2]=cross-stride
-            stroke, heading = _stroke(gait, self.default_position[i])
+            stroke, heading = _stroke(gait, FIRMWARE_FEET[i])
             delta = [0.0, 0.0, 0.0]
             curve(stroke * 0.5, heading, amp, ph, delta)
 
             # map stride frame -> base frame: forward(+stride)-> -Y, cross-> +X, lift(+)-> +Z
-            dx = delta[2]     # cross-stride -> lateral X
-            dy = -delta[0]    # along-stride -> fore-aft Y (forward = -Y)
-            dz = delta[1]     # vertical -> Z
-            new_feet[i, 0] = self.default_position[i, 0] + dx
-            if moving:
-                new_feet[i, 1] = self.default_position[i, 1] + dy
-                new_feet[i, 2] = self.default_position[i, 2] + dz
-            else:
-                new_feet[i, 1] = self.default_position[i, 1]
-                new_feet[i, 2] = self.default_position[i, 2]
+            new_feet[i, 0] += delta[2]
+            new_feet[i, 1] -= delta[0]
+            if stroke != 0.0:
+                new_feet[i, 2] += delta[1]
         body.feet = new_feet
 
 
@@ -334,39 +360,18 @@ class Kinematics:
 
 
 # ---------------------------------------------------------------------------
-# Command -> gait mapping. RL command is body-frame [vx, vy, yaw]. The firmware maps
-# joystick directly to step params; we mirror that with tunable gains (optimize_gait.py
-# writes gait_coef.json so a zero-residual rollout roughly tracks commanded velocity).
+# Command -> gait mapping. RL command is body-frame [vx, vy, yaw]. The client turns a velocity
+# into the sticks the robot is sent (speed_model.sticks_for), and WalkState::handleCommand turns
+# those into the stroke: step_x = ly, step_z = -lx, step_angle = rx (times the max step length).
 # ---------------------------------------------------------------------------
-GAIT_COEF = {
-    "gain_x": 0.075,       # (m/s) command per unit step_x fraction; step_x = vx/gain_x * MAX_STEP_LENGTH
-    "gain_y": 0.075,
-    "gain_yaw": 3.0,       # (rad/s) command per unit step_angle
-    "speed_base": 0.4,     # cadence floor
-    "speed_slope": 1.2,    # cadence rises with speed
-    "step_height": DEFAULT_STEP_HEIGHT,
-    "step_depth": DEFAULT_STEP_DEPTH,
-}
-_coef_file = os.path.join(os.path.dirname(__file__), "..", "resources", "spot_pico", "gait_coef.json")
-if os.path.exists(_coef_file):
-    try:
-        GAIT_COEF.update(json.load(open(_coef_file)))
-    except Exception:
-        pass
-
-
 def analytic_gait_action(cmd, gait: GaitState) -> None:
-    """Deterministic command [vx, vy, yaw] -> firmware gait_state (in place)."""
-    c = GAIT_COEF
-    vx, vy, yaw = float(cmd[0]), float(cmd[1]), float(cmd[2])
-    gait.step_x = float(np.clip(vx / c["gain_x"], -1.0, 1.0)) * MAX_STEP_LENGTH
-    gait.step_z = float(np.clip(vy / c["gain_y"], -1.0, 1.0)) * MAX_LATERAL_STEP
-    # negative: +yaw (CCW/+Z) command needs the opposite tangential stride sign
-    gait.step_angle = float(np.clip(-yaw / c["gain_yaw"], -1.0, 1.0))
-    speed = math.hypot(vx, vy) + abs(yaw) * 0.1
-    gait.step_velocity = float(np.clip(c["speed_base"] + c["speed_slope"] * speed, 0.0, 1.0))
-    gait.step_height = c["step_height"]
-    gait.step_depth = c["step_depth"]
+    """Deterministic command [vx, vy, yaw] -> the stroke the gait smooths towards (in place)."""
+    sticks = speed_model.sticks_for(VARIANT, Gait.CRAWL if gait.mode == CRAWL else Gait.TROT,
+                                    Velocity(float(cmd[0]), float(cmd[1]), float(cmd[2])))
+    gait.target = np.array([sticks.ly * MAX_STEP_LENGTH, -sticks.lx * MAX_STEP_LENGTH, sticks.rx])
+    gait.step_velocity = speed_model.SPEED
+    gait.step_height = STEP_HEIGHT
+    gait.step_depth = STEP_DEPTH
 
 
 if __name__ == "__main__":

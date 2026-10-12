@@ -55,12 +55,12 @@
         fallen = false
         status = 'loading'
         try {
-            const [{ mujoco, scene, gaitCoef }, model] = await Promise.all([
+            const [{ mujoco, scene }, model] = await Promise.all([
                 loadSimulation(definition),
                 loadRobotModel(variant)
             ])
             if (overtaken(load)) return
-            sim = new RobotSim(mujoco, scene, controller.create({ gaitCoef }))
+            sim = new RobotSim(mujoco, scene, controller.create())
             placeRobot(model, variant.modelYaw)
             lastFrame = performance.now()
             engineReady = true

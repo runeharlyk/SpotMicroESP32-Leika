@@ -2,7 +2,7 @@ import type { ControllerData } from '$lib/platform_shared/message'
 import type { Variant } from '$lib/kinematics-variants'
 import { DIR, FirmwareMotion } from './firmware/motion'
 import { DEG2RAD_F, inverseKinematics } from './firmware/kinematics'
-import { JOINT_NAMES, PicoController, type GaitCoef } from './pico-gait'
+import { JOINT_NAMES, PicoController } from './pico-gait'
 import { simulationCommand } from './controls'
 import type { SimController, SimControls } from './robot-sim'
 import { CONTROL_DT } from './timing'
@@ -12,15 +12,11 @@ const named = (joints: string[], values: number[]) =>
 
 /** The Python simulation's controller (pico-gait.ts); in every mode but Walk it holds the stand pose. */
 export class TrainingController implements SimController {
-    private controller: PicoController
-
-    constructor(private readonly coef: GaitCoef) {
-        this.controller = new PicoController(coef)
-    }
+    private controller = new PicoController()
 
     reset() {
-        this.controller = new PicoController(this.coef)
-        return named(JOINT_NAMES, new PicoController(this.coef).tick([0, 0, 0]))
+        this.controller = new PicoController()
+        return named(JOINT_NAMES, new PicoController().tick([0, 0, 0]))
     }
 
     tick({ input, mode }: SimControls) {

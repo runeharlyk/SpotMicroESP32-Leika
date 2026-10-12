@@ -35,7 +35,7 @@ already_compressed_ext = {
 # read from flash; only the hosted web app loads them.
 MODEL_FILES = [
     "spot_micro.urdf.xacro", "stl.zip", "yertle.URDF", "URDF.zip", "URDF/", "spot_pico.urdf", "spot_pico.zip",
-    "spot_pico_scene.xml", "spot_pico_gait.json", "sim_spot_micro.xml", "sim_yertle.xml", "sim_yertle_meshes.zip",
+    "spot_pico_scene.xml", "sim_spot_micro.xml", "sim_yertle.xml", "sim_yertle_meshes.zip",
 ]
 
 

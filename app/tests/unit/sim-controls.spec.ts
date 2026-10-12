@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { simulationCommand } from '../../src/lib/simulation/controls'
+import { MAX_VELOCITY } from '../../src/lib/simulation/pico-gait'
 import { ControllerData, ModesEnum } from '../../src/lib/platform_shared/message'
 
 const input = (left: [number, number], right: [number, number]) =>
@@ -7,17 +8,25 @@ const input = (left: [number, number], right: [number, number]) =>
 
 describe('simulation command', () => {
     it('walks forward on the left stick pushed up, as the firmware reads ly', () => {
-        expect(simulationCommand(input([0, 1], [0, 0]), ModesEnum.WALK)).toEqual([0.06, 0, 0])
+        expect(simulationCommand(input([0, 1], [0, 0]), ModesEnum.WALK)).toEqual([
+            MAX_VELOCITY[0],
+            0,
+            0
+        ])
     })
 
-    it('steps sideways against lx and turns with rx, matching walk_state.h', () => {
+    it('strafes right on lx and turns left on rx, as walk_state.h does', () => {
         const [, vy, yaw] = simulationCommand(input([1, 0], [1, 0]), ModesEnum.WALK)
-        expect(vy).toBeCloseTo(-0.03)
-        expect(yaw).toBeCloseTo(-2)
+        expect(vy).toBeCloseTo(-0.128)
+        expect(yaw).toBeCloseTo(4 / 3)
     })
 
     it('clamps a stick beyond its range to the limits', () => {
-        expect(simulationCommand(input([0, 1.6], [-3, 0]), ModesEnum.WALK)).toEqual([0.06, 0, 2])
+        expect(simulationCommand(input([0, 1.6], [-3, 0]), ModesEnum.WALK)).toEqual([
+            MAX_VELOCITY[0],
+            0,
+            -MAX_VELOCITY[2]
+        ])
     })
 
     it('holds the stand pose in every mode but walk', () => {
