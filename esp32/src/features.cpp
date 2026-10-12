@@ -15,6 +15,13 @@ void printFeatureConfiguration() {
              USE_CAMERA ? "built in" : "none");
 }
 
+// The whole 32-byte hash from the app description, which esp_app_get_elf_sha256() would cut to
+// CONFIG_APP_RETRIEVE_LEN_ELF_SHA digits; the app compares it with the image file's to tell an update from a rollback.
+static void runningElfSha256(char (&out)[65]) {
+    const uint8_t *sha = esp_app_get_description()->app_elf_sha256;
+    for (int i = 0; i < 32; i++) snprintf(out + 2 * i, 3, "%02x", sha[i]);
+}
+
 void features_request(const RuntimeFeatures &features, socket_message_FeaturesDataResponse &fd_res) {
     const SensorStatus &sensors = features.sensors;
     fd_res.camera = features.cameraActive;
@@ -35,7 +42,7 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);
     fd_res.firmware_name = const_cast<char *>(APP_NAME);
     fd_res.firmware_built_target = const_cast<char *>(buildTarget());
-    esp_app_get_elf_sha256(fd_res.firmware_elf_sha256, sizeof(fd_res.firmware_elf_sha256));
+    runningElfSha256(fd_res.firmware_elf_sha256);
     fd_res.variant = const_cast<char *>(variantName(features.variant));
     fd_res.device_id = const_cast<char *>(deviceId().c_str());
     strncpy(fd_res.robot_name, features.robotName, sizeof(fd_res.robot_name) - 1);
