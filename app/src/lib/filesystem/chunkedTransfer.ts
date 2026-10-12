@@ -13,10 +13,13 @@ import type {
     FSUploadComplete,
     FSCancelTransfer
 } from '$lib/platform_shared/filesystem'
+import type { CorrelationRequest } from '$lib/platform_shared/message'
 import type { Result, DataResult, ListResult, ProgressCallback } from '$lib/types/models'
 import { saveFile } from '$lib/utilities/save-file'
 
 const MAX_CHUNK_SIZE = 2 ** 14
+// Keys the core dump's download among the pending ones, which files key by their path; a file's path is never empty.
+const CORE_DUMP_KEY = ''
 
 type TimeoutId = ReturnType<typeof setTimeout>
 type CleanupFn = (() => void) | null
@@ -269,19 +272,30 @@ export class FileSystemClient {
     }
 
     /** Download a file from the ESP32 using streaming transfer */
-    async downloadFile(path: string, onProgress?: ProgressCallback): Promise<DataResult> {
-        return new Promise((resolve, reject) => {
-            // Send download request - server will send metadata first, then stream chunks
-            const request: FSDownloadRequest = { path }
+    downloadFile(path: string, onProgress?: ProgressCallback): Promise<DataResult> {
+        const request: FSDownloadRequest = { path }
+        return this.download(path, { fsDownloadRequest: request }, onProgress)
+    }
 
+    /** Download the core dump the robot stored on its last crash; it streams as a file does */
+    downloadCoreDump(onProgress?: ProgressCallback): Promise<DataResult> {
+        return this.download(CORE_DUMP_KEY, { coreDumpDownload: {} }, onProgress)
+    }
+
+    private download(
+        key: string,
+        request: Omit<CorrelationRequest, 'correlationId'>,
+        onProgress?: ProgressCallback
+    ): Promise<DataResult> {
+        return new Promise((resolve, reject) => {
             // Set up timeout for initial metadata response
             const initialTimeout = setTimeout(() => {
-                this.pendingDownloads.delete(path)
+                this.pendingDownloads.delete(key)
                 reject(new Error('Download request timeout - no metadata received'))
             }, this.transferTimeout)
 
             // Track this pending download - will be converted to active when metadata arrives
-            this.pendingDownloads.set(path, {
+            this.pendingDownloads.set(key, {
                 resolve,
                 reject,
                 onProgress,
@@ -289,9 +303,9 @@ export class FileSystemClient {
             })
 
             // Send the download request (server will respond with metadata, then stream data)
-            socket.request({ fsDownloadRequest: request }).catch(err => {
+            socket.request(request).catch(err => {
                 clearTimeout(initialTimeout)
-                this.pendingDownloads.delete(path)
+                this.pendingDownloads.delete(key)
                 reject(err)
             })
         })
