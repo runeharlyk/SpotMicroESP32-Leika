@@ -7,6 +7,8 @@ import { fileSystemClient } from '../../src/lib/filesystem/chunkedTransfer'
 import { robotClips } from '../../src/lib/animation/robot'
 import { Animation } from '../../src/lib/platform_shared/animation'
 import { saveFile } from '../../src/lib/utilities/save-file'
+import { mode } from '../../src/lib/stores/model-store'
+import { ModeData, ModesEnum } from '../../src/lib/platform_shared/message'
 
 vi.mock('../../src/lib/components/AnimationPreview.svelte', async () => ({
     default: (await import('../stubs/AnimationPreviewStub.svelte')).default
@@ -126,6 +128,62 @@ describe('animation editor page', () => {
             expect(text()).toMatch('wave is built into the firmware; rename the clip to upload it')
         )
         expect(upload).not.toHaveBeenCalled()
+    })
+
+    describe('show on robot', () => {
+        const showButton = () => button(/^Show on robot$/)
+        const poses: unknown[] = []
+        let robot: ReturnType<typeof fakeRobot>
+
+        beforeEach(() => {
+            poses.length = 0
+            mode.set(ModeData.create({ mode: ModesEnum.STAND }))
+            robot = fakeRobot((name, data) => {
+                if (name === 'animationListRequest') return { animationList: { animations: CLIPS } }
+                if (name === 'animationPose') poses.push(data.animationPose)
+                return {}
+            })
+        })
+
+        it('has the robot hold the pose the preview shows, and eases it home when switched off', async () => {
+            await edit('wave')
+            showButton().click()
+            flushSync()
+            await vi.waitFor(() => expect(poses).toHaveLength(1))
+            expect(showButton().getAttribute('aria-pressed')).toBe('true')
+            expect(poses[0]).toMatchObject({ body: { roll: 0, z: 0 } })
+            expect((poses[0] as { legs: unknown[] }).legs).toHaveLength(4)
+            showButton().click()
+            flushSync()
+            await vi.waitFor(() => expect(robot.sent).toContain('animationStop'))
+            expect(showButton().getAttribute('aria-pressed')).toBe('false')
+        })
+
+        it('switches off with the reason the robot gives when it refuses the pose', async () => {
+            robot = fakeRobot(name =>
+                name === 'animationPose' ? { statusCode: 409, errorMessage: 'Stand first' } : {}
+            )
+            await edit('wave')
+            showButton().click()
+            flushSync()
+            await vi.waitFor(() => expect(text()).toMatch('Stand first'))
+            expect(showButton().getAttribute('aria-pressed')).toBe('false')
+            expect(robot.sent).not.toContain('animationStop')
+        })
+
+        it('switches off when the robot leaves the pose for a mode asked for elsewhere', async () => {
+            await edit('wave')
+            showButton().click()
+            flushSync()
+            await vi.waitFor(() => expect(poses).toHaveLength(1))
+            mode.set(ModeData.create({ mode: ModesEnum.ANIMATE }))
+            flushSync()
+            expect(showButton().getAttribute('aria-pressed')).toBe('true')
+            mode.set(ModeData.create({ mode: ModesEnum.REST }))
+            flushSync()
+            expect(showButton().getAttribute('aria-pressed')).toBe('false')
+            expect(robot.sent).not.toContain('animationStop')
+        })
     })
 
     it('downloads the JSON of the edited clip', async () => {

@@ -386,7 +386,137 @@ static void aModeAskedForDuringAClipFollowsItsExit() {
     CHECK(motion.animationStatus().state == anim::State::IDLE);
 }
 
+// The servo angles a pose stands for on the Pico at this body height, as AnimateState converts it.
+static void poseAngles(const anim::Pose &pose, float base, float out[12]) {
+    const KinConfig &config = *kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    Kinematics kin(config);
+    float ik[12];
+    anim::poseToAngles(pose, kin, config.default_feet_positions, base, ik);
+    for (int joint = 0; joint < 12; joint++) out[joint] = ik[joint] * JOINT_DIRECTION[joint];
+}
+
+static float largestOffFrom(const MotionService &motion, const float angles[12]) {
+    float largest = 0;
+    for (int joint = 0; joint < 12; joint++)
+        largest = std::max(largest, std::fabs(motion.getAngles()[joint] - angles[joint]));
+    return largest;
+}
+
+static anim::Pose crouchLiftingAFoot() {
+    anim::Pose pose;
+    pose.body[anim::Z] = -15;
+    pose.body[anim::PITCH] = 0.1f;
+    pose.legs[0].v[2] = 20;
+    return pose;
+}
+
+// The editor's pose takes the robot from stand into ANIMATE, the legs ease to it without a jump and hold it with no
+// stream to keep it alive, and a stop eases them home and hands stand back.
+static void aShownPoseIsHeldAndEasedHomeOnStop() {
+    MotionService motion;
+    standAsPico(motion);
+    const float base = KIN_CONFIG_SPOTMICRO_ESP32_MINI.min_body_height + 0.5f * KIN_CONFIG_SPOTMICRO_ESP32_MINI.body_height_range;
+    float stand[12], held[12];
+    std::copy(motion.getAngles(), motion.getAngles() + 12, stand);
+    poseAngles(crouchLiftingAFoot(), base, held);
+    motion.inbox.postPose(crouchLiftingAFoot(), 3);
+    CHECK(largestJointStep(motion, 150) < 3.0f);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    CHECK(largestOffFrom(motion, held) <= 0.1f);
+    for (int i = 0; i < 300; i++) tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    CHECK(largestOffFrom(motion, held) <= 0.1f);
+    motion.inbox.postStopAnimation();
+    CHECK(largestJointStep(motion, 200) < 3.0f);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    CHECK(largestOffFrom(motion, stand) <= 0.2f);
+}
+
+// A leg the editor turns from a foot into joint angles and back moves there without a jump, and holds each.
+static void aLegChangingBetweenAFootAndJointsDoesNotJump() {
+    MotionService motion;
+    standAsPico(motion);
+    const float base = KIN_CONFIG_SPOTMICRO_ESP32_MINI.min_body_height + 0.5f * KIN_CONFIG_SPOTMICRO_ESP32_MINI.body_height_range;
+    anim::Pose joints = crouchLiftingAFoot();
+    joints.legs[2] = {true, {5, -30, 80}};
+    float target[12];
+    motion.inbox.postPose(crouchLiftingAFoot());
+    for (int i = 0; i < 150; i++) tick(motion);
+    motion.inbox.postPose(joints);
+    CHECK(largestJointStep(motion, 150) < 3.0f);
+    poseAngles(joints, base, target);
+    CHECK(largestOffFrom(motion, target) <= 0.1f);
+    anim::Pose feet = crouchLiftingAFoot();
+    feet.legs[2].v[0] = 15;
+    motion.inbox.postPose(feet);
+    CHECK(largestJointStep(motion, 200) < 3.0f);
+    poseAngles(feet, base, target);
+    CHECK(largestOffFrom(motion, target) <= 0.1f);
+}
+
+// Its client leaving eases the pose home, as a stop would: nobody else knows the robot holds it.
+static void aShownPoseEasesHomeWhenItsClientLeaves() {
+    MotionService motion;
+    standAsPico(motion);
+    motion.inbox.postPose(crouchLiftingAFoot(), 3);
+    for (int i = 0; i < 100; i++) tick(motion);
+    motion.inbox.dropClient(3);
+    CHECK(largestJointStep(motion, 200) < 3.0f);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+}
+
+// A pose moves no leg that is not under power and takes no robot out of another mode than stand, and does not cut into
+// a clip; a mode asked for while a pose is held wins over poses still on their way, which the editor sends as a slider
+// moves.
+static void aShownPoseIsRefusedUnpoweredDuringAClipAndAfterAMode() {
+    {
+        MotionService motion;
+        motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
+        motion.begin();
+        motion.inbox.postPose(crouchLiftingAFoot());
+        tick(motion);
+        CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED && !motion.isActive());
+    }
+    {
+        MotionService motion;
+        standAsPico(motion);
+        motion.inbox.postPlay(bob());
+        for (int i = 0; i < 80; i++) tick(motion);
+        motion.inbox.postPose(crouchLiftingAFoot());
+        tick(motion);
+        CHECK(motion.animationStatus().state == anim::State::PLAYING);
+        for (int i = 0; i < 150; i++) tick(motion);
+        CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+    }
+    {
+        MotionService motion;
+        standAsPico(motion);
+        motion.inbox.postPose(crouchLiftingAFoot());
+        for (int i = 0; i < 100; i++) tick(motion);
+        motion.inbox.postMode(socket_message_ModesEnum_REST);
+        tick(motion);
+        for (int i = 0; i < 200; i++) {
+            motion.inbox.postPose(crouchLiftingAFoot());
+            tick(motion);
+        }
+        CHECK(motion.mode() == socket_message_ModesEnum_REST);
+    }
+    {
+        MotionService motion;
+        standAsPico(motion);
+        motion.inbox.postPose(crouchLiftingAFoot());
+        for (int i = 0; i < 100; i++) tick(motion);
+        motion.inbox.postMode(socket_message_ModesEnum_DEACTIVATED);
+        tick(motion);
+        CHECK(motion.mode() == socket_message_ModesEnum_DEACTIVATED && !motion.isActive());
+    }
+}
+
 int main() {
+    aShownPoseIsHeldAndEasedHomeOnStop();
+    aLegChangingBetweenAFootAndJointsDoesNotJump();
+    aShownPoseEasesHomeWhenItsClientLeaves();
+    aShownPoseIsRefusedUnpoweredDuringAClipAndAfterAMode();
     gesturesSitThenRest();
     aClipPlaysFromStandAndHandsBackToStand();
     aClipStartedWhileWalkingHandsBackToStand();

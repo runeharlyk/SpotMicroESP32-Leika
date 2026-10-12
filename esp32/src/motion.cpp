@@ -53,6 +53,7 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
     if (mail.mode) setMode(*mail.mode);
     if (mail.variant) switchVariant(*mail.variant);
     if (mail.play) startAnimation(*mail.play);
+    if (mail.pose) holdPose(*mail.pose);
     if (mail.stopAnimation && state == &animateState) animateState.stop();
     if (mail.input) {
         if (goal.running() && !mail.input->steering()) {
@@ -190,17 +191,32 @@ void MotionService::startAnimation(const MotionInbox::Play &play) {
         ESP_LOGW("MotionService", "Deactivated - clip %s refused", play.clip->name);
         return;
     }
-    if (state != &animateState) {
-        cancelGoal();
-        const socket_message_ModesEnum from = currentMode.load();
-        // A clip ends in stance: the walks, the learned one with its history, resume from STAND.
-        const bool walking = from == socket_message_ModesEnum_WALK || from == socket_message_ModesEnum_WALK_NN;
-        returnMode = walking ? socket_message_ModesEnum_STAND : from;
-        setState(&animateState);
-        currentMode = socket_message_ModesEnum_ANIMATE;
-        modeApplied = true;
-    }
+    enterAnimate();
     animateState.start(play.clip, play.params, play.paramCount);
+}
+
+// From STAND, or held already: a pose asked for in another mode, or after a mode asked for while one was held, is
+// dropped, so a pose on its way never pulls the legs out of a mode the robot was put in. A clip that plays, or a pose
+// on its way home, keeps the legs.
+void MotionService::holdPose(const anim::Pose &pose) {
+    if (state != &animateState && currentMode.load() != socket_message_ModesEnum_STAND) {
+        ESP_LOGW("MotionService", "Mode %d - pose refused", static_cast<int>(currentMode.load()));
+        return;
+    }
+    enterAnimate();
+    if (!animateState.hold(pose)) ESP_LOGW("MotionService", "A clip or the way home - pose refused");
+}
+
+void MotionService::enterAnimate() {
+    if (state == &animateState) return;
+    cancelGoal();
+    const socket_message_ModesEnum from = currentMode.load();
+    // A clip or a pose ends in stance: the walks, the learned one with its history, resume from STAND.
+    const bool walking = from == socket_message_ModesEnum_WALK || from == socket_message_ModesEnum_WALK_NN;
+    returnMode = walking ? socket_message_ModesEnum_STAND : from;
+    setState(&animateState);
+    currentMode = socket_message_ModesEnum_ANIMATE;
+    modeApplied = true;
 }
 
 void MotionService::recordAnimationStatus() {

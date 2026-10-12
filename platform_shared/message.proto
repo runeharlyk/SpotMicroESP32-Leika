@@ -112,6 +112,13 @@ message AnimationPlay {
     repeated AnimationParam params = 2;
 }
 message AnimationStop {}
+// A pose for the robot to hold, as the animation editor shows it: the body's offsets and 0 or 4 legs, as in a keyframe.
+// The legs ease to it; it takes the robot from STAND into ANIMATE, refused in any other mode and while a clip plays, and
+// AnimationStop, a mode asked for, or the client that sent it leaving eases them back to stance.
+message AnimationPose {
+    animation.BodyPose body = 1;
+    repeated animation.LegTarget legs = 2;
+}
 enum AnimationState {
     ANIM_IDLE = 0;
     ANIM_ENTRY = 1;
@@ -266,6 +273,7 @@ message CorrelationRequest {
         GoalMove goal_move = 250;
         GoalCancel goal_cancel = 251;
         GoalStatusRequest goal_status_request = 252;
+        AnimationPose animation_pose = 271;
     }
 }
 

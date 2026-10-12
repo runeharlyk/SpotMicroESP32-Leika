@@ -124,6 +124,24 @@ static void aClipStopsWhenTheClientThatStartedItLeaves() {
     CHECK(!inbox.take(40).stopAnimation);
 }
 
+// A pose is the client's as a clip is: its leaving eases the legs home, and a pose not yet taken goes with it.
+static void aPoseIsDroppedAndStoppedWithTheClientThatSentIt() {
+    MotionInbox inbox;
+    anim::Pose pose;
+    pose.body[anim::Z] = -10;
+    inbox.postPose(pose, 3);
+    const MotionInbox::Mail mail = inbox.take(10);
+    CHECK(mail.pose && mail.pose->body[anim::Z] == -10);
+    CHECK(!inbox.take(20).pose);
+    inbox.postPose(pose, 3);
+    inbox.dropClient(4);
+    CHECK(inbox.take(30).pose);
+    inbox.postPose(pose, 3);
+    inbox.dropClient(3);
+    const MotionInbox::Mail dropped = inbox.take(40);
+    CHECK(!dropped.pose && dropped.stopAnimation);
+}
+
 static void aClipNotYetTakenIsDroppedWithItsClient() {
     MotionInbox inbox;
     inbox.postPlay({nullptr, {}, 0}, 3);
@@ -210,6 +228,7 @@ int main() {
     anInputKeepsWhenItArrived();
     aClipStopsWhenTheClientThatStartedItLeaves();
     aClipNotYetTakenIsDroppedWithItsClient();
+    aPoseIsDroppedAndStoppedWithTheClientThatSentIt();
     aClipBelongsToTheClientThatStartedTheLatest();
     aStoppedOrUnownedClipIgnoresLeavingClients();
     aGoalIsTakenOnceUnderItsNumber();

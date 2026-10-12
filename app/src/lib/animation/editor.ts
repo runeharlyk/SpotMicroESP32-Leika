@@ -63,7 +63,7 @@ export const blankAnimation = (): Animation =>
         keyframes: [blankKeyframe(0)]
     })
 
-const targetOf = (joints: boolean, v: Vec3): LegTarget =>
+export const targetOf = (joints: boolean, v: Vec3): LegTarget =>
     joints ?
         { joints: { coxa: v[0], femur: v[1], tibia: v[2] }, foot: undefined }
     :   { foot: { x: v[0], y: v[1], z: v[2] }, joints: undefined }

@@ -4,6 +4,8 @@ import { robotRequest } from '$lib/robot-request'
 import { fileSystemClient } from '$lib/filesystem/chunkedTransfer'
 import { Animation } from '$lib/platform_shared/animation'
 import { froundAnimation, parseAnimationJson, validate } from './model'
+import { targetOf } from './editor'
+import type { Pose } from './player'
 import type { AnimationEntry, AnimationParam, AnimationReport } from '$lib/platform_shared/message'
 
 /** Where the firmware's AnimationStore looks for uploaded clips, relative to its file system. */
@@ -33,6 +35,17 @@ export async function playClip(name: string, params: AnimationParam[]): Promise<
 
 export async function stopClip(): Promise<void> {
     await robotRequest({ animationStop: {} })
+}
+
+/** Has the robot hold `pose`, from stand; stopClip() eases it back to stance. */
+export async function showPose(pose: Pose): Promise<void> {
+    const [roll, pitch, yaw, x, y, z] = pose.body
+    await robotRequest({
+        animationPose: {
+            body: { roll, pitch, yaw, x, y, z },
+            legs: pose.legs.map(leg => targetOf(leg.joints, leg.v))
+        }
+    })
 }
 
 /** Writes a validated clip to the robot and returns the robot's report; a clip the robot refuses is removed again. */

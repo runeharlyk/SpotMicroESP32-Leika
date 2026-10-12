@@ -1,10 +1,13 @@
 <script lang="ts">
+    import { onDestroy } from 'svelte'
     import AnimationPreview from '$lib/components/AnimationPreview.svelte'
     import { DownloadIcon, Play, UploadIcon } from '$lib/components/icons'
     import { legMode, type Editor } from '$lib/animation/editor'
     import { legTarget } from '$lib/animation/player'
-    import { playClip, uploadClip } from '$lib/animation/robot'
-    import type { AnimationEntry } from '$lib/platform_shared/message'
+    import { playClip, showPose, stopClip, uploadClip } from '$lib/animation/robot'
+    import { createPoseStream } from '$lib/animation/pose-stream'
+    import { ModesEnum, type AnimationEntry } from '$lib/platform_shared/message'
+    import { mode } from '$lib/stores/model-store'
     import type { Variant } from '$lib/simulation/firmware/kin-config'
     import { saveFile } from '$lib/utilities/save-file'
     import Timeline from './Timeline.svelte'
@@ -64,8 +67,46 @@
     const download = () =>
         saveFile(editor.toJson(), `${current.document.name}.json`, 'application/json')
 
+    // Show on robot: the robot holds the pose the preview shows, from stand, until it is switched off, the robot leaves
+    // the pose (a mode asked for elsewhere), or the robot refuses one.
+    let stream = $state.raw<ReturnType<typeof createPoseStream> | undefined>()
+    let held = false
+
+    const endShowing = () => {
+        stream?.close()
+        stream = undefined
+    }
+
+    const startShowing = () => {
+        problem = null
+        held = false
+        stream = createPoseStream(showPose, error => {
+            stream = undefined
+            problem = error.message
+        })
+    }
+
+    const stopShowing = () => {
+        endShowing()
+        attempt(stopClip)
+    }
+
+    $effect(() => stream?.show(current.frame.pose))
+
+    $effect(() => {
+        if (!stream) return
+        if ($mode.mode === ModesEnum.ANIMATE) held = true
+        else if (held) endShowing()
+    })
+
+    onDestroy(() => {
+        if (stream) stopClip().catch(() => {})
+        endShowing()
+    })
+
     const playOnRobot = () =>
         attempt(async () => {
+            endShowing()
             if (current.dirty || !clips?.some(c => c.name === current.document.name)) await save()
             await playClip(
                 current.document.name,
@@ -93,6 +134,15 @@
             onclick={playOnRobot}
         >
             <Play class="mr-1 h-4 w-4" />Play on robot
+        </button>
+        <button
+            class="btn btn-sm"
+            class:btn-active={!!stream}
+            aria-pressed={!!stream}
+            disabled={working || (!stream && !!current.error)}
+            onclick={stream ? stopShowing : startShowing}
+        >
+            Show on robot
         </button>
         <span class="text-sm opacity-75" data-testid="document-state">
             {current.document.name}{current.dirty ? ', unsaved' : ''}

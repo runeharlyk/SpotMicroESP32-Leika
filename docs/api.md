@@ -81,6 +81,7 @@ The stored core dump; see [websocket.md](websocket.md#crash-dump) for the downlo
 | `odometry_request`                                     | `odometry`            | Read the dead reckoning; with `reset`, the estimate reached before it starts afresh ([odometry](motion_system.md#odometry)) |
 | `goal_move`                                            | `goal_status`         | Walk a distance or turn an angle on the odometry; 202 with the goal's number, 409 unless in STAND or WALK or during an update, 400 for a malformed goal ([goal moves](motion_system.md#goal-moves)) |
 | `goal_cancel`, `goal_status_request`                   | `goal_status`         | Cancel the goal, or read the latest goal's state and progress                                                     |
+| `animation_pose`                                       | none (empty 200)      | Hold a pose, as the editor's Show on robot sends it; 409 unless in STAND or holding one, or while a clip plays, 422 for a malformed pose ([show on robot](animation.md#show-on-robot)) |
 
 ### Optional services
 

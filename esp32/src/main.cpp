@@ -700,6 +700,25 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_animation_stop_tag,
          [](const auto &req, auto &res, Client client) { motionService.inbox.postStopAnimation(); }},
+
+        {socket_message_CorrelationRequest_animation_pose_tag,
+         [](const auto &req, auto &res, Client client) {
+             const auto &request = req.request.animation_pose;
+             auto refuse = [&res](uint32_t status, const char *reason) {
+                 res.status_code = status;
+                 strncpy(res.error_message, reason, sizeof(res.error_message) - 1);
+             };
+             anim::Pose pose;
+             if (const char *error = anim::poseFromProto(request.body, request.legs, request.legs_count, pose))
+                 return refuse(422, error);
+             const socket_message_ModesEnum mode = motionService.mode();
+             if (mode != socket_message_ModesEnum_STAND && mode != socket_message_ModesEnum_ANIMATE)
+                 return refuse(409, "Stand first");
+             if (mode == socket_message_ModesEnum_ANIMATE &&
+                 motionService.animationStatus().state != anim::State::IDLE)
+                 return refuse(409, "A clip is playing");
+             motionService.inbox.postPose(pose, client.link == &wsSocket ? client.id : -1);
+         }},
         {socket_message_CorrelationRequest_core_dump_request_tag,
          [](const auto &req, auto &res, Client client) {
              res.which_response = socket_message_CorrelationResponse_core_dump_report_tag;

@@ -52,7 +52,34 @@ static void aDecodedClipCarriesEveryField() {
     CHECK(anim::validate(c) == nullptr);
 }
 
+// A pose holds no legs (every foot in stance) or all four, and only finite values.
+static void aPoseIsDecodedOrRefused() {
+    animation_BodyPose body = animation_BodyPose_init_zero;
+    body.roll = 0.1f;
+    body.z = -12;
+    animation_LegTarget legs[4] = {animation_LegTarget_init_zero, animation_LegTarget_init_zero,
+                                   animation_LegTarget_init_zero, animation_LegTarget_init_zero};
+    legs[1].which_target = animation_LegTarget_foot_tag;
+    legs[1].target.foot.z = 20;
+    legs[2].which_target = animation_LegTarget_joints_tag;
+    legs[2].target.joints.femur = -40;
+    anim::Pose pose;
+    CHECK(anim::poseFromProto(body, legs, 4, pose) == nullptr);
+    CHECK(pose.body[anim::ROLL] == 0.1f && pose.body[anim::Z] == -12);
+    CHECK(!pose.legs[1].joints && pose.legs[1].v[2] == 20);
+    CHECK(pose.legs[2].joints && pose.legs[2].v[1] == -40);
+    CHECK(anim::poseFromProto(body, legs, 0, pose) == nullptr);
+    CHECK(!pose.legs[1].joints && pose.legs[1].v[2] == 0);
+    CHECK(anim::poseFromProto(body, legs, 2, pose) != nullptr);
+    legs[3].which_target = animation_LegTarget_foot_tag;
+    legs[3].target.foot.x = NAN;
+    CHECK(anim::poseFromProto(body, legs, 4, pose) != nullptr);
+    body.pitch = INFINITY;
+    CHECK(anim::poseFromProto(body, legs, 0, pose) != nullptr);
+}
+
 int main() {
+    aPoseIsDecodedOrRefused();
     aDecodedClipCarriesEveryField();
     if (failures) std::printf("%d check(s) failed\n", failures);
     return failures ? 1 : 0;

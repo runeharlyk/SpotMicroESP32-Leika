@@ -34,6 +34,7 @@ class MotionInbox {
         bool linkLost = false;
         int64_t inputAtUs = 0; // when the input arrived, in esp_timer microseconds; 0 without input
         std::optional<Play> play;
+        std::optional<anim::Pose> pose;
         bool stopAnimation = false;
         std::optional<Goal> goal = std::nullopt;
         uint32_t goalId = 0; // the goal's number, counted from 1; 0 without one
@@ -73,6 +74,14 @@ class MotionInbox {
         _clipOwner = owner;
     }
 
+    /** A pose to hold; `owner` is the socket client that sent it, whose leaving eases it home, as for a clip. */
+    void postPose(const anim::Pose &pose, int owner = -1) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _pose = pose;
+        _stopAnimation = false;
+        _clipOwner = owner;
+    }
+
     void postStopAnimation() {
         std::lock_guard<std::mutex> lock(_mutex);
         stopAnimationLocked();
@@ -97,7 +106,8 @@ class MotionInbox {
     }
 
     /**
-     * A client left: a clip it started stops through its exit, as a stop request would, since nobody can stop a loop;
+     * A client left: a clip it started stops through its exit, and a pose it sent eases home, as a stop request would,
+     * since nobody else can stop a loop or knows the robot holds a pose;
      * a goal it started is cancelled, since nobody else may be watching it walk.
      */
     void dropClient(int client) {
@@ -113,6 +123,7 @@ class MotionInbox {
         Mail mail {_input, _mode, _gait, _variant};
         mail.inputAtUs = _input ? _inputAtUs : 0;
         mail.play = std::move(_play);
+        mail.pose = std::exchange(_pose, std::nullopt);
         mail.stopAnimation = _stopAnimation;
         _input.reset();
         _mode.reset();
@@ -133,6 +144,7 @@ class MotionInbox {
   private:
     void stopAnimationLocked() {
         _play.reset();
+        _pose.reset();
         _stopAnimation = true;
         _clipOwner = -1;
     }
@@ -149,6 +161,7 @@ class MotionInbox {
     std::optional<socket_message_WalkGaits> _gait;
     std::optional<socket_message_KinematicsVariant> _variant;
     std::optional<Play> _play;
+    std::optional<anim::Pose> _pose;
     bool _stopAnimation = false;
     int _clipOwner = -1;
     uint32_t _lastInputAt = 0;

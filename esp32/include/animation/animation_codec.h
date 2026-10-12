@@ -8,6 +8,43 @@
 
 namespace anim {
 
+inline void bodyFromProto(const animation_BodyPose &src, float body[6]) {
+    body[ROLL] = src.roll;
+    body[PITCH] = src.pitch;
+    body[YAW] = src.yaw;
+    body[X] = src.x;
+    body[Y] = src.y;
+    body[Z] = src.z;
+}
+
+inline void legFromProto(const animation_LegTarget &src, LegTarget &t) {
+    t.joints = src.which_target == animation_LegTarget_joints_tag;
+    if (t.joints) {
+        t.v[0] = src.target.joints.coxa;
+        t.v[1] = src.target.joints.femur;
+        t.v[2] = src.target.joints.tibia;
+    } else {
+        t.v[0] = src.target.foot.x;
+        t.v[1] = src.target.foot.y;
+        t.v[2] = src.target.foot.z;
+    }
+}
+
+/** A pose to hold from its body and 0 or 4 legs (no legs: every foot in stance); the error, or nullptr. */
+inline const char *poseFromProto(const animation_BodyPose &body, const animation_LegTarget *legs, int legCount,
+                                 Pose &out) {
+    if (legCount != 0 && legCount != LEGS) return "a pose has 0 or 4 legs";
+    out = Pose {};
+    bodyFromProto(body, out.body);
+    for (int l = 0; l < legCount; ++l) legFromProto(legs[l], out.legs[l]);
+    for (float v : out.body)
+        if (!finite(v)) return "the pose's body must be finite";
+    for (const LegTarget &leg : out.legs)
+        for (float v : leg.v)
+            if (!finite(v)) return "the pose's legs must be finite";
+    return nullptr;
+}
+
 inline void fromProto(const animation_Animation &m, Clip &c) {
     c = Clip{};
     strncpy(c.name, m.name, NAME_LEN_MAX);
@@ -25,27 +62,9 @@ inline void fromProto(const animation_Animation &m, Clip &c) {
         Keyframe &k = c.keyframes[i];
         k.time = src.time;
         k.ease = (int)src.ease;
-        k.body[ROLL] = src.body.roll;
-        k.body[PITCH] = src.body.pitch;
-        k.body[YAW] = src.body.yaw;
-        k.body[X] = src.body.x;
-        k.body[Y] = src.body.y;
-        k.body[Z] = src.body.z;
+        bodyFromProto(src.body, k.body);
         k.legCount = src.legs_count;
-        for (int l = 0; l < k.legCount && l < LEGS; ++l) {
-            const animation_LegTarget &lt = src.legs[l];
-            LegTarget &t = k.legs[l];
-            t.joints = lt.which_target == animation_LegTarget_joints_tag;
-            if (t.joints) {
-                t.v[0] = lt.target.joints.coxa;
-                t.v[1] = lt.target.joints.femur;
-                t.v[2] = lt.target.joints.tibia;
-            } else {
-                t.v[0] = lt.target.foot.x;
-                t.v[1] = lt.target.foot.y;
-                t.v[2] = lt.target.foot.z;
-            }
-        }
+        for (int l = 0; l < k.legCount && l < LEGS; ++l) legFromProto(src.legs[l], k.legs[l]);
     }
     c.overlayCount = m.overlays_count;
     for (int i = 0; i < c.overlayCount && i < OVERLAY_MAX; ++i) {

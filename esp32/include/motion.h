@@ -123,6 +123,8 @@ class MotionService {
     void setMode(socket_message_ModesEnum mode);
     void applyMode(socket_message_ModesEnum mode);
     void startAnimation(const MotionInbox::Play &play);
+    void holdPose(const anim::Pose &pose);
+    void enterAnimate();
     void recordAnimationStatus();
     void stopLocomotion();
     void centreSticks();

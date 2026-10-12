@@ -70,6 +70,22 @@ A clip edited in the editor uploads the same way.
 Edit on a clip opens the editor: a timeline of keyframes, a pose panel for the selected keyframe's body and legs, a clip panel for the clip's own fields, overlays and parameters, and a 3D preview.
 The preview is kinematic: it shows the poses the firmware would command, not whether the robot keeps its balance.
 
+### Show on robot
+
+Show on robot has the robot hold the pose the preview shows, and follow it as it is edited, as the Hexapod's puppeteering does.
+The app sends it as `AnimationPose` (the body's offsets and 0 or 4 legs, as in a keyframe), the newest pose at most every 100 ms and one request at a time, so a dragged handle never queues a backlog.
+
+- The robot takes it only from STAND, into ANIMATE, or while it holds a pose already; it refuses it in any other mode (so never on a deactivated robot) and while a clip plays.
+- Each body channel, foot offset and joint angle follows the pose as the stand's body follows its target, without overshoot.
+  A leg that changes between a foot and joint angles moves in joint space, and goes back to a foot once it has settled there, so the change never jumps.
+- The robot keeps the last pose while no other comes, as long as the client that sent it stays.
+- Switching Show on robot off sends `AnimationStop`; that, the sending client leaving, or a mode chosen elsewhere eases the pose back to stance, after which the robot is back in STAND, or in the mode chosen.
+  Poses still on their way meanwhile are dropped, so a mode chosen elsewhere wins, and the app switches Show on robot off when the robot leaves the pose.
+- The servo controller holds every joint inside its travel (`joint_model.h`), as for any other mode; a foot out of reach stops at full stretch, as in the preview.
+- Play on robot while showing hands the robot to the clip, whose Entry starts from the held pose.
+
+The pose sits on the robot's own standing height, not on a clip's `ride_height`.
+
 ## Tests and parity
 
 - `esp32/test/host/animation_test.cpp`, `animation_codec_test.cpp`, `animation_store_test.cpp`, `animation_validation_test.cpp` and `animation_builtins_test.cpp` test the firmware side on the host.

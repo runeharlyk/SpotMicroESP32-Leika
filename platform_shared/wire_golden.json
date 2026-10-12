@@ -340,6 +340,10 @@
       "name": 1,
       "params": 2
     },
+    "socket_message.AnimationPose": {
+      "body": 1,
+      "legs": 2
+    },
     "socket_message.AnimationReport": {
       "ok": 1,
       "error": 2,
@@ -430,7 +434,8 @@
       "odometry_request": 240,
       "goal_move": 250,
       "goal_cancel": 251,
-      "goal_status_request": 252
+      "goal_status_request": 252,
+      "animation_pose": 271
     },
     "socket_message.CorrelationResponse": {
       "correlation_id": 1,
