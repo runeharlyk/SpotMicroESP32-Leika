@@ -98,13 +98,17 @@ class HipSteps:
         self.backend, self.setup, self.stand_pwm, self.joints = backend, setup, stand_pwm, joints
         self.offset = 0
 
+    def hold(self) -> None:
+        """Writes the hips their PWM at the current offset; the first write takes every servo off the motion."""
+        for joint in self.joints:
+            pwm = self.stand_pwm[joint] + self.setup.pwm_sign(joint) * self.offset
+            self.backend.set_servo_pwm(self.setup.channels[joint], int(pwm))
+
     def ramp(self, offset: int) -> None:
         step = 1 if offset > self.offset else -1
         while self.offset != offset:
             self.offset += step
-            for joint in self.joints:
-                pwm = self.stand_pwm[joint] + self.setup.pwm_sign(joint) * self.offset
-                self.backend.set_servo_pwm(self.setup.channels[joint], int(pwm))
+            self.hold()
             self.backend.sleep(RAMP_S_PER_COUNT)
 
     def held(self, offset: int) -> np.ndarray:
@@ -117,6 +121,8 @@ def measure(backend, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) ->
     """Steps the hips and fits the counts per degree; leaves the robot standing under the motion's control again."""
     angles, stand_pwm = check_standing(backend, variant)
     setup = backend.servo_settings()
+    if len(setup.center_pwm) != 12 or len(setup.direction) != 12:
+        raise Refused("the robot reports no servo calibration or joint model for twelve joints")
     offsets = np.array([sign * n for n in steps for sign in (1, -1)])
     for joint in joints:
         reach = stand_pwm[joint] + setup.pwm_sign(joint) * offsets
@@ -125,6 +131,7 @@ def measure(backend, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) ->
     hips = HipSteps(backend, setup, stand_pwm, joints)
     tilts = []
     try:
+        hips.hold()  # the baselines too are taken with the servos held, as every step is
         before = hips.held(0)
         for offset in offsets:
             stepped = hips.held(int(offset))
