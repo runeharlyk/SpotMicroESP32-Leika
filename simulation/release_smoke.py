@@ -27,6 +27,8 @@ ANIMATE = 6  # ModesEnum.ANIMATE where the firmware has animations
 # The modes in which the servos are driven, and each tick writes them.
 DRIVEN = {Mode.REST.value, Mode.STAND.value, Mode.WALK.value, ANIMATE}
 WALKING_SWING_DEG = 5.0  # a joint swings at least this far in two seconds of walking
+# AUTO walks one of these, picked from the sticks, so a velocity has no sticks under it to walk it by.
+WALKED_GAITS = (Gait.TROT, Gait.CRAWL)
 
 
 def play_wave(robot: Robot, backend: RealBackend) -> str:
@@ -80,7 +82,7 @@ def breaches(ticks: list[pb.TickSample], max_overruns: int) -> list[str]:
     lost = sum(tick.link_lost and not previous.link_lost for previous, tick in zip(ticks, ticks[1:]))
     if lost:
         found.append(f"the dead-man stop fired {lost} times")
-    for gait in Gait:
+    for gait in WALKED_GAITS:
         walking = [tick for tick in ticks if tick.mode == Mode.WALK.value and tick.gait == gait.value and not tick.link_lost]
         if swing_deg(walking) < WALKING_SWING_DEG:
             found.append(f"the legs swung {swing_deg(walking):.1f} degrees walking in {gait.name}, under {WALKING_SWING_DEG}")
@@ -98,7 +100,7 @@ def run(address: str, max_overruns: int) -> int:
         backend.start_recording()
         robot.stand()
         robot.sleep(SETTLE_S)
-        for gait in Gait:
+        for gait in WALKED_GAITS:
             robot.set_gait(gait)
             robot.set_velocity(robot.max_velocity().vx / 2, 0, 0)
             robot.sleep(WALK_S)
