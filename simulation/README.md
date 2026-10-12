@@ -68,6 +68,7 @@ uv run python generate_scenes.py          # regenerate the spot_micro and yertle
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
 uv run python fit_pico_joint_map.py       # fit the Pico's firmware-to-MJCF joint map for the web app (app/src/lib/simulation/robots.ts)
 uv run python check_stand_level.py        # does the stand's IMU levelling reduce the tilt on a slope, for either +z side
+uv run python check_rise.py               # does the stand's IMU levelling tip the body on the rise from REST
 
 uv run pytest -q                                                    # regression tests
 ```

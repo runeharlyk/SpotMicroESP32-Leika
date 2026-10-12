@@ -17,6 +17,7 @@ from src.robot.stand_compensation import (
     imu_roll_pitch,
 )
 from src.sim.mj_runtime import CONTROL_DT, SpotPicoSim
+from src.sim.rise_stand import LAGGING_LEG, rise_to_stand, settle_time
 from src.sim.slope_stand import LEFT_UP, NOSE_DOWN, stand_on_slope
 
 DEG = math.radians(1)
@@ -125,3 +126,32 @@ def test_on_a_flat_floor_the_levelled_stand_holds_still():
     assert np.abs(tilt[-500:]).max() < 0.05
     assert np.ptp(tilt[-500:], axis=0).max() < 0.01
 
+
+def test_the_rise_to_stand_on_a_flat_floor_does_not_tip_the_simulated_robot_at_all():
+    """The Pico tipped by up to 13 degrees here (2026-10-01); the simulation does not reproduce it, with or without
+    the compensation: its legs track their targets, and the 720 deg/s servo limit never binds on the rise."""
+    for compensate in (False, True):
+        tilt = rise_to_stand(compensate)[:, 1:]
+        assert np.abs(tilt).max() < 0.5
+
+
+def test_holding_the_compensation_through_the_rise_leaves_no_tilt_to_unwind():
+    """Levelling from the first tick integrates the rise's own tilt and takes seconds to give it back; held, the body
+    settles as soon as the leg catches up. The price: the rise's peak tilt is the uncompensated one."""
+    off = rise_to_stand(False, servo_speed_deg_s=LAGGING_LEG)
+    unheld = rise_to_stand(True, servo_speed_deg_s=LAGGING_LEG, hold_s=0)
+    held = rise_to_stand(True, servo_speed_deg_s=LAGGING_LEG)
+    assert np.abs(off[:, 1:]).max() > 3
+    assert settle_time(held) < 1.0 < 1.5 < settle_time(unheld)
+    assert np.abs(held[-100:, 1:]).max() < 0.1 < np.abs(unheld[-100:, 1:]).max()
+    assert np.abs(held[:, 1:]).max() <= np.abs(off[:, 1:]).max() + 0.05
+
+
+@pytest.mark.parametrize("axis, column", [(NOSE_DOWN, 2), (LEFT_UP, 1)])
+def test_a_rise_on_a_slope_is_still_levelled_without_overshoot(axis, column):
+    half = math.radians(8) / 2
+    floor = [math.cos(half), *(math.sin(half) * np.array(axis))]
+    tilt = rise_to_stand(True, seconds=6, floor_quat=floor)[:, column]
+    assert abs(tilt[400]) < 1.0
+    assert abs(tilt[-1]) < 0.3
+    assert tilt.min() > -0.1
