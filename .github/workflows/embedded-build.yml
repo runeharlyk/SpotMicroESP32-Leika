@@ -2,6 +2,12 @@ name: PlatformIO CI
 
 on:
   workflow_call:
+    inputs:
+      # Only a release keeps the ELFs: decoding a core dump needs the exact build's, and at about 20 MB a board they
+      # are not worth uploading on every push.
+      elf:
+        type: boolean
+        default: false
   push:
     branches: [master]
     paths:
@@ -81,4 +87,12 @@ jobs:
         with:
           name: firmware-${{ matrix.env }}
           path: .pio/build/${{ matrix.env }}/*.bin
+          if-no-files-found: error
+
+      - name: Upload the ELF
+        if: inputs.elf
+        uses: actions/upload-artifact@v4
+        with:
+          name: elf-${{ matrix.env }}
+          path: .pio/build/${{ matrix.env }}/firmware.elf
           if-no-files-found: error
