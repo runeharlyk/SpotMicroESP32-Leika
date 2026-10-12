@@ -1,6 +1,7 @@
 // Replays a fixed control script through the firmware's own motion code and prints the result as
 // JSON, so the web app's TypeScript port (app/src/lib/simulation/firmware) can be pinned to it, and the
-// simulation's port of the odometry (simulation/src/robot/firmware_odometry.py) too.
+// simulation's port of the odometry (simulation/src/robot/firmware_odometry.py) too: the kinematic one, and the fused
+// one fed a made-up gyro that reads more turn than the feet, with a bias and a wobble, and none in the crawl.
 // Run once per kinematics variant by export_firmware_traces.py, which passes the variant's name.
 #include <cmath>
 #include <cstdio>
@@ -58,6 +59,8 @@ struct Motion {
     body_state_t body;
     std::array<bool, 4> stance {};
     KinematicOdometry odometry;
+    FusedOdometry fused;
+    std::optional<float> gyro;
     float new_angles[12] = {0};
     float angles[12] = {0};
 
@@ -84,13 +87,19 @@ struct Motion {
             walk.set_mode_crawl();
     }
 
-    void update(float imu_x, float imu_y) {
+    void update(float imu_x, float imu_y, bool crawling, int step) {
         ImuSample imu;
         imu.rpy = {imu_x, imu_y, 0};
         state->updateImuOffsets(imu);
         state->step(body, DT);
         stance = state == &walk ? walk.stance() : std::array<bool, 4> {true, true, true, true};
+        const float feetBefore = odometry.estimate().yaw;
         odometry.update(body, stance);
+        fused.update(body, stance, gyro, DT);
+        // The next tick's sample: this tick's turn, a tick late as a gyro's lag.
+        const float feetRate = std::remainder(odometry.estimate().yaw - feetBefore, 2 * static_cast<float>(M_PI)) / DT;
+        gyro =
+            crawling ? std::nullopt : std::optional<float>(1.15f * feetRate + 0.03f + 0.01f * std::sin(0.37f * step));
         kinematics.calculate_inverse_kinematics(body, new_angles);
         for (int i = 0; i < 12; i++) {
             const float angle = new_angles[i] * JOINT_DIRECTION[i];
@@ -145,7 +154,8 @@ int main(int argc, char **argv) {
         }
         started = true;
         for (int t = 0; t < segment.ticks; t++, step++) {
-            motion.update(segment.imu_x, segment.imu_y);
+            const std::optional<float> gyro = motion.gyro;
+            motion.update(segment.imu_x, segment.imu_y, gait == CRAWL, step);
             const body_state_t &b = motion.body;
             printf("%s{\"step\":%d,\"mode\":%d,\"gait\":%d,", first ? "" : ",", step, mode, gait);
             printf("\"cmd\":{\"lx\":%.9g,\"ly\":%.9g,\"rx\":%.9g,\"ry\":%.9g,\"h\":%.9g,\"s\":%.9g,\"s1\":%.9g},", cmd.lx,
@@ -167,6 +177,13 @@ int main(int argc, char **argv) {
                    motion.walk.swingHeight());
             const OdometryEstimate &o = motion.odometry.estimate();
             printf("\"odometry\":{\"x\":%.9g,\"y\":%.9g,\"yaw\":%.9g,\"distance\":%.9g},", o.x, o.y, o.yaw, o.distance);
+            if (gyro)
+                printf("\"gyro\":%.9g,", *gyro);
+            else
+                printf("\"gyro\":null,");
+            const FusedEstimate f = motion.fused.estimate();
+            printf("\"fused\":{\"x\":%.9g,\"y\":%.9g,\"yaw\":%.9g,\"distance\":%.9g,", f.x, f.y, f.yaw, f.distance);
+            printf("\"kinematic_yaw\":%.9g,\"bias\":%.9g},", f.kinematicYaw, motion.fused.gyroBias());
             printf("\"ik\":[");
             printFloats(motion.new_angles, 12);
             printf("],\"angles\":[");

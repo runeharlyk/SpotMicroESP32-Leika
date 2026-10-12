@@ -1,4 +1,5 @@
-// Host test of the kinematic odometry, alone and as MotionService feeds it, built and run by test_host_programs.py.
+// Host test of the kinematic and fused odometry, alone and as MotionService feeds them, built and run by
+// test_host_programs.py.
 #include <cmath>
 #include <cstdio>
 #include <motion.h>
@@ -102,6 +103,177 @@ static void aFootInTheAirDoesNotCountWhateverThePhase() {
     CHECK(odometry.estimate().x < -0.001f);
 }
 
+// The body of a robot standing at (x, y, yaw) on feet planted where it stood at the origin, all four down.
+static body_state_t bodyAt(float x, float y, float yaw) {
+    body_state_t body;
+    for (int leg = 0; leg < 4; leg++) {
+        const float dx = PICO.default_feet_positions[leg][0] - x, dy = -PICO.default_feet_positions[leg][2] - y;
+        body.feet[leg][0] = std::cos(yaw) * dx + std::sin(yaw) * dy;
+        body.feet[leg][1] = 0;
+        body.feet[leg][2] = -(-std::sin(yaw) * dx + std::cos(yaw) * dy);
+        body.feet[leg][3] = 1;
+    }
+    return body;
+}
+
+// A gyro's white noise, the same every run: the sum of twelve uniforms is near enough normal.
+struct Noise {
+    uint32_t state = 12345;
+    float operator()(float sigma) {
+        float sum = -6;
+        for (int i = 0; i < 12; i++) sum += (state = state * 1664525u + 1013904223u) / 4294967296.0f;
+        return sigma * sum;
+    }
+};
+
+/**
+ * A robot that walks at `speed` m/s forward and turns at `rate` rad/s, while its feet show `feetScale` of the turn,
+ * and its gyro reads the turn plus `bias`, the measured noise and a trot's rocking of `rock` rad/s at 2 Hz, which the
+ * feet do not show and the body really does. The truth integrates the turn the gyro sees, without the bias and noise.
+ */
+struct TestRobot {
+    float speed = 0, rate = 0, feetScale = 1, bias = 0, rock = 0;
+    float x = 0, y = 0, yaw = 0;             // the truth
+    float feetX = 0, feetY = 0, feetYaw = 0; // where the feet say it is
+    float t = 0, gyroYaw = 0;                // the gyro's own integral, bias and all
+    Noise noise;
+
+    void tick(FusedOdometry &odometry, bool withGyro = true) {
+        const float turn = rate + rock * std::sin(2 * static_cast<float>(M_PI) * 2 * t);
+        x += std::cos(yaw) * speed * DT, y += std::sin(yaw) * speed * DT, yaw += turn * DT;
+        feetX += std::cos(feetYaw) * speed * DT, feetY += std::sin(feetYaw) * speed * DT;
+        feetYaw += feetScale * rate * DT;
+        const float gyro = turn + bias + noise(FusedOdometry::GYRO_NOISE);
+        gyroYaw += gyro * DT;
+        t += DT;
+        odometry.update(bodyAt(feetX, feetY, feetYaw), ALL_DOWN, withGyro ? std::optional<float>(gyro) : std::nullopt,
+                        DT);
+    }
+};
+
+static float angleBetween(float a, float b) { return std::remainder(a - b, 2.0f * static_cast<float>(M_PI)); }
+
+// A still robot shows its gyro's bias outright: the filter learns it within a second, and follows it when it moves.
+static void aStillRobotLearnsItsGyroBias() {
+    FusedOdometry odometry;
+    TestRobot robot;
+    robot.bias = 0.03f;
+    for (int t = 0; t < TICKS_PER_S; t++) robot.tick(odometry);
+    CHECK_NEAR(odometry.gyroBias(), 0.03, 1e-3);
+    robot.bias = -0.01f;
+    for (int t = 0; t < 20 * TICKS_PER_S; t++) robot.tick(odometry);
+    CHECK_NEAR(odometry.gyroBias(), -0.01, 1e-3);
+    CHECK_NEAR(odometry.estimate().yaw, 0, 0.005);
+}
+
+// The bias a boot calibration leaves turns a gyro's heading by 0.6 rad in a minute; the feet hold the fused one.
+static void standingStillDriftsLessThanTheGyro() {
+    FusedOdometry odometry;
+    TestRobot robot;
+    robot.bias = 0.01f;
+    for (int t = 0; t < 60 * TICKS_PER_S; t++) robot.tick(odometry);
+    CHECK_NEAR(robot.gyroYaw, 0.6, 0.01);
+    CHECK_NEAR(odometry.estimate().yaw, 0, 0.002);
+    std::printf("standing a minute: the gyro drifts %.3f rad, the fused heading %.5f rad\n", robot.gyroYaw,
+                odometry.estimate().yaw);
+}
+
+// Feet that undercount a turn by 13 %, as in MuJoCo, under a trot's rocking: the gyro sets the fused heading, and the
+// rocking and the undercount barely move the bias learnt standing.
+static void aTurnTheFeetUndercountIsCorrectedByTheGyro() {
+    FusedOdometry odometry;
+    TestRobot robot;
+    robot.bias = 0.02f;
+    for (int t = 0; t < 2 * TICKS_PER_S; t++) robot.tick(odometry);
+    odometry.reset();
+    robot.yaw = robot.feetYaw = 0;
+    robot.rate = 0.8f, robot.feetScale = 0.87f, robot.rock = 0.08f;
+    for (int t = 0; t < 4 * TICKS_PER_S; t++) robot.tick(odometry);
+    const FusedEstimate e = odometry.estimate();
+    CHECK_NEAR(e.kinematicYaw, std::remainder(0.87 * 3.2, 2 * M_PI), 0.01);
+    CHECK_NEAR(angleBetween(e.yaw, robot.yaw), 0, 0.01 * 3.2);
+    CHECK_NEAR(odometry.gyroBias(), 0.02, 0.003);
+    std::printf("a 3.2 rad turn: the feet %.3f rad off, the fused heading %.4f rad\n",
+                angleBetween(e.kinematicYaw, robot.yaw), angleBetween(e.yaw, robot.yaw));
+}
+
+// The position follows the fused heading: on an arc the feet undercount, it stays with the truth, on the bias it learnt
+// standing before it walked.
+static void walkingAnArcFollowsTheFusedHeading() {
+    FusedOdometry odometry;
+    TestRobot robot;
+    robot.bias = -0.02f;
+    for (int t = 0; t < TICKS_PER_S; t++) robot.tick(odometry);
+    robot.speed = 0.1f, robot.rate = 0.3f, robot.feetScale = 0.87f, robot.rock = 0.08f;
+    for (int t = 0; t < 6 * TICKS_PER_S; t++) robot.tick(odometry);
+    const FusedEstimate e = odometry.estimate();
+    const float fusedError = std::hypot(e.x - robot.x, e.y - robot.y);
+    const float feetError = std::hypot(robot.feetX - robot.x, robot.feetY - robot.y);
+    CHECK(feetError > 0.03f);
+    CHECK(fusedError < 0.1f * feetError);
+    CHECK_NEAR(e.distance, 0.6, 1e-3);
+    std::printf("a 0.6 m arc: the feet end %.1f mm off, the fused estimate %.1f mm\n", 1000 * feetError,
+                1000 * fusedError);
+}
+
+// Walking feet would teach the bias their undercount: a robot that never stood still learns no bias.
+static void walkingTeachesTheBiasNothing() {
+    FusedOdometry odometry;
+    TestRobot robot;
+    robot.speed = 0.1f, robot.rate = 0.8f, robot.feetScale = 0.87f, robot.rock = 0.08f;
+    for (int t = 0; t < 4 * TICKS_PER_S; t++) robot.tick(odometry);
+    CHECK(odometry.gyroBias() == 0);
+    CHECK(std::fabs(angleBetween(odometry.estimate().yaw, robot.yaw)) <
+          std::fabs(angleBetween(odometry.estimate().kinematicYaw, robot.yaw)));
+}
+
+// Without a gyro rate, or over a tick too long to trust one, it is the kinematic odometry.
+static void withoutAGyroItIsTheKinematicOdometry() {
+    FusedOdometry fused;
+    KinematicOdometry kinematic;
+    TestRobot robot;
+    robot.speed = 0.1f, robot.rate = 0.5f, robot.bias = 0.05f;
+    for (int t = 0; t < 2 * TICKS_PER_S; t++) {
+        robot.tick(fused, false);
+        kinematic.update(bodyAt(robot.feetX, robot.feetY, robot.feetYaw), ALL_DOWN);
+    }
+    const body_state_t late = bodyAt(robot.feetX + 0.01f, robot.feetY, robot.feetYaw + 0.1f);
+    fused.update(late, ALL_DOWN, 3.0f, 1.0f);
+    kinematic.update(late, ALL_DOWN);
+    const FusedEstimate e = fused.estimate();
+    const OdometryEstimate &k = kinematic.estimate();
+    CHECK_NEAR(e.x, k.x, 1e-6);
+    CHECK_NEAR(e.y, k.y, 1e-6);
+    CHECK_NEAR(e.distance, k.distance, 1e-6);
+    CHECK(e.yaw == k.yaw && e.kinematicYaw == k.yaw);
+    CHECK(fused.gyroBias() == 0);
+}
+
+// A sample counts only with a gyro reading, and only while the sensor task keeps it fresh.
+static void aStaleOrMissingGyroIsNone() {
+    ImuSample imu;
+    imu.t_us = 1000000;
+    imu.gyro = {0.1f, 0.2f, 0.3f};
+    CHECK(!FusedOdometry::yawRate(imu, 1000000));
+    imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
+    CHECK(FusedOdometry::yawRate(imu, 1000000 + FusedOdometry::GYRO_STALE_US) == 0.3f);
+    CHECK(!FusedOdometry::yawRate(imu, 1000001 + FusedOdometry::GYRO_STALE_US));
+}
+
+// The first tick, or one with fewer than two feet down, shows no turn: the gyro alone turns it, and the bias stays.
+static void aTurnTheFeetDidNotSeeIsTheGyros() {
+    FusedOdometry odometry;
+    body_state_t body;
+    body.updateFeet(PICO.default_feet_positions);
+    odometry.update(body, ALL_DOWN, 0.3f, DT);
+    CHECK_NEAR(odometry.estimate().yaw, 0.3f * DT, 1e-7);
+    body.feet[0][0] -= 0.01f;
+    odometry.update(body, {true, false, false, false}, 0.3f, DT);
+    CHECK_NEAR(odometry.estimate().yaw, 0.6f * DT, 1e-7);
+    CHECK_NEAR(odometry.estimate().x, 0.01, 1e-6);
+    CHECK(odometry.gyroBias() == 0);
+}
+
 static socket_message_ControllerData sticks(float lx, float ly, float rx) {
     socket_message_ControllerData data = socket_message_ControllerData_init_zero;
     data.has_left = data.has_right = true;
@@ -114,12 +286,20 @@ static socket_message_ControllerData sticks(float lx, float ly, float rx) {
     return data;
 }
 
-// The input is re-sent every tick, as the app does while a stick is off centre, so the dead-man stop stays away.
-static void run(MotionService &motion, const socket_message_ControllerData &input, int ticks) {
+// The input is re-sent every tick, as the app does while a stick is off centre, so the dead-man stop stays away. With
+// a gyro rate, the IMU sample carries it, read `sampleAgeUs` before the tick.
+static void run(MotionService &motion, const socket_message_ControllerData &input, int ticks,
+                std::optional<float> gyroRate = std::nullopt, int64_t sampleAgeUs = 0) {
     for (int i = 0; i < ticks; i++) {
         motion.inbox.postInput(input, fake_timer::nowUs / 1000, fake_timer::nowUs);
         fake_timer::nowUs += 10000;
-        motion.update(ImuSample {}, eGestureNone);
+        ImuSample imu;
+        if (gyroRate) {
+            imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
+            imu.gyro = {0, 0, *gyroRate};
+            imu.t_us = fake_timer::nowUs - sampleAgeUs;
+        }
+        motion.update(imu, eGestureNone);
     }
 }
 
@@ -243,6 +423,24 @@ static void resetting() {
     CHECK(deactivated.x == 0 && deactivated.distance == 0);
 }
 
+// A robot whose feet turn on the spot while its gyro shows only its bias, as one held in the hand: the fused heading
+// stays, the feet's own turns on. A sample the sensor task stopped renewing counts as no gyro.
+static void theServiceFusesAFreshGyro() {
+    MotionService motion;
+    walkingPico(motion);
+    run(motion, sticks(0, 0, 0), TICKS_PER_S, 0.02f);
+    motion.resetOdometry();
+    run(motion, sticks(0, 0, 1), 2 * TICKS_PER_S, 0.02f);
+    const FusedEstimate held = motion.odometry();
+    CHECK(held.kinematicYaw < -1.5f);
+    CHECK_NEAR(held.yaw, 0, 0.02);
+
+    motion.resetOdometry();
+    run(motion, sticks(0, 0, 1), TICKS_PER_S, 0.02f, FusedOdometry::GYRO_STALE_US + 10000);
+    const FusedEstimate stale = motion.odometry();
+    CHECK(stale.kinematicYaw < -0.75f && stale.yaw == stale.kinematicYaw);
+}
+
 int main() {
     aRigidArcIsRecoveredExactly();
     oneFootDownTranslatesWithoutTurning();
@@ -253,6 +451,15 @@ int main() {
     standingStill();
     aFootInTheAirDoesNotCountWhateverThePhase();
     resetting();
+    aStillRobotLearnsItsGyroBias();
+    standingStillDriftsLessThanTheGyro();
+    aTurnTheFeetUndercountIsCorrectedByTheGyro();
+    walkingAnArcFollowsTheFusedHeading();
+    walkingTeachesTheBiasNothing();
+    withoutAGyroItIsTheKinematicOdometry();
+    aStaleOrMissingGyroIsNone();
+    aTurnTheFeetDidNotSeeIsTheGyros();
+    theServiceFusesAFreshGyro();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

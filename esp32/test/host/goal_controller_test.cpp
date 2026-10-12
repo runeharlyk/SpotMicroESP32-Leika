@@ -229,17 +229,6 @@ static void onlyOneFiniteTargetAtASaneSpeedIsValid() {
     CHECK(!GoalController::valid({0.2f, 0, 0, NAN}));
 }
 
-// The odometry's estimates to a body step: the inverse of how the odometry integrates one.
-static void aBodyStepIsTakenInTheFrameItStartedIn() {
-    const OdometryEstimate before {1, 2, 3.0f, 0};
-    const float c = std::cos(3.0f), s = std::sin(3.0f);
-    const OdometryEstimate after {1 + c * 0.02f - s * 0.01f, 2 + s * 0.02f + c * 0.01f, 3.0f + 0.5f - 2 * static_cast<float>(M_PI), 0};
-    const BodyStep step = bodyStep(before, after);
-    CHECK_NEAR(step.forward, 0.02f, 1e-6);
-    CHECK_NEAR(step.left, 0.01f, 1e-6);
-    CHECK_NEAR(step.turn, 0.5f, 1e-5);
-}
-
 int main() {
     aForwardGoalStopsWithinItsTolerance();
     itSlowsOverTheLastStretchDownToAFloor();
@@ -249,7 +238,6 @@ int main() {
     aGoalThatGetsNowhereTimesOut();
     aCancelEndsOnlyARunningGoal();
     onlyOneFiniteTargetAtASaneSpeedIsValid();
-    aBodyStepIsTakenInTheFrameItStartedIn();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

@@ -5,11 +5,12 @@
 #include <telemetry/telemetry.h>
 #include <algorithm>
 
-inline void odometryToProto(const OdometryEstimate &estimate, socket_message_OdometryData &proto) {
+inline void odometryToProto(const FusedEstimate &estimate, socket_message_OdometryData &proto) {
     proto.x = estimate.x;
     proto.y = estimate.y;
     proto.yaw = estimate.yaw;
     proto.distance = estimate.distance;
+    proto.kinematic_yaw = estimate.kinematicYaw;
 }
 
 /** When a control tick's parts ran, in esp_timer microseconds. */

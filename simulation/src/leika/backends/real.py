@@ -272,7 +272,8 @@ class RealBackend:
 
     def _odometry(self, reset: bool) -> Odometry:
         data = self.request(pb.CorrelationRequest(odometry_request=pb.OdometryRequest(reset=reset))).odometry
-        return Odometry(x=data.x, y=data.y, yaw=math.degrees(data.yaw), distance=data.distance)
+        return Odometry(x=data.x, y=data.y, yaw=math.degrees(data.yaw), distance=data.distance,
+                        kinematic_yaw=math.degrees(data.kinematic_yaw))
 
     # --- goal moves ----------------------------------------------------------------------------------------------
     def supports_goals(self) -> bool:

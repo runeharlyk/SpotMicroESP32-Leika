@@ -286,6 +286,30 @@ static void aClockwiseGestureTurnsAFullCircle() {
     CHECK_NEAR(std::remainder(motion.odometry().yaw, 2 * static_cast<float>(M_PI)), 0, SETTLED_RAD);
 }
 
+// A turn closes on the fused heading: with a gyro that reads 15 % more turn than the feet show, as the body turns
+// when its feet undercount, the goal stops at 90 degrees by the gyro, about 78 by the feet.
+static void aTurnClosesOnTheFusedHeading() {
+    MotionService motion;
+    standingPico(motion);
+    ImuSample imu;
+    imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
+    auto gyroTick = [&]() {
+        const float feetBefore = motion.odometry().kinematicYaw;
+        fake_timer::nowUs += 10000;
+        imu.t_us = fake_timer::nowUs;
+        motion.update(imu, eGestureNone);
+        // The next sample reads this tick's turn; a tick late is a gyro's 10 ms of lag.
+        imu.gyro[2] = 1.15f * std::remainder(motion.odometry().kinematicYaw - feetBefore, 2 * M_PI) * TICKS_PER_S;
+    };
+    for (int i = 0; i < TICKS_PER_S; i++) gyroTick();
+    motion.inbox.postGoal({0, 0, 90 * DEG, 0.5f});
+    for (int i = 0; i < 30 * TICKS_PER_S && motion.goalStatus().state != GoalState::REACHED; i++) gyroTick();
+    CHECK(motion.goalStatus().state == GoalState::REACHED);
+    const FusedEstimate at = motion.odometry();
+    CHECK_NEAR(at.yaw, 90 * DEG, 3 * DEG);
+    CHECK_NEAR(at.kinematicYaw, 90 * DEG / 1.15f, 3 * DEG);
+}
+
 int main() {
     aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile();
     aClockwiseGestureTurnsAFullCircle();
@@ -298,6 +322,7 @@ int main() {
     aGoalTheModeNoLongerAllowsIsCancelled();
     anOdometryResetMidGoalChangesNothing();
     aNewGoalReplacesTheRunningOne();
+    aTurnClosesOnTheFusedHeading();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

@@ -30,7 +30,7 @@ class FakeRobot:
         self.mode, self.gait = pb.DEACTIVATED, pb.TROT
         self.peripheral_settings = api_pb2.PeripheralSettings(sda=21, scl=22, frequency=400000)
         self.peripheral_settings.imu.mounting[:] = [0, 1, 0, -1, 0, 0, 0, 0, 1]
-        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75)
+        self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75, kinematic_yaw=math.pi / 3)
         self.goals, self.goal_s, self.goal_end, self.goal_quiet = goals, 0.3, pb.GOAL_REACHED, False
         self.goal = pb.GoalStatus()
         self.received = []  # (monotonic time, Message)

@@ -193,8 +193,26 @@ The body's own shift and twist over the feet (`xm`, `zm`, `phi`) count as motion
 The estimate is x and y in metres, yaw in radians counter-clockwise and the distance along the path, in the floor frame the robot faced at the last reset (REP-103: x forward, y left).
 It starts afresh on deactivation and on an `odometry_request` with `reset`; telemetry carries it in every `TickSample`.
 
-The heading integrates the feet's own yaw rather than the IMU's.
-The Pico's compass is uncalibrated and the gyro's yaw drifts with a bias nothing estimates yet, while the feet's yaw has no drift; fusing the gyro is left to a filter.
+The heading fuses the feet's yaw rate with the gyro's z rate (`FusedOdometry`).
+The feet's yaw has no drift, but misses what the gait does not command: the trot rocks the body in yaw, and in MuJoCo a turn comes up 9 % short by the feet.
+The gyro has only white noise and the bias the boot calibration left.
+While the feet keep still, a scalar Kalman filter learns that bias from the difference of the two rates (a zero angular rate update); walking, it leaves the bias alone, since the difference then also holds the feet's undercount.
+The heading integrates the two rates weighted by their variances: the gyro's while walking, mostly the feet's while standing.
+The position integrates the feet's displacement in that heading.
+Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's estimate alone.
+`OdometryData.kinematic_yaw` carries the feet's own heading, so their ratio over a turn on the real robot measures the gait's turn scale without a protractor.
+
+| Parameter | Value | Source |
+| --- | --- | --- |
+| Gyro z noise | 0.0012 rad/s | a still Pico, measured 2026-10-01 |
+| Bias prior | 0.05 rad/s | `domain_rand.py`'s per-episode gyro bias, the scale a boot calibration that saw the robot move leaves |
+| Bias random walk | 1e-4 rad/s per square-root second | assumed: about 0.006 rad/s over an hour |
+| Feet yaw-rate error | 0.0002 rad/s still, plus 2 rad/s per m/s and 0.4 per rad/s turned | the standstill assumed; walking and turning from MuJoCo against its gyro (0.08 rad/s per tick at 0.04 m/s, 0.17 at 0.46 rad/s) |
+| Feet motion fades over | 0.2 s | the body coasts after the feet stop (0.74 rad/s to 0.04 in 70 ms in MuJoCo), and the servos lag the commanded feet |
+| Still below | 0.01 rad/s of feet motion | chosen: well under the 0.08 rad/s a walk shows |
+
+In MuJoCo, with the gyro biased by 0.05 rad/s and given the measured noise after 2 s standing, the fused heading ends within 0.5 degrees of the base over 4 s turns of about 100 degrees each way and 8 s arcs of 124 and 248 degrees, where the feet's falls 6 to 22 degrees short.
+The compass stays out until it is calibrated, and so does the accelerometer: at a walk the body barely accelerates on average, and a degree of tilt error alone reads as 0.17 m/s^2, so a stall would not stand out.
 
 The estimate knows only what the gait commanded.
 On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 11 to 15 % short.
@@ -208,9 +226,10 @@ From STAND or WALK the motion service switches to WALK and sets the sticks itsel
 The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
 The stick slows in proportion over the last 5 cm or 30 degrees, down to a fifth of the asked speed, and the robot walks on until it is past the target; within 1 cm or 3 degrees then it has arrived, centres the sticks and stands.
 On the Pico in the host test it settles within 1.1 mm and 0.6 degrees of the target, by its odometry.
+A turn closes on the fused heading: in MuJoCo a 90 degree goal turns the base 90.1 degrees, where the feet's heading alone stopped it at 100.0.
 
 The dead-man stop guards the app's input and leaves a goal alone.
 A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it closing its socket, or a newer goal; it gives up after twice the time it should take plus 2 s.
 Every end but the app taking over centres the sticks.
 
-The goal is only as good as the odometry: until that is calibrated against a tape measure, the robot lands off by the odometry's error.
+The goal is only as good as the odometry: until its distances are calibrated against a tape measure, the robot lands off by their error.

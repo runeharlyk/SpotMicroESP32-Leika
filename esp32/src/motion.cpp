@@ -231,7 +231,7 @@ void MotionService::applyMode(socket_message_ModesEnum modeData) {
             {
                 // Afresh, without the last feet: a variant switch while deactivated moves them all at once.
                 std::lock_guard<std::mutex> lock(odometryMutex);
-                kinematicOdometry = {};
+                fusedOdometry = {};
             }
             break;
         default: setState(nullptr); break;
@@ -282,9 +282,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
         const std::array<bool, 4> stance =
             state == &walkState ? walkState.stance() : std::array<bool, 4> {true, true, true, true};
         std::lock_guard<std::mutex> lock(odometryMutex);
-        const OdometryEstimate before = kinematicOdometry.estimate();
-        kinematicOdometry.update(body_state, stance);
-        step = bodyStep(before, kinematicOdometry.estimate());
+        step = fusedOdometry.update(body_state, stance, FusedOdometry::yawRate(imu, now), dt);
     }
     if (state == &animateState) {
         std::copy(animateState.angles(), animateState.angles() + 12, new_angles);

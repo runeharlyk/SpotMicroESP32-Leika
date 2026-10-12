@@ -6,10 +6,11 @@ import pytest
 
 from src.leika import GoalCancelled, Mode, Robot, RobotError
 from src.leika.backends.sim import MODEL_TO_REP
-from test_odometry import CROSS_TRACK_M, SHORTFALL
+from test_odometry import CROSS_TRACK_M, SHORTFALL, TURN_ERROR
 
-# Measured: the goal ends 1.5 mm and 0.7 degrees off on the odometry once settled, the walk's smoothing carrying it on
-# past the goal; the base, which the odometry undercounts, walked 0.214 m for 0.2 and turned 100.0 degrees for 90.
+# Measured: the goal ends 1.5 mm and 0.4 degrees off on the odometry once settled, the walk's smoothing carrying it on
+# past the goal; the base walked 0.214 m for 0.2, which the feet undercount, veering 1.4 degrees, which the gyro's
+# heading follows, and turned 90.1 degrees for 90, by the gyro's heading, where the feet show 81.4.
 SETTLED_M = 0.003
 SETTLED_DEG = 1.0
 
@@ -46,13 +47,14 @@ def test_a_goal_of_0_2_m_forward_ends_on_the_odometry_and_short_of_the_base_by_i
     robot.sleep(1.0)
     odometry = robot.odometry()
     assert odometry.x == pytest.approx(0.2, abs=SETTLED_M)
-    assert abs(odometry.y) < SETTLED_M and abs(odometry.yaw) < SETTLED_DEG
+    assert abs(odometry.y) < SETTLED_M and abs(odometry.kinematic_yaw) < SETTLED_DEG
     x, y, yaw = _moved(robot, start)
     assert SHORTFALL[0] < odometry.x / x < SHORTFALL[1]
+    assert odometry.yaw == pytest.approx(yaw, abs=SETTLED_DEG)
     assert abs(y) < CROSS_TRACK_M
 
 
-def test_a_goal_of_90_degrees_ends_on_the_odometry_and_short_of_the_base_by_its_error(robot):
+def test_a_goal_of_90_degrees_ends_on_the_fused_heading_and_so_on_the_base(robot):
     robot.reset_odometry()
     start = _pose(robot)
     robot.goal_move(turn_deg=90)
@@ -61,7 +63,8 @@ def test_a_goal_of_90_degrees_ends_on_the_odometry_and_short_of_the_base_by_its_
     assert odometry.yaw == pytest.approx(90, abs=SETTLED_DEG)
     assert np.hypot(odometry.x, odometry.y) < SETTLED_M
     x, y, yaw = _moved(robot, start)
-    assert SHORTFALL[0] < odometry.yaw / yaw < SHORTFALL[1]
+    assert yaw == pytest.approx(90, rel=TURN_ERROR)
+    assert SHORTFALL[0] < odometry.kinematic_yaw / yaw < SHORTFALL[1]
     assert np.hypot(x, y) < CROSS_TRACK_M
 
 
