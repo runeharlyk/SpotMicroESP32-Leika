@@ -105,3 +105,17 @@ def test_diagonal_trot_pairs_sweep_in_opposite_senses():
     assert sense[0] == sense[3]
     assert sense[1] == sense[2]
     assert sense[0] == -sense[1]
+
+
+@pytest.mark.parametrize("phase", [0.0, 0.75])
+def test_a_diagonal_stance_starts_and_ends_on_the_ground(phase):
+    """The stance's dip follows the stride, so a foot meets the swing's ends at ground height in every direction.
+
+    The replaced code took the dip from the sum of the stride's two components, which only equals the stride along an
+    axis: a diagonal stance ended in the air and the swing started from the ground, a jump of the foot.
+    """
+    gait = GaitState(step_x=MAX_STEP_LENGTH, step_z=MAX_STEP_LENGTH)
+    controller, body = GaitController(), BodyState()
+    controller.set_phase(phase)  # front right foot at the start, then the end, of its stance
+    controller.generate_feet(gait, body)
+    assert abs(body.feet[0, 2] - DEFAULT_FEET[0, 2]) < 1e-12

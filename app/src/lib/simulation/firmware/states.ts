@@ -183,7 +183,7 @@ const stanceCurve: Curve = (length, angle, depth, phase, point) => {
     const step = length * (1 - 2 * phase)
     point[0] += step * Math.cos(angle)
     point[2] += step * Math.sin(angle)
-    if (length !== 0) point[1] = -depth * Math.cos((Math.PI * (point[0] + point[2])) / (2 * length))
+    if (length !== 0) point[1] = -depth * Math.cos((Math.PI * step) / (2 * length))
 }
 
 // Evaluated at the firmware's float precision, with the powers built by multiplication as the firmware does.

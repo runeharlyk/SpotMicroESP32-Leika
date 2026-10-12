@@ -273,7 +273,7 @@ class WalkState : public MotionState {
         float step = length * (1.0f - 2.0f * phase);
         point[0] += step * std::cos(angle);
         point[2] += step * std::sin(angle);
-        if (length != 0.0f) point[1] = -*depth * std::cos((M_PI * (point[0] + point[2])) / (2.f * length));
+        if (length != 0.0f) point[1] = -*depth * std::cos((M_PI * step) / (2.f * length));
     }
 
     static void bezierCurve(const float length, const float angle, const float *height, const float phase,

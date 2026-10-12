@@ -228,7 +228,7 @@ def _stance_curve(length, angle, depth, phase, point):
     point[0] += step * math.cos(angle)
     point[2] += step * math.sin(angle)
     if length != 0.0:
-        point[1] = -depth * math.cos((math.pi * (point[0] + point[2])) / (2.0 * length))
+        point[1] = -depth * math.cos((math.pi * step) / (2.0 * length))
 
 
 def _bezier_curve(length, angle, height, phase, point):
