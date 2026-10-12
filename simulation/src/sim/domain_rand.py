@@ -1,7 +1,7 @@
 """Domain randomization for sim-to-real transfer.
 
 Applied by `QuadrupedMjEnv` when `randomize=True`. Per-episode it perturbs the MODEL
-(masses/inertia, CoM, friction, motor strength) and sets per-episode sensor biases,
+(masses/inertia, CoM, friction, motor strength, servo supply voltage) and sets per-episode sensor biases,
 action latency, and a push schedule. Per-step it adds IMU noise and applies pushes.
 
 Ranges are conservative and scaled to spot_pico (~0.6 kg, open-loop micro-servos). The most
@@ -12,12 +12,16 @@ Calibrate the IMU noise ranges against real stationary logs later.
 import numpy as np
 import mujoco
 
+from src.sim.servo import RATED_VOLTS
+
 # The ranges below are assumptions until real recordings replace them (see report_recording.py).
 GYRO_BIAS_STD = 0.05       # rad/s, per episode
 GYRO_NOISE_STD = 0.05      # rad/s, per step
 RPY_BIAS_DEG = 5.0         # degrees, per episode, uniform +-
 RPY_NOISE_DEG = 1.5        # degrees, per step
 GRAVITY_NOISE_STD = 0.02   # per step, on the unit gravity vector
+SUPPLY_VOLTS = RATED_VOLTS  # undocumented on the Pico, so anywhere in the MG92B's rated range
+STALL_SPREAD = (0.9, 1.1)  # per servo, unit-to-unit
 ACTION_LATENCY_STEPS = (0, 3)  # rng.integers bounds: 0 to 2 control steps
 CONTROL_DT = 0.01          # s, the 100 Hz control step the latency counts in
 
@@ -30,7 +34,6 @@ class DomainRandomizer:
         self.base_geom_friction = model.geom_friction.copy()
         self.base_gainprm = model.actuator_gainprm.copy()
         self.base_biasprm = model.actuator_biasprm.copy()
-        self.base_forcerange = model.actuator_forcerange.copy()
         self.base_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "base_link")
 
         # per-episode state
@@ -42,7 +45,7 @@ class DomainRandomizer:
         self.push_force = np.zeros(3)
 
     # -------------------------------------------------- per-episode (at reset)
-    def reset_episode(self, model, rng):
+    def reset_episode(self, model, servo, rng):
         scale = rng.uniform(0.85, 1.15, size=model.nbody)
         model.body_mass[:] = self.base_body_mass * scale
         model.body_inertia[:] = self.base_body_inertia * scale[:, None]
@@ -56,7 +59,7 @@ class DomainRandomizer:
         kp = rng.uniform(0.85, 1.15)
         model.actuator_gainprm[:, 0] = self.base_gainprm[:, 0] * kp
         model.actuator_biasprm[:, 1] = self.base_biasprm[:, 1] * kp
-        model.actuator_forcerange[:] = self.base_forcerange * rng.uniform(0.9, 1.1)
+        servo.set_supply(rng.uniform(*SUPPLY_VOLTS), rng.uniform(*STALL_SPREAD, size=len(servo.act_ids)))
 
         # per-episode sensor biases + latency
         self.gyro_bias = rng.normal(0.0, GYRO_BIAS_STD, size=3)

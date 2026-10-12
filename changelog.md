@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - Drives the robot and streams its live data and telemetry over the USB cable on boards with a native USB port, in the app and in the Python client and recorder; a USB-serial chip's port still carries requests only
 - Shows the robot's 3D model on the servo calibration page, posed by the PWM being set, with the Pico's knees turned through their four-bar linkage
 - Adds a controller view with the robot's reported pose beside the simulation, both driven by the same sticks
+- Gives the simulated servos the MG92B's torque-speed line, so they slow under load and give way past stall, with the supply voltage randomised between its 4.8 and 6.0 V ratings
+- Adds terrain and payload stages to the simulation's training - a payload, bumps, slopes and stairs - advanced by how many episodes succeed
 
 ### Changed
 
