@@ -29,6 +29,10 @@
     <body name="base_link" pos="0 0 0.13">
       <freejoint name="root"/>
       <site name="imu" pos="0 0 0" size="0.01" rgba="1 0 0 0.3"/>
+      <!-- Payload carried on the base: weightless until src/sim/stages.py sets its mass and centre of mass. -->
+      <body name="payload">
+        <inertial pos="0 0 0" mass="1e-6" diaginertia="1e-12 1e-12 1e-12"/>
+      </body>
       <inertial pos="0.000337 -0.010367 0.000363" quat="0.505214 0.49863 -0.49994 0.496173" mass="0.33629" diaginertia="0.0013827 0.00110394 0.000394446"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.25 0.25 0.27 1" mesh="base_link"/>
       <geom type="mesh" rgba="0.25 0.25 0.27 1" mesh="base_link"/>

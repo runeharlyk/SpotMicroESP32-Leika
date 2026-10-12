@@ -28,7 +28,8 @@ command [vx, vy, yaw]  ->  analytic_gait_action  ->  firmware gait (phase clock,
   (verified to 0.0 mm against MuJoCo forward kinematics) + command-to-gait map.
 - `src/sim/mj_runtime.py` — MuJoCo runtime wrapper (load model, IK→ctrl, IMU/contacts).
 - `src/sim/domain_rand.py` — per-episode/step domain randomization for sim-to-real.
-- `src/sim/terrain.py` - per-episode random heightfield for `scene_terrain.xml`.
+- `src/sim/terrain.py` - per-episode heightfield ground for `scene_terrain.xml`: random bumps, a slope or stairs.
+- `src/sim/stages.py` - the terrain and payload stages and the success-driven schedule that moves through them.
 - `src/envs/quadruped_mj_env.py` — Gymnasium env; 12-D residual action, 38-D hardware-only
   observation (gravity-in-body, gyro, rpy, prev joint cmd, gait phase, command, prev action),
   ANYmal-style exponential velocity/yaw tracking reward (weights 3.0 and 1.0) minus penalties on
@@ -72,6 +73,10 @@ uv run pytest -q                                                    # regression
 Uneven ground: pass `--terrain 0.008` to `train_mj.py` to train on the heightfield scene
 (`scene_terrain.xml`) with per-episode random bumps up to the given height in metres. The policy
 is blind (IMU only, no exteroception), so terrain only enters through proprioception.
+
+Stages: pass `--stages` instead to move through the terrain and payload stages of `src/sim/stages.py`: flat ground, then a payload of up to 0.15 kg on the base with an off-centre centre of mass, bumps, slopes up to 10 degrees and stairs with risers up to 10 mm.
+An episode succeeds when the robot does not fall and tracks the commanded velocity well on average; the stage advances when 80 % of the last 50 episodes at it succeed, and falls back below 40 %, never below the first stage.
+TensorBoard shows the stage as `curriculum/stage`.
 
 TensorBoard: `uv run tensorboard --logdir runs`. Watch `terms/r_vel` (tracking) rise and
 `terms/p_res` (residual magnitude) stay small — the policy should stabilize, not replace, the gait.
