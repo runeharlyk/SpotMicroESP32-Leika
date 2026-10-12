@@ -9,6 +9,7 @@ Examples:
   python train_mj.py --randomize --zero-final --init-std 0.3 --timesteps 5_000_000 --num-envs 16
   python train_mj.py --curriculum --resample-steps 300 --tag residual_dr
   python train_mj.py --randomize --zero-final --stages  # terrain and payload stages, advanced by success
+  python train_mj.py --randomize --dr-centre recording.sysid.json  # ranges re-centred by identify.py
   python train_mj.py --smoke           # quick end-to-end sanity run
 """
 
@@ -86,9 +87,10 @@ class TermLogger(BaseCallback):
         return True
 
 
-def build_vecenv(n, randomize, seed, subproc, vn_load=None, resample_steps=0, terrain=0.0, stages=False):
+def build_vecenv(n, randomize, seed, subproc, vn_load=None, resample_steps=0, terrain=0.0, stages=False,
+                 dr_centre=None):
     fns = [make_env(randomize=randomize, seed=seed + i, resample_steps=resample_steps,
-                    terrain=terrain, stages=stages) for i in range(n)]
+                    terrain=terrain, stages=stages, dr_centre=dr_centre) for i in range(n)]
     venv = SubprocVecEnv(fns) if (subproc and n > 1) else DummyVecEnv(fns)
     venv = VecMonitor(venv)
     if vn_load and os.path.exists(vn_load):
@@ -119,11 +121,15 @@ def main():
     ap.add_argument("--curriculum", action="store_true", help="ramp command forward->omnidirectional")
     ap.add_argument("--stages", action="store_true",
                     help="terrain and payload stages (flat, payload, bumps, slopes, stairs), advanced by success")
+    ap.add_argument("--dr-centre", default=None,
+                    help="identify.py's JSON file, which re-centres the randomisation ranges (needs --randomize)")
     ap.add_argument("--tag", default=None, help="override output run-dir name")
     ap.add_argument("--smoke", action="store_true", help="tiny run to verify the pipeline")
     args = ap.parse_args()
     if args.stages and args.terrain > 0:
         ap.error("--stages chooses the terrain; drop --terrain")
+    if args.dr_centre and not args.randomize:
+        ap.error("--dr-centre re-centres the randomisation; add --randomize")
 
     if args.smoke:
         args.timesteps, args.num_envs, args.no_subproc = 4000, 2, True
@@ -136,10 +142,10 @@ def main():
     vn_load = os.path.join(args.init_from, "vecnormalize.pkl") if args.init_from else None
     train_env = build_vecenv(args.num_envs, args.randomize, args.seed, not args.no_subproc,
                              vn_load=vn_load, resample_steps=args.resample_steps, terrain=args.terrain,
-                             stages=args.stages)
+                             stages=args.stages, dr_centre=args.dr_centre)
     # With --stages the eval env stays on flat ground: the best model is the one that still walks there.
     eval_env = build_vecenv(1, args.randomize, args.seed + 1000, False, vn_load=vn_load,
-                            terrain=args.terrain)
+                            terrain=args.terrain, dr_centre=args.dr_centre)
     eval_env.training = False
     eval_env.norm_reward = False
 

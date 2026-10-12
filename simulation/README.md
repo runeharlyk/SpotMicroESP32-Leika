@@ -62,6 +62,7 @@ uv run python eval_policy.py runs/residual_pure_dr --vx 0.05        # watch a tr
 uv run python visionary_demo.py [address]                           # Robot API demo; an address drives the real robot
 uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file)
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
+uv run python identify.py recording.leika                           # fit servo model, lag and IMU noise; writes recording.sysid.json
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
@@ -111,6 +112,19 @@ The firmware streams every control tick to subscribers: its timing, the IMU samp
 Three seconds without a frame count as a lost link.
 `report_recording.py` prints the recording's latencies and IMU noise beside the ranges `src/sim/domain_rand.py` assumes.
 Pass `--still` for a robot that stood still throughout, so the gyro mean is its bias and the spread its noise.
+
+## System identification
+
+`identify.py` fits the simulation to a recording instead of leaving its domain randomisation at hand-picked ranges (`src/sim/sysid.py`).
+Record the robot standing still for a few seconds, then walking on flat ground.
+- Gyro bias and the gyro and roll/pitch noise come from the still segments; the roll/pitch bias does not, since a mounting tilt and a tilted floor look alike.
+- The sensor-to-servo latency comes from the ticks' timing fields.
+- The servo supply voltage, one stall strength common to all servos and the actuator lag come from replaying the written joint angles through the Pico model and matching the recorded gyro and gravity direction, the only measurements of the body's motion, since the servos report nothing back.
+
+Each fitted value comes with a sigma, and a parameter the recording cannot pin within half of today's randomisation range is reported as not identifiable instead.
+The sigmas assume the model explains the recording down to the IMU noise (a fit residual near 1); a larger residual means they understate the uncertainty.
+The result, `recording.sysid.json`, re-centres the ranges when passed to `train_mj.py --randomize --dr-centre recording.sysid.json`; without it the ranges stay as they are.
+The tool is proven on synthetic recordings made in the simulation at known values (`tests/test_sysid.py`); no real recording has been fitted yet.
 
 ## Follow-ups (out of scope here)
 
