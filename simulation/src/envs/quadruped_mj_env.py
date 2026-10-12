@@ -29,7 +29,7 @@ import gymnasium as gym
 import mujoco
 
 from src.sim.mj_runtime import SpotPicoSim, CONTROL_DT, TERRAIN_MODEL_PATH
-from src.sim.domain_rand import DomainRandomizer
+from src.sim.domain_rand import DomainRandomizer, Ranges
 from src.sim.stages import STAGES, apply_stage
 from src.sim.terrain import ground_height, randomize_hfield
 from src.robot.firmware_gait import (
@@ -83,7 +83,7 @@ class QuadrupedMjEnv(gym.Env):
 
     def __init__(self, randomize: bool = False, episode_seconds: float = 20.0,
                  seed: int | None = None, command: tuple | None = None,
-                 resample_steps: int = 0, terrain: float = 0.0, stages: bool = False):
+                 resample_steps: int = 0, terrain: float = 0.0, stages: bool = False, dr_ranges: Ranges = Ranges()):
         super().__init__()
         if terrain > 0 and stages:
             raise ValueError("the stages choose the terrain; pass terrain or stages, not both")
@@ -102,7 +102,7 @@ class QuadrupedMjEnv(gym.Env):
         set_mode(self.gait, TROT)
         self.body = BodyState()
         self.np_random_, _ = gym.utils.seeding.np_random(seed)
-        self.dr = DomainRandomizer(self.sim.model) if randomize else None
+        self.dr = DomainRandomizer(self.sim.model, dr_ranges) if randomize else None
         self._cmd_buffer: deque = deque(maxlen=8)
 
         self.act_dim = ACT_DIM
@@ -283,9 +283,11 @@ class QuadrupedMjEnv(gym.Env):
         return reward, terminated, terms
 
 
-def make_env(randomize=False, seed=0, resample_steps=0, terrain=0.0, stages=False):
-    """Factory for SubprocVecEnv (must be picklable / module-level)."""
+def make_env(randomize=False, seed=0, resample_steps=0, terrain=0.0, stages=False, dr_centre=None):
+    """Factory for SubprocVecEnv (must be picklable / module-level). `dr_centre`: identify.py's JSON file, which
+    re-centres the randomisation ranges."""
     def _thunk():
+        ranges = Ranges.identified(dr_centre) if dr_centre else Ranges()
         return QuadrupedMjEnv(randomize=randomize, seed=seed, resample_steps=resample_steps,
-                              terrain=terrain, stages=stages)
+                              terrain=terrain, stages=stages, dr_ranges=ranges)
     return _thunk

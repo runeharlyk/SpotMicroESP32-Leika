@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Adds Show on robot to the animation editor, ported from the Hexapod: the robot holds the pose being edited and follows it, from stand, until switched off, its client leaves or another mode is chosen, easing back to stance
 - Adds firmware updates the robot downloads itself over its own WiFi, from an https URL checked against ESP-IDF's certificate bundle, ported from the Hexapod: the Firmware page offers to install the latest release on the robot when it has WiFi; the `esp32-camera` and `esp32dev` builds leave it out, as their app slots have no room for TLS
 - Adds `servo_feasibility.py` and `servo_margin.py` to the simulation, ported from the Hexapod: the firmware's walk and animation traces against the MG92B's speed and joint travel, and how much slower servos they still follow
+- Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
 
 ### Changed
 

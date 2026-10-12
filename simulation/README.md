@@ -68,6 +68,7 @@ uv run python calibrate_compass.py recording.leika [--write <address>]  # fit th
 uv run python virtual_robot.py --port 8765                          # a robot on this computer, from the firmware's C++
 uv run python release_smoke.py 192.168.1.39                         # the check before a release; exits non-zero on a breach
 uv run python sim_vs_real.py 192.168.1.39                           # how far the simulation drifts from a Pico (--virtual: the virtual robot)
+uv run python identify.py recording.leika                           # fit servo model, lag and IMU noise; writes recording.sysid.json
 
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
@@ -203,6 +204,19 @@ The simulation runs the firmware's walk with the MINI's constants, so what remai
 Against the virtual robot the stand poses agree to 4 degrees per joint, both step at 0.98 Hz (the 1 Hz cadence slowed by the walk's joint speed cap) with the foot phases within 0.01 cycles, and the joints' motion agrees to 3 degrees RMS by script time and over a cycle.
 The thresholds sit a margin above that and below what a single joint whose motion is reversed gives (about 15 degrees RMS or more in some segment), so the check catches a reversed joint, a change of cadence, stride or stance, a leg that steps with the wrong pair, and a trot that starts on the other pair.
 On a real robot the joint targets are computed by the same firmware as on the virtual robot, so they should read as the virtual robot does, apart from the stand's IMU compensation of a tilted body; the new information is the tilt, which the virtual robot does not model.
+
+## System identification
+
+`identify.py` fits the simulation to a recording instead of leaving its domain randomisation at hand-picked ranges (`src/sim/sysid.py`).
+Record the robot standing still for a few seconds, then walking on flat ground.
+- Gyro bias and the gyro and roll/pitch noise come from the still segments; the roll/pitch bias does not, since a mounting tilt and a tilted floor look alike.
+- The sensor-to-servo latency comes from the ticks' timing fields.
+- The servo supply voltage, one stall strength common to all servos and the actuator lag come from replaying the written joint angles through the Pico model and matching the recorded gyro and gravity direction, the only measurements of the body's motion, since the servos report nothing back.
+
+Each fitted value comes with a sigma, and a parameter the recording cannot pin within half of today's randomisation range is reported as not identifiable instead.
+The sigmas assume the model explains the recording down to the IMU noise (a fit residual near 1); a larger residual means they understate the uncertainty.
+The result, `recording.sysid.json`, re-centres the ranges when passed to `train_mj.py --randomize --dr-centre recording.sysid.json`; without it the ranges stay as they are.
+The tool is proven on synthetic recordings made in the simulation at known values (`tests/test_sysid.py`); no real recording has been fitted yet.
 
 ## Follow-ups (out of scope here)
 

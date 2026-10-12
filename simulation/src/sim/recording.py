@@ -22,6 +22,13 @@ _RECORD = struct.Struct("<QI")
 # Rows give the model axes in body coordinates: model x = body y (left), model y = -body x, model z = body z.
 BODY_TO_MODEL = np.array([[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 
+# The MINI firmware's joint angles (legs fl, fr, rl, rr) to the spot_pico MJCF joints: sign * angle + offset, as
+# fit_pico_joint_map.py fitted them for the web app (app/src/lib/simulation/robots.ts). Linear in the tibia, so the
+# four-bar linkage is approximated over the gait's range; the feet follow the firmware's to about 1.3 mm.
+PICO_JOINT_SIGN = np.array([-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1], dtype=float)
+PICO_JOINT_OFFSET = np.radians([7.3, 54.6, 101.2, 6.0, 52.9, -99.4, 5.8, 54.4, 100.4, 6.7, 50.6, -98.1])
+FIRMWARE_LEGS_IN_MODEL_ORDER = [1, 0, 3, 2]  # the model's joints run fr, fl, rr, rl
+
 _TICK_SCALARS = ("seq", "t_us", "period_us", "compute_us", "servo_write_us", "servo_ok", "command_age_us",
                  "command_rx_us", "mode", "gait", "link_lost")
 _TICK_VECTORS = ("angles", "targets", "pwm", "command")
@@ -32,6 +39,13 @@ _NETWORK = ("t_us", "rssi", "channel", "batches_sent", "batches_failed", "ticks_
 
 def to_model_frame(vectors) -> np.ndarray:
     return np.asarray(vectors) @ BODY_TO_MODEL.T
+
+
+def to_model_joints(angles) -> np.ndarray:
+    """The MINI firmware's 12 joint angles (rad, per row) as the spot_pico model's actuator targets (rad)."""
+    mjcf = np.asarray(angles) * PICO_JOINT_SIGN + PICO_JOINT_OFFSET
+    legs = mjcf.reshape(*mjcf.shape[:-1], 4, 3)[..., FIRMWARE_LEGS_IN_MODEL_ORDER, :]
+    return legs.reshape(mjcf.shape)
 
 
 @dataclass
