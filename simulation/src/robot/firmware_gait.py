@@ -6,6 +6,7 @@ it applies no command smoothing. The *kinematics* are NOT the firmware's SPOTMIC
 (that is a different, larger robot) but are derived directly from the spot_pico MJCF, since
 that is the model we train on. So a "zero residual" reproduces the firmware gait *shape*
 executed on spot_pico's geometry.
+tests/test_firmware_gait_traces.py replays the firmware's own traces through the engine and marks where it differs.
 
 Coordinate frame (spot_pico `base_link`, MuJoCo world at identity):
     +X = left, +Y = rear, +Z = up   (so forward = -Y, right = -X).

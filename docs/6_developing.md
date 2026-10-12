@@ -51,14 +51,13 @@ pnpm install
 pnpm proto
 pnpm lint        # prettier --check . && eslint .
 pnpm check       # svelte-kit sync && svelte-check
-pnpm exec playwright install chromium
-pnpm test        # Playwright integration tests, then Vitest unit tests
+pnpm test        # Vitest unit tests, once
+pnpm build       # the hosted app, as the Deploy GitHub Pages workflow builds it
 ```
 
 - `pnpm format` rewrites the files with Prettier (`app/.prettierrc`).
-- `pnpm test:integration` builds the app and serves it with `vite preview` on port 4173 (`app/playwright.config.ts`), so it needs `protoc`.
-- `pnpm test` ends in `vitest`, which stays in watch mode in a terminal. Use `pnpm exec vitest run` for a single run, or `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
-- Unit tests are in `app/tests/unit`, integration tests in `app/tests/integration`.
+- `pnpm test:unit` runs Vitest in watch mode. Use `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
+- Tests are in `app/tests/unit`. They mount pages and components in jsdom, and the socket tests talk to a real WebSocket server.
 
 This is the `Frontend Tests` workflow, triggered by changes in `app/**` and `simulation/src/resources/**`.
 
@@ -110,12 +109,25 @@ uv run pytest -q
 ```
 
 It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` or `app/static/URDF/**` change.
+The workflow skips torch and its CUDA wheels, which no test imports, and runs every later `uv run` with `--no-sync` so they stay out.
+It regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware before the tests, so it also runs when `esp32/include/**` or `esp32/test/host/**` change.
 `uv run python export_gait_trace.py` regenerates `app/tests/fixtures/pico-gait-trace.json`, which the app's `pico-gait.spec.ts` checks.
 
 ### Protobuf schemas (`platform_shared/`)
 
 The `Proto Build` workflow compiles the schemas for the firmware (`python esp32/scripts/compile_protos.py`) and for the app (`pnpm proto`).
 A schema change must build for both, and for the simulation (`gen_protos.py`).
+
+It also checks the wire numbers against `platform_shared/wire_golden.json`, which lists every enum value and every message field with its number.
+A renumbered or removed field or enum value fails the check, because peers built from the older schemas decode by those numbers.
+Remove a field or value only by reserving its number.
+After adding to a schema, update the golden and commit it with the change:
+
+```sh
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py           # update
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py --check   # what CI runs
+uv run --with protobuf --with grpcio-tools --with pytest pytest -q platform_shared
+```
 
 ## Releases
 
