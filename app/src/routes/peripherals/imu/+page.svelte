@@ -1,6 +1,7 @@
 <script lang="ts">
     import IMU from './imu.svelte'
     import Sonar from './Sonar.svelte'
+    import Power from './Power.svelte'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
 
     const features = useFeatureFlags()
@@ -10,5 +11,8 @@
     <IMU />
     {#if $features.sonar}
         <Sonar />
+    {/if}
+    {#if $features.power}
+        <Power />
     {/if}
 </div>
