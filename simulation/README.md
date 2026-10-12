@@ -65,6 +65,8 @@ uv run python report_recording.py recording.leika [--still]         # its timing
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
 uv run python fit_pico_joint_map.py       # fit the Pico's firmware-to-MJCF joint map for the web app (app/src/lib/simulation/robots.ts)
+uv run python export_policy.py --run residual_pure_dr   # a trained policy as esp32/include/policy/leika_policy.h
+uv run python export_golden.py            # WALK_NN's golden vectors and test policy (esp32/test/host); --check in CI
 
 uv run pytest -q                                                    # regression tests
 ```
@@ -109,6 +111,20 @@ Pass `--still` for a robot that stood still throughout, so the gyro mean is its 
 
 ## Follow-ups (out of scope here)
 
-- **Sim-to-real export**: bake actor + VecNormalize stats + analytic gait map + `servo_from_tibia`
-  into a C++ header for the ESP32 (see Hexapod's `export_policy.py`).
 - Hardware validation of IK joint-sign conventions and the four-bar linkage.
+
+## Deploying to the robot
+
+The spot_pico geometry is the Leika Mini, so a policy runs as the firmware's `WALK_NN` mode on a robot set to `SPOTMICRO_ESP32_MINI` with an IMU.
+`export_policy.py` checks its numpy forward pass against SB3, bakes the command->gait coefficients from the run's `gait_coef.json` and a golden input/output pair the firmware checks at boot, and writes `esp32/include/policy/leika_policy.h`.
+The firmware builds `WALK_NN` only when that header exists and reports `walk_nn` to the app only when it passed its check; no trained policy is committed, so today the mode is refused.
+
+On the robot, `WALK_NN` eases the joints into the trained stance for a second, then runs the policy every 10 ms control tick from phase 0 with a zero action history, as the environment does after a reset.
+The policy's spot_pico joint angles reach the servos through the affine map `fit_pico_joint_map.py` fitted (`esp32/include/spot_pico/joint_map.h`), so the robot's joint model and calibration apply unchanged.
+The host test `walk_nn_test` replays `QuadrupedMjEnv.step` against the firmware tick for tick, with the synthetic policy `export_golden.py` writes, and checks the observation built from IMU samples against the env's.
+
+Still to verify on hardware before the first walk:
+
+- that the WALK_NN stance matches the simulation's stand pose, since the joint map is linear in the four-bar knee and was fitted to the firmware's geometry rather than measured;
+- the observation's signs on a tilted and turning robot (telemetry records the IMU sample every tick);
+- the joystick turn direction in `WalkNNState::handleCommand`.

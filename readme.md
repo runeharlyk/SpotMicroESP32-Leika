@@ -170,7 +170,7 @@ The baseline is a NumPy port of the firmware walk gait in `esp32/include/motion_
 A PPO policy learns only small per-foot corrections on top of it, which keeps training focused on stabilization.
 
 The simulated robot model is `spot_pico`, the hardware behind the firmware's `SPOTMICRO_ESP32_MINI` variant.
-Exporting a trained policy to the ESP32 is not implemented yet.
+A trained policy can be exported to the firmware, where it runs as the `WALK_NN` mode; see the deployment section of the simulation README.
 
 `Robot("simulation")` and `Robot("<robot address>")` expose the same calls, so a script written against the simulation runs on the robot by changing its target.
 `record.py` and `report_recording.py` capture the real robot's telemetry and compare it with the simulation's assumptions.
