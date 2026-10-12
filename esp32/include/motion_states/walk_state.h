@@ -281,19 +281,20 @@ class WalkState : public MotionState {
         const float X_POLAR = std::cos(angle);
         const float Z_POLAR = std::sin(angle);
 
-        const float t = std::clamp(phase, 1e-4f, 1.f - 1e-4f);
-        float phase_power = 1.0f;
-        float inv_phase_power = std::pow(1.0f - t, 11);
-        const float one_minus_phase = 1.0f - t;
+        // The powers by multiplication only: (1 - t)^11 divided back up underflows near the end of a swing (to zero
+        // with -Ofast), which put the foot back on its stance spot for a tick.
+        float phase_powers[BEZIER_POINTS], rest_powers[BEZIER_POINTS];
+        phase_powers[0] = rest_powers[0] = 1.0f;
+        for (int i = 1; i < BEZIER_POINTS; i++) {
+            phase_powers[i] = phase_powers[i - 1] * phase;
+            rest_powers[i] = rest_powers[i - 1] * (1.0f - phase);
+        }
 
-        for (int i = 0; i < 12; i++) {
-            float b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power;
+        for (int i = 0; i < BEZIER_POINTS; i++) {
+            float b = COMBINATORIAL_VALUES[i] * phase_powers[i] * rest_powers[BEZIER_POINTS - 1 - i];
             point[0] += b * BEZIER_STEPS[i] * length * X_POLAR;
             point[1] += b * BEZIER_HEIGHTS[i] * *height;
             point[2] += b * BEZIER_STEPS[i] * length * Z_POLAR;
-
-            phase_power *= t;
-            inv_phase_power /= one_minus_phase;
         }
     }
 };

@@ -186,23 +186,23 @@ const stanceCurve: Curve = (length, angle, depth, phase, point) => {
     if (length !== 0) point[1] = -depth * Math.cos((Math.PI * (point[0] + point[2])) / (2 * length))
 }
 
-// Evaluated at the firmware's float precision: near the end of a swing (1 - t)^11 underflows into
-// float's subnormal range, and dividing it back up by (1 - t) leaves the last Bernstein weights
-// inaccurate, so the robot's foot jumps for one tick. Reproduced here so the simulation shows it.
+// Evaluated at the firmware's float precision, with the powers built by multiplication as the firmware does.
 const bezierCurve: Curve = (length, angle, height, phase, point) => {
     const xPolar = f32(Math.cos(angle))
     const zPolar = f32(Math.sin(angle))
-    const t = f32(clamp(phase, f32(1e-4), f32(1 - 1e-4)))
-    const oneMinus = f32(1 - t)
-    let phasePower = 1
-    let invPhasePower = f32(oneMinus ** 11)
+    const t = f32(phase)
+    const rest = f32(1 - t)
+    const phasePowers = [1]
+    const restPowers = [1]
+    for (let i = 1; i < 12; i++) {
+        phasePowers.push(f32(phasePowers[i - 1] * t))
+        restPowers.push(f32(restPowers[i - 1] * rest))
+    }
     for (let i = 0; i < 12; i++) {
-        const b = f32(f32(COMBINATORIAL_VALUES[i] * phasePower) * invPhasePower)
+        const b = f32(f32(COMBINATORIAL_VALUES[i] * phasePowers[i]) * restPowers[11 - i])
         point[0] = f32(point[0] + f32(f32(f32(b * BEZIER_STEPS[i]) * length) * xPolar))
         point[1] = f32(point[1] + f32(f32(b * BEZIER_HEIGHTS[i]) * height))
         point[2] = f32(point[2] + f32(f32(f32(b * BEZIER_STEPS[i]) * length) * zPolar))
-        phasePower = f32(phasePower * t)
-        invPhasePower = f32(invPhasePower / oneMinus)
     }
 }
 

@@ -234,18 +234,13 @@ def _stance_curve(length, angle, depth, phase, point):
 def _bezier_curve(length, angle, height, phase, point):
     x_polar = math.cos(angle)
     z_polar = math.sin(angle)
-    t = min(max(phase, 1e-4), 1.0 - 1e-4)
-    phase_power = 1.0
-    inv_phase_power = (1.0 - t) ** 11
-    one_minus = 1.0 - t
+    phase_powers = [phase ** i for i in range(12)]
+    rest_powers = [(1.0 - phase) ** i for i in range(12)]
     for i in range(12):
-        b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power
+        b = COMBINATORIAL_VALUES[i] * phase_powers[i] * rest_powers[11 - i]
         point[0] += b * BEZIER_STEPS[i] * length * x_polar
         point[2] += b * BEZIER_STEPS[i] * length * z_polar
         point[1] += b * BEZIER_HEIGHTS[i] * height
-        phase_power *= t
-        if one_minus != 0.0:
-            inv_phase_power /= one_minus
 
 
 def _stroke(gait, foot):

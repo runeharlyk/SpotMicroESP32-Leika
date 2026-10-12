@@ -192,17 +192,17 @@ const stanceCurve = (length: number, angle: number, depth: number, phase: number
 const bezierCurve = (length: number, angle: number, height: number, phase: number, point: Vec3) => {
     const xPolar = Math.cos(angle)
     const zPolar = Math.sin(angle)
-    const t = Math.min(Math.max(phase, 1e-4), 1 - 1e-4)
-    const oneMinus = 1 - t
-    let phasePower = 1
-    let invPhasePower = oneMinus ** 11
+    const phasePowers = [1]
+    const restPowers = [1]
+    for (let i = 1; i < 12; i++) {
+        phasePowers.push(phasePowers[i - 1] * phase)
+        restPowers.push(restPowers[i - 1] * (1 - phase))
+    }
     for (let i = 0; i < 12; i++) {
-        const b = COMBINATORIAL_VALUES[i] * phasePower * invPhasePower
+        const b = COMBINATORIAL_VALUES[i] * phasePowers[i] * restPowers[11 - i]
         point[0] += b * BEZIER_STEPS[i] * length * xPolar
         point[2] += b * BEZIER_STEPS[i] * length * zPolar
         point[1] += b * BEZIER_HEIGHTS[i] * height
-        phasePower *= t
-        if (oneMinus !== 0) invPhasePower /= oneMinus
     }
 }
 
