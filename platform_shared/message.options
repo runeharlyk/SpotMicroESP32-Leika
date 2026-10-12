@@ -31,6 +31,11 @@ socket_message.CorrelationResponse.error_message max_size:64
 # A pointer, as the file chunks are (filesystem.options), so a Message stays small
 socket_message.OtaChunk.data type:FT_POINTER
 
+socket_message.CoreDumpReport.task max_size:16
+socket_message.CoreDumpReport.backtrace max_count:16
+socket_message.CoreDumpReport.app_elf_sha256 max_size:65
+socket_message.CoreDumpReport.panic_reason max_size:128
+
 socket_message.ImuSample.accel max_count:3 fixed_count:true
 socket_message.ImuSample.gyro max_count:3 fixed_count:true
 socket_message.ImuSample.mag max_count:3 fixed_count:true

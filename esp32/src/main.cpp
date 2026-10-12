@@ -22,6 +22,7 @@
 #include <motion.h>
 #include <ota_flash.h>
 #include <animation/animation_store.h>
+#include <core_dump_flash.h>
 #include <wifi_service.h>
 #include <ap_service.h>
 #include <mdns_service.h>
@@ -61,6 +62,7 @@ Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
 anim::AnimationStore animationStore {FS_ANIMATION_DIRECTORY};
+EspCoreDumpStore coreDumpStore;
 
 // The variant the motion code and the servos run with: read at boot, switched by the control task.
 static std::atomic<KinematicsVariant> activeVariant {socket_message_KinematicsVariant_KINEMATICS_VARIANT_UNSET};
@@ -558,15 +560,48 @@ void setupEventSocket() {
 
         {socket_message_CorrelationRequest_animation_stop_tag,
          [](const auto &req, auto &res, Client client) { motionService.inbox.postStopAnimation(); }},
+        {socket_message_CorrelationRequest_core_dump_request_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.which_response = socket_message_CorrelationResponse_core_dump_report_tag;
+             reportCoreDump(coreDumpStore, res.response.core_dump_report);
+         }},
+
+        // Accepted, then streamed as a file download is.
+        {socket_message_CorrelationRequest_core_dump_download_tag,
+         [](const auto &req, auto &res, Client client) {
+             res.status_code = 202;
+             client.link->emit(res, client.id);
+             res.status_code = 0;
+             const uint32_t size = coreDumpStore.size();
+             if (size == 0) return FileSystemWS::fsHandler.refuseDownload("No core dump stored", client.id);
+             std::unique_ptr<FileSystemWS::DownloadSource> source(new (std::nothrow)
+                                                                       CoreDumpSource(coreDumpStore, size));
+             if (!source) return FileSystemWS::fsHandler.refuseDownload("Out of memory", client.id);
+             FileSystemWS::fsHandler.startDownload(std::move(source), size, client.id);
+         }},
+
+        {socket_message_CorrelationRequest_core_dump_erase_tag,
+         [](const auto &req, auto &res, Client client) {
+             if (motionService.mode() != socket_message_ModesEnum_DEACTIVATED) {
+                 res.status_code = 409;
+                 strncpy(res.error_message, "Deactivate first", sizeof(res.error_message) - 1);
+             } else if (!coreDumpStore.erase()) {
+                 res.status_code = 500;
+                 strncpy(res.error_message, "Erasing the core dump failed", sizeof(res.error_message) - 1);
+             }
+             res.which_response = socket_message_CorrelationResponse_core_dump_report_tag;
+             reportCoreDump(coreDumpStore, res.response.core_dump_report);
+         }},
     };
 
-    // File transfer and firmware updates go over the WebSocket only: the serial link carries setup, not files.
+    // File transfer, the core dump download and firmware updates go over the WebSocket only: the serial link carries
+    // setup, not files.
     static const pb_size_t WEBSOCKET_ONLY[] = {
         socket_message_CorrelationRequest_fs_delete_request_tag,   socket_message_CorrelationRequest_fs_mkdir_request_tag,
         socket_message_CorrelationRequest_fs_list_request_tag,     socket_message_CorrelationRequest_fs_download_request_tag,
         socket_message_CorrelationRequest_fs_upload_start_tag,     socket_message_CorrelationRequest_fs_cancel_transfer_tag,
         socket_message_CorrelationRequest_ota_start_tag,           socket_message_CorrelationRequest_ota_chunk_tag,
-        socket_message_CorrelationRequest_ota_finish_tag,
+        socket_message_CorrelationRequest_ota_finish_tag,          socket_message_CorrelationRequest_core_dump_download_tag,
     };
 
     auto answer = [](const socket_message_CorrelationRequest &data, Client client) {

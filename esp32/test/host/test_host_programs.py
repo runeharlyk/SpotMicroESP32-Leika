@@ -62,6 +62,8 @@ PROGRAMS = {
     "ota_session_test.cpp": [],
     "gesture_control_test.cpp": [],
     "cpu_usage_test.cpp": [],
+    "core_dump_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO,
+                           os.path.join(REPO, "esp32", "src", "filesystem_ws.cpp")],
 }
 
 # Compiler flags a program needs besides the firmware's.

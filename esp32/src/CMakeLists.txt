@@ -12,6 +12,7 @@ set(COMPONENT_REQUIRES
     esp_timer
     esp_psram
     spi_flash
+    espcoredump
     littlefs
     fatfs
     sdmmc

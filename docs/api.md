@@ -48,6 +48,16 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 | `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, 415 once the head shows a non-app (e.g. factory) image; each ends the update |
 | `ota_finish` | none (empty 200) | Validate the image and boot it next; 400 when incomplete, 422 when the robot rejects it              |
 
+### Crash dump
+
+The stored core dump; see [websocket.md](websocket.md#crash-dump) for the download and for decoding it.
+
+| Request              | Response                    | Description                                                                                       |
+| -------------------- | --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `core_dump_request`  | `core_dump_report`          | Whether a dump is stored, its size and, when its checksum holds, the summary of the crash         |
+| `core_dump_download` | 202, then streamed messages | Download the dump in chunks of up to 16 KiB, as `fs_download_request` does a file; WebSocket only |
+| `core_dump_erase`    | `core_dump_report`          | Erase the dump; 409 unless deactivated, 500 when the erase fails                                  |
+
 ### WiFi and access point
 
 | Request                               | Response            | Description                                                           |

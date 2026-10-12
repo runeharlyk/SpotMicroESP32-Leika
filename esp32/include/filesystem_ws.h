@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 #include <cstdio>
 
 #define FS_MAX_CHUNK_SIZE 16384
@@ -13,9 +14,16 @@
 
 namespace FileSystemWS {
 
+// What a download streams: a file, or the core dump's partition.
+class DownloadSource {
+  public:
+    virtual ~DownloadSource() = default;
+    // Copies the next bytes into `into`, at most `size`; 0 at the end or when the read failed.
+    virtual size_t read(uint8_t* into, size_t size) = 0;
+};
+
 struct DownloadState {
-    std::string path;
-    FILE* file;
+    std::unique_ptr<DownloadSource> source;
     uint32_t fileSize;
     uint32_t chunkSize;
     uint32_t totalChunks;
@@ -64,6 +72,10 @@ class FileSystemHandler {
     socket_message_FSMkdirResponse handleMkdir(const socket_message_FSMkdirRequest& req);
     socket_message_FSListResponse handleList(const socket_message_FSListRequest& req);
     void handleDownloadRequest(const socket_message_FSDownloadRequest& req, int clientId);
+    // Streams `size` bytes of `source` to the client as one download, which owns the source from here on.
+    void startDownload(std::unique_ptr<DownloadSource> source, uint32_t size, int clientId);
+    // Answers a download that cannot start with the reason the client shows.
+    void refuseDownload(const char* error, int clientId);
     socket_message_FSUploadStartResponse handleUploadStart(const socket_message_FSUploadStart& req, int clientId);
     void handleUploadData(const socket_message_FSUploadData& req);
     socket_message_FSCancelTransferResponse handleCancelTransfer(const socket_message_FSCancelTransfer& req);
