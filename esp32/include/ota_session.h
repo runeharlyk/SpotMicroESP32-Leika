@@ -1,9 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <atomic>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
+#include <ota_image.h>
 
 /** The app slot an update is written to: esp_ota_* on the robot (ota_flash.h), a fake in the host tests. */
 class OtaFlash {
@@ -45,6 +48,7 @@ class OtaSession {
         const uint32_t capacity = flash_.capacity();
         if (capacity == 0) return {501, "This partition table has no slot for updates"};
         if (size == 0 || size > capacity) return {413, "The image does not fit the update slot"};
+        if (size < ota_image::HEAD_SIZE) return NOT_AN_APP;
         if (!flash_.begin()) return {500, "Could not open the update slot"};
         running_ = true;
         client_ = client;
@@ -61,6 +65,13 @@ class OtaSession {
         lastActivityMs_ = nowMs;
         if (index != nextChunk_) return abort({400, "A chunk arrived out of order"});
         if (size > size_ - written_) return abort({400, "More data than announced"});
+        // A factory image would only be refused at the end, after the whole slot was written: look at the head first.
+        if (written_ < ota_image::HEAD_SIZE) {
+            const size_t taken = std::min<size_t>(size, ota_image::HEAD_SIZE - written_);
+            std::memcpy(head_ + written_, data, taken);
+            if (written_ + taken == ota_image::HEAD_SIZE && !ota_image::isAppImage(head_, ota_image::HEAD_SIZE))
+                return abort(NOT_AN_APP);
+        }
         if (!flash_.write(data, size)) return abort({500, "Writing the update slot failed"});
         written_ += size;
         nextChunk_++;
@@ -95,6 +106,7 @@ class OtaSession {
   private:
     static constexpr OtaReply OK {200, ""};
     static constexpr OtaReply NOT_RUNNING {409, "No update running"};
+    static constexpr OtaReply NOT_AN_APP {415, "Not an application image; a factory image cannot be sent over the air"};
 
     bool owns(int client) const { return running_ && client == client_; }
 
@@ -112,4 +124,5 @@ class OtaSession {
     uint32_t written_ = 0;
     uint32_t nextChunk_ = 0;
     uint32_t lastActivityMs_ = 0;
+    uint8_t head_[ota_image::HEAD_SIZE] = {};
 };
