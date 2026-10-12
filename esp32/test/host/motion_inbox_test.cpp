@@ -112,6 +112,50 @@ static void theNewestVariantIsTakenOnce() {
     CHECK(!inbox.take(20).variant);
 }
 
+static void aClipStopsWhenTheClientThatStartedItLeaves() {
+    MotionInbox inbox;
+    inbox.postPlay({nullptr, {}, 0}, 3);
+    CHECK(inbox.take(10).play);
+    inbox.dropClient(5);
+    CHECK(!inbox.take(20).stopAnimation);
+    inbox.dropClient(3);
+    CHECK(inbox.take(30).stopAnimation);
+    inbox.dropClient(3);
+    CHECK(!inbox.take(40).stopAnimation);
+}
+
+static void aClipNotYetTakenIsDroppedWithItsClient() {
+    MotionInbox inbox;
+    inbox.postPlay({nullptr, {}, 0}, 3);
+    inbox.dropClient(3);
+    MotionInbox::Mail mail = inbox.take(10);
+    CHECK(!mail.play && mail.stopAnimation);
+}
+
+static void aClipBelongsToTheClientThatStartedTheLatest() {
+    MotionInbox inbox;
+    inbox.postPlay({nullptr, {}, 0}, 3);
+    inbox.postPlay({nullptr, {}, 0}, 4);
+    inbox.take(10);
+    inbox.dropClient(3);
+    CHECK(!inbox.take(20).stopAnimation);
+    inbox.dropClient(4);
+    CHECK(inbox.take(30).stopAnimation);
+}
+
+static void aStoppedOrUnownedClipIgnoresLeavingClients() {
+    MotionInbox inbox;
+    inbox.postPlay({nullptr, {}, 0}, 3);
+    inbox.postStopAnimation();
+    inbox.take(10);
+    inbox.dropClient(3);
+    CHECK(!inbox.take(20).stopAnimation);
+    inbox.postPlay({nullptr, {}, 0});
+    inbox.take(30);
+    inbox.dropClient(0);
+    CHECK(!inbox.take(40).stopAnimation);
+}
+
 int main() {
     theNewestVariantIsTakenOnce();
     inputIsTakenOnce();
@@ -122,6 +166,10 @@ int main() {
     newInputRearmsTheStop();
     modeAndGaitAreTakenOnce();
     anInputKeepsWhenItArrived();
+    aClipStopsWhenTheClientThatStartedItLeaves();
+    aClipNotYetTakenIsDroppedWithItsClient();
+    aClipBelongsToTheClientThatStartedTheLatest();
+    aStoppedOrUnownedClipIgnoresLeavingClients();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

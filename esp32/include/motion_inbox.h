@@ -60,16 +60,23 @@ class MotionInbox {
         _variant = variant;
     }
 
-    void postPlay(const Play &play) {
+    /** `owner` is the socket client that asked, whose leaving stops the clip; -1 for a link that never leaves. */
+    void postPlay(const Play &play, int owner = -1) {
         std::lock_guard<std::mutex> lock(_mutex);
         _play = play;
         _stopAnimation = false;
+        _clipOwner = owner;
     }
 
     void postStopAnimation() {
         std::lock_guard<std::mutex> lock(_mutex);
-        _play.reset();
-        _stopAnimation = true;
+        stopAnimationLocked();
+    }
+
+    /** A client left: a clip it started stops through its exit, as a stop request would, since nobody can stop a loop. */
+    void dropClient(int client) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (client >= 0 && client == _clipOwner) stopAnimationLocked();
     }
 
     /** Everything posted since the last call; reports a lost link once per silence. */
@@ -93,6 +100,12 @@ class MotionInbox {
     }
 
   private:
+    void stopAnimationLocked() {
+        _play.reset();
+        _stopAnimation = true;
+        _clipOwner = -1;
+    }
+
     std::mutex _mutex;
     std::optional<CommandMsg> _input;
     std::optional<socket_message_ModesEnum> _mode;
@@ -100,6 +113,7 @@ class MotionInbox {
     std::optional<socket_message_KinematicsVariant> _variant;
     std::optional<Play> _play;
     bool _stopAnimation = false;
+    int _clipOwner = -1;
     uint32_t _lastInputAt = 0;
     int64_t _inputAtUs = 0;
     bool _steering = false;
