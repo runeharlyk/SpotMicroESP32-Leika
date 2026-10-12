@@ -5,11 +5,11 @@ writes app/tests/fixtures/firmware-trace-*.json. This replays the walking ticks 
 retargeted to the traced variant's stance feet and turn scale, and compares the feet. Joint angles are not compared:
 the port's inverse kinematics is spot_pico's MJCF chain, which is none of the traced variants.
 
-The port leaves out the firmware's command filter and its phase-clock rule, so the replay applies both itself and a
-separate test, marked as a known divergence, shows the port without them.
+The port leaves out the firmware's command filter, its phase-clock rules (the slowdown for the servos' speed and the
+stop) and its reach bound through each variant's own kinematics, so the replay takes the filtered steps, the phase and
+the bound from the trace, and a separate test, marked as a known divergence, shows the port without them.
 """
 import json
-import math
 from pathlib import Path
 
 import numpy as np
@@ -27,11 +27,6 @@ TOLERANCE = 5e-6
 # float32 and float64 phase clocks can round a tick to opposite sides of the switch.
 SWITCH_MARGIN = 1e-5
 
-# walk_state.h follows these with critical_damper.h, settling 95% of a step in 333 ms.
-FILTER_OMEGA = 4.744 / 0.333
-# walk_state.h runs the phase clock only while a filtered step exceeds this, and holds it at 0 otherwise.
-MOVING = 0.001
-
 
 def _to_port_frame(points):
     """The trace's body frame is x forward, y up, z right; the port's base frame is X left, Y rear, Z up."""
@@ -39,58 +34,51 @@ def _to_port_frame(points):
     return np.stack([-points[..., 2], -points[..., 0], points[..., 1]], axis=-1)
 
 
-class _CriticalDamper:
-    """critical_damper.h: the exact step of a critically damped spring towards a held target."""
-
-    def __init__(self):
-        self.velocity = 0.0
-
-    def step(self, value, target, dt):
-        offset = value - target
-        drive = self.velocity + FILTER_OMEGA * offset
-        decay = math.exp(-FILTER_OMEGA * dt)
-        self.velocity = (self.velocity - FILTER_OMEGA * drive * dt) * decay
-        return target + (offset + drive * dt) * decay
-
-
 def _replay(variant, firmware_filter):
     """Yields (port feet, traced feet, legs in stance, stroke headings, legs near a contact switch) per walking tick.
 
-    The stroke is walk_state.h's handleCommand mapping of the sticks. With firmware_filter the steps follow the
-    firmware's filter and the phase clock its rule; without, the port is driven as its own callers drive it.
+    With firmware_filter the steps (after the command smoothing), the phase and the reach bound are the firmware's own
+    from the trace: its clock and its smoothing slow where a joint would outrun the servos and its bound shrinks a
+    stroke past the legs' reach, both through each variant's own kinematics, which this spot_pico port does not have;
+    what is pinned is the feet's paths. Without, the port takes walk_state.h's handleCommand mapping of the sticks at
+    once and is driven as its own callers drive it.
     """
     trace = json.loads((TRACES / f"firmware-trace-{variant}.json").read_text())
-    kin, dt = trace["kin"], trace["dt"]
+    kin = trace["kin"]
     step_length = max_step_length(variant)
     step_height = (kin["femur"] + kin["tibia"] - kin["coxa_offset"]) / 2
 
     controller, gait, body = fg.GaitController(), fg.GaitState(), fg.BodyState()
     controller.default_position = _to_port_frame(trace["ticks"][0]["body"]["feet"])
-    steps = {"step_x": 0.0, "step_z": 0.0, "step_angle": 0.0}
-    dampers, previous_mode = {}, None
+    port_bound = fg._reach_bound
+    try:
+        yield from _replay_ticks(trace, controller, gait, body, step_length, step_height, firmware_filter)
+    finally:
+        fg._reach_bound = port_bound
+
+
+def _replay_ticks(trace, controller, gait, body, step_length, step_height, firmware_filter):
     for tick in trace["ticks"]:
         fg.set_mode(gait, tick["gait"])
-        mode = tick["mode"]
-        entering, previous_mode = mode != previous_mode, mode
-        if mode != WALK:
+        if tick["mode"] != WALK:
             continue
-        if entering:
-            # A state taking over resets the filter's velocities, not the steps it left behind.
-            dampers = {name: _CriticalDamper() for name in steps}
         cmd = tick["cmd"]
-        targets = {"step_x": cmd["ly"] * step_length, "step_z": -cmd["lx"] * step_length, "step_angle": cmd["rx"]}
-        for name, target in targets.items():
-            steps[name] = dampers[name].step(steps[name], target, dt) if firmware_filter else target
+        if firmware_filter:
+            walk = tick["walk"]
+            step_x, step_z, step_angle = walk["step_x"], walk["step_z"], walk["step_angle"]
+        else:
+            step_x, step_z, step_angle = cmd["ly"] * step_length, -cmd["lx"] * step_length, cmd["rx"]
         # The port's step_z is to the left, the firmware's to the right.
-        gait.step_x, gait.step_z, gait.step_angle = steps["step_x"], -steps["step_z"], steps["step_angle"]
+        gait.step_x, gait.step_z, gait.step_angle = step_x, -step_z, step_angle
         gait.step_velocity = cmd["s"]
         gait.step_height = cmd["s1"] * step_height
         gait.step_depth = fg.DEFAULT_STEP_DEPTH
 
-        if not firmware_filter or any(abs(value) >= MOVING for value in steps.values()):
-            controller.advance_phase(gait, dt)
+        if firmware_filter:
+            controller.set_phase(walk["phase"])
+            fg._reach_bound = lambda _gait, bound=(walk["share"], walk["swing_height"]): bound
         else:
-            controller.set_phase(0.0)
+            controller.advance_phase(gait, trace["dt"])
         controller.generate_feet(gait, body)
 
         leg_phase = np.fmod(controller.phase + gait.offset, 1.0)
@@ -132,20 +120,14 @@ def test_the_port_strides_like_the_firmware(variant, monkeypatch):
 
 @pytest.mark.xfail(strict=True, reason=(
     "firmware_gait.py applies the command to its steps at once, while walk_state.h follows step_x, step_z and "
-    "step_angle with a critically damped spring settling in 333 ms; and the port's phase clock runs on every tick, "
-    "while walk_state.h runs it only while a filtered step exceeds 0.001 and resets it to 0 otherwise"))
+    "step_angle with a critically damped spring settling in 333 ms, and slows that spring and its phase clock where a "
+    "joint of the traced variant would outrun the servos, which the port measures on spot_pico's legs instead"))
 @pytest.mark.parametrize("variant", VARIANTS)
 def test_the_port_without_the_firmware_command_filter(variant, monkeypatch):
     monkeypatch.setattr(fg, "TURN_RATE", 1.0)
     assert _errors(variant, firmware_filter=False, compare="horizontal").max() < TOLERANCE
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "walk_state.h's stanceCurve sinks a stance foot by depth * cos(pi * (forward + right) / (2 * length)), and the "
-    "port's stride frame has its cross axis to the left, so it evaluates forward + left instead, which differs on any "
-    "diagonal stroke, as every turning foot has; on a diagonal stroke the firmware's formula itself raises a stance "
-    "foot above its stance height at the stroke ends or sinks it for the whole stance, depending on the quadrant, "
-    "so the fix belongs in walk_state.h (the along-stroke distance) before the port copies it"))
 @pytest.mark.parametrize("variant", VARIANTS)
 def test_the_port_sinks_stance_feet_like_the_firmware(variant, monkeypatch):
     monkeypatch.setattr(fg, "TURN_RATE", 1.0)

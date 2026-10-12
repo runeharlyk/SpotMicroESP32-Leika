@@ -30,11 +30,16 @@ constexpr float DT = 0.01f;
 const Segment SCRIPT[] = {
     {REST, TROT, {0, 0, 0, 0, 0, 0, 0}, 0, 0, 50},
     {STAND, TROT, {0.3f, -0.2f, 0.4f, -0.3f, 0.6f, 0, 0}, 0.02f, -0.03f, 100},
-    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 200},
-    {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
-    {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
+    // Level again before walking, as a client does, then each walk long enough for whole cycles once the commands
+    // settle, as the joint speed cap slows them.
+    {STAND, TROT, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 100},
+    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    // Both sticks to the rim on a raised body, where the legs reach only a fraction of the stroke.
+    {WALK, TROT, {1, 1, 1, 0, 1, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
-    {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 150},
+    {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 600},
     {STAND, CRAWL, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 50},
     // Out of a state and back while the body is still moving, so a state re-entered with stale smoothing shows.
     {STAND, CRAWL, {0, 0, 0, 0, 1, 0, 0}, 0, 0, 10},
@@ -155,6 +160,11 @@ int main(int argc, char **argv) {
             }
             printf("]},\"stance\":[%d,%d,%d,%d],", motion.stance[0], motion.stance[1], motion.stance[2],
                    motion.stance[3]);
+            const gait_state_t &steps = motion.walk.steps();
+            printf("\"walk\":{\"phase\":%.9g,\"step_x\":%.9g,\"step_z\":%.9g,\"step_angle\":%.9g,\"share\":%.9g,"
+                   "\"swing_height\":%.9g},",
+                   motion.walk.phase(), steps.step_x, steps.step_z, steps.step_angle, motion.walk.strokeShare(),
+                   motion.walk.swingHeight());
             const OdometryEstimate &o = motion.odometry.estimate();
             printf("\"odometry\":{\"x\":%.9g,\"y\":%.9g,\"yaw\":%.9g,\"distance\":%.9g},", o.x, o.y, o.yaw, o.distance);
             printf("\"ik\":[");

@@ -173,6 +173,10 @@ BEZIER_HEIGHTS = np.array([0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0
 
 TROT, CRAWL = 0, 1
 
+# walk_state.h's cap on joint speed (a quarter below the servos' 720 deg/s), and the parts of a tick it slows by.
+MAX_JOINT_SPEED = math.radians(0.75 * 720.0)
+SLOWDOWN_PARTS = 64
+
 # Firmware step parameters (meters). Scaled to spot_pico's small legs (~0.11 m 2-link span)
 # and kept inside the reachable workspace so the zero-residual baseline stays feasible.
 MAX_STEP_LENGTH = 0.030
@@ -185,6 +189,41 @@ MAX_TURN_STEP = 0.026          # mean tangential half-stroke at full step_angle
 TURN_RATE = 2.0 * MAX_TURN_STEP / float(np.hypot(DEFAULT_FEET[:, 0], DEFAULT_FEET[:, 1]).mean())
 DEFAULT_STEP_HEIGHT = 0.015
 DEFAULT_STEP_DEPTH = 0.002
+
+# walk_state.h's reach bound: the bends it keeps every knee between.
+MIN_KNEE_BEND_DEG, MAX_KNEE_BEND_DEG = 10.0, 148.0
+
+
+def _bezier_samples(points: np.ndarray, samples: int) -> np.ndarray:
+    phases = np.linspace(0.0, 1.0, samples + 1)[:, None]
+    return (COMBINATORIAL_VALUES * phases ** np.arange(12) * (1 - phases) ** np.arange(12)[::-1]) @ points
+
+
+# The swing's furthest reach along the stroke, in half strokes, and the swing at SWING_SAMPLES + 1 phases, how far
+# along the stroke in half strokes and how high in step heights.
+SWING_OVERSHOOT = float(np.abs(_bezier_samples(BEZIER_STEPS, 1024)).max())
+SWING_SAMPLES = 64
+SWING_ALONG = _bezier_samples(BEZIER_STEPS, SWING_SAMPLES)
+SWING_LIFT = _bezier_samples(BEZIER_HEIGHTS, SWING_SAMPLES)
+
+
+def _reach_spheres(leg: str):
+    """walk_state.h's configure() for one of this robot's legs: its home's horizontal offset (X, Y) from the point on
+    the hip axis level with the femur, and the squared distances from that point within which the knee is bent at least
+    MIN_KNEE_BEND_DEG and beyond which at most MAX_KNEE_BEND_DEG. leg_ik's femur-to-foot distance D keeps
+    D^2 = |P - (0, o0.y, 0)|^2 - x_off^2 while o0.z, the femur's offset along the leg's plane, is 0, as on every leg
+    here; the inner sphere allows for it as the firmware's does for coxa_offset."""
+    p = _CFG.legs[leg]
+    x_off, (o0_y, o0_z), L1, L2 = p["x_off"], p["o0"], p["L1"], p["L2"]
+
+    def femur_to_foot(knee_bend_deg: float) -> float:
+        return math.sqrt(L1 * L1 + L2 * L2 + 2 * L1 * L2 * math.cos(math.radians(knee_bend_deg)))
+
+    return (np.array([x_off, -o0_y]), x_off * x_off + femur_to_foot(MIN_KNEE_BEND_DEG) ** 2,
+            x_off * x_off + (femur_to_foot(MAX_KNEE_BEND_DEG) + abs(o0_z)) ** 2)
+
+
+_REACH_SPHERES = [_reach_spheres(leg) for leg in LEG_NAMES]
 
 
 @dataclass
@@ -235,18 +274,59 @@ def _stance_curve(length, angle, depth, phase, point):
 def _bezier_curve(length, angle, height, phase, point):
     x_polar = math.cos(angle)
     z_polar = math.sin(angle)
-    t = min(max(phase, 1e-4), 1.0 - 1e-4)
-    phase_power = 1.0
-    inv_phase_power = (1.0 - t) ** 11
-    one_minus = 1.0 - t
+    phase_powers = [phase ** i for i in range(12)]
+    rest_powers = [(1.0 - phase) ** i for i in range(12)]
     for i in range(12):
-        b = COMBINATORIAL_VALUES[i] * phase_power * inv_phase_power
+        b = COMBINATORIAL_VALUES[i] * phase_powers[i] * rest_powers[11 - i]
         point[0] += b * BEZIER_STEPS[i] * length * x_polar
         point[2] += b * BEZIER_STEPS[i] * length * z_polar
         point[1] += b * BEZIER_HEIGHTS[i] * height
-        phase_power *= t
-        if one_minus != 0.0:
-            inv_phase_power /= one_minus
+
+
+def _moving(gait) -> bool:
+    return abs(gait.step_x) >= 0.001 or abs(gait.step_z) >= 0.001 or abs(gait.step_angle) >= 0.001
+
+
+def _stroke_vector(gait, foot):
+    """A foot's stroke in the base frame (X, Y): see _stroke."""
+    turn = gait.step_angle * TURN_RATE
+    return gait.step_z + turn * foot[1], -gait.step_x - turn * foot[0]
+
+
+def _reach_bound(gait) -> tuple[float, float]:
+    """walk_state.h's boundToReach with the body STANCE_DEPTH above the feet: the share of the stroke, and the step
+    height, that keep every foot of the stance and the swing within reach. This port has no crawl body shift."""
+    body_height = STANCE_DEPTH
+    deepest = body_height + gait.step_depth
+    scale, legs = 1.0, []
+    for (home, reach_out_sq, reach_in_sq), foot in zip(_REACH_SPHERES, DEFAULT_FEET):
+        sideways_home = abs(home[0])
+        room = math.sqrt(max(0.0, reach_out_sq - deepest * deepest))
+        least_offset = math.sqrt(max(0.0, reach_in_sq - body_height * body_height))
+        stroke_x, stroke_y = _stroke_vector(gait, foot)
+        stroke = math.hypot(stroke_x, stroke_y)
+        half = stroke / 2
+        reach = SWING_OVERSHOOT * half
+        # The share of the stroke that points away from the body (+X is left), and along the home's offset.
+        outward = math.copysign(1.0, home[0]) * stroke_x / stroke if stroke > 0 else 0.0
+        along = abs(home[0] * stroke_x + home[1] * stroke_y) / stroke if stroke > 0 else 0.0
+        a, b, c = reach * reach, along * reach, float(home @ home) - room * room
+        discriminant = b * b - a * c
+        if c >= 0 or least_offset > sideways_home:
+            scale = 0.0
+        elif reach > 0 and discriminant >= 0:
+            scale = min(scale, -c / (b + math.sqrt(discriminant)))
+        inward = abs(outward) * reach
+        if least_offset > 0 and inward > 0:
+            scale = min(scale, (sideways_home - least_offset) / inward)
+        legs.append((sideways_home, half, outward, reach_in_sq))
+    step_height = gait.step_height
+    for sideways_home, half, outward, reach_in_sq in legs:
+        offset = sideways_home + scale * half * SWING_ALONG[1:SWING_SAMPLES] * outward
+        clear = np.sqrt(np.maximum(0.0, reach_in_sq - np.where(offset > 0, offset, 0.0) ** 2))
+        allowed = np.maximum(0.0, body_height - clear) / SWING_LIFT[1:SWING_SAMPLES]
+        step_height = min(step_height, float(allowed.min()))
+    return scale, step_height
 
 
 def _stroke(gait, foot):
@@ -258,9 +338,7 @@ def _stroke(gait, foot):
     (+step_x) maps to -Y and lateral (+step_z) to +X. The rotational part is omega x r, signed
     so that a positive step_angle keeps its historical turn direction.
     """
-    turn = gait.step_angle * TURN_RATE
-    sx = gait.step_z + turn * foot[1]
-    sy = -gait.step_x - turn * foot[0]
+    sx, sy = _stroke_vector(gait, foot)
     return math.hypot(sx, sy), math.atan2(sx, -sy)
 
 
@@ -270,6 +348,7 @@ class GaitController:
     def __init__(self):
         self.phase = 0.0
         self.default_position = DEFAULT_FEET.copy()
+        self.kinematics = Kinematics()
 
     def set_phase(self, phase: float) -> None:
         self.phase = math.fmod(phase, 1.0)
@@ -279,13 +358,47 @@ class GaitController:
         return np.fmod(self.phase + gait.offset, 1.0) <= gait.stand_frac
 
     def advance_phase(self, gait: GaitState, dt: float) -> None:
+        """Advances the phase by dt, or by the most 64ths of it the joints can follow at MAX_JOINT_SPEED, as
+        walk_state.h's step does; a jump not even a 64th keeps under the cap is walked at full time. The joints are
+        those of the feet in the base frame: this port's body pose is applied only by the caller's IK."""
+        start = self.phase
+        before = self._joint_angles(gait)
+
+        def followable(parts: int) -> bool:
+            self.phase = start
+            self._advance(gait, dt * parts / SLOWDOWN_PARTS)
+            return float(np.abs(self._joint_angles(gait) - before).max()) <= MAX_JOINT_SPEED * dt
+
+        if followable(SLOWDOWN_PARTS):
+            return
+        fast_enough, too_fast = 0, SLOWDOWN_PARTS
+        while too_fast - fast_enough > 1:
+            parts = (fast_enough + too_fast) // 2
+            if followable(parts):
+                fast_enough = parts
+            else:
+                too_fast = parts
+        followable(fast_enough if fast_enough > 0 else SLOWDOWN_PARTS)
+
+    def _advance(self, gait: GaitState, dt: float) -> None:
+        # walk_state.h: a stopped walk holds its phase once every foot is down; a foot in the air lands first.
+        if not _moving(gait) and not any(self._swinging(gait, i) for i in range(4)):
+            return
         velocity = max(gait.step_velocity, 0.5)
         self.phase = math.fmod(self.phase + dt * velocity * gait.speed_factor, 1.0)
+
+    def _swinging(self, gait: GaitState, leg: int) -> bool:
+        return math.fmod(self.phase + gait.offset[leg], 1.0) > gait.stand_frac
+
+    def _joint_angles(self, gait: GaitState) -> np.ndarray:
+        body = BodyState()
+        self.generate_feet(gait, body)
+        return self.kinematics.inverse_kinematics(body)
 
     def generate_feet(self, gait: GaitState, body: BodyState) -> None:
         """Write body.feet at the CURRENT phase (does not advance it). Base-frame targets."""
         new_feet = self.default_position.copy()
-        moving = (abs(gait.step_x) > 1e-6) or (abs(gait.step_z) > 1e-6) or (abs(gait.step_angle) > 1e-6)
+        scale, step_height = _reach_bound(gait)
         for i in range(4):
             leg_phase = math.fmod(self.phase + gait.offset[i], 1.0)
             contact = leg_phase <= gait.stand_frac
@@ -294,24 +407,18 @@ class GaitController:
                 curve, amp = _stance_curve, gait.step_depth
             else:
                 ph = (leg_phase - gait.stand_frac) / (1.0 - gait.stand_frac)
-                curve, amp = _bezier_curve, gait.step_height
+                curve, amp = _bezier_curve, step_height
 
             # stride frame delta: [0]=along-stride, [1]=vertical, [2]=cross-stride
             stroke, heading = _stroke(gait, self.default_position[i])
             delta = [0.0, 0.0, 0.0]
-            curve(stroke * 0.5, heading, amp, ph, delta)
+            curve(scale * stroke * 0.5, heading, amp, ph, delta)
 
             # map stride frame -> base frame: forward(+stride)-> -Y, cross-> +X, lift(+)-> +Z
             dx = delta[2]     # cross-stride -> lateral X
             dy = -delta[0]    # along-stride -> fore-aft Y (forward = -Y)
             dz = delta[1]     # vertical -> Z
-            new_feet[i, 0] = self.default_position[i, 0] + dx
-            if moving:
-                new_feet[i, 1] = self.default_position[i, 1] + dy
-                new_feet[i, 2] = self.default_position[i, 2] + dz
-            else:
-                new_feet[i, 1] = self.default_position[i, 1]
-                new_feet[i, 2] = self.default_position[i, 2]
+            new_feet[i] = self.default_position[i] + (dx, dy, dz)
         body.feet = new_feet
 
 

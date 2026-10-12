@@ -41,6 +41,8 @@ All notable changes to this project will be documented in this file.
 - Holds every joint inside its travel, a range per variant from the servos' travel and the robot models, before it reaches the servo board; the animation check now also warns of a clip that drives a joint past it, such as a crouch that folds a leg into the body
 - Levels the standing body fully on a slope with integral action in its IMU compensation, which left half the tilt, and holds a commanded stand tilt in full instead of half of it
 - Holds the stand's IMU compensation until the feet are eased in, so it no longer levels against, and integrates, the tilt the rise from rest causes by itself
+- Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
+- Shortens the walk's stroke, the crawl's body shift and the step height where they would put a foot out of reach, through each variant's leg geometry: at full stick, 259 of the Pico's 325 trot commands and 307 of its 325 crawl commands straightened a knee or folded a foot onto its hip. A forward trot at the app's settings keeps its whole stroke; sideways and turning full sticks, and the crawl, walk slower
 
 ### Fixed
 
@@ -49,6 +51,8 @@ All notable changes to this project will be documented in this file.
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
 - Fixes log lines from different tasks being spliced together on the serial port
 - Fixes WebSocket clients timing out their keep-alive pings and waiting out every close, which the robot never answered
+- Fixes the swing foot dropping onto its stance spot for one tick at the end of a swing
+- Fixes a diagonal or turning stance ending about a millimetre in the air, so its foot jumped at the start of the swing
 
 ## [0.3.0]
 

@@ -95,6 +95,29 @@ $$t \leftarrow (t + \Delta t \cdot v \cdot k) \bmod 1$$
 where $v=\max(\text{speed}, 0.5)$ and $k$ is a rate factor of the gait.
 While the step length, sideways step and turn all are zero, the phase is held at 0 and the feet stay at their default positions.
 
+### Joint speed limit
+
+A tick of the walk may not turn any joint faster than 540 degrees per second, three quarters of the servo controller's 720.
+The MG92B is rated 750 degrees per second only unloaded at 6 V; it slows under load and at a lower supply (460 degrees per second at 5 V), and the quarter in hand keeps the servo controller's own limit from clipping the steps.
+Where a tick would turn a joint faster, the walk runs its clock (the phase above and its command smoothing) only for the largest number of 64ths of the tick that keep every joint under the limit, found by bisection through the kinematics of the variant.
+A long or high step so keeps its shape and duty and takes longer, mostly in its swing, while a step the servos can follow is walked as commanded.
+A jump that even a 64th of the tick does not keep under the limit, such as a foot lifted to its hip, is walked at full time, since creeping up to it would freeze the walk.
+At the app's settings (height 0.7, step height 0.5) a full forward trot at speed 0.5 slows from 1 to about 0.86 cycles per second, and at speed 1 from 2 to about 1.15.
+
+### Reach limit
+
+Every tick the walk shortens the commanded stroke (the translation and the turn together), the crawl's body shift and the step height as far as it takes to keep every foot of the stance and the swing within reach at the current body height.
+A full stick otherwise asked for more than the legs reach: the step length of 80% of the leg reach, the swing's overshoot of the stroke by about a third on either end, a turn on top of the translation, and a step height above about half the body height straightened a knee or folded a foot onto its hip in 259 of the Pico's 325 full-stick trot commands and 307 of its 325 crawl commands.
+The bound follows from each variant's leg geometry in `kinematics.h`.
+About each leg's mount it keeps a foot inside the sphere where the knee is still bent 10 degrees, and outside the one where it is bent 148 degrees, a degree short of where the full-size robot's tibia folds onto its femur.
+It takes the crawl's shift as moving the mount by up to a third of the distance from the body centre to a foot, in any direction.
+The stroke and the shift shrink together until every foot's path, which the swing carries up to 1.37 half strokes either side of the foot's default spot, stays inside the outer sphere at the depth of the stance's dip.
+The step height then drops until the swing, checked at 64 phases, stays outside the inner sphere, counting only the foot's sideways offset from its mount.
+That also keeps a foot that passes in under its mount more than a coxa below it, where the hip would turn past 90 degrees.
+A command that fits is walked as given, so short and medium steps keep their exact path.
+At the app's settings (height 0.7, step height 0.5) a full forward trot keeps its whole stroke on every variant, and a full turn keeps it on the full-size robot and the Yertle.
+The other full sticks walk slower than before, by the Python client's speed model: a sideways trot by about 5%, a turn on the Pico by 8%, and the crawl by 12% to 32% forward and up to half sideways and turning on the Pico.
+
 ### Phase condition
 
 Leg $i$ has a phase $t_i=(t+o_i) \bmod 1$, where $o_i$ is its phase offset.

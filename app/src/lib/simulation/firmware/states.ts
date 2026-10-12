@@ -1,6 +1,6 @@
 import type { KinConfig } from './kin-config'
 import { CriticalDamper } from './critical-damper'
-import { BodyState, RAD2DEG_F } from './kinematics'
+import { BodyState, DEG2RAD_F, RAD2DEG_F, inverseKinematics } from './kinematics'
 
 /** CommandMsg of esp32/include/message_types.h. */
 export interface CommandMsg {
@@ -201,6 +201,29 @@ const COMBINATORIAL_VALUES = [1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1
 const BEZIER_STEPS = [-1.0, -1.4, -1.5, -1.5, -1.5, 0.0, 0.0, 0.0, 1.5, 1.5, 1.4, 1.0]
 const BEZIER_HEIGHTS = [0.0, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 1.1, 0.0, 0.0]
 const isZero = (value: number) => Math.abs(value) < 0.001
+
+/** bezierSamples (walk_state.h): the swing curve with these control points at samples + 1 evenly spaced phases. */
+const bezierSamples = (points: number[], samples: number) =>
+    Array.from({ length: samples + 1 }, (_, sample) =>
+        points.reduce(
+            (sum, point, i) =>
+                sum +
+                COMBINATORIAL_VALUES[i] *
+                    (sample / samples) ** i *
+                    (1 - sample / samples) ** (11 - i) *
+                    point,
+            0
+        )
+    )
+// The swing's furthest reach along the stroke in half strokes, and the swing at SWING_SAMPLES + 1 phases: how far
+// along the stroke in half strokes and how high in step heights.
+const SWING_OVERSHOOT = Math.max(...bezierSamples(BEZIER_STEPS, 1024).map(Math.abs))
+const SWING_SAMPLES = 64
+const SWING_ALONG = bezierSamples(BEZIER_STEPS, SWING_SAMPLES)
+const SWING_LIFT = bezierSamples(BEZIER_HEIGHTS, SWING_SAMPLES)
+// The bends the walk keeps every knee between.
+export const MIN_KNEE_BEND_DEG = 10
+export const MAX_KNEE_BEND_DEG = 148
 // The gait phase is computed at the firmware's float precision: legs switch between stance and
 // swing on exact phase ties, which float and double round to opposite sides.
 const f32 = Math.fround
@@ -225,25 +248,31 @@ const stanceCurve: Curve = (length, angle, depth, phase, point) => {
     if (length !== 0) point[1] = -depth * Math.cos((Math.PI * step) / (2 * length))
 }
 
-// Evaluated at the firmware's float precision: near the end of a swing (1 - t)^11 underflows into
-// float's subnormal range, and dividing it back up by (1 - t) leaves the last Bernstein weights
-// inaccurate, so the robot's foot jumps for one tick. Reproduced here so the simulation shows it.
+// Evaluated at the firmware's float precision, with the powers built by multiplication as the firmware does.
 const bezierCurve: Curve = (length, angle, height, phase, point) => {
     const xPolar = f32(Math.cos(angle))
     const zPolar = f32(Math.sin(angle))
-    const t = f32(clamp(phase, f32(1e-4), f32(1 - 1e-4)))
-    const oneMinus = f32(1 - t)
-    let phasePower = 1
-    let invPhasePower = f32(oneMinus ** 11)
+    const t = f32(phase)
+    const rest = f32(1 - t)
+    const phasePowers = [1]
+    const restPowers = [1]
+    for (let i = 1; i < 12; i++) {
+        phasePowers.push(f32(phasePowers[i - 1] * t))
+        restPowers.push(f32(restPowers[i - 1] * rest))
+    }
     for (let i = 0; i < 12; i++) {
-        const b = f32(f32(COMBINATORIAL_VALUES[i] * phasePower) * invPhasePower)
+        const b = f32(f32(COMBINATORIAL_VALUES[i] * phasePowers[i]) * restPowers[11 - i])
         point[0] = f32(point[0] + f32(f32(f32(b * BEZIER_STEPS[i]) * length) * xPolar))
         point[1] = f32(point[1] + f32(f32(b * BEZIER_HEIGHTS[i]) * height))
         point[2] = f32(point[2] + f32(f32(f32(b * BEZIER_STEPS[i]) * length) * zPolar))
-        phasePower = f32(phasePower * t)
-        invPhasePower = f32(invPhasePower / oneMinus)
     }
 }
+
+// SERVO_MAX_SPEED_DEG_S of peripherals/servo_output.h, and walk_state.h's cap below it and the parts of a tick it
+// slows by.
+const SERVO_MAX_SPEED_DEG_S = 720
+export const MAX_JOINT_SPEED_DEG_S = 0.75 * SERVO_MAX_SPEED_DEG_S
+const SLOWDOWN_PARTS = 64
 
 /** WalkState (motion_states/walk_state.h): trot and crawl, with the crawl's body shift. */
 export class WalkState extends MotionState {
@@ -256,6 +285,12 @@ export class WalkState extends MotionState {
     private targetGait: GaitState
     private gaitDampers = WalkState.gaitDampers()
     private shift = { startX: 0, startZ: 0, targetX: 0, targetZ: 0, startTime: 0, leg: -1 }
+    // configure() of walk_state.h: the reach spheres about each mount and how far the crawl shifts the body.
+    private readonly reachOutSq: number
+    private readonly reachInSq: number
+    private readonly crawlShift: number
+    private reachScale = 1
+    private swingHeight = 0
 
     constructor(cfg: KinConfig) {
         super(cfg)
@@ -269,6 +304,16 @@ export class WalkState extends MotionState {
         })
         this.gait = initial()
         this.targetGait = initial()
+        const { coxa, coxa_offset, femur, tibia } = cfg
+        const femurToFoot = (kneeBendDeg: number) =>
+            Math.sqrt(
+                femur * femur +
+                    tibia * tibia +
+                    2 * femur * tibia * Math.cos(kneeBendDeg * DEG2RAD_F)
+            )
+        this.reachOutSq = coxa * coxa + femurToFoot(MIN_KNEE_BEND_DEG) ** 2
+        this.reachInSq = coxa * coxa + (femurToFoot(MAX_KNEE_BEND_DEG) + coxa_offset) ** 2
+        this.crawlShift = Math.max(...cfg.defaultFeet.map(([x, , z]) => Math.hypot(x, z) / 3))
     }
 
     resetSmoothing() {
@@ -312,7 +357,60 @@ export class WalkState extends MotionState {
         this.targetGait.stepDepth = cfg.defaultStepDepth
     }
 
+    /**
+     * One tick, slowed to the most 64ths of it the joints can follow at MAX_JOINT_SPEED_DEG_S, as walk_state.h does:
+     * a jump not even a 64th keeps under the cap is walked at full time.
+     */
     step(body: BodyState, dt: number) {
+        const before = inverseKinematics(this.cfg, body)
+        const start = this.snapshot(body)
+        const allowed = f32(MAX_JOINT_SPEED_DEG_S * f32(dt))
+        const followable = (parts: number) => {
+            this.restore(start, body)
+            this.advance(body, f32(f32(dt) * parts) / SLOWDOWN_PARTS)
+            const after = inverseKinematics(this.cfg, body)
+            return after.every((angle, i) => Math.abs(angle - before[i]) <= allowed)
+        }
+        if (followable(SLOWDOWN_PARTS)) return
+        let fastEnough = 0
+        let tooFast = SLOWDOWN_PARTS
+        while (tooFast - fastEnough > 1) {
+            const parts = Math.trunc((fastEnough + tooFast) / 2)
+            if (followable(parts)) fastEnough = parts
+            else tooFast = parts
+        }
+        followable(fastEnough > 0 ? fastEnough : SLOWDOWN_PARTS)
+    }
+
+    private snapshot(body: BodyState) {
+        const velocities = (dampers: Record<string, CriticalDamper>) =>
+            Object.fromEntries(
+                Object.entries(dampers).map(([key, damper]) => [key, damper.velocity])
+            )
+        return {
+            phaseTime: this.phaseTime,
+            gait: { ...this.gait },
+            gaitDampers: velocities(this.gaitDampers),
+            bodyDampers: velocities(this.bodyDampers),
+            shift: { ...this.shift },
+            body: { ...body, feet: body.feet.map(foot => [...foot]) }
+        }
+    }
+
+    private restore(start: ReturnType<WalkState['snapshot']>, body: BodyState) {
+        const setVelocities = (
+            dampers: Record<string, CriticalDamper>,
+            velocities: Record<string, number>
+        ) => Object.entries(dampers).forEach(([key, damper]) => (damper.velocity = velocities[key]))
+        this.phaseTime = start.phaseTime
+        this.gait = { ...start.gait }
+        setVelocities(this.gaitDampers, start.gaitDampers)
+        setVelocities(this.bodyDampers, start.bodyDampers)
+        this.shift = { ...start.shift }
+        Object.assign(body, { ...start.body, feet: start.body.feet.map(foot => [...foot]) })
+    }
+
+    private advance(body: BodyState, dt: number) {
         const { follow } = MotionState
         const { gait, targetGait, gaitDampers, bodyDampers } = this
         body.ym = follow(bodyDampers.ym, body.ym, this.target.ym, dt)
@@ -324,19 +422,72 @@ export class WalkState extends MotionState {
         gait.stepAngle = follow(gaitDampers.stepAngle, gait.stepAngle, targetGait.stepAngle, dt)
         gait.stepDepth = follow(gaitDampers.stepDepth, gait.stepDepth, targetGait.stepDepth, dt)
         this.updatePhase(dt)
+        this.boundToReach(body.ym)
         this.updateBodyPosition(body)
         for (let i = 0; i < 4; i++) this.updateFootPosition(body, i)
+    }
+
+    // A foot's stroke: the commanded translation plus the rotation about the body centre at its stance position.
+    private strokeOf(index: number): [number, number] {
+        const [rx, , rz] = this.cfg.defaultFeet[index]
+        return [
+            this.gait.stepX + this.gait.stepAngle * -rz,
+            this.gait.stepZ + this.gait.stepAngle * rx
+        ]
+    }
+
+    /**
+     * boundToReach (walk_state.h): the share of the stroke and crawl shift, and the step height, that keep every foot
+     * of the stance and the swing within reach at this body height.
+     */
+    private boundToReach(bodyHeight: number) {
+        const { coxa } = this.cfg
+        const shift = this.crawl ? this.crawlShift : 0
+        const deepest = bodyHeight + this.gait.stepDepth
+        const room = Math.sqrt(Math.max(0, this.reachOutSq - deepest * deepest))
+        const leastOffset = Math.sqrt(Math.max(0, this.reachInSq - bodyHeight * bodyHeight))
+        this.reachScale = coxa < room && leastOffset <= coxa ? 1 : 0
+        // Per leg, the half stroke and the share of it that points away from the body.
+        const legs = this.cfg.defaultFeet.map((home, leg) => {
+            const [strokeX, strokeZ] = this.strokeOf(leg)
+            const stroke = Math.hypot(strokeX, strokeZ)
+            const half = stroke / 2
+            const outward = stroke > 0 ? (Math.sign(home[2]) * strokeZ) / stroke : 0
+            const reach = SWING_OVERSHOOT * half
+            const sideways = Math.abs(outward)
+            const a = reach * reach - shift * shift
+            const b = coxa * sideways * reach + room * shift
+            const c = coxa * coxa - room * room
+            const discriminant = b * b - a * c
+            if (c < 0 && (reach > 0 || shift > 0) && discriminant >= 0)
+                this.reachScale = Math.min(this.reachScale, -c / (b + Math.sqrt(discriminant)))
+            const inward = sideways * reach + shift
+            if (leastOffset > 0 && inward > 0)
+                this.reachScale = Math.min(this.reachScale, (coxa - leastOffset) / inward)
+            return { half, outward }
+        })
+        this.swingHeight = this.gait.stepHeight
+        for (const { half, outward } of legs)
+            for (let sample = 1; sample < SWING_SAMPLES; sample++) {
+                const offset =
+                    coxa + this.reachScale * (half * SWING_ALONG[sample] * outward - shift)
+                const clear = Math.sqrt(
+                    Math.max(0, this.reachInSq - (offset > 0 ? offset * offset : 0))
+                )
+                this.swingHeight = Math.min(
+                    this.swingHeight,
+                    Math.max(0, bodyHeight - clear) / SWING_LIFT[sample]
+                )
+            }
     }
 
     private moving() {
         return !isZero(this.gait.stepX) || !isZero(this.gait.stepZ) || !isZero(this.gait.stepAngle)
     }
 
+    // A stopped walk holds its phase once every foot is down; a foot in the air lands along its swing first.
     private updatePhase(dt: number) {
-        if (!this.moving()) {
-            this.phaseTime = 0
-            return
-        }
+        if (!this.moving() && this.legStates().swingCount === 0) return
         const velocity = f32(Math.max(this.gait.stepVelocity, 0.5))
         const advance = f32(f32(f32(dt) * velocity) * this.speedFactor)
         this.phaseTime = f32(f32(this.phaseTime + advance) % 1)
@@ -372,7 +523,19 @@ export class WalkState extends MotionState {
     }
 
     private updateBodyPosition(body: BodyState) {
-        if (!this.crawl || !this.moving()) return
+        if (!this.crawl) return
+        this.shiftTowardsSupport(body)
+        // A shift the bound has shrunk since shrinks with it, also while a foot is in the air.
+        const shifted = Math.hypot(body.xm, body.zm)
+        const allowed = this.reachScale * this.crawlShift
+        if (shifted > allowed) {
+            body.xm *= allowed / shifted
+            body.zm *= allowed / shifted
+        }
+    }
+
+    private shiftTowardsSupport(body: BodyState) {
+        if (!this.moving()) return
         const { stance, swingCount, nextSwing, timeToLift } = this.legStates()
         if (stance.length < 3 || swingCount !== 0 || nextSwing === -1) return
         const shift = this.shift
@@ -385,8 +548,8 @@ export class WalkState extends MotionState {
         }
         const progress = shift.startTime > 0 ? 1 - timeToLift / shift.startTime : 1
         const smooth = smoothstep01(clamp(progress, 0, 1))
-        body.xm = lerp(shift.startX, shift.targetX, smooth)
-        body.zm = lerp(shift.startZ, shift.targetZ, smooth)
+        body.xm = lerp(shift.startX, this.reachScale * shift.targetX, smooth)
+        body.zm = lerp(shift.startZ, this.reachScale * shift.targetZ, smooth)
     }
 
     private updateFootPosition(body: BodyState, index: number) {
@@ -407,12 +570,11 @@ export class WalkState extends MotionState {
                 body,
                 (legPhase - this.standOffset) / (1 - this.standOffset),
                 bezierCurve,
-                this.gait.stepHeight
+                this.swingHeight
             )
     }
 
-    // A foot's stroke is the rigid-body velocity field at its stance position: translation plus
-    // the rotation about the body centre, composed so one curve applies the swing/stance profile.
+    // The stroke composed into one vector, so one curve applies the swing/stance profile.
     private controller(
         index: number,
         body: BodyState,
@@ -421,13 +583,11 @@ export class WalkState extends MotionState {
         amplitude: number
     ) {
         const delta = [0, 0, 0]
-        const [rx, , rz] = this.cfg.defaultFeet[index]
-        const strokeX = this.gait.stepX + this.gait.stepAngle * -rz
-        const strokeZ = this.gait.stepZ + this.gait.stepAngle * rx
-        const stroke = Math.hypot(strokeX, strokeZ)
+        const [strokeX, strokeZ] = this.strokeOf(index)
+        const stroke = this.reachScale * Math.hypot(strokeX, strokeZ)
         curve(stroke * 0.5, Math.atan2(strokeZ, strokeX), amplitude, phase, delta)
         body.feet[index][0] += delta[0]
+        body.feet[index][1] += delta[1]
         body.feet[index][2] += delta[2]
-        if (stroke !== 0) body.feet[index][1] += delta[1]
     }
 }

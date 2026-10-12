@@ -110,7 +110,7 @@ static socket_message_ControllerData sticks(float lx, float ly, float rx) {
     data.right.x = rx;
     data.height = 0.5f;
     data.speed = 0.5f;
-    data.s1 = 0.5f;
+    data.s1 = 0.2f;
     return data;
 }
 
@@ -138,9 +138,12 @@ static void walkingPico(MotionService &motion, socket_message_WalkGaits gait = s
 }
 
 // The stance sweeps a foot through the whole stroke in the stance part of the cycle, so the body moves at
-// stroke x cycle rate / duty: max_step_length x (0.5 x 2) / 0.75 for a full stick in trot at the slowest cadence.
-static const float TROT_SPEED = PICO.max_step_length * 1.0f / 0.75f;
-static const float CRAWL_SPEED = PICO.max_step_length * 0.25f / 0.85f;
+// stroke x cycle rate / duty: STICK x max_step_length x (0.5 x 2) / 0.75 in trot at the slowest cadence. A stick
+// short of full and a low step height (sticks()), so the walk neither slows its clock for the servos' speed, which
+// the Pico's lift alone at the app's step height of 0.5 does, nor bounds the stroke to the legs' reach.
+static constexpr float STICK = 0.3f;
+static const float TROT_SPEED = STICK * PICO.max_step_length * 1.0f / 0.75f;
+static const float CRAWL_SPEED = STICK * PICO.max_step_length * 0.25f / 0.85f;
 
 // Over whole gait cycles, after the 333 ms command filter has settled.
 static OdometryEstimate walked(MotionService &motion, const socket_message_ControllerData &input, int seconds) {
@@ -157,7 +160,7 @@ static OdometryEstimate walked(MotionService &motion, const socket_message_Contr
 static void aForwardTrotGoesStraightAtTheStanceSpeed() {
     MotionService motion;
     walkingPico(motion);
-    const OdometryEstimate leg = walked(motion, sticks(0, 1, 0), 3);
+    const OdometryEstimate leg = walked(motion, sticks(0, STICK, 0), 3);
     CHECK_NEAR(leg.x, 3 * TROT_SPEED, 0.005 * 3 * TROT_SPEED);
     CHECK_NEAR(leg.y, 0, 1e-4);
     CHECK_NEAR(leg.yaw, 0, 1e-4);
@@ -168,7 +171,7 @@ static void aForwardTrotGoesStraightAtTheStanceSpeed() {
 static void aSidewaysTrotGoesSidewaysAtTheStanceSpeed() {
     MotionService motion;
     walkingPico(motion);
-    const OdometryEstimate leg = walked(motion, sticks(1, 0, 0), 3);
+    const OdometryEstimate leg = walked(motion, sticks(STICK, 0, 0), 3);
     CHECK_NEAR(leg.x, 0, 1e-4);
     CHECK_NEAR(leg.y, 3 * TROT_SPEED, 0.005 * 3 * TROT_SPEED);
     CHECK_NEAR(leg.yaw, 0, 1e-4);
@@ -179,20 +182,20 @@ static void aSidewaysTrotGoesSidewaysAtTheStanceSpeed() {
 static void aForwardCrawlGoesStraightOverWholeCycles() {
     MotionService motion;
     walkingPico(motion, socket_message_WalkGaits_CRAWL);
-    const OdometryEstimate leg = walked(motion, sticks(0, 1, 0), 8); // two cycles at a quarter cycle per second
+    const OdometryEstimate leg = walked(motion, sticks(0, STICK, 0), 8); // two cycles at a quarter cycle per second
     CHECK_NEAR(leg.x, 8 * CRAWL_SPEED, 0.01 * 8 * CRAWL_SPEED);
     CHECK_NEAR(leg.y, 0, 1e-3);
     CHECK(leg.distance > leg.x);
 }
 
-// A full right stick turns clockwise. Each foot strokes along a straight chord as long as step_angle x its radius,
-// so it sweeps 2 atan(1/2) about the centre per stance where speed_model.py's linear model says 1 rad: the turn
-// rate lies between 0.93 and 1 x rate / duty.
+// The right stick to the right turns clockwise. Each foot strokes along a straight chord as long as step_angle x its
+// radius, so it sweeps 2 atan(STICK / 2) about the centre per stance where speed_model.py's linear model says STICK
+// rad: the turn rate lies a little under STICK x rate / duty.
 static void aTurnInPlaceTurnsClockwiseWithoutTravelling() {
     MotionService motion;
     walkingPico(motion);
-    const OdometryEstimate leg = walked(motion, sticks(0, 0, 1), 2);
-    const float linearModel = -1.0f / 0.75f;
+    const OdometryEstimate leg = walked(motion, sticks(0, 0, STICK), 2);
+    const float linearModel = -STICK / 0.75f;
     CHECK(leg.yaw / 2 < 0.92f * linearModel);
     CHECK(leg.yaw / 2 > 1.01f * linearModel);
     CHECK_NEAR(leg.x, 0, 2e-3);
@@ -224,16 +227,16 @@ static void standingStill() {
 static void resetting() {
     MotionService motion;
     walkingPico(motion);
-    run(motion, sticks(0, 1, 0), 2 * TICKS_PER_S);
+    run(motion, sticks(0, STICK, 0), 2 * TICKS_PER_S);
     const OdometryEstimate before = motion.odometry();
-    CHECK(before.x > 0.1f);
+    CHECK(before.x > 0.04f);
     const OdometryEstimate reached = motion.resetOdometry();
     CHECK(reached.x == before.x && reached.distance == before.distance);
     const OdometryEstimate after = motion.odometry();
     CHECK(after.x == 0 && after.y == 0 && after.yaw == 0 && after.distance == 0);
 
     // It counts on from the reset at the same pace, and a deactivation starts it afresh too.
-    run(motion, sticks(0, 1, 0), TICKS_PER_S);
+    run(motion, sticks(0, STICK, 0), TICKS_PER_S);
     CHECK_NEAR(motion.odometry().x, TROT_SPEED, 0.01 * TROT_SPEED);
     enter(motion, socket_message_ModesEnum_DEACTIVATED);
     const OdometryEstimate deactivated = motion.odometry();

@@ -57,6 +57,7 @@ PROGRAMS = {
     "stand_compensation_test.cpp": [],
     "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "proto_decoder_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
+    "gait_speed_test.cpp": [],
     "ws_frame_test.cpp": [],
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "stall_tracker_test.cpp": [],
