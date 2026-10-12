@@ -46,7 +46,14 @@ function enumToValuesAndLabels<T extends number>(enumObj: Record<string, T | str
 
 const modesData = enumToValuesAndLabels<ModesEnum>(ModesEnum)
 export const modes = modesData.values
-export const modeLabels = modesData.labels
+export const modeLabels: Record<ModesEnum, string> = {
+    ...modesData.labels,
+    [ModesEnum.WALK_NN]: 'Learned walk'
+}
+
+/** The modes to offer: WALK_NN only on a robot that reports a policy which passed its self-check. */
+export const selectableModes = (walkNn: boolean) =>
+    modes.filter(mode => mode !== ModesEnum.WALK_NN || walkNn)
 
 const walkGaitsData = enumToValuesAndLabels<WalkGaits>(WalkGaits)
 export const walkGaits = walkGaitsData.values

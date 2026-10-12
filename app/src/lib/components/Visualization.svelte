@@ -80,6 +80,8 @@
         [ModesEnum.REST]: new RestState(),
         [ModesEnum.STAND]: new StandState(),
         [ModesEnum.WALK]: new BezierState(),
+        // The learned gait runs on the robot only; the model follows the angles it reports.
+        [ModesEnum.WALK_NN]: new IdleState(),
         [ModesEnum.UNRECOGNIZED]: new IdleState()
     }
     let lastTick = performance.now()

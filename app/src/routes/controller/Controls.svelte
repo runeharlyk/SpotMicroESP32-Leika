@@ -6,11 +6,12 @@
         input,
         mode,
         walkGait,
-        modes,
+        selectableModes,
         modeLabels,
         walkGaits,
         walkGaitLabels,
-        variantChoiceNeeded
+        variantChoiceNeeded,
+        connectionFeatures
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
     import { VerticalSlider } from '$lib/components/input'
@@ -163,7 +164,7 @@
                 </p>
             {/if}
             <div class="join max-w-full shadow-lg max-sm:grid max-sm:grid-cols-3">
-                {#each modes as modeValue (modeValue)}
+                {#each selectableModes($connectionFeatures?.walkNn ?? false) as modeValue (modeValue)}
                     <button
                         class="btn join-item btn-sm pointer-coarse:btn-md transition-all duration-200"
                         class:btn-primary={$mode.mode === modeValue}
