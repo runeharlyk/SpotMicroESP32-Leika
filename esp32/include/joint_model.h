@@ -2,6 +2,9 @@
 
 #include <cstddef>
 
+/** The sign MotionService applies to each IK angle on its way to the servos, turning it into servo space. */
+constexpr float JOINT_DIRECTION[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
+
 /**
  * How each joint's servo sits in a variant's mechanical design: the sign that turns a joint angle into the servo's
  * angle, the servo angle at which the joint is at its kinematic zero, and the servo model's PWM counts per degree.

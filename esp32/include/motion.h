@@ -58,9 +58,6 @@ class MotionService {
     socket_message_ModesEnum mode() const { return currentMode.load(); }
     socket_message_WalkGaits gait() const { return currentGait.load(); }
 
-    /** The sign applied to each joint's angle on its way to the servo. */
-    static constexpr float JOINT_DIRECTION[12] = {1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1};
-
     const CommandMsg& currentCommand() const { return command; }
     /** When the command in use arrived, in esp_timer microseconds; 0 before the first. */
     int64_t commandReceivedAt() const { return commandRxUs; }

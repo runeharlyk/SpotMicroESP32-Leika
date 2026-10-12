@@ -33,7 +33,7 @@ For each leg it does the following.
 The result is 12 angles in degrees, ordered by leg and then hip, femur and tibia.
 On the Yertle the third angle of each leg is the tibia angle plus the femur angle.
 
-The motion service then multiplies each angle by a fixed sign (`MotionService::JOINT_DIRECTION`).
+The motion service then multiplies each angle by a fixed sign (`JOINT_DIRECTION` in `joint_model.h`).
 The servo controller maps it to the servo's angle with the variant's joint model (`esp32/include/joint_model.h`):
 
 $$\text{servo angle}=\text{direction}\cdot\text{angle}+\text{centre angle}$$

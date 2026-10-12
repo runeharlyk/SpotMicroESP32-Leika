@@ -5,7 +5,7 @@
 // the app's TypeScript port, which is pinned to fixtures exported from it. It knows nothing about nanopb or the ESP.
 //
 // Clip units and frame: lengths mm, body angles rad, joint angles deg in the IK output convention (before
-// MotionService's JOINT_DIRECTION), time s, all float32. Offsets are REP-103: x forward, y left, z up; positive roll
+// JOINT_DIRECTION in joint_model.h), time s, all float32. Offsets are REP-103: x forward, y left, z up; positive roll
 // lifts the left side, positive pitch lowers the nose, positive yaw turns left. toBodyState() maps them onto Leika's
 // body state (metres and degrees; x forward, y up, z left).
 
