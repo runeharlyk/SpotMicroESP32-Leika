@@ -16,6 +16,37 @@ struct gait_state_t {
     float step_depth {0};
 };
 
+// A degree-11 Bezier curve with these control points, at this phase.
+constexpr float bezierAt(const float (&points)[12], const float phase) {
+    float value = 0;
+    for (int i = 0; i < 12; i++) {
+        float b = combinatorial_constexpr(11, i);
+        for (int power = 0; power < i; power++) b *= phase;
+        for (int power = 0; power < 11 - i; power++) b *= 1 - phase;
+        value += b * points[i];
+    }
+    return value;
+}
+
+// The furthest the curve gets from zero, sampled.
+constexpr float bezierPeak(const float (&points)[12]) {
+    constexpr int SAMPLES = 1024;
+    float peak = 0;
+    for (int sample = 0; sample <= SAMPLES; sample++) {
+        const float value = bezierAt(points, float(sample) / SAMPLES);
+        peak = std::max(peak, value < 0 ? -value : value);
+    }
+    return peak;
+}
+
+// The curve at SAMPLES + 1 evenly spaced phases.
+template <int SAMPLES>
+constexpr std::array<float, SAMPLES + 1> bezierSamples(const float (&points)[12]) {
+    std::array<float, SAMPLES + 1> samples {};
+    for (int sample = 0; sample <= SAMPLES; sample++) samples[sample] = bezierAt(points, float(sample) / SAMPLES);
+    return samples;
+}
+
 enum class WALK_GAIT { TROT, CRAWL };
 
 class WalkState : public MotionState {
@@ -72,6 +103,21 @@ class WalkState : public MotionState {
     alignas(32) static constexpr float BEZIER_HEIGHTS[12] = {0.0f, 0.0f, 0.9f, 0.9f, 0.9f, 0.9f,
                                                              0.9f, 1.1f, 1.1f, 1.1f, 0.0f, 0.0f};
 
+    // The swing's furthest reach along the stroke, in half strokes: its control points overshoot the stroke's ends, so
+    // it reaches 1.37. And the swing at SWING_SAMPLES + 1 phases: how far along the stroke, in half strokes, and how
+    // high, in step heights.
+    static constexpr float SWING_OVERSHOOT = bezierPeak(BEZIER_STEPS);
+    static constexpr int SWING_SAMPLES = 64;
+    static constexpr auto SWING_ALONG = bezierSamples<SWING_SAMPLES>(BEZIER_STEPS);
+    static constexpr auto SWING_LIFT = bezierSamples<SWING_SAMPLES>(BEZIER_HEIGHTS);
+
+    // Per variant, from its leg (configure): the squared distances from a leg's mount within which a foot is reachable
+    // with the knee bent at least MIN_KNEE_BEND_DEG, and beyond which with it bent at most MAX_KNEE_BEND_DEG; and how
+    // far the crawl shifts the body.
+    float reach_out_sq = 0, reach_in_sq = 0, crawl_shift = 0;
+    // This tick's share of the commanded stroke and crawl shift, and its step height, that keep every foot in reach.
+    float reach_scale = 1, swing_height = 0;
+
   public:
     WalkState() = default;
 
@@ -79,6 +125,23 @@ class WalkState : public MotionState {
         MotionState::configure(config);
         gait_state.step_height = target_gait_state.step_height = config.default_step_height;
         gait_state.step_depth = target_gait_state.step_depth = config.default_step_depth;
+        // Kinematics::legIK's femur sits coxa_offset along the leg's plane, which lies coxa from the mount, so the
+        // femur-to-foot distance H keeps sqrt(|foot - mount|^2 - coxa^2) - coxa_offset <= H <= sqrt(|foot - mount|^2 -
+        // coxa^2), the upper bound while the foot lies more than half the coxa offset along that plane, as a standing
+        // leg's does: these spheres bound the reach on the safe side, and exactly where coxa_offset is 0. The crawl
+        // shifts the body to the middle of three feet: a third of the way from the centre away from the fourth.
+        const auto femur_to_foot = [&](float knee_bend_deg) {
+            return std::sqrt(config.femur * config.femur + config.tibia * config.tibia +
+                             2 * config.femur * config.tibia * std::cos(knee_bend_deg * DEG2RAD_F));
+        };
+        const float outer = femur_to_foot(MIN_KNEE_BEND_DEG);
+        const float inner = femur_to_foot(MAX_KNEE_BEND_DEG) + config.coxa_offset;
+        reach_out_sq = config.coxa * config.coxa + outer * outer;
+        reach_in_sq = config.coxa * config.coxa + inner * inner;
+        crawl_shift = 0;
+        for (int leg = 0; leg < 4; leg++)
+            crawl_shift = std::max(crawl_shift, std::hypot(config.default_feet_positions[leg][0],
+                                                           config.default_feet_positions[leg][2]) / 3);
     }
 
     void resetSmoothing() override {
@@ -105,6 +168,11 @@ class WalkState : public MotionState {
     // The fastest the walk turns a joint: a quarter below the servos' limit. The MG92B's 750 deg/s are unloaded at 6 V;
     // it slows under load and on a lower supply (460 deg/s at 5 V), and the steps must not hit the servos' own limit.
     static constexpr float MAX_JOINT_SPEED_DEG_S = 0.75f * SERVO_MAX_SPEED_DEG_S;
+
+    // The bends the walk keeps every knee between: short of straight, where the kinematics clamp a foot beyond reach,
+    // and a degree short of the full-size robot's tibia folding onto its femur (its URDF's 2.6 rad, 149 degrees), the
+    // tightest knee of the variants.
+    static constexpr float MIN_KNEE_BEND_DEG = 10, MAX_KNEE_BEND_DEG = 148;
 
     /**
      * One tick of the walk, slowed where it would turn a joint faster than MAX_JOINT_SPEED_DEG_S: the walk's own clock
@@ -152,8 +220,68 @@ class WalkState : public MotionState {
         follow(gait_dampers.step_depth, gait_state.step_depth, target_gait_state.step_depth, dt);
 
         updatePhase(dt);
+        boundToReach(body_state.ym);
         updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
+    }
+
+    // A foot's stroke: the rigid-body velocity field at its stance position, the commanded translation plus the
+    // rotational contribution omega x r about the body centre.
+    std::array<float, 2> strokeOf(const int index) const {
+        const float rx = kin->default_feet_positions[index][0];
+        const float rz = kin->default_feet_positions[index][2];
+        return {gait_state.step_x + gait_state.step_angle * -rz, gait_state.step_z + gait_state.step_angle * rx};
+    }
+
+    /**
+     * The share of the commanded stroke and crawl shift, and the step height, that keep every foot of the stance and
+     * the swing within reach at this body height: between the spheres about each mount that configure() derives, and
+     * below the hip. The crawl's shift moves the mount by up to crawl_shift, any way.
+     * The stroke and the shift shrink together until every foot's path, up to SWING_OVERSHOOT half strokes either side
+     * of its default spot, keeps inside the outer sphere at the stance's dip. On a body so low that a foot right under
+     * its mount would be inside the inner sphere, they also shrink until the foot keeps from passing in under the
+     * mount; no variant's lowest body is that low, and a body sinking past that height would cut a sideways stroke at
+     * once.
+     * Then the step height drops until the swing, at each of its SWING_SAMPLES phases, keeps outside the inner sphere.
+     * That also keeps a foot that passes in under its mount more than a coxa below it, where the hip turns past 90
+     * degrees. Against the inner sphere only the foot's sideways offset from the mount counts.
+     * A command that fits is walked as given.
+     */
+    void boundToReach(const float body_height) {
+        const float coxa = kin->coxa;
+        const float shift = mode == WALK_GAIT::CRAWL ? crawl_shift : 0;
+        const float deepest = body_height + gait_state.step_depth;
+        const float room = std::sqrt(std::max(0.f, reach_out_sq - deepest * deepest));
+        // The least sideways offset from the mount that keeps a foot on the ground outside the inner sphere.
+        const float least_offset = std::sqrt(std::max(0.f, reach_in_sq - body_height * body_height));
+        // Per leg, the half stroke and the share of it that points away from the body.
+        float half[4], outward[4];
+        reach_scale = coxa < room && least_offset <= coxa ? 1 : 0;
+        for (int leg = 0; leg < 4; leg++) {
+            const auto [stroke_x, stroke_z] = strokeOf(leg);
+            const float stroke = std::hypot(stroke_x, stroke_z);
+            const float side = kin->default_feet_positions[leg][2] > 0 ? 1 : -1;
+            half[leg] = stroke / 2;
+            outward[leg] = stroke > 0 ? side * stroke_z / stroke : 0;
+            const float reach = SWING_OVERSHOOT * half[leg], sideways = std::fabs(outward[leg]);
+            // The largest share k with sqrt(coxa^2 + 2 coxa sideways k reach + (k reach)^2) + k shift <= room.
+            const float a = reach * reach - shift * shift, b = coxa * sideways * reach + room * shift;
+            const float c = coxa * coxa - room * room;
+            const float discriminant = b * b - a * c;
+            if (c < 0 && (reach > 0 || shift > 0) && discriminant >= 0)
+                reach_scale = std::min(reach_scale, -c / (b + std::sqrt(discriminant)));
+            const float inward = sideways * reach + shift;
+            if (least_offset > 0 && inward > 0)
+                reach_scale = std::min(reach_scale, (coxa - least_offset) / inward);
+        }
+        swing_height = gait_state.step_height;
+        for (int leg = 0; leg < 4; leg++)
+            for (int sample = 1; sample < SWING_SAMPLES; sample++) {
+                const float offset =
+                    coxa + reach_scale * (half[leg] * SWING_ALONG[sample] * outward[leg] - shift);
+                const float clear = std::sqrt(std::max(0.f, reach_in_sq - (offset > 0 ? offset * offset : 0)));
+                swing_height = std::min(swing_height, std::max(0.f, body_height - clear) / SWING_LIFT[sample]);
+            }
     }
 
     void handleCommand(const CommandMsg &cmd) override {
@@ -229,7 +357,16 @@ class WalkState : public MotionState {
 
     void updateBodyPosition(body_state_t &body_state, float dt) {
         if (mode != WALK_GAIT::CRAWL) return;
+        shiftTowardsSupport(body_state);
+        // A shift the bound has shrunk since shrinks with it, also while a foot is in the air.
+        const float shifted = std::hypot(body_state.xm, body_state.zm), allowed = reach_scale * crawl_shift;
+        if (shifted > allowed) {
+            body_state.xm *= allowed / shifted;
+            body_state.zm *= allowed / shifted;
+        }
+    }
 
+    void shiftTowardsSupport(body_state_t &body_state) {
         const bool moving = !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
         if (!moving) return;
 
@@ -252,8 +389,8 @@ class WalkState : public MotionState {
             float progress = total_time > 0 ? 1.0f - (leg_states.time_to_lift / total_time) : 1.0f;
             float smooth_progress = smoothstep01(std::clamp(progress, 0.0f, 1.0f));
 
-            body_state.xm = lerp(shift_state.start_x, shift_state.target_x, smooth_progress);
-            body_state.zm = lerp(shift_state.start_z, shift_state.target_z, smooth_progress);
+            body_state.xm = lerp(shift_state.start_x, reach_scale * shift_state.target_x, smooth_progress);
+            body_state.zm = lerp(shift_state.start_z, reach_scale * shift_state.target_z, smooth_progress);
         }
     }
 
@@ -283,21 +420,17 @@ class WalkState : public MotionState {
     }
 
     void swingController(body_state_t &body_state, const int index, const float phase) {
-        controller(index, body_state, phase, bezierCurve, &gait_state.step_height);
+        controller(index, body_state, phase, bezierCurve, &swing_height);
     }
 
     void controller(const int index, body_state_t &body_state, const float phase,
                     std::function<void(float, float, float *, float, float *)> curve, float *arg) {
         float delta[3] = {0};
 
-        // Each foot's stroke is the rigid-body velocity field at its stance position: the commanded
-        // translation plus the rotational contribution omega x r about the body centre. Composing
-        // both into one vector means a single curve, so the swing/stance profile is applied once.
-        const float rx = kin->default_feet_positions[index][0];
-        const float rz = kin->default_feet_positions[index][2];
-        const float stroke_x = gait_state.step_x + gait_state.step_angle * -rz;
-        const float stroke_z = gait_state.step_z + gait_state.step_angle * rx;
-        const float stroke = std::hypot(stroke_x, stroke_z);
+        // Composing the translation and the rotation into one stroke means a single curve, so the swing/stance profile
+        // is applied once.
+        const auto [stroke_x, stroke_z] = strokeOf(index);
+        const float stroke = reach_scale * std::hypot(stroke_x, stroke_z);
 
         curve(stroke * 0.5f, std::atan2(stroke_z, stroke_x), arg, phase, delta);
 

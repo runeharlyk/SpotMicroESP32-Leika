@@ -1,7 +1,8 @@
-// Host test of the walk's joint speeds, built and run by test_host_programs.py: no gait, at any full stick, speed, step
-// height or body height the legs can reach, commands a joint faster than WalkState::MAX_JOINT_SPEED_DEG_S.
-// With the argument "report" it prints each gait's peak commanded joint speed and how often the servos' speed limit
-// (SERVO_MAX_SPEED_DEG_S) holds a joint back.
+// Host test of the walk's reach and joint speeds, built and run by test_host_programs.py: no gait, at any full stick,
+// speed, step height or body height, puts a foot where its leg cannot reach or commands a joint faster than
+// WalkState::MAX_JOINT_SPEED_DEG_S.
+// With the argument "report" it prints each gait's peak commanded joint speed, how often the servos' speed limit
+// (SERVO_MAX_SPEED_DEG_S) holds a joint back, its forward speed at the app's settings and the commands out of reach.
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -23,6 +24,8 @@ namespace {
 
 // The motion task's tick (esp32/src/main.cpp).
 constexpr float DT = 0.01f;
+// A knee the walk holds at its bound measures a little past it: the bound checks the swing at only some phases.
+constexpr float BEND_SAMPLING_DEG = 0.1f;
 
 enum Gait { TROT, CRAWL };
 
@@ -33,10 +36,14 @@ struct Speeds {
     // When the front left foot lifted off, first and last, and how often: the cycles walked.
     int lifts = 0, first_lift = 0, last_lift = 0;
 
+    // How far the body walked forward: each tick, by as much as its stance feet moved back.
+    float forward_m = 0;
+
     float cyclesPerSecond(float dt) const { return lifts > 1 ? (lifts - 1) / ((last_lift - first_lift) * dt) : 0; }
-    // Every foot stayed where its leg can put it. A straight knee is where the kinematics clamp a foot beyond reach; a
-    // knee folded past 150 degrees, or a hip turned past 90, has the foot at the hip, where the hip turns without bound.
-    // A joint jumps there however slowly the walk goes: the commands that go there are a reach problem, not a speed one.
+    float forwardSpeed(float dt) const { return forward_m / (ticks * dt); }
+    // Every foot stayed where its leg can put it, with the knee between the bends the walk keeps it in. A straight knee
+    // is where the kinematics clamp a foot beyond reach; a knee folded further, or a hip turned past 90, has the foot at
+    // the hip, where the hip turns without bound and a joint jumps however slowly the walk goes.
     bool reached = true;
 };
 
@@ -68,7 +75,16 @@ struct Walk {
         static_cast<MotionState &>(walk).handleCommand(cmd);
         const float max_step = SERVO_MAX_SPEED_DEG_S * DT;
         for (int tick = 0; tick < std::lround(seconds / DT); tick++) {
+            const body_state_t before = body;
             walk.step(body, DT);
+            float moved = 0;
+            int stance = 0;
+            for (int leg = 0; leg < 4; leg++)
+                if (std::max(before.feet[leg][1], body.feet[leg][1]) <= 1e-6f) {
+                    moved += before.feet[leg][0] - body.feet[leg][0];
+                    stance++;
+                }
+            if (stance) speeds.forward_m += moved / stance;
             float angles[12];
             kinematics.calculate_inverse_kinematics(body, angles);
             bool clipped = false;
@@ -80,7 +96,8 @@ struct Walk {
             for (int leg = 0; leg < 4; leg++) {
                 const float *joint = angles + 3 * leg;
                 const float knee = config.kneeFollowsFemur ? joint[2] - joint[1] : joint[2];
-                speeds.reached &= knee > 0.01f && knee < 150 && std::fabs(joint[0]) < 90;
+                speeds.reached &= knee >= WalkState::MIN_KNEE_BEND_DEG - BEND_SAMPLING_DEG &&
+                                  knee <= WalkState::MAX_KNEE_BEND_DEG + BEND_SAMPLING_DEG && std::fabs(joint[0]) < 90;
             }
             if (lifted <= 0 && body.feet[0][1] > 0) {
                 if (!speeds.lifts++) speeds.first_lift = speeds.ticks;
@@ -104,6 +121,15 @@ Speeds walkThere(const KinConfig &config, Gait gait, const CommandMsg &cmd, int 
     return walk.speeds;
 }
 
+// The same, measured only once the command smoothing has settled.
+Speeds settledWalk(const KinConfig &config, Gait gait, const CommandMsg &cmd, int cycles) {
+    Walk walk(config, gait);
+    walk.hold(cmd, 1);
+    walk.speeds = Speeds();
+    walk.hold(cmd, cycles * (gait == CRAWL ? 4.f : 1.f));
+    return walk.speeds;
+}
+
 // Full sticks: the left stick to the rim in eight directions and to the corners a gamepad reaches, the right stick
 // turning either way, and both at once.
 constexpr float SQRT_HALF = 0.70710678f;
@@ -122,23 +148,23 @@ constexpr float ROUNDING_DEG_S = 0.01f;
 
 const char *gaitName(Gait gait) { return gait == TROT ? "trot" : "crawl"; }
 
-// Every full stick at every speed, step height and body height whose feet the legs can reach stays under the cap.
-// The forward trot at the app's settings must be among them, so a reach test that rejected everything fails here.
-void noReachableFullStickOutrunsTheCap() {
+// Every full stick at every speed, step height and body height keeps every foot in reach and stays under the cap.
+void everyFullStickIsReachableAndUnderTheCap() {
     for (const KinematicsVariant variant : VARIANTS) {
         const KinConfig &config = *kinConfigFor(variant);
-        CHECK(walkThere(config, TROT, command(0, 1, 0, DEFAULT_H, 1, DEFAULT_S1)).reached);
         for (const Gait gait : {TROT, CRAWL}) {
             for (const auto &stick : STICKS)
                 for (const float h : LEVELS)
                     for (const float s1 : LEVELS)
                         for (const float s : SPEEDS) {
                             const Speeds speeds = walkThere(config, gait, command(stick[0], stick[1], stick[2], h, s, s1));
-                            if (!speeds.reached) continue;
-                            if (speeds.peak_deg_s > WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S)
-                                std::printf("%s %s stick %g,%g,%g h %g s %g s1 %g: %.0f deg/s\n", variantName(variant),
-                                            gaitName(gait), stick[0], stick[1], stick[2], h, s, s1, speeds.peak_deg_s);
-                            CHECK(speeds.peak_deg_s <= WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S);
+                            const bool fast = speeds.peak_deg_s > WalkState::MAX_JOINT_SPEED_DEG_S + ROUNDING_DEG_S;
+                            if (!speeds.reached || fast)
+                                std::printf("%s %s stick %g,%g,%g h %g s %g s1 %g: %s, %.0f deg/s\n",
+                                            variantName(variant), gaitName(gait), stick[0], stick[1], stick[2], h, s,
+                                            s1, speeds.reached ? "in reach" : "out of reach", speeds.peak_deg_s);
+                            CHECK(speeds.reached);
+                            CHECK(!fast);
                         }
         }
     }
@@ -157,6 +183,20 @@ void aShortStepKeepsItsCadence() {
         for (int leg = 0; leg < 4; leg++)
             for (int axis = 0; axis < 3; axis++)
                 CHECK(std::fabs(walk.body.feet[leg][axis] - before.feet[leg][axis]) < 1e-4f);
+    }
+}
+
+// The reach bound shortens only the strokes the legs cannot reach: a full forward trot at the app's settings keeps its
+// whole stroke on every variant, so the body walks the step length in each stance.
+void aFullForwardTrotKeepsItsStroke() {
+    constexpr float TROT_DUTY = 0.75f;
+    for (const KinematicsVariant variant : VARIANTS) {
+        const KinConfig &config = *kinConfigFor(variant);
+        const Speeds forward = settledWalk(config, TROT, command(0, 1, 0, DEFAULT_H, 0.5f, DEFAULT_S1), 8);
+        const float stroked = forward.forwardSpeed(DT) * TROT_DUTY / forward.cyclesPerSecond(DT);
+        if (std::fabs(stroked / config.max_step_length - 1) > 0.02f)
+            std::printf("%s: strokes %.4f m of %.4f\n", variantName(variant), stroked, config.max_step_length);
+        CHECK(std::fabs(stroked / config.max_step_length - 1) <= 0.02f);
     }
 }
 
@@ -189,14 +229,14 @@ void stoppingLandsEveryFootWithoutAJump() {
 }
 
 void report() {
-    std::printf("variant gait s: forward full stick at h %g, s1 %g: peak deg/s, ticks clipped at %.0f deg/s, cycles/s | every "
-                "reachable full stick, h and s1: worst peak, worst clipped share, unreachable commands\n",
+    std::printf("variant gait s: forward full stick at h %g, s1 %g: peak deg/s, ticks clipped at %.0f deg/s, cycles/s, m/s | "
+                "every reachable full stick, h and s1: worst peak, worst clipped share, unreachable commands\n",
                 DEFAULT_H, DEFAULT_S1, SERVO_MAX_SPEED_DEG_S);
     for (const KinematicsVariant variant : VARIANTS) {
         const KinConfig &config = *kinConfigFor(variant);
         for (const Gait gait : {TROT, CRAWL}) {
             for (const float s : SPEEDS) {
-                const Speeds forward = walkThere(config, gait, command(0, 1, 0, DEFAULT_H, s, DEFAULT_S1), 8);
+                const Speeds forward = settledWalk(config, gait, command(0, 1, 0, DEFAULT_H, s, DEFAULT_S1), 8);
                 float worst = 0, worst_clipped = 0;
                 int unreachable = 0, commands = 0;
                 for (const auto &stick : STICKS)
@@ -211,10 +251,10 @@ void report() {
                             worst = std::max(worst, speeds.peak_deg_s);
                             worst_clipped = std::max(worst_clipped, float(speeds.clipped_ticks) / speeds.ticks);
                         }
-                std::printf("%s %s %g: %.0f, %.1f%%, %.2f | %.0f, %.1f%%, %d of %d\n", variantName(variant), gaitName(gait),
-                            s, forward.peak_deg_s, 100.f * forward.clipped_ticks / forward.ticks,
-                            forward.cyclesPerSecond(DT), worst,
-                            100.f * worst_clipped, unreachable, commands);
+                std::printf("%s %s %g: %.0f, %.1f%%, %.2f, %.3f | %.0f, %.1f%%, %d of %d\n", variantName(variant),
+                            gaitName(gait), s, forward.peak_deg_s, 100.f * forward.clipped_ticks / forward.ticks,
+                            forward.cyclesPerSecond(DT), forward.forwardSpeed(DT), worst, 100.f * worst_clipped,
+                            unreachable, commands);
             }
         }
     }
@@ -227,8 +267,9 @@ int main(int argc, char **argv) {
         report();
         return 0;
     }
-    noReachableFullStickOutrunsTheCap();
+    everyFullStickIsReachableAndUnderTheCap();
     aShortStepKeepsItsCadence();
+    aFullForwardTrotKeepsItsStroke();
     stoppingLandsEveryFootWithoutAJump();
     if (failures) std::printf("%d failure(s)\n", failures);
     return failures ? 1 : 0;
