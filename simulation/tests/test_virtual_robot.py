@@ -1,8 +1,6 @@
 """The virtual robot (the firmware's motion, servo and socket code on the host) driven through the real robot's backend."""
 import asyncio
 import hashlib
-import os
-import shutil
 import time
 
 import pytest
@@ -14,13 +12,6 @@ from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import api_pb2
 from src.proto import message_pb2 as pb
-
-
-@pytest.fixture(scope="session")
-def binary(tmp_path_factory):
-    if shutil.which(os.environ.get("CXX", "g++")) is None:
-        pytest.skip("no host compiler: set CXX to a C++20 g++")
-    return virtual_robot.build(str(tmp_path_factory.mktemp("virtual_robot") / "virtual_robot.exe"))
 
 
 @pytest.fixture
