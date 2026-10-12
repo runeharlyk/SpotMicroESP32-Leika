@@ -52,6 +52,8 @@ PROGRAMS = {
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "ota_session_test.cpp": [],
+    "core_dump_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO,
+                           os.path.join(REPO, "esp32", "src", "filesystem_ws.cpp")],
 }
 
 # Compiler flags a program needs besides the firmware's.

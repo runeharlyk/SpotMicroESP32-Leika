@@ -94,6 +94,30 @@ message OtaChunk {
 }
 message OtaFinish {}
 
+// The crash the robot kept from its last panic: the panic handler writes an ELF core dump to the coredump partition,
+// and these read it back. Decoding the dump takes the ELF of the firmware that crashed (docs/websocket.md).
+message CoreDumpRequest {}
+// Streams the dump as fs_download messages, as an fs_download_request streams a file.
+message CoreDumpDownload {}
+// Accepted only while the robot is deactivated: erasing flash stalls whatever runs from it, the control loop too.
+message CoreDumpErase {}
+
+message CoreDumpReport {
+    bool partition = 1;            // false on partition tables without a coredump partition
+    bool stored = 2;               // a dump is stored
+    uint32 size = 3;               // its bytes, as the download delivers them
+    bool readable = 4;             // its checksum held, so the summary below was read from it
+    string task = 5;               // the task that crashed
+    uint32 pc = 6;
+    uint32 exc_cause = 7;          // EXCCAUSE on Xtensa, mcause on RISC-V
+    uint32 exc_vaddr = 8;          // EXCVADDR on Xtensa, mtval on RISC-V
+    repeated uint32 backtrace = 9; // Xtensa only: a RISC-V dump holds the stack instead, which decoding unwinds
+    bool backtrace_corrupted = 10;
+    string app_elf_sha256 = 11;    // hex SHA-256 of the crashed firmware's ELF, as firmware_elf_sha256 reports it
+    string panic_reason = 12;      // the abort or assert message, or the tasks a watchdog caught; empty otherwise
+    bool riscv = 13;               // which of the two meanings exc_cause and exc_vaddr have
+}
+
 message CorrelationRequest {
     uint32 correlation_id = 1;
     oneof request {
@@ -130,6 +154,9 @@ message CorrelationRequest {
         OtaStart ota_start = 210;
         OtaChunk ota_chunk = 211;
         OtaFinish ota_finish = 212;
+        CoreDumpRequest core_dump_request = 220;
+        CoreDumpDownload core_dump_download = 221;
+        CoreDumpErase core_dump_erase = 222;
     }
 }
 
@@ -158,6 +185,7 @@ message CorrelationResponse {
         api.CameraSettings camera_settings = 170;
         api.ServoSettings servo_settings = 180;
         api.PeripheralSettings peripheral_settings = 190;
+        CoreDumpReport core_dump_report = 220;
     }
 }
 
