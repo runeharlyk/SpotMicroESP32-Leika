@@ -1,6 +1,6 @@
 import type { KinConfig } from './kin-config'
 import { CriticalDamper } from './critical-damper'
-import { BodyState, RAD2DEG_F } from './kinematics'
+import { BodyState, RAD2DEG_F, inverseKinematics } from './kinematics'
 
 /** CommandMsg of esp32/include/message_types.h. */
 export interface CommandMsg {
@@ -206,6 +206,12 @@ const bezierCurve: Curve = (length, angle, height, phase, point) => {
     }
 }
 
+// SERVO_MAX_SPEED_DEG_S of peripherals/servo_output.h, and walk_state.h's cap below it and the parts of a tick it
+// slows by.
+const SERVO_MAX_SPEED_DEG_S = 720
+export const MAX_JOINT_SPEED_DEG_S = 0.75 * SERVO_MAX_SPEED_DEG_S
+const SLOWDOWN_PARTS = 64
+
 /** WalkState (motion_states/walk_state.h): trot and crawl, with the crawl's body shift. */
 export class WalkState extends MotionState {
     private crawl = false
@@ -273,7 +279,60 @@ export class WalkState extends MotionState {
         this.targetGait.stepDepth = cfg.defaultStepDepth
     }
 
+    /**
+     * One tick, slowed to the most 64ths of it the joints can follow at MAX_JOINT_SPEED_DEG_S, as walk_state.h does:
+     * a jump not even a 64th keeps under the cap is walked at full time.
+     */
     step(body: BodyState, dt: number) {
+        const before = inverseKinematics(this.cfg, body)
+        const start = this.snapshot(body)
+        const allowed = f32(MAX_JOINT_SPEED_DEG_S * f32(dt))
+        const followable = (parts: number) => {
+            this.restore(start, body)
+            this.advance(body, f32(f32(dt) * parts) / SLOWDOWN_PARTS)
+            const after = inverseKinematics(this.cfg, body)
+            return after.every((angle, i) => Math.abs(angle - before[i]) <= allowed)
+        }
+        if (followable(SLOWDOWN_PARTS)) return
+        let fastEnough = 0
+        let tooFast = SLOWDOWN_PARTS
+        while (tooFast - fastEnough > 1) {
+            const parts = Math.trunc((fastEnough + tooFast) / 2)
+            if (followable(parts)) fastEnough = parts
+            else tooFast = parts
+        }
+        followable(fastEnough > 0 ? fastEnough : SLOWDOWN_PARTS)
+    }
+
+    private snapshot(body: BodyState) {
+        const velocities = (dampers: Record<string, CriticalDamper>) =>
+            Object.fromEntries(
+                Object.entries(dampers).map(([key, damper]) => [key, damper.velocity])
+            )
+        return {
+            phaseTime: this.phaseTime,
+            gait: { ...this.gait },
+            gaitDampers: velocities(this.gaitDampers),
+            bodyDampers: velocities(this.bodyDampers),
+            shift: { ...this.shift },
+            body: { ...body, feet: body.feet.map(foot => [...foot]) }
+        }
+    }
+
+    private restore(start: ReturnType<WalkState['snapshot']>, body: BodyState) {
+        const setVelocities = (
+            dampers: Record<string, CriticalDamper>,
+            velocities: Record<string, number>
+        ) => Object.entries(dampers).forEach(([key, damper]) => (damper.velocity = velocities[key]))
+        this.phaseTime = start.phaseTime
+        this.gait = { ...start.gait }
+        setVelocities(this.gaitDampers, start.gaitDampers)
+        setVelocities(this.bodyDampers, start.bodyDampers)
+        this.shift = { ...start.shift }
+        Object.assign(body, { ...start.body, feet: start.body.feet.map(foot => [...foot]) })
+    }
+
+    private advance(body: BodyState, dt: number) {
         const { follow } = MotionState
         const { gait, targetGait, gaitDampers, bodyDampers } = this
         body.ym = follow(bodyDampers.ym, body.ym, this.target.ym, dt)

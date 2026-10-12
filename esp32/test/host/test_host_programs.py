@@ -45,6 +45,7 @@ PROGRAMS = {
     "imu_test.cpp": [*NANOPB, API_PROTO],
     "spsc_ring_test.cpp": [],
     "stand_compensation_test.cpp": [],
+    "gait_speed_test.cpp": [],
     "telemetry_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "proto_decoder_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "ws_frame_test.cpp": [],

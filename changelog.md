@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 - Eases the feet over half a second when stand or rest takes over, instead of snapping a foot from mid-stride: walk to stand jumped a joint up to 47 degrees in one tick
+- Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
 
 ### Fixed
 
@@ -31,6 +32,8 @@ All notable changes to this project will be documented in this file.
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
 - Fixes log lines from different tasks being spliced together on the serial port
 - Fixes WebSocket clients timing out their keep-alive pings and waiting out every close, which the robot never answered
+- Fixes the swing foot dropping onto its stance spot for one tick at the end of a swing
+- Fixes a diagonal or turning stance ending about a millimetre in the air, so its foot jumped at the start of the swing
 
 ## [0.3.0]
 

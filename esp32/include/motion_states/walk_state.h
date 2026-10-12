@@ -1,6 +1,7 @@
 #pragma once
 
 #include <motion_states/state.h>
+#include <peripherals/servo_output.h>
 #include <utils/math_utils.h>
 #include <algorithm>
 #include <array>
@@ -101,7 +102,46 @@ class WalkState : public MotionState {
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
 
+    // The fastest the walk turns a joint: a quarter below the servos' limit. The MG92B's 750 deg/s are unloaded at 6 V;
+    // it slows under load and on a lower supply (460 deg/s at 5 V), and the steps must not hit the servos' own limit.
+    static constexpr float MAX_JOINT_SPEED_DEG_S = 0.75f * SERVO_MAX_SPEED_DEG_S;
+
+    /**
+     * One tick of the walk, slowed where it would turn a joint faster than MAX_JOINT_SPEED_DEG_S: the walk's own clock
+     * (its phase and its command smoothing) then runs only the most 64ths of the tick the joints can follow, found by
+     * bisection. A long or high step so keeps its shape and takes longer, while a step the servos can follow is walked
+     * as commanded. A jump that even a 64th of the tick does not keep under the limit (a foot lifted to its hip) is
+     * walked at full time: creeping up to it would freeze the walk.
+     */
     void step(body_state_t &body_state, float dt = 0.02f) override {
+        Kinematics kinematics(*kin);
+        float before[12];
+        kinematics.calculate_inverse_kinematics(body_state, before);
+        const WalkState start = *this;
+        const body_state_t start_body = body_state;
+        const auto followable = [&](int parts) {
+            *this = start;
+            body_state = start_body;
+            advance(body_state, dt * parts / SLOWDOWN_PARTS);
+            float after[12];
+            kinematics.calculate_inverse_kinematics(body_state, after);
+            for (int joint = 0; joint < 12; joint++)
+                if (std::fabs(after[joint] - before[joint]) > MAX_JOINT_SPEED_DEG_S * dt) return false;
+            return true;
+        };
+        if (followable(SLOWDOWN_PARTS)) return;
+        int fast_enough = 0, too_fast = SLOWDOWN_PARTS;
+        while (too_fast - fast_enough > 1) {
+            const int parts = (fast_enough + too_fast) / 2;
+            (followable(parts) ? fast_enough : too_fast) = parts;
+        }
+        followable(fast_enough > 0 ? fast_enough : SLOWDOWN_PARTS);
+    }
+
+  protected:
+    static constexpr int SLOWDOWN_PARTS = 64;
+
+    void advance(body_state_t &body_state, float dt) {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
         gait_state.step_height = target_gait_state.step_height;
@@ -116,7 +156,6 @@ class WalkState : public MotionState {
         updateFeetPositions(body_state);
     }
 
-  protected:
     void handleCommand(const CommandMsg &cmd) override {
         target_body_state.ym = kin->min_body_height + cmd.h * kin->body_height_range;
         target_body_state.psi = cmd.ry * kin->max_pitch;

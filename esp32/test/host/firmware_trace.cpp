@@ -28,11 +28,14 @@ constexpr float DT = 0.01f;
 const Segment SCRIPT[] = {
     {REST, TROT, {0, 0, 0, 0, 0, 0, 0}, 0, 0, 50},
     {STAND, TROT, {0.3f, -0.2f, 0.4f, -0.3f, 0.6f, 0, 0}, 0.02f, -0.03f, 100},
-    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 200},
-    {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
-    {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 100},
+    // Level again before walking, as a client does, then each walk long enough for whole cycles once the commands
+    // settle, as the joint speed cap slows them.
+    {STAND, TROT, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 100},
+    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
-    {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 150},
+    {WALK, CRAWL, {0, 0.6f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 600},
     {STAND, CRAWL, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 50},
     // Out of a state and back while the body is still moving, so a state re-entered with stale smoothing shows.
     {STAND, CRAWL, {0, 0, 0, 0, 1, 0, 0}, 0, 0, 10},
