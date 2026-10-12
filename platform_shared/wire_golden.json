@@ -1,5 +1,23 @@
 {
   "enums": {
+    "animation.Ease": {
+      "LINEAR": 0,
+      "EASE_IN": 1,
+      "EASE_OUT": 2,
+      "EASE_IN_OUT": 3
+    },
+    "animation.ParamId": {
+      "SPEED": 0,
+      "BODY_X": 1,
+      "BODY_Y": 2,
+      "BODY_Z": 3,
+      "BODY_ROLL": 4,
+      "BODY_PITCH": 5,
+      "BODY_YAW": 6,
+      "FOOT_LIFT": 7,
+      "OVERLAY_AMPLITUDE": 8,
+      "REPEAT": 9
+    },
     "api.APNetworkStatus": {
       "AP_ACTIVE": 0,
       "AP_INACTIVE": 1,
@@ -9,6 +27,20 @@
       "AP_MODE_ALWAYS": 0,
       "AP_MODE_DISCONNECTED": 1,
       "AP_MODE_NEVER": 2
+    },
+    "socket_message.AnimationState": {
+      "ANIM_IDLE": 0,
+      "ANIM_ENTRY": 1,
+      "ANIM_PLAYING": 2,
+      "ANIM_HOLD": 3,
+      "ANIM_EXIT": 4
+    },
+    "socket_message.GoalState": {
+      "GOAL_IDLE": 0,
+      "GOAL_RUNNING": 1,
+      "GOAL_REACHED": 2,
+      "GOAL_CANCELLED": 3,
+      "GOAL_TIMED_OUT": 4
     },
     "socket_message.KinematicsVariant": {
       "KINEMATICS_VARIANT_UNSET": 0,
@@ -22,7 +54,15 @@
       "CALIBRATION": 2,
       "REST": 3,
       "STAND": 4,
-      "WALK": 5
+      "WALK": 5,
+      "ANIMATE": 6,
+      "WALK_NN": 7
+    },
+    "socket_message.SonarStatus": {
+      "SONAR_OFF": 0,
+      "SONAR_DISTANCE": 1,
+      "SONAR_NO_ECHO": 2,
+      "SONAR_NO_SENSOR": 3
     },
     "socket_message.WalkGaits": {
       "TROT": 0,
@@ -30,6 +70,62 @@
     }
   },
   "messages": {
+    "animation.Animation": {
+      "name": 1,
+      "description": 2,
+      "schema": 3,
+      "loop": 4,
+      "hold_end": 5,
+      "entry_time": 6,
+      "exit_time": 7,
+      "keyframes": 8,
+      "overlays": 9,
+      "params": 10,
+      "ride_height": 11
+    },
+    "animation.BodyPose": {
+      "roll": 1,
+      "pitch": 2,
+      "yaw": 3,
+      "x": 4,
+      "y": 5,
+      "z": 6
+    },
+    "animation.FootOffset": {
+      "x": 1,
+      "y": 2,
+      "z": 3
+    },
+    "animation.JointAngles": {
+      "coxa": 1,
+      "femur": 2,
+      "tibia": 3
+    },
+    "animation.Keyframe": {
+      "time": 1,
+      "ease": 2,
+      "body": 3,
+      "legs": 4
+    },
+    "animation.LegTarget": {
+      "foot": 1,
+      "joints": 2
+    },
+    "animation.Overlay": {
+      "body_axis": 1,
+      "foot_channel": 2,
+      "amplitude": 3,
+      "frequency": 4,
+      "phase": 5,
+      "start": 6,
+      "end": 7
+    },
+    "animation.ParamSpec": {
+      "id": 1,
+      "min": 2,
+      "default_value": 3,
+      "max": 4
+    },
     "api.APSettings": {
       "provision_mode": 1,
       "ssid": 2,
@@ -138,7 +234,10 @@
       "bmp_disabled": 8,
       "gesture_disabled": 9,
       "camera_disabled": 10,
-      "ws2812": 11
+      "ws2812": 11,
+      "espnow_controller": 12,
+      "left_sonar": 20,
+      "right_sonar": 21
     },
     "api.PeripheralSettingsRequest": {},
     "api.PinConfig": {
@@ -157,6 +256,11 @@
       "model": 3
     },
     "api.ServoSettingsRequest": {},
+    "api.SonarSettings": {
+      "enabled": 1,
+      "trigger_pin": 2,
+      "echo_pin": 3
+    },
     "api.WifiNetwork": {
       "ssid": 1,
       "password": 2,
@@ -214,10 +318,46 @@
       "uptime": 10,
       "cpu0_usage": 11,
       "cpu1_usage": 12,
-      "cpu_usage": 13
+      "cpu_usage": 13,
+      "i2c_errors": 14,
+      "i2c_bus_recoveries": 15
     },
-    "socket_message.AnglesData": {
-      "angles": 1
+    "socket_message.AnimationEntry": {
+      "name": 1,
+      "builtin": 2,
+      "size": 3
+    },
+    "socket_message.AnimationList": {
+      "animations": 1
+    },
+    "socket_message.AnimationListRequest": {},
+    "socket_message.AnimationParam": {
+      "id": 1,
+      "value": 2
+    },
+    "socket_message.AnimationPlay": {
+      "name": 1,
+      "params": 2
+    },
+    "socket_message.AnimationReport": {
+      "ok": 1,
+      "error": 2,
+      "clamped_mask": 3,
+      "description": 4,
+      "params": 5,
+      "duration": 6,
+      "loop": 7,
+      "hold_end": 8
+    },
+    "socket_message.AnimationStatus": {
+      "name": 1,
+      "state": 2,
+      "t": 3,
+      "clamped_mask": 4
+    },
+    "socket_message.AnimationStop": {},
+    "socket_message.AnimationValidate": {
+      "name": 1
     },
     "socket_message.ControllerData": {
       "left": 10,
@@ -226,6 +366,24 @@
       "speed": 21,
       "s1": 22
     },
+    "socket_message.CoreDumpDownload": {},
+    "socket_message.CoreDumpErase": {},
+    "socket_message.CoreDumpReport": {
+      "partition": 1,
+      "stored": 2,
+      "size": 3,
+      "readable": 4,
+      "task": 5,
+      "pc": 6,
+      "exc_cause": 7,
+      "exc_vaddr": 8,
+      "backtrace": 9,
+      "backtrace_corrupted": 10,
+      "app_elf_sha256": 11,
+      "panic_reason": 12,
+      "riscv": 13
+    },
+    "socket_message.CoreDumpRequest": {},
     "socket_message.CorrelationRequest": {
       "correlation_id": 1,
       "features_data_request": 10,
@@ -260,7 +418,18 @@
       "system_reset": 201,
       "ota_start": 210,
       "ota_chunk": 211,
-      "ota_finish": 212
+      "ota_finish": 212,
+      "animation_list_request": 220,
+      "animation_validate": 221,
+      "animation_play": 222,
+      "animation_stop": 223,
+      "core_dump_request": 230,
+      "core_dump_download": 231,
+      "core_dump_erase": 232,
+      "odometry_request": 240,
+      "goal_move": 250,
+      "goal_cancel": 251,
+      "goal_status_request": 252
     },
     "socket_message.CorrelationResponse": {
       "correlation_id": 1,
@@ -284,7 +453,12 @@
       "mdns_query_response": 161,
       "camera_settings": 170,
       "servo_settings": 180,
-      "peripheral_settings": 190
+      "peripheral_settings": 190,
+      "animation_list": 220,
+      "animation_report": 221,
+      "core_dump_report": 230,
+      "odometry": 240,
+      "goal_status": 250
     },
     "socket_message.Directory": {
       "name": 1
@@ -379,23 +553,49 @@
       "bmp_detected": 81,
       "servo": 100,
       "servo_detected": 101,
+      "servos_calibrated": 102,
       "gesture": 105,
       "gesture_detected": 106,
       "ws2812": 110,
+      "espnow_controller_supported": 115,
       "mdns": 120,
       "embed_www": 130,
       "device_id": 140,
       "robot_name": 150,
-      "hostname": 160
+      "hostname": 160,
+      "sonar": 170,
+      "walk_nn": 230
     },
     "socket_message.File": {
       "name": 10,
       "size": 20
     },
+    "socket_message.GoalCancel": {},
+    "socket_message.GoalMove": {
+      "forward_m": 1,
+      "sideways_m": 2,
+      "turn_deg": 3,
+      "speed": 4
+    },
+    "socket_message.GoalStatus": {
+      "id": 1,
+      "state": 2,
+      "forward_m": 3,
+      "sideways_m": 4,
+      "turn_deg": 5,
+      "progress": 6,
+      "timeout_s": 7
+    },
+    "socket_message.GoalStatusRequest": {},
     "socket_message.I2CDevice": {
       "address": 1,
       "part_number": 2,
       "name": 3
+    },
+    "socket_message.I2CDeviceErrors": {
+      "address": 1,
+      "nacks": 2,
+      "timeouts": 3
     },
     "socket_message.I2CScanData": {
       "devices": 1
@@ -452,7 +652,6 @@
       "mode": 130,
       "analytics": 150,
       "walk_gait": 160,
-      "angles": 170,
       "servo_pwm": 210,
       "servo_state": 211,
       "controller_data": 250,
@@ -460,10 +659,23 @@
       "telemetry_header": 270,
       "telemetry_batch": 271,
       "telemetry_network": 272,
-      "wifi_status": 280
+      "wifi_status": 280,
+      "animation_status": 292,
+      "sonar": 300,
+      "goal_status": 310
     },
     "socket_message.ModeData": {
       "mode": 1
+    },
+    "socket_message.OdometryData": {
+      "x": 1,
+      "y": 2,
+      "yaw": 3,
+      "distance": 4,
+      "kinematic_yaw": 5
+    },
+    "socket_message.OdometryRequest": {
+      "reset": 1
     },
     "socket_message.OtaChunk": {
       "index": 1,
@@ -496,7 +708,12 @@
       "active": 1
     },
     "socket_message.SonarData": {
-      "dummy_field": 1
+      "left": 2,
+      "right": 3
+    },
+    "socket_message.SonarReading": {
+      "status": 1,
+      "distance_cm": 2
     },
     "socket_message.StaticSystemInformation": {
       "esp_platform": 1,
@@ -569,7 +786,8 @@
       "command_rx_us": 13,
       "mode": 14,
       "gait": 15,
-      "link_lost": 16
+      "link_lost": 16,
+      "odometry": 17
     },
     "socket_message.UnsubscribeNotification": {
       "tag": 1
