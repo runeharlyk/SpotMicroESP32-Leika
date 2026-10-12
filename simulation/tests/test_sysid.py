@@ -101,6 +101,17 @@ def test_the_walk_narrows_the_randomisation_around_what_it_found(walk, tmp_path)
         assert ranges.action_latency_steps[0] <= env.dr.action_latency_steps < ranges.action_latency_steps[1]
 
 
+# At 5.7 V the cells of the cost the walk allows spread far along the valley where a higher supply and weaker servos
+# trade off; the best cell lies 0.15 V and 0.1 of strength off, so the servos must be refused rather than reported
+# with the spread of the one cell found. The lag does not trade off with them.
+def test_a_walk_that_cannot_tell_the_supply_from_the_strength_refuses_both(tmp_path):
+    path = tmp_path / "valley.leika"
+    write(path, **{**TRUTH, "volts": 5.7, "strength": 1.05, "lag_ms": 8.0}, stand_s=2.0, walk_s=3.0)
+    found = sysid.identify(load(path))
+    assert not found["supply_volts"].identified and not found["stall_strength"].identified
+    _within(found["actuator_lag_ms"], 8.0, 1.0)
+
+
 # A robot that never moves says nothing about its servos: the tool must say so instead of reporting the search's
 # starting point, and must still give the IMU noise.
 def test_a_still_recording_identifies_the_imu_but_not_the_servos(tmp_path, monkeypatch, capsys):

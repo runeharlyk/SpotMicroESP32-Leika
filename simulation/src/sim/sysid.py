@@ -13,13 +13,16 @@ What a recording can determine, and from what:
 
 The replay starts from a robot standing still, so a recording must begin with one, and it stops at the first lost
 tick, after which the written angles are unknown. The cost is the noise-scaled misfit of gyro and gravity direction,
-each channel's mean removed (a gyro bias or a mounting tilt). It is rugged: a footfall that lands a physics step
-earlier or later changes it in steps, so a coarse grid finds the basin and a simplex refines it, and the lag is
-searched in whole 2 ms physics steps. The servo parameters' uncertainty is the Gauss-Newton covariance at the optimum,
-the lag's the profile of the cost over the neighbouring steps, both scaled by the residual variance. They assume white
-residuals, so on real data, where the model's errors are correlated in time, they are lower bounds. A parameter whose
-2-sigma interval would span more than half of today's randomisation range is reported as not identifiable instead of
-with a value.
+each channel's mean removed (a gyro bias or a mounting tilt). It is a mosaic: a footfall that lands a physics step
+earlier or later changes it by up to hundreds of noise variances, so it splits into cells a few hundredths of a volt
+wide, scattered along the valley where a lower supply and a stronger servo trade off. A coarse grid finds the lag, a
+finer one the basins at it, a simplex refines the lowest few, and the lag is searched in whole 2 ms physics steps.
+The servo parameters' uncertainty is how far the cells the data cannot rule out reach around the optimum
+(_servo_sigma), the lag's the profile of the cost over the neighbouring steps, both scaled by the residual variance.
+They assume white residuals, so on real data, where the model's errors are correlated in time, they are lower bounds.
+A parameter whose 2-sigma interval would span more than half of today's randomisation range is reported as not
+identifiable instead of with a value, and so are both servo parameters when the cells the data allows reach that far
+along either.
 """
 from __future__ import annotations
 
@@ -64,7 +67,13 @@ SERVO_PARAMETERS = (
 # 20 ms frame of the servos' 50 Hz PWM, which alone delays a written angle by up to one frame.
 LAG = Parameter("actuator_lag_ms", "ms", (0.0, 40.0),
                 (_LATENCY_STEPS[0] * domain_rand.CONTROL_DT * 1e3, (_LATENCY_STEPS[1] - 1) * domain_rand.CONTROL_DT * 1e3))
-SERVO_GRID = 4             # coarse search points per servo parameter
+SERVO_GRID = 4             # coarse search points per servo parameter, for the lag
+# At the lag, the cost has several basins along the valley where supply and strength trade off, so a finer grid finds
+# them and a simplex starts in each of the lowest. Its points avoid the round values a synthetic truth tends to sit on.
+BASIN_GRID = 12
+BASINS = 3
+SCAN_SPACING = 1.0 / 120   # unit values: 0.01 V and 0.005 of strength, about a cell of the cost's mosaic
+ALLOWED_CHI2 = 4.0         # a cell this close above the best is within a sigma of beating it (see _servo_sigma)
 LAG_GRID_STRIDE = 3        # the coarse search tries every third lag step
 MISFIT_RMS = 2.0           # a fit residual this many noise sigmas means the model misses the recording
 
@@ -196,52 +205,81 @@ class _Search:
     def cost(self, servo, lag: int) -> float:
         return float(np.sum(self.residuals(servo, lag) ** 2))
 
+    def _simplex(self, lag: int, start: np.ndarray) -> _Fit:
+        spacing = 1.0 / (BASIN_GRID - 1)
+        simplex = np.vstack([start, start + np.diag(np.where(start + spacing > 1.0, -spacing, spacing))])
+        result = minimize(self.cost, start, args=(lag,), method="Nelder-Mead", bounds=[(0.0, 1.0)] * 2,
+                          options={"initial_simplex": simplex, "xatol": 1e-3, "fatol": 1e-2})
+        return _Fit(float(result.fun), result.x)
+
     def refine(self, lag: int, start: np.ndarray) -> _Fit:
         """The simplex's best servo parameters at one lag, refined once per lag."""
         if lag not in self.by_lag:
-            spacing = 1.0 / (SERVO_GRID - 1)
-            simplex = np.vstack([start, start + np.diag(np.where(start + spacing > 1.0, -spacing, spacing))])
-            result = minimize(self.cost, start, args=(lag,), method="Nelder-Mead", bounds=[(0.0, 1.0)] * 2,
-                              options={"initial_simplex": simplex, "xatol": 1e-3, "fatol": 1e-2})
-            self.by_lag[lag] = _Fit(float(result.fun), result.x)
+            self.by_lag[lag] = self._simplex(lag, start)
         return self.by_lag[lag]
 
+    def basins(self, lag: int) -> _Fit:
+        """The best of the simplexes started in the BASINS lowest local minima of a BASIN_GRID grid at the lag."""
+        axis = np.linspace(0.0, 1.0, BASIN_GRID)
+        costs = np.array([[self.cost(np.array([v, s]), lag) for s in axis] for v in axis])
+        padded = np.pad(costs, 1, constant_values=np.inf)
+        minima = sorted((costs[i, j], i, j) for i in range(BASIN_GRID) for j in range(BASIN_GRID)
+                        if costs[i, j] <= padded[i:i + 3, j:j + 3].min())
+        fits = sorted((self._simplex(lag, np.array([axis[i], axis[j]])) for _, i, j in minima[:BASINS]),
+                      key=lambda fit: fit.cost)
+        self.basin_lag, self.by_lag, self.rivals = lag, {lag: fits[0]}, fits[1:]
+        return fits[0]
+
     def run(self) -> int:
-        """A coarse grid, then the simplex at its best lag and at each next lag step while that lowers the cost.
-        Returns the best lag step."""
+        """A coarse grid for the lag, the basins at its best lag, then the simplex at each next lag step while that
+        lowers the cost; the basins again wherever that settles, until it settles where they were searched. Returns
+        the best lag step."""
         axis = np.linspace(0.0, 1.0, SERVO_GRID)
         grid = [(np.array([v, s]), lag) for v in axis for s in axis
                 for lag in range(0, len(self.lags_ms), LAG_GRID_STRIDE)]
-        servo, best = min(grid, key=lambda point: self.cost(*point))
-        self.refine(best, servo)
-        for direction in (-1, 1):
-            while 0 <= best + direction < len(self.lags_ms):
-                here = self.by_lag[best]
-                if self.refine(best + direction, here.servo).cost >= here.cost:
-                    break
-                best += direction
+        _, best = min(grid, key=lambda point: self.cost(*point))
+        searched = set()
+        while best not in searched:
+            searched.add(best)
+            self.basins(best)
+            for direction in (-1, 1):
+                while 0 <= best + direction < len(self.lags_ms):
+                    here = self.by_lag[best]
+                    if self.refine(best + direction, here.servo).cost >= here.cost:
+                        break
+                    best += direction
         return best
 
 
-def _servo_covariance(search: _Search, lag: int, step: float = 0.01):
-    """The servo parameters' variances (unit values) at the lag, from the Gauss-Newton information of a
-    central-difference Jacobian (one-sided at a bound), scaled by the residual variance. A direction the cost does not
-    change along gets infinite variance on every parameter it involves."""
-    servo = search.by_lag[lag].servo
-    residual = search.residuals(servo, lag)
-    columns = []
-    for i in range(len(servo)):
-        up, down = servo.copy(), servo.copy()
-        up[i], down[i] = min(servo[i] + step, 1.0), max(servo[i] - step, 0.0)
-        columns.append((search.residuals(up, lag) - search.residuals(down, lag)) / (up[i] - down[i]))
-    jacobian = np.column_stack(columns)
-    residual_variance = residual @ residual / max(len(residual) - len(servo) - 1, 1)
-    eigenvalues, vectors = np.linalg.eigh(jacobian.T @ jacobian / residual_variance)
-    flat = eigenvalues < 1.0  # a sigma wider than the whole search range
-    weights = vectors ** 2
-    variance = np.where(weights[:, flat].max(axis=1, initial=0.0) > 1e-6, np.inf,
-                        (weights[:, ~flat] / eigenvalues[~flat]).sum(axis=1))
-    return variance, residual, residual_variance
+def _servo_sigma(search: _Search, lag: int):
+    """The servo parameters' sigmas (unit values) at the lag, from the points around the optimum the data cannot rule
+    out. The cost is a mosaic of cells a few hundredths of a volt wide along the valley where supply and strength trade
+    off, so neither a Jacobian nor a curvature sees its basin, and the cells the data allows need not touch the best
+    one. Two cells whose noise-free costs differ by d (in chi-square units, the residual variance) differ in a
+    recording by d plus noise of sigma 2 sqrt(d), so a cell less than ALLOWED_CHI2 = 4 above the best is within a sigma
+    of beating it. Each parameter's sigma is how far such points reach along it, among the rival basins and a grid
+    SCAN_SPACING apart (about a cell) out to just past where the sigma would make it unidentifiable; for a smooth bowl
+    that is twice the sigma. A point lower than the optimum by more than the residual variance moves the optimum
+    there. The grid resolves the sigma to half its spacing. Also returns which parameters' allowed points reach the
+    grid's edge: there the region is cut off, and with it the other parameter's sigma."""
+    widths = np.array([p.bounds[1] - p.bounds[0] for p in SERVO_PARAMETERS])
+    unidentifiable = np.array([(p.prior[1] - p.prior[0]) / 8 for p in SERVO_PARAMETERS]) / widths  # see _estimate
+    reach = np.round(unidentifiable / SCAN_SPACING) + 1  # one step past it, so a sigma reaching the edge refuses
+    offsets = SCAN_SPACING * np.stack(np.meshgrid(*(np.arange(-n, n + 1) for n in reach), indexing="ij"), axis=-1)
+    while True:
+        fit = search.by_lag[lag]
+        grid = fit.servo + offsets.reshape(-1, 2)
+        points = np.vstack([grid[np.all((grid >= 0.0) & (grid <= 1.0), axis=1)],
+                            np.reshape([rival.servo for rival in search.rivals], (-1, 2))])
+        costs = np.array([search.cost(point, lag) for point in points])
+        residual = search.residuals(fit.servo, lag)
+        residual_variance = residual @ residual / max(len(residual) - len(SERVO_PARAMETERS) - 1, 1)
+        if costs.min() < fit.cost - residual_variance:
+            search.by_lag[lag] = search._simplex(lag, points[costs.argmin()])
+            continue
+        reached = np.abs(points[costs - fit.cost < ALLOWED_CHI2 * residual_variance] - fit.servo).max(axis=0)
+        cut_off = reached >= reach * SCAN_SPACING - 1e-9
+        return np.maximum(reached, SCAN_SPACING / 2), cut_off, residual, residual_variance
 
 
 def _lag_sigma(search: _Search, lag: int, residual_variance: float) -> float:
@@ -283,14 +321,20 @@ def dynamics_estimates(rec: Recording, imu: dict[str, Estimate]) -> dict[str, Es
     tilt_noise = np.radians(imu["rpy_noise_deg"].value or domain_rand.RPY_NOISE_DEG)
     search = _Search(replay, np.array([gyro_noise] * 3 + [tilt_noise] * 2))
     lag = search.run()
-    variance, residual, residual_variance = _servo_covariance(search, lag)
+    sigma, cut_off, residual, residual_variance = _servo_sigma(search, lag)
     residual_rms = float(np.sqrt(np.mean(residual ** 2)))
     misfit = (f"the fit residual is {residual_rms:.1f} noise sigmas: the model misses the recording, so the sigma "
               f"understates the uncertainty") if residual_rms > MISFIT_RMS else ""
     servo = search.by_lag[lag].servo
-    estimates = {p.name: _estimate(p, p.value(servo[i]), np.sqrt(variance[i]) * (p.bounds[1] - p.bounds[0]),
-                                   min(servo[i], 1.0 - servo[i]) < 0.01, misfit)
-                 for i, p in enumerate(SERVO_PARAMETERS)}
+    if cut_off.any():
+        along = " and ".join(p.name for p, cut in zip(SERVO_PARAMETERS, cut_off) if cut)
+        estimates = {p.name: _not_identifiable(f"the values the data allows run past where {along} would be "
+                                               f"identifiable, and the two are fitted together", p.unit)
+                     for p in SERVO_PARAMETERS}
+    else:
+        estimates = {p.name: _estimate(p, p.value(servo[i]), sigma[i] * (p.bounds[1] - p.bounds[0]),
+                                       min(servo[i], 1.0 - servo[i]) < 0.01, misfit)
+                     for i, p in enumerate(SERVO_PARAMETERS)}
     estimates[LAG.name] = _estimate(LAG, search.lags_ms[lag], _lag_sigma(search, lag, residual_variance),
                                     lag in (0, len(search.lags_ms) - 1), misfit)
     estimates["fit_residual_rms"] = Estimate(residual_rms, note="in noise sigmas; near 1 when the model explains the "
