@@ -16,6 +16,7 @@
 #include <motion_states/animate_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
+#include <gesture_control.h>
 #include <variant.h>
 #include <atomic>
 #include <mutex>
@@ -39,6 +40,9 @@ class MotionService {
     void setState(MotionState* newState);
 
     void handleGestures(const gesture_t ges);
+
+    /** The clip a down gesture plays from stand, loaded before the control task starts; without one it rests. */
+    void setSitClip(std::shared_ptr<const anim::Clip> clip) { sitClip = std::move(clip); }
 
     bool update(const ImuSample& imu, gesture_t gesture);
 
@@ -104,6 +108,7 @@ class MotionService {
 
     RestState restState;
     AnimateState animateState;
+    std::shared_ptr<const anim::Clip> sitClip;
     // The mode a clip hands back to when it ends: the one it started from, stand instead of walk, or one asked for
     // while it played.
     socket_message_ModesEnum returnMode = socket_message_ModesEnum_STAND;

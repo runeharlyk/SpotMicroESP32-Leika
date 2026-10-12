@@ -660,6 +660,9 @@ void IRAM_ATTR SpotControlLoopEntry(void *) {
     xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 8192, nullptr, 4, nullptr, 1);
     servoController.begin();
     motionService.begin();
+    const char *sitError = nullptr;
+    motionService.setSitClip(animationStore.load("sit", sitError));
+    if (sitError) ESP_LOGW("main", "No sit clip for the down gesture: %s", sitError);
 
     uint32_t tickSeq = 0;
     int64_t lastTickStart = 0;

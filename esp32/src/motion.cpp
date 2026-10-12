@@ -137,16 +137,15 @@ void MotionService::applyMode(socket_message_ModesEnum modeData) {
 }
 
 void MotionService::handleGestures(const gesture_t ges) {
-    if (ges != gesture_t::eGestureNone) {
-        ESP_LOGI("Motion", "Gesture: %d", ges);
-        switch (ges) {
-            case gesture_t::eGestureDown: setMode(socket_message_ModesEnum_REST); break;
-            case gesture_t::eGestureUp: setMode(socket_message_ModesEnum_STAND); break;
-            case gesture_t::eGestureLeft:
-            case gesture_t::eGestureRight: setMode(socket_message_ModesEnum_WALK); break;
-
-            default: break;
-        }
+    if (ges == gesture_t::eGestureNone) return;
+    const GestureAction action = gestureAction(ges, currentMode.load(), animateState.status().state, sitClip != nullptr);
+    ESP_LOGI("Motion", "Gesture: %d, action %d", ges, static_cast<int>(action));
+    switch (action) {
+        case GestureAction::SIT: startAnimation({sitClip, {}, 0}); break;
+        case GestureAction::REST: setMode(socket_message_ModesEnum_REST); break;
+        case GestureAction::STAND: setMode(socket_message_ModesEnum_STAND); break;
+        case GestureAction::WALK: setMode(socket_message_ModesEnum_WALK); break;
+        case GestureAction::NONE: break;
     }
 }
 

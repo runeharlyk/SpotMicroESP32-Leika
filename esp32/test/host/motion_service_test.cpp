@@ -225,6 +225,36 @@ static MotionInbox::Play bob() {
     return {clip, {}, 0};
 }
 
+static std::shared_ptr<const anim::Clip> crouchAndHold() {
+    auto clip = std::make_shared<anim::Clip>();
+    std::strcpy(clip->name, "crouch");
+    clip->keyframeCount = 2;
+    clip->keyframes[1].time = 0.5f;
+    clip->keyframes[1].body[anim::Z] = -15;
+    clip->holdEnd = true;
+    return clip;
+}
+
+static void standAsPico(MotionService &motion);
+
+// Down from stand sits and holds; a gesture while the clip still moves is dropped; down again rests through the exit.
+static void gesturesSitThenRest() {
+    MotionService motion;
+    motion.setSitClip(crouchAndHold());
+    standAsPico(motion);
+    tick(motion, eGestureDown);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    tick(motion, eGestureUp);  // still entering: discarded
+    for (int i = 0; i < 150; i++) tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
+    CHECK(motion.animationStatus().state == anim::State::HOLD);
+    tick(motion, eGestureDown);
+    for (int i = 0; i < 100; i++) tick(motion);
+    CHECK(motion.mode() == socket_message_ModesEnum_REST);
+    tick(motion, eGestureUp);
+    CHECK(motion.mode() == socket_message_ModesEnum_STAND);
+}
+
 static void standAsPico(MotionService &motion) {
     motion.useConfig(kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI));
     motion.begin();
@@ -289,6 +319,7 @@ static void aModeAskedForDuringAClipFollowsItsExit() {
 }
 
 int main() {
+    gesturesSitThenRest();
     aClipPlaysFromStandAndHandsBackToStand();
     aClipStartedWhileWalkingHandsBackToStand();
     aDeactivatedRobotPlaysNothing();
