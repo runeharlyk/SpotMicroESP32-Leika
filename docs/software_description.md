@@ -70,7 +70,8 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 - The tilt of a still robot can be folded into the stored mounting from the app, so that a robot on a level surface reads level. The tilt must be under 15 degrees.
 
 The other sensors are a PAJ7620U2 gesture sensor (read every 100 ms) and a BMP180 barometer (every 500 ms).
-A gesture changes the mode: down selects rest, up selects stand, and left and right select walk.
+A gesture steps along the ladder rest - sit - stand (`esp32/include/gesture_control.h`): down from walk stands, down from stand plays the built-in `sit` clip and holds it, down again rests, and up steps back up to stand; left and right select walk.
+A gesture that arrives while a clip moves the legs is discarded, not queued.
 
 #### Variant
 
