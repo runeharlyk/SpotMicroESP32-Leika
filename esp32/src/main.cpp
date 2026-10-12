@@ -122,11 +122,12 @@ static void replyOta(socket_message_CorrelationResponse &res, OtaReply reply) {
 
 static uint32_t nowMs() { return esp_timer_get_time() / 1000; }
 
-static void odometryToProto(const OdometryEstimate &estimate, socket_message_OdometryData &proto) {
+static void odometryToProto(const FusedEstimate &estimate, socket_message_OdometryData &proto) {
     proto.x = estimate.x;
     proto.y = estimate.y;
     proto.yaw = estimate.yaw;
     proto.distance = estimate.distance;
+    proto.kinematic_yaw = estimate.kinematicYaw;
 }
 
 static void goalStatusToProto(const MotionService::GoalStatus &status, socket_message_GoalStatus &proto) {

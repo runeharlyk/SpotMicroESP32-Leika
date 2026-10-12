@@ -17,19 +17,6 @@ struct Goal {
 // The values of the protocol's GoalState.
 enum class GoalState : uint8_t { IDLE, RUNNING, REACHED, CANCELLED, TIMED_OUT };
 
-/** The body's motion over one tick, in the frame it faced at the start of the tick. */
-struct BodyStep {
-    float forward = 0, left = 0; // m
-    float turn = 0;              // rad, counter-clockwise
-};
-
-/** The step between two estimates of the same odometry; a reset between them is the caller's to avoid. */
-inline BodyStep bodyStep(const OdometryEstimate &before, const OdometryEstimate &after) {
-    const float dx = after.x - before.x, dy = after.y - before.y;
-    const float c = std::cos(before.yaw), s = std::sin(before.yaw);
-    return {c * dx + s * dy, -s * dx + c * dy, std::remainder(after.yaw - before.yaw, 2.0f * static_cast<float>(M_PI))};
-}
-
 /** Stick deflections from -1 to 1 of the gait's top: forward, to the left and counter-clockwise. */
 struct GoalSticks {
     float forward = 0, left = 0, turn = 0;

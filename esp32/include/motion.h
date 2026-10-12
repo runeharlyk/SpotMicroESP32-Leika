@@ -68,16 +68,16 @@ class MotionService {
     /** Whether the dead-man stop is in force: the link fell silent and no input came since. */
     bool linkLost() const { return linkLostNow; }
 
-    /** Dead reckoning since the last reset or deactivation; safe to call from any task. */
-    OdometryEstimate odometry() const {
+    /** Dead reckoning since the last reset or deactivation, the gyro fused in; safe to call from any task. */
+    FusedEstimate odometry() const {
         std::lock_guard<std::mutex> lock(odometryMutex);
-        return kinematicOdometry.estimate();
+        return fusedOdometry.estimate();
     }
     /** Starts the dead reckoning afresh, and returns where it had got to. */
-    OdometryEstimate resetOdometry() {
+    FusedEstimate resetOdometry() {
         std::lock_guard<std::mutex> lock(odometryMutex);
-        const OdometryEstimate reached = kinematicOdometry.estimate();
-        kinematicOdometry.reset();
+        const FusedEstimate reached = fusedOdometry.estimate();
+        fusedOdometry.reset();
         return reached;
     }
 
@@ -129,7 +129,7 @@ class MotionService {
     body_state_t body_state;
 
     mutable std::mutex odometryMutex;
-    KinematicOdometry kinematicOdometry;
+    FusedOdometry fusedOdometry;
 
     GoalController goal;
     uint32_t goalId = 0;

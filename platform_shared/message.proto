@@ -94,14 +94,16 @@ message OtaChunk {
 }
 message OtaFinish {}
 
-// Dead reckoning from the commanded feet: where the body has gone since the last reset or deactivation, in the floor
-// frame it faced then (REP-103: x forward, y left). It knows only what the gait commanded, so slip and short steps
-// make it overshoot the real robot; calibrate it against a tape measure.
+// Dead reckoning from the commanded feet, its heading corrected by the gyro: where the body has gone since the last
+// reset or deactivation, in the floor frame it faced then (REP-103: x forward, y left). Its distances know only what
+// the gait commanded, so slip and short steps make it overshoot the real robot; calibrate it against a tape measure.
 message OdometryData {
     float x = 1;         // m
     float y = 2;         // m
     float yaw = 3;       // rad, counter-clockwise, in [-pi, pi]
     float distance = 4;  // m along the path
+    // rad, the heading the feet alone give; yaw fuses in the gyro. Their ratio over a turn is the gait's turn scale.
+    float kinematic_yaw = 5;
 }
 
 // Answered with the estimate; with reset, the one reached before it started afresh.
