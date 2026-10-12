@@ -81,6 +81,7 @@ void MotionService::setMode(socket_message_ModesEnum modeData) {
     }
     modeApplied = true;
     currentMode = modeData;
+    fallDetector.reset();
     MOTION_STATE mode = static_cast<MOTION_STATE>(modeData);
     ESP_LOGV("MotionService", "Mode %d", static_cast<int>(mode));
     switch (mode) {
@@ -111,6 +112,12 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     applyMail(inbox.take(now / 1000));
     handleGestures(gesture);
     if (!state) return false;
+    // A fallen robot's servos would push against the floor, stall and drain the battery: let the legs go limp.
+    if (fallDetector.update(imu, now)) {
+        ESP_LOGW("MotionService", "Fall detected - deactivating");
+        setMode(socket_message_ModesEnum_DEACTIVATED);
+        return false;
+    }
     float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
     state->updateImuOffsets(imu);
