@@ -15,8 +15,10 @@
 #include <motion_states/rest_state.h>
 #include <message_types.h>
 #include <motion_inbox.h>
+#include <odometry.h>
 #include <variant.h>
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <utility>
 
@@ -65,6 +67,19 @@ class MotionService {
     /** Whether the dead-man stop is in force: the link fell silent and no input came since. */
     bool linkLost() const { return linkLostNow; }
 
+    /** Dead reckoning since the last reset or deactivation; safe to call from any task. */
+    OdometryEstimate odometry() const {
+        std::lock_guard<std::mutex> lock(odometryMutex);
+        return kinematicOdometry.estimate();
+    }
+    /** Starts the dead reckoning afresh, and returns where it had got to. */
+    OdometryEstimate resetOdometry() {
+        std::lock_guard<std::mutex> lock(odometryMutex);
+        const OdometryEstimate reached = kinematicOdometry.estimate();
+        kinematicOdometry.reset();
+        return reached;
+    }
+
   private:
     void applyMail(const MotionInbox::Mail& mail);
     // Every mode change, from the app or a gesture, goes through here.
@@ -93,6 +108,9 @@ class MotionService {
     WalkState walkState;
 
     body_state_t body_state;
+
+    mutable std::mutex odometryMutex;
+    KinematicOdometry kinematicOdometry;
 
     float new_angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

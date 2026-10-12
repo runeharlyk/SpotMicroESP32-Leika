@@ -101,6 +101,13 @@ class WalkState : public MotionState {
         for (int i = 0; i < 4; ++i) phase_offset[i] = std::fmod(std::fabs(offsets[i]), 1.f);
     }
 
+    /** Which feet are in stance at the current phase, so on the floor. */
+    std::array<bool, 4> stance() const {
+        std::array<bool, 4> feet;
+        for (int i = 0; i < 4; ++i) feet[i] = std::fmod(phase_time + phase_offset[i], 1.0f) <= stand_offset;
+        return feet;
+    }
+
     void step(body_state_t &body_state, float dt = 0.02f) override {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);

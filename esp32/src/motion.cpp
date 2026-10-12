@@ -87,7 +87,14 @@ void MotionService::setMode(socket_message_ModesEnum modeData) {
         case MOTION_STATE::REST: setState(&restState); break;
         case MOTION_STATE::STAND: setState(&standState); break;
         case MOTION_STATE::WALK: setState(&walkState); break;
-        case MOTION_STATE::DEACTIVATED: setState(nullptr); break;
+        case MOTION_STATE::DEACTIVATED:
+            setState(nullptr);
+            {
+                // Afresh, without the last feet: a variant switch while deactivated moves them all at once.
+                std::lock_guard<std::mutex> lock(odometryMutex);
+                kinematicOdometry = {};
+            }
+            break;
         default: setState(nullptr); break;
     }
 }
@@ -115,6 +122,13 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     lastUpdate = now;
     state->updateImuOffsets(imu);
     state->step(body_state, dt);
+    {
+        // Outside the walk every foot stands; one a state eases down from mid-stride counts once it is down.
+        const std::array<bool, 4> stance =
+            state == &walkState ? walkState.stance() : std::array<bool, 4> {true, true, true, true};
+        std::lock_guard<std::mutex> lock(odometryMutex);
+        kinematicOdometry.update(body_state, stance);
+    }
     kinematics->calculate_inverse_kinematics(body_state, new_angles);
     return update_angles(new_angles, angles);
 }
