@@ -51,6 +51,7 @@ PROGRAMS = {
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO],
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
+    "ble_frame_test.cpp": [],
     "ota_session_test.cpp": [],
 }
 
@@ -62,6 +63,7 @@ FLAGS = {
 # Arguments a program runs with besides none.
 ARGUMENTS = {
     "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
+    "ble_frame_test.cpp": [os.path.join(REPO, "platform_shared", "ble_frame_vectors.json")],
 }
 
 
