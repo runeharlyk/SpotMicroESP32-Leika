@@ -9,6 +9,11 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      - "app/src/lib/simulation/robots.ts"
+      - "animations/**"
+      - "esp32/include/**"
+      - "esp32/scripts/**"
+      - "esp32/test/host/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
@@ -18,6 +23,11 @@ on:
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      - "app/src/lib/simulation/robots.ts"
+      - "animations/**"
+      - "esp32/include/**"
+      - "esp32/scripts/**"
+      - "esp32/test/host/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -32,6 +42,8 @@ jobs:
         working-directory: ./simulation
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -43,6 +55,15 @@ jobs:
 
       - name: Generate the protocol classes the recording loader reads
         run: uv run python gen_protos.py
+
+      # check_animation.py plays the firmware's own animation player on the Pico: trace the current firmware rather
+      # than trust the committed fixture to be fresh.
+      - name: Trace the firmware animation player
+        working-directory: .
+        run: |
+          uv run --no-project --with protobuf --with grpcio-tools python esp32/scripts/compile_protos.py
+          uv run --no-project --with protobuf --with grpcio-tools python esp32/scripts/pack_animations.py
+          uv run --no-project python esp32/test/host/export_animation_traces.py
 
       - name: Run tests
         run: uv run pytest -q

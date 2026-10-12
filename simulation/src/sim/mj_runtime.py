@@ -12,6 +12,7 @@ import os
 
 import numpy as np
 import mujoco
+from scipy.spatial import ConvexHull
 
 from src.robot.firmware_gait import Kinematics, BodyState, STAND_Z
 
@@ -59,6 +60,18 @@ class SpotPicoSim:
         mujoco.mj_forward(self.model, self.data)
         self.data.ctrl[self.act_ids] = stand
 
+    def reset_to_joints(self, angles_rad: np.ndarray):
+        """Level, at rest, with these joint angles and the lowest foot just touching the floor."""
+        mujoco.mj_resetData(self.model, self.data)
+        a = self.base_qposadr
+        self.data.qpos[a : a + 7] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+        self.data.qpos[self.qpos_adr] = angles_rad
+        mujoco.mj_kinematics(self.model, self.data)
+        lowest = np.min(self.data.geom_xpos[self.foot_geom_ids, 2] - self.model.geom_size[self.foot_geom_ids, 0])
+        self.data.qpos[a + 2] = -lowest
+        mujoco.mj_forward(self.model, self.data)
+        self.data.ctrl[self.act_ids] = angles_rad
+
     def set_joint_targets(self, angles_rad: np.ndarray):
         self.data.ctrl[self.act_ids] = angles_rad
 
@@ -76,6 +89,30 @@ class SpotPicoSim:
 
     def base_height(self) -> float:
         return float(self.data.qpos[self.base_qposadr + 2])
+
+    def tilt_deg(self) -> float:
+        """The angle between the body's up axis and the world's."""
+        _, x, y, _ = self.base_quat()
+        return float(np.degrees(np.arccos(np.clip(1.0 - 2.0 * (x * x + y * y), -1.0, 1.0))))
+
+    def ground_contacts(self) -> tuple[tuple[int, ...], bool]:
+        """The feet on the ground (indices into LEG_NAMES), and whether anything other than a foot touches it."""
+        feet, knock = set(), False
+        for c in self.data.contact[: self.data.ncon]:
+            if self.ground_geom_id not in (c.geom1, c.geom2):
+                continue
+            other = c.geom2 if c.geom1 == self.ground_geom_id else c.geom1
+            if other in self.foot_geom_ids:
+                feet.add(int(np.flatnonzero(self.foot_geom_ids == other)[0]))
+            else:
+                knock = True
+        return tuple(sorted(feet)), knock
+
+    def support_margin(self, feet: tuple[int, ...]) -> float:
+        """How far (m) the centre of mass stands inside the polygon of these feet on the floor, negative outside."""
+        corners = self.data.geom_xpos[self.foot_geom_ids[list(feet)], :2]
+        com = self.data.subtree_com[self.base_id, :2]
+        return float(min(-(edge[:2] @ com + edge[2]) for edge in ConvexHull(corners).equations))
 
     def gyro(self) -> np.ndarray:
         return self.data.sensordata[self._gyro_slice].copy()

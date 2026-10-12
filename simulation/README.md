@@ -65,6 +65,7 @@ uv run python report_recording.py recording.leika [--still]         # its timing
 uv run python generate_scenes.py          # regenerate the spot_micro and yertle scenes from app/static
 uv run python export_gait_trace.py        # golden gait trace for the web app's TypeScript port (app/tests/fixtures)
 uv run python fit_pico_joint_map.py       # fit the Pico's firmware-to-MJCF joint map for the web app (app/src/lib/simulation/robots.ts)
+uv run python check_animation.py          # play the built-in clips on the Pico from the firmware's animation trace: clamps, servo speed, knocks, tips, falls
 
 uv run pytest -q                                                    # regression tests
 ```

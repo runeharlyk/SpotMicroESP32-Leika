@@ -197,6 +197,7 @@ int main(int argc, char **argv) {
         {"sit, stopped while it holds", builtin("sit"), {}, 300},
         {"bow at its defaults", builtin("bow"), {}},
         {"wave, stopped while it waves", builtin("wave"), {{anim::OVERLAY_AMPLITUDE, 1.4f}}, 250},
+        {"wave at its defaults", builtin("wave"), {}},
         {"mixed foot and joint targets", mixed(kin, *config), {}},
         {"loop, stopped", looping(), {}, 260},
         {"repeat at speed 1.5 and a ride height", repeating(*config),
