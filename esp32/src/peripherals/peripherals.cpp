@@ -12,7 +12,7 @@ Peripherals::Peripherals()
     addUpdateHandler(
         [&](const std::string &originId) {
             updatePins();
-            _imuSettingsChanged.store(true);
+            _sensorSettingsChanged.store(true);
         },
         false);
 }
@@ -26,6 +26,37 @@ void Peripherals::begin() {
 void Peripherals::beginSensors() {
     _imu.configure(imuConfig());
     probeSensors(sensorOptions());
+    applySonars(sonarWiring());
+}
+
+// Sonars on pins they cannot take stay off, as a strip on such a pin stays dark: a stored file is loaded as it is.
+Peripherals::SonarWiring Peripherals::sonarWiring() const {
+    SonarWiring wiring {};
+    read([&wiring](const PeripheralsConfiguration &settings) {
+        const std::array<api_SonarSettings, 2> sonars = effectiveSonarSettings(settings);
+        if (!sonars[0].enabled && !sonars[1].enabled) return;
+        if (const char *problem = sonarProblem(sonars, settings, effectiveLedSettings(settings))) {
+            ESP_LOGW("Peripherals", "Sonars left off: %s", problem);
+            return;
+        }
+        for (size_t i = 0; i < sonars.size(); i++) {
+            wiring[i] = {sonars[i].enabled, static_cast<gpio_num_t>(sonars[i].trigger_pin),
+                         static_cast<gpio_num_t>(sonars[i].echo_pin)};
+        }
+    });
+    return wiring;
+}
+
+void Peripherals::applySonars(const SonarWiring &wiring) {
+    _appliedSonars = wiring;
+    _sonarPins.attach(wiring);
+    _ranger.enable({_sonarPins.attached(0), _sonarPins.attached(1)});
+    {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.sonars = _ranger.readings();
+    }
+    std::lock_guard<std::mutex> lock(_statusMutex);
+    _status.sonarActive = _sonarPins.attached(0) || _sonarPins.attached(1);
 }
 
 Peripherals::SensorOptions Peripherals::sensorOptions() const {
@@ -71,6 +102,7 @@ void Peripherals::probeSensors(const SensorOptions &options) {
     _probedOptions = options;
     {
         std::lock_guard<std::mutex> lock(_statusMutex);
+        status.sonarActive = _status.sonarActive;
         _status = status;
     }
     ESP_LOGI("Peripherals", "IMU %s %s at %u Hz, compass %s at %u Hz, barometer %s, gesture sensor %s",
@@ -85,9 +117,13 @@ SensorStatus Peripherals::status() const {
 }
 
 void Peripherals::sensorTick() {
-    if (_imuSettingsChanged.exchange(false)) applyImuSettings();
+    if (_sensorSettingsChanged.exchange(false)) applySensorSettings();
     runOldestQueuedWork();
     readImu();
+    if (_ranger.tick(static_cast<uint32_t>(esp_timer_get_time()))) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.sonars = _ranger.readings();
+    }
     EXECUTE_EVERY_N_MS(100, { readGesture(); });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
 }
@@ -136,11 +172,34 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
     data.pressure = _readings.pressure;
 }
 
-void Peripherals::applyImuSettings() {
+void Peripherals::applySensorSettings() {
+    const SonarWiring sonars = sonarWiring();
+    if (!(sonars == _appliedSonars)) applySonars(sonars);
     _imu.configure(imuConfig());
     // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
     const SensorOptions options = sensorOptions();
     if (!(options == _probedOptions)) probeSensors(options);
+}
+
+static socket_message_SonarStatus sonarStatusProto(sonar::Status status) {
+    switch (status) {
+        case sonar::Status::Distance: return socket_message_SonarStatus_SONAR_DISTANCE;
+        case sonar::Status::NoEcho: return socket_message_SonarStatus_SONAR_NO_ECHO;
+        case sonar::Status::NoSensor: return socket_message_SonarStatus_SONAR_NO_SENSOR;
+        case sonar::Status::Off: break;
+    }
+    return socket_message_SonarStatus_SONAR_OFF;
+}
+
+void Peripherals::getSonarProto(socket_message_SonarData &data) {
+    std::array<sonar::Reading, sonar::COUNT> sonars;
+    {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        sonars = _readings.sonars;
+    }
+    data.has_left = data.has_right = true;
+    data.left = {sonarStatusProto(sonars[0].status), sonars[0].distanceCm};
+    data.right = {sonarStatusProto(sonars[1].status), sonars[1].distanceCm};
 }
 
 void Peripherals::readImu() {

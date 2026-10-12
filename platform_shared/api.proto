@@ -232,6 +232,14 @@ message LedSettings {
     int32 pin = 2;
 }
 
+// An HC-SR04 ultrasonic sensor; a settings file without it leaves the sensor off. Its echo is 5 V: a 3.3 V GPIO
+// needs a divider on it.
+message SonarSettings {
+    bool enabled = 1;
+    int32 trigger_pin = 2;
+    int32 echo_pin = 3;
+}
+
 // The I2C sensors and the camera are used when detected; a disabled one is not probed, for a chip that is wired
 // but not mounted. Disabled rather than enabled flags, so a settings file from before them leaves all in use.
 message PeripheralSettings {
@@ -248,6 +256,8 @@ message PeripheralSettings {
     LedSettings ws2812 = 11;
     // Listen for the ESP-NOW handheld controller; off by default, since it drives the robot from any sender in range.
     bool espnow_controller = 12;
+    SonarSettings left_sonar = 20;
+    SonarSettings right_sonar = 21;
 }
 
 message PeripheralSettingsRequest {}

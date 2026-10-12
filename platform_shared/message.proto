@@ -46,6 +46,7 @@ message FeaturesDataResponse {
     optional bool servos_calibrated = 102;
     bool gesture = 105;
     bool gesture_detected = 106;
+    bool sonar = 170;  // a sonar is enabled on usable pins; whether one answers is in SonarData
     bool ws2812 = 110;
     bool espnow_controller_supported = 115; // the board has a radio for the ESP-NOW handheld controller
     bool mdns = 120;
@@ -325,7 +326,25 @@ message I2CScanDataRequest {}
 
 message RSSIData { int32 rssi = 1; }
 
-message SonarData { string dummy_field = 1; }
+enum SonarStatus {
+    SONAR_OFF = 0;        // disabled, or on pins it cannot use
+    SONAR_DISTANCE = 1;
+    SONAR_NO_ECHO = 2;    // nothing within 4 m
+    SONAR_NO_SENSOR = 3;  // the echo pin never rose: no sensor, or a wiring fault
+}
+
+message SonarReading {
+    SonarStatus status = 1;
+    float distance_cm = 2;  // only with SONAR_DISTANCE
+}
+
+// The HC-SR04s' latest pings; each sensor pings ten times a second, taking turns with the other.
+message SonarData {
+    reserved 1;
+    reserved "dummy_field";
+    SonarReading left = 2;
+    SonarReading right = 3;
+}
 
 message ControllerData {
     Vector left = 10; Vector right = 11; float height = 20; float speed = 21; float s1 = 22;
@@ -462,5 +481,6 @@ message Message {
         TelemetryBatch telemetry_batch = 271;
         TelemetryNetwork telemetry_network = 272;
         AnimationStatus animation_status = 292;
+        SonarData sonar = 300;
     }
 }

@@ -98,7 +98,7 @@ static void driveLeds() {
     static std::atomic<int32_t> drivenPin {-1};
     const PeripheralsConfiguration settings = peripherals.snapshot();
     const api_LedSettings led = effectiveLedSettings(settings);
-    const bool usable = usableLedSettings(led, settings, drivenPin);
+    const bool usable = usableLedSettings(led, settings, effectiveSonarSettings(settings), drivenPin);
     if (led.enabled && !usable) ESP_LOGW("main", "LED strip on GPIO %d cannot be driven; left dark", (int)led.pin);
     drivenPin = led.enabled && usable ? led.pin : -1;
     ledService.drive(drivenPin);
@@ -887,6 +887,12 @@ void IRAM_ATTR serviceLoopEntry(void *) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
                 peripherals.getIMUProto(imu);
                 wsSocket.emit(imu);
+            }
+
+            if (wsSocket.hasSubscribers(socket_message_Message_sonar_tag)) {
+                socket_message_SonarData sonar = socket_message_SonarData_init_zero;
+                peripherals.getSonarProto(sonar);
+                wsSocket.emit(sonar);
             }
 
             if (wsSocket.hasSubscribers(socket_message_Message_rssi_tag)) {

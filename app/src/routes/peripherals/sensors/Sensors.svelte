@@ -170,7 +170,49 @@
                 Listen for the ESP-NOW controller
             </label>
             <p class="text-xs opacity-70">
-                Any ESP-NOW controller in range can drive the robot while this is on.
+                The robot obeys the first controller it hears after this is switched on.
+            </p>
+        {/if}
+
+        {#if form.leftSonar && form.rightSonar}
+            <div class="divider my-1">HC-SR04 sonars</div>
+            {#each [{ name: 'Left', sonar: form.leftSonar }, { name: 'Right', sonar: form.rightSonar }] as side (side.name)}
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="label w-28 gap-2">
+                        <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            aria-label="Use the {side.name.toLowerCase()} sonar"
+                            bind:checked={side.sonar.enabled}
+                        />
+                        {side.name}
+                    </label>
+                    <label class="input input-sm w-36">
+                        Trigger
+                        <input
+                            type="number"
+                            min="0"
+                            aria-label="{side.name} sonar trigger pin"
+                            disabled={!side.sonar.enabled}
+                            bind:value={side.sonar.triggerPin}
+                        />
+                    </label>
+                    <label class="input input-sm w-36">
+                        Echo
+                        <input
+                            type="number"
+                            min="0"
+                            aria-label="{side.name} sonar echo pin"
+                            disabled={!side.sonar.enabled}
+                            bind:value={side.sonar.echoPin}
+                        />
+                    </label>
+                </div>
+            {/each}
+            <p class="text-xs opacity-70">
+                The echo pin carries 5 V: wire it through a divider, such as 1 kOhm from the echo to
+                the pin and 2 kOhm from the pin to ground. The sensors ping in turn, ten times a
+                second each.
             </p>
         {/if}
 

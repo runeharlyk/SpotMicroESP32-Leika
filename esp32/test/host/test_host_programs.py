@@ -65,11 +65,14 @@ PROGRAMS = {
     "core_dump_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO,
                            os.path.join(REPO, "esp32", "src", "filesystem_ws.cpp")],
     "handheld_controller_test.cpp": [],
+    "sonar_test.cpp": [*NANOPB, API_PROTO],
 }
 
 # Compiler flags a program needs besides the firmware's.
 FLAGS = {
     "proto_decoder_test.cpp": ["-include", os.path.join(HERE, "stubs", "counting_alloc.h")],
+    # global.h, through the peripheral settings, needs a target.
+    "sonar_test.cpp": ["-DCONFIG_IDF_TARGET_ESP32S3=1"],
 }
 
 # Arguments a program runs with besides none.

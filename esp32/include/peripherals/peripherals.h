@@ -23,6 +23,7 @@
 #include <peripherals/drivers/hmc5883l.h>
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
+#include <peripherals/sonar.h>
 
 /**
  * The sensors' latest values. The sensor task writes them; the control and service tasks copy them out
@@ -34,6 +35,7 @@ struct SensorReadings {
     float temperature {0};
     float pressure {0};
     gesture_t gesture {eGestureNone};
+    std::array<sonar::Reading, sonar::COUNT> sonars {};  // left, right
 };
 
 /** What the last probe found: a sensor is detected when it answered, and active when it is also not disabled. */
@@ -42,6 +44,7 @@ struct SensorStatus {
     bool magDetected = false, magActive = false;
     bool bmpDetected = false, bmpActive = false;
     bool gestureDetected = false, gestureActive = false;
+    bool sonarActive = false;  // a sonar is enabled on pins it could take
     const char *imuDriver = "none";
     uint32_t imuRateHz = 0, magRateHz = 0;
 };
@@ -69,6 +72,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
+    void getSonarProto(socket_message_SonarData &data);
 
     ImuSample imuSample();
     const char *imuDriverName() const;
@@ -107,8 +111,13 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void probeSensors(const SensorOptions &options);
     SensorOptions _probedOptions {};
 
+    using SonarWiring = std::array<SonarPins::Wiring, sonar::COUNT>;
+    SonarWiring sonarWiring() const;
+    void applySonars(const SonarWiring &wiring);
+    SonarWiring _appliedSonars {};
+
     void readImu();
-    void applyImuSettings();
+    void applySensorSettings();
     ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
@@ -119,7 +128,7 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     SensorReadings _readings;
 
     // Set by a settings save, taken by the sensor task: a flag, unlike the bounded work queue, cannot drop a save.
-    std::atomic<bool> _imuSettingsChanged {false};
+    std::atomic<bool> _sensorSettingsChanged {false};
 
     static constexpr size_t MAX_QUEUED_WORK = 4;
     std::mutex _workMutex;
@@ -138,6 +147,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Imu _imu;
     Barometer _bmp;
     GestureSensor _gesture;
+    SonarPins _sonarPins;
+    sonar::Ranger<SonarPins> _ranger {_sonarPins};
 
     mutable std::mutex _statusMutex;
     SensorStatus _status;

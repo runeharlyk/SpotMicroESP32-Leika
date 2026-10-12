@@ -65,6 +65,7 @@ Subscriptions end with the connection and must be sent again after a reconnect.
 | `telemetry_batch`   | 271 | In batches, see [Telemetry](#telemetry)                                           |
 | `telemetry_network` | 272 | Every second while telemetry is recorded                                          |
 | `wifi_status`       | 280 | When the station gets an address or loses the network; also over the [serial link](serial.md) |
+| `sonar`             | 300 | Every 100 ms: each HC-SR04's distance, or no echo within 4 m, no sensor, or off   |
 
 `telemetry_header` (270) is not subscribed to; it is sent to a client each time that client subscribes to 271.
 The robot never sends `angles`, `servo_pwm`, `servo_state` or `controller_data`.

@@ -105,7 +105,7 @@ An invalid settings write is refused and leaves the stored settings unchanged.
 Apart from the camera stream (`/api/camera/stream`, MJPEG) and the embedded web app, the robot's API is the WebSocket at `/api/ws`, carrying protobuf messages from `platform_shared/message.proto`.
 Commands, periodic broadcasts, settings, file transfer and the per-tick telemetry stream all travel over it, see [WebSocket](websocket.md).
 The same requests also arrive over the serial link on the console port, beside the log, for setup over a USB cable, see [Serial link](serial.md); a `SerialLink` adapter answers them, and the log goes out through its writer so a line never splits a frame.
-The service task broadcasts the IMU and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed.
+The service task broadcasts the IMU, the sonars and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed.
 
 The telemetry stream is recorded only while a client is subscribed.
 The control task puts one sample per tick in a ring of 64 ticks, and the service task sends them in batches of 10, preceded by a header describing the robot's firmware, variant, IMU and settings.

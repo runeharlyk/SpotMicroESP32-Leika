@@ -1,12 +1,21 @@
 #pragma once
-// Host stand-in for the GPIO driver on open-drain I2C lines: a line reads low while the ESP32 or a device pulls it
-// low, and high otherwise, as its pull-up makes it.
+// Host stand-in for the GPIO driver.
+// On open-drain I2C lines a line reads low while the ESP32 or a device pulls it low, and high otherwise, as its pull-up
+// makes it. The validity checks are the ESP32-S3's: GPIOs 0-21 and 26-48 exist, and every one can drive; a test marks
+// pins input-only with gpio_stub::inputOnly.
 #include <cstdint>
+#include <esp_bit_defs.h>
 #include <map>
 #include <set>
 
+namespace gpio_stub {
+inline uint64_t inputOnly = 0;
+}
+
 typedef int gpio_num_t;
 #define GPIO_NUM_NC -1
+#define GPIO_IS_VALID_GPIO(pin) ((pin) >= 0 && (pin) <= 48 && ((pin) <= 21 || (pin) >= 26))
+#define GPIO_IS_VALID_OUTPUT_GPIO(pin) (GPIO_IS_VALID_GPIO(pin) && !(gpio_stub::inputOnly & BIT64(pin)))
 
 typedef int gpio_mode_t;
 #define GPIO_MODE_INPUT_OUTPUT_OD 7
