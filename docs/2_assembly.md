@@ -35,6 +35,14 @@ On the Pico each knee turns through its four-bar linkage from where it is at its
 
 If a joint cannot reach its reference pose inside the PWM range, remove the servo horn and refit it one spline tooth over.
 
+### Set the servo supply
+
+Measure the voltage on the servo rail and enter it as "Servo supply" on the same page; it is sent when the field loses focus and takes effect at once, without a restart.
+The robot takes from it how fast its MG92B servos turn: 0.13 s per 60 degrees at 4.8 V and 0.08 s at 6 V, linear in between and held at the nearer rating outside.
+The servo controller moves each joint at most 96 % of that rating (720 degrees per second at 6 V), and the walk at most three quarters of it (540 degrees per second at 6 V), so a lower supply walks with slower steps instead of steps the servos cannot follow.
+The page shows both speeds for the entered supply.
+A robot that was never given a supply runs at 6 V.
+
 ### Level the IMU
 
 With an IMU detected and not disabled, open `/peripherals/imu` and click "Calibrate IMU" while the robot lies still and level.
