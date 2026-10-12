@@ -159,6 +159,21 @@
             </div>
         {/if}
 
+        {#if $connectionFeatures?.espnowControllerSupported}
+            <div class="divider my-1">Handheld controller</div>
+            <label class="label gap-2">
+                <input
+                    type="checkbox"
+                    class="toggle toggle-sm toggle-primary"
+                    bind:checked={form.espnowController}
+                />
+                Listen for the ESP-NOW controller
+            </label>
+            <p class="text-xs opacity-70">
+                Any ESP-NOW controller in range can drive the robot while this is on.
+            </p>
+        {/if}
+
         {#if problem}
             <div role="alert" class="alert alert-error alert-soft">{problem}; not saved.</div>
         {/if}

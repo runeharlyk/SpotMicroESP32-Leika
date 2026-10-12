@@ -83,6 +83,7 @@ describe('peripheral settings form', () => {
             gesture: true,
             camera: true
         })
+        expect(form.espnowController).toBe(false)
 
         // Every flag flips, so one left out of the message would keep its stored value and show.
         form.use.imu = false
@@ -91,6 +92,7 @@ describe('peripheral settings form', () => {
         form.use.gesture = false
         form.use.camera = false
         form.ws2812!.pin = 13
+        form.espnowController = true
 
         // Through the wire format, as the robot will read it.
         const saved = PeripheralSettings.decode(
@@ -103,7 +105,8 @@ describe('peripheral settings form', () => {
             bmpDisabled: false,
             gestureDisabled: true,
             cameraDisabled: true,
-            ws2812: { enabled: true, pin: 13 }
+            ws2812: { enabled: true, pin: 13 },
+            espnowController: true
         })
     })
 
@@ -203,5 +206,45 @@ describe('Sensors page', () => {
         await vi.waitFor(() =>
             expect(robot!.sent.filter(name => name === 'featuresDataRequest')).toHaveLength(2)
         )
+    })
+
+    const mountWith = async (features: FeaturesDataResponse, saves: PeripheralSettings[] = []) => {
+        robot = fakeRobot((name, data) => {
+            if (name === 'featuresDataRequest') return { featuresDataResponse: features }
+            if (name === 'peripheralSettings') {
+                saves.push(data.peripheralSettings!)
+                return { peripheralSettings: data.peripheralSettings }
+            }
+            return { peripheralSettings: stored() }
+        })
+        component = mount(Sensors, { target: document.body })
+        await vi.waitFor(() => expect(document.body.querySelector('tbody tr')).not.toBeNull())
+    }
+
+    const controllerToggle = () =>
+        [...document.body.querySelectorAll('label')]
+            .find(label => /ESP-NOW controller/.test(label.textContent!))
+            ?.querySelector<HTMLInputElement>('input')
+
+    it('offers no ESP-NOW controller on a board without a radio for it', async () => {
+        await mountWith(reported())
+
+        expect(controllerToggle()).toBeUndefined()
+    })
+
+    it('saves the ESP-NOW controller switched on', async () => {
+        const saves: PeripheralSettings[] = []
+        await mountWith({ ...reported(), espnowControllerSupported: true }, saves)
+
+        const toggle = controllerToggle()!
+        expect(toggle.checked).toBe(false)
+        toggle.click()
+        flushSync()
+        ;[...document.body.querySelectorAll('button')]
+            .find(b => /Save/.test(b.textContent!))!
+            .click()
+
+        await vi.waitFor(() => expect(saves).toHaveLength(1))
+        expect(saves[0]).toMatchObject({ espnowController: true, magDisabled: true })
     })
 })
