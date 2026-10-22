@@ -18,6 +18,10 @@ from . import serial_frame
 ROBOT_LOG = logging.getLogger("leika.robot_log")
 # A robot that has not answered yet is pinged this often: one that reset when its port opened is still booting.
 PROBE_INTERVAL_S = 0.5
+# The WebSocket's keep-alive: the robot answers pings (ws_frame.h), and one that lost power sends no close frame. The
+# timeout outlasts the 5.4 s a file download was seen to hold back the robot's pongs.
+KEEPALIVE_S = 5.0
+KEEPALIVE_TIMEOUT_S = 10.0
 _READ_TIMEOUT_S = 0.05
 
 
@@ -50,8 +54,8 @@ class WebSocketLink:
     @classmethod
     async def open(cls, url: str, timeout: float) -> "WebSocketLink":
         try:
-            socket = await websockets.connect(url, open_timeout=timeout, close_timeout=1, ping_interval=None,
-                                              max_size=None)
+            socket = await websockets.connect(url, open_timeout=timeout, close_timeout=1, ping_interval=KEEPALIVE_S,
+                                              ping_timeout=KEEPALIVE_TIMEOUT_S, max_size=None)
         except websockets.InvalidHandshake as error:  # a robot still booting, or an httpd out of sockets
             raise LinkClosed(f"{url} refused the connection: {error}") from error
         return cls(socket, url)

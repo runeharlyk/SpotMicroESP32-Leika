@@ -1,5 +1,9 @@
 """The real robot's backend against a fake robot on a local WebSocket and on a fake USB serial port."""
+import asyncio
+import base64
+import hashlib
 import math
+import re
 import time
 
 import pytest
@@ -320,3 +324,33 @@ def test_a_firmware_without_goals_moves_host_side():
             client.close()
     finally:
         fake.stop()
+
+
+# A robot that lost power sends no close frame and answers nothing: the link's keep-alive finds it gone, where a
+# request-only tool, which subscribes to no stream, would otherwise wait on it until the TCP connection timed out.
+def test_a_link_to_a_robot_that_stopped_answering_closes(monkeypatch):
+    monkeypatch.setattr(link, "KEEPALIVE_S", 0.2)
+    monkeypatch.setattr(link, "KEEPALIVE_TIMEOUT_S", 0.3)
+
+    async def handshake_then_silence(reader, writer):
+        request = (await reader.readuntil(b"\r\n\r\n")).decode()
+        key = re.search(r"Sec-WebSocket-Key: (\S+)", request, re.IGNORECASE).group(1)
+        accept = base64.b64encode(hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
+        writer.write(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                     b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n")
+        await writer.drain()
+        await asyncio.sleep(10)
+
+    async def recv_until_closed():
+        server = await asyncio.start_server(handshake_then_silence, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        opened = await link.WebSocketLink.open(f"ws://127.0.0.1:{port}/api/ws", timeout=1)
+        started = time.monotonic()
+        try:
+            with pytest.raises(link.LinkClosed):
+                await asyncio.wait_for(opened.recv(), timeout=3)
+            return time.monotonic() - started
+        finally:
+            server.close()
+
+    assert asyncio.run(recv_until_closed()) < 2
