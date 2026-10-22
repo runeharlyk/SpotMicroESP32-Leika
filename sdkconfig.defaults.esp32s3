@@ -1,3 +1,8 @@
 # Octal PSRAM on ESP32-S3 modules (N8R8, XIAO ESP32S3 Sense)
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
+
+# mbedTLS from PSRAM, which every S3 build has: the robot's own download from a GitHub release asset ran out of
+# internal RAM verifying the second host's RSA certificate (error -0x4290, "MPI allocation failed"), with about 57 KB of
+# internal RAM free in blocks of at most 26 KB, measured on the Spot Pico on 2026-10-22
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y

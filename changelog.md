@@ -71,6 +71,7 @@ All notable changes to this project will be documented in this file.
 - Fixes the robot's own download failing on a GitHub release asset, whose signed redirect URL did not fit the HTTP client's buffers
 - Releases the camera on the S3 camera boards before the robot's own download, whose task could find no internal RAM for its stack with the camera running
 - Fixes `record.py` saying it wrote a recording when the robot never answered: it now says nothing was written and leaves no empty file
+- Fixes the robot's own download from a GitHub release asset running out of internal RAM in the TLS handshake with the asset's host: mbedTLS now allocates from PSRAM on the S3 and P4 builds
 - Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
 - Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request

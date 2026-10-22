@@ -112,3 +112,6 @@ CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE=y
 
 # JPEG Codec
 CONFIG_JPEG_ENABLE_DEBUG_LOG=n
+
+# mbedTLS from PSRAM, as on the S3 builds (sdkconfig.defaults.esp32s3): its handshakes ran out of internal RAM there
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
