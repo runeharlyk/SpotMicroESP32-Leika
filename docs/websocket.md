@@ -42,7 +42,7 @@ A frame that does not decode, or whose member has no handler, is logged and drop
 | `walk_gait`       | 160 | Sets the gait: `TROT`, `CRAWL` or `AUTO`                                                     |
 | `angles`          | 170 | Sets up to 12 joint angles                                                                   |
 | `servo_pwm`       | 210 | Sets the PWM of one servo, by `servo_id`                                                     |
-| `servo_state`     | 211 | Activates or deactivates the servo outputs                                                   |
+| `servo_state`     | 211 | Activates or deactivates the servo outputs; a deactivated robot's servos wake limp until a `servo_pwm` |
 | `ping`            |  30 | Answered with `pongmsg` (31)                                                                 |
 
 The input, mode and gait are handed to the control task, which applies them on its next 10 ms tick.

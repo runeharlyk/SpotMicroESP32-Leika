@@ -58,6 +58,7 @@ All notable changes to this project will be documented in this file.
 - Fixes a walk entered from stand, or switched to the other gait while it stands, snapping a foot into the air in one tick at up to 3,700 deg/s: it now starts at the start of the cycle, every foot down and no stroke left from the last walk
 - Fixes a gait chosen while walking putting a swinging foot down in one tick, at up to 4,400 deg/s: the walk now stops on all four feet, takes the gait and walks on, as AUTO does
 - Fixes a trot chosen after the crawl walking with the crawl's body shift, which put the Spot Pico's feet out of reach: the trot now centres the body first
+- Fixes the servo page's switch driving every servo back to the pose held before the robot was deactivated: the servos now wake limp and move only when the page sets a PWM, and the switch takes effect on the control task between servo writes
 - Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
 - Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request

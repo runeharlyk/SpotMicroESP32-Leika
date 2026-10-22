@@ -105,6 +105,20 @@ static bool anyTelemetrySubscribers() {
 Peripherals peripherals;
 ServoController servoController;
 MotionService motionService;
+
+// The servo page's switch, applied by the control task between its writes (applyServoSwitch).
+enum class ServoSwitch : uint8_t { NONE, ON, OFF };
+static std::atomic<ServoSwitch> servoSwitch {ServoSwitch::NONE};
+
+// A deactivated robot's servos wake limp, and move only once the page sets a PWM; an active one's go on driving the
+// motion's angles.
+static void applyServoSwitch() {
+    const ServoSwitch request = servoSwitch.exchange(ServoSwitch::NONE);
+    if (request == ServoSwitch::OFF) servoController.deactivate();
+    if (request != ServoSwitch::ON) return;
+    servoController.activate(motionService.isActive() ? SERVO_CONTROL_STATE::ANGLE : SERVO_CONTROL_STATE::PWM);
+}
+
 LEDService ledService;
 #if USE_CAMERA
 Camera::CameraService cameraService;
@@ -394,7 +408,7 @@ void setupEventSocket() {
     });
 
     onEveryLink<socket_message_ServoStateData>([&](const socket_message_ServoStateData &data, int clientId) {
-        data.active ? servoController.activate() : servoController.deactivate();
+        servoSwitch.store(data.active ? ServoSwitch::ON : ServoSwitch::OFF);
     });
 
     wsSocket.on<socket_message_FSUploadData>(
@@ -923,10 +937,9 @@ void SpotControlLoopEntry(void *) {
         const gesture_t gesture = peripherals.takeGesture();
         motionService.useServoSpeedLimit(servoController.speedLimit());
         motionService.update(imu, updating() ? gesture_t::eGestureNone : gesture);
-        if (motionService.takeModeApplied()) {
-            servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+        if (motionService.takeModeApplied())
             motionService.isActive() ? servoController.activate() : servoController.deactivate();
-        }
+        applyServoSwitch();
         if (const auto variant = motionService.takeVariantApplied()) {
             servoController.useJointModel(jointModelFor(*variant));
             activeVariant = *variant;

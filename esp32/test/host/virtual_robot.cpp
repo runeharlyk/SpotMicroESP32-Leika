@@ -208,10 +208,8 @@ void controlTick(uint32_t seq, int64_t previousStart, int64_t start) {
     const ImuSample imu = levelImu(start);
     motionService.useServoSpeedLimit(servoController.speedLimit());
     motionService.update(imu, eGestureNone);
-    if (motionService.takeModeApplied()) {
-        servoController.setMode(SERVO_CONTROL_STATE::ANGLE);
+    if (motionService.takeModeApplied())
         motionService.isActive() ? servoController.activate() : servoController.deactivate();
-    }
     servoController.setAngles(motionService.getAngles());
     const int64_t computed = clockUs();
     const ServoWrite write = servoController.update((start - previousStart) / 1e6f);

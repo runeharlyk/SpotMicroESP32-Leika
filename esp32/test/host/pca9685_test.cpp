@@ -69,7 +69,30 @@ static void theFrequencyComesFromTheGivenOscillator() {
     I2CBus::instance().end();
 }
 
+// A chip put to sleep holding a pose restarts its channels with it on waking: the servos would drive back to the pose
+// from before the deactivation before the controller writes anything. Every channel goes fully off before the wake.
+static void wakingTurnsEveryChannelOffFirst() {
+    startWithAStaleSleepingChip();
+    PCA9685Driver pca;
+    CHECK(pca.begin(OSCILLATOR_HZ, 50));
+    fake_i2c::written.clear();
+    pca.wakeup();
+    const auto &writes = fake_i2c::written;
+    size_t fullOff = writes.size(), wake = writes.size();
+    for (size_t i = 0; i < writes.size(); i++) {
+        if (writes[i].size() == 2 && writes[i][0] == ALL_LED_OFF_H && (writes[i][1] & FULL_OFF) && fullOff == writes.size())
+            fullOff = i;
+        if (writes[i].size() == 2 && writes[i][0] == MODE1 && !(writes[i][1] & MODE1_SLEEP) && wake == writes.size())
+            wake = i;
+    }
+    CHECK(wake < writes.size());
+    CHECK(fullOff < wake);
+    CHECK(!(fake_i2c::registers[0x40][MODE1] & MODE1_SLEEP));
+    I2CBus::instance().end();
+}
+
 int main() {
+    wakingTurnsEveryChannelOffFirst();
     startingNeverWakesTheChip();
     startingTurnsEveryChannelOffBeforeSleeping();
     theFrequencyComesFromTheGivenOscillator();

@@ -261,7 +261,40 @@ static void aBoardThatLostPowerIsStartedAgain() {
     I2CBus::instance().end();
 }
 
+// The servo page's switch on a deactivated robot: the board wakes, but no servo moves until the page sets a PWM, where
+// waking in ANGLE drove every servo to the angles the motion held before it was deactivated.
+static void theServoPageWakesTheServosWithoutDrivingThem() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    controller.activate(SERVO_CONTROL_STATE::PWM);
+    CHECK(!asleep());
+    fake_i2c::written.clear();
+    CHECK(!tick(controller).attempted);
+    CHECK(fake_i2c::written.empty());
+    controller.setServoPWM(REVERSED[2], 300);
+    CHECK(offCount(REVERSED[2]) == 300);
+    CHECK(!tick(controller).attempted);
+    CHECK(offCount(REVERSED[2]) == 300);
+    I2CBus::instance().end();
+}
+
+// A mode taken after the servo page woke the board drives the servos from the motion again.
+static void aModeAfterTheServoPageDrivesTheServos() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    controller.activate(SERVO_CONTROL_STATE::PWM);
+    controller.activate();
+    CHECK(tick(controller).attempted);
+    I2CBus::instance().end();
+}
+
 int main() {
+    theServoPageWakesTheServosWithoutDrivingThem();
+    aModeAfterTheServoPageDrivesTheServos();
     aBoardThatStopsAnsweringIsTriedTwiceASecond();
     aBoardThatLostPowerIsStartedAgain();
     aSwitchedJointModelIsUsedAndReported();

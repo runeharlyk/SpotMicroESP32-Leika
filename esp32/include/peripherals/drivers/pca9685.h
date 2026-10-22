@@ -33,7 +33,10 @@ class PCA9685Driver {
         sleepAtLeastMs(5);
     }
 
+    // A chip asleep holding a pose restarts its channels with it, so every channel goes fully off first: the servos stay
+    // limp until a channel is written.
     void wakeup() {
+        writeReg(REG_ALL_LED_OFF_H, FULL_OFF_BIT);
         uint8_t mode = readReg(REG_MODE1);
         uint8_t wakeMode = mode & ~MODE1_SLEEP;
         writeReg(REG_MODE1, wakeMode);

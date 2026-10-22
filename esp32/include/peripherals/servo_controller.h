@@ -60,9 +60,14 @@ class ServoController : public StatefulService<ServoSettings> {
         return result;
     }
 
-    void activate() {
-        if (is_active || !_model.load()) return;
-        control_state = SERVO_CONTROL_STATE::ANGLE;
+    /**
+     * Wakes the board with every channel off, then drives the joints' angles (ANGLE) or only the PWMs the servo page
+     * sets (PWM). An awake board takes the new state without waking again.
+     */
+    void activate(SERVO_CONTROL_STATE state = SERVO_CONTROL_STATE::ANGLE) {
+        if (!_model.load()) return;
+        control_state = state;
+        if (is_active) return;
         is_active = true;
         _pca.wakeup();
     }
