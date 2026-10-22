@@ -81,6 +81,10 @@ jobs:
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
 
+      # Internal RAM is what runs out first: a change that grows it statically fails here, not at the next boot.
+      - name: Static internal RAM within budget
+        run: python esp32/scripts/static_ram.py ${{ matrix.env }} .pio/build/${{ matrix.env }}/firmware.elf
+
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
