@@ -703,6 +703,12 @@ void setupEventSocket() {
              const OtaReply claimed = otaDownload.claim(req.request.ota_download.url, deactivated);
              replyOta(res, claimed);
              if (claimed.status != 202) return;
+#if USE_DVP_CAMERA
+             // The download's 8 KB stack must be internal, as flash writes turn off the cache PSRAM is reached
+             // through, and on the Hexapod's S3-EYE the camera left too little for it (48ed3bf). A download that
+             // succeeds restarts the robot; after a failed one the camera stays off until the next boot.
+             cameraService.release();
+#endif
              const auto download = [](void *) {
                  otaDownload.run([] { return motionService.mode() == socket_message_ModesEnum_DEACTIVATED; }, nowMs);
                  vTaskDelete(nullptr);

@@ -181,6 +181,12 @@ esp_err_t CameraService::begin() {
     return err;
 }
 
+void CameraService::release() {
+    if (xSemaphoreTakeRecursive(cameraMutex, portMAX_DELAY) != pdTRUE) return;
+    if (esp_camera_deinit() == ESP_OK) ESP_LOGI(TAG, "Camera released");
+    xSemaphoreGiveRecursive(cameraMutex);
+}
+
 static camera_fb_t *s_fb = nullptr;
 static uint8_t *s_converted = nullptr; // a frame in a pixel format other than JPEG, as the settings may choose
 
