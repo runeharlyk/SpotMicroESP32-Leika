@@ -1,6 +1,8 @@
 name: Frontend Tests
 
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:

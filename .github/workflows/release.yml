@@ -13,8 +13,18 @@ jobs:
     with:
       elf: true
 
+  # The pushes that run these filter by path, so a tag can land on a commit they never tested.
+  firmware-tests:
+    uses: ./.github/workflows/firmware-port-tests.yml
+
+  simulation-tests:
+    uses: ./.github/workflows/simulation-tests.yml
+
+  frontend-tests:
+    uses: ./.github/workflows/frontend-tests.yml
+
   release:
-    needs: firmware
+    needs: [firmware, firmware-tests, simulation-tests, frontend-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

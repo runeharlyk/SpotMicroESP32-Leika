@@ -135,4 +135,5 @@ uv run --with protobuf --with grpcio-tools --with pytest pytest -q platform_shar
 ## Releases
 
 Pushing a tag `v*` runs the `Release` workflow: it builds all environments and publishes each `firmware.factory.bin` as `<environment>.factory.bin` on a GitHub release, then redeploys the web flasher.
+It publishes only once the firmware host tests, the simulation tests (with the release smoke check) and the frontend tests pass on the tagged commit, since their pushes run only for the paths they cover.
 The `Deploy GitHub Pages` workflow publishes the hosted app and the flasher on every push to `master`.

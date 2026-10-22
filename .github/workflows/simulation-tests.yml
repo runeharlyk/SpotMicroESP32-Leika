@@ -3,6 +3,8 @@ name: Simulation Tests
 # The speed model is pinned to traces of the firmware's own motion headers: this regenerates the traces
 # from the current firmware, so a change to the motion code runs these tests and fails them if they disagree.
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:

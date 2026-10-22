@@ -6,6 +6,8 @@ name: Firmware Host Tests
 # The secrets check, the merge of secrets.h's network into the stored ones and the release index the app's firmware
 # page reads run here too.
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:
