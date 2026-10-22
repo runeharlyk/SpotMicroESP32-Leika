@@ -60,6 +60,7 @@ All notable changes to this project will be documented in this file.
 - Fixes a trot chosen after the crawl walking with the crawl's body shift, which put the Spot Pico's feet out of reach: the trot now centres the body first
 - Fixes the servo page's switch driving every servo back to the pose held before the robot was deactivated: the servos now wake limp and move only when the page sets a PWM, and the switch takes effect on the control task between servo writes
 - Fixes the charts' faded fills, grids and axis colours, which named daisyUI 4 colours or faded the hex primary into an invalid colour
+- Fixes a dialog that would not open after another one closed, such as the Wi-Fi scan after an info dialog: the dialogs now play their exit
 - Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
 - Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request

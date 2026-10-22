@@ -18,7 +18,7 @@
     <div
         role="dialog"
         class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
-        transition:fly={{ y: 50 }}
+        transition:fly|global={{ y: 50 }}
         use:exitBeforeEnter
         use:focusTrap
     >
