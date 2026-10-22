@@ -59,19 +59,22 @@ void reset() {
     restart();
 }
 
+// Restarts a moment after the reply has gone out, from a timer made at boot. A task made at the end of an update found
+// no internal RAM for its stack on the Hexapod with the camera running, so the robot answered 200, kept the old image
+// and refused later updates (Hexapod 32f18c3). esp_restart() stops WiFi itself.
+static constexpr uint64_t RESTART_DELAY_US = 850 * 1000;
+static esp_timer_handle_t restartTimer = nullptr;
+
+void prepareRestart() {
+    esp_timer_create_args_t args = {};
+    args.callback = [](void *) { esp_restart(); };
+    args.name = "restart";
+    if (esp_timer_create(&args, &restartTimer) != ESP_OK) restartTimer = nullptr;
+}
+
 void restart() {
-    xTaskCreate(
-        [](void *pvParameters) {
-            for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                mdns_free();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-                esp_restart();
-            }
-        },
-        "Restart task", 4096, nullptr, 10, nullptr);
+    ESP_LOGI(TAG, "Restarting");
+    if (!restartTimer || esp_timer_start_once(restartTimer, RESTART_DELAY_US) != ESP_OK) esp_restart();
 }
 
 static const char *getChipModel() {
