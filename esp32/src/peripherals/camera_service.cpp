@@ -1,6 +1,8 @@
 #include <peripherals/camera_service.h>
 #include <communication/webserver.h>
 #include <esp_heap_caps.h>
+#include <freertos/queue.h>
+#include <atomic>
 
 namespace Camera {
 
@@ -10,6 +12,95 @@ static const char *const TAG = "CameraService";
 static constexpr const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static constexpr const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static constexpr const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+
+// A JPEG frame from the camera, held until giveFrame(); each camera below defines the pair. takeFrame fails when the
+// camera gives no frame, which ends every stream; a frame of no bytes is skipped.
+struct Frame {
+    const uint8_t *data = nullptr;
+    size_t len = 0;
+};
+static bool takeFrame(Frame &frame);
+static void giveFrame();
+
+// esp_http_server serves every socket from one task, so a stream looping in its handler held that task for as long as
+// anyone watched and left every other request unread, the WebSocket's commands among them (Hexapod f79fb2f, 71eaaa7).
+// The handler hands each viewer to one worker instead, which takes each frame once and writes it to all of them; a
+// viewer past MAX_VIEWERS is refused. A viewer whose send fails, or stalls past the server's send timeout, is dropped,
+// and holds the others back until then.
+static constexpr int MAX_VIEWERS = 3;
+static QueueHandle_t s_new_viewers = nullptr;
+static std::atomic<int> s_viewers {0};
+
+static esp_err_t sendFrame(httpd_req_t *viewer, const char *part, int partLen, const Frame &frame) {
+    esp_err_t res = httpd_resp_send_chunk(viewer, part, partLen);
+    if (res == ESP_OK) res = httpd_resp_send_chunk(viewer, (const char *)frame.data, frame.len);
+    if (res == ESP_OK) res = httpd_resp_send_chunk(viewer, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+    return res;
+}
+
+static void streamWorker(void *) {
+    httpd_req_t *watching[MAX_VIEWERS];
+    int count = 0;
+    const auto drop = [&](int i) {
+        httpd_req_async_handler_complete(watching[i]);
+        watching[i] = watching[--count];
+        s_viewers--;
+    };
+    char part[64];
+    for (;;) {
+        httpd_req_t *viewer = nullptr;
+        // Asleep while nobody watches; a newcomer joins at the next frame.
+        while (xQueueReceive(s_new_viewers, &viewer, count == 0 ? portMAX_DELAY : 0) == pdTRUE) {
+            watching[count++] = viewer;
+            if (httpd_resp_set_type(viewer, _STREAM_CONTENT_TYPE) != ESP_OK) drop(count - 1);
+        }
+        if (count == 0) continue;
+        Frame frame;
+        if (!takeFrame(frame)) {
+            ESP_LOGW(TAG, "Camera capture failed; the streams end");
+            while (count > 0) drop(count - 1);
+            continue;
+        }
+        if (frame.len > 0) {
+            const int partLen = snprintf(part, sizeof(part), _STREAM_PART, (unsigned)frame.len);
+            for (int i = 0; i < count;) {
+                if (sendFrame(watching[i], part, partLen, frame) == ESP_OK)
+                    ++i;
+                else
+                    drop(i);
+            }
+        }
+        giveFrame();
+    }
+}
+
+static void startStreamWorker() {
+    s_new_viewers = xQueueCreate(MAX_VIEWERS, sizeof(httpd_req_t *));
+    // On core 0 with the web server and lwIP: it only waits on frames and sockets.
+    if (!s_new_viewers || xTaskCreatePinnedToCore(streamWorker, "camstream", 4096, nullptr, 5, nullptr, 0) != pdPASS) {
+        ESP_LOGE(TAG, "Camera stream worker not started");
+        s_new_viewers = nullptr;
+    }
+}
+
+esp_err_t CameraService::cameraStream(httpd_req_t *request) {
+    if (!s_new_viewers) return WebServer::sendError(request, 503, "The camera stream is not running");
+    int count = s_viewers.load();
+    while (count < MAX_VIEWERS && !s_viewers.compare_exchange_weak(count, count + 1)) {
+    }
+    if (count >= MAX_VIEWERS) return WebServer::sendError(request, 503, "The camera stream is at its viewer limit");
+    httpd_req_t *async = nullptr;
+    if (httpd_req_async_handler_begin(request, &async) != ESP_OK) {
+        s_viewers--;
+        return ESP_FAIL;
+    }
+    if (xQueueSend(s_new_viewers, &async, 0) != pdTRUE) {
+        httpd_req_async_handler_complete(async);
+        s_viewers--;
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
 #endif
 
 #if USE_DVP_CAMERA
@@ -80,55 +171,43 @@ esp_err_t CameraService::begin() {
 
     ESP_LOGI(TAG, "Initializing camera");
     esp_err_t err = esp_camera_init(&camera_config);
-    if (err == ESP_OK)
+    if (err == ESP_OK) {
         ESP_LOGI(TAG, "Camera probe successful");
-    else
+        startStreamWorker();
+    } else {
         ESP_LOGE(TAG, "Camera probe failed with error 0x%x", err);
+    }
 
     return err;
 }
 
-esp_err_t CameraService::cameraStream(httpd_req_t *request) {
-    httpd_resp_set_type(request, _STREAM_CONTENT_TYPE);
+static camera_fb_t *s_fb = nullptr;
+static uint8_t *s_converted = nullptr; // a frame in a pixel format other than JPEG, as the settings may choose
 
-    camera_fb_t *fb = NULL;
-    char part_buf[64];
-    uint8_t *buf = NULL;
-    size_t buf_len = 0;
-    esp_err_t res = ESP_OK;
-
-    while (res == ESP_OK) {
-        fb = safe_camera_fb_get();
-        if (!fb) {
-            ESP_LOGE(TAG, "Camera capture failed");
-            break;
-        }
-        if (fb->format != PIXFORMAT_JPEG) {
-            if (!frame2jpg(fb, 80, &buf, &buf_len)) {
-                esp_camera_fb_return(fb);
-                break;
-            }
-        } else {
-            buf_len = fb->len;
-            buf = fb->buf;
-        }
-
-        size_t hlen = snprintf(part_buf, 64, _STREAM_PART, buf_len);
-
-        res = httpd_resp_send_chunk(request, part_buf, hlen);
-        if (res == ESP_OK) res = httpd_resp_send_chunk(request, (const char *)buf, buf_len);
-        if (res == ESP_OK) res = httpd_resp_send_chunk(request, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-
-        esp_camera_fb_return(fb);
-        safe_sensor_return();
-        buf = NULL;
-
-        vTaskDelay(pdMS_TO_TICKS(30));
+static bool takeFrame(Frame &frame) {
+    s_fb = safe_camera_fb_get();
+    if (!s_fb) return false;
+    if (s_fb->format == PIXFORMAT_JPEG) {
+        frame = {s_fb->buf, s_fb->len};
+        return true;
     }
+    size_t len = 0;
+    if (!frame2jpg(s_fb, 80, &s_converted, &len)) {
+        esp_camera_fb_return(s_fb);
+        s_fb = nullptr;
+        return false;
+    }
+    frame = {s_converted, len};
+    return true;
+}
 
-    ESP_LOGI(TAG, "Stream ended");
-    httpd_resp_send_chunk(request, NULL, 0);
-    return ESP_OK;
+// The camera grabs the latest frame at once, so the stream takes one every 30 ms at most.
+static void giveFrame() {
+    free(s_converted);
+    s_converted = nullptr;
+    esp_camera_fb_return(s_fb);
+    s_fb = nullptr;
+    vTaskDelay(pdMS_TO_TICKS(30));
 }
 
 void CameraService::updateCamera() {
@@ -547,46 +626,26 @@ esp_err_t CameraService::begin() {
 
     s_capture_running = true;
     xTaskCreatePinnedToCore(capture_task_fn, "csi_cap", 4096, NULL, 6, &s_capture_task, 1);
+    startStreamWorker();
 
     ESP_LOGI(TAG, "MIPI-CSI camera initialized (%dx%d, %d-lane, %d Mbps)", s_frame_hres, s_frame_vres,
              MIPI_CSI_DATA_LANES, MIPI_CSI_LANE_BITRATE_MBPS);
     return ESP_OK;
 }
 
-esp_err_t CameraService::cameraStream(httpd_req_t *request) {
-    if (!s_cam_initialized) {
-        return WebServer::sendError(request, 503, "Camera not initialized");
-    }
-
-    httpd_resp_set_type(request, _STREAM_CONTENT_TYPE);
-
-    char part_buf[64];
-    esp_err_t res = ESP_OK;
-
-    while (res == ESP_OK) {
-        if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) {
-            break;
-        }
-
-        xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
-        size_t jpeg_len = s_ready_jpeg_len;
-        if (s_ready_idx >= 0 && jpeg_len > 0) {
-            memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], jpeg_len);
-        }
-        xSemaphoreGive(s_jpeg_lock);
-
-        if (jpeg_len == 0) continue;
-
-        size_t hlen = snprintf(part_buf, 64, _STREAM_PART, (unsigned int)jpeg_len);
-        res = httpd_resp_send_chunk(request, part_buf, hlen);
-        if (res == ESP_OK) res = httpd_resp_send_chunk(request, (const char *)s_send_buf, jpeg_len);
-        if (res == ESP_OK) res = httpd_resp_send_chunk(request, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-    }
-
-    ESP_LOGI(TAG, "Stream ended");
-    httpd_resp_send_chunk(request, NULL, 0);
-    return ESP_OK;
+// The capture task's newest JPEG, copied out so it can encode the next while the stream sends this one; no frame for
+// 3 s ends the streams.
+static bool takeFrame(Frame &frame) {
+    if (xSemaphoreTake(s_jpeg_ready, pdMS_TO_TICKS(3000)) != pdTRUE) return false;
+    xSemaphoreTake(s_jpeg_lock, portMAX_DELAY);
+    const size_t len = s_ready_idx >= 0 ? s_ready_jpeg_len : 0;
+    if (len > 0) memcpy(s_send_buf, s_jpeg_bufs[s_ready_idx], len);
+    xSemaphoreGive(s_jpeg_lock);
+    frame = {s_send_buf, len};
+    return true;
 }
+
+static void giveFrame() {}
 
 #else
 

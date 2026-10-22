@@ -325,12 +325,14 @@ esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message
 esp_err_t WebServer::sendOk(httpd_req_t* req) { return send(req, 200, nullptr, 0); }
 
 esp_err_t WebServer::send(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
+    // A status missing here used to go out as 200 OK, the camera's 501 and 503 among them.
     httpd_resp_set_status(req, status == 200   ? "200 OK"
                                : status == 202 ? "202 Accepted"
                                : status == 400 ? "400 Bad Request"
                                : status == 404 ? "404 Not Found"
-                               : status == 500 ? "500 Internal Server Error"
-                                               : "200 OK");
+                               : status == 501 ? "501 Not Implemented"
+                               : status == 503 ? "503 Service Unavailable"
+                                               : "500 Internal Server Error");
     httpd_resp_set_type(req, "application/x-protobuf");
     return httpd_resp_send(req, (const char*)data, len);
 }

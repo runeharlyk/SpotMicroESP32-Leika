@@ -64,6 +64,7 @@ All notable changes to this project will be documented in this file.
 - Fixes the charts' faded fills, grids and axis colours, which named daisyUI 4 colours or faded the hex primary into an invalid colour
 - Fixes a dialog that would not open after another one closed, such as the Wi-Fi scan after an info dialog: the dialogs now play their exit
 - Fixes the sticks lagging over Bluetooth and USB, where every frame queued behind the one being written: the app now sends only the newest once a write completes, and a released stick's stop always
+- Fixes an open camera stream holding the web server, which left the WebSocket's commands unread for as long as anyone watched: one task now sends each frame to up to three viewers, and a fourth is refused with 503; a frame in a format other than JPEG no longer leaks its converted copy, and the camera's 501 and 503 replies no longer go out as 200
 - Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
 - Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request

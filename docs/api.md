@@ -14,7 +14,7 @@ Over a USB cable, the same requests travel over the serial link, and on the boar
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
 | GET    | /api/ws            | WebSocket upgrade                                                          |
-| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when the build has a camera and it started |
+| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when the build has a camera and it started; up to three viewers, sent from one task off the server's, 503 for a fourth |
 | GET    | /\*                | The embedded web app; a path outside `/api/` falls back to `index.html` |
 
 An unknown path under `/api/` answers 404.
