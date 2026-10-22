@@ -19,9 +19,10 @@ ROBOT_LOG = logging.getLogger("leika.robot_log")
 # A robot that has not answered yet is pinged this often: one that reset when its port opened is still booting.
 PROBE_INTERVAL_S = 0.5
 # The WebSocket's keep-alive: the robot answers pings (ws_frame.h), and one that lost power sends no close frame. The
-# timeout outlasts the 5.4 s a file download was seen to hold back the robot's pongs.
+# timeout outlasts the stalls of a weak link: the Spot Pico held back its pongs past 10 s on 2026-10-22, and a file
+# download held them back 5.4 s. A client of a stream gives up sooner, at its SILENCE_S.
 KEEPALIVE_S = 5.0
-KEEPALIVE_TIMEOUT_S = 10.0
+KEEPALIVE_TIMEOUT_S = 20.0
 _READ_TIMEOUT_S = 0.05
 
 
