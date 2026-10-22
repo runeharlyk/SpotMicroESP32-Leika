@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <optional>
 
 struct gait_state_t {
     float step_height {0};
@@ -61,6 +62,7 @@ constexpr WALK_GAIT selectAutoGait(float demand, WALK_GAIT current) {
 class WalkState : public MotionState {
   private:
     WALK_GAIT mode = WALK_GAIT::TROT;
+    std::optional<WALK_GAIT> requested_gait; // chosen mid-stride, taken at the next standstill (select_gait)
     bool auto_gait = false;
     float auto_settled_s = 0; // how long AUTO has held a standstill against a command
     float phase_time = 0.0f;
@@ -167,6 +169,7 @@ class WalkState : public MotionState {
         MotionState::begin();
         gait_state.step_x = gait_state.step_z = gait_state.step_angle = 0;
         restartCycle();
+        if (requested_gait) takeRequestedGait();
     }
 
     void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
@@ -186,11 +189,25 @@ class WalkState : public MotionState {
      * all four feet, since a swap reassigns every leg's phase, which mid-stride lifts a loaded foot or drops a swinging
      * one; a command that leaves the band of the gait in force mid-walk brings the walk to a stop first, and it walks
      * on in the other gait. A start waits AUTO_SETTLE_S, as a stick pushed from the centre passes through the crawl's
-     * band on its way, and a trot waits for the body to centre to within AUTO_CENTRED_M: the crawl leaves it over three
-     * feet, and the trot's reach bound leaves no room for a shift.
+     * band on its way.
      */
-    void set_auto_gait(bool on) { auto_gait = on; }
-    static constexpr float AUTO_SETTLE_S = 0.25f, AUTO_CENTRED_M = 0.001f;
+    void set_auto_gait(bool on) {
+        auto_gait = on;
+        if (on) requested_gait.reset();
+    }
+
+    /**
+     * The gait the app chose: taken at once while every foot is down and the stroke is zero, and otherwise, for the
+     * same reason as AUTO's swap, the walk comes to a stop on all four feet first, takes it and walks on. The gait in
+     * force chosen again keeps the step and drops a swap still waiting.
+     * Whichever way the trot was chosen, it centres the body and walks only once it is within TROT_CENTRED_M: the
+     * crawl leaves the body over three feet, and the trot's reach bound leaves no room for a shift.
+     */
+    void select_gait(WALK_GAIT gait) {
+        requested_gait = gait;
+        if (gait == mode || standsStill()) takeRequestedGait();
+    }
+    static constexpr float AUTO_SETTLE_S = 0.25f, TROT_CENTRED_M = 0.001f;
     /** The schedule the legs walk, also the one AUTO picked. */
     WALK_GAIT gait() const { return mode; }
 
@@ -239,7 +256,7 @@ class WalkState : public MotionState {
      * walked at full time: creeping up to it would freeze the walk.
      */
     void step(body_state_t &body_state, float dt = 0.02f) override {
-        if (!auto_gait || !autoHolds(body_state, dt)) return limitedStep(body_state, dt);
+        if (!holdsForGait(body_state, dt)) return limitedStep(body_state, dt);
         const gait_state_t commanded = target_gait_state;
         target_gait_state.step_x = target_gait_state.step_z = target_gait_state.step_angle = 0;
         limitedStep(body_state, dt);
@@ -296,7 +313,7 @@ class WalkState : public MotionState {
 
     void advance(body_state_t &body_state, float dt) {
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
-        if (auto_gait && mode != WALK_GAIT::CRAWL) {
+        if (mode != WALK_GAIT::CRAWL) {
             follow(body_dampers.xm, body_state.xm, 0, dt);
             follow(body_dampers.zm, body_state.zm, 0, dt);
         }
@@ -390,6 +407,30 @@ class WalkState : public MotionState {
         return !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
     }
 
+    bool standsStill() { return !moving() && getLegStates().swing_count == 0; }
+
+    void takeRequestedGait() {
+        if (*requested_gait == WALK_GAIT::CRAWL)
+            set_mode_crawl();
+        else
+            set_mode_trot();
+        requested_gait.reset();
+    }
+
+    // Whether the walk is held to a standstill this tick: for a gait chosen mid-stride (select_gait), by AUTO, or for a
+    // trot's body to centre.
+    bool holdsForGait(const body_state_t &body_state, float dt) {
+        if (requested_gait) {
+            if (!standsStill()) return true;
+            takeRequestedGait();
+        }
+        return auto_gait ? autoHolds(body_state, dt) : offCentreForTrot(body_state);
+    }
+
+    bool offCentreForTrot(const body_state_t &body_state) const {
+        return mode == WALK_GAIT::TROT && std::hypot(body_state.xm, body_state.zm) > TROT_CENTRED_M;
+    }
+
     // Whether AUTO holds the walk to a standstill this tick (set_auto_gait), swapping the schedule once it stands.
     // The new schedule restarts the cycle (schedule), and a foot stands on its own spot while the stroke is zero.
     bool autoHolds(const body_state_t &body_state, float dt) {
@@ -401,7 +442,7 @@ class WalkState : public MotionState {
             return false;
         }
         const WALK_GAIT next = selectAutoGait(demand, mode);
-        if (moving() || getLegStates().swing_count != 0) return next != mode;
+        if (!standsStill()) return next != mode;
         if (auto_settled_s < AUTO_SETTLE_S) {
             auto_settled_s += dt;
             return true;
@@ -412,7 +453,7 @@ class WalkState : public MotionState {
             else
                 set_mode_trot();
         }
-        return mode == WALK_GAIT::TROT && std::hypot(body_state.xm, body_state.zm) > AUTO_CENTRED_M;
+        return offCentreForTrot(body_state);
     }
 
     // A stopped walk holds its phase once every foot is down; a foot still in the air lands along the rest of its

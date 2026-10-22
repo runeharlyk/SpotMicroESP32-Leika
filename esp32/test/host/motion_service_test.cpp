@@ -235,6 +235,46 @@ static void leavingAWalkMovesTheLegsSmoothly() {
     CHECK(worst < 3.0f);
 }
 
+// The app's gait buttons show while walking: a gait chosen mid-stride took its schedule at once, putting a swinging
+// foot down in one tick. The walk now stops on all four feet, takes it and walks on, never stepping a joint faster
+// than the walk's cap. Chosen at several points of the gait, so a foot is in the air at least once.
+static void aGaitChosenMidStrideIsTakenAtAStandstill() {
+    const KinematicsVariant pico = socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI;
+    constexpr float TICK_S = 0.01f, ROUNDING_DEG = 0.01f;
+    for (auto [from, to] : {std::pair {socket_message_WalkGaits_TROT, socket_message_WalkGaits_CRAWL},
+                            std::pair {socket_message_WalkGaits_CRAWL, socket_message_WalkGaits_TROT}}) {
+        for (int phase = 0; phase < 6; phase++) {
+            MotionService motion;
+            motion.useConfig(kinConfigFor(pico));
+            motion.begin();
+            motion.inbox.postGait(from);
+            motion.inbox.postMode(socket_message_ModesEnum_STAND);
+            for (int i = 0; i < 100; i++) tick(motion);
+            motion.inbox.postMode(socket_message_ModesEnum_WALK);
+            const auto walk = [&](int ticks) {
+                float largest = 0, previous[12];
+                std::copy(motion.getAngles(), motion.getAngles() + 12, previous);
+                for (int i = 0; i < ticks; i++) {
+                    motion.inbox.postInput(forward(), fake_timer::nowUs / 1000, fake_timer::nowUs);
+                    tick(motion);
+                    for (int joint = 0; joint < 12; joint++) {
+                        largest = std::max(largest, std::fabs(motion.getAngles()[joint] - previous[joint]));
+                        previous[joint] = motion.getAngles()[joint];
+                    }
+                }
+                return largest;
+            };
+            walk(150 + 7 * phase);
+            motion.inbox.postGait(to);
+            const float largest = walk(800);
+            const float cap = WalkState::MAX_JOINT_SPEED_DEG_S * TICK_S + ROUNDING_DEG;
+            if (largest > cap) std::printf("gait chosen mid-stride at %d: %.2f deg in a tick\n", phase, largest);
+            CHECK(largest <= cap);
+            CHECK(motion.walkedGait() == to);
+        }
+    }
+}
+
 static socket_message_ControllerData stick(float lx, float ly, float rx, float ry) {
     socket_message_ControllerData data = socket_message_ControllerData_init_zero;
     data.has_left = data.has_right = true;
@@ -525,6 +565,7 @@ int main() {
     aRobotLyingOnItsSideDeactivates();
     aTiltedOrKnockedRobotKeepsStanding();
     leavingAWalkMovesTheLegsSmoothly();
+    aGaitChosenMidStrideIsTakenAtAStandstill();
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();
     aSwitchedRobotStandsAsTheNewVariant();

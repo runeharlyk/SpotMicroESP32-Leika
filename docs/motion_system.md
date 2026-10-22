@@ -182,6 +182,8 @@ A swap reassigns every leg's phase, which mid-stride would lift a loaded foot or
 A stick that leaves the band of the gait in force mid-walk therefore brings the walk to a stop first, as releasing the stick would, and it walks on in the other gait.
 A start from a standstill waits 0.25 s for the stick to settle, since a stick pushed from the centre to the rim passes through the crawl's band on its way.
 A trot also waits for the body to centre to within 1 mm: the crawl leaves it shifted over three feet, and the trot's reach bound leaves no room for a shift.
+A gait chosen in the app mid-stride is taken the same way (`select_gait`): the walk stops on all four feet, takes the schedule and walks on; taking it at once moved a joint at up to 4,400 deg/s.
+The trot centres the body however it was chosen, where a chosen one used to walk on with the crawl's shift and put the Pico's feet out of reach.
 A goal move keeps the gait AUTO had when it started, since its stick slows into the crawl's band near the target and its timeout is reckoned at the starting gait's pace.
 The robot reports AUTO as its gait, and each telemetry tick's `walked` field says which schedule the legs walk.
 This follows the Hexapod's AUTO gait (e1bdc83), which swaps only while it is not stepping, for the same reason.

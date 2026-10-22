@@ -273,12 +273,12 @@ const bezierCurve: Curve = (length, angle, height, phase, point) => {
 const SLOWDOWN_PARTS = 64
 
 // walk_state.h's AUTO: the crawl below AUTO_CRAWL_MAX of a full stick, the trot from there up, each gait holding its
-// band AUTO_HYSTERESIS further; a start waits AUTO_SETTLE_S for the stick to settle, and a trot for the body to centre
-// to within AUTO_CENTRED_M.
+// band AUTO_HYSTERESIS further; a start waits AUTO_SETTLE_S for the stick to settle. A trot, however chosen, walks only
+// once the body has centred to within TROT_CENTRED_M.
 const AUTO_CRAWL_MAX = f32(0.3)
 const AUTO_HYSTERESIS = f32(0.06)
 const AUTO_SETTLE_S = 0.25
-const AUTO_CENTRED_M = f32(0.001)
+const TROT_CENTRED_M = f32(0.001)
 
 /** selectAutoGait (walk_state.h): whether AUTO crawls at this demand, 0 to 1 of a full stride or turn. */
 const autoCrawls = (demand: number, crawling: boolean) =>
@@ -287,6 +287,7 @@ const autoCrawls = (demand: number, crawling: boolean) =>
 /** WalkState (motion_states/walk_state.h): trot and crawl, with the crawl's body shift. */
 export class WalkState extends MotionState {
     private crawl = false
+    private requestedCrawl: boolean | null = null // chosen mid-stride, taken at the next standstill (selectGait)
     private autoGait = false
     private autoSettled = 0
     private phaseTime = 0
@@ -347,6 +348,7 @@ export class WalkState extends MotionState {
     begin() {
         this.gait.stepX = this.gait.stepZ = this.gait.stepAngle = 0
         this.restartCycle()
+        if (this.requestedCrawl !== null) this.takeRequestedGait()
     }
 
     setModeCrawl(duty = 0.85, order = [3, 0, 2, 1]) {
@@ -388,6 +390,36 @@ export class WalkState extends MotionState {
     /** AUTO (walk_state.h set_auto_gait): the walk picks its gait from the command, swapping it at a standstill. */
     setAutoGait(on: boolean) {
         this.autoGait = on
+        if (on) this.requestedCrawl = null
+    }
+
+    /**
+     * select_gait (walk_state.h): taken at once while every foot is down and the stroke is zero, else the walk stops on
+     * all four feet first; the gait in force chosen again keeps the step.
+     */
+    selectGait(crawl: boolean) {
+        this.requestedCrawl = crawl
+        if (crawl === this.crawl || this.standsStill()) this.takeRequestedGait()
+    }
+
+    private standsStill() {
+        return !this.moving() && this.legStates().swingCount === 0
+    }
+
+    private takeRequestedGait() {
+        if (this.requestedCrawl) this.setModeCrawl()
+        else this.setModeTrot()
+        this.requestedCrawl = null
+    }
+
+    // holdsForGait (walk_state.h): whether the walk is held to a standstill this tick, for a gait chosen mid-stride, by
+    // AUTO, or for a trot's body to centre.
+    private holdsForGait(body: BodyState, dt: number) {
+        if (this.requestedCrawl !== null) {
+            if (!this.standsStill()) return true
+            this.takeRequestedGait()
+        }
+        return this.autoGait ? this.autoHolds(body, dt) : this.offCentreForTrot(body)
     }
 
     /** Whether the legs walk the crawl, also when AUTO picked it. */
@@ -417,7 +449,7 @@ export class WalkState extends MotionState {
      * a jump not even a 64th keeps under the cap is walked at full time.
      */
     step(body: BodyState, dt: number) {
-        if (!this.autoGait || !this.autoHolds(body, dt)) return this.limitedStep(body, dt)
+        if (!this.holdsForGait(body, dt)) return this.limitedStep(body, dt)
         const { stepX, stepZ, stepAngle } = this.targetGait
         Object.assign(this.targetGait, { stepX: 0, stepZ: 0, stepAngle: 0 })
         this.limitedStep(body, dt)
@@ -439,7 +471,7 @@ export class WalkState extends MotionState {
             return false
         }
         const crawl = autoCrawls(demand, this.crawl)
-        if (this.moving() || this.legStates().swingCount !== 0) return crawl !== this.crawl
+        if (!this.standsStill()) return crawl !== this.crawl
         if (this.autoSettled < AUTO_SETTLE_S) {
             this.autoSettled = f32(this.autoSettled + f32(dt))
             return true
@@ -448,7 +480,11 @@ export class WalkState extends MotionState {
             if (crawl) this.setModeCrawl()
             else this.setModeTrot()
         }
-        return !this.crawl && f32(Math.hypot(body.xm, body.zm)) > AUTO_CENTRED_M
+        return this.offCentreForTrot(body)
+    }
+
+    private offCentreForTrot(body: BodyState) {
+        return !this.crawl && f32(Math.hypot(body.xm, body.zm)) > TROT_CENTRED_M
     }
 
     private limitedStep(body: BodyState, dt: number) {
@@ -504,7 +540,7 @@ export class WalkState extends MotionState {
         const { follow } = MotionState
         const { gait, targetGait, gaitDampers, bodyDampers } = this
         body.ym = follow(bodyDampers.ym, body.ym, this.target.ym, dt)
-        if (this.autoGait && !this.crawl) {
+        if (!this.crawl) {
             body.xm = follow(bodyDampers.xm, body.xm, 0, dt)
             body.zm = follow(bodyDampers.zm, body.zm, 0, dt)
         }

@@ -43,8 +43,8 @@ export class FirmwareMotion {
 
     setGait(gait: WalkGaits) {
         this.walk.setAutoGait(gait === WalkGaits.AUTO)
-        if (gait === WalkGaits.TROT) this.walk.setModeTrot()
-        else if (gait === WalkGaits.CRAWL) this.walk.setModeCrawl()
+        if (gait === WalkGaits.TROT) this.walk.selectGait(false)
+        else if (gait === WalkGaits.CRAWL) this.walk.selectGait(true)
     }
 
     /** MotionService::useServoSpeedLimit: how fast the servos turn a joint (deg/s), which caps the walk. */

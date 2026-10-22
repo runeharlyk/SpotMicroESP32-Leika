@@ -44,9 +44,9 @@ void MotionService::applyMail(const MotionInbox::Mail& mail) {
         cancelGoal(); // its timeout was reckoned at the old gait's pace
         ESP_LOGI("MotionService", "Walk Gait %d", static_cast<int>(*mail.gait));
         if (*mail.gait == socket_message_WalkGaits_TROT)
-            walkState.set_mode_trot();
+            walkState.select_gait(WALK_GAIT::TROT);
         else if (*mail.gait == socket_message_WalkGaits_CRAWL)
-            walkState.set_mode_crawl();
+            walkState.select_gait(WALK_GAIT::CRAWL);
         currentGait = *mail.gait;
         resumeAutoGait();
     }

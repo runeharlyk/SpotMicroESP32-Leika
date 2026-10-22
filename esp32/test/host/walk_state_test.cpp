@@ -233,10 +233,10 @@ static void autoCentresTheBodyTheCrawlShiftedBeforeItTrots() {
             shiftAtStart = std::hypot(walker.body.xm, walker.body.zm);
     }
     CHECK(walker.walk.gait() == WALK_GAIT::TROT);
-    if (!(shifted > 0.005f) || !(shiftAtStart >= 0 && shiftAtStart <= WalkState::AUTO_CENTRED_M))
+    if (!(shifted > 0.005f) || !(shiftAtStart >= 0 && shiftAtStart <= WalkState::TROT_CENTRED_M))
         std::printf("crawl shift %.2f mm, at the trot's start %.3f mm\n", shifted * 1000, shiftAtStart * 1000);
     CHECK(shifted > 0.005f);
-    CHECK(shiftAtStart >= 0 && shiftAtStart <= WalkState::AUTO_CENTRED_M);
+    CHECK(shiftAtStart >= 0 && shiftAtStart <= WalkState::TROT_CENTRED_M);
     CHECK(std::hypot(walker.body.xm, walker.body.zm) <= 1e-4f);
 }
 

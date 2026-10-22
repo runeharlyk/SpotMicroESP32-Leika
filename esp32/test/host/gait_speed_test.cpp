@@ -240,7 +240,8 @@ void stoppingLandsEveryFootWithoutAJump() {
 
 // A walk entered from the stand, or switched to the other gait while it stands, starts with every foot down: the phase
 // it held, left mid-stride or read with the other gait's offsets, had a foot in the air, which went up in one tick at
-// up to 3,700 deg/s. The same gait sent again mid-stride keeps its step.
+// up to 3,700 deg/s. A gait chosen mid-stride stops the walk on all four feet, takes the schedule and walks on, where
+// taking it at once moved a joint at up to 4,400 deg/s. The same gait sent again mid-stride keeps its step.
 void enteringOrSwitchingAGaitLiftsNoFootAtOnce() {
     const CommandMsg forward = command(0, 1, 0, DEFAULT_H, 0.5f, DEFAULT_S1);
     const CommandMsg still = command(0, 0, 0, DEFAULT_H, 0.5f, DEFAULT_S1);
@@ -271,20 +272,33 @@ void enteringOrSwitchingAGaitLiftsNoFootAtOnce() {
                 switched.hold(still, 2 * cycle);
                 switched.speeds = Speeds();
                 if (gait == TROT)
-                    switched.walk.set_mode_crawl();
+                    switched.walk.select_gait(WALK_GAIT::CRAWL);
                 else
-                    switched.walk.set_mode_trot();
+                    switched.walk.select_gait(WALK_GAIT::TROT);
                 switched.hold(still, 0.5f);
                 switched.hold(forward, cycle);
                 checkUnderCap(switched, gait, "stopped and switched", moment);
+
+                const Gait other = gait == TROT ? CRAWL : TROT;
+                Walk chosen(config, gait);
+                chosen.hold(forward, walked);
+                chosen.speeds = Speeds();
+                chosen.walk.select_gait(other == TROT ? WALK_GAIT::TROT : WALK_GAIT::CRAWL);
+                chosen.hold(forward, 8);
+                checkUnderCap(chosen, gait, "chose the other gait mid-stride", moment);
+                CHECK(chosen.walk.gait() == (other == TROT ? WALK_GAIT::TROT : WALK_GAIT::CRAWL));
+                chosen.speeds = Speeds();
+                chosen.hold(forward, 2 * (other == CRAWL ? 4.f : 1.f));
+                CHECK(chosen.speeds.lifts > 0);
+                CHECK(chosen.speeds.reached);
 
                 Walk resent(config, gait);
                 resent.hold(forward, walked);
                 resent.speeds = Speeds();
                 if (gait == TROT)
-                    resent.walk.set_mode_trot();
+                    resent.walk.select_gait(WALK_GAIT::TROT);
                 else
-                    resent.walk.set_mode_crawl();
+                    resent.walk.select_gait(WALK_GAIT::CRAWL);
                 resent.hold(forward, cycle);
                 checkUnderCap(resent, gait, "sent its gait again mid-stride", moment);
             }

@@ -52,6 +52,10 @@ const Segment SCRIPT[] = {
     {WALK, AUTO, {0, 0.2f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     {WALK, AUTO, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     {WALK, AUTO, {0.2f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    // A gait chosen mid-stride, from AUTO's crawl and then from the trot: the walk stops on all four feet, takes it
+    // and walks on.
+    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    {WALK, CRAWL, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 800},
 };
 
 // MotionService's state and angle handling (esp32/src/motion.cpp), without its timer and peripherals.
@@ -89,9 +93,9 @@ struct Motion {
     void setGait(Gait gait) {
         walk.set_auto_gait(gait == AUTO);
         if (gait == TROT)
-            walk.set_mode_trot();
+            walk.select_gait(WALK_GAIT::TROT);
         else if (gait == CRAWL)
-            walk.set_mode_crawl();
+            walk.select_gait(WALK_GAIT::CRAWL);
     }
 
     void update(float imu_x, float imu_y, bool crawling, int step) {
