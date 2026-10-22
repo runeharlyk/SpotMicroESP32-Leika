@@ -18,6 +18,10 @@ class EspHttpSource : public OtaSource {
         config.crt_bundle_attach = esp_crt_bundle_attach;
         config.timeout_ms = TIMEOUT_MS;
         config.keep_alive_enable = true;
+        // A GitHub release asset redirects to a signed URL of about 900 characters, which the default 512-byte
+        // buffers can neither take in from the Location header nor send back (Hexapod 933062c, found on its robot).
+        config.buffer_size = 4096;
+        config.buffer_size_tx = 2048;
         client_ = esp_http_client_init(&config);
         if (!client_) return 0;
         // As esp_https_ota does: open, and on a redirect follow it after draining the body that came with it.
