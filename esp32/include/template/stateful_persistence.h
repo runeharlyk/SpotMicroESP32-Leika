@@ -102,7 +102,8 @@ class FSPersistencePB {
         std::vector<uint8_t> buffer(_maxSize + 1);
         size_t size = fread(buffer.data(), 1, buffer.size(), file);
         fclose(file);
-        if (size == 0 || size > _maxSize) return false;
+        // Zero bytes is a valid message: every field at zero, as an uncalibrated sensor's settings are.
+        if (size > _maxSize) return false;
 
         T protoMsg = {};
         pb_istream_t stream = pb_istream_from_buffer(buffer.data(), size);

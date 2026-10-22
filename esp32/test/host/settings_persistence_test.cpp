@@ -167,6 +167,27 @@ static void anUnreadableFileIsKeptAsABackupBeforeTheDefaultsReplaceIt() {
     CHECK(restarted.settings().sda == 21);
 }
 
+// Settings whose every field is at zero, as an uncalibrated sensor's are, encode as zero bytes: a valid message, which
+// was refused as unreadable, so the defaults replaced it on every boot (Hexapod 9543aa7, found on its robot).
+static StateUpdateResult acceptSettings(const Settings &proto, Settings &settings) {
+    settings = proto;
+    return StateUpdateResult::CHANGED;
+}
+
+static void settingsStoredAsZeroBytesLoad() {
+    fresh();
+    write(FILE_PATH, {});
+    StatefulService<Settings> service;
+    FSPersistencePB<Settings> persistence {readSettings, acceptSettings, &service, FILE_PATH,
+                                           api_PeripheralSettings_fields, api_PeripheralSettings_size, defaults()};
+    persistence.readFromFS();
+    Settings loaded;
+    service.read([&](const Settings &state) { loaded = state; });
+    CHECK(loaded.sda == 0 && loaded.scl == 0 && loaded.frequency == 0);
+    CHECK(contents(FILE_PATH).empty());
+    CHECK(!std::filesystem::exists(BACKUP_PATH));
+}
+
 static void storedSettingsTheUpdateRefusesAreKeptAsABackupToo() {
     fresh();
     {
@@ -218,6 +239,7 @@ int main() {
     aTemporaryFileLeftByAResetIsIgnoredAndReplaced();
     aFirstBootStoresTheDefaults();
     anUnreadableFileIsKeptAsABackupBeforeTheDefaultsReplaceIt();
+    settingsStoredAsZeroBytesLoad();
     storedSettingsTheUpdateRefusesAreKeptAsABackupToo();
     aSaveThatChangesNothingNeitherReconfiguresNorWrites();
     aRefusedSaveStillReportsTheRefusal();
