@@ -389,6 +389,12 @@ message AnalyticsData {
     repeated I2CDeviceErrors i2c_errors = 14;
     uint32 i2c_bus_recoveries = 15;  // times a device holding SDA low was clocked free
     repeated TaskStack task_stacks = 16;  // the tasks with the least stack to spare first
+    // Internal RAM, apart from PSRAM, which the fields above count in: what DMA, ISRs, task stacks and allocations
+    // too small for PSRAM draw on. Zero from firmware that does not report it.
+    uint32 free_internal = 17;
+    uint32 largest_internal_block = 18;  // the largest internal allocation that would succeed
+    uint32 min_free_internal = 19;       // the least internal RAM free since boot
+    uint32 failed_allocations = 20;      // allocations refused since boot, from any heap
 }
 
 // A task's least free stack since it started: how close it came to overflowing, and how much a trim could take.

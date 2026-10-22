@@ -160,6 +160,15 @@
                         description={`${systemInformation.analyticsData?.freeHeap} / ${systemInformation.analyticsData?.maxAllocHeap} bytes`}
                     />
 
+                    {#if systemInformation.analyticsData?.freeInternal}
+                        {@const ram = systemInformation.analyticsData}
+                        <StatusItem
+                            icon={Heap}
+                            title="Internal RAM (Free / Largest block / Least free)"
+                            description={`${ram.freeInternal} / ${ram.largestInternalBlock} / ${ram.minFreeInternal} bytes${ram.failedAllocations ? `, ${ram.failedAllocations} allocations refused` : ''}`}
+                        />
+                    {/if}
+
                     <StatusItem
                         icon={Pyramid}
                         title="PSRAM (Size / Free)"

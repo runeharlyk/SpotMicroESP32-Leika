@@ -8,6 +8,7 @@
 #include <peripherals/i2c_bus.h>
 #include <utils/cpu_usage.h>
 #include <utils/task_stacks.h>
+#include <atomic>
 #include <cstring>
 #include <soc/soc.h>
 
@@ -171,6 +172,12 @@ static CpuUsage cpuUsage;
 
 void sampleCpuUsage() { cpuUsage.sample(); }
 
+static std::atomic<uint32_t> failedAllocations {0};
+
+void countFailedAllocations() {
+    heap_caps_register_failed_alloc_callback([](size_t, uint32_t, const char *) { failedAllocations++; });
+}
+
 void getAnalytics(socket_message_AnalyticsData &analytics) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
@@ -181,6 +188,10 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     analytics.free_heap = esp_get_free_heap_size();
     analytics.total_heap = heap_caps_get_total_size(MALLOC_CAP_8BIT);
     analytics.min_free_heap = esp_get_minimum_free_heap_size();
+    analytics.free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    analytics.largest_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    analytics.min_free_internal = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+    analytics.failed_allocations = failedAllocations.load();
     analytics.core_temp = temperatureRead();
     analytics.fs_total = fs_total;
     analytics.fs_used = fs_used;

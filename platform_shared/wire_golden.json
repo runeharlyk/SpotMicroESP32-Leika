@@ -339,7 +339,11 @@
       "cpu_usage": 13,
       "i2c_errors": 14,
       "i2c_bus_recoveries": 15,
-      "task_stacks": 16
+      "task_stacks": 16,
+      "free_internal": 17,
+      "largest_internal_block": 18,
+      "min_free_internal": 19,
+      "failed_allocations": 20
     },
     "socket_message.AnimationEntry": {
       "name": 1,

@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Adds firmware updates the robot downloads itself over its own WiFi, from an https URL checked against ESP-IDF's certificate bundle, ported from the Hexapod: the Firmware page offers to install the latest release on the robot when it has WiFi; the `esp32-camera` and `esp32dev` builds leave it out, as their app slots have no room for TLS
 - Adds `servo_feasibility.py` and `servo_margin.py` to the simulation, ported from the Hexapod: the firmware's walk and animation traces against the MG92B's speed and joint travel, and how much slower servos they still follow
 - Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
+- Reports the internal RAM apart from PSRAM on the System Status page: free, the largest block and the least free since boot, with the allocations refused since boot, where the heap figures count PSRAM in and so never show internal RAM running out
 
 ### Changed
 
