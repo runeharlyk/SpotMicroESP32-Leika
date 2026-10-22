@@ -983,16 +983,17 @@ static void publishAnimationStatus() {
     emitToAll(status);
 }
 
-// On every new goal and every change of its state, so a client waiting on one hears how it ended.
+// On every new goal and every change of its state, so a client waiting on one hears how it ended, over whichever
+// link it started the goal on.
 static void publishGoalStatus() {
     static MotionService::GoalStatus last;
-    if (!wsSocket.hasSubscribers(socket_message_Message_goal_status_tag)) return;
+    if (!anySubscribers(socket_message_Message_goal_status_tag)) return;
     const MotionService::GoalStatus now = motionService.goalStatus();
     if (now.id == last.id && now.state == last.state) return;
     last = now;
     socket_message_GoalStatus status = socket_message_GoalStatus_init_zero;
     goalStatusToProto(now, status);
-    wsSocket.emit(status);
+    emitToAll(status);
 }
 
 // Held deactivated while the rail stays under the cut-off: an activation from the app or a gesture is undone here.
