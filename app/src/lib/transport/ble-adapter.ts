@@ -15,6 +15,7 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
     let connected = false
     // Web Bluetooth rejects overlapping GATT writes, so they are queued rather than fired in parallel.
     let writeQueue = Promise.resolve()
+    let writing = 0
 
     const onDisconnected = () => {
         connected = false
@@ -71,6 +72,8 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
 
         isConnected: () => connected && device?.gatt?.connected === true,
 
+        busy: () => writing > 0,
+
         send: data => {
             if (!rx || !connected) return
             if (data.length > BLE_MAX_OUTGOING) {
@@ -81,6 +84,7 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
             }
             const characteristic = rx
             // The chunks are copies, so the caller is free to reuse its buffer while they wait in the queue.
+            writing++
             for (const chunk of encodeBleFrame(data)) {
                 writeQueue = writeQueue
                     .then(() =>
@@ -90,6 +94,9 @@ export const createBleTransport = (handlers: TransportHandlers): ITransport => {
                     )
                     .catch(error => console.error('BLE write failed:', error))
             }
+            writeQueue = writeQueue.then(() => {
+                if (--writing === 0) handlers.onDrained?.()
+            })
         }
     }
 }

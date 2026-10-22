@@ -6,6 +6,8 @@ export interface TransportHandlers {
     onOpen: () => void
     onData: (data: ArrayBuffer) => void
     onClose: (reason: TransportCloseReason, event?: unknown) => void
+    /** The writes under way have all completed (busy turned false); motion frames waiting for them may go out. */
+    onDrained?: () => void
 }
 
 export interface ITransport {
@@ -21,4 +23,6 @@ export interface ITransport {
     close: () => void
     isConnected: () => boolean
     send: (data: Uint8Array) => void
+    /** Whether a write is under way, which a motion frame sent now would queue behind (LatestFrames). */
+    busy: () => boolean
 }

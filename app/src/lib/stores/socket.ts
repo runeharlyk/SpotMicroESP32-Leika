@@ -14,6 +14,10 @@ import type { ITransport, TransportHandlers } from '$lib/transport/transport.int
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
 import { createBleTransport } from '$lib/transport/ble-adapter'
 import { createSerialTransport } from '$lib/transport/serial-adapter'
+import { LatestFrames } from '$lib/transport/latest-frames'
+
+// The messages only the newest of which counts: a stick frame waiting behind a slow write is replaced by the next.
+const MOTION_FRAMES: ReadonlySet<MessageFns<unknown>> = new Set([Messages.ControllerData])
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -130,6 +134,10 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
+    const motionFrames = new LatestFrames({
+        busy: () => transport?.busy() ?? false,
+        write: data => transport?.send(data)
+    })
 
     function getRequestKey(data: CorrelationRequestData): string {
         return (
@@ -150,6 +158,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         previous?.close()
         set(false)
         activeTransport.set(null)
+        motionFrames.clear()
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
         clearInterval(pingIntervalId)
@@ -176,6 +185,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
             },
             onClose: (reason, event) => {
                 if (transport === next) disconnect(reason, event)
+            },
+            onDrained: () => {
+                if (transport === next) motionFrames.drained()
             }
         })
         transport = next
@@ -318,7 +330,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         const type = getNameFromMessageType(event)
         const wsm = Message.create() as Record<string, unknown>
         wsm[type] = data
-        send(wsm as Message)
+        if (MOTION_FRAMES.has(event as MessageFns<unknown>))
+            motionFrames.offer(getTagFromMessageType(event), encodeMessage(wsm as Message))
+        else send(wsm as Message)
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {

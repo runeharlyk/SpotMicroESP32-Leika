@@ -61,6 +61,28 @@ describe.sequential('socket over USB serial', () => {
         off()
     })
 
+    // A slow link queued every stick frame behind the one being written, so the robot walked on the past; it now hears
+    // the newest once the write completes, and a released stick's stop always reaches it.
+    it('sends only the newest sticks once a slow write completes', async () => {
+        const port = new FakeSerialPort()
+        vi.stubGlobal('navigator', { serial: fakeSerial([], port).serial })
+        const { received } = serialRobot(port, robot)
+        await socket.connectSerial()
+        await vi.waitFor(() => expect(get(socket)).toBe(true), { timeout: 2500 })
+        const sticks = (y: number) => ControllerData.create({ left: { x: 0, y }, height: 0.5 })
+        const heard = () =>
+            received.map(message => message.controllerData?.left?.y).filter(y => y !== undefined)
+        socket.emit(ControllerData, sticks(0.5))
+        await vi.waitFor(() => expect(heard()).toEqual([0.5]))
+
+        port.hold()
+        for (const y of [0.25, 0.75, 0.125, 0]) socket.emit(ControllerData, sticks(y))
+        await vi.waitFor(() => expect(heard()).toEqual([0.5, 0.25]))
+        port.release()
+
+        await vi.waitFor(() => expect(heard()).toEqual([0.5, 0.25, 0]))
+    })
+
     it('comes back by itself after the board resets and its port returns', async () => {
         const port = new FakeSerialPort()
         const fake = fakeSerial([], port)

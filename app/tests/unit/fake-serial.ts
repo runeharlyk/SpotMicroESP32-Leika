@@ -15,6 +15,9 @@ export class FakeSerialPort extends EventTarget {
     baudRate: number | undefined
     opens = 0
     onWrite: (bytes: Uint8Array) => void = () => {}
+    // Held writes complete only once released, as a slow link's do.
+    private holding = false
+    private held: (() => void)[] = []
     private controller: ReadableStreamDefaultController<Uint8Array> | undefined
 
     constructor(private readonly info: SerialPortInfo = ESPRESSIF_USB) {
@@ -34,6 +37,7 @@ export class FakeSerialPort extends EventTarget {
             write: chunk => {
                 this.written.push(chunk.slice())
                 this.onWrite(chunk.slice())
+                if (this.holding) return new Promise<void>(resolve => this.held.push(resolve))
             }
         })
     }
@@ -51,6 +55,16 @@ export class FakeSerialPort extends EventTarget {
         await this.writable.close()
         this.readable = null
         this.writable = null
+    }
+
+    hold() {
+        this.holding = true
+    }
+
+    release() {
+        this.holding = false
+        this.held.forEach(resolve => resolve())
+        this.held = []
     }
 
     deliver(bytes: Uint8Array) {

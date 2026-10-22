@@ -76,6 +76,7 @@ export const createSerialTransport = (
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
     let reading = Promise.resolve()
     let writeQueue = Promise.resolve()
+    let writing = 0
     let probeId: ReturnType<typeof setInterval> | undefined
     const abort = new AbortController()
 
@@ -102,6 +103,7 @@ export const createSerialTransport = (
     const write = (frame: Uint8Array) => {
         const writable = port?.writable
         if (!writable) return
+        writing++
         writeQueue = writeQueue
             .then(async () => {
                 const writer = writable.getWriter()
@@ -112,6 +114,9 @@ export const createSerialTransport = (
                 }
             })
             .catch(error => console.error('Serial write failed:', error))
+            .then(() => {
+                if (--writing === 0) handlers.onDrained?.()
+            })
     }
 
     const stop = () => {
@@ -194,6 +199,8 @@ export const createSerialTransport = (
         },
 
         isConnected: () => answering && !closed,
+
+        busy: () => writing > 0,
 
         send: data => {
             if (!answering || closed) return

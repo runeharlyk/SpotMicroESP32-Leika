@@ -12,6 +12,9 @@ type Listener = (event: unknown) => void
 
 function fakeBluetooth() {
     const writes: Uint8Array[] = []
+    // Held writes complete only once released, as a slow link's do.
+    let holding = false
+    let held: (() => void)[] = []
     const listeners = new Map<string, Listener[]>()
     let notify: ((bytes: Uint8Array) => void) | undefined
 
@@ -19,7 +22,7 @@ function fakeBluetooth() {
         uuid,
         writeValueWithoutResponse: (data: Uint8Array) => {
             writes.push(new Uint8Array(data))
-            return Promise.resolve()
+            return holding ? new Promise<void>(resolve => held.push(resolve)) : Promise.resolve()
         },
         startNotifications: () => Promise.resolve(),
         addEventListener: (type: string, listener: Listener) => {
@@ -54,6 +57,12 @@ function fakeBluetooth() {
 
     return {
         writes,
+        hold: () => (holding = true),
+        release: () => {
+            holding = false
+            held.forEach(resolve => resolve())
+            held = []
+        },
         emitNotification: (bytes: Uint8Array) => notify?.(bytes),
         navigatorStub: { requestDevice: () => Promise.resolve(device) }
     }
@@ -70,7 +79,7 @@ describe('BLE transport', () => {
     afterEach(() => vi.unstubAllGlobals())
 
     const connected = async () => {
-        const handlers = { onOpen: vi.fn(), onData: vi.fn(), onClose: vi.fn() }
+        const handlers = { onOpen: vi.fn(), onData: vi.fn(), onClose: vi.fn(), onDrained: vi.fn() }
         const transport = createBleTransport(handlers)
         await transport.connect()
         return { transport, handlers }
@@ -106,6 +115,23 @@ describe('BLE transport', () => {
         fake.writes.forEach(write => expect(write.length).toBeLessThanOrEqual(BLE_WRITE_CHUNK))
         const wire = fake.writes.flatMap(write => Array.from(write))
         expect(wire).toEqual([730 & 0xff, 730 >> 8, ...message])
+    })
+
+    it('is busy while a write is under way and says once the last one completes', async () => {
+        const { transport, handlers } = await connected()
+        expect(transport.busy()).toBe(false)
+
+        fake.hold()
+        transport.send(Uint8Array.of(1))
+        transport.send(Uint8Array.of(2))
+        expect(transport.busy()).toBe(true)
+        await vi.waitFor(() => expect(fake.writes).toHaveLength(1))
+        expect(handlers.onDrained).not.toHaveBeenCalled()
+
+        fake.release()
+        await vi.waitFor(() => expect(handlers.onDrained).toHaveBeenCalledTimes(1))
+        expect(fake.writes).toHaveLength(2)
+        expect(transport.busy()).toBe(false)
     })
 
     it('refuses a message larger than the robot takes', async () => {
