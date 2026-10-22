@@ -9,6 +9,7 @@
     import { socket, mpu } from '$lib/stores'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
+    import { daisyColor } from '$lib/utilities'
 
     import { type IMUCalibrateData } from '$lib/platform_shared/message'
 
@@ -27,17 +28,15 @@
     let altitudeChart: Chart
     let headingChart: Chart
 
-    const getChartColors = () => {
-        const style = getComputedStyle(document.body)
-        return {
-            primary: style.getPropertyValue('--color-primary'),
-            secondary: style.getPropertyValue('--color-secondary'),
-            accent: style.getPropertyValue('--color-accent'),
-            background: style.getPropertyValue('--color-background')
-        }
-    }
+    const getChartColors = () => ({
+        primary: daisyColor('--color-primary'),
+        secondary: daisyColor('--color-secondary'),
+        accent: daisyColor('--color-accent'),
+        text: daisyColor('--color-base-content'),
+        grid: daisyColor('--color-base-content', 10)
+    })
 
-    const createBaseChartConfig = (bgColor: string) => ({
+    const createBaseChartConfig = (text: string, grid: string) => ({
         maintainAspectRatio: false,
         responsive: true,
         plugins: {
@@ -47,8 +46,8 @@
         elements: { point: { radius: 1 } },
         scales: {
             x: {
-                grid: { color: bgColor },
-                ticks: { color: bgColor },
+                grid: { color: grid },
+                ticks: { color: text },
                 display: false
             },
             y: {
@@ -56,16 +55,16 @@
                 position: 'left' as const,
                 min: 0,
                 max: 10,
-                grid: { color: bgColor },
-                ticks: { color: bgColor },
-                border: { color: bgColor }
+                grid: { color: grid },
+                ticks: { color: text },
+                border: { color: grid }
             }
         }
     })
 
     const initializeCharts = () => {
         const colors = getChartColors()
-        const baseConfig = createBaseChartConfig(colors.background)
+        const baseConfig = createBaseChartConfig(colors.text, colors.grid)
 
         if (angleChartElement) {
             angleChart = new Chart(angleChartElement, {
@@ -107,7 +106,7 @@
                             title: {
                                 display: true,
                                 text: 'Angle [°]',
-                                color: colors.background,
+                                color: colors.text,
                                 font: { size: 16, weight: 'bold' }
                             }
                         }
@@ -140,7 +139,7 @@
                             title: {
                                 display: true,
                                 text: 'Temperature [C°]',
-                                color: colors.background,
+                                color: colors.text,
                                 font: { size: 16, weight: 'bold' }
                             }
                         }
@@ -173,7 +172,7 @@
                             title: {
                                 display: true,
                                 text: 'Altitude [M]',
-                                color: colors.background,
+                                color: colors.text,
                                 font: { size: 16, weight: 'bold' }
                             }
                         }
@@ -208,7 +207,7 @@
                             title: {
                                 display: true,
                                 text: 'Heading [°]',
-                                color: colors.background,
+                                color: colors.text,
                                 font: { size: 16, weight: 'bold' }
                             }
                         }
