@@ -46,7 +46,8 @@ class OtaSession {
         if (running_) return {409, "An update is already running"};
         if (!deactivated) return {409, "Deactivate first"};
         const uint32_t capacity = flash_.capacity();
-        if (capacity == 0) return {501, "This partition table has no slot for updates"};
+        // Not 501, which answers a request the build does not handle: the app would say the firmware lacks updates.
+        if (capacity == 0) return {507, "This partition table has no slot for updates"};
         if (size == 0 || size > capacity) return {413, "The image does not fit the update slot"};
         if (size < ota_image::HEAD_SIZE) return NOT_AN_APP;
         if (!flash_.begin()) return {500, "Could not open the update slot"};

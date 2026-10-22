@@ -38,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Answers a request the firmware does not know with 501 instead of 400, and the app says the robot's firmware does not handle it (older, or built without it), also for older firmware's 400
 - Requires one flash over the cable per robot for the first firmware that updates over the air, since it brings a new bootloader with rollback
 - Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear

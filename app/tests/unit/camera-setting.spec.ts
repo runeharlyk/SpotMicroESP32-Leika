@@ -22,11 +22,11 @@ describe('CameraSetting', () => {
         robot = fakeRobot(() =>
             available ?
                 { cameraSettings: CameraSettings.create({}) }
-            :   { statusCode: 400, errorMessage: 'Unknown request' }
+            :   { statusCode: 501, errorMessage: 'Unknown request' }
         )
         component = mount(CameraSetting, { target: document.body })
 
-        await vi.waitFor(() => expect(document.body.textContent).toMatch(/Unknown request/))
+        await vi.waitFor(() => expect(document.body.textContent).toMatch(/does not handle this/))
         expect(button(/update camera settings/i)).toBeUndefined()
 
         available = true

@@ -44,7 +44,7 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 
 | Request      | Response         | Description                                                                                         |
 | ------------ | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 415 when too small to be an app image, 501 without a second slot |
+| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 415 when too small to be an app image, 507 without a second slot |
 | `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, 415 once the head shows a non-app (e.g. factory) image; each ends the update |
 | `ota_finish` | none (empty 200) | Validate the image and boot it next; 400 when incomplete, 422 when the robot rejects it              |
 | `ota_download` | `ota_status` | The robot downloads the image at an `https://` URL itself; 202, 409 unless deactivated or while an update runs, 422 for another URL, 400 on `esp32-camera` and `esp32dev`, which have no room for it; progress as `ota_status` ([the robot's own download](websocket.md#the-robots-own-download)) |
@@ -92,7 +92,8 @@ The stored core dump; see [websocket.md](websocket.md#crash-dump) for the downlo
 | `mdns_query_request`                          | `mdns_query_response` | Always; answered from its own task |
 | `camera_settings_request`, `camera_settings`  | `camera_settings`     | `USE_CAMERA` and `USE_DVP_CAMERA`  |
 
-A request that the build does not handle is answered with 400 "Unknown request".
+A request that the build does not handle is answered with 501 "Unknown request", a status given to nothing else, so a client tells a build that does not handle its request, an older one or one built without the feature, from a refusal.
+Firmware from before answered it with 400 and the same reason, which the app reads the same way.
 
 ### Filesystem
 

@@ -868,7 +868,9 @@ void setupEventSocket() {
             it->second(data, *res, client);
             if (res->status_code != 0) client.link->emit(*res, client.id);
         } else {
-            res->status_code = 400;
+            // 501 is answered to nothing else, so a client tells a build without the request (older, or without the feature)
+            // from a refusal.
+            res->status_code = 501;
             strncpy(res->error_message, "Unknown request", sizeof(res->error_message) - 1);
             client.link->emit(*res, client.id);
         }

@@ -106,7 +106,8 @@ static void anImageLargerThanTheSlotIsRefused() {
     CHECK(session.start(0, true, APP, 0).status == 413);
     CHECK(flash.begins == 0);
     flash.slot = 0;
-    CHECK(session.start(SIZE, true, APP, 0).status == 501);
+    // 501 is the unknown request's alone, which the app reads as a build without the request.
+    CHECK(session.start(SIZE, true, APP, 0).status == 507);
 }
 
 static void aSlotThatWillNotOpenFailsTheStart() {
