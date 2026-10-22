@@ -1,6 +1,9 @@
 import asyncio
+import socket
+import sys
 from pathlib import Path
 
+import pytest
 from websockets.asyncio.server import serve
 
 import record
@@ -86,3 +89,17 @@ def test_records_over_the_usb_port_and_unsubscribes_at_the_end(tmp_path, monkeyp
     assert sorted(message.unsub_notif.tag for _, message in robot.received if message.HasField("unsub_notif")) == sorted(
         record._tag(name) for name in record.TAGS
     )
+
+
+# Nothing from the robot is no recording: the recorder says so and leaves no empty file, where it said it wrote one
+# (Hexapod b796344).
+def test_a_robot_that_never_answers_writes_nothing(tmp_path, monkeypatch):
+    with socket.socket() as probe:  # a port nothing listens on
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    out = tmp_path / "nothing.leika"
+    argv = ["record.py", "--robot", f"127.0.0.1:{port}", "--seconds", "0.5", "--out", str(out)]
+    monkeypatch.setattr(sys, "argv", argv)
+    with pytest.raises(SystemExit, match="nothing written"):
+        record.main()
+    assert not out.exists()

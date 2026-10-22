@@ -7,6 +7,7 @@ Run `uv run python gen_protos.py` once first: it generates the protocol classes 
 """
 import argparse
 import asyncio
+import os
 import time
 from datetime import datetime
 
@@ -92,12 +93,15 @@ def main() -> None:
     out = args.out or f"recording-{datetime.now():%Y%m%d-%H%M%S}.leika"
     writer = RecordingWriter(out)
     try:
-        frames = asyncio.run(record(args.robot, writer, args.seconds))
+        asyncio.run(record(args.robot, writer, args.seconds))
     except KeyboardInterrupt:
-        frames = None
+        pass
     finally:
         writer.close()
-    print(f"wrote {out}" + ("" if frames is None else f" ({frames} frames)"))
+    if writer.frames == 0:
+        os.remove(out)
+        raise SystemExit(f"no frames from the robot at {args.robot}; nothing written")
+    print(f"wrote {out} ({writer.frames} frames)")
 
 
 if __name__ == "__main__":

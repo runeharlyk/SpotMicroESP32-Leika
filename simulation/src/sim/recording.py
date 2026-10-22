@@ -80,10 +80,12 @@ class RecordingWriter:
     def __init__(self, path):
         self._file = open(path, "wb")
         self._file.write(MAGIC + struct.pack("<H", VERSION))
+        self.frames = 0
 
     def write(self, frame: bytes, host_rx_us: int) -> None:
         self._file.write(_RECORD.pack(host_rx_us, len(frame)) + frame)
         self._file.flush()
+        self.frames += 1
 
     def gap(self, host_rx_us: int) -> None:
         self._file.write(_RECORD.pack(host_rx_us, 0))
