@@ -306,7 +306,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
         const std::array<bool, 4> stance =
             state == &walkState ? walkState.stance() : std::array<bool, 4> {true, true, true, true};
         std::lock_guard<std::mutex> lock(odometryMutex);
-        step = fusedOdometry.update(body_state, stance, FusedOdometry::yawRate(imu, now), dt);
+        step = fusedOdometry.update(body_state, stance, gyroYawRate.update(imu, now), dt);
     }
     if (state == &animateState) {
         std::copy(animateState.angles(), animateState.angles() + 12, new_angles);

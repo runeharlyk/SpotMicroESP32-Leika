@@ -305,6 +305,7 @@ static void aTurnClosesOnTheFusedHeading() {
         const float feetBefore = motion.odometry().kinematicYaw;
         fake_timer::nowUs += 10000;
         imu.t_us = fake_timer::nowUs;
+        imu.gyroYaw = std::remainder(imu.gyroYaw + imu.gyro[2] / TICKS_PER_S, 2 * static_cast<float>(M_PI));
         motion.update(imu, eGestureNone);
         // The next sample reads this tick's turn; a tick late is a gyro's 10 ms of lag.
         imu.gyro[2] = 1.15f * std::remainder(motion.odometry().kinematicYaw - feetBefore, 2 * M_PI) * TICKS_PER_S;

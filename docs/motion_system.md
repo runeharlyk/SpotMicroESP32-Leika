@@ -216,7 +216,9 @@ While the feet keep still, a scalar Kalman filter learns that bias from the diff
 It also leaves it alone while the body's pose moves (the stand's twist and shift) and for a while after: a slow twist turns the feet by less than the still threshold, but the servos follow it late, and the gyro would read their lag as bias.
 The heading integrates the two rates weighted by their variances: the gyro's while walking, mostly the feet's while standing.
 The position integrates the feet's displacement in that heading.
-Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's estimate alone.
+The gyro's rate for a tick is its mean since the sample the last tick took (`GyroYawRate`): the sensor task integrates the z rate over every read, and the control task takes the newest sample at the same point of each tick, so one sample held for the tick would alias what the rate does between samples into the heading.
+In MuJoCo the servo targets, stepped once a tick, ripple the yaw rate with the tick, and a 96 degree turn read from 2.6 degrees short to 2.4 long depending on where in the tick the sample fell; the mean reads it 0.7 long.
+Without a fresh gyro reading (none, one older than 50 ms, or one more than 50 ms after the last) it is the feet's estimate alone.
 `OdometryData.kinematic_yaw` carries the feet's own heading, so their ratio over a turn on the real robot measures the gait's turn scale without a protractor.
 
 | Parameter              | Value                                                                    | Source                                                                                                                         |

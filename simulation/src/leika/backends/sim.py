@@ -56,6 +56,7 @@ class SimBackend:
         self._body = BodyState()
         self._levelling = StandCompensation()
         self._odometry = FusedOdometry()
+        self._gyro_rate = 0.0
         self._goal = GoalController()
         self._mode = Mode.REST
         self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT, supply_volts)
@@ -98,15 +99,23 @@ class SimBackend:
             roll, pitch = imu_roll_pitch(self.sim.base_quat())
             omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
             apply_firmware_attitude(self._body, omega, psi)
-            # The gyro's yaw rate as the firmware reads it, from the IMU sample the physics left; MuJoCo's has no bias.
-            gyro_rate = float((MODEL_TO_REP @ self.sim.gyro())[2])
             step = self._odometry.update((self._body.feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T,
-                                         self._controller.stance(self._gait), gyro_rate=gyro_rate, dt=CONTROL_DT)
+                                         self._controller.stance(self._gait), gyro_rate=self._gyro_rate, dt=CONTROL_DT)
             if self._goal.running:
                 self._drive_goal(step, CONTROL_DT)
             self.sim.set_joint_targets(self._servo_targets(self.sim.body_targets_from_feet(self._body)))
-            self.sim.step_physics()
+            self._gyro_rate = self._step_physics()
             self._t += CONTROL_DT
+
+    # Steps the physics through one control tick and returns the gyro's mean yaw rate over it, as the firmware takes it
+    # (odometry.h GyroYawRate): the sensor task integrates every read, which the physics steps' samples stand for here.
+    # MuJoCo's gyro has no bias.
+    def _step_physics(self) -> float:
+        rates = []
+        for _ in range(self.sim.frame_skip):
+            self.sim.step_physics(1)
+            rates.append(float((MODEL_TO_REP @ self.sim.gyro())[2]))
+        return float(np.mean(rates))
 
     # As ServoController: the motion's angles become PWMs, which a raw PWM replaces until a mode applies again; the
     # telemetry's angles and PWMs stay those of the last write the motion made.
