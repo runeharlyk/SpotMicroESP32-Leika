@@ -240,8 +240,61 @@ static void autoCentresTheBodyTheCrawlShiftedBeforeItTrots() {
     CHECK(std::hypot(walker.body.xm, walker.body.zm) <= 1e-4f);
 }
 
+// A step height changed mid-walk reaches a raised foot as eased as the walk's own swing moves it: taken in one tick,
+// it moved the foot by the whole change at once.
+static void aNewStepHeightEasesARaisedFootUp() {
+    const KinConfig &config = *kinConfigFor(socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI);
+    WalkState walk;
+    walk.configure(config);
+    MotionState &state = walk;
+    body_state_t body;
+    body.ym = config.default_body_height;
+    body.updateFeet(config.default_feet_positions);
+    state.begin();
+    const CommandMsg low {0, 0.5f, 0, 0, 0.5f, 0.5f, 0.2f}, high {0, 0.5f, 0, 0, 0.5f, 0.5f, 1.0f};
+    const auto worstLift = [&](int ticks) {
+        float worst = 0;
+        for (int t = 0; t < ticks; t++) {
+            float before[4];
+            for (int leg = 0; leg < 4; leg++) before[leg] = body.feet[leg][1];
+            state.step(body, DT);
+            for (int leg = 0; leg < 4; leg++) worst = std::max(worst, std::fabs(body.feet[leg][1] - before[leg]));
+        }
+        return worst;
+    };
+    state.handleCommand(high);
+    worstLift(300);
+    const float steadyHigh = worstLift(300);
+    state.handleCommand(low);
+    worstLift(300);
+
+    // On, until a foot is halfway through its swing, at its highest.
+    int raised = -1;
+    for (int t = 0; t < 200 && raised < 0; t++) {
+        state.step(body, DT);
+        for (int leg = 0; leg < 4; leg++) {
+            const float swing = (std::fmod(walk.phase_time + walk.phase_offset[leg], 1.0f) - walk.stand_offset) /
+                                (1 - walk.stand_offset);
+            if (swing > 0.45f && swing < 0.55f) raised = leg;
+        }
+    }
+    CHECK(raised >= 0);
+    if (raised < 0) return;
+    const float before = body.feet[raised][1];
+    state.handleCommand(high);
+    state.step(body, DT);
+    const float jump = std::fabs(body.feet[raised][1] - before);
+    if (jump > steadyHigh)
+        std::printf("a new step height moved a raised foot %.2f mm in a tick, the walk itself at most %.2f mm\n",
+                    jump * 1000, steadyHigh * 1000);
+    CHECK(jump <= steadyHigh);
+    worstLift(100);
+    CHECK(std::fabs(walk.steps().step_height - config.max_step_height) < 0.01f * config.max_step_height);
+}
+
 int main() {
     aStanceFootStaysDownAndLiftsOffLevelInEveryDirection();
+    aNewStepHeightEasesARaisedFootUp();
     autoPicksTheGaitBySpeedWithHysteresis();
     autoSwapsTheGaitOnlyAtAStandstill();
     autoStartsInTheGaitTheSettledStickAsks();

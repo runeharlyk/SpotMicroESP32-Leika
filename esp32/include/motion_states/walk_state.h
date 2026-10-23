@@ -73,7 +73,7 @@ class WalkState : public MotionState {
     gait_state_t target_gait_state;
 
     struct GaitDampers {
-        CriticalDamper step_x, step_z, step_angle, step_depth;
+        CriticalDamper step_x, step_z, step_angle, step_depth, step_height;
     } gait_dampers;
 
     struct ShiftState {
@@ -318,7 +318,7 @@ class WalkState : public MotionState {
             follow(body_dampers.zm, body_state.zm, 0, dt);
         }
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
-        gait_state.step_height = target_gait_state.step_height;
+        follow(gait_dampers.step_height, gait_state.step_height, target_gait_state.step_height, dt);
         follow(gait_dampers.step_x, gait_state.step_x, target_gait_state.step_x, dt);
         follow(gait_dampers.step_z, gait_state.step_z, target_gait_state.step_z, dt);
         gait_state.step_velocity = target_gait_state.step_velocity;

@@ -35,6 +35,8 @@ const Segment SCRIPT[] = {
     // settle, as the joint speed cap slows them.
     {STAND, TROT, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 100},
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    // A lower step mid-stride, which the feet in the air ease down to.
+    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.25f}, 0, 0, 100},
     {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     // Both sticks to the rim on a raised body, where the legs reach only a fraction of the stroke.

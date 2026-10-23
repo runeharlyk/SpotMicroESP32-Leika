@@ -340,7 +340,8 @@ export class WalkState extends MotionState {
             stepX: new CriticalDamper(),
             stepZ: new CriticalDamper(),
             stepAngle: new CriticalDamper(),
-            stepDepth: new CriticalDamper()
+            stepDepth: new CriticalDamper(),
+            stepHeight: new CriticalDamper()
         }
     }
 
@@ -545,7 +546,7 @@ export class WalkState extends MotionState {
             body.zm = follow(bodyDampers.zm, body.zm, 0, dt)
         }
         body.psi = follow(bodyDampers.psi, body.psi, this.target.psi, dt)
-        gait.stepHeight = targetGait.stepHeight
+        gait.stepHeight = follow(gaitDampers.stepHeight, gait.stepHeight, targetGait.stepHeight, dt)
         gait.stepX = follow(gaitDampers.stepX, gait.stepX, targetGait.stepX, dt)
         gait.stepZ = follow(gaitDampers.stepZ, gait.stepZ, targetGait.stepZ, dt)
         gait.stepVelocity = targetGait.stepVelocity
