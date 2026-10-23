@@ -80,6 +80,11 @@ All notable changes to this project will be documented in this file.
 - Fixes WebSocket clients timing out their keep-alive pings and waiting out every close, which the robot never answered
 - Fixes the swing foot dropping onto its stance spot for one tick at the end of a swing
 - Fixes a diagonal or turning stance ending about a millimetre in the air, so its foot jumped at the start of the swing
+- Fixes the odometry's heading taking the gyro's sample at one point of each control tick, which aliased a yaw rate that ripples with the tick into the heading (in the simulation a 96 degree turn read from 2.6 degrees short to 2.4 long, by where the sample fell): it now takes the gyro's mean rate between the samples two ticks find, which the sensor task integrates over every read
+- Fixes an input posted just after the control task read its clock counting as 49 days of silence, which stopped the walk for a moment and disarmed the dead-man stop
+- Fixes goal moves started over USB serial or Bluetooth walking on when their client went away: a goal now ends when its client leaves any link or sends nothing for 2 s, which a closed USB serial port does not otherwise signal, and the Python client asks for the goal's status every half second while it waits
+- Fixes goal moves reporting the target reached while the walk's stop still carried the robot on, 4.4 degrees past a 90 degree turn at full speed in the simulation, and curving off the line of a straight goal, 45 mm over a metre: a goal now judges where the walk's stop will leave the robot, slows over a zone its speed needs, holds a straight goal's heading and line, judges the pose once the walk has stood still and walks up to two corrective passes
+- Fixes the Python client's goal turns adding up the walks' heading drift, so a square of goals did not close: each turn now aims at the heading the script's goals meant; a goal whose reply was lost or interrupted by Ctrl-C is now cancelled
 
 ## [0.3.0]
 
