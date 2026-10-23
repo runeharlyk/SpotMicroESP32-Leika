@@ -86,9 +86,8 @@ describe("the calibration page's 3D model", () => {
         const { socket } = await import('../../src/lib/stores')
         const listen = vi.spyOn(socket, 'on')
         const { calibrationJointValues } = await import('../../src/lib/robot-pose')
-        const { default: CalibrationModel } = await import(
-            '../../src/routes/peripherals/servo/CalibrationModel.svelte'
-        )
+        const { default: CalibrationModel } =
+            await import('../../src/routes/peripherals/servo/CalibrationModel.svelte')
         const props = $state({ model, centers, jointId: 2, pwm: centers[2] })
         const view = mount(CalibrationModel, { target: document.body, props })
         flushSync()

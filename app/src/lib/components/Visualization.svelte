@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onDestroy, onMount } from 'svelte'
+    import { onDestroy, onMount, untrack } from 'svelte'
     import { get } from 'svelte/store'
     import { Color, Mesh, MeshPhongMaterial, type Object3D } from 'three'
     import { lerp } from 'three/src/math/MathUtils'
@@ -42,7 +42,7 @@
 
     const settings = {
         'Smooth motion': true,
-        Background: defaultColor
+        Background: untrack(() => defaultColor)
     }
 
     onMount(() => {

@@ -19,9 +19,8 @@ vi.mock('$lib/recording/recorder', async () => {
 })
 vi.mock('$lib/stores/socket', () => ({ socket: writable(true) }))
 
-const { default: TelemetryRecording } = await import(
-    '../../src/routes/system/metrics/TelemetryRecording.svelte'
-)
+const { default: TelemetryRecording } =
+    await import('../../src/routes/system/metrics/TelemetryRecording.svelte')
 const recorderState = state.store as ReturnType<typeof writable<RecorderState>>
 
 const fixture = new Uint8Array(
