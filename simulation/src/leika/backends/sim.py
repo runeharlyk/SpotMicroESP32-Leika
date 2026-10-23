@@ -16,7 +16,7 @@ from ...robot.firmware_gait import (DEFAULT_FEET, FIRMWARE_FEET, STAND_HEIGHT, T
                                     GaitState, gait_action, set_mode)
 from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
 from ...robot.firmware_goal import Goal, GoalController, GoalState
-from ...robot.firmware_odometry import BodyStep, FusedOdometry
+from ...robot.firmware_odometry import BodyStep, FusedOdometry, KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ...sim.recording import from_model_joints, to_model_joints
 from .. import speed_model
@@ -130,12 +130,21 @@ class SimBackend:
         scale = self._servo_scale or self.servos.pwm_per_degree
         return to_model_joints(np.radians(self.servos.servo_angles(pwm, scale)))
 
-    # As the firmware's MotionService: the goal's sticks for the next tick, and once reached, STAND with them centred.
+    # As the firmware's MotionService: the goal's sticks for the next tick, from where the walk's stop would leave the
+    # body, and once reached, STAND with them centred.
     def _drive_goal(self, step: BodyStep, dt: float) -> None:
-        sticks = self._goal.update(step, dt)
+        sticks = self._goal.update(step, self._stop_step(), self._controller.stands_still(self._gait), dt)
         self._sticks = speed_model.Sticks(-sticks.left, sticks.forward, sticks.turn)
         if self._goal.state is GoalState.REACHED:
             self._mode = Mode.STAND
+
+    # WalkState::stopStep: the firmware's odometry over the feet the walk's stop would leave on the floor.
+    def _stop_step(self) -> BodyStep:
+        odometry = KinematicOdometry()
+        for feet, stance in self._controller.stop_feet(self._gait):
+            odometry.update((feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T, stance)
+        rest = odometry.estimate
+        return BodyStep(rest.x, rest.y, rest.yaw)
 
     def _cancel_goal(self) -> None:
         if self._goal.running:

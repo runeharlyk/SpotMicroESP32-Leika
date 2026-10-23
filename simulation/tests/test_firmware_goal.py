@@ -5,29 +5,32 @@ from pathlib import Path
 
 import pytest
 
-from src.robot.firmware_goal import BodyStep, Goal, GoalController, GoalState
+from src.robot.firmware_goal import MAX_PASSES, BodyStep, Goal, GoalController, GoalState
 
 TRACE = Path(__file__).parent / "fixtures" / "firmware-goal-trace.json"
 SCENARIOS = json.loads(TRACE.read_text())["scenarios"]
 
 
-# Every tick's sticks, state and progress, from the same body steps. The firmware sums in float, the port in double.
+# Every tick's sticks, state, progress, passes and time limit, from the same body steps and predicted stops. The
+# firmware sums in float, the port in double.
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: ",".join(f"{k}={v:g}" for k, v in s["goal"].items()))
 def test_the_port_reproduces_the_firmwares_controller_tick_by_tick(scenario):
     goal = GoalController()
     goal.start(Goal(**scenario["goal"]), scenario["top_speed"], scenario["top_turn"])
-    assert goal.timeout == pytest.approx(scenario["timeout"], rel=1e-6)
     for tick in scenario["ticks"]:
-        sticks = goal.update(BodyStep(*tick["step"]), tick["dt"])
+        sticks = goal.update(BodyStep(*tick["step"]), BodyStep(*tick["to_rest"]), tick["at_rest"], tick["dt"])
         assert (sticks.forward, sticks.left, sticks.turn) == pytest.approx(tick["sticks"], abs=1e-5)
         assert goal.state == tick["state"]
         assert goal.progress == pytest.approx(tick["progress"], abs=1e-5)
+        assert goal.passes == tick["passes"]
+        assert goal.timeout == pytest.approx(tick["timeout"], rel=1e-5)
     assert goal.state is not GoalState.RUNNING
 
 
-def test_the_trace_covers_every_axis_and_both_endings():
-    endings = {s["ticks"][-1]["state"] for s in SCENARIOS}
-    assert endings == {GoalState.REACHED, GoalState.TIMED_OUT}
+def test_the_trace_covers_every_axis_corrective_passes_and_both_endings():
+    endings = {(s["ticks"][-1]["state"], s["ticks"][-1]["passes"]) for s in SCENARIOS}
+    assert {(GoalState.REACHED, 1), (GoalState.REACHED, 2), (GoalState.TIMED_OUT, MAX_PASSES)} <= endings
+    assert {state for state, _ in endings} == {GoalState.REACHED, GoalState.TIMED_OUT}
     for axis in ("forward", "sideways", "turn"):
         assert any(s["goal"][axis] != 0 for s in SCENARIOS)
 

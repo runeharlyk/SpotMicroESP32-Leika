@@ -18,8 +18,11 @@ from src.robot.firmware_gait import (
     GaitController,
     GaitState,
     firmware_joint_angles,
+    gait_action,
 )
+from src.robot.firmware_odometry import KinematicOdometry
 from src.leika import speed_model
+from src.leika.backends.sim import MODEL_TO_FIRMWARE, TO_FIRMWARE_FEET
 from src.leika.speed_model import MAX_KNEE_BEND_DEG, MIN_KNEE_BEND_DEG
 
 
@@ -182,3 +185,33 @@ def test_a_command_past_the_legs_reach_keeps_every_knee_within_its_bends(turn):
         controller.generate_feet(gait, body)
         bends.extend(firmware_joint_angles(body.feet)[2])
     assert MIN_KNEE_BEND_DEG - 0.1 <= min(bends) and max(bends) <= MAX_KNEE_BEND_DEG + 0.1
+
+
+# The stop a walk predicts is the one its feet take, as walk_state_test.cpp holds the firmware's to: centring the sticks
+# anywhere in the cycle, the odometry of the feet the walk takes until it stands still lands where stop_feet's said,
+# within the 3 mm and 1.5 degrees that sampling the stop every 20 ms where the walk ticks every 10 ms allows.
+@pytest.mark.parametrize("sticks", [(0.0, 1.0, 0.0), (0.6, 0.0, 0.0), (0.0, 0.0, 1.0), (0.5, 0.5, 0.3)])
+def test_the_stop_a_walk_predicts_is_the_one_it_takes(sticks):
+    def odometry_of(samples):
+        odometry = KinematicOdometry()
+        for feet, stance in samples:
+            odometry.update((feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T, stance)
+        return odometry.estimate
+
+    for stop_at in range(0, 30, 6):
+        gait, controller, body = GaitState(), GaitController(), BodyState()
+        gait_action(speed_model.Sticks(*sticks), gait)
+        for _ in range(100 + stop_at):
+            controller.step(gait, 0.01)
+        controller.generate_feet(gait, body)
+        predicted = odometry_of(controller.stop_feet(gait))
+        gait_action(speed_model.Sticks(0.0, 0.0, 0.0), gait)
+        walked = [(body.feet.copy(), controller.stance(gait))]
+        while not controller.stands_still(gait):
+            controller.step(gait, 0.01)
+            controller.generate_feet(gait, body)
+            walked.append((body.feet.copy(), controller.stance(gait)))
+            assert len(walked) < 300
+        stopped = odometry_of(walked)
+        assert np.hypot(stopped.x - predicted.x, stopped.y - predicted.y) < 0.003
+        assert abs(stopped.yaw - predicted.yaw) < np.radians(1.5)

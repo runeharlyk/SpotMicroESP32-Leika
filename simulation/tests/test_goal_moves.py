@@ -8,11 +8,13 @@ from src.leika import GoalCancelled, Mode, Robot, RobotError
 from src.leika.backends.sim import MODEL_TO_REP
 from test_odometry import CROSS_TRACK_M, SHORTFALL, TURN_ERROR
 
-# Measured: the goal ends 1.5 mm and 0.4 degrees off on the odometry once settled, the walk's smoothing carrying it on
-# past the goal; the base walked 0.214 m for 0.2, which the feet undercount, veering 1.4 degrees, which the gyro's
-# heading follows, and turned 90.1 degrees for 90, by the gyro's heading, where the feet show 81.4.
+# The goal is judged once the walk has stood still, on the odometry's pose, so a distance lands on it: measured 0.0 mm
+# off for 0.2 m, where the base walked 0.211 m, which the feet undercount. The heading at rest also takes up the trot's
+# yaw rocking, which the gyro sees and the feet do not, so a turn lands within the goal's 3 degrees rather than on the
+# point: 90 degrees ended 1.7 off at half speed and 1.7 at full speed, and 5 ended 2.6 off at full speed.
 SETTLED_M = 0.003
 SETTLED_DEG = 1.0
+TURN_REACHED_DEG = 3.0
 
 
 @pytest.fixture
@@ -60,12 +62,33 @@ def test_a_goal_of_90_degrees_ends_on_the_fused_heading_and_so_on_the_base(robot
     robot.goal_move(turn_deg=90)
     robot.sleep(1.0)
     odometry = robot.odometry()
-    assert odometry.yaw == pytest.approx(90, abs=SETTLED_DEG)
+    assert odometry.yaw == pytest.approx(90, abs=TURN_REACHED_DEG)
     assert np.hypot(odometry.x, odometry.y) < SETTLED_M
     x, y, yaw = _moved(robot, start)
     assert yaw == pytest.approx(90, rel=TURN_ERROR)
     assert SHORTFALL[0] < odometry.kinematic_yaw / yaw < SHORTFALL[1]
     assert np.hypot(x, y) < CROSS_TRACK_M
+
+
+# At full speed the walk carries a turn on: judged where it comes to rest, a 90 degree goal ends within its tolerance,
+# where it used to centre its sticks at the target and report it reached 4.4 degrees past.
+def test_a_fast_turn_ends_within_its_tolerance_once_at_rest(robot):
+    robot.reset_odometry()
+    robot.goal_move(turn_deg=90, speed=1.0)
+    robot.sleep(1.0)
+    assert robot.odometry().yaw == pytest.approx(90, abs=TURN_REACHED_DEG)
+
+
+# A metre at full speed: the trot drifts in heading, which the goal holds, and so its start line, where it used to curve
+# 45 mm off it.
+def test_a_fast_metre_holds_its_heading_and_its_line(robot):
+    robot.reset_odometry()
+    robot.goal_move(forward=1.0, speed=1.0)
+    robot.sleep(1.0)
+    odometry = robot.odometry()
+    assert odometry.x == pytest.approx(1.0, abs=SETTLED_M)
+    assert abs(odometry.y) < SETTLED_M
+    assert abs(odometry.yaw) < TURN_REACHED_DEG
 
 
 def test_a_mode_change_mid_goal_cancels_it_and_stops_the_walk(robot):

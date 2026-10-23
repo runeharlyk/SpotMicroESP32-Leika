@@ -101,11 +101,12 @@ static void aGoalWalksTheOdometryToItsTarget() {
         CHECK(motion.goalStatus().state == GoalState::RUNNING);
         CHECK(motion.mode() == socket_message_ModesEnum_WALK);
         CHECK(!centred(motion)); // the goal's sticks are the command in force, as the app's would be
-        // On the sticks as the walk takes them: ly forward, lx to the right, rx counter-clockwise.
+        // On the sticks as the walk takes them: ly forward, lx to the right, rx counter-clockwise. A straight goal's
+        // other sticks hold its line and heading.
         const CommandMsg &command = motion.currentCommand();
-        CHECK(sign(command.ly) == sign(c.goal.forward));
-        CHECK(sign(command.lx) == -sign(c.goal.sideways));
-        CHECK(sign(command.rx) == sign(c.goal.turn));
+        if (c.goal.forward != 0) CHECK(sign(command.ly) == sign(c.goal.forward));
+        if (c.goal.sideways != 0) CHECK(sign(command.lx) == -sign(c.goal.sideways));
+        if (c.goal.turn != 0) CHECK(sign(command.rx) == sign(c.goal.turn) && command.lx == 0 && command.ly == 0);
         const GoalState end = runGoal(motion);
         CHECK(end == GoalState::REACHED);
         CHECK(motion.mode() == socket_message_ModesEnum_STAND);
@@ -368,6 +369,38 @@ static void aGoalKeepsTheGaitAutoHadWhenItStarted() {
     CHECK(motion.walkedGait() == socket_message_WalkGaits_CRAWL);
 }
 
+// A walk that drifts in heading, as a trot does on the floor, which the gyro sees and the feet do not: the goal holds
+// the heading it started on and its start line, where it used to curve off them (by 26 cm over a metre at 0.03 rad/s)
+// and report the target reached.
+static void aStraightGoalHoldsItsLineOnADriftingHeading() {
+    for (const Goal &target : {Goal {1.0f, 0, 0, 0.5f}, Goal {0, 0.3f, 0, 1}}) {
+        MotionService motion;
+        standingPico(motion);
+        ImuSample imu;
+        imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
+        const auto gyroTick = [&]() {
+            const float feetBefore = motion.odometry().kinematicYaw;
+            fake_timer::nowUs += 10000;
+            imu.t_us = fake_timer::nowUs;
+            imu.gyroYaw = std::remainder(imu.gyroYaw + imu.gyro[2] / TICKS_PER_S, 2 * static_cast<float>(M_PI));
+            motion.update(imu, eGestureNone);
+            const float feetRate = std::remainder(motion.odometry().kinematicYaw - feetBefore, 2 * M_PI) * TICKS_PER_S;
+            imu.gyro[2] = feetRate + (motion.mode() == socket_message_ModesEnum_WALK ? 0.03f : 0);
+        };
+        for (int i = 0; i < TICKS_PER_S; i++) gyroTick();
+        motion.resetOdometry();
+        motion.inbox.postGoal(target);
+        gyroTick();
+        for (int i = 0; i < 40 * TICKS_PER_S && motion.goalStatus().state == GoalState::RUNNING; i++) gyroTick();
+        CHECK(motion.goalStatus().state == GoalState::REACHED);
+        const FusedEstimate at = motion.odometry();
+        const bool forward = target.forward != 0;
+        CHECK_NEAR(forward ? at.x : at.y, forward ? target.forward : target.sideways, GoalController::REACHED_M);
+        CHECK_NEAR(forward ? at.y : at.x, 0, GoalController::CROSS_REACHED_M);
+        CHECK_NEAR(at.yaw, 0, 3 * DEG);
+    }
+}
+
 int main() {
     aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile();
     aClockwiseGestureTurnsAFullCircle();
@@ -382,6 +415,7 @@ int main() {
     anOdometryResetMidGoalChangesNothing();
     aNewGoalReplacesTheRunningOne();
     aTurnClosesOnTheFusedHeading();
+    aStraightGoalHoldsItsLineOnADriftingHeading();
     aGoalKeepsTheGaitAutoHadWhenItStarted();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;

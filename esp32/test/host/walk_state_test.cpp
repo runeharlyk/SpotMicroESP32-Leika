@@ -240,7 +240,52 @@ static void autoCentresTheBodyTheCrawlShiftedBeforeItTrots() {
     CHECK(std::hypot(walker.body.xm, walker.body.zm) <= 1e-4f);
 }
 
+// The stop a walk predicts is the one it takes: centring the sticks anywhere in the cycle, the odometry of the feet it
+// walks until it stands still lands where stopStep said, walking, strafing and turning, slow and at a full stick.
+// Within 3 mm and 1.5 degrees, measured up to 2.4 mm and 1.1 at a full stick: the odometry counts a foot from the
+// second sample it is down at, and the prediction samples the stop every 20 ms where the walk ticks every 10 ms, slowed
+// at a full stick by the joints' speed cap.
+static void theStopAWalkPredictsIsTheOneItTakes() {
+    const KinConfig &config = KIN_CONFIG_SPOTMICRO_ESP32_MINI;
+    const float sticks[][3] = {{0, 1, 0}, {0, 0.3f, 0}, {-0.6f, 0, 0}, {0, 0, 1}, {0, 0, -0.3f}, {0.5f, 0.5f, 0.3f}};
+    float worstPosition = 0, worstTurn = 0, longest = 0;
+    for (const auto &stick : sticks) {
+        for (int stopAt = 0; stopAt < 20; stopAt++) {
+            WalkState walk;
+            walk.configure(config);
+            MotionState &state = walk;
+            body_state_t body;
+            body.ym = config.default_body_height;
+            body.updateFeet(config.default_feet_positions);
+            state.begin();
+            state.handleCommand({stick[0], stick[1], stick[2], 0, 0.5f, 0.5f, 0.5f});
+            for (int i = 0; i < 100 + 3 * stopAt; i++) state.step(body, DT);
+            const BodyStep predicted = walk.stopStep(body);
+            KinematicOdometry odometry;
+            odometry.update(body, walk.stance());
+            state.handleCommand({0, 0, 0, 0, 0.5f, 0.5f, 0.5f});
+            int ticks = 0;
+            for (; !walk.standsStill() && ticks < 300; ticks++) {
+                state.step(body, DT);
+                odometry.update(body, walk.stance());
+            }
+            CHECK(walk.standsStill());
+            const OdometryEstimate &stopped = odometry.estimate();
+            worstPosition =
+                std::max(worstPosition, std::hypot(stopped.x - predicted.forward, stopped.y - predicted.left));
+            worstTurn = std::max(worstTurn, std::fabs(stopped.yaw - predicted.turn));
+            longest = std::max(longest, ticks * DT);
+        }
+    }
+    std::printf("stop predictions: worst %.2f mm, %.3f degrees; the longest stop %.2f s\n", worstPosition * 1000,
+                worstTurn * 180 / static_cast<float>(M_PI), longest);
+    CHECK(worstPosition < 0.003f);
+    CHECK(worstTurn < 1.5f * static_cast<float>(M_PI) / 180);
+    CHECK(longest < WalkState::STOP_PREDICTION_DT_S * WalkState::STOP_PREDICTION_STEPS);
+}
+
 int main() {
+    theStopAWalkPredictsIsTheOneItTakes();
     aStanceFootStaysDownAndLiftsOffLevelInEveryDirection();
     autoPicksTheGaitBySpeedWithHysteresis();
     autoSwapsTheGaitOnlyAtAStandstill();
