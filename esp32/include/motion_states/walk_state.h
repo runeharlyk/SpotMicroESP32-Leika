@@ -50,13 +50,21 @@ constexpr std::array<float, SAMPLES + 1> bezierSamples(const float (&points)[12]
 
 enum class WALK_GAIT { TROT, CRAWL };
 
-// AUTO's choice from how far the stick asks the walk to go, 0 to 1 of a full stride or turn: the crawl below
-// AUTO_CRAWL_MAX, the trot from there up. The gait in force keeps its band AUTO_HYSTERESIS further, so a stick held at
-// the boundary does not swap the schedules back and forth.
-inline constexpr float AUTO_CRAWL_MAX = 0.30f, AUTO_HYSTERESIS = 0.06f;
+// The two schedules: each gait's clock rate factor and the share of the cycle a foot stands. A stance sweeps the foot
+// through the stroke, so a stroke walks the body at stroke x factor / duty per cycle of the clock.
+inline constexpr float CRAWL_FACTOR = 0.5f, CRAWL_DUTY = 0.85f, TROT_FACTOR = 2, TROT_DUTY = 0.75f;
+
+// AUTO asks the body for the stick's share of the trot's top speed, whichever gait walks it: the crawl walks
+// AUTO_CRAWL_STROKE (about 4.5) times the stroke the stick asks, where at the same stroke the crawl walked that much
+// slower and AUTO's swap changed the speed by as much. AUTO picks the gait from that share, the larger of the stroke and
+// the turn a full stick asks: the crawl up to AUTO_CRAWL_MAX, its own full stroke, and the trot above. The trot in
+// force keeps its band AUTO_HYSTERESIS further down, so a stick held at the boundary does not swap the schedules back
+// and forth.
+inline constexpr float AUTO_CRAWL_STROKE = (TROT_FACTOR / TROT_DUTY) / (CRAWL_FACTOR / CRAWL_DUTY);
+inline constexpr float AUTO_CRAWL_MAX = 1 / AUTO_CRAWL_STROKE, AUTO_HYSTERESIS = 0.06f;
 constexpr WALK_GAIT selectAutoGait(float demand, WALK_GAIT current) {
-    const float crawl_max = current == WALK_GAIT::CRAWL ? AUTO_CRAWL_MAX + AUTO_HYSTERESIS : AUTO_CRAWL_MAX;
-    return demand < crawl_max ? WALK_GAIT::CRAWL : WALK_GAIT::TROT;
+    const float crawl_max = current == WALK_GAIT::CRAWL ? AUTO_CRAWL_MAX : AUTO_CRAWL_MAX - AUTO_HYSTERESIS;
+    return demand <= crawl_max ? WALK_GAIT::CRAWL : WALK_GAIT::TROT;
 }
 
 class WalkState : public MotionState {
@@ -67,8 +75,8 @@ class WalkState : public MotionState {
     float auto_settled_s = 0; // how long AUTO has held a standstill against a command
     float phase_time = 0.0f;
     float phase_offset[4] = {0.f, 0.5f, 0.5f, 0.f};
-    float stand_offset = 0.75f;
-    float speed_factor = 2;
+    float stand_offset = TROT_DUTY;
+    float speed_factor = TROT_FACTOR;
     gait_state_t gait_state;
     gait_state_t target_gait_state;
 
@@ -172,16 +180,16 @@ class WalkState : public MotionState {
         if (requested_gait) takeRequestedGait();
     }
 
-    void set_mode_crawl(float duty = 0.85f, std::array<int, 4> order = {3, 0, 2, 1}) {
+    void set_mode_crawl(float duty = CRAWL_DUTY, std::array<int, 4> order = {3, 0, 2, 1}) {
         std::array<float, 4> offsets;
         const float base[4] = {0.f, 0.25f, 0.5f, 0.75f};
         for (int i = 0; i < 4; ++i) offsets[order[i]] = base[i];
-        schedule(WALK_GAIT::CRAWL, 0.5f, duty, offsets);
+        schedule(WALK_GAIT::CRAWL, CRAWL_FACTOR, duty, offsets);
     }
 
-    void set_mode_trot(float duty = 0.75f, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
+    void set_mode_trot(float duty = TROT_DUTY, std::array<float, 4> offsets = {0.f, 0.5f, 0.5f, 0.f}) {
         for (float &offset : offsets) offset = std::fmod(std::fabs(offset), 1.f);
-        schedule(WALK_GAIT::TROT, 2, duty, offsets);
+        schedule(WALK_GAIT::TROT, TROT_FACTOR, duty, offsets);
     }
 
     /**
@@ -319,10 +327,11 @@ class WalkState : public MotionState {
         }
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
         follow(gait_dampers.step_height, gait_state.step_height, target_gait_state.step_height, dt);
-        follow(gait_dampers.step_x, gait_state.step_x, target_gait_state.step_x, dt);
-        follow(gait_dampers.step_z, gait_state.step_z, target_gait_state.step_z, dt);
+        const float stroke = auto_gait && mode == WALK_GAIT::CRAWL ? AUTO_CRAWL_STROKE : 1;
+        follow(gait_dampers.step_x, gait_state.step_x, stroke * target_gait_state.step_x, dt);
+        follow(gait_dampers.step_z, gait_state.step_z, stroke * target_gait_state.step_z, dt);
         gait_state.step_velocity = target_gait_state.step_velocity;
-        follow(gait_dampers.step_angle, gait_state.step_angle, target_gait_state.step_angle, dt);
+        follow(gait_dampers.step_angle, gait_state.step_angle, stroke * target_gait_state.step_angle, dt);
         follow(gait_dampers.step_depth, gait_state.step_depth, target_gait_state.step_depth, dt);
 
         updatePhase(dt);

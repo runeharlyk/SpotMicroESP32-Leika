@@ -85,18 +85,21 @@ static void aStanceFootStaysDownAndLiftsOffLevelInEveryDirection() {
     }
 }
 
-// The bands: the crawl below 0.30 of a full stick, the trot from there up, and each gait holds its band 0.06 further.
+// The bands: the crawl up to its full stroke, 0.22 of the trot's top speed, the trot above, and the trot holds its band
+// 0.06 further down.
 static void autoPicksTheGaitBySpeedWithHysteresis() {
+    CHECK(std::fabs(AUTO_CRAWL_MAX - 0.2206f) < 0.0001f);
     CHECK(selectAutoGait(0.0f, WALK_GAIT::TROT) == WALK_GAIT::CRAWL);
-    CHECK(selectAutoGait(0.29f, WALK_GAIT::TROT) == WALK_GAIT::CRAWL);
-    CHECK(selectAutoGait(0.30f, WALK_GAIT::TROT) == WALK_GAIT::TROT);
+    CHECK(selectAutoGait(0.15f, WALK_GAIT::TROT) == WALK_GAIT::CRAWL);
+    CHECK(selectAutoGait(0.17f, WALK_GAIT::TROT) == WALK_GAIT::TROT);
+    CHECK(selectAutoGait(AUTO_CRAWL_MAX, WALK_GAIT::CRAWL) == WALK_GAIT::CRAWL);
+    CHECK(selectAutoGait(0.23f, WALK_GAIT::CRAWL) == WALK_GAIT::TROT);
     CHECK(selectAutoGait(1.0f, WALK_GAIT::CRAWL) == WALK_GAIT::TROT);
     // Between the bands' edges the gait in force stays.
-    for (const float demand : {0.30f, 0.33f, 0.35f}) {
+    for (const float demand : {0.17f, 0.19f, 0.22f}) {
         CHECK(selectAutoGait(demand, WALK_GAIT::CRAWL) == WALK_GAIT::CRAWL);
         CHECK(selectAutoGait(demand, WALK_GAIT::TROT) == WALK_GAIT::TROT);
     }
-    CHECK(selectAutoGait(0.36f, WALK_GAIT::CRAWL) == WALK_GAIT::TROT);
 }
 
 // A WalkState in AUTO on the Mini, with the per-tick foot travel and the schedule swaps it made.
@@ -123,9 +126,9 @@ struct AutoWalker {
         return still && down[0] && down[1] && down[2] && down[3];
     }
 
-    // Holds the forward stick `ly` for `ticks` ticks.
-    void hold(float ly, int ticks) {
-        static_cast<MotionState &>(walk).handleCommand({0, ly, 0, 0, 0.5f, 0.5f, 0.5f});
+    // Holds the forward stick `ly` and the turn stick `rx` for `ticks` ticks.
+    void hold(float ly, int ticks, float rx = 0) {
+        static_cast<MotionState &>(walk).handleCommand({0, ly, rx, 0, 0.5f, 0.5f, 0.5f});
         for (int t = 0; t < ticks; t++) {
             const WALK_GAIT before = walk.gait();
             const bool still = standingStill();
@@ -149,13 +152,13 @@ struct AutoWalker {
 static void autoSwapsTheGaitOnlyAtAStandstill() {
     AutoWalker walker(WALK_GAIT::TROT);
     walker.walk.set_auto_gait(true);
-    walker.hold(0.2f, 300);
+    walker.hold(0.1f, 300);
     CHECK(walker.walk.gait() == WALK_GAIT::CRAWL);
     CHECK(walker.walk.steps().step_x > 0);
     walker.hold(1.0f, 400);
     CHECK(walker.walk.gait() == WALK_GAIT::TROT);
     CHECK(walker.walk.steps().step_x > 0.9f * walker.config.max_step_length);
-    walker.hold(0.2f, 400);
+    walker.hold(0.1f, 400);
     CHECK(walker.walk.gait() == WALK_GAIT::CRAWL);
     CHECK(walker.swaps == 3);
     CHECK(walker.swapsWhileMoving == 0);
@@ -177,7 +180,7 @@ static void autoStartsInTheGaitTheSettledStickAsks() {
 
 // A stick that wavers about the boundary while walking keeps the gait the walk is in, without a stop.
 static void autoDoesNotChatterAtTheBoundary() {
-    for (const float start : {0.2f, 0.6f}) {
+    for (const float start : {0.1f, 0.6f}) {
         AutoWalker walker(WALK_GAIT::TROT);
         walker.walk.set_auto_gait(true);
         walker.hold(start, 300);
@@ -185,7 +188,7 @@ static void autoDoesNotChatterAtTheBoundary() {
         const int swaps = walker.swaps;
         float slowest = INFINITY;
         for (int pass = 0; pass < 20; pass++) {
-            for (const float stick : {0.30f, 0.35f, 0.32f, 0.355f, 0.31f}) {
+            for (const float stick : {0.17f, 0.215f, 0.19f, 0.22f, 0.175f}) {
                 walker.hold(stick, 10);
                 if (pass > 0) slowest = std::min(slowest, std::fabs(walker.walk.steps().step_x));
             }
@@ -195,7 +198,8 @@ static void autoDoesNotChatterAtTheBoundary() {
         CHECK(walker.swaps == swaps);
         CHECK(walker.walk.gait() == gait);
         // No stop for a swap either: once the stroke had come up from the start, it stayed near the wavering stick's.
-        CHECK(slowest > 0.25f * walker.config.max_step_length);
+        const float stroke = gait == WALK_GAIT::CRAWL ? AUTO_CRAWL_STROKE : 1;
+        CHECK(slowest > 0.15f * stroke * walker.config.max_step_length);
     }
 }
 
@@ -223,7 +227,7 @@ static void autoSwapsWithoutAJump() {
 static void autoCentresTheBodyTheCrawlShiftedBeforeItTrots() {
     AutoWalker walker(WALK_GAIT::CRAWL);
     walker.walk.set_auto_gait(true);
-    walker.hold(0.2f, 300);
+    walker.hold(0.05f, 300);
     walker.hold(0, 300);
     const float shifted = std::hypot(walker.body.xm, walker.body.zm);
     float shiftAtStart = -1;
@@ -292,8 +296,46 @@ static void aNewStepHeightEasesARaisedFootUp() {
     CHECK(std::fabs(walk.steps().step_height - config.max_step_height) < 0.01f * config.max_step_height);
 }
 
+// AUTO asks the body for the stick's share of the trot's top speed, forward and turning, whichever gait walks it: at
+// the same stroke the crawl's slower clock and longer stance walked the body about 4.5 times slower than the trot, so
+// the speed jumped where AUTO swapped them.
+static void autoCommandsOneSpeedPerStickInEitherGait() {
+    WalkState trot;
+    trot.set_mode_trot();
+    const float trotRate = trot.stanceRate(0.5f); // stances per second; a full stick's stroke each is the top speed
+    struct Case {
+        float stick;
+        WALK_GAIT start;
+    };
+    const Case cases[] = {{0.05f, WALK_GAIT::CRAWL},
+                          {0.1f, WALK_GAIT::CRAWL},
+                          {AUTO_CRAWL_MAX - 0.005f, WALK_GAIT::CRAWL},
+                          {AUTO_CRAWL_MAX + 0.005f, WALK_GAIT::TROT},
+                          {0.5f, WALK_GAIT::CRAWL},
+                          {1.0f, WALK_GAIT::CRAWL}};
+    for (const bool turning : {false, true}) {
+        bool crawled = false, trotted = false;
+        for (const Case &c : cases) {
+            AutoWalker walker(c.start);
+            walker.walk.set_auto_gait(true);
+            walker.hold(turning ? 0 : c.stick, 300, turning ? c.stick : 0);
+            const gait_state_t &steps = walker.walk.steps();
+            const float stroke = turning ? steps.step_angle : steps.step_x / walker.config.max_step_length;
+            const float share = stroke * walker.walk.stanceRate(0.5f) / trotRate;
+            const bool crawling = walker.walk.gait() == WALK_GAIT::CRAWL;
+            (crawling ? crawled : trotted) = true;
+            if (std::fabs(share - c.stick) > 0.01f * c.stick)
+                std::printf("AUTO %s at stick %.3f in the %s: %.3f of the trot's top speed\n",
+                            turning ? "turning" : "forward", c.stick, crawling ? "crawl" : "trot", share);
+            CHECK(std::fabs(share - c.stick) <= 0.01f * c.stick);
+        }
+        CHECK(crawled && trotted);
+    }
+}
+
 int main() {
     aStanceFootStaysDownAndLiftsOffLevelInEveryDirection();
+    autoCommandsOneSpeedPerStickInEitherGait();
     aNewStepHeightEasesARaisedFootUp();
     autoPicksTheGaitBySpeedWithHysteresis();
     autoSwapsTheGaitOnlyAtAStandstill();

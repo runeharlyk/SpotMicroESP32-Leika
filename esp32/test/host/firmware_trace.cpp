@@ -51,9 +51,9 @@ const Segment SCRIPT[] = {
     // AUTO: a short stick starts the crawl once it has settled, a long one mid-walk stops it and walks on in the trot,
     // which centres the body the crawl shifted, and a short one again stops the trot for the crawl.
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 50},
-    {WALK, AUTO, {0, 0.2f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0, 0.1f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     {WALK, AUTO, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
-    {WALK, AUTO, {0.2f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0.1f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     // A gait chosen mid-stride, from AUTO's crawl and then from the trot: the walk stops on all four feet, takes it
     // and walks on.
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},

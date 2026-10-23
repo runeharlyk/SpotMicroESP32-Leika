@@ -272,17 +272,25 @@ const bezierCurve: Curve = (length, angle, height, phase, point) => {
 // The parts of a tick walk_state.h slows by.
 const SLOWDOWN_PARTS = 64
 
-// walk_state.h's AUTO: the crawl below AUTO_CRAWL_MAX of a full stick, the trot from there up, each gait holding its
-// band AUTO_HYSTERESIS further; a start waits AUTO_SETTLE_S for the stick to settle. A trot, however chosen, walks only
-// once the body has centred to within TROT_CENTRED_M.
-const AUTO_CRAWL_MAX = f32(0.3)
+// The two schedules (walk_state.h): each gait's clock rate factor and the share of the cycle a foot stands.
+const CRAWL_FACTOR = 0.5
+const CRAWL_DUTY = 0.85
+const TROT_FACTOR = 2
+const TROT_DUTY = 0.75
+
+// walk_state.h's AUTO: the stick's share of the trot's top speed, whichever gait walks it, so the crawl walks
+// AUTO_CRAWL_STROKE times the stroke the stick asks; the crawl up to AUTO_CRAWL_MAX, its own full stroke, the trot
+// above, and the trot in force holding its band AUTO_HYSTERESIS further down; a start waits AUTO_SETTLE_S for the stick
+// to settle. A trot, however chosen, walks only once the body has centred to within TROT_CENTRED_M.
+const AUTO_CRAWL_STROKE = f32(f32(TROT_FACTOR / TROT_DUTY) / f32(CRAWL_FACTOR / f32(CRAWL_DUTY)))
+const AUTO_CRAWL_MAX = f32(1 / AUTO_CRAWL_STROKE)
 const AUTO_HYSTERESIS = f32(0.06)
 const AUTO_SETTLE_S = 0.25
 const TROT_CENTRED_M = f32(0.001)
 
 /** selectAutoGait (walk_state.h): whether AUTO crawls at this demand, 0 to 1 of a full stride or turn. */
 const autoCrawls = (demand: number, crawling: boolean) =>
-    demand < (crawling ? f32(AUTO_CRAWL_MAX + AUTO_HYSTERESIS) : AUTO_CRAWL_MAX)
+    demand <= (crawling ? AUTO_CRAWL_MAX : f32(AUTO_CRAWL_MAX - AUTO_HYSTERESIS))
 
 /** WalkState (motion_states/walk_state.h): trot and crawl, with the crawl's body shift. */
 export class WalkState extends MotionState {
@@ -292,8 +300,8 @@ export class WalkState extends MotionState {
     private autoSettled = 0
     private phaseTime = 0
     private phaseOffset = [0, 0.5, 0.5, 0]
-    private standOffset = 0.75
-    private speedFactor = 2
+    private standOffset = TROT_DUTY
+    private speedFactor = TROT_FACTOR
     private gait: GaitState
     private targetGait: GaitState
     private gaitDampers = WalkState.gaitDampers()
@@ -352,17 +360,17 @@ export class WalkState extends MotionState {
         if (this.requestedCrawl !== null) this.takeRequestedGait()
     }
 
-    setModeCrawl(duty = 0.85, order = [3, 0, 2, 1]) {
+    setModeCrawl(duty = CRAWL_DUTY, order = [3, 0, 2, 1]) {
         const base = [0, 0.25, 0.5, 0.75]
         const offsets = [0, 0, 0, 0]
         order.forEach((leg, i) => (offsets[leg] = base[i]))
-        this.schedule(true, 0.5, duty, offsets)
+        this.schedule(true, CRAWL_FACTOR, duty, offsets)
     }
 
-    setModeTrot(duty = 0.75, offsets = [0, 0.5, 0.5, 0]) {
+    setModeTrot(duty = TROT_DUTY, offsets = [0, 0.5, 0.5, 0]) {
         this.schedule(
             false,
-            2,
+            TROT_FACTOR,
             duty,
             offsets.map(offset => Math.abs(offset) % 1)
         )
@@ -547,10 +555,16 @@ export class WalkState extends MotionState {
         }
         body.psi = follow(bodyDampers.psi, body.psi, this.target.psi, dt)
         gait.stepHeight = follow(gaitDampers.stepHeight, gait.stepHeight, targetGait.stepHeight, dt)
-        gait.stepX = follow(gaitDampers.stepX, gait.stepX, targetGait.stepX, dt)
-        gait.stepZ = follow(gaitDampers.stepZ, gait.stepZ, targetGait.stepZ, dt)
+        const stroke = this.autoGait && this.crawl ? AUTO_CRAWL_STROKE : 1
+        gait.stepX = follow(gaitDampers.stepX, gait.stepX, f32(stroke * targetGait.stepX), dt)
+        gait.stepZ = follow(gaitDampers.stepZ, gait.stepZ, f32(stroke * targetGait.stepZ), dt)
         gait.stepVelocity = targetGait.stepVelocity
-        gait.stepAngle = follow(gaitDampers.stepAngle, gait.stepAngle, targetGait.stepAngle, dt)
+        gait.stepAngle = follow(
+            gaitDampers.stepAngle,
+            gait.stepAngle,
+            f32(stroke * targetGait.stepAngle),
+            dt
+        )
         gait.stepDepth = follow(gaitDampers.stepDepth, gait.stepDepth, targetGait.stepDepth, dt)
         this.updatePhase(dt)
         this.boundToReach(body.ym)
