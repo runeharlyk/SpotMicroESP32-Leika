@@ -241,7 +241,7 @@ Calibrate it against a tape measure before relying on a distance.
 ## Goal moves
 
 A goal move walks a distance forward or sideways, or turns an angle, on the [odometry](#odometry) rather than on the link (`esp32/include/goal_controller.h`).
-The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall cannot cut the move short as the dead-man stop cuts a host-side move.
+The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall shorter than 2 s cannot cut the move short as the dead-man stop cuts a host-side move.
 From STAND or WALK the motion service switches to WALK and sets the sticks itself each control tick, through the same command the app's input sets; the app's height, cadence and step height stay in force.
 It sets them as the walk takes them: a goal to the left sets a negative `lx`, since the walk strafes right on a positive one, and a counter-clockwise turn sets a positive `rx`.
 The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
@@ -250,7 +250,9 @@ On the Pico in the host test it settles within 1.1 mm and 0.6 degrees of the tar
 A turn closes on the fused heading: in MuJoCo a 90 degree goal turns the base 90.1 degrees, where the feet's heading alone stopped it at 100.0.
 
 The dead-man stop guards the app's input and leaves a goal alone.
-A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it closing its socket, or a newer goal; it gives up after twice the time it should take plus 2 s.
+A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it leaving its link or falling silent on it for 2 s, or a newer goal; it gives up after twice the time it should take plus 2 s.
+A link reports a client leaving when its socket closes, its Bluetooth central disconnects or its USB host stops reading, but not a USB serial port the host closed while it still polls the bus: so any frame from the client keeps its goal, and the Python client asks for the goal's status every half second while it waits.
+A WiFi stall longer than 2 s therefore cancels a goal, and the client hears so once the link is back.
 Every end but the app taking over centres the sticks.
 
 The goal is only as good as the odometry: until its distances are calibrated against a tape measure, the robot lands off by their error.

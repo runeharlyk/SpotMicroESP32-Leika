@@ -279,6 +279,18 @@ def test_a_goal_whose_end_was_not_heard_is_asked_after(robot, fake, monkeypatch)
     assert fake.goal.state == pb.GOAL_REACHED
 
 
+# The robot cancels a goal whose client has been silent for 2 s, which is how it finds a closed USB port: while a goal
+# runs, the client asks for its status every GOAL_POLL_S, broadcasts heard or not.
+def test_a_running_goals_client_keeps_asking_for_its_status(robot, fake):
+    fake.goal_s = 2.0
+    robot.stand()
+    robot.goal_move(forward=0.1)
+    asked = [t for t, m in fake.received if m.WhichOneof("message") == "correlation_request"
+             and m.correlation_request.HasField("goal_status_request")]
+    assert len(asked) >= 3
+    assert max(b - a for a, b in zip(asked, asked[1:])) < 2 * real.GOAL_POLL_S
+
+
 def test_a_goal_the_robot_gives_up_or_cancels_raises(robot, fake):
     robot.stand()
     fake.goal_end = pb.GOAL_TIMED_OUT

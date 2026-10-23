@@ -31,7 +31,7 @@ void Websocket::onWsClose(int sockfd) {
     sessions_.erase(sockfd);
     xSemaphoreGive(sessionsMutex_);
     ESP_LOGI(TAG, "Client disconnected: %d", sockfd);
-    removeClient(sockfd);
+    clientGone(sockfd);
     stalls_.forget(sockfd);
     if (closeListener_) closeListener_(sockfd);
 }

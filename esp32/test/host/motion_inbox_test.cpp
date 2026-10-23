@@ -13,6 +13,11 @@ static int failures = 0;
         }                                                                    \
     } while (0)
 
+// Two links, whose client ids repeat.
+static int linkA, linkB;
+static LinkClient onA(int id) { return {&linkA, id}; }
+static LinkClient onB(int id) { return {&linkB, id}; }
+
 static socket_message_ControllerData sticks(float lx, float ly, float height = 0.5f) {
     socket_message_ControllerData data = socket_message_ControllerData_init_zero;
     data.has_left = data.has_right = true;
@@ -123,13 +128,13 @@ static void theNewestVariantIsTakenOnce() {
 
 static void aClipStopsWhenTheClientThatStartedItLeaves() {
     MotionInbox inbox;
-    inbox.postPlay({nullptr, {}, 0}, 3);
+    inbox.postPlay({nullptr, {}, 0}, onA(3));
     CHECK(inbox.take(10).play);
-    inbox.dropClient(5);
+    inbox.dropClient(onA(5));
     CHECK(!inbox.take(20).stopAnimation);
-    inbox.dropClient(3);
+    inbox.dropClient(onA(3));
     CHECK(inbox.take(30).stopAnimation);
-    inbox.dropClient(3);
+    inbox.dropClient(onA(3));
     CHECK(!inbox.take(40).stopAnimation);
 }
 
@@ -138,48 +143,48 @@ static void aPoseIsDroppedAndStoppedWithTheClientThatSentIt() {
     MotionInbox inbox;
     anim::Pose pose;
     pose.body[anim::Z] = -10;
-    inbox.postPose(pose, 3);
+    inbox.postPose(pose, onA(3));
     const MotionInbox::Mail mail = inbox.take(10);
     CHECK(mail.pose && mail.pose->body[anim::Z] == -10);
     CHECK(!inbox.take(20).pose);
-    inbox.postPose(pose, 3);
-    inbox.dropClient(4);
+    inbox.postPose(pose, onA(3));
+    inbox.dropClient(onA(4));
     CHECK(inbox.take(30).pose);
-    inbox.postPose(pose, 3);
-    inbox.dropClient(3);
+    inbox.postPose(pose, onA(3));
+    inbox.dropClient(onA(3));
     const MotionInbox::Mail dropped = inbox.take(40);
     CHECK(!dropped.pose && dropped.stopAnimation);
 }
 
 static void aClipNotYetTakenIsDroppedWithItsClient() {
     MotionInbox inbox;
-    inbox.postPlay({nullptr, {}, 0}, 3);
-    inbox.dropClient(3);
+    inbox.postPlay({nullptr, {}, 0}, onA(3));
+    inbox.dropClient(onA(3));
     MotionInbox::Mail mail = inbox.take(10);
     CHECK(!mail.play && mail.stopAnimation);
 }
 
 static void aClipBelongsToTheClientThatStartedTheLatest() {
     MotionInbox inbox;
-    inbox.postPlay({nullptr, {}, 0}, 3);
-    inbox.postPlay({nullptr, {}, 0}, 4);
+    inbox.postPlay({nullptr, {}, 0}, onA(3));
+    inbox.postPlay({nullptr, {}, 0}, onA(4));
     inbox.take(10);
-    inbox.dropClient(3);
+    inbox.dropClient(onA(3));
     CHECK(!inbox.take(20).stopAnimation);
-    inbox.dropClient(4);
+    inbox.dropClient(onA(4));
     CHECK(inbox.take(30).stopAnimation);
 }
 
 static void aStoppedOrUnownedClipIgnoresLeavingClients() {
     MotionInbox inbox;
-    inbox.postPlay({nullptr, {}, 0}, 3);
+    inbox.postPlay({nullptr, {}, 0}, onA(3));
     inbox.postStopAnimation();
     inbox.take(10);
-    inbox.dropClient(3);
+    inbox.dropClient(onA(3));
     CHECK(!inbox.take(20).stopAnimation);
     inbox.postPlay({nullptr, {}, 0});
     inbox.take(30);
-    inbox.dropClient(0);
+    inbox.dropClient(onA(0));
     CHECK(!inbox.take(40).stopAnimation);
 }
 
@@ -210,19 +215,58 @@ static void theLaterOfAGoalAndACancelWins() {
 
 static void aGoalIsCancelledWhenTheClientThatStartedTheLatestLeaves() {
     MotionInbox inbox;
-    inbox.postGoal({0.2f, 0, 0, 0.5f}, 3);
-    inbox.postGoal({0.2f, 0, 0, 0.5f}, 4);
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, onA(3), 0);
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, onA(4), 0);
     inbox.take(10);
-    inbox.dropClient(3);
+    inbox.dropClient(onA(3));
     CHECK(!inbox.take(20).cancelGoal);
-    inbox.dropClient(4);
+    inbox.dropClient(onA(4));
     CHECK(inbox.take(30).cancelGoal);
-    inbox.dropClient(4);
+    inbox.dropClient(onA(4));
     CHECK(!inbox.take(40).cancelGoal);
-    inbox.postGoal({0.2f, 0, 0, 0.5f}); // from a link that never leaves
+    inbox.postGoal({0.2f, 0, 0, 0.5f}); // a gesture's, which no client owns
     inbox.take(50);
-    inbox.dropClient(0);
+    inbox.dropClient(onA(0));
     CHECK(!inbox.take(60).cancelGoal);
+}
+
+// Client ids repeat across links: the same id leaving another link leaves the goal alone.
+static void aGoalBelongsToItsOwnersLinkToo() {
+    MotionInbox inbox;
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, onA(3), 0);
+    inbox.take(10);
+    inbox.dropClient(onB(3));
+    CHECK(!inbox.take(20).cancelGoal);
+    inbox.dropClient(onA(3));
+    CHECK(inbox.take(30).cancelGoal);
+}
+
+// A closed USB serial port is not reported: an owner that sends nothing for OWNER_SILENCE_MS has gone, and its goal
+// is cancelled once. Only the owner's own frames keep it.
+static void aGoalIsCancelledWhenItsOwnerFallsSilent() {
+    MotionInbox inbox;
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, onA(3), 1000);
+    CHECK(inbox.take(1000).goal);
+    CHECK(!inbox.take(1000 + MotionInbox::OWNER_SILENCE_MS).cancelGoal);
+    inbox.heard(onA(3), 2500);
+    inbox.heard(onB(3), 4000);
+    inbox.heard(onA(4), 4000);
+    CHECK(!inbox.take(2500 + MotionInbox::OWNER_SILENCE_MS).cancelGoal);
+    CHECK(inbox.take(2501 + MotionInbox::OWNER_SILENCE_MS).cancelGoal);
+    CHECK(!inbox.take(9000).cancelGoal);
+
+    inbox.postGoal({0.2f, 0, 0, 0.5f}); // a gesture's: nobody to fall silent
+    CHECK(!inbox.take(20000).cancelGoal);
+}
+
+// The owner's frame can arrive after the control task read its clock: then it is no silence at all.
+static void anOwnerHeardAfterTheTakeReadItsClockIsNoSilence() {
+    MotionInbox inbox;
+    inbox.postGoal({0.2f, 0, 0, 0.5f}, onA(3), 1000);
+    inbox.take(1000);
+    inbox.heard(onA(3), 5001);
+    CHECK(!inbox.take(5000).cancelGoal);
+    CHECK(inbox.take(5002 + MotionInbox::OWNER_SILENCE_MS).cancelGoal);
 }
 
 int main() {
@@ -244,6 +288,9 @@ int main() {
     aGoalIsTakenOnceUnderItsNumber();
     theLaterOfAGoalAndACancelWins();
     aGoalIsCancelledWhenTheClientThatStartedTheLatestLeaves();
+    aGoalBelongsToItsOwnersLinkToo();
+    aGoalIsCancelledWhenItsOwnerFallsSilent();
+    anOwnerHeardAfterTheTakeReadItsClockIsNoSilence();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

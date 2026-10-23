@@ -28,6 +28,10 @@ static const KinConfig &PICO = KIN_CONFIG_SPOTMICRO_ESP32_MINI;
 constexpr int TICKS_PER_S = 100;
 constexpr float DEG = static_cast<float>(M_PI) / 180.0f;
 
+// A client of one link, and a client with the same id on another: ids repeat across links.
+static int someLink, otherLink;
+static const LinkClient CLIENT {&someLink, 3}, SAME_ID_ELSEWHERE {&otherLink, 3};
+
 static void tick(MotionService &motion, int ticks = 1) {
     for (int i = 0; i < ticks; i++) {
         fake_timer::nowUs += 10000;
@@ -187,15 +191,32 @@ static void aCancelAModeOrAGaitEndsIt() {
     }
 }
 
+// A USB serial port the host closed is not reported: a goal whose client falls silent for OWNER_SILENCE_MS ends, with
+// its sticks centred. Any frame from the client keeps it going.
+static void itEndsWhenTheClientThatStartedItFallsSilent() {
+    MotionService motion;
+    standingPico(motion);
+    motion.inbox.postGoal({0.3f, 0, 0, 0.5f}, CLIENT, fake_timer::nowUs / 1000);
+    for (int i = 0; i < 6; i++) {
+        tick(motion, TICKS_PER_S / 2);
+        motion.inbox.heard(CLIENT, fake_timer::nowUs / 1000);
+    }
+    tick(motion, MotionInbox::OWNER_SILENCE_MS / 10 - 1);
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    tick(motion, 2);
+    CHECK(motion.goalStatus().state == GoalState::CANCELLED);
+    CHECK(centred(motion));
+}
+
 static void itEndsWhenTheClientThatStartedItLeaves() {
     MotionService motion;
     standingPico(motion);
-    const uint32_t id = motion.inbox.postGoal({0.3f, 0, 0, 0.5f}, 3);
+    const uint32_t id = motion.inbox.postGoal({0.3f, 0, 0, 0.5f}, CLIENT, fake_timer::nowUs / 1000);
     tick(motion, 50);
-    motion.inbox.dropClient(5);
+    motion.inbox.dropClient(SAME_ID_ELSEWHERE);
     tick(motion);
     CHECK(motion.goalStatus().state == GoalState::RUNNING);
-    motion.inbox.dropClient(3);
+    motion.inbox.dropClient(CLIENT);
     tick(motion);
     CHECK(motion.goalStatus().state == GoalState::CANCELLED);
     CHECK(motion.goalStatus().id == id);
@@ -355,6 +376,7 @@ int main() {
     aStickOffCentreTakesOverAndACentredOneDoesNot();
     aCancelAModeOrAGaitEndsIt();
     itEndsWhenTheClientThatStartedItLeaves();
+    itEndsWhenTheClientThatStartedItFallsSilent();
     theDeadManStopLeavesAGoalAlone();
     aGoalTheModeNoLongerAllowsIsCancelled();
     anOdometryResetMidGoalChangesNothing();

@@ -17,6 +17,10 @@ static int failures = 0;
         }                                                                    \
     } while (0)
 
+// The WebSocket client that showed a pose.
+static int wsLink;
+static const LinkClient CLIENT {&wsLink, 3};
+
 static void tick(MotionService &motion, gesture_t gesture = eGestureNone) {
     fake_timer::nowUs += 10000;
     motion.update(ImuSample {}, gesture);
@@ -459,7 +463,7 @@ static void aShownPoseIsHeldAndEasedHomeOnStop() {
     float stand[12], held[12];
     std::copy(motion.getAngles(), motion.getAngles() + 12, stand);
     poseAngles(crouchLiftingAFoot(), base, held);
-    motion.inbox.postPose(crouchLiftingAFoot(), 3);
+    motion.inbox.postPose(crouchLiftingAFoot(), CLIENT);
     CHECK(largestJointStep(motion, 150) < 3.0f);
     CHECK(motion.mode() == socket_message_ModesEnum_ANIMATE);
     CHECK(largestOffFrom(motion, held) <= 0.1f);
@@ -498,9 +502,9 @@ static void aLegChangingBetweenAFootAndJointsDoesNotJump() {
 static void aShownPoseEasesHomeWhenItsClientLeaves() {
     MotionService motion;
     standAsPico(motion);
-    motion.inbox.postPose(crouchLiftingAFoot(), 3);
+    motion.inbox.postPose(crouchLiftingAFoot(), CLIENT);
     for (int i = 0; i < 100; i++) tick(motion);
-    motion.inbox.dropClient(3);
+    motion.inbox.dropClient(CLIENT);
     CHECK(largestJointStep(motion, 200) < 3.0f);
     CHECK(motion.mode() == socket_message_ModesEnum_STAND);
 }

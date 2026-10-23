@@ -98,8 +98,9 @@ class Robot:
 
     def goal_move(self, forward: float = 0.0, sideways: float = 0.0, turn_deg: float = 0.0, speed: float = 0.5) -> None:
         """Walks `forward` or `sideways` metres, or turns `turn_deg` counter-clockwise (one of them, the others zero), at
-        `speed` of the gait's top, on the robot's own odometry: a stalled link cannot cut it short. Returns once the
-        robot reports it reached, standing; raises GoalCancelled if it ended early and RobotTimeout if it gave up.
+        `speed` of the gait's top, on the robot's own odometry: a link that stalls for less than 2 s cannot cut it short.
+        Returns once the robot reports it reached, standing; raises GoalCancelled if it ended early and RobotTimeout if
+        it gave up.
 
         The odometry's distances count what the gait commanded, so until they are calibrated the robot lands off by
         their error; its heading fuses the gyro.
