@@ -134,7 +134,7 @@ class MotionInbox {
         mail.goal = std::exchange(_goal, std::nullopt);
         mail.goalId = mail.goal ? _goalId : 0;
         mail.cancelGoal = std::exchange(_cancelGoal, false);
-        if (_steering && nowMs - _lastInputAt > LINK_TIMEOUT_MS) {
+        if (_steering && silentFor(nowMs, _lastInputAt) > LINK_TIMEOUT_MS) {
             mail.linkLost = true;
             _steering = false;
         }
@@ -142,6 +142,10 @@ class MotionInbox {
     }
 
   private:
+    // A poster reads its clock before it takes the lock, and so does the taker: an input posted after the take read its
+    // clock carries a later time, which as an unsigned difference would be a silence of 49 days.
+    static int64_t silentFor(uint32_t nowMs, uint32_t heardMs) { return static_cast<int32_t>(nowMs - heardMs); }
+
     void stopAnimationLocked() {
         _play.reset();
         _pose.reset();

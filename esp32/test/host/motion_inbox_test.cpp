@@ -65,6 +65,15 @@ static void aSilentControllerStopsTheRobotOnce() {
     CHECK(!inbox.take(3000).linkLost);
 }
 
+// The control task reads its clock before it takes the mail, so an input posted in between carries a later time.
+static void anInputPostedAfterTheTakeReadItsClockIsNoSilence() {
+    MotionInbox inbox;
+    inbox.postInput(sticks(0, 1.0f), 1001, 1001000);
+    const MotionInbox::Mail mail = inbox.take(1000);
+    CHECK(mail.input && !mail.linkLost);
+    CHECK(inbox.take(1001 + MotionInbox::LINK_TIMEOUT_MS + 1).linkLost);
+}
+
 static void aControllerAtRestNeedsNoKeepAlive() {
     MotionInbox inbox;
     inbox.postInput(sticks(0, 0), 0, 0);
@@ -222,6 +231,7 @@ int main() {
     theNewestInputWins();
     inputIsBoundedAndNonFiniteBecomesNeutral();
     aSilentControllerStopsTheRobotOnce();
+    anInputPostedAfterTheTakeReadItsClockIsNoSilence();
     aControllerAtRestNeedsNoKeepAlive();
     newInputRearmsTheStop();
     modeAndGaitAreTakenOnce();
