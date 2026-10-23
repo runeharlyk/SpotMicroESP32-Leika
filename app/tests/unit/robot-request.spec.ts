@@ -48,4 +48,17 @@ describe('robotRequest', () => {
         reply.mockResolvedValue(scanning)
         await expect(robotRequest({ wifiNetworksRequest: {} })).resolves.toBe(scanning)
     })
+
+    it('resolves a refusal the caller reads itself, but not a request the firmware does not know', async () => {
+        const refused = response({ statusCode: 400 })
+        reply.mockResolvedValue(refused)
+        await expect(
+            robotRequest({ robotNameUpdate: { name: 'Pico' } }, { accept: [400] })
+        ).resolves.toBe(refused)
+
+        reply.mockResolvedValue(response({ statusCode: 400, errorMessage: 'Unknown request' }))
+        await expect(
+            robotRequest({ robotNameUpdate: { name: 'Pico' } }, { accept: [400] })
+        ).rejects.toThrow(UNHANDLED)
+    })
 })

@@ -1,4 +1,5 @@
 import { socket } from '$lib/stores/socket'
+import { robotRequest } from '$lib/robot-request'
 import * as FSMessages from '$lib/platform_shared/filesystem'
 import type {
     FSDeleteRequest,
@@ -218,7 +219,7 @@ export class FileSystemClient {
     async deleteFile(path: string): Promise<Result> {
         const request: FSDeleteRequest = { path }
 
-        const response = await socket.request({
+        const response = await robotRequest({
             fsDeleteRequest: request
         })
 
@@ -236,7 +237,7 @@ export class FileSystemClient {
     async createDirectory(path: string): Promise<Result> {
         const request: FSMkdirRequest = { path }
 
-        const response = await socket.request({
+        const response = await robotRequest({
             fsMkdirRequest: request
         })
 
@@ -254,7 +255,7 @@ export class FileSystemClient {
     async listDirectory(path = '/'): Promise<ListResult> {
         const request: FSListRequest = { path }
 
-        const response = await socket.request({
+        const response = await robotRequest({
             fsListRequest: request
         })
 
@@ -303,7 +304,7 @@ export class FileSystemClient {
             })
 
             // Send the download request (server will respond with metadata, then stream data)
-            socket.request(request).catch(err => {
+            robotRequest(request).catch(err => {
                 clearTimeout(initialTimeout)
                 this.pendingDownloads.delete(key)
                 reject(err)
@@ -328,7 +329,7 @@ export class FileSystemClient {
             totalChunks
         }
 
-        const startResponse = await socket.request({
+        const startResponse = await robotRequest({
             fsUploadStart: startRequest
         })
 
@@ -416,7 +417,7 @@ export class FileSystemClient {
             upload.resolve({ success: false, error: 'Transfer cancelled' })
         }
 
-        const response = await socket.request({
+        const response = await robotRequest({
             fsCancelTransfer: request
         })
 

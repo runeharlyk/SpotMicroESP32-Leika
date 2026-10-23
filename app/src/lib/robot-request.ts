@@ -16,14 +16,16 @@ const unhandled = (response: CorrelationResponse) =>
  * A request to the robot over the socket that fails the way a page can show: with the robot's own
  * reason when it refuses, and as a build that does not handle the request when it does not know it:
  * one older than the request, or one built without it, as a board without a camera is. Replies
- * below 400, including 202 (still working), resolve.
+ * below 400, including 202 (still working), resolve, as does a refusal the caller names in
+ * `accept` to read itself, such as the 422 that carries a clip's report.
  */
 export async function robotRequest(
-    data: Omit<CorrelationRequest, 'correlationId'>
+    data: Omit<CorrelationRequest, 'correlationId'>,
+    { accept = [] }: { accept?: readonly number[] } = {}
 ): Promise<CorrelationResponse> {
     const response = await socket.request(data)
     if (unhandled(response)) throw new Error(UNHANDLED)
-    if (response.statusCode >= 400)
+    if (response.statusCode >= 400 && !accept.includes(response.statusCode))
         throw new Error(
             response.errorMessage || `The robot replied with status ${response.statusCode}`
         )

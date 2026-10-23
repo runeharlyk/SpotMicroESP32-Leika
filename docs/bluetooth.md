@@ -29,6 +29,14 @@ A notification that cannot be sent after about half a second ends the connection
 `esp32/include/communication/ble_frame.h` and `app/src/lib/transport/ble-framing.ts` implement the framing, and both are tested against `platform_shared/ble_frame_vectors.json`.
 Hexapod's Bluetooth link uses the same framing.
 
+## Reconnecting
+
+The app reads the robot's notifications more strictly than the length prefix needs: every message starts a notification, and a message's notifications are full chunks but the last.
+A notification lost on the way breaks these rules at the next one, and the app ends the connection rather than read the following messages as the rest of the cut one.
+A connection the robot, the radio or this check ended is reconnected to the device the user chose, without the chooser, which only the first connection needs.
+The app tries five times, one to ten seconds apart, and then leaves the link down until the user connects again.
+The reconnected link subscribes to its streams again.
+
 ## What it carries
 
 - Commands: `controller_data`, `mode`, `walk_gait`, `angles`, `servo_pwm` and `servo_state`, so the robot can be driven and calibrated.

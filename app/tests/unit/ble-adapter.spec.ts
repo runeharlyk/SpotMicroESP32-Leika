@@ -29,22 +29,25 @@ function fakeBluetooth() {
             if (type !== 'characteristicvaluechanged') return
             notify = (bytes: Uint8Array) =>
                 listener({ target: { value: new DataView(bytes.buffer.slice(0)) } })
-        }
+        },
+        removeEventListener: () => (notify = undefined)
     })
 
     const device = {
         name: 'leika',
         gatt: {
-            connected: true,
-            connect: () =>
-                Promise.resolve({
+            connected: false,
+            connect: () => {
+                device.gatt.connected = true
+                return Promise.resolve({
                     getPrimaryService: (uuid: string) => {
                         expect(uuid).toBe(BLE_SERVICE_UUID)
                         return Promise.resolve({
                             getCharacteristic: (id: string) => Promise.resolve(characteristic(id))
                         })
                     }
-                }),
+                })
+            },
             disconnect: () => {
                 device.gatt.connected = false
             }
@@ -55,7 +58,11 @@ function fakeBluetooth() {
         removeEventListener: () => {}
     }
 
+    const requestDevice = vi.fn(() => Promise.resolve(device))
+
     return {
+        device,
+        requestDevice,
         writes,
         hold: () => (holding = true),
         release: () => {
@@ -64,7 +71,7 @@ function fakeBluetooth() {
             held = []
         },
         emitNotification: (bytes: Uint8Array) => notify?.(bytes),
-        navigatorStub: { requestDevice: () => Promise.resolve(device) }
+        navigatorStub: { requestDevice }
     }
 }
 
@@ -78,22 +85,43 @@ describe('BLE transport', () => {
 
     afterEach(() => vi.unstubAllGlobals())
 
+    const handlers = () => ({
+        onOpen: vi.fn(),
+        onData: vi.fn(),
+        onClose: vi.fn(),
+        onDrained: vi.fn()
+    })
+
     const connected = async () => {
-        const handlers = { onOpen: vi.fn(), onData: vi.fn(), onClose: vi.fn(), onDrained: vi.fn() }
-        const transport = createBleTransport(handlers)
+        const watched = handlers()
+        const transport = createBleTransport(watched)
         await transport.connect()
-        return { transport, handlers }
+        return { transport, handlers: watched }
     }
 
     const received = (handlers: { onData: ReturnType<typeof vi.fn> }) =>
         handlers.onData.mock.calls.map(([data]) => Array.from(new Uint8Array(data as ArrayBuffer)))
 
-    it('reports the largest message the robot takes and that it cannot silently redial', async () => {
+    it('reports the largest message the robot takes', async () => {
         const { transport } = await connected()
 
         expect(transport.kind).toBe('bluetooth')
         expect(transport.maxFrameSize).toBe(BLE_MAX_OUTGOING)
-        expect(transport.canAutoReconnect).toBe(false)
+    })
+
+    // Only the chooser needs a user gesture; a device chosen once reconnects without it.
+    it('can redial only once a device was chosen, and then without the chooser', async () => {
+        const first = createBleTransport(handlers())
+        expect(first.canAutoReconnect).toBe(false)
+        await first.connect()
+        expect(first.canAutoReconnect).toBe(true)
+        first.close()
+
+        const again = createBleTransport(handlers(), first.device)
+        await again.connect()
+
+        expect(again.isConnected()).toBe(true)
+        expect(fake.requestDevice).toHaveBeenCalledTimes(1)
     })
 
     it('writes a small message as one write behind its little-endian length', async () => {
@@ -161,11 +189,32 @@ describe('BLE transport', () => {
             throw new Error('unknown message')
         })
 
-        fake.emitNotification(Uint8Array.of(1, 0, 9, 1, 0, 8))
+        fake.emitNotification(Uint8Array.of(1, 0, 9))
+        fake.emitNotification(Uint8Array.of(1, 0, 8))
         fake.emitNotification(Uint8Array.of(1, 0, 7))
 
         expect(received(handlers)).toEqual([[9], [8], [7]])
         error.mockRestore()
+    })
+
+    // A notification lost mid-message: a length prefix alone would read the next messages as its rest.
+    it('ends a connection whose stream fell out of step, handing over nothing of it', async () => {
+        const { transport, handlers } = await connected()
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const [cutShort] = encodeBleFrame(new Uint8Array(300).fill(1), 182)
+
+        fake.emitNotification(cutShort)
+        for (let i = 0; i < 4; i++) {
+            for (const chunk of encodeBleFrame(new Uint8Array(100).fill(i + 2), 182))
+                fake.emitNotification(chunk)
+        }
+
+        expect(handlers.onData).not.toHaveBeenCalled()
+        expect(handlers.onClose).toHaveBeenCalledTimes(1)
+        expect(handlers.onClose.mock.calls[0][0]).toBe('error')
+        expect(fake.device.gatt.connected).toBe(false)
+        expect(transport.isConnected()).toBe(false)
+        warn.mockRestore()
     })
 
     it('copies the outgoing buffer so a caller reusing it cannot corrupt the write', async () => {

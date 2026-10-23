@@ -3,8 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import {
     BLE_MAX_MESSAGE,
-    BLE_MAX_OUTGOING,
-    BleFrameDecoder,
+    BleReassembler,
     encodeBleFrame
 } from '../../src/lib/transport/ble-framing'
 
@@ -20,12 +19,13 @@ const { vectors } = JSON.parse(
 const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], byte => parseInt(byte, 16))
 const toHex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex')
 
-// The vectors describe the robot's receiver, which takes messages of up to BLE_MAX_OUTGOING bytes.
-const decode = (chunks: Uint8Array[], maxMessage = BLE_MAX_OUTGOING) => {
-    const frames: string[] = []
-    const decoder = new BleFrameDecoder(message => frames.push(toHex(message)), maxMessage)
-    chunks.forEach(chunk => decoder.feed(chunk))
-    return frames
+// What the app makes of the robot's notifications, in order: each message, or the point the stream broke.
+const reassemble = (notifications: Uint8Array[]) => {
+    const reassembler = new BleReassembler()
+    return notifications
+        .map(notification => reassembler.push(notification))
+        .filter(result => result !== 'partial')
+        .map(result => (result === 'out-of-step' ? result : toHex(result)))
 }
 
 describe('BLE framing against the shared vectors', () => {
@@ -36,17 +36,24 @@ describe('BLE framing against the shared vectors', () => {
         )
     })
 
+    // A vector with a chunk size is an encoder's output, which is how the robot notifies. The others
+    // describe what the robot's receiver tolerates in the app's writes; the robot never notifies so.
     for (const vector of vectors) {
-        it(`decodes "${vector.name}"`, () => {
-            expect(decode(vector.chunks.map(fromHex))).toEqual(vector.frames)
+        if (vector.chunk_size === null) {
+            it(`finds "${vector.name}", which the robot never notifies, out of step`, () => {
+                expect(reassemble(vector.chunks.map(fromHex))).toContain('out-of-step')
+            })
+            continue
+        }
+
+        it(`reassembles "${vector.name}" as the robot notifies it`, () => {
+            expect(reassemble(vector.chunks.map(fromHex))).toEqual(vector.frames)
         })
 
-        if (vector.chunk_size !== null) {
-            it(`encodes "${vector.name}" to the vector's chunks`, () => {
-                const chunks = encodeBleFrame(fromHex(vector.frames[0]), vector.chunk_size!)
-                expect(chunks.map(toHex)).toEqual(vector.chunks)
-            })
-        }
+        it(`encodes "${vector.name}" to the vector's chunks`, () => {
+            const chunks = encodeBleFrame(fromHex(vector.frames[0]), vector.chunk_size!)
+            expect(chunks.map(toHex)).toEqual(vector.chunks)
+        })
     }
 })
 
@@ -54,20 +61,38 @@ describe('BLE framing', () => {
     it('takes a message from the robot larger than it would take from the app', () => {
         const message = Uint8Array.from({ length: 6000 }, (_, i) => i % 251)
 
-        expect(decode(encodeBleFrame(message, 244), BLE_MAX_MESSAGE)).toEqual([toHex(message)])
+        expect(reassemble(encodeBleFrame(message, 244))).toEqual([toHex(message)])
     })
 
     it('hands over a message only once, whichever notification completes it', () => {
-        const delivered: Uint8Array[] = []
-        const decoder = new BleFrameDecoder(message => delivered.push(message))
+        const reassembler = new BleReassembler()
         const [first, second] = encodeBleFrame(Uint8Array.of(1, 2, 3, 4), 3)
 
-        decoder.feed(first)
-        expect(delivered).toHaveLength(0)
-        decoder.feed(second)
-        decoder.feed(encodeBleFrame(Uint8Array.of(5))[0])
+        expect(reassembler.push(first)).toBe('partial')
+        expect(toHex(reassembler.push(second) as Uint8Array)).toBe('01020304')
+        expect(toHex(reassembler.push(encodeBleFrame(Uint8Array.of(5))[0]) as Uint8Array)).toBe(
+            '05'
+        )
+    })
 
-        expect(delivered.map(toHex)).toEqual(['01020304', '05'])
+    // A length prefix alone would take the next message as the rest of the cut one, and read on.
+    it('finds a message whose later chunk was lost out of step at the next message', () => {
+        const cut = encodeBleFrame(
+            Uint8Array.from({ length: 300 }, (_, i) => i % 256),
+            182
+        )
+        const next = encodeBleFrame(
+            Uint8Array.from({ length: 200 }, (_, i) => 255 - (i % 256)),
+            182
+        )
+
+        expect(reassemble([cut[0], ...next])).toEqual(['out-of-step'])
+    })
+
+    it('finds a length over the largest message out of step', () => {
+        const reassembler = new BleReassembler(4)
+
+        expect(reassembler.push(Uint8Array.of(5, 0, 1, 2, 3, 4, 5))).toBe('out-of-step')
     })
 
     it('refuses to encode an empty message or one the length cannot describe', () => {
