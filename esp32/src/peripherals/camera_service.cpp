@@ -631,7 +631,11 @@ esp_err_t CameraService::begin() {
     s_cam_initialized = true;
 
     s_capture_running = true;
-    xTaskCreatePinnedToCore(capture_task_fn, "csi_cap", 4096, NULL, 6, &s_capture_task, 1);
+    if (xTaskCreatePinnedToCore(capture_task_fn, "csi_cap", 4096, NULL, 6, &s_capture_task, 1) != pdPASS) {
+        ESP_LOGE(TAG, "No memory for the capture task");
+        s_capture_running = false;
+        return ESP_ERR_NO_MEM;
+    }
     startStreamWorker();
 
     ESP_LOGI(TAG, "MIPI-CSI camera initialized (%dx%d, %d-lane, %d Mbps)", s_frame_hres, s_frame_vres,
