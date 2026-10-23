@@ -27,8 +27,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       daisyui:
-        specifier: ^5.7.50
-        version: 5.7.50
+        specifier: ^5.2.0
+        version: 5.2.0
       nipplejs:
         specifier: ^0.10.2
         version: 0.10.2
@@ -42,8 +42,8 @@ importers:
         specifier: ^0.180.0
         version: 0.180.0
       ts-proto:
-        specifier: ^2.18.1
-        version: 2.18.1
+        specifier: ^2.10.1
+        version: 2.10.1
       urdf-loader:
         specifier: ^0.12.7
         version: 0.12.7(three@0.180.0)
@@ -1012,8 +1012,8 @@ packages:
     resolution: {integrity: sha512-7D2EPVltRrsTkhpQmksIu+LxeWAIEk6wRDMJ1qljlv+CKHJM+cJLlfhWIzNA44eAsHXSNe3+vO6DW1yCYx8SuQ==}
     engines: {node: '>=20'}
 
-  daisyui@5.7.50:
-    resolution: {integrity: sha512-+/LRqnTCoc7s/bJEKKwtJSwzeXCVdAmRdNmZeZzgHCaQ9PJyl7j+2V2U32GQDMyD+VDkP9e/+JGoC72Y1hLk7w==}
+  daisyui@5.2.0:
+    resolution: {integrity: sha512-/DXfgR3qI5nGEzBygK9kXsKHO+abiMyv31efTi5ezEsZcrojq9cyNrrgX3+FxHyXSorxJ+CVUG7Ho9nUrCBmfg==}
 
   data-urls@6.0.1:
     resolution: {integrity: sha512-euIQENZg6x8mj3fO6o9+fOW8MimUI4PpD/fZBhJfeioZVy9TUpM4UY7KjQNVZFlqwJ0UdzRDzkycB997HEq1BQ==}
@@ -1737,8 +1737,8 @@ packages:
   ts-proto-descriptors@2.1.0:
     resolution: {integrity: sha512-S5EZYEQ6L9KLFfjSRpZWDIXDV/W7tAj8uW7pLsihIxyr62EAVSiKuVPwE8iWnr849Bqa53enex1jhDUcpgquzA==}
 
-  ts-proto@2.18.1:
-    resolution: {integrity: sha512-xnAqJ0Pog9wHhg2HcOSwJKiQt28n7un+novdUnAOhR70sTlwecQLBIZaf59wJdfSbipGajPVP47p9PSdJPHhiw==}
+  ts-proto@2.10.1:
+    resolution: {integrity: sha512-4sOE1hCs0uobJgdRCtcEwdbc8MAyKP+LJqUIKxZIiKac0rPBlVKsRGEGo2oQ1MnKA2Wwk0KuGP2POkiCwPtebw==}
     hasBin: true
 
   tslib@2.8.1:
@@ -2721,7 +2721,7 @@ snapshots:
       css-tree: 3.2.1
       lru-cache: 11.5.3
 
-  daisyui@5.7.50: {}
+  daisyui@5.2.0: {}
 
   data-urls@6.0.1:
     dependencies:
@@ -3435,7 +3435,7 @@ snapshots:
     dependencies:
       '@bufbuild/protobuf': 2.16.0
 
-  ts-proto@2.18.1:
+  ts-proto@2.10.1:
     dependencies:
       '@bufbuild/protobuf': 2.16.0
       case-anything: 2.1.13
