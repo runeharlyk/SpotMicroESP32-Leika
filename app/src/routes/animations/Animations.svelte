@@ -239,9 +239,8 @@
                 {#if clampedLegs.length}
                     <div class="alert alert-warning" role="alert">
                         The {clampedLegs.join(', ')}
-                        {clampedLegs.length === 1 ? 'leg' : 'legs'} cannot follow every pose of this
-                        clip on this robot: a foot out of reach or a joint past its travel stops at its
-                        limit.
+                        {clampedLegs.length === 1 ? 'leg' : 'legs'} cannot follow every pose of this clip
+                        on this robot: a foot out of reach or a joint past its travel stops at its limit.
                     </div>
                 {/if}
                 {#each report.params as param (param.id)}

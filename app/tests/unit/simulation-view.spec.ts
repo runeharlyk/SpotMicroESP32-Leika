@@ -71,9 +71,8 @@ vi.mock('$lib/simulation/robot-sim', () => ({
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 
 async function mountView() {
-    const { default: SimulationView } = await import(
-        '../../src/lib/components/SimulationView.svelte'
-    )
+    const { default: SimulationView } =
+        await import('../../src/lib/components/SimulationView.svelte')
     const component = mount(SimulationView, { target: document.body })
     flushSync()
     return component

@@ -56,8 +56,7 @@ const sameInput = (a: ControllerData, b: ControllerData) =>
 export class FirmwareController implements SimController {
     private motion: FirmwareMotion
     private previous:
-        | { mode: SimControls['mode']; gait: SimControls['gait']; input: ControllerData }
-        | undefined
+        { mode: SimControls['mode']; gait: SimControls['gait']; input: ControllerData } | undefined
 
     constructor(
         private readonly variant: Variant,

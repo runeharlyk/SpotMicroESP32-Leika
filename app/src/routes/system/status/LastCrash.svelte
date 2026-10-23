@@ -114,8 +114,7 @@
                 {/if}
             {:else}
                 <div class="alert alert-warning" role="alert">
-                    A dump of {report.size} bytes is stored, but it fails its checksum, so it has no
-                    summary.
+                    A dump of {report.size} bytes is stored, but it fails its checksum, so it has no summary.
                 </div>
             {/if}
             <p class="text-sm opacity-75">
