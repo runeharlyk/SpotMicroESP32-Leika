@@ -78,7 +78,12 @@ function getTagFromMessageType<T>(event_type: MessageFns<T>): number {
     return fieldNumber
 }
 
-type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive'
+/**
+ * `robot`: the user chose a robot, which may be another than the one before, so what the app knows
+ * of the last one is to be forgotten. It comes before the chosen robot's link opens. A link that
+ * drops and comes back reaches the same robot, and says nothing.
+ */
+type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive' | 'robot'
 
 type TaggedMessage = { tag: number; msg: Message }
 
@@ -141,6 +146,9 @@ export function createWebSocket({
     let serialPort: SerialPort | undefined
     // The device the user chose; a Bluetooth link that drops reconnects it, without the chooser.
     let bluetoothDevice: BluetoothDevice | undefined
+    // A device or port the user chose, from a chooser or another than the one in use: the robot on
+    // it is told as chosen when its link opens, since a chooser names it only then.
+    let robotChosen = false
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
@@ -157,6 +165,8 @@ export function createWebSocket({
     }
 
     function init(url: string | URL) {
+        robotChosen = false
+        if (socketUrl !== undefined && String(url) !== String(socketUrl)) chooseRobot()
         socketUrl = url
         connect()
     }
@@ -211,10 +221,12 @@ export function createWebSocket({
      */
     async function connectBluetooth() {
         const ble = attach(createBleTransport)
+        robotChosen = true
         try {
             await ble.connect()
             bluetoothDevice = ble.device
         } catch (error) {
+            robotChosen = false
             // Pairing was cancelled or failed. Fall back to WiFi, or a dead BLE transport would be
             // left in place, and nothing would redial.
             if (socketUrl) connect()
@@ -229,10 +241,12 @@ export function createWebSocket({
      */
     async function connectSerial(port?: SerialPort) {
         const serial = attach(handlers => createSerialTransport(handlers, port))
+        robotChosen = port === undefined || port !== serialPort
         try {
             await serial.connect()
             serialPort = serial.port
         } catch (error) {
+            robotChosen = false
             // The port chooser was cancelled or the port would not open; as for BLE, fall back to WiFi.
             if (socketUrl) connect()
             throw error
@@ -279,7 +293,15 @@ export function createWebSocket({
         reconnectTimeoutId = setTimeout(redial(closed?.kind), delay)
     }
 
+    function chooseRobot() {
+        event_listeners.get('robot')?.forEach(listener => listener(undefined))
+    }
+
     function handleOpen() {
+        if (robotChosen) {
+            robotChosen = false
+            chooseRobot()
+        }
         reconnectAttempts = 0
         set(true)
         activeTransport.set(transport?.kind ?? null)

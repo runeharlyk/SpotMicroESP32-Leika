@@ -103,4 +103,17 @@ describe('socket over Bluetooth', () => {
         expect(get(socket)).toBe(false)
         expect(warn).toHaveBeenCalledWith(expect.stringMatching(/gave up/))
     })
+
+    it('tells the device paired as a robot chosen before its link opens, and not when it reconnects', async () => {
+        const socket = createWebSocket()
+        const events: string[] = []
+        socket.onEvent('robot', () => events.push('robot'))
+        socket.onEvent('open', () => events.push('open'))
+
+        await socket.connectBluetooth()
+        bluetooth.dropLink()
+        await vi.advanceTimersByTimeAsync(1000)
+
+        expect(events).toEqual(['robot', 'open', 'open'])
+    })
 })

@@ -115,4 +115,28 @@ describe.sequential('socket over USB serial', () => {
         await expect(socket.connectSerial()).rejects.toMatchObject({ name: 'NotFoundError' })
         expect(get(socket)).toBe(false)
     })
+
+    it('tells a robot chosen when the port picked answers, not when that port comes back', async () => {
+        const port = new FakeSerialPort()
+        const fake = fakeSerial([], port)
+        vi.stubGlobal('navigator', { serial: fake.serial })
+        serialRobot(port, robot)
+        const events: string[] = []
+        const offs = [
+            socket.onEvent('robot', () => events.push('robot')),
+            socket.onEvent('open', () => events.push('open'))
+        ]
+
+        await socket.connectSerial()
+        await vi.waitFor(() => expect(get(socket)).toBe(true), { timeout: 2500 })
+        fake.unplug(port)
+        await vi.waitFor(() => expect(get(socket)).toBe(false))
+        const returned = new FakeSerialPort()
+        serialRobot(returned, robot)
+        fake.plugIn(returned)
+        await vi.waitFor(() => expect(get(socket)).toBe(true), { timeout: 5000 })
+
+        expect(events).toEqual(['robot', 'open', 'open'])
+        offs.forEach(off => off())
+    })
 })

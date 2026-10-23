@@ -11,8 +11,10 @@ import type { FeaturesDataResponse } from '$lib/platform_shared/message'
 let featureFlagsStore: Writable<Record<string, boolean | string>>
 
 /**
- * What the robot on the open connection reported; null until it answers on this connection. The
- * persisted flags may still be the previous robot's, so a decision about this robot waits for these.
+ * What the robot the user chose reported; null until it answers. A drop keeps it, and the pages it
+ * gates, since the robot that comes back is the same one; the flags are only stale until it answers
+ * again. The persisted flags may still be a robot's from an earlier visit, so a decision about this
+ * robot waits for these.
  */
 export const connectionFeatures = writable<FeaturesDataResponse | null>(null)
 
@@ -46,8 +48,10 @@ const fetchFeatures = () =>
 export function useFeatureFlags() {
     if (!featureFlagsStore) {
         featureFlagsStore = persistentStore<Record<string, boolean | string>>('FeatureFlags', {})
-        socket.subscribe(open => {
-            if (!open) connectionFeatures.set(null)
+        // Another robot chosen: one robot's flags are never shown for another.
+        socket.onEvent('robot', () => {
+            connectionFeatures.set(null)
+            featureFlagsStore.set({})
         })
         socket.onEvent('open', fetchFeatures)
         if (get(socket)) void fetchFeatures()
