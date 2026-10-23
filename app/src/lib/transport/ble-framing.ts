@@ -2,7 +2,8 @@
  * Protobuf messages over the Nordic UART Service, whose writes and notifications each hold at most
  * one ATT payload. A message goes out as a 2-byte little-endian length and the message, split into
  * chunks of the payload size; every message starts a new chunk. The firmware's ble_frame.h
- * implements the same, and platform_shared/ble_frame_vectors.json pins both.
+ * implements the same, and platform_shared/ble_frame_vectors.json pins both. The app reads the
+ * robot's notifications more strictly than the robot reads the app's writes (BleReassembler).
  */
 
 const HEADER = 2
@@ -40,34 +41,61 @@ export function encodeBleFrame(
     return chunks
 }
 
+/** A whole message, `'partial'` while one is still arriving, `'out-of-step'` once the stream broke. */
+export type Reassembled = Uint8Array<ArrayBuffer> | 'partial' | 'out-of-step'
+
 /**
- * Rebuilds messages from the notifications of one connection, fed as they arrive. A length of zero
- * or over the limit can only come from a lost chunk, so the buffered bytes are dropped; as every
- * message starts a new chunk, the next one starts afresh.
+ * Rebuilds the robot's messages from the notifications of one connection, fed as they arrive. The
+ * robot starts every message in a new notification and sends it in chunks of one size and a shorter
+ * last one (esp32/include/communication/ble_link.h), so a notification never holds bytes of two
+ * messages, and a message's first notification is a full chunk unless it holds the whole message.
+ * A length prefix alone cannot find its way back once a message was cut short: it would complete
+ * the cut message with the next ones' bytes and then read lengths from the middle of payloads.
+ * These rules show a stream out of step at the first notification that breaks them. The robot ends
+ * the connection rather than send a message cut short, so this guards against a notification lost
+ * on the way.
  */
-export class BleFrameDecoder {
-    private buffer = new Uint8Array(0)
+export class BleReassembler {
+    private message: Uint8Array<ArrayBuffer> | null = null
+    private filled = 0
+    private chunk = 0
 
-    constructor(
-        private readonly onFrame: (message: Uint8Array) => void,
-        private readonly maxMessage = BLE_MAX_MESSAGE
-    ) {}
+    constructor(private readonly maxMessage = BLE_MAX_MESSAGE) {}
 
-    feed(chunk: Uint8Array) {
-        const merged = new Uint8Array(this.buffer.length + chunk.length)
-        merged.set(this.buffer)
-        merged.set(chunk, this.buffer.length)
-        let at = 0
-        while (merged.length - at >= HEADER) {
-            const length = merged[at] | (merged[at + 1] << 8)
-            if (length === 0 || length > this.maxMessage) {
-                this.buffer = new Uint8Array(0)
-                return
-            }
-            if (merged.length - at < HEADER + length) break
-            this.onFrame(merged.slice(at + HEADER, at + HEADER + length))
-            at += HEADER + length
-        }
-        this.buffer = merged.slice(at)
+    push(notification: Uint8Array): Reassembled {
+        if (!this.message) return this.start(notification)
+        const remaining = this.message.length - this.filled
+        if (notification.length !== Math.min(this.chunk, remaining)) return this.outOfStep()
+        this.message.set(notification, this.filled)
+        this.filled += notification.length
+        if (this.filled < this.message.length) return 'partial'
+        const whole = this.message.slice(HEADER)
+        this.reset()
+        return whole
+    }
+
+    private reset() {
+        this.message = null
+        this.filled = 0
+        this.chunk = 0
+    }
+
+    private start(notification: Uint8Array): Reassembled {
+        if (notification.length < HEADER) return this.outOfStep()
+        const length = notification[0] | (notification[1] << 8)
+        if (length === 0 || length > this.maxMessage) return this.outOfStep()
+        const total = HEADER + length
+        if (notification.length > total) return this.outOfStep()
+        if (notification.length === total) return notification.slice(HEADER)
+        this.message = new Uint8Array(total)
+        this.message.set(notification)
+        this.filled = notification.length
+        this.chunk = notification.length
+        return 'partial'
+    }
+
+    private outOfStep(): Reassembled {
+        this.reset()
+        return 'out-of-step'
     }
 }

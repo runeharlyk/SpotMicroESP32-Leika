@@ -12,7 +12,7 @@ import { protoMetadata as apiProtoMetadata } from '$lib/platform_shared/api'
 import { telemetry } from './telemetry'
 import type { ITransport, TransportHandlers } from '$lib/transport/transport.interface'
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
-import { createBleTransport } from '$lib/transport/ble-adapter'
+import { BLE_RECONNECT_ATTEMPTS, createBleTransport } from '$lib/transport/ble-adapter'
 import { createSerialTransport } from '$lib/transport/serial-adapter'
 import { LatestFrames } from '$lib/transport/latest-frames'
 
@@ -131,6 +131,8 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     let socketUrl: string | URL
     // The port the user granted; a serial link that is lost, as in a reset, reopens it.
     let serialPort: SerialPort | undefined
+    // The device the user chose; a Bluetooth link that drops reconnects it, without the chooser.
+    let bluetoothDevice: BluetoothDevice | undefined
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
@@ -203,9 +205,10 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         const ble = attach(createBleTransport)
         try {
             await ble.connect()
+            bluetoothDevice = ble.device
         } catch (error) {
             // Pairing was cancelled or failed. Fall back to WiFi, or a dead BLE transport would be
-            // left in place, whose canAutoReconnect: false also suppresses the WebSocket retry.
+            // left in place, and nothing would redial.
             if (socketUrl) connect()
             throw error
         }
@@ -239,14 +242,33 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         )
     }
 
+    /** Reconnects the device the user chose, which needs no user gesture. */
+    function reconnectBluetooth() {
+        const ble = attach(handlers => createBleTransport(handlers, bluetoothDevice))
+        ble.connect().catch(error => {
+            if (transport === ble) disconnect('error', error)
+        })
+    }
+
+    const redial = (kind: ITransport['kind'] | undefined) =>
+        kind === 'serial' ? reopenSerial
+        : kind === 'bluetooth' ? reconnectBluetooth
+        : connect
+
     function disconnect(reason: SocketEvent, event?: unknown) {
         const closed = detach()
         event_listeners.get(reason)?.forEach(listener => listener(event))
-        // Re-pairing a BLE device requires a user gesture, so only WiFi and serial redial themselves.
+        // Choosing a Bluetooth device or a serial port needs a user gesture, so a link that never had one stays down.
         if (closed && !closed.canAutoReconnect) return
+        // A robot out of range or switched off is not tried for ever; the user connects it again.
+        if (closed?.kind === 'bluetooth' && reconnectAttempts >= BLE_RECONNECT_ATTEMPTS) {
+            console.warn(`Bluetooth reconnect gave up after ${BLE_RECONNECT_ATTEMPTS} attempts`)
+            reconnectAttempts = 0
+            return
+        }
         const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
         reconnectAttempts++
-        reconnectTimeoutId = setTimeout(closed?.kind === 'serial' ? reopenSerial : connect, delay)
+        reconnectTimeoutId = setTimeout(redial(closed?.kind), delay)
     }
 
     function handleOpen() {
