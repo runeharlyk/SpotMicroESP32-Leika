@@ -1,5 +1,5 @@
 {
-  "description": "BLE framing examples shared by the firmware (esp32/include/communication/ble_frame.h) and the app (app/src/lib/transport/ble-framing.ts). A message is a uint16 little-endian length and the message, split into chunks of at most chunk_size bytes, each message starting a new chunk; the receiver drops what it buffered on a length of 0 or over 4096. chunk_size null: the chunks are not an encoder's output, only decoded.",
+  "description": "BLE framing examples shared by the firmware (esp32/include/communication/ble_frame.h) and the app (app/src/lib/transport/ble-framing.ts). A message is a uint16 little-endian length and the message, split into chunks of at most chunk_size bytes, each message starting a new chunk; the firmware's receiver drops what it buffered on a length of 0 or over 4096, and the app's receiver ends the connection at the first notification out of step with that layout. chunk_size null: the chunks are not an encoder's output, only decoded.",
   "vectors": [
     {
       "name": "a small message",

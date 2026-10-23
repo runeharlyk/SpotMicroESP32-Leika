@@ -8,8 +8,9 @@
 /**
  * Protobuf messages over the Nordic UART Service, whose writes and notifications each hold at most one ATT payload.
  * A message goes out as a 2-byte little-endian length and the message, split into chunks of the payload size; every
- * message starts a new chunk. The app's ble-framing.ts implements the same, Hexapod's BLE link speaks it too, and
- * platform_shared/ble_frame_vectors.json pins both.
+ * message starts a new chunk. The app's ble-framing.ts encodes the same, Hexapod's BLE link speaks it too, and
+ * platform_shared/ble_frame_vectors.json pins both. The app reads the robot's notifications more strictly than this
+ * decoder reads the app's writes: it also ends a stream whose chunk sizes break the rule above.
  */
 namespace ble_frame {
 
