@@ -63,6 +63,7 @@ uv run python train_mj.py --randomize --zero-final --init-std 0.3 \
 uv run python eval_policy.py runs/residual_pure_dr --vx 0.05        # watch a trained policy (--headless prints tracking metrics)
 uv run python visionary_demo.py [address]                           # Robot API demo; an address drives the real robot
 uv run python record.py --robot 192.168.1.39 --seconds 60           # record the real robot's telemetry (--out sets the file; --robot COM10 over USB)
+uv run python robot_animate.py --robot COM10 play bow SPEED=1.5     # list, upload, validate, play, stop and watch clips (docs/animation.md)
 uv run python report_recording.py recording.leika [--still]         # its timing and IMU noise vs domain_rand.py
 uv run python calibrate_compass.py recording.leika [--write <address>]  # fit the compass's hard-iron offset, optionally store it
 uv run python virtual_robot.py --port 8765                          # a robot on this computer, from the firmware's C++

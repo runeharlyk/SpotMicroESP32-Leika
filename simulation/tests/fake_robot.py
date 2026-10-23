@@ -7,7 +7,12 @@ Over serial, `serial_class` stands in for pyserial's Serial: the client opens a 
 line before its frames, as the firmware does on its console.
 
 A goal move is answered 202 and runs for `goal_s`, then ends in `goal_end`, each change broadcast unless
-`goal_quiet`; `goals=False` refuses goal requests as a firmware from before them does."""
+`goal_quiet`; `goals=False` refuses goal requests as a firmware from before them does.
+
+The animation clips are the built-ins and the files uploaded to /animations/<name>.pb in `files`, taken over the
+WebSocket only, as the firmware takes file uploads; a file loads unless its schema is not 1 or it has no keyframes.
+A clip plays as ANIMATE for `clip_s` from the mode it was played in, reporting its status every 100 ms to a client
+subscribed to it: sit holds its end and wave loops until stopped, and the rest play once."""
 import asyncio
 import math
 import threading
@@ -17,9 +22,11 @@ from serial import SerialException
 from websockets.asyncio.server import serve
 
 from src.leika import serial_frame
-from src.proto import api_pb2, message_pb2 as pb
+from src.proto import animation_pb2, api_pb2, filesystem_pb2 as fs, message_pb2 as pb
 
 SERIAL_PORT = "COM99"
+BUILTIN_CLIPS = ("bow", "sit", "wave")
+ANIMATION_STATUS = pb.Message.DESCRIPTOR.fields_by_name["animation_status"].number
 
 
 class FakeRobot:
@@ -35,6 +42,13 @@ class FakeRobot:
         self.odometry = pb.OdometryData(x=0.5, y=-0.25, yaw=math.pi / 2, distance=0.75, kinematic_yaw=math.pi / 3)
         self.goals, self.goal_s, self.goal_end, self.goal_quiet = goals, 0.3, pb.GOAL_REACHED, False
         self.goal = pb.GoalStatus()
+        self.transport = transport
+        self.subscribed = set()  # the Message tags the client subscribed to
+        self.files = {}  # path -> bytes, the robot's file system
+        self.uploads = {}  # transfer id -> (path, chunks expected, chunks received)
+        self.clip_s = 0.4
+        self.played = []  # every AnimationPlay the robot took
+        self._stopping = False
         self.received = []  # (monotonic time, Message)
         self.ports = []  # the serial ports opened to this robot
         self._loop = asyncio.new_event_loop()
@@ -71,11 +85,21 @@ class FakeRobot:
                     self.gait = message.walk_gait.gait
                 elif kind == "pingmsg":
                     await send(pb.Message(pongmsg=pb.PongMsg()).SerializeToString())
+                elif kind == "sub_notif":
+                    self.subscribed.add(message.sub_notif.tag)
+                elif kind == "unsub_notif":
+                    self.subscribed.discard(message.unsub_notif.tag)
+                elif kind == "fs_upload_data" and self.transport == "websocket":
+                    await self._upload_data(send, message.fs_upload_data)
                 elif kind == "correlation_request":
-                    reply = self._reply(message.correlation_request)
+                    request = message.correlation_request
+                    reply = self._reply(request)
                     await send(reply.SerializeToString())
-                    if reply.correlation_response.status_code == 202:
+                    status = reply.correlation_response.status_code
+                    if status == 202:
                         asyncio.create_task(self._walk_goal(send, self.goal.id))
+                    elif request.HasField("animation_play") and status == 200:
+                        asyncio.create_task(self._play(request.animation_play.name))
         finally:
             sender.cancel()
             self.connections -= 1
@@ -107,9 +131,85 @@ class FakeRobot:
             response.odometry.CopyFrom(self.odometry)
             if request.odometry_request.reset:
                 self.odometry = pb.OdometryData()
+        elif kind == "animation_list_request":
+            for name in BUILTIN_CLIPS:
+                response.animation_list.animations.add(name=name, builtin=True)
+            for path, data in self.files.items():
+                response.animation_list.animations.add(name=path.removeprefix("/animations/").removesuffix(".pb"),
+                                                       size=len(data))
+        elif kind == "animation_validate":
+            error = self._clip_error(request.animation_validate.name)
+            response.animation_report.ok = error is None
+            if error:
+                response.status_code, response.animation_report.error = 422, error
+            else:
+                response.animation_report.duration = self.clip_s
+        elif kind == "animation_play":
+            error = self._clip_error(request.animation_play.name)
+            if error:
+                response.status_code, response.error_message = 404 if error == "no such clip" else 422, error
+            elif self.mode == pb.DEACTIVATED:
+                response.status_code, response.error_message = 409, "Stand up first"
+            else:
+                self.played.append(request.animation_play)
+        elif kind == "animation_stop":
+            self._stopping = True
+        elif kind == "fs_upload_start":
+            start = request.fs_upload_start
+            transfer = len(self.uploads) + 1
+            self.uploads[transfer] = (start.path, start.total_chunks, [])
+            response.fs_upload_start_response.success = True
+            response.fs_upload_start_response.transfer_id = transfer
+        elif kind == "fs_delete_request":
+            response.fs_delete_response.success = self.files.pop(request.fs_delete_request.path, None) is not None
         else:
             response.imu_calibrate_data.CopyFrom(pb.IMUCalibrateData(success=True, levelled=True, tilt_deg=4.2))
         return pb.Message(correlation_response=response)
+
+    def _clip_error(self, name):
+        if name in BUILTIN_CLIPS:
+            return None
+        data = self.files.get(f"/animations/{name}.pb")
+        if data is None:
+            return "no such clip"
+        clip = animation_pb2.Animation.FromString(data)
+        if clip.schema != 1:
+            return "schema must be 1"
+        return None if clip.keyframes else "no keyframes"
+
+    async def _upload_data(self, send, data):
+        path, expected, chunks = self.uploads[data.transfer_id]
+        chunks.append(data.data)
+        if len(chunks) == expected:
+            self.files[path] = b"".join(chunks)
+            complete = fs.FSUploadComplete(transfer_id=data.transfer_id, success=True)
+            await send(pb.Message(fs_upload_complete=complete).SerializeToString())
+
+    # Reported to whichever client is connected, as the robot reports to every subscriber.
+    async def _play(self, name):
+        """Entry, the clip, then exit back to the mode it was played in, STAND from WALK."""
+        before = self.mode
+        self.mode, self._stopping = pb.ANIMATE, False
+        await self._report(name, pb.ANIM_ENTRY, 0.0)
+        t = 0.0
+        while not self._stopping:
+            held = t >= self.clip_s and name == "sit"
+            await self._report(name, pb.ANIM_HOLD if held else pb.ANIM_PLAYING, min(t, self.clip_s))
+            t += 0.1
+            if t > self.clip_s and name == "wave":
+                t = 0.0
+            elif t > self.clip_s and name != "sit":
+                break
+        await self._report(name, pb.ANIM_EXIT, min(t, self.clip_s))
+        await self._report(name, pb.ANIM_IDLE, 0.0, wait=False)
+        self.mode = pb.STAND if before == pb.WALK else before
+
+    async def _report(self, name, state, t, wait=True):
+        if ANIMATION_STATUS in self.subscribed:
+            status = pb.AnimationStatus(name=name, state=state, t=t)
+            await self._send(pb.Message(animation_status=status).SerializeToString())
+        if wait:
+            await asyncio.sleep(0.1)
 
     async def _walk_goal(self, send, goal):
         await asyncio.sleep(0.05)

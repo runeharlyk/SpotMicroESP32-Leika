@@ -65,6 +65,10 @@ Uploaded clips live in `/animations/<name>.pb` on the robot's file system.
 The Animations page uploads a `.json` clip, encoding it to the binary message first; it refuses a name that a built-in already uses, since the built-in wins.
 A clip edited in the editor uploads the same way.
 
+`simulation/robot_animate.py` does the same from the command line, for bench tests without the app: it lists, uploads, validates, plays and stops clips and follows their status, over the native USB port or WiFi (`--robot COM10` or `--robot <address>`).
+An upload needs WiFi, since the robot takes file uploads over its WebSocket only; a clip the robot refuses is deleted again, as the app does.
+`play` and `stop` print the clip's states and the robot's mode until the run is back in its mode, and `shell` keeps one link open, so a held or looping clip can be stopped from the next line.
+
 ## The editor
 
 Edit on a clip opens the editor: a timeline of keyframes, a pose panel for the selected keyframe's body and legs, a clip panel for the clip's own fields, overlays and parameters, and a 3D preview.
