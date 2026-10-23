@@ -60,6 +60,9 @@ CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
 # without that partition (default_8MB.csv) only log that there is none
 CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+# The dump names the crashed firmware by its ELF's SHA-256 in this many hex digits (9 by default): all 64, as the
+# robot reports the running firmware's, so the status page matches the two
+CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64
 
 # A task the watchdog watches (the control and sensor tasks, and the idle tasks) that stops for 5 s restarts the
 # board, which puts the PCA9685 to sleep, instead of only logging while the legs hold their last pose
