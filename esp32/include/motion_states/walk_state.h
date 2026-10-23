@@ -326,7 +326,7 @@ class WalkState : public MotionState {
             follow(body_dampers.zm, body_state.zm, 0, dt);
         }
         follow(body_dampers.psi, body_state.psi, target_body_state.psi, dt);
-        follow(gait_dampers.step_height, gait_state.step_height, target_gait_state.step_height, dt);
+        followStepHeight(dt);
         const float stroke = auto_gait && mode == WALK_GAIT::CRAWL ? AUTO_CRAWL_STROKE : 1;
         follow(gait_dampers.step_x, gait_state.step_x, stroke * target_gait_state.step_x, dt);
         follow(gait_dampers.step_z, gait_state.step_z, stroke * target_gait_state.step_z, dt);
@@ -338,6 +338,15 @@ class WalkState : public MotionState {
         boundToReach(body_state.ym);
         updateBodyPosition(body_state, dt);
         updateFeetPositions(body_state);
+    }
+
+    // A new step height moves only the feet in the air: taken in one tick, it moved a raised foot by the whole change,
+    // so it eases while one is up, and is taken at once while every foot is down.
+    void followStepHeight(float dt) {
+        if (getLegStates().swing_count > 0)
+            return follow(gait_dampers.step_height, gait_state.step_height, target_gait_state.step_height, dt);
+        gait_state.step_height = target_gait_state.step_height;
+        gait_dampers.step_height = {};
     }
 
     // A foot's stroke: the rigid-body velocity field at its stance position, the commanded translation plus the

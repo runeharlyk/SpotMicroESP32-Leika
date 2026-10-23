@@ -554,7 +554,7 @@ export class WalkState extends MotionState {
             body.zm = follow(bodyDampers.zm, body.zm, 0, dt)
         }
         body.psi = follow(bodyDampers.psi, body.psi, this.target.psi, dt)
-        gait.stepHeight = follow(gaitDampers.stepHeight, gait.stepHeight, targetGait.stepHeight, dt)
+        this.followStepHeight(dt)
         const stroke = this.autoGait && this.crawl ? AUTO_CRAWL_STROKE : 1
         gait.stepX = follow(gaitDampers.stepX, gait.stepX, f32(stroke * targetGait.stepX), dt)
         gait.stepZ = follow(gaitDampers.stepZ, gait.stepZ, f32(stroke * targetGait.stepZ), dt)
@@ -570,6 +570,23 @@ export class WalkState extends MotionState {
         this.boundToReach(body.ym)
         this.updateBodyPosition(body)
         for (let i = 0; i < 4; i++) this.updateFootPosition(body, i)
+    }
+
+    // followStepHeight (walk_state.h): a new step height eases while a foot is in the air, and is taken at once while
+    // every foot is down, where it moves nothing.
+    private followStepHeight(dt: number) {
+        const { gait, targetGait, gaitDampers } = this
+        if (this.legStates().swingCount > 0) {
+            gait.stepHeight = MotionState.follow(
+                gaitDampers.stepHeight,
+                gait.stepHeight,
+                targetGait.stepHeight,
+                dt
+            )
+            return
+        }
+        gait.stepHeight = targetGait.stepHeight
+        gaitDampers.stepHeight.velocity = 0
     }
 
     // A foot's stroke: the commanded translation plus the rotation about the body centre at its stance position.

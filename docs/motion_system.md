@@ -73,7 +73,7 @@ A step in a target settles to 95% in a third of a second.
 
 In rest and stand the body shift, rotation and height are smoothed.
 In walk the body height, pitch and the step length, sideways step, turn, depth and step height are smoothed.
-The speed acts at once; a new step height taken in one tick moved a raised foot of the Pico by 35 mm at once.
+The speed acts at once, and so does the step height while every foot is down, where it moves nothing; with a foot in the air it is smoothed, as taken in one tick it moved a raised foot of the Pico by 35 mm at once.
 
 The smoother is not the only limit on motion.
 The servo controller also limits each joint to 720 degrees per second at the default 6 V servo supply, and less at a lower one, see [Software description](software_description.md#servo-output).

@@ -333,8 +333,40 @@ static void autoCommandsOneSpeedPerStickInEitherGait() {
     }
 }
 
+// While every foot is down a new step height moves nothing, so a walk takes it at once: eased from the variant's
+// default instead, a Yertle's first steps in the app's simulation lifted high enough to topple it.
+static void aWalkLiftsItsFirstFootAtTheCommandedStepHeight() {
+    const KinematicsVariant variants[] = {socket_message_KinematicsVariant_SPOTMICRO_ESP32,
+                                          socket_message_KinematicsVariant_SPOTMICRO_ESP32_MINI,
+                                          socket_message_KinematicsVariant_SPOTMICRO_YERTLE};
+    for (KinematicsVariant variant : variants) {
+        const KinConfig &config = *kinConfigFor(variant);
+        WalkState walk;
+        walk.configure(config);
+        MotionState &state = walk;
+        body_state_t body;
+        body.ym = config.default_body_height;
+        body.updateFeet(config.default_feet_positions);
+        state.begin();
+        state.handleCommand({0, 1, 0, 0, 0.5f, 0.5f, 0.5f});
+        const float commanded = 0.5f * config.max_step_height;
+        bool lifted = false;
+        for (int t = 0; t < 100 && !lifted; t++) {
+            state.step(body, DT);
+            const auto down = walk.stance();
+            lifted = !(down[0] && down[1] && down[2] && down[3]);
+        }
+        CHECK(lifted);
+        if (std::fabs(walk.steps().step_height - commanded) > 1e-6f)
+            std::printf("%s lifted its first foot at a step height of %.1f mm, commanded %.1f mm\n",
+                        variantName(variant), walk.steps().step_height * 1000, commanded * 1000);
+        CHECK(std::fabs(walk.steps().step_height - commanded) <= 1e-6f);
+    }
+}
+
 int main() {
     aStanceFootStaysDownAndLiftsOffLevelInEveryDirection();
+    aWalkLiftsItsFirstFootAtTheCommandedStepHeight();
     autoCommandsOneSpeedPerStickInEitherGait();
     aNewStepHeightEasesARaisedFootUp();
     autoPicksTheGaitBySpeedWithHysteresis();
