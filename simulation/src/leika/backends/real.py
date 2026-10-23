@@ -9,6 +9,7 @@ import asyncio
 import math
 import threading
 import time
+from collections.abc import Callable
 
 import numpy as np
 
@@ -60,6 +61,8 @@ class RealBackend:
         self._goal_status = pb.GoalStatus()
         self._goals: bool | None = None
         self._goal_heard_at = 0.0
+        self._listeners: dict[str, Callable] = {}
+        self._subscribed: set[str] = set()
 
     # --- connection --------------------------------------------------------------------------------------------
     # A connect that fails partway closes what it opened: the robot would otherwise keep streaming to a dead subscriber.
@@ -93,10 +96,11 @@ class RealBackend:
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(2.0)
 
-    # A robot learns of a closed USB port only when its buffer stays full, so the subscription is ended first.
+    # A robot learns of a closed USB port only when its buffer stays full, so the subscriptions are ended first.
     async def _close(self) -> None:
         try:
-            await self._link.send(pb.Message(unsub_notif=pb.UnsubscribeNotification(tag=_tag("telemetry_batch"))).SerializeToString())
+            for kind in ("telemetry_batch", *self._subscribed):
+                await self._link.send(pb.Message(unsub_notif=pb.UnsubscribeNotification(tag=_tag(kind))).SerializeToString())
         except LinkClosed:
             pass
         for task in self._tasks:
@@ -132,6 +136,8 @@ class RealBackend:
                     future = self._replies.pop(message.correlation_response.correlation_id, None)
                     if future is not None and not future.done():
                         future.set_result(message.correlation_response)
+                elif kind in self._listeners:
+                    self._listeners[kind](getattr(message, kind))
         except TimeoutError:
             reason = f"nothing from the robot at {self._link.name} for {SILENCE_S:g} s"
         except LinkClosed as error:
@@ -183,12 +189,32 @@ class RealBackend:
         except (TimeoutError, OSError) as error:
             raise RobotTimeout(f"no answer from the robot at {self._target}") from error
 
+    def ask(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
+        """Sends a request and returns the robot's reply, a refusal included."""
+        return self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
+
     def request(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
         """Sends a request and returns the robot's reply; a refusal raises RobotError."""
-        reply = self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
+        reply = self.ask(request)
         if reply.status_code >= 400:  # the firmware answers 200 (or 202 while it works) on success
             raise RobotError(f"the robot refused the request: {reply.status_code} {reply.error_message}")
         return reply
+
+    def send(self, message: pb.Message) -> None:
+        """Sends a message that has no reply."""
+        self._run(self._send(message), REQUEST_TIMEOUT_S)
+
+    def listen(self, kind: str, handler: Callable | None, subscribe: bool = True) -> None:
+        """Calls `handler` with each message of `kind` (a field of Message) from the robot, on the link's thread, and
+        with `subscribe` asks the robot for them, once per kind and until the link closes; None stops the calls. The
+        robot sends some kinds, such as a file transfer's end, to the client concerned without a subscription."""
+        if handler is None:
+            self._listeners.pop(kind, None)
+            return
+        self._listeners[kind] = handler
+        if subscribe and kind not in self._subscribed:
+            self.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag(kind))))
+            self._subscribed.add(kind)
 
     def _wait(self, done, timeout: float, what: str) -> None:
         deadline = time.monotonic() + timeout
@@ -313,8 +339,7 @@ class RealBackend:
     def supports_goals(self) -> bool:
         """Whether the firmware takes goal moves; one from before them refuses the status request as unknown."""
         if self._goals is None:
-            request = pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest())
-            reply = self._run(self._ask(request), REQUEST_TIMEOUT_S + 1)
+            reply = self.ask(pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest()))
             self._goals = reply.status_code < 400
         return self._goals
 

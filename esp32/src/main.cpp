@@ -304,6 +304,14 @@ static std::function<void(const ReplyFiller &)> replyLater(const socket_message_
     };
 }
 
+// The robot cannot run without its service, control and sensor tasks, so a boot that cannot start one restarts rather
+// than run without it; a fresh update that does so is rolled back by the bootloader.
+static void startRequiredTask(TaskFunction_t entry, const char *name, UBaseType_t priority, BaseType_t core) {
+    if (xTaskCreatePinnedToCore(entry, name, 8192, nullptr, priority, nullptr, core) == pdPASS) return;
+    ESP_LOGE("main", "No memory to start the %s; restarting", name);
+    abort();
+}
+
 // Sleeps the sensor task until its 5 ms pacing timer fires; called on the sensor task only.
 static void waitForSensorPace() { ulTaskNotifyTake(pdTRUE, portMAX_DELAY); }
 
@@ -924,7 +932,7 @@ void SpotControlLoopEntry(void *) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
-    xTaskCreatePinnedToCore(sensorLoopEntry, "Sensor task", 8192, nullptr, 4, nullptr, 1);
+    startRequiredTask(sensorLoopEntry, "Sensor task", 4, 1);
     servoController.begin();
     motionService.begin();
     const char *sitError = nullptr;
@@ -1182,9 +1190,9 @@ extern "C" void app_main(void) {
     driveLeds();
     peripherals.addUpdateHandler([](const std::string &) { driveLeds(); }, false);
 
-    xTaskCreate(serviceLoopEntry, "Service task", 8192, nullptr, 2, nullptr);
+    startRequiredTask(serviceLoopEntry, "Service task", 2, tskNO_AFFINITY);
 
-    xTaskCreatePinnedToCore(SpotControlLoopEntry, "Control task", 8192, nullptr, 5, nullptr, 1);
+    startRequiredTask(SpotControlLoopEntry, "Control task", 5, 1);
 
     ESP_LOGI("main", "Finished booting");
 }

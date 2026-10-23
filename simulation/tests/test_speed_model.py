@@ -27,7 +27,8 @@ def _trace(variant):
 
 
 def _walk_runs(trace):
-    """Runs of ticks walking one fixed gait with one constant, non-zero command; AUTO stops a walk to swap its gait."""
+    """Runs of ticks walking one fixed gait with one constant, non-zero command at the client's speed and step height,
+    which the model is for; AUTO stops a walk to swap its gait."""
     runs, current, key = [], [], None
     for tick in trace["ticks"]:
         this = (tick["mode"], tick["gait"], tuple(sorted(tick["cmd"].items())))
@@ -39,7 +40,8 @@ def _walk_runs(trace):
     runs.append((key, current))
     for (mode, gait, cmd), ticks in runs:
         cmd = dict(cmd)
-        if mode == WALK and Gait(gait) in GAITS and (cmd["lx"] or cmd["ly"] or cmd["rx"]):
+        at_client = (cmd["s"], cmd["s1"]) == (SPEED, STEP_HEIGHT)
+        if mode == WALK and Gait(gait) in GAITS and (cmd["lx"] or cmd["ly"] or cmd["rx"]) and at_client:
             yield Gait(gait), cmd, ticks[SETTLE_TICKS:]
 
 
@@ -82,7 +84,6 @@ def test_the_model_is_the_body_velocity_the_firmware_walks(variant):
     trace = _trace(variant)
     checked = 0
     for gait, cmd, ticks in _walk_runs(trace):
-        assert (cmd["s"], cmd["s1"]) == (SPEED, STEP_HEIGHT)
         model = velocity_of(variant, gait, Sticks(cmd["lx"], cmd["ly"], cmd["rx"]), cmd["h"])
         measured = _body_velocity(trace, ticks)
         # A turn's error weighs as much as a stride's at a tenth of a metre from the centre.

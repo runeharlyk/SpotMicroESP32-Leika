@@ -78,11 +78,14 @@ export function crashCause(report: CoreDumpReport): string {
 
 export type CrashFirmware = 'running' | 'other' | 'unknown'
 
-/** Whether the dump came from the firmware the robot runs now, which decoding it needs the ELF of. */
+/**
+ * Whether the dump came from the firmware the robot runs now, which decoding it needs the ELF of. The dump carries the
+ * hash's first CONFIG_APP_RETRIEVE_LEN_ELF_SHA hex digits, 9 by default, and the robot all 64 of the running one's.
+ */
 export function crashFirmware(
     report: CoreDumpReport,
     runningElfSha256: string | undefined
 ): CrashFirmware {
     if (!report.appElfSha256 || !runningElfSha256) return 'unknown'
-    return report.appElfSha256 === runningElfSha256 ? 'running' : 'other'
+    return runningElfSha256.startsWith(report.appElfSha256) ? 'running' : 'other'
 }

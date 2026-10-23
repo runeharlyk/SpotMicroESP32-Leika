@@ -12,3 +12,5 @@ class Mode(Enum):
     REST = 3
     STAND = 4
     WALK = 5
+    ANIMATE = 6  # playing a clip, entered by AnimationPlay and left when it ends; not picked as a mode
+    WALK_NN = 7  # the learned residual gait; refused unless the robot reports walk_nn

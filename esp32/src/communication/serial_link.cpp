@@ -55,7 +55,10 @@ void SerialLink::begin() {
     esp_log_set_vprintf(logLine);
 }
 
-void SerialLink::listen() { xTaskCreate(readTask, "Serial link", 8192, this, 2, nullptr); }
+void SerialLink::listen() {
+    if (xTaskCreate(readTask, "Serial link", 8192, this, 2, nullptr) != pdPASS)
+        ESP_LOGE(TAG, "No memory for the read task: requests over USB and the console UART go unanswered");
+}
 
 void SerialLink::readTask(void *self) {
     auto *link = static_cast<SerialLink *>(self);

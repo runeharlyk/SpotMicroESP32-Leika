@@ -76,6 +76,15 @@ describe('crashFirmware', () => {
         expect(crashFirmware(crash(), 'cd'.repeat(32))).toBe('other')
     })
 
+    // The IDF writes CONFIG_APP_RETRIEVE_LEN_ELF_SHA hex digits of the hash into the dump, 9 by default, where the
+    // robot reports all 64 of the running firmware's.
+    it('tells them apart by the shorter hash a dump carries', () => {
+        expect(crashFirmware(crash({ appElfSha256: SHA.slice(0, 9) }), SHA)).toBe('running')
+        expect(crashFirmware(crash({ appElfSha256: 'cd'.repeat(32).slice(0, 9) }), SHA)).toBe(
+            'other'
+        )
+    })
+
     it('cannot tell while either hash is missing', () => {
         expect(crashFirmware(crash(), undefined)).toBe('unknown')
         expect(crashFirmware(crash({ appElfSha256: '' }), SHA)).toBe('unknown')

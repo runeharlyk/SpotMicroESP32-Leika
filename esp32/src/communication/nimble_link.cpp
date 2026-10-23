@@ -34,7 +34,12 @@ void NimbleLink::start(const std::string &name) {
         ESP_LOGE(TAG, "No memory for the write queue");
         return;
     }
-    xTaskCreate(readTask, "BLE link", 8192, this, 3, nullptr);
+    if (xTaskCreate(readTask, "BLE link", 8192, this, 3, nullptr) != pdPASS) {
+        ESP_LOGE(TAG, "No memory for the link's task, so no Bluetooth");
+        vQueueDeleteWithCaps(writes_);
+        writes_ = nullptr;
+        return;
+    }
 
     NimBLEDevice::init(name);
     NimBLEDevice::setMTU(MTU);

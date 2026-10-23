@@ -35,6 +35,8 @@ const Segment SCRIPT[] = {
     // settle, as the joint speed cap slows them.
     {STAND, TROT, {0, 0, 0, 0, 0.5f, 0, 0}, 0, 0, 100},
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
+    // A lower step mid-stride, which the feet in the air ease down to.
+    {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.25f}, 0, 0, 100},
     {WALK, TROT, {-1, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     {WALK, TROT, {0, 0, 1, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},
     // Both sticks to the rim on a raised body, where the legs reach only a fraction of the stroke.
@@ -49,9 +51,9 @@ const Segment SCRIPT[] = {
     // AUTO: a short stick starts the crawl once it has settled, a long one mid-walk stops it and walks on in the trot,
     // which centres the body the crawl shifted, and a short one again stops the trot for the crawl.
     {WALK, TROT, {0, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 50},
-    {WALK, AUTO, {0, 0.2f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0, 0.1f, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     {WALK, AUTO, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
-    {WALK, AUTO, {0.2f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
+    {WALK, AUTO, {0.1f, 0, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 400},
     // A gait chosen mid-stride, from AUTO's crawl and then from the trot: the walk stops on all four feet, takes it
     // and walks on.
     {WALK, TROT, {0, 1, 0, 0, 0.5f, 0.5f, 0.5f}, 0, 0, 300},

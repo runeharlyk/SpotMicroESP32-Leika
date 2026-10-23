@@ -72,8 +72,8 @@ It has no overshoot, the velocity ramps up and down instead of jumping with the 
 A step in a target settles to 95% in a third of a second.
 
 In rest and stand the body shift, rotation and height are smoothed.
-In walk the body height, pitch and the step length, sideways step, turn and depth are smoothed.
-The speed and the step height act at once.
+In walk the body height, pitch and the step length, sideways step, turn, depth and step height are smoothed.
+The speed acts at once, and so does the step height while every foot is down, where it moves nothing; with a foot in the air it is smoothed, as taken in one tick it moved a raised foot of the Pico by 35 mm at once.
 
 The smoother is not the only limit on motion.
 The servo controller also limits each joint to 720 degrees per second at the default 6 V servo supply, and less at a lower one, see [Software description](software_description.md#servo-output).
@@ -176,8 +176,11 @@ This gait is derived from [mike4192 spotMicro](https://github.com/mike4192/spotM
 
 ## AUTO gait
 
-AUTO picks the crawl for a short stick and the trot for a long one, by the larger of the stroke and the turn as a share of a full stick (`selectAutoGait` in `walk_state.h`).
-The crawl holds below 0.36 and the trot down to 0.30, so a stick held near the boundary does not swap the schedules back and forth.
+AUTO asks the body for the stick's share of the trot's top speed, whichever gait walks it, and picks the crawl for a short stick and the trot for a long one, by the larger of the stroke and the turn as a share of a full stick (`selectAutoGait` in `walk_state.h`).
+At the same stroke the crawl walks the body about 4.5 times slower than the trot, as its clock runs at a quarter of the trot's and its feet stand 0.85 of the cycle against 0.75, so under AUTO the crawl walks 4.5 times the stroke the stick asks.
+Its full stroke is so 0.22 of the trot's top speed, where AUTO swaps to the trot; when both gaits walked the stick's own stroke, the swap changed the commanded speed 4.5 times.
+The crawl holds up to 0.22 and the trot down to 0.16, so a stick held near the boundary does not swap the schedules back and forth.
+The [reach limit](#reach-limit) still shortens what the legs cannot reach: on the Pico at height 0.5 the crawl walks about 0.82 of its full forward stroke, so the walked speed there still rises about 1.2 times at the swap, while on the full-size robot and the Yertle it does not change.
 A swap reassigns every leg's phase, which mid-stride would lift a loaded foot or drop a swinging one, so the walk swaps only at a standstill with all four feet down, and restarts at phase 0, where every foot is down in both schedules.
 A stick that leaves the band of the gait in force mid-walk therefore brings the walk to a stop first, as releasing the stick would, and it walks on in the other gait.
 A start from a standstill waits 0.25 s for the stick to settle, since a stick pushed from the centre to the rim passes through the crawl's band on its way.
