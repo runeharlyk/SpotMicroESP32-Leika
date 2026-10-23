@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store'
-import { socket } from '$lib/stores/socket'
 import { robotRequest } from '$lib/robot-request'
 import { fileSystemClient } from '$lib/filesystem/chunkedTransfer'
 import { Animation } from '$lib/platform_shared/animation'
@@ -23,7 +22,7 @@ export async function refreshClips(): Promise<AnimationEntry[]> {
 /** The robot's answer for a clip: why it does not load, or what it offers and whether it stays in reach. */
 export async function inspectClip(name: string): Promise<AnimationReport> {
     // A clip that does not load comes back as 422 with the report, so the report decides, not the status.
-    const response = await socket.request({ animationValidate: { name } })
+    const response = await robotRequest({ animationValidate: { name } }, { accept: [422] })
     if (!response.animationReport)
         throw new Error(`The robot replied with status ${response.statusCode}`)
     return response.animationReport

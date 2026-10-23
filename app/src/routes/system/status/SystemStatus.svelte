@@ -8,6 +8,7 @@
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
     import { socket } from '$lib/stores/socket'
+    import { robotRequest } from '$lib/robot-request'
     import { factoryResetRobot, restartRobot } from '$lib/robot-commands'
     import { convertSeconds } from '$lib/utilities'
     import {
@@ -34,7 +35,7 @@
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
-        const response = await socket.request({ systemInformationRequest: {} })
+        const response = await robotRequest({ systemInformationRequest: {} })
         if (!response.systemInformationResponse) {
             throw new TypeError('System information not found in response')
         }

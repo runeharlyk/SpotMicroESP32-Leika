@@ -1,7 +1,8 @@
 <script lang="ts">
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { onMount } from 'svelte'
-    import { socket } from '$lib/stores'
+    import { robotRequest } from '$lib/robot-request'
+    import { notifications } from '$lib/components/toasts/notifications'
     import { Connection } from '$lib/components/icons'
     import I2CSetting from './i2cSetting.svelte'
     import type { I2CDevice } from '$lib/platform_shared/message'
@@ -16,8 +17,10 @@
     const triggerScan = async () => {
         isLoading = true
         try {
-            const response = await socket.request({ i2cScanDataRequest: {} })
+            const response = await robotRequest({ i2cScanDataRequest: {} })
             active_devices = response.i2cScanData?.devices ?? []
+        } catch (error) {
+            notifications.error(`I2C scan failed: ${(error as Error).message}`, 5000)
         } finally {
             isLoading = false
         }

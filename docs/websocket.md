@@ -194,9 +194,13 @@ socket.emit(ControllerData, {
 Send a request and read its reply:
 
 ```typescript
-const response = await socket.request({ imuCalibrateExecute: {} });
+import { robotRequest } from "$lib/robot-request";
+
+const response = await robotRequest({ imuCalibrateExecute: {} });
 const result = response.imuCalibrateData;
 ```
+
+`robotRequest` rejects with the robot's reason when it refuses, and with a message naming firmware that does not handle the request when the robot answers 501; every request in the app goes through it.
 
 While no link is up, what becomes of a request depends on its kind (`app/src/lib/transport/request-kinds.ts`).
 An action, one that moves the robot or ends something under way, fails at once, since the robot may be elsewhere by the time a link comes.

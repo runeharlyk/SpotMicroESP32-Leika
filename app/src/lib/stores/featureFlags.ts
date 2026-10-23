@@ -3,6 +3,7 @@ import { persistentStore } from '$lib/utilities'
 import { derived, get, writable, type Writable } from 'svelte/store'
 import { resolve } from '$app/paths'
 import { socket } from './socket'
+import { robotRequest } from '$lib/robot-request'
 import { apiLocation } from './location-store'
 import { identify } from './robots'
 import { knownVariant } from '$lib/kinematics-variants'
@@ -37,13 +38,14 @@ export function applyFeatures(features: FeaturesDataResponse) {
 
 // Each connection may be a different robot, so the flags are fetched again on every open.
 const fetchFeatures = () =>
-    socket
-        .request({ featuresDataRequest: {} })
+    robotRequest({ featuresDataRequest: {} })
         .then(response => {
             if (response.featuresDataResponse) applyFeatures(response.featuresDataResponse)
             else notifications.error('Feature flags could not be fetched', 2500)
         })
-        .catch(() => notifications.error('Feature flags could not be fetched', 2500))
+        .catch(error =>
+            notifications.error(`Feature flags could not be fetched: ${error.message}`, 2500)
+        )
 
 export function useFeatureFlags() {
     if (!featureFlagsStore) {

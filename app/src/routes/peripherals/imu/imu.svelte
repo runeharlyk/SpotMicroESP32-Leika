@@ -6,7 +6,9 @@
     import { cubicOut } from 'svelte/easing'
     import { slide } from 'svelte/transition'
     import { onDestroy, onMount } from 'svelte'
-    import { socket, mpu } from '$lib/stores'
+    import { mpu } from '$lib/stores'
+    import { robotRequest } from '$lib/robot-request'
+    import { notifications } from '$lib/components/toasts/notifications'
     import { useFeatureFlags } from '$lib/stores/featureFlags'
     import { Rotate3d } from '$lib/components/icons'
     import { daisyColor } from '$lib/utilities'
@@ -279,8 +281,10 @@
         isCalibrating = true
         calibrationResult = null
         try {
-            const response = await socket.request({ imuCalibrateExecute: {} })
+            const response = await robotRequest({ imuCalibrateExecute: {} })
             calibrationResult = response.imuCalibrateData ?? null
+        } catch (error) {
+            notifications.error(`IMU calibration failed: ${(error as Error).message}`, 5000)
         } finally {
             isCalibrating = false
         }

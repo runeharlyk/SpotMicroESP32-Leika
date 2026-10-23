@@ -1,4 +1,4 @@
-import { socket } from '$lib/stores/socket'
+import { robotRequest } from '$lib/robot-request'
 import { applyFeatures } from '$lib/stores/featureFlags'
 
 // The robot holds a name of up to 32 bytes; a longer one cannot even be decoded, so it would never be answered.
@@ -11,7 +11,11 @@ export async function renameConnectedRobot(name: string): Promise<string | null>
     if (new TextEncoder().encode(trimmed).length > ROBOT_NAME_MAX_BYTES)
         return `The name is too long; ${NAME_RULE}`
     try {
-        const response = await socket.request({ robotNameUpdate: { name: trimmed } })
+        // The robot refuses a name it cannot store with a bare 400, which the rule explains.
+        const response = await robotRequest(
+            { robotNameUpdate: { name: trimmed } },
+            { accept: [400] }
+        )
         if (response.featuresDataResponse) applyFeatures(response.featuresDataResponse)
         if (response.statusCode !== 200) return `The robot rejected the name; ${NAME_RULE}`
         return null
