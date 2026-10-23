@@ -308,6 +308,25 @@ def test_a_goal_the_robot_refuses_raises(robot, fake):
         robot.goal_move(forward=0.1)
 
 
+# The robot may have taken a goal whose reply was lost, or whose wait Ctrl-C ended: the client cancels it.
+@pytest.mark.parametrize("ending", [RobotTimeout, KeyboardInterrupt])
+def test_a_goal_whose_reply_never_came_is_cancelled(robot, fake, monkeypatch, ending):
+    robot.stand()
+    fake.goal_s = 5.0
+    request = robot._backend.request
+
+    def reply_lost(sent):
+        reply = request(sent)
+        if sent.HasField("goal_move"):
+            raise ending("no reply")
+        return reply
+
+    monkeypatch.setattr(robot._backend, "request", reply_lost)
+    with pytest.raises(ending):
+        robot.goal_move(forward=0.1)
+    _eventually(lambda: fake.goal.state == pb.GOAL_CANCELLED)
+
+
 def test_an_interrupted_goal_is_cancelled_on_the_robot(robot, fake, monkeypatch):
     robot.stand()
     fake.goal_s = 5.0

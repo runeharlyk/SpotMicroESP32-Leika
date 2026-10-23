@@ -1,10 +1,11 @@
 """A backend on a virtual clock: it integrates the commanded velocity into a pose, optionally with a lagging yaw and a
 gait that turns slower than commanded, and records every command. With `goal_scale` it takes goal moves too, landing
-at that multiple of each target at once, as a robot whose odometry undercounts does."""
+at that multiple of each target at once, as a robot whose odometry undercounts does, and each walk turns the heading by
+`walk_drift_deg` on the way. Its odometry is its pose."""
 import math
 from collections import deque
 
-from src.leika.backends.base import ZERO, Calibration, RobotState, Velocity
+from src.leika.backends.base import ZERO, Calibration, Odometry, RobotState, Velocity
 from src.leika.constants import Mode
 
 DT = 0.01
@@ -12,8 +13,9 @@ DT = 0.01
 
 class ScriptedBackend:
     def __init__(self, top=Velocity(0.1, 0.06, 1.2), yaw=0.0, yaw_lag_s=0.0, turn_scale=1.0, drop_at=None,
-                 goal_scale=None):
+                 goal_scale=None, walk_drift_deg=0.0):
         self.top, self.turn_scale, self.drop_at, self.goal_scale = top, turn_scale, drop_at, goal_scale
+        self.walk_drift_deg = walk_drift_deg
         self.goals = []  # (forward, sideways, turn_deg, speed)
         self.link_drops = 0
         self.t, self.x, self.y, self.yaw = 0.0, 0.0, 0.0, yaw
@@ -62,9 +64,13 @@ class ScriptedBackend:
         forward, sideways = forward * self.goal_scale, sideways * self.goal_scale
         self.x += forward * math.cos(heading) - sideways * math.sin(heading)
         self.y += forward * math.sin(heading) + sideways * math.cos(heading)
-        self.yaw += turn_deg * self.goal_scale
+        self.yaw += turn_deg * self.goal_scale + (self.walk_drift_deg if forward or sideways else 0.0)
         self.mode = Mode.STAND
         self._seen = deque([self.yaw] * len(self._seen))
+
+    def odometry(self):
+        yaw = (self.yaw + 180) % 360 - 180
+        return Odometry(self.x, self.y, yaw, 0.0, yaw)
 
     def calibrate(self):
         return Calibration(True, True, 1.5)

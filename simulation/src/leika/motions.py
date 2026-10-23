@@ -50,9 +50,9 @@ def rotate(robot, degrees: float, rate: float | None) -> None:
         raise ValueError(f"a turn needs a positive rate, not {top}")
     if robot.supports_goals():
         start = robot.state().yaw
-        robot.goal_move(turn_deg=degrees, speed=min(1.0, top / robot.max_velocity().yaw_rate))
+        asked = robot.goal_move(turn_deg=degrees, speed=min(1.0, top / robot.max_velocity().yaw_rate))
         robot.sleep(SETTLE_S)
-        missed = (start + degrees - robot.state().yaw + 180) % 360 - 180  # the goal lands well within half a turn
+        missed = (start + asked - robot.state().yaw + 180) % 360 - 180  # the goal lands well within half a turn
         if abs(missed) <= TOLERANCE_DEG:
             return
         degrees = missed

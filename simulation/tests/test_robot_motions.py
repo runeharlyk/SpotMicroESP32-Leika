@@ -145,6 +145,36 @@ def test_a_goal_turn_that_lands_needs_no_trim():
     assert len(backend.commands) == commands
 
 
+# Each walk drifts 2 degrees to the left: the turn after it turns 88, so the square closes on the heading it started on.
+def test_a_goal_turn_takes_up_the_drift_of_the_walk_before_it():
+    robot, backend = _robot(goal_scale=1.0, walk_drift_deg=2.0)
+    robot.stand()
+    for _ in range(4):
+        robot.move_forward(0.5)
+        robot.rotate(90)
+    assert [turn for _, _, turn, _ in backend.goals if turn] == pytest.approx([88.0] * 4)
+    assert (backend.yaw + 180) % 360 - 180 == pytest.approx(0.0, abs=1e-9)
+
+
+# A turn of a full circle stays one, whatever drift it takes up.
+def test_a_full_circle_after_a_drifting_walk_is_still_a_full_circle():
+    robot, backend = _robot(goal_scale=1.0, walk_drift_deg=-3.0)
+    robot.stand()
+    robot.goal_move(forward=0.2)
+    assert robot.goal_move(turn_deg=360) == pytest.approx(363.0)
+
+
+# A velocity walk, a deactivation or a goal that failed leaves no heading the goals meant: the next turn turns as asked.
+def test_a_velocity_walk_leaves_the_next_turn_as_asked():
+    robot, backend = _robot(goal_scale=1.0, walk_drift_deg=2.0)
+    robot.stand()
+    robot.goal_move(forward=0.5)
+    robot.set_velocity(0.05, 0, 0)
+    robot.sleep(0.5)
+    robot.stop()
+    assert robot.goal_move(turn_deg=90) == 90
+
+
 def _sim_position(backend):
     a = backend.sim.base_qposadr
     return MODEL_TO_REP @ backend.sim.data.qpos[a : a + 3]

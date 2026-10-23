@@ -3,6 +3,9 @@ Robot("COM10") / Robot("/dev/ttyACM0") over the board's native USB port.
 
 Velocities are REP-103 (forward, left, counter-clockwise) in m/s and rad/s; angles in degrees. Leaving the `with`
 block, on an exception or Ctrl-C included, stops the robot and lets it rest; it never deactivates on its own.
+
+A goal turn turns from the heading the goals so far meant to leave the robot at, not the one a walk drifted to, so a
+square of goal moves closes on the robot's own heading.
 """
 from . import motions
 from .backends.base import ZERO, Backend, Calibration, Odometry, RobotError, RobotState, Velocity
@@ -11,6 +14,11 @@ from .constants import Gait, Mode
 # The modes a script may walk from. DEACTIVATED is the app's stop button, IDLE and CALIBRATION are the user's: walking
 # would wake the servos the user turned off.
 WALKS_FROM = (Mode.STAND, Mode.REST, Mode.WALK)
+
+
+def _wrap(degrees: float) -> float:
+    """Into (-180, 180]."""
+    return 180.0 - (180.0 - degrees) % 360.0
 
 
 class Robot:
@@ -25,6 +33,9 @@ class Robot:
 
                 backend = RealBackend(target)
         self._backend = backend
+        # The odometry heading the goals so far meant to leave the robot at, in degrees; None until a goal takes the
+        # heading it finds, and again once a velocity walk, a deactivation or a goal that did not end has moved it.
+        self._intended: float | None = None
 
     def __enter__(self) -> "Robot":
         self.connect()
@@ -58,6 +69,7 @@ class Robot:
     def deactivate(self) -> None:
         self.stop()
         self._backend.set_mode(Mode.DEACTIVATED)
+        self._intended = None  # the odometry starts afresh
 
     def set_gait(self, gait: Gait) -> None:
         self._backend.set_gait(gait)
@@ -70,6 +82,7 @@ class Robot:
                 raise RobotError(f"the robot is {mode.name}: stand() it before walking")
             if mode is not Mode.WALK:
                 self._backend.set_mode(Mode.WALK)  # STAND reads the same sticks as a shift and tilt of the body
+            self._intended = None
         return self._backend.set_velocity(velocity)
 
     def stop(self) -> None:
@@ -89,18 +102,25 @@ class Robot:
         return self._backend.odometry()
 
     def reset_odometry(self) -> Odometry:
-        """Starts the dead reckoning afresh, and returns where it had got to."""
-        return self._backend.reset_odometry()
+        """Starts the dead reckoning afresh, in the frame the robot faces, which is then the heading the goals mean;
+        returns where it had got to."""
+        reached = self._backend.reset_odometry()
+        self._intended = 0.0
+        return reached
 
     def supports_goals(self) -> bool:
         """Whether the robot walks a distance or turns an angle itself, closed on its own odometry."""
         return self._backend.supports_goals()
 
-    def goal_move(self, forward: float = 0.0, sideways: float = 0.0, turn_deg: float = 0.0, speed: float = 0.5) -> None:
+    def goal_move(self, forward: float = 0.0, sideways: float = 0.0, turn_deg: float = 0.0,
+                  speed: float = 0.5) -> float:
         """Walks `forward` or `sideways` metres, or turns `turn_deg` counter-clockwise (one of them, the others zero), at
         `speed` of the gait's top, on the robot's own odometry: a link that stalls for less than 2 s cannot cut it short.
         Returns once the robot reports it reached, standing; raises GoalCancelled if it ended early and RobotTimeout if
         it gave up.
+
+        A walk holds the heading it starts on, and the next turn takes up what it drifts: after a walk that drifted 2
+        degrees to the left, a 90 degree turn turns 88. Returns the turn it asked of the robot, in degrees.
 
         The odometry's distances count what the gait commanded, so until they are calibrated the robot lands off by
         their error; its heading fuses the gyro.
@@ -109,13 +129,21 @@ class Robot:
         if sum(t != 0 for t in targets) > 1:
             raise ValueError(f"a goal takes one target, not {targets}")
         if not any(targets):
-            return
+            return 0.0
         mode = self._backend.state().mode
         if mode not in WALKS_FROM:
             raise RobotError(f"the robot is {mode.name}: stand() it before a goal")
         if mode is Mode.REST:
             self._backend.set_mode(Mode.STAND)  # a goal starts from STAND or WALK
-        self._backend.goal_move(forward, sideways, turn_deg, speed)
+        current = self._backend.odometry().yaw
+        intended = current if self._intended is None else self._intended
+        # Only the drift is wrapped, so a turn of 360 degrees stays one.
+        asked = turn_deg + _wrap(intended - current) if turn_deg else 0.0
+        self._intended = None
+        if forward or sideways or asked:
+            self._backend.goal_move(forward, sideways, asked, speed)
+        self._intended = intended + turn_deg
+        return asked
 
     def time(self) -> float:
         return self._backend.now()

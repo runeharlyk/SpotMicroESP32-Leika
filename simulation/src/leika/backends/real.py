@@ -322,21 +322,28 @@ class RealBackend:
 
     def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None:
         move = pb.GoalMove(forward_m=forward, sideways_m=sideways, turn_deg=turn_deg, speed=speed)
-        goal = self.request(pb.CorrelationRequest(goal_move=move)).goal_status.id
+        try:
+            goal = self.request(pb.CorrelationRequest(goal_move=move)).goal_status.id
+        except (RobotTimeout, KeyboardInterrupt):
+            self._cancel_goal()  # the robot may have taken the goal and lost only the reply
+            raise
         try:
             status = self._await_goal(goal)
         except BaseException:
             # Ctrl-C or a lost reply: the robot would otherwise walk on with nobody watching.
-            try:
-                self.request(pb.CorrelationRequest(goal_cancel=pb.GoalCancel()))
-            except RobotError:
-                pass  # the link is gone, and the robot cancels the goal of a client that left
+            self._cancel_goal()
             raise
         if status.state == pb.GOAL_TIMED_OUT:
             raise RobotTimeout(f"the robot gave up on goal {goal} after {status.timeout_s:.1f} s, "
                                f"{status.progress:.3g} along ({_target(status)})")
         if status.state != pb.GOAL_REACHED:
             raise GoalCancelled(f"the robot cancelled goal {goal} {status.progress:.3g} along ({_target(status)})")
+
+    def _cancel_goal(self) -> None:
+        try:
+            self.request(pb.CorrelationRequest(goal_cancel=pb.GoalCancel()))
+        except RobotError:
+            pass  # the link is gone, and the robot cancels the goal of a client that left or fell silent
 
     def _heard_goal(self, status: pb.GoalStatus) -> None:
         with self._changed:
