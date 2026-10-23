@@ -114,6 +114,46 @@ class KinematicOdometry {
     }
 };
 
+/**
+ * The gyro's yaw rate for one control tick: the mean between the IMU sample this tick takes and the one the tick before
+ * took, from the z rate the sensor task integrates over every read (ImuSample::gyroYaw). The sensor task reads the IMU
+ * at 200 Hz (100 Hz for the BNO055) and the control task takes the newest sample at 100 Hz, always at the same point of
+ * its tick: one sample held for the tick would alias what the yaw rate does between the samples into the heading. In
+ * MuJoCo the servo targets, stepped once a tick, ripple the yaw rate at the control rate, and a 96 degree turn read
+ * from 2.6 degrees short to 2.4 long depending on where in the tick the sample fell; its mean read it 0.7 long.
+ *
+ * A tick without a new sample keeps the rate the last one gave. A sample without a gyro reading, one older than
+ * STALE_US, or one more than STALE_US after the last one gives none: the gyro's turn across a stall, or across a
+ * deactivation, which feeds no ticks, never lands in one tick.
+ */
+class GyroYawRate {
+  public:
+    static constexpr int64_t STALE_US = 50000;
+
+    std::optional<float> update(const ImuSample &imu, int64_t nowUs) {
+        if (!(imu.valid & ImuValid::GYRO) || nowUs - imu.t_us > STALE_US) {
+            last.reset();
+            rate.reset();
+            return std::nullopt;
+        }
+        if (last && imu.t_us == last->t_us) return rate;
+        rate.reset();
+        const int64_t span = last ? imu.t_us - last->t_us : 0;
+        if (span > 0 && span <= STALE_US)
+            rate = std::remainder(imu.gyroYaw - last->gyroYaw, 2.0f * static_cast<float>(M_PI)) / (span * 1e-6f);
+        last = Read {imu.t_us, imu.gyroYaw};
+        return rate;
+    }
+
+  private:
+    struct Read {
+        int64_t t_us;
+        float gyroYaw;
+    };
+    std::optional<Read> last;
+    std::optional<float> rate;
+};
+
 /** The fused estimate, and the heading the feet alone give: against the fused one over a turn, the gait's scale. */
 struct FusedEstimate : OdometryEstimate {
     float kinematicYaw = 0; // rad, as yaw
@@ -157,15 +197,8 @@ class FusedOdometry {
     // SETTLE_S as the feet's motion does, leaves the bias alone: a slow twist of the stand turns the feet by less than
     // STILL_RATE, but the servos follow it late, and the gyro would read their lag as bias.
     static constexpr float POSE_STILL_RATE = GYRO_NOISE; // rad/s
-    // A sample older than this, or a tick longer, counts as no gyro.
-    static constexpr int64_t GYRO_STALE_US = 50000;
+    // A tick longer than this counts as no gyro.
     static constexpr float MAX_DT_S = 0.1f;
-
-    /** The yaw rate about the body's up axis, when the sample has a gyro reading that is fresh at `nowUs`. */
-    static std::optional<float> yawRate(const ImuSample &imu, int64_t nowUs) {
-        if (!(imu.valid & ImuValid::GYRO) || nowUs - imu.t_us > GYRO_STALE_US) return std::nullopt;
-        return imu.gyro[2];
-    }
 
     /** Zeroes the estimate; the bias, a property of the gyro, stays. */
     void reset() {

@@ -86,6 +86,12 @@ class CommAdapterBase {
     /** Called on the socket's task after a client subscribes to a tag. */
     void onSubscribed(std::function<void(int32_t tag, int cid)> listener) { subscribedListener_ = std::move(listener); }
 
+    /** Called on the link's task for every frame a client sends, before it is handled. */
+    void onHeard(std::function<void(int cid)> listener) { heardListener_ = std::move(listener); }
+
+    /** Called once a client has gone: its connection closed, or the host behind it stopped reading. */
+    void onClientGone(std::function<void(int cid)> listener) { goneListener_ = std::move(listener); }
+
     /** The connection a client id stands for now, for a reply sent later; a link with one lasting client has one. */
     virtual uint32_t session(int cid) { return 1; }
 
@@ -130,7 +136,13 @@ class CommAdapterBase {
         xSemaphoreGive(mutex_);
     }
 
+    void clientGone(int cid) {
+        removeClient(cid);
+        if (goneListener_) goneListener_(cid);
+    }
+
     void handleIncoming(const uint8_t* data, size_t len, int cid) {
+        if (heardListener_) heardListener_(cid);
         if (!decoder_.decode(data, len, cid)) {
             ESP_LOGE("ProtoComm", "Failed to decode incoming message from client %d", cid);
         }
@@ -153,6 +165,8 @@ class CommAdapterBase {
     std::map<int32_t, std::list<int>> client_subscriptions_;
     ProtoDecoder decoder_;
     std::function<void(int32_t, int)> subscribedListener_;
+    std::function<void(int)> heardListener_;
+    std::function<void(int)> goneListener_;
     socket_message_Message msg_ = socket_message_Message_init_zero;
     uint8_t pb_heap_enc_buf[PROTO_BUFFER_SIZE];
 

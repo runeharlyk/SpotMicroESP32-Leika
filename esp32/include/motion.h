@@ -176,6 +176,7 @@ class MotionService {
 
     mutable std::mutex odometryMutex;
     FusedOdometry fusedOdometry;
+    GyroYawRate gyroYawRate; // control task only
 
     GoalController goal;
     uint32_t goalId = 0;

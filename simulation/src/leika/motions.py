@@ -1,7 +1,7 @@
 """Distance and turn motions, written once against the Robot's velocity, state and clock, or its goal moves.
 
 A robot that takes goal moves walks a distance itself, closed on its odometry, so a WiFi stall that trips the dead-man
-stop no longer cuts the move short. A turn goes the same way, then closes what is left on the IMU's yaw, against
+stop no longer cuts the move short, unless it lasts the 2 s after which the robot takes the client for gone. A turn goes the same way, then closes what is left on the IMU's yaw, against
 whatever error the odometry's heading still has.
 """
 import math
@@ -50,9 +50,9 @@ def rotate(robot, degrees: float, rate: float | None) -> None:
         raise ValueError(f"a turn needs a positive rate, not {top}")
     if robot.supports_goals():
         start = robot.state().yaw
-        robot.goal_move(turn_deg=degrees, speed=min(1.0, top / robot.max_velocity().yaw_rate))
+        asked = robot.goal_move(turn_deg=degrees, speed=min(1.0, top / robot.max_velocity().yaw_rate))
         robot.sleep(SETTLE_S)
-        missed = (start + degrees - robot.state().yaw + 180) % 360 - 180  # the goal lands well within half a turn
+        missed = (start + asked - robot.state().yaw + 180) % 360 - 180  # the goal lands well within half a turn
         if abs(missed) <= TOLERANCE_DEG:
             return
         degrees = missed

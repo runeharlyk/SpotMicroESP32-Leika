@@ -65,6 +65,7 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 - The mounting matrix from the peripheral settings rotates the chip frame into the body frame.
 - The gyro bias is measured at boot while the robot is still, over 200 samples. If the robot moves, the bias is left at zero.
 - For the MPU6050 and the ICM-20948 a Madgwick filter fuses the gyro and the accelerometer, and the compass when a fresh reading exists. Its gain is an IMU setting that defaults to 0.1, and is 2.5 during the first two seconds so that the first estimate is quick. Without a compass the yaw drifts, and the sample says so with the `YAW_DRIFTS` flag.
+- Each sample also carries the gyro's z rate integrated over every read since the IMU started (`gyroYaw`), from which the odometry takes the mean rate between the samples two control ticks find.
 - The BNO055 reports its own fused quaternion, which is rotated by the mounting. The Madgwick filter is not used for it.
 - A separate HMC5883L compass (75 Hz) supplies the compass for a chip without one. Its alignment, hard-iron offset and soft-iron matrix are IMU settings. A compass that has been silent for three of its periods is ignored. A disabled compass is left out of the fusion, the chip's own as well as a separate one; the BNO055's own fusion keeps using its compass.
 - The tilt of a still robot can be folded into the stored mounting from the app, so that a robot on a level surface reads level. The tilt must be under 15 degrees.

@@ -219,7 +219,9 @@ While the feet keep still, a scalar Kalman filter learns that bias from the diff
 It also leaves it alone while the body's pose moves (the stand's twist and shift) and for a while after: a slow twist turns the feet by less than the still threshold, but the servos follow it late, and the gyro would read their lag as bias.
 The heading integrates the two rates weighted by their variances: the gyro's while walking, mostly the feet's while standing.
 The position integrates the feet's displacement in that heading.
-Without a fresh gyro reading (none, or one older than 50 ms) it is the feet's estimate alone.
+The gyro's rate for a tick is its mean since the sample the last tick took (`GyroYawRate`): the sensor task integrates the z rate over every read, and the control task takes the newest sample at the same point of each tick, so one sample held for the tick would alias what the rate does between samples into the heading.
+In MuJoCo the servo targets, stepped once a tick, ripple the yaw rate with the tick, and a 96 degree turn read from 2.6 degrees short to 2.4 long depending on where in the tick the sample fell; the mean reads it 0.7 long.
+Without a fresh gyro reading (none, one older than 50 ms, or one more than 50 ms after the last) it is the feet's estimate alone.
 `OdometryData.kinematic_yaw` carries the feet's own heading, so their ratio over a turn on the real robot measures the gait's turn scale without a protractor.
 
 | Parameter              | Value                                                                    | Source                                                                                                                         |
@@ -242,16 +244,22 @@ Calibrate it against a tape measure before relying on a distance.
 ## Goal moves
 
 A goal move walks a distance forward or sideways, or turns an angle, on the [odometry](#odometry) rather than on the link (`esp32/include/goal_controller.h`).
-The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall cannot cut the move short as the dead-man stop cuts a host-side move.
+The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall shorter than 2 s cannot cut the move short as the dead-man stop cuts a host-side move.
 From STAND or WALK the motion service switches to WALK and sets the sticks itself each control tick, through the same command the app's input sets; the app's height, cadence and step height stay in force.
 It sets them as the walk takes them: a goal to the left sets a negative `lx`, since the walk strafes right on a positive one, and a counter-clockwise turn sets a positive `rx`.
 The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
-The stick slows in proportion over the last 5 cm or 30 degrees, down to a fifth of the asked speed, and the robot walks on until it is past the target; within 1 cm or 3 degrees then it has arrived, centres the sticks and stands.
-On the Pico in the host test it settles within 1.1 mm and 0.6 degrees of the target, by its odometry.
-A turn closes on the fused heading: in MuJoCo a 90 degree goal turns the base 90.1 degrees, where the feet's heading alone stopped it at 100.0.
+The goal judges the pose the robot would come to rest in were its sticks centred now: the walk predicts the step its stop would still take (`WalkState::stopStep`), the stroke easing out through the gait's dampers and the cycle walking on until every foot is down, and the odometry's fit of the feet that stay on the floor gives it.
+The stick slows in proportion over the last 5 cm or 30 degrees, or over two stops' coasts at the asked speed when that is longer, down to a fifth of the asked speed.
+Once the resting pose reaches the target the goal centres the sticks, waits for the walk to have stood still for 0.2 s and judges where the robot stands: within 1 cm or 3 degrees of the target, and a straight goal within 2 cm of its start line, it has arrived and stands.
+Otherwise a corrective pass walks the rest, back if it overshot, or only across the line if it is on the target but off the line; after three passes it gives up.
+A straight goal also holds the heading it started on with the turn stick and its start line with the stick across it.
+On the Pico in the host test it settles within 0.1 mm and 0.2 degrees of the target, by its odometry, and a walk whose gyro drifts 0.03 rad/s holds its line where it used to curve 26 cm off a metre.
+A turn closes on the fused heading, which at rest also holds the trot's yaw rocking: in MuJoCo a 90 degree goal ends 1.7 degrees off at half and at full speed, where it used to stop 4.4 past at full speed and report it reached, and a metre at full speed ends 0.5 mm off its line, where it used to curve 45 mm off.
 
 The dead-man stop guards the app's input and leaves a goal alone.
-A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it closing its socket, or a newer goal; it gives up after twice the time it should take plus 2 s.
+A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it leaving its link or falling silent on it for 2 s, or a newer goal; a pass gives up after twice the time it should take plus 2 s, and `GoalStatus.timeout_s` is the time the passes so far took and the one under way may take.
+A link reports a client leaving when its socket closes, its Bluetooth central disconnects or its USB host stops reading, but not a USB serial port the host closed while it still polls the bus: so any frame from the client keeps its goal, and the Python client asks for the goal's status every half second while it waits.
+A WiFi stall longer than 2 s therefore cancels a goal, and the client hears so once the link is back.
 Every end but the app taking over centres the sticks.
 
 The goal is only as good as the odometry: until its distances are calibrated against a tape measure, the robot lands off by their error.

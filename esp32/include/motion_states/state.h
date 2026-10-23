@@ -99,6 +99,9 @@ class MotionState {
     }
 
   public:
+    /** How fast the body and the gait follow their targets: a step settles to 95 % in a third of a second. */
+    static constexpr float smoothingOmega() { return smoothing_omega; }
+
     // Measured on the Pico: a positive omega lowers REP-103 roll and a positive psi lowers REP-103 pitch, so the
     // offsets are the IMU's angles with their signs reversed.
     void updateImuOffsets(const ImuSample& imu) {

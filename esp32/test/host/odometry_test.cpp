@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <motion.h>
 #include <odometry.h>
+#include <peripherals/imu/imu.h>
 #include <variant.h>
 
 static int failures = 0;
@@ -249,15 +250,38 @@ static void withoutAGyroItIsTheKinematicOdometry() {
     CHECK(fused.gyroBias() == 0);
 }
 
-// A sample counts only with a gyro reading, and only while the sensor task keeps it fresh.
-static void aStaleOrMissingGyroIsNone() {
+static ImuSample gyroRead(int64_t tUs, float gyroYaw) {
     ImuSample imu;
-    imu.t_us = 1000000;
-    imu.gyro = {0.1f, 0.2f, 0.3f};
-    CHECK(!FusedOdometry::yawRate(imu, 1000000));
     imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
-    CHECK(FusedOdometry::yawRate(imu, 1000000 + FusedOdometry::GYRO_STALE_US) == 0.3f);
-    CHECK(!FusedOdometry::yawRate(imu, 1000001 + FusedOdometry::GYRO_STALE_US));
+    imu.t_us = tUs;
+    imu.gyroYaw = gyroYaw;
+    return imu;
+}
+
+// The rate is the gyro's turn between two reads over the time between them, across the wrap too. A tick that finds no
+// new read keeps the rate; one without a gyro, or with a read gone stale, has none, and so does the read after it.
+static void aTickTakesTheGyrosMeanRateSinceTheLastRead() {
+    GyroYawRate rate;
+    CHECK(!rate.update(gyroRead(1000000, 0), 1000000));
+    CHECK_NEAR(*rate.update(gyroRead(1010000, 0.003f), 1010000), 0.3, 1e-4);
+    CHECK_NEAR(*rate.update(gyroRead(1010000, 0.003f), 1020000), 0.3, 1e-4);
+    const float pi = static_cast<float>(M_PI);
+    GyroYawRate wrapping;
+    wrapping.update(gyroRead(0, pi - 0.001f), 0);
+    CHECK_NEAR(*wrapping.update(gyroRead(10000, -pi + 0.002f), 10000), 0.3, 1e-3);
+
+    ImuSample noGyro = gyroRead(1030000, 0.006f);
+    noGyro.valid = ImuValid::ACCEL;
+    CHECK(!rate.update(noGyro, 1030000));
+    CHECK(!rate.update(gyroRead(1040000, 0.009f), 1040000));
+    CHECK(rate.update(gyroRead(1050000, 0.012f), 1050000));
+    CHECK(!rate.update(gyroRead(1050000, 0.012f), 1050001 + GyroYawRate::STALE_US));
+    CHECK(!rate.update(gyroRead(1110000, 0.015f), 1110000));
+
+    GyroYawRate gap;
+    gap.update(gyroRead(0, 0), 0);
+    CHECK(!gap.update(gyroRead(GyroYawRate::STALE_US + 1, 0.1f), GyroYawRate::STALE_US + 1));
+    CHECK(gap.update(gyroRead(GyroYawRate::STALE_US + 10001, 0.103f), GyroYawRate::STALE_US + 10001));
 }
 
 // The first tick, or one with fewer than two feet down, shows no turn: the gyro alone turns it, and the bias stays.
@@ -290,14 +314,15 @@ static socket_message_ControllerData sticks(float lx, float ly, float rx) {
 // a gyro rate, the IMU sample carries it, read `sampleAgeUs` before the tick.
 static void run(MotionService &motion, const socket_message_ControllerData &input, int ticks,
                 std::optional<float> gyroRate = std::nullopt, int64_t sampleAgeUs = 0) {
+    static float gyroYaw = 0;
     for (int i = 0; i < ticks; i++) {
         motion.inbox.postInput(input, fake_timer::nowUs / 1000, fake_timer::nowUs);
         fake_timer::nowUs += 10000;
         ImuSample imu;
         if (gyroRate) {
-            imu.valid = ImuValid::ACCEL | ImuValid::GYRO;
+            gyroYaw = std::remainder(gyroYaw + *gyroRate * DT, 2.0f * static_cast<float>(M_PI));
+            imu = gyroRead(fake_timer::nowUs - sampleAgeUs, gyroYaw);
             imu.gyro = {0, 0, *gyroRate};
-            imu.t_us = fake_timer::nowUs - sampleAgeUs;
         }
         motion.update(imu, eGestureNone);
     }
@@ -437,7 +462,7 @@ static void theServiceFusesAFreshGyro() {
     CHECK_NEAR(held.yaw, 0, 0.02);
 
     motion.resetOdometry();
-    run(motion, sticks(0, 0, 1), TICKS_PER_S, 0.02f, FusedOdometry::GYRO_STALE_US + 10000);
+    run(motion, sticks(0, 0, 1), TICKS_PER_S, 0.02f, GyroYawRate::STALE_US + 10000);
     const FusedEstimate stale = motion.odometry();
     CHECK(stale.kinematicYaw > 0.75f && stale.yaw == stale.kinematicYaw);
 }
@@ -459,6 +484,63 @@ static void aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro() {
     CHECK_NEAR(feet, 2 * gyroRate, 0.05 * 2 * gyroRate);
     CHECK_NEAR(fused, 2 * gyroRate, 0.02 * 2 * gyroRate);
     CHECK_NEAR(motion.odometry().yaw, motion.odometry().kinematicYaw, 0.05 * std::fabs(motion.odometry().yaw));
+}
+
+// An IMU whose z rate ripples about `mean` with the control tick's period, as the servo targets, stepped once a tick,
+// make the body's in MuJoCo: the rate is mean + ripple at the tick and mean - ripple halfway through it.
+class RipplingGyro final : public ImuDriver {
+  public:
+    float mean = 0, ripple = 0;
+    bool begin() override { return true; }
+    bool read(RawImu &raw) override {
+        raw.accel = {0, 0, 9.81f};
+        const float phase = static_cast<float>(fake_timer::nowUs % 10000) / 10000;
+        raw.gyro = {0, 0, mean + ripple * std::cos(2 * static_cast<float>(M_PI) * phase)};
+        return true;
+    }
+    const char *name() const override { return "rippling"; }
+    uint32_t rateHz() const override { return 200; }
+};
+
+// The sensor task reads the IMU every 5 ms, and the control task takes the newest sample at the same point of each
+// tick. The heading must turn by the gyro's mean rate: the sample at the tick reads the ripple's peak every time, and
+// held for the tick it would turn the heading by the ripple as well.
+static void aYawRateRippleWithTheTickDoesNotTurnTheHeading() {
+    MotionService motion;
+    walkingPico(motion);
+    RipplingGyro gyro;
+    gyro.mean = 0.96f * STICK / 0.75f; // the turn the stroke chords give
+    gyro.ripple = 0.1f;
+    Imu imu(&gyro, nullptr);
+    imu.begin(fake_timer::nowUs);
+    ImuSample sample;
+    const auto turn = [&](int ticks) {
+        for (int i = 0; i < ticks; i++) {
+            motion.inbox.postInput(sticks(0, 0, STICK), fake_timer::nowUs / 1000, fake_timer::nowUs);
+            for (int read = 0; read < 2; read++) {
+                fake_timer::nowUs += 5000;
+                imu.update(fake_timer::nowUs, sample);
+            }
+            motion.update(sample, eGestureNone);
+        }
+    };
+    turn(TICKS_PER_S);
+    const float start = motion.odometry().yaw;
+    turn(2 * TICKS_PER_S);
+    CHECK_NEAR(std::remainder(motion.odometry().yaw - start, 2 * M_PI), 2 * gyro.mean, 0.02 * 2 * gyro.mean);
+}
+
+// Deactivated, the robot feeds the odometry no ticks while the gyro's integral runs on, as when it is carried round:
+// the first read after it stands again is too far from the last for a rate, so none of that turn lands in the heading.
+static void aTurnWhileDeactivatedIsNotFused() {
+    MotionService motion;
+    walkingPico(motion);
+    run(motion, sticks(0, 0, 0), TICKS_PER_S, 0.0f);
+    motion.inbox.postMode(socket_message_ModesEnum_DEACTIVATED);
+    run(motion, sticks(0, 0, 0), TICKS_PER_S, 1.0f);
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    run(motion, sticks(0, 0, 0), TICKS_PER_S, 0.0f);
+    CHECK_NEAR(motion.odometry().yaw, 0, 1e-3);
 }
 
 // A stand that twists or shifts the body slowly turns the feet by less than STILL_RATE, but the servos follow late, so
@@ -497,11 +579,13 @@ int main() {
     walkingAnArcFollowsTheFusedHeading();
     walkingTeachesTheBiasNothing();
     withoutAGyroItIsTheKinematicOdometry();
-    aStaleOrMissingGyroIsNone();
+    aTickTakesTheGyrosMeanRateSinceTheLastRead();
     aTurnTheFeetDidNotSeeIsTheGyros();
     theServiceFusesAFreshGyro();
     aTurnByAPositiveRxIsCounterClockwiseToTheFeetAndTheGyro();
     aMovingBodyPoseTeachesTheBiasNothing();
+    aYawRateRippleWithTheTickDoesNotTurnTheHeading();
+    aTurnWhileDeactivatedIsNotFused();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

@@ -16,7 +16,7 @@ from ...robot.firmware_gait import (DEFAULT_FEET, FIRMWARE_FEET, STAND_HEIGHT, T
                                     GaitState, gait_action, set_mode)
 from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
 from ...robot.firmware_goal import Goal, GoalController, GoalState
-from ...robot.firmware_odometry import BodyStep, FusedOdometry
+from ...robot.firmware_odometry import BodyStep, FusedOdometry, KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ...sim.recording import from_model_joints, to_model_joints
 from .. import speed_model
@@ -56,6 +56,7 @@ class SimBackend:
         self._body = BodyState()
         self._levelling = StandCompensation()
         self._odometry = FusedOdometry()
+        self._gyro_rate = 0.0
         self._goal = GoalController()
         self._mode = Mode.REST
         self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT, supply_volts)
@@ -98,15 +99,23 @@ class SimBackend:
             roll, pitch = imu_roll_pitch(self.sim.base_quat())
             omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
             apply_firmware_attitude(self._body, omega, psi)
-            # The gyro's yaw rate as the firmware reads it, from the IMU sample the physics left; MuJoCo's has no bias.
-            gyro_rate = float((MODEL_TO_REP @ self.sim.gyro())[2])
             step = self._odometry.update((self._body.feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T,
-                                         self._controller.stance(self._gait), gyro_rate=gyro_rate, dt=CONTROL_DT)
+                                         self._controller.stance(self._gait), gyro_rate=self._gyro_rate, dt=CONTROL_DT)
             if self._goal.running:
                 self._drive_goal(step, CONTROL_DT)
             self.sim.set_joint_targets(self._servo_targets(self.sim.body_targets_from_feet(self._body)))
-            self.sim.step_physics()
+            self._gyro_rate = self._step_physics()
             self._t += CONTROL_DT
+
+    # Steps the physics through one control tick and returns the gyro's mean yaw rate over it, as the firmware takes it
+    # (odometry.h GyroYawRate): the sensor task integrates every read, which the physics steps' samples stand for here.
+    # MuJoCo's gyro has no bias.
+    def _step_physics(self) -> float:
+        rates = []
+        for _ in range(self.sim.frame_skip):
+            self.sim.step_physics(1)
+            rates.append(float((MODEL_TO_REP @ self.sim.gyro())[2]))
+        return float(np.mean(rates))
 
     # As ServoController: the motion's angles become PWMs, which a raw PWM replaces until a mode applies again; the
     # telemetry's angles and PWMs stay those of the last write the motion made.
@@ -121,12 +130,21 @@ class SimBackend:
         scale = self._servo_scale or self.servos.pwm_per_degree
         return to_model_joints(np.radians(self.servos.servo_angles(pwm, scale)))
 
-    # As the firmware's MotionService: the goal's sticks for the next tick, and once reached, STAND with them centred.
+    # As the firmware's MotionService: the goal's sticks for the next tick, from where the walk's stop would leave the
+    # body, and once reached, STAND with them centred.
     def _drive_goal(self, step: BodyStep, dt: float) -> None:
-        sticks = self._goal.update(step, dt)
+        sticks = self._goal.update(step, self._stop_step(), self._controller.stands_still(self._gait), dt)
         self._sticks = speed_model.Sticks(-sticks.left, sticks.forward, sticks.turn)
         if self._goal.state is GoalState.REACHED:
             self._mode = Mode.STAND
+
+    # WalkState::stopStep: the firmware's odometry over the feet the walk's stop would leave on the floor.
+    def _stop_step(self) -> BodyStep:
+        odometry = KinematicOdometry()
+        for feet, stance in self._controller.stop_feet(self._gait):
+            odometry.update((feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T, stance)
+        rest = odometry.estimate
+        return BodyStep(rest.x, rest.y, rest.yaw)
 
     def _cancel_goal(self) -> None:
         if self._goal.running:

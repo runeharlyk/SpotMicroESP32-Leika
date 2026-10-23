@@ -3,7 +3,8 @@ keep-alive, telemetry.
 
 One thread runs an asyncio loop that owns the link; the public methods are synchronous and wait on what telemetry
 reports. While the velocity is not zero the input is re-sent every KEEPALIVE_S, inside the firmware's 500 ms dead-man.
-A goal move runs on the robot, which needs nothing from the link until it reports the end.
+A goal move runs on the robot, which needs only a status request every GOAL_POLL_S until it reports the end: a client
+silent for 2 s has gone, to the robot, and its goal with it.
 """
 import asyncio
 import math
@@ -27,7 +28,9 @@ MODE_TIMEOUT_S = 3.0
 REQUEST_TIMEOUT_S = 5.0
 SILENCE_S = 3.0  # telemetry arrives every 100 ms: this long without a frame means the link is gone
 NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
-GOAL_POLL_S = 1.0  # asks for the goal's status this long after the last word of it, in case a broadcast went astray
+# Asks for the goal's status this often while it runs: in case a broadcast went astray, and to keep the goal, which the
+# robot cancels once its client has been silent for 2 s (motion_inbox.h OWNER_SILENCE_MS).
+GOAL_POLL_S = 0.5
 GOAL_START_S = 3.0  # the control task takes a goal within a tick: this long without its status, it is lost
 GOAL_MARGIN_S = 2.0  # waited beyond the robot's own timeout for the goal's end
 
@@ -60,7 +63,6 @@ class RealBackend:
         self._recording: list[pb.TickSample] | None = None
         self._goal_status = pb.GoalStatus()
         self._goals: bool | None = None
-        self._goal_heard_at = 0.0
         self._listeners: dict[str, Callable] = {}
         self._subscribed: set[str] = set()
 
@@ -345,15 +347,16 @@ class RealBackend:
 
     def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None:
         move = pb.GoalMove(forward_m=forward, sideways_m=sideways, turn_deg=turn_deg, speed=speed)
-        goal = self.request(pb.CorrelationRequest(goal_move=move)).goal_status.id
+        try:
+            goal = self.request(pb.CorrelationRequest(goal_move=move)).goal_status.id
+        except (RobotTimeout, KeyboardInterrupt):
+            self._cancel_goal()  # the robot may have taken the goal and lost only the reply
+            raise
         try:
             status = self._await_goal(goal)
         except BaseException:
             # Ctrl-C or a lost reply: the robot would otherwise walk on with nobody watching.
-            try:
-                self.request(pb.CorrelationRequest(goal_cancel=pb.GoalCancel()))
-            except RobotError:
-                pass  # the link is gone, and the robot cancels the goal of a client that left
+            self._cancel_goal()
             raise
         if status.state == pb.GOAL_TIMED_OUT:
             raise RobotTimeout(f"the robot gave up on goal {goal} after {status.timeout_s:.1f} s, "
@@ -361,17 +364,21 @@ class RealBackend:
         if status.state != pb.GOAL_REACHED:
             raise GoalCancelled(f"the robot cancelled goal {goal} {status.progress:.3g} along ({_target(status)})")
 
+    def _cancel_goal(self) -> None:
+        try:
+            self.request(pb.CorrelationRequest(goal_cancel=pb.GoalCancel()))
+        except RobotError:
+            pass  # the link is gone, and the robot cancels the goal of a client that left or fell silent
+
     def _heard_goal(self, status: pb.GoalStatus) -> None:
         with self._changed:
             if status.id >= self._goal_status.id:
                 self._goal_status = status
-                self._goal_heard_at = time.monotonic()
                 self._changed.notify_all()
 
     # The goal's last status: its end, or that a newer goal replaced it.
     def _await_goal(self, goal: int) -> pb.GoalStatus:
-        with self._changed:
-            started = self._goal_heard_at = time.monotonic()
+        started = asked = time.monotonic()
         deadline = started + GOAL_START_S
         while True:
             with self._changed:
@@ -386,16 +393,16 @@ class RealBackend:
             now = time.monotonic()
             if now > deadline:
                 raise RobotTimeout(f"the robot never reported the end of goal {goal}")
-            if now - self._goal_heard_at >= GOAL_POLL_S:
+            if now - asked >= GOAL_POLL_S:
                 reply = self.request(pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest()))
                 self._heard_goal(reply.goal_status)
-                self._goal_heard_at = time.monotonic()
+                asked = time.monotonic()
                 continue
             with self._changed:
                 if self._goal_status is status:
                     if self._error is not None:
                         raise self._error
-                    self._changed.wait(min(GOAL_POLL_S, max(0.0, deadline - now)))
+                    self._changed.wait(max(0.0, min(asked + GOAL_POLL_S, deadline) - now))
 
     def now(self) -> float:
         return time.monotonic()

@@ -285,6 +285,11 @@ struct Client {
     int id;
 };
 
+// A clip or a pose ends with the WebSocket client that asked for it; one asked for over another link plays on.
+static LinkClient wsOwner(Client client) {
+    return client.link == &wsSocket ? LinkClient {client.link, client.id} : LinkClient {};
+}
+
 // Answers a request later from another task, on the link it came on. A client that left before the answer must not
 // get it, nor whoever holds its socket now; `fill` sets the response, and may change the status from 200.
 static std::function<void(const ReplyFiller &)> replyLater(const socket_message_CorrelationRequest &req, Client client) {
@@ -393,8 +398,15 @@ void setupEventSocket() {
     wsSocket.onClose([](int clientId) {
         FileSystemWS::fsHandler.dropClient(clientId);
         otaSession.drop(clientId);
-        motionService.inbox.dropClient(clientId);
     });
+    // A client that leaves any link ends what it owns there, and a goal's owner that falls silent loses it
+    // (MotionInbox::OWNER_SILENCE_MS).
+    for (CommAdapterBase *link : links) {
+        link->onClientGone([link](int clientId) { motionService.inbox.dropClient({link, clientId}); });
+        link->onHeard([link](int clientId) {
+            motionService.inbox.heard({link, clientId}, static_cast<uint32_t>(esp_timer_get_time() / 1000));
+        });
+    }
     for (CommAdapterBase *link : telemetryLinks)
         link->onSubscribed([link](int32_t tag, int clientId) {
             if (tag == socket_message_Message_telemetry_batch_tag) sendTelemetryHeader(*link, clientId);
@@ -660,7 +672,8 @@ void setupEventSocket() {
                  return refuse(409, "Stand up first");
              if (updating()) return refuse(409, "Updating");
              MotionService::GoalStatus accepted;
-             accepted.id = motionService.inbox.postGoal(goal, client.link == &wsSocket ? client.id : -1);
+             accepted.id = motionService.inbox.postGoal(goal, {client.link, client.id},
+                                                        static_cast<uint32_t>(esp_timer_get_time() / 1000));
              accepted.state = GoalState::RUNNING;
              accepted.goal = goal;
              res.status_code = 202;
@@ -792,7 +805,7 @@ void setupEventSocket() {
              if (motionService.mode() == socket_message_ModesEnum_DEACTIVATED) return refuse(409, "Stand up first");
              for (pb_size_t i = 0; i < play.params_count && i < anim::PARAM_MAX; i++)
                  request.params[request.paramCount++] = {static_cast<int>(play.params[i].id), play.params[i].value};
-             motionService.inbox.postPlay(request, client.link == &wsSocket ? client.id : -1);
+             motionService.inbox.postPlay(request, wsOwner(client));
          }},
 
         {socket_message_CorrelationRequest_animation_stop_tag,
@@ -814,7 +827,7 @@ void setupEventSocket() {
              if (mode == socket_message_ModesEnum_ANIMATE &&
                  motionService.animationStatus().state != anim::State::IDLE)
                  return refuse(409, "A clip is playing");
-             motionService.inbox.postPose(pose, client.link == &wsSocket ? client.id : -1);
+             motionService.inbox.postPose(pose, wsOwner(client));
          }},
         {socket_message_CorrelationRequest_core_dump_request_tag,
          [](const auto &req, auto &res, Client client) {

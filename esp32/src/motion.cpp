@@ -102,8 +102,11 @@ void MotionService::startGoal(const Goal& next, uint32_t id) {
     recordGoalStatus();
 }
 
+static_assert(GoalController::STOP_S == 2 / MotionState::smoothingOmega(), "a goal sizes its slowdown on the stop");
+
+// The goal judges the pose the walk's stop would leave the body in, and the pose it stands in once the walk is still.
 void MotionService::driveGoal(const BodyStep& step, float dt) {
-    const GoalSticks sticks = goal.update(step, dt);
+    const GoalSticks sticks = goal.update(step, walkState.stopStep(body_state), walkState.standsStill(), dt);
     if (goal.running()) {
         // As the walk takes the sticks (speed_model.py): ly forward, lx to the right, rx counter-clockwise.
         command.lx = -sticks.left;
@@ -306,7 +309,7 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
         const std::array<bool, 4> stance =
             state == &walkState ? walkState.stance() : std::array<bool, 4> {true, true, true, true};
         std::lock_guard<std::mutex> lock(odometryMutex);
-        step = fusedOdometry.update(body_state, stance, FusedOdometry::yawRate(imu, now), dt);
+        step = fusedOdometry.update(body_state, stance, gyroYawRate.update(imu, now), dt);
     }
     if (state == &animateState) {
         std::copy(animateState.angles(), animateState.angles() + 12, new_angles);

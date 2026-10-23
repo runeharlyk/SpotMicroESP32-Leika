@@ -21,7 +21,7 @@ Each leg's 3 joints are (hip/abduction, femur, tibia).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 
 import numpy as np
@@ -205,6 +205,10 @@ SMOOTHING_OMEGA = 4.744 / 0.333
 MAX_JOINT_SPEED_DEG_S = speed_model.MAX_JOINT_SPEED_DEG_S
 SLOWDOWN_PARTS = 64
 
+# walk_state.h's prediction of a stop: the period it steps the stop ahead at, and the longest stop it follows.
+STOP_PREDICTION_DT_S = 0.02
+STOP_PREDICTION_STEPS = 100
+
 
 def _bezier_samples(points: np.ndarray, samples: int) -> np.ndarray:
     phases = np.linspace(0.0, 1.0, samples + 1)[:, None]
@@ -335,6 +339,15 @@ def _reach_bound(gait) -> tuple[float, float]:
     return scale, step_height
 
 
+def _ease(gait, dt):
+    """The stroke one step of dt along its critical damper towards its target (state.h follow)."""
+    offset = np.array([gait.step_x, gait.step_z, gait.step_angle]) - gait.target
+    drive = gait.smoothing + SMOOTHING_OMEGA * offset
+    decay = math.exp(-SMOOTHING_OMEGA * dt)
+    gait.smoothing = (gait.smoothing - SMOOTHING_OMEGA * drive * dt) * decay
+    gait.step_x, gait.step_z, gait.step_angle = (gait.target + (offset + drive * dt) * decay).tolist()
+
+
 def _stroke(gait, radius):
     """Rigid-body velocity field at a foot's firmware stance position, as (amplitude, stride heading).
 
@@ -362,7 +375,53 @@ class GaitController:
 
     def stance(self, gait: GaitState) -> np.ndarray:
         """Which feet are in stance at the current phase, so on the floor (WalkState::stance)."""
-        return np.fmod(self.phase + gait.offset, 1.0) <= gait.stand_frac
+        return self._stance_at(self.phase, gait)
+
+    def stands_still(self, gait: GaitState) -> bool:
+        """WalkState::standsStill: no stroke, and every foot down; the walk holds its phase from then on."""
+        return not _moving(gait) and bool(self._stance_at(self.phase, gait).all())
+
+    def stop_feet(self, gait: GaitState) -> list[tuple[np.ndarray, np.ndarray]]:
+        """WalkState::stopStep's feet: the base-frame feet and the stance at each STOP_PREDICTION_DT_S step of a stop
+        from now, this one first, until the walk would stand still. The stroke eases out along its damper and the cycle
+        walks on as _advance takes them; a planted foot sits where its stroke puts it, the reach capping the stroke at
+        the length it allows now, and the others at home, which counts nothing, being off the floor."""
+        gait = replace(gait, target=np.zeros(3), smoothing=gait.smoothing.copy())
+        phase = self.phase
+
+        def longest():
+            return max(math.hypot(*_stroke_vector(gait, radius)) for radius in self.firmware_feet)
+
+        def walking():
+            return _moving(gait) or not self._stance_at(phase, gait).all()
+
+        reach = _reach_bound(gait)[0] * longest()
+
+        def planted():
+            down = self._stance_at(phase, gait)
+            stroke = longest()
+            scale = reach / stroke if stroke > reach else 1.0
+            feet = self.default_position.copy()
+            for leg in np.flatnonzero(down):
+                along = scale * (0.5 - math.fmod(phase + gait.offset[leg], 1.0) / gait.stand_frac)
+                stroke_x, stroke_y = _stroke_vector(gait, self.firmware_feet[leg])
+                feet[leg, :2] += along * np.array([stroke_x, stroke_y])
+            return feet, down
+
+        samples = [planted()]
+        for _ in range(STOP_PREDICTION_STEPS):
+            if not walking():
+                break
+            _ease(gait, STOP_PREDICTION_DT_S)
+            if walking():
+                velocity = max(gait.step_velocity, 0.5)
+                phase = math.fmod(phase + STOP_PREDICTION_DT_S * velocity * gait.speed_factor, 1.0)
+            samples.append(planted())
+        return samples
+
+    @staticmethod
+    def _stance_at(phase: float, gait: GaitState) -> np.ndarray:
+        return np.fmod(phase + gait.offset, 1.0) <= gait.stand_frac
 
     def step(self, gait: GaitState, dt: float) -> None:
         """WalkState::step up to the feet: the stroke follows the command, then the phase advances, both by dt or by
@@ -390,11 +449,7 @@ class GaitController:
         followable(fast_enough if fast_enough > 0 else SLOWDOWN_PARTS)
 
     def _advance(self, gait: GaitState, dt: float) -> None:
-        offset = np.array([gait.step_x, gait.step_z, gait.step_angle]) - gait.target
-        drive = gait.smoothing + SMOOTHING_OMEGA * offset
-        decay = math.exp(-SMOOTHING_OMEGA * dt)
-        gait.smoothing = (gait.smoothing - SMOOTHING_OMEGA * drive * dt) * decay
-        gait.step_x, gait.step_z, gait.step_angle = (gait.target + (offset + drive * dt) * decay).tolist()
+        _ease(gait, dt)
         # walk_state.h: a stopped walk holds its phase once every foot is down; a foot in the air lands first.
         if not _moving(gait) and not any(self._swinging(gait, i) for i in range(4)):
             return

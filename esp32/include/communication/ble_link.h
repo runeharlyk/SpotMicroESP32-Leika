@@ -25,7 +25,7 @@ class BleLink : public CommAdapterBase {
 
     void onDisconnected() {
         connected_ = false;
-        removeClient(0);
+        clientGone(0);
     }
 
     /** One chunk the central wrote; on one task only, the one that also calls resetReceiver. */

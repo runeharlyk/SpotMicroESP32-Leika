@@ -1,6 +1,7 @@
 #pragma once
 
 #include <motion_states/state.h>
+#include <odometry.h>
 #include <peripherals/servo_output.h>
 #include <utils/math_utils.h>
 #include <algorithm>
@@ -229,10 +230,63 @@ class WalkState : public MotionState {
     float swingHeight() const { return swing_height; }
 
     /** Which feet are in stance at the current phase, so on the floor. */
-    std::array<bool, 4> stance() const {
-        std::array<bool, 4> feet;
-        for (int i = 0; i < 4; ++i) feet[i] = std::fmod(phase_time + phase_offset[i], 1.0f) <= stand_offset;
-        return feet;
+    std::array<bool, 4> stance() const { return stanceAt(phase_time); }
+
+    /** Whether the walk stands still: no stroke, and every foot down. It holds its phase from then on. */
+    bool standsStill() const { return !moving(gait_state) && !swinging(phase_time); }
+
+    // The period the stop is stepped ahead at, and the longest stop it follows: the host test's trots stop in 0.9 s.
+    static constexpr float STOP_PREDICTION_DT_S = 0.02f;
+    static constexpr int STOP_PREDICTION_STEPS = 100;
+
+    /**
+     * The step the body would still take, in the frame it faces now, were the sticks centred now: the stroke eases out
+     * through the gait's dampers and the cycle walks on until the walk stands still, as advance() would take them,
+     * stepped ahead every STOP_PREDICTION_DT_S, and the odometry's fit of the feet on the floor gives the body's
+     * motion. A planted foot slides home with the stroke as it eases out, and carries the body back with it; one that
+     * lifts before the walk stands steps on. The stroke keeps within the length the legs' reach allows it now, as
+     * boundToReach() keeps one that eases out the way it points; the body's own shift, the crawl's sway, is left out.
+     */
+    BodyStep stopStep(const body_state_t &body) const {
+        GaitDampers dampers = gait_dampers;
+        gait_state_t gait = gait_state;
+        float phase = phase_time;
+        body_state_t feet = body;
+        const auto longest = [&] {
+            float stroke = 0;
+            for (int leg = 0; leg < 4; leg++) {
+                const auto [stroke_x, stroke_z] = strokeOf(gait, leg);
+                stroke = std::max(stroke, std::hypot(stroke_x, stroke_z));
+            }
+            return stroke;
+        };
+        const float reach = reach_scale * longest();
+        const auto planted = [&] {
+            const std::array<bool, 4> down = stanceAt(phase);
+            const float stroke = longest(), scale = stroke > reach ? reach / stroke : 1;
+            for (int leg = 0; leg < 4; leg++) {
+                if (!down[leg]) continue;
+                const auto [stroke_x, stroke_z] = strokeOf(gait, leg);
+                const float along = scale * (0.5f - std::fmod(phase + phase_offset[leg], 1.0f) / stand_offset);
+                feet.feet[leg][0] = kin->default_feet_positions[leg][0] + along * stroke_x;
+                feet.feet[leg][1] = kin->default_feet_positions[leg][1];
+                feet.feet[leg][2] = kin->default_feet_positions[leg][2] + along * stroke_z;
+            }
+            return down;
+        };
+        KinematicOdometry odometry;
+        odometry.update(feet, planted());
+        const float dt = STOP_PREDICTION_DT_S;
+        for (int i = 0; i < STOP_PREDICTION_STEPS && (moving(gait) || swinging(phase)); i++) {
+            gait.step_x = dampers.step_x.step(gait.step_x, 0, dt, smoothing_omega);
+            gait.step_z = dampers.step_z.step(gait.step_z, 0, dt, smoothing_omega);
+            gait.step_angle = dampers.step_angle.step(gait.step_angle, 0, dt, smoothing_omega);
+            if (moving(gait) || swinging(phase))
+                phase = std::fmod(phase + dt * std::max(gait.step_velocity, 0.5f) * speed_factor, 1.0f);
+            odometry.update(feet, planted());
+        }
+        const OdometryEstimate &rest = odometry.estimate();
+        return {rest.x, rest.y, rest.yaw};
     }
 
     /**
@@ -351,10 +405,21 @@ class WalkState : public MotionState {
 
     // A foot's stroke: the rigid-body velocity field at its stance position, the commanded translation plus the
     // rotational contribution omega x r about the body centre.
-    std::array<float, 2> strokeOf(const int index) const {
+    std::array<float, 2> strokeOf(const gait_state_t &gait, const int index) const {
         const float rx = kin->default_feet_positions[index][0];
         const float rz = kin->default_feet_positions[index][2];
-        return {gait_state.step_x + gait_state.step_angle * -rz, gait_state.step_z + gait_state.step_angle * rx};
+        return {gait.step_x + gait.step_angle * -rz, gait.step_z + gait.step_angle * rx};
+    }
+
+    std::array<bool, 4> stanceAt(float phase) const {
+        std::array<bool, 4> feet;
+        for (int i = 0; i < 4; ++i) feet[i] = std::fmod(phase + phase_offset[i], 1.0f) <= stand_offset;
+        return feet;
+    }
+
+    bool swinging(float phase) const {
+        const std::array<bool, 4> down = stanceAt(phase);
+        return !std::all_of(down.begin(), down.end(), [](bool foot) { return foot; });
     }
 
     /**
@@ -382,7 +447,7 @@ class WalkState : public MotionState {
         float half[4], outward[4];
         reach_scale = coxa < room && least_offset <= coxa ? 1 : 0;
         for (int leg = 0; leg < 4; leg++) {
-            const auto [stroke_x, stroke_z] = strokeOf(leg);
+            const auto [stroke_x, stroke_z] = strokeOf(gait_state, leg);
             const float stroke = std::hypot(stroke_x, stroke_z);
             const float side = kin->default_feet_positions[leg][2] > 0 ? 1 : -1;
             half[leg] = stroke / 2;
@@ -421,11 +486,9 @@ class WalkState : public MotionState {
 
     static inline bool isZero(float num) { return std::fabs(num) < 0.001; }
 
-    bool moving() const {
-        return !isZero(gait_state.step_x) || !isZero(gait_state.step_z) || !isZero(gait_state.step_angle);
+    static bool moving(const gait_state_t &gait) {
+        return !isZero(gait.step_x) || !isZero(gait.step_z) || !isZero(gait.step_angle);
     }
-
-    bool standsStill() { return !moving() && getLegStates().swing_count == 0; }
 
     void takeRequestedGait() {
         if (*requested_gait == WALK_GAIT::CRAWL)
@@ -477,7 +540,7 @@ class WalkState : public MotionState {
     // A stopped walk holds its phase once every foot is down; a foot still in the air lands along the rest of its
     // swing first, where resetting the phase dropped it from its full height in one tick.
     void updatePhase(float dt) {
-        if (!moving() && getLegStates().swing_count == 0) return;
+        if (standsStill()) return;
         const float velocity = std::max(gait_state.step_velocity, 0.5f);
         phase_time = std::fmod(phase_time + dt * velocity * speed_factor, 1.0f);
     }
@@ -543,7 +606,7 @@ class WalkState : public MotionState {
     }
 
     void shiftTowardsSupport(body_state_t &body_state) {
-        if (!moving()) return;
+        if (!moving(gait_state)) return;
 
         LegStates leg_states = getLegStates();
 
@@ -604,7 +667,7 @@ class WalkState : public MotionState {
 
         // Composing the translation and the rotation into one stroke means a single curve, so the swing/stance profile
         // is applied once.
-        const auto [stroke_x, stroke_z] = strokeOf(index);
+        const auto [stroke_x, stroke_z] = strokeOf(gait_state, index);
         const float stroke = reach_scale * std::hypot(stroke_x, stroke_z);
 
         curve(stroke * 0.5f, std::atan2(stroke_z, stroke_x), arg, phase, delta);

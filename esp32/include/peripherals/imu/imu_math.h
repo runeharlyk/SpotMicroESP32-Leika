@@ -24,6 +24,7 @@ struct ImuSample {
     int64_t t_us = 0;
     Vec3 accel {};          // m/s^2, specific force: +9.81 on z when level and still
     Vec3 gyro {};           // rad/s
+    float gyroYaw = 0;      // rad: the gyro's z rate integrated over every read since the IMU started, in [-pi, pi]
     Vec3 mag {};            // microtesla
     int64_t mag_t_us = 0;
     Vec3 gravity {0, 0, -1};

@@ -144,6 +144,8 @@ class Imu {
 
         const float dt = _lastUs ? std::min((nowUs - _lastUs) * 1e-6f, MAX_DT_S) : 0;
         _lastUs = nowUs;
+        _gyroYaw = std::remainder(_gyroYaw + sample.gyro[2] * dt, 2.0f * static_cast<float>(M_PI));
+        sample.gyroYaw = _gyroYaw;
         if (raw.hasOrientation) {
             sample.quat = quatMul(raw.quat, quatConj(quatFromMatrix(_config.mounting)));
         } else {
@@ -182,6 +184,7 @@ class Imu {
     int64_t _startUs = 0;
     int64_t _lastUs = 0;
     int64_t _dueUs = 0;
+    float _gyroYaw = 0;
     bool _magValid = false;
     Vec3 _magBody {};
     int64_t _magUs = 0;

@@ -121,9 +121,11 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
 - `odometry` reads the robot's dead reckoning since the last `reset_odometry` or deactivation (metres, yaw in degrees), and `reset_odometry` starts it afresh.
   It counts the steps the gait commanded: the simulation covers about 7 to 11 % more than it reports (`tests/test_odometry.py`), and the real robot's servos shorten its steps, so calibrate it against a tape measure.
   Its `yaw` fuses the gyro and turns within 1 % of the simulated base; `kinematic_yaw` is the feet's alone, 9 % short in a turn.
-- `goal_move` has the robot walk a distance or turn an angle itself, on its odometry, and returns once it reports the target reached (`GoalCancelled` or `RobotTimeout` otherwise); a WiFi stall cannot cut it short.
+- `goal_move` has the robot walk a distance or turn an angle itself, on its odometry, and returns once it reports the target reached (`GoalCancelled` or `RobotTimeout` otherwise); a WiFi stall shorter than 2 s cannot cut it short, and a longer one cancels it.
   `move_forward` and `move_sideways` are goal moves on a robot that takes them, and `rotate` turns by a goal and then closes the rest on the measured yaw.
-  The simulation runs the firmware's goal controller on its odometry, so it lands where the robot would by that odometry: about 8 % long on a distance, and within 1 degree on a 90 degree turn by MuJoCo's base (`tests/test_goal_moves.py`).
+  A goal turn turns from the odometry heading the goals so far meant, not the one a walk drifted to, so a square's corners do not add up the walks' drift; a velocity walk, a deactivation or a goal that did not end forgets that heading, and `reset_odometry` makes it the one the robot faces.
+  Any exception before a goal is known to have ended, a lost reply and Ctrl-C included, cancels it.
+  The simulation runs the firmware's goal controller on its odometry, so it lands where the robot would by that odometry: about 5 % long on a distance by MuJoCo's base, and within the goal's 3 degrees on a turn, 1.7 past on 90 (`tests/test_goal_moves.py`).
 - Leaving the `with` block, on an exception or Ctrl-C included, stops the robot and lets it rest.
   A robot the user deactivated stays deactivated, and the robot never deactivates on its own.
 - The real robot is driven over its WebSocket (`ws://<host>/api/ws`).

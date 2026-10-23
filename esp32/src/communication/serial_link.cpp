@@ -115,7 +115,7 @@ bool SerialLink::write(Port port, const uint8_t *data, size_t len, TickType_t wa
 }
 
 void SerialLink::dropUsbClient(const char *reason) {
-    removeClient(USB);
+    clientGone(USB);
     _stalls.forget(USB);
     ESP_LOGI(TAG, "Dropped the USB client's subscriptions: %s", reason);
 }
