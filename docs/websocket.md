@@ -198,6 +198,11 @@ const response = await socket.request({ imuCalibrateExecute: {} });
 const result = response.imuCalibrateData;
 ```
 
+While no link is up, what becomes of a request depends on its kind (`app/src/lib/transport/request-kinds.ts`).
+An action, one that moves the robot or ends something under way, fails at once, since the robot may be elsewhere by the time a link comes.
+A settings write waits 3 s for a link, so a blip goes unnoticed, and then fails as not saved.
+A read waits for a link until its timeout, 30 s counted from the call.
+
 Subscribe to a message and stop listening:
 
 ```typescript

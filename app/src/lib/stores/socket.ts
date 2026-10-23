@@ -15,6 +15,7 @@ import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
 import { BLE_RECONNECT_ATTEMPTS, createBleTransport } from '$lib/transport/ble-adapter'
 import { createSerialTransport } from '$lib/transport/serial-adapter'
 import { LatestFrames } from '$lib/transport/latest-frames'
+import { SETTING_GRACE_MS, kindOfRequest } from '$lib/transport/request-kinds'
 
 // The messages only the newest of which counts: a stick frame waiting behind a slow write is replaced by the next.
 const MOTION_FRAMES: ReadonlySet<MessageFns<unknown>> = new Set([Messages.ControllerData])
@@ -102,7 +103,13 @@ export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
     return encoded
 }
 
-export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
+/** What a request that cannot reach the robot fails with. */
+export const NOT_CONNECTED = 'The robot is not connected'
+
+export function createWebSocket({
+    requestTimeoutTime = 30000,
+    settingGraceTime = SETTING_GRACE_MS
+} = {}) {
     // Listeners also get the frame as it arrived, for a recorder that keeps the robot's bytes.
     const message_listeners = new Map<number, Set<(data: unknown, frame: ArrayBuffer) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
@@ -114,6 +121,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
             resolve: (r: CorrelationResponse) => void
             reject: (e: Error) => void
             timeoutId: ReturnType<typeof setTimeout>
+            deadline: number
         }
     >()
     const { subscribe, set } = writable(false)
@@ -394,13 +402,14 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     function request(
         data: CorrelationRequestData,
         resolve: (r: CorrelationResponse) => void,
-        reject: (e: Error) => void
+        reject: (e: Error) => void,
+        timeout = requestTimeoutTime
     ) {
         const correlationId = ++correlationIdCounter
         const timeoutId = setTimeout(() => {
             pending_requests.delete(correlationId)
             reject(new Error(`Request timeout (id: ${correlationId})`))
-        }, requestTimeoutTime)
+        }, timeout)
 
         pending_requests.set(correlationId, { resolve, reject, timeoutId })
 
@@ -408,10 +417,11 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         send(Message.create({ correlationRequest: request }))
     }
 
+    // A request held for a link keeps the timeout it got when it was made.
     function flushQueuedRequests() {
-        for (const [, { data, resolve, reject, timeoutId }] of queued_requests) {
+        for (const [, { data, resolve, reject, timeoutId, deadline }] of queued_requests) {
             clearTimeout(timeoutId)
-            request(data, resolve, reject)
+            request(data, resolve, reject, deadline - Date.now())
         }
         queued_requests.clear()
     }
@@ -457,11 +467,14 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                 if (isOpen()) {
                     request(data, ownResolve, ownReject)
                 } else {
+                    // While no link is up, the request's kind decides (transport/request-kinds.ts).
+                    const kind = kindOfRequest(data)
+                    if (kind === 'action') return ownReject(new Error(NOT_CONNECTED))
                     const key = getRequestKey(data)
                     let resolve: (response: CorrelationResponse) => void = ownResolve
                     let reject: (error: Error) => void = ownReject
-                    // Only the newest request of a kind is sent; an older caller waiting for the
-                    // same kind of answer settles with it.
+                    // Only the newest of the same request is sent; an older caller waiting for the
+                    // same answer settles with it.
                     const existing = queued_requests.get(key)
                     if (existing) {
                         clearTimeout(existing.timeoutId)
@@ -475,12 +488,24 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                         }
                     }
                     // A queued request must expire too, or a request issued while disconnected
-                    // never settles and its caller waits forever.
-                    const timeoutId = setTimeout(() => {
-                        queued_requests.delete(key)
-                        reject(new Error(`Request timeout while disconnected (${key})`))
-                    }, requestTimeoutTime)
-                    queued_requests.set(key, { data, resolve, reject, timeoutId })
+                    // never settles and its caller waits forever. A settings write waits out a
+                    // link blip only, and then fails as not saved.
+                    const setting = kind === 'setting'
+                    const timeoutId = setTimeout(
+                        () => {
+                            queued_requests.delete(key)
+                            reject(
+                                new Error(
+                                    setting ? NOT_CONNECTED : (
+                                        `Request timeout while disconnected (${key})`
+                                    )
+                                )
+                            )
+                        },
+                        setting ? settingGraceTime : requestTimeoutTime
+                    )
+                    const deadline = Date.now() + requestTimeoutTime
+                    queued_requests.set(key, { data, resolve, reject, timeoutId, deadline })
                 }
             })
         }
