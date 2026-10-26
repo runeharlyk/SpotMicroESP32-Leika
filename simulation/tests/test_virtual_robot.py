@@ -12,6 +12,7 @@ from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import api_pb2
 from src.proto import message_pb2 as pb
+from src.sim import recording
 
 
 @pytest.fixture
@@ -110,3 +111,18 @@ def test_only_the_robot_socket_is_served(served):
 
     with pytest.raises(websockets.InvalidStatus):
         asyncio.run(connect("/ws"))
+
+
+def test_a_recording_holds_the_firmwares_header_and_every_tick_of_its_block(robot, tmp_path):
+    path = tmp_path / "stand.leika"
+    with robot.recording(path):
+        robot.sleep(0.3)
+        robot.stand()
+        robot.sleep(1.0)
+    rec = recording.load(path)
+    header = rec.header
+    assert (header.variant, header.firmware_version) == ("SPOTMICRO_ESP32", robot.features().firmware_version)
+    assert header.batch_ticks == 10 and len(header.servo_settings.servos) == 12
+    assert len(rec.ticks["seq"]) >= 50 and rec.missing_ticks == 0
+    modes = rec.ticks["mode"]
+    assert modes[0] == Mode.DEACTIVATED.value and modes[-1] == Mode.STAND.value

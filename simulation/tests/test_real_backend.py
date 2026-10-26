@@ -6,6 +6,7 @@ import math
 import re
 import time
 
+import numpy as np
 import pytest
 
 from fake_robot import FakeRobot
@@ -18,6 +19,7 @@ from src.leika import speed_model
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
 from src.proto import message_pb2 as pb
+from src.sim import recording
 
 
 # A send returns once the client sent it; the fake robot records it a moment later on its own thread.
@@ -234,6 +236,42 @@ def test_closing_ends_the_telemetry_subscription(robot, fake):
     _eventually(lambda: "unsub_notif" in fake.kinds())
     unsubscribed = [message.unsub_notif.tag for _, message in fake.received if message.HasField("unsub_notif")]
     assert unsubscribed == [pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number]
+
+
+# A recording holds what record.py's does over its block alone, and asks the robot for the header afresh, as the
+# robot's settings may have changed since the client connected.
+def test_a_recording_holds_the_header_the_ticks_the_network_and_the_goals_of_its_block(robot, fake, tmp_path):
+    path = tmp_path / "run.leika"
+    robot.sleep(0.3)
+    with robot.recording(path):
+        robot.stand()
+        robot.goal_move(forward=0.2)
+        robot.sleep(0.3)
+        last = robot.state().t
+    size = path.stat().st_size
+    robot.sleep(0.3)
+    assert path.stat().st_size == size
+
+    rec = recording.load(path)
+    assert (rec.header.firmware_version, rec.header.variant) == ("fake", fake.variant)
+    assert len(rec.ticks["t_us"]) >= 5 and rec.ticks["t_us"][-1] == round(last * 1e6)
+    assert np.all(np.diff(rec.batch_rx_us) > 0) and rec.ticks["mode"][-1] == pb.STAND
+    assert len(rec.network["rssi"]) >= 3
+    assert rec.goals["state"][-1] == pb.GOAL_REACHED
+    network = pb.Message.DESCRIPTOR.fields_by_name["telemetry_network"].number
+    _eventually(lambda: network not in fake.subscribed)
+    assert pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number in fake.subscribed
+
+
+def test_the_servo_calls_reach_the_robot(robot, fake):
+    robot.set_servo_pwm(-1, 306)
+    _eventually(lambda: "servo_pwm" in fake.kinds())
+    sent = [message.servo_pwm for _, message in fake.received if message.HasField("servo_pwm")]
+    assert [(m.servo_id, m.servo_pwm) for m in sent] == [(-1, 306)]
+    assert robot.features().variant == fake.variant
+    assert robot.servo_settings().channels == tuple(range(12))
+    angles, pwm = robot.servo_output()
+    assert angles == pytest.approx([math.degrees(0.5)] * 12)
 
 
 # Opening a port asserts DTR and RTS unless they were cleared first, and an ESP32 resets on that.

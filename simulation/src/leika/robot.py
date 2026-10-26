@@ -7,9 +7,16 @@ block, on an exception or Ctrl-C included, stops the robot and lets it rest; it 
 A goal turn turns from the heading the goals so far meant to leave the robot at, not the one a walk drifted to, so a
 square of goal moves closes on the robot's own heading.
 """
+from contextlib import contextmanager
+
+import numpy as np
+
+from ..proto import message_pb2 as pb
+from ..sim.recording import RecordingWriter
 from . import motions
 from .backends.base import ZERO, Backend, Calibration, Odometry, RobotError, RobotState, Velocity
 from .constants import Gait, Mode
+from .joint_scale import ServoSetup
 
 # The modes a script may walk from. DEACTIVATED is the app's stop button, IDLE and CALIBRATION are the user's: walking
 # would wake the servos the user turned off.
@@ -96,6 +103,40 @@ class Robot:
 
     def max_velocity(self) -> Velocity:
         return self._backend.max_velocity()
+
+    def features(self) -> pb.FeaturesDataResponse:
+        """What the robot reported about itself on connecting: its variant and firmware version among them."""
+        return self._backend.features
+
+    def servo_settings(self) -> ServoSetup:
+        """The robot's servo calibration and its variant's joint model."""
+        return self._backend.servo_settings()
+
+    def servo_output(self) -> tuple[np.ndarray, np.ndarray]:
+        """The last write's joint angles (degrees, servo space) and PWMs, in joint order. A raw PWM stops the writes,
+        so these stay what they were before it until a mode applies again."""
+        return self._backend.servo_output()
+
+    def set_servo_pwm(self, channel: int, pwm: int) -> None:
+        """One PCA9685 channel, or every joint's for -1, to a raw PWM, which the robot holds within the servos' range
+        (125-600) and nothing else: no joint's travel bounds it. The servos then leave the motion, every other one
+        holding its last PWM, until a mode applies again (stand() or rest())."""
+        self._backend.set_servo_pwm(channel, pwm)
+
+    @contextmanager
+    def recording(self, path):
+        """Writes the robot's telemetry to the .leika file `path` while the block runs, as record.py does
+        (src/sim/recording.py): the header, every tick, the network samples and the goal statuses. The file is complete
+        up to the last frame also when the block raises."""
+        writer = RecordingWriter(path)
+        try:
+            self._backend.stream_telemetry(writer.write)
+            yield
+        finally:
+            try:
+                self._backend.stream_telemetry(None)
+            finally:
+                writer.close()
 
     def odometry(self) -> Odometry:
         """Where the robot's own dead reckoning puts it since the last reset or deactivation."""
