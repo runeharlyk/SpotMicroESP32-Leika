@@ -46,11 +46,12 @@ export const driveGait = (next: WalkGaits) =>
 /**
  * Hands the controls to the simulation view's robot, or back to the real one. Both robots and the controls' own sticks
  * are centred on the way, so neither robot is left with a stick meant for the other, and the real robot is stopped
- * when the simulation takes over.
+ * when the simulation takes over. Each robot keeps its own sliders, which the controls then show, so the next stick
+ * sends neither robot the other's.
  */
 export const driveSimulation = (on: boolean) => {
-    input.update(stopped)
     outControllerData.update(stopped)
     simulation.input.update(stopped)
+    input.set(structuredClone(get(on ? simulation.input : outControllerData)))
     drivesSimulation.set(on)
 }

@@ -92,6 +92,32 @@ describe('the controls', () => {
         expect(sticks(get(simulation.input))).toEqual(CENTRED_STICKS)
     })
 
+    it("show each robot's own sliders, so neither takes the other's on its next stick", () => {
+        const robotSliders = { height: 0.3, speed: 0.8, s1: 0.2 }
+        const simSliders = { height: 0.9, speed: 0.1, s1: 0.6 }
+        const sliders = () => {
+            const { height, speed, s1 } = get(input)
+            return { height, speed, s1 }
+        }
+        input.update(i => ({ ...i, ...robotSliders }))
+        drive(get(input))
+
+        driveSimulation(true)
+        const { height, speed, s1 } = startingInput()
+        expect(sliders()).toEqual({ height, speed, s1 })
+        input.update(i => ({ ...i, ...simSliders }))
+        drive(get(input))
+
+        driveSimulation(false)
+        expect(sliders()).toEqual(robotSliders)
+        input.update(i => ({ ...i, left: { x: 0.5, y: 0 } }))
+        drive(get(input))
+        expect(get(outControllerData)).toMatchObject({ ...robotSliders, left: { x: 0.5, y: 0 } })
+
+        driveSimulation(true)
+        expect(sliders()).toEqual(simSliders)
+    })
+
     it('send a copy, so a later change of the controls reaches no robot until driven', () => {
         input.set(structuredClone(DEFLECTED))
         drive(get(input))
