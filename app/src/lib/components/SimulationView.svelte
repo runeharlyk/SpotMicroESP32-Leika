@@ -4,7 +4,8 @@
     import { Group, Mesh, Vector3 } from 'three'
     import type { URDFRobot } from 'urdf-loader'
     import SceneBuilder from '$lib/sceneBuilder'
-    import { input, mode, reportedVariant, variants, walkGait } from '$lib/stores'
+    import { reportedVariant, variants } from '$lib/stores'
+    import { simulation } from '$lib/stores/drive'
     import { persistentStore } from '$lib/utilities'
     import { cacheModelFiles, loadModel } from '$lib/utilities/model-utilities'
     import { loadSimulation } from '$lib/simulation/load'
@@ -109,9 +110,9 @@
         if (!sim || !robot) return
         const now = performance.now()
         sim.setControls({
-            input: get(input),
-            mode: get(mode).mode,
-            gait: get(walkGait).gait,
+            input: get(simulation.input),
+            mode: get(simulation.mode),
+            gait: get(simulation.gait),
             imu: IMU_ANGLES
         })
         sim.step((now - lastFrame) / 1000)

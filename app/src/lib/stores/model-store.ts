@@ -18,7 +18,8 @@ export const walkGait: Writable<WalkGaitData> = writable(
 
 export const kinematicData = writable(KinematicData.create())
 
-export const input: Writable<ControllerData> = writable(
+/** Centred sticks with the sliders where the app starts them. */
+export const startingInput = () =>
     ControllerData.create({
         left: { x: 0, y: 0 },
         right: { x: 0, y: 0 },
@@ -26,7 +27,12 @@ export const input: Writable<ControllerData> = writable(
         s1: 0.5,
         speed: 0.5
     })
-)
+
+/** The controls as they stand: the sticks and sliders shown, for the robot they drive (stores/drive.ts). */
+export const input: Writable<ControllerData> = writable(startingInput())
+
+/** The sticks and sliders the robot is sent. */
+export const outControllerData: Writable<ControllerData> = writable(startingInput())
 
 function enumToValuesAndLabels<T extends number>(enumObj: Record<string, T | string>) {
     const entries = Object.entries(enumObj).filter(

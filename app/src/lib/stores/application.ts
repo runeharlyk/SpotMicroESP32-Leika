@@ -60,7 +60,7 @@ const defaultViews: View[] = [
         }
     },
     {
-        // The robot's reported pose beside the simulation, both driven by the same sticks: how far apart they move.
+        // The robot's reported pose beside the simulation, which the controls then drive alone (stores/drive.ts).
         name: 'Robot and simulation',
         content: {
             id: 'root',
