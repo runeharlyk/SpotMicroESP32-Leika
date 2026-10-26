@@ -86,7 +86,7 @@ The robot must stand (STAND) still on a flat, level floor; the script refuses ot
 It checks the floor through the joints: the stand's IMU levelling holds the body level on a slope, so the IMU alone cannot see one, but the tilt the legs hold the body at against the floor can.
 It then writes both left hips raw PWMs (`ServoPWMData`), one count every 40 ms, in steps of 6, 12 and 18 counts either way with a return to the stand's PWM between them, and averages the IMU's roll for 2 s at each.
 The left feet rise or sink together, so the four feet stay in one plane and the body rolls on the floor by an angle the firmware's kinematics predict for each counts per degree; the fit picks the one that matches.
-At the end the hips ramp back and STAND is applied afresh, which hands the servos back to the motion.
+At the end the hips ramp back and `Robot.stand()` applies STAND afresh, at its height, which hands the servos back to the motion.
 
 The hips, because they drive their legs directly and tilt the body most: about 0.25 degrees of roll per degree of hip on the MINI.
 The knees tilt it as much, but on the Pico the knee servo reaches the tibia through a four-bar linkage of about 1.6 times gain at the stand, which would fold into the result.

@@ -33,6 +33,7 @@ NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
 GOAL_POLL_S = 0.5
 GOAL_START_S = 3.0  # the control task takes a goal within a tick: this long without its status, it is lost
 GOAL_MARGIN_S = 2.0  # waited beyond the robot's own timeout for the goal's end
+RECORDED = ("telemetry_header", "telemetry_batch", "telemetry_network", "goal_status")  # as record.py keeps them
 
 
 def _tag(name: str) -> int:
@@ -61,6 +62,7 @@ class RealBackend:
         self._supply_volts = speed_model.DEFAULT_SUPPLY_VOLTS
         self._features: pb.FeaturesDataResponse | None = None
         self._recording: list[pb.TickSample] | None = None
+        self._telemetry: Callable[[bytes, int], None] | None = None  # stream_telemetry's sink, called on the loop
         self._goal_status = pb.GoalStatus()
         self._goals: bool | None = None
         self._listeners: dict[str, Callable] = {}
@@ -122,6 +124,10 @@ class RealBackend:
                 frame = await asyncio.wait_for(self._link.recv(), SILENCE_S)
                 message = pb.Message.FromString(frame)
                 kind = message.WhichOneof("message")
+                if kind in RECORDED:
+                    with self._changed:
+                        if self._telemetry is not None:
+                            self._telemetry(frame, time.monotonic_ns() // 1000)
                 if kind == "telemetry_batch" and message.telemetry_batch.ticks:
                     with self._changed:
                         # Every tick, not only the newest: a short stall trips and clears the dead-man within a batch.
@@ -324,6 +330,17 @@ class RealBackend:
         """The ticks kept since start_recording(), oldest first."""
         with self._changed:
             return list(self._recording or [])
+
+    # Subscribing to the batches again has the robot send its header afresh (main.cpp sendTelemetryHeader), with the
+    # settings of now; the network samples come only while asked for.
+    def stream_telemetry(self, sink: Callable[[bytes, int], None] | None) -> None:
+        with self._changed:
+            self._telemetry = sink
+        if sink is not None:
+            for kind in ("telemetry_batch", "telemetry_network"):
+                self.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag(kind))))
+        elif "telemetry_network" not in self._subscribed:
+            self.send(pb.Message(unsub_notif=pb.UnsubscribeNotification(tag=_tag("telemetry_network"))))
 
     # Asked for rather than read from telemetry: a batch in flight would still show the estimate from before a reset.
     def odometry(self) -> Odometry:

@@ -84,8 +84,9 @@ def test_records_over_the_usb_port_and_unsubscribes_at_the_end(tmp_path, monkeyp
     finally:
         writer.close()
         robot.stop()
-    assert frames >= 3
-    assert len(load(path).ticks["t_us"]) == frames
+    rec = load(path)
+    assert rec.header.variant == robot.variant and len(rec.ticks["t_us"]) >= 3
+    assert 1 + len(rec.ticks["t_us"]) + len(rec.network["t_us"]) == frames  # one tick per batch from the fake robot
     assert sorted(message.unsub_notif.tag for _, message in robot.received if message.HasField("unsub_notif")) == sorted(
         record._tag(name) for name in record.TAGS
     )

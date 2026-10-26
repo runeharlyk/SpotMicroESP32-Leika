@@ -12,7 +12,10 @@ A goal move is answered 202 and runs for `goal_s`, then ends in `goal_end`, each
 The animation clips are the built-ins and the files uploaded to /animations/<name>.pb in `files`, taken over the
 WebSocket only, as the firmware takes file uploads; a file loads unless its schema is not 1 or it has no keyframes.
 A clip plays as ANIMATE for `clip_s` from the mode it was played in, reporting its status every 100 ms to a client
-subscribed to it: sit holds its end and wave loops until stopped, and the rest play once."""
+subscribed to it: sit holds its end and wave loops until stopped, and the rest play once.
+
+Each subscription to the telemetry batches is answered with a TelemetryHeader, as the firmware's sendTelemetryHeader
+does, and a client subscribed to the network samples gets one with every batch (the robot sends one a second)."""
 import asyncio
 import math
 import threading
@@ -27,6 +30,8 @@ from src.proto import animation_pb2, api_pb2, filesystem_pb2 as fs, message_pb2 
 SERIAL_PORT = "COM99"
 BUILTIN_CLIPS = ("bow", "sit", "wave")
 ANIMATION_STATUS = pb.Message.DESCRIPTOR.fields_by_name["animation_status"].number
+TELEMETRY_BATCH = pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number
+TELEMETRY_NETWORK = pb.Message.DESCRIPTOR.fields_by_name["telemetry_network"].number
 
 
 class FakeRobot:
@@ -87,6 +92,9 @@ class FakeRobot:
                     await send(pb.Message(pongmsg=pb.PongMsg()).SerializeToString())
                 elif kind == "sub_notif":
                     self.subscribed.add(message.sub_notif.tag)
+                    if message.sub_notif.tag == TELEMETRY_BATCH:
+                        header = pb.TelemetryHeader(firmware_version="fake", variant=self.variant, batch_ticks=1)
+                        await send(pb.Message(telemetry_header=header).SerializeToString())
                 elif kind == "unsub_notif":
                     self.subscribed.discard(message.unsub_notif.tag)
                 elif kind == "fs_upload_data" and self.transport == "websocket":
@@ -236,6 +244,9 @@ class FakeRobot:
         while True:
             if not self.silent:
                 await send(pb.Message(telemetry_batch=pb.TelemetryBatch(ticks=[self._tick()])).SerializeToString())
+                if TELEMETRY_NETWORK in self.subscribed:
+                    network = pb.TelemetryNetwork(t_us=int(time.monotonic() * 1e6), rssi=-60)
+                    await send(pb.Message(telemetry_network=network).SerializeToString())
             await asyncio.sleep(0.1)
 
     def blip(self):

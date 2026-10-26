@@ -1,8 +1,17 @@
 """What every backend offers the Robot facade, and the values that cross it."""
-from dataclasses import dataclass
-from typing import Protocol
+from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
+
+import numpy as np
+
+from ...proto import message_pb2 as pb
 from ..constants import Gait, Mode
+
+if TYPE_CHECKING:  # joint_scale reaches this module through the speed model
+    from ..joint_scale import ServoSetup
 
 
 @dataclass(frozen=True)
@@ -85,3 +94,12 @@ class Backend(Protocol):
     def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None: ...
     def now(self) -> float: ...
     def sleep(self, seconds: float) -> None: ...
+    @property
+    def features(self) -> pb.FeaturesDataResponse: ...  # what the robot reported about itself on connecting
+    def servo_settings(self) -> ServoSetup: ...
+    def servo_output(self) -> tuple[np.ndarray, np.ndarray]: ...  # the last write's angles (degrees) and PWMs
+    def set_servo_pwm(self, channel: int, pwm: int) -> None: ...  # ServoPWMData: one channel, or every joint's for -1
+    # Hands sink(frame, host_us) every frame a recording keeps (record.py's: the header, the telemetry batches, the
+    # network samples and the goal statuses), each an encoded Message with its arrival in microseconds, until called
+    # with None, after which the sink is not called again.
+    def stream_telemetry(self, sink: Callable[[bytes, int], None] | None) -> None: ...

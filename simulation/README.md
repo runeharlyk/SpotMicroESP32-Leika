@@ -126,6 +126,9 @@ with Robot("simulation") as robot:   # or Robot("192.168.1.39")
   A goal turn turns from the odometry heading the goals so far meant, not the one a walk drifted to, so a square's corners do not add up the walks' drift; a velocity walk, a deactivation or a goal that did not end forgets that heading, and `reset_odometry` makes it the one the robot faces.
   Any exception before a goal is known to have ended, a lost reply and Ctrl-C included, cancels it.
   The simulation runs the firmware's goal controller on its odometry, so it lands where the robot would by that odometry: about 5 % long on a distance by MuJoCo's base, and within the goal's 3 degrees on a turn, 1.7 past on 90 (`tests/test_goal_moves.py`).
+- `features` is what the robot reported about itself on connecting (its variant and firmware version among them); the simulation reports the MINI on the firmware's `APP_VERSION`.
+- `servo_settings` reads the servo calibration and the variant's joint model, `servo_output` the last write's joint angles and PWMs, and `set_servo_pwm` writes one PCA9685 channel, or every joint's for -1, a raw PWM within the servos' range; the servos then leave the motion until a mode applies again (`measure_pwm_per_degree.py` runs on these).
+- `with robot.recording("run.leika"):` writes the telemetry of the block to a `.leika` file, as `record.py` does (the header, every tick, the network samples and the goal statuses), but without its reconnects; the simulation writes a tick of what `state`, `servo_output` and `odometry` report at the end of every control tick, with no compute, servo write or command times.
 - Leaving the `with` block, on an exception or Ctrl-C included, stops the robot and lets it rest.
   A robot the user deactivated stays deactivated, and the robot never deactivates on its own.
 - The real robot is driven over its WebSocket (`ws://<host>/api/ws`).

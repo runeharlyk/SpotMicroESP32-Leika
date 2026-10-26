@@ -4,14 +4,21 @@ stepped at the control rate.
 A goal move runs the firmware's controller on the firmware's odometry, as the robot does, rather than the host-side
 motions: so it lands where the robot would, by its odometry, whose distances fall 7 to 10 % short of MuJoCo's base
 and whose heading, fused with MuJoCo's gyro, turns within 1 % of it.
+
+Its telemetry is a TickSample at the end of every tick, on the simulation's clock, holding what state(), servo_output()
+and odometry() report then: no compute, servo write or command times, no command and no magnetometer.
 """
 import math
+import re
 import threading
 import time
+from collections.abc import Callable
+from pathlib import Path
 
 import mujoco
 import numpy as np
 
+from ...proto import api_pb2, message_pb2 as pb
 from ...robot.firmware_gait import (DEFAULT_FEET, FIRMWARE_FEET, STAND_HEIGHT, TROT, VARIANT, BodyState, GaitController,
                                     GaitState, gait_action, set_mode)
 from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
@@ -20,7 +27,7 @@ from ...robot.firmware_odometry import BodyStep, FusedOdometry, KinematicOdometr
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
 from ...sim.recording import from_model_joints, to_model_joints
 from .. import speed_model
-from ..joint_scale import PWM_MAX, PWM_MIN, ServoSetup
+from ..joint_scale import JOINT_DIRECTION, PWM_MAX, PWM_MIN, ServoSetup
 from ..constants import Gait, Mode
 from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
 
@@ -34,6 +41,15 @@ TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAUL
 PICO_SERVOS = ServoSetup(center_pwm=(306.0,) * 12, channels=tuple(range(12)),
                          direction=(1, 1, -1, 1, -1, 1, -1, 1, -1, -1, -1, 1),
                          center_angle=(0, -45, -90, 0, 45, 90, 0, -45, -90, 0, 45, 90), pwm_per_degree=2.0)
+FACTORY_SETTINGS = Path(__file__).resolve().parents[4] / "esp32" / "factory_settings.ini"
+TICK_US = round(CONTROL_DT * 1e6)
+BATCH_TICKS = 10  # telemetry.h Telemetry::BATCH_TICKS
+IMU_VALID = 1 | 2 | 8  # ImuSample.valid: accel, gyro and orientation
+
+
+def firmware_version() -> str:
+    """APP_VERSION, as esp32/factory_settings.ini gives it to every build and the robot reports it."""
+    return re.search(r'APP_VERSION=\\"([^"\\]*)\\"', FACTORY_SETTINGS.read_text())[1]
 
 
 class SimBackend:
@@ -62,6 +78,10 @@ class SimBackend:
         self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT, supply_volts)
         self._sticks = NO_STICKS
         self._t = 0.0
+        self._ticks = 0
+        self._telemetry: Callable[[bytes, int], None] | None = None
+        self._batch = pb.TelemetryBatch()
+        self._batches = 0
         self._lock = threading.Lock()
         self._running = False
         self._thread = None
@@ -105,7 +125,10 @@ class SimBackend:
                 self._drive_goal(step, CONTROL_DT)
             self.sim.set_joint_targets(self._servo_targets(self.sim.body_targets_from_feet(self._body)))
             self._gyro_rate = self._step_physics()
-            self._t += CONTROL_DT
+            self._ticks += 1
+            self._t = self._ticks * CONTROL_DT
+            if self._telemetry is not None:
+                self._send_tick()
 
     # Steps the physics through one control tick and returns the gyro's mean yaw rate over it, as the firmware takes it
     # (odometry.h GyroYawRate): the sensor task integrates every read, which the physics steps' samples stand for here.
@@ -228,26 +251,77 @@ class SimBackend:
 
     def state(self) -> RobotState:
         with self._lock:
-            matrix = np.zeros(9)
-            mujoco.mju_quat2Mat(matrix, self.sim.base_quat())
-            r = MODEL_TO_REP @ matrix.reshape(3, 3) @ MODEL_TO_REP.T
-            gyro = MODEL_TO_REP @ self.sim.gyro()
-            accel = MODEL_TO_REP @ self.sim.accel()
-            joints = np.degrees(self.sim.data.qpos[self.sim.qpos_adr])
-            return RobotState(
-                t=self._t,
-                mode=self._mode,
-                roll=math.degrees(math.atan2(r[2, 1], r[2, 2])),
-                pitch=math.degrees(-math.asin(max(-1.0, min(1.0, r[2, 0])))),
-                yaw=math.degrees(math.atan2(r[1, 0], r[0, 0])),
-                gyro=tuple(float(g) for g in gyro),
-                accel=tuple(float(a) for a in accel),
-                joints=tuple(float(j) for j in joints),
-                link_lost=False,
-                link_drops=0,
-            )
+            return self._state()
 
-    # --- beyond the backend interface: the servos, as RealBackend reaches them -----------------------------------
+    def _state(self) -> RobotState:
+        matrix = np.zeros(9)
+        mujoco.mju_quat2Mat(matrix, self.sim.base_quat())
+        r = MODEL_TO_REP @ matrix.reshape(3, 3) @ MODEL_TO_REP.T
+        gyro = MODEL_TO_REP @ self.sim.gyro()
+        accel = MODEL_TO_REP @ self.sim.accel()
+        joints = np.degrees(self.sim.data.qpos[self.sim.qpos_adr])
+        return RobotState(
+            t=self._t,
+            mode=self._mode,
+            roll=math.degrees(math.atan2(r[2, 1], r[2, 2])),
+            pitch=math.degrees(-math.asin(max(-1.0, min(1.0, r[2, 0])))),
+            yaw=math.degrees(math.atan2(r[1, 0], r[0, 0])),
+            gyro=tuple(float(g) for g in gyro),
+            accel=tuple(float(a) for a in accel),
+            joints=tuple(float(j) for j in joints),
+            link_lost=False,
+            link_drops=0,
+        )
+
+    @property
+    def features(self) -> pb.FeaturesDataResponse:
+        return pb.FeaturesDataResponse(variant=VARIANT, firmware_built_target="simulation",
+                                       firmware_version=firmware_version(), imu=True, imu_detected=True, servo=True,
+                                       servo_detected=True, device_id="simulation")
+
+    # As the robot: a header on subscribing, then the ticks in batches; a batch not yet full when the stream stops is
+    # dropped, as the robot drops what is left once nobody listens.
+    def stream_telemetry(self, sink: Callable[[bytes, int], None] | None) -> None:
+        with self._lock:
+            self._telemetry = sink
+            self._batch = pb.TelemetryBatch()
+            if sink is not None:
+                sink(pb.Message(telemetry_header=self._header()).SerializeToString(), round(self._t * 1e6))
+
+    def _header(self) -> pb.TelemetryHeader:
+        setup = self.servos
+        settings = api_pb2.ServoSettings(servos=[api_pb2.Servo(center_pwm=pwm) for pwm in setup.center_pwm],
+                                         channels=setup.channels, supply_voltage=self._supply_volts)
+        settings.model.direction[:] = setup.direction
+        settings.model.center_angle[:] = setup.center_angle
+        settings.model.pwm_per_degree = setup.pwm_per_degree
+        return pb.TelemetryHeader(firmware_version=firmware_version(), build_target="simulation", variant=VARIANT,
+                                  device_id="simulation", imu_driver="simulation", imu_rate_hz=round(1 / CONTROL_DT),
+                                  control_rate_hz=round(1 / CONTROL_DT), servo_settings=settings,
+                                  batch_ticks=BATCH_TICKS, joint_direction=JOINT_DIRECTION)
+
+    def _send_tick(self) -> None:
+        state = self._state()
+        estimate = self._odometry.estimate
+        t_us = round(self._t * 1e6)
+        tick = self._batch.ticks.add(
+            seq=self._ticks, t_us=t_us, period_us=TICK_US, angles=np.radians(self._output_angles),
+            targets=np.radians(self._output_angles), pwm=self._output_pwm.astype(int), mode=self._mode.value,
+            gait=Gait.TROT.value, walked=Gait.TROT.value,
+            odometry=pb.OdometryData(x=estimate.x, y=estimate.y, yaw=estimate.yaw, distance=estimate.distance,
+                                     kinematic_yaw=self._odometry.kinematic_yaw))
+        tick.imu.t_us = t_us
+        tick.imu.valid = IMU_VALID
+        tick.imu.accel[:] = state.accel
+        tick.imu.gyro[:] = state.gyro
+        tick.imu.rpy[:] = np.radians([state.roll, state.pitch, state.yaw])
+        if len(self._batch.ticks) == BATCH_TICKS:
+            self._batch.batch_seq = self._batches
+            self._batches += 1
+            self._telemetry(pb.Message(telemetry_batch=self._batch).SerializeToString(), t_us)
+            self._batch = pb.TelemetryBatch()
+
+    # --- the servos, as RealBackend reaches them -------------------------------------------------------------------
     def servo_settings(self) -> ServoSetup:
         return self.servos
 
