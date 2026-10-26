@@ -11,7 +11,15 @@ import {
 } from '../../src/lib/stores/model-store'
 import { socket } from '../../src/lib/stores/socket'
 import { driveSimulation, simulation } from '../../src/lib/stores/drive'
-import { ModeData, ModesEnum, WalkGaitData, WalkGaits } from '../../src/lib/platform_shared/message'
+import type { ClipPlayer } from '../../src/lib/simulation/robot-sim'
+import {
+    AnimationState,
+    AnimationStatus,
+    ModeData,
+    ModesEnum,
+    WalkGaitData,
+    WalkGaits
+} from '../../src/lib/platform_shared/message'
 
 const byLabel = <T extends HTMLElement>(label: string) =>
     document.body.querySelector<T>(`[aria-label="${label}"]`)
@@ -46,6 +54,8 @@ describe('controller panel', () => {
         outControllerData.set(startingInput())
         simulation.input.set(startingInput())
         simulation.mode.set(ModesEnum.DEACTIVATED)
+        simulation.player.set(null)
+        simulation.animationStatus.set(null)
     })
 
     afterEach(() => {
@@ -142,6 +152,62 @@ describe('controller panel', () => {
         expect(get(simulation.input).speed).toBe(0.9)
         expect(get(mode).mode).toBe(ModesEnum.STAND)
         expect(get(outControllerData).speed).toBe(startingInput().speed)
+    })
+
+    it('offers clips standing and while one plays, and not while walking', () => {
+        open(ModesEnum.STAND)
+        expect(byLabel('Clip')).not.toBeNull()
+        expect(
+            [...byLabel<HTMLSelectElement>('Clip')!.options].map(option => option.value)
+        ).toEqual(['bow', 'sit', 'wave'])
+        mode.set(ModeData.create({ mode: ModesEnum.ANIMATE }))
+        flushSync()
+        expect(byLabel('Clip')).not.toBeNull()
+        mode.set(ModeData.create({ mode: ModesEnum.WALK }))
+        flushSync()
+        expect(byLabel('Clip')).toBeNull()
+    })
+
+    it("plays a clip in the simulation and shows the simulation's clip playing", async () => {
+        open(ModesEnum.DEACTIVATED, { linked: false })
+        driveSimulation(true)
+        simulation.mode.set(ModesEnum.STAND)
+        flushSync()
+        expect(button('Play')!.disabled).toBe(true)
+        const player = {
+            playClip: vi.fn<ClipPlayer['playClip']>(() => true),
+            stopClip: vi.fn(),
+            animationStatus: vi.fn()
+        }
+        simulation.player.set(player)
+        flushSync()
+        const clip = byLabel<HTMLSelectElement>('Clip')!
+        clip.value = 'wave'
+        clip.dispatchEvent(new Event('change', { bubbles: true }))
+        button('Play')!.click()
+        await vi.waitFor(() => expect(player.playClip).toHaveBeenCalledOnce())
+        expect(player.playClip.mock.calls[0][0]).toMatchObject({ name: 'wave' })
+
+        simulation.animationStatus.set(
+            AnimationStatus.create({ name: 'wave', state: AnimationState.ANIM_PLAYING })
+        )
+        flushSync()
+        expect(text()).toMatch('Playing wave')
+        button('Stop')!.click()
+        await vi.waitFor(() => expect(player.stopClip).toHaveBeenCalledOnce())
+    })
+
+    it("shows the robot's clip playing while the controls drive the robot", () => {
+        let report: ((data: AnimationStatus) => void) | undefined
+        vi.spyOn(socket, 'on').mockImplementation(((type: unknown, listener: never) => {
+            if (type === AnimationStatus) report = listener
+            return () => {}
+        }) as typeof socket.on)
+        open(ModesEnum.ANIMATE)
+        report!(AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_HOLD }))
+        flushSync()
+        expect(text()).toMatch('Playing sit')
+        expect(button('Play')!.disabled).toBe(false)
     })
 
     it('marks a preview without a robot and offers no Deactivate', () => {

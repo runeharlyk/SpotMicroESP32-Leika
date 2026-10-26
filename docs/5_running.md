@@ -58,6 +58,7 @@ With no robot connected, the view defaults to the simulation.
 | Walk        | Walks; the left stick walks forward, back and sideways, the right stick turns (x) and pitches the body (y) |
 
 In Walk, the gait select chooses Trot, Crawl or Auto and the "Speed" slider sets the pace; the "Step height" slider is under "Adjustments".
+Standing, the panel plays a built-in clip at its default values on the robot the controls drive; the simulation plays it with the same player as the firmware, from where its legs are, and returns to the mode it came from.
 Keyboard: W, A, S and D move the left stick, and the left and right arrow keys move the right stick sideways.
 A gamepad works too: the face buttons set the mode (3 deactivates, 2 rests, 1 stands, 0 walks) and the d-pad up and down step the height.
 

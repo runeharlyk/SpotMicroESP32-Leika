@@ -27,6 +27,7 @@
     import { notifications } from '$lib/components/toasts/notifications'
     import { ModesEnum, WalkGaits, type ControllerData } from '$lib/platform_shared/message'
     import { gamepadCommand, stepHeight } from '$lib/utilities/gamepad-mapping'
+    import ClipControls from './ClipControls.svelte'
 
     type SliderKey = 'speed' | 'height' | 's1'
 
@@ -126,6 +127,10 @@
         selectableModes(!$drivesSimulation && ($connectionFeatures?.walkNn ?? false))
     )
     const walking = $derived($drivenMode === ModesEnum.WALK)
+    // Clips are offered standing, where one starts from the stance, and while one runs in ANIMATE.
+    const clipsPlayable = $derived(
+        $drivenMode === ModesEnum.STAND || $drivenMode === ModesEnum.ANIMATE
+    )
 </script>
 
 <div class="absolute top-0 left-0 h-dvh w-full">
@@ -217,6 +222,10 @@
                 {/if}
             </div>
         </div>
+
+        {#if clipsPlayable}
+            <ClipControls />
+        {/if}
     </div>
 </div>
 

@@ -12,6 +12,7 @@
     import { RobotSim } from '$lib/simulation/robot-sim'
     import { resolveChoice, ROBOTS, type SimChoice } from '$lib/simulation/robots'
     import LoadError from './LoadError.svelte'
+    import type { AnimationStatus } from '$lib/platform_shared/message'
 
     // The shipped firmware enables no IMU (esp32/features.ini), so Peripherals reports zero tilt.
     const IMU_ANGLES: [number, number] = [0, 0]
@@ -52,6 +53,8 @@
         const variant = variants[definition.variant]
         sim?.dispose()
         sim = undefined
+        simulation.player.set(null)
+        simulation.animationStatus.set(null)
         removeModel()
         fallen = false
         status = 'loading'
@@ -62,6 +65,7 @@
             ])
             if (overtaken(load)) return
             sim = new RobotSim(mujoco, scene, controller.create())
+            simulation.player.set(sim.clips)
             placeRobot(model, variant.modelYaw)
             lastFrame = performance.now()
             engineReady = true
@@ -117,6 +121,7 @@
         })
         sim.step((now - lastFrame) / 1000)
         lastFrame = now
+        if (sim.clips) showClipStatus(sim.clips.animationStatus())
 
         const [x, y, z] = sim.basePosition()
         const [w, qx, qy, qz] = sim.baseQuaternion()
@@ -129,6 +134,18 @@
 
         const hasFallen = sim.hasFallen()
         if (hasFallen !== fallen) fallen = hasFallen
+    }
+
+    function showClipStatus(next: AnimationStatus) {
+        const shown = get(simulation.animationStatus)
+        if (
+            !shown ||
+            next.name !== shown.name ||
+            next.state !== shown.state ||
+            next.t !== shown.t ||
+            next.clampedMask !== shown.clampedMask
+        )
+            simulation.animationStatus.set(next)
     }
 
     // The camera travels with the robot, so a walking robot stays in view at the chosen angle.
@@ -169,6 +186,8 @@
 
     onDestroy(() => {
         destroyed = true
+        simulation.player.set(null)
+        simulation.animationStatus.set(null)
         sceneManager.stopRenderLoop()
         sceneManager.renderer?.dispose()
         resize?.disconnect()

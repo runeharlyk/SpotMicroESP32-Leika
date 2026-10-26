@@ -1,7 +1,7 @@
 // The controls drive either the robot or the simulation view's own robot. While the simulation is shown, its sticks,
 // sliders, mode and gait must never reach the robot's command path: the stores the layout sends to the robot
 // (outControllerData, mode and walkGait).
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { get } from 'svelte/store'
 import {
     input,
@@ -17,8 +17,12 @@ import {
     driveSimulation,
     drivenGait,
     drivenMode,
-    simulation
+    playDrivenClip,
+    simulation,
+    stopDrivenClip
 } from '../../src/lib/stores/drive'
+import { builtInClip } from '../../src/lib/animation/robot'
+import { fakeRobot } from './fake-robot'
 import {
     ControllerData,
     ModeData,
@@ -51,7 +55,11 @@ describe('the controls', () => {
         walkGait.set(WalkGaitData.create({ gait: WalkGaits.TROT }))
     })
 
-    afterEach(() => driveSimulation(false))
+    afterEach(() => {
+        driveSimulation(false)
+        simulation.player.set(null)
+        vi.restoreAllMocks()
+    })
 
     it("keep the simulation's sticks, mode and gait off the robot's command path", () => {
         driveSimulation(true)
@@ -123,6 +131,48 @@ describe('the controls', () => {
         drive(get(input))
         get(input).left!.x = -1
         expect(get(outControllerData).left).toEqual(DEFLECTED.left)
+    })
+
+    it("play and stop the simulation's clips without asking the robot", async () => {
+        const robot = fakeRobot(() => ({}))
+        const player = { playClip: vi.fn(() => true), stopClip: vi.fn(), animationStatus: vi.fn() }
+        simulation.player.set(player)
+        driveSimulation(true)
+        const params = [{ id: 1, value: 1.5 }]
+        await playDrivenClip('wave', params)
+        await stopDrivenClip()
+        expect(player.playClip).toHaveBeenCalledWith(builtInClip('wave'), params)
+        expect(player.stopClip).toHaveBeenCalledOnce()
+        expect(robot.sent).toEqual([])
+    })
+
+    it('pass on the simulated robot refusing a clip, and never ask the robot while it loads', async () => {
+        const robot = fakeRobot(() => ({}))
+        driveSimulation(true)
+        await expect(playDrivenClip('wave', [])).rejects.toThrow('plays no clips')
+        await stopDrivenClip()
+        simulation.player.set({
+            playClip: () => false,
+            stopClip: () => {},
+            animationStatus: vi.fn()
+        })
+        await expect(playDrivenClip('wave', [])).rejects.toThrow('Stand up first')
+        expect(robot.sent).toEqual([])
+    })
+
+    it('ask the robot to play and stop a clip while they drive it', async () => {
+        const played: unknown[] = []
+        const robot = fakeRobot((name, data) => {
+            if (name === 'animationPlay') played.push(data.animationPlay)
+            return {}
+        })
+        const player = { playClip: vi.fn(() => true), stopClip: vi.fn(), animationStatus: vi.fn() }
+        simulation.player.set(player)
+        await playDrivenClip('sit', [])
+        await stopDrivenClip()
+        expect(played).toEqual([{ name: 'sit', params: [] }])
+        expect(robot.sent).toEqual(['animationPlay', 'animationStop'])
+        expect(player.playClip).not.toHaveBeenCalled()
     })
 
     it('drive the robot when the simulation is not shown', () => {
