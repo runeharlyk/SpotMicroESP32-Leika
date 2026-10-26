@@ -22,7 +22,7 @@
         drivesSimulation
     } from '$lib/stores/drive'
     import type { vector } from '$lib/types/models'
-    import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
+    import { gamepadButtonsEdges, gamepadStickInput, hasGamepad } from '$lib/stores/gamepad'
     import { shapeStick } from '$lib/utilities/stick'
     import { notifications } from '$lib/components/toasts/notifications'
     import { ModesEnum, WalkGaits, type ControllerData } from '$lib/platform_shared/message'
@@ -51,8 +51,8 @@
     })
 
     $effect(() => {
-        handleJoyMove('left', { x: $gamepadAxes[0], y: -$gamepadAxes[1] })
-        handleJoyMove('right', { x: $gamepadAxes[2], y: $gamepadAxes[3] })
+        handleJoyMove('left', $gamepadStickInput.left)
+        handleJoyMove('right', $gamepadStickInput.right)
     })
 
     $effect(() => {
