@@ -103,7 +103,7 @@ Its velocities (`Velocity` in `simulation/src/leika/backends/base.py`) are REP-1
 
 The app's on-screen sticks (nipplejs) report +x right and +y up, and the app sends them unchanged.
 The keyboard sends W and S as `ly = +1` and `-1`, A and D as `lx = -1` and `+1`, and the left and right arrows as `rx = +1` and `-1` (`app/src/routes/controller/Controls.svelte`).
-A gamepad's stick reads -1 pushed up (the W3C Gamepad API: -1 should correspond to forward or left); the app negates the left stick's y and sends the right stick's y as it comes (`Controls.svelte`), see [Unverified](#unverified).
+A gamepad's stick reads -1 pushed up (the W3C Gamepad API: -1 should correspond to forward or left); the app negates both sticks' y, so either stick pushed up sends what the on-screen stick pushed up sends (`gamepadSticks` in `app/src/lib/utilities/stick.ts`, tested in `stick.spec.ts`).
 The ESP-NOW handheld's sticks reach the motion inbox scaled but unchanged (`esp32/include/communication/handheld_controller.h`); the controller's own firmware is not in this repository.
 
 ## What is tested where
@@ -124,5 +124,4 @@ Each sign has a zero band in the fixture, well inside the measured values: a hal
 
 The convention has not been checked on the powered robot.
 A floor check would walk the Pico with each fixture stick, hold each stand stick, and run `goal_move(sideways=0.1)` and `goal_move(turn_deg=90)`, and compare the directions with the tables above.
-The gamepad's right stick, pushed up, sends a negative `ry` and so lowers the nose in STAND and WALK, where the on-screen right stick pushed up raises it; whether that is meant (an inverted pitch axis) is not recorded.
 The ESP-NOW handheld's axis signs are unverified, as on Hexapod.
