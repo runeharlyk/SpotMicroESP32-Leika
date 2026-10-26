@@ -34,6 +34,8 @@
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
     let adjustmentsOpen = $state(false)
+    let leftActive = $state(false)
+    let rightActive = $state(false)
 
     // While the layout shows the simulation, the controls drive its robot and never the real one (stores/drive.ts).
     const steer = (change: (data: ControllerData) => void) => {
@@ -66,28 +68,33 @@
     })
 
     onMount(() => {
-        left = nipplejs.create({
-            zone: document.getElementById('left') as HTMLElement,
-            color: '#15191e80',
+        // The rings are drawn by the styles below, over any view and in either theme.
+        const options = {
+            color: 'transparent',
+            size: 104,
             dynamicPage: true,
-            mode: 'static',
+            mode: 'static' as const,
             position: { left: '50%', top: '50%' },
             restOpacity: 1
-        })
-
+        }
+        left = nipplejs.create({ zone: document.getElementById('left') as HTMLElement, ...options })
         right = nipplejs.create({
             zone: document.getElementById('right') as HTMLElement,
-            color: '#15191e80',
-            dynamicPage: true,
-            mode: 'static',
-            position: { left: '50%', top: '50%' },
-            restOpacity: 1
+            ...options
         })
 
+        left.on('start', () => (leftActive = true))
+        right.on('start', () => (rightActive = true))
         left.on('move', (_, data) => handleJoyMove('left', shapeStick(data.vector)))
-        left.on('end', () => handleJoyMove('left', { x: 0, y: 0 }))
+        left.on('end', () => {
+            leftActive = false
+            handleJoyMove('left', { x: 0, y: 0 })
+        })
         right.on('move', (_, data) => handleJoyMove('right', shapeStick(data.vector)))
-        right.on('end', () => handleJoyMove('right', { x: 0, y: 0 }))
+        right.on('end', () => {
+            rightActive = false
+            handleJoyMove('right', { x: 0, y: 0 })
+        })
     })
 
     onDestroy(() => {
@@ -127,6 +134,8 @@
         selectableModes(!$drivesSimulation && ($connectionFeatures?.walkNn ?? false))
     )
     const walking = $derived($drivenMode === ModesEnum.WALK)
+    // Standing, the left stick shifts the body and the right one tilts it; otherwise they walk and turn.
+    const standing = $derived($drivenMode === ModesEnum.STAND)
     // Clips are offered standing, where one starts from the stance, and while one runs in ANIMATE.
     const clipsPlayable = $derived(
         $drivenMode === ModesEnum.STAND || $drivenMode === ModesEnum.ANIMATE
@@ -136,9 +145,21 @@
 <div class="absolute top-0 left-0 h-dvh w-full">
     <!-- Portrait phones put both sticks side by side above the control panel. -->
     <div class="absolute inset-0 flex px-[env(safe-area-inset-left)] max-sm:items-end max-sm:pb-40">
-        <div id="left" class="relative h-full w-1/2 max-sm:h-44 sm:w-60"></div>
+        <div
+            id="left"
+            class="joystick-zone relative h-full w-1/2 max-sm:h-44 sm:w-60"
+            data-active={leftActive}
+        >
+            <span class="joystick-label">{standing ? 'Shift' : 'Move'}</span>
+        </div>
         <div class="flex-1 max-sm:hidden"></div>
-        <div id="right" class="relative h-full w-1/2 max-sm:h-44 sm:w-60"></div>
+        <div
+            id="right"
+            class="joystick-zone relative h-full w-1/2 max-sm:h-44 sm:w-60"
+            data-active={rightActive}
+        >
+            <span class="joystick-label">{standing ? 'Tilt' : 'Turn'}</span>
+        </div>
     </div>
     <div
         class="absolute bottom-0 right-0 p-4 z-10 gap-1.5 flex-col hidden lg:flex opacity-40 hover:opacity-80 transition-opacity duration-300"
@@ -247,3 +268,44 @@
 {/snippet}
 
 <svelte:window onkeyup={handleKeyup} onkeydown={handleKeyup} />
+
+<style>
+    .joystick-zone :global(.back) {
+        opacity: 1 !important;
+        border: 2px solid rgb(255 255 255 / 75%);
+        box-shadow:
+            0 0 0 1px rgb(10 18 30 / 35%),
+            0 2px 8px rgb(0 0 0 / 20%);
+    }
+
+    .joystick-zone :global(.front) {
+        opacity: 1 !important;
+        border: 2px solid rgb(255 255 255 / 85%);
+        box-shadow:
+            0 0 0 1px rgb(10 18 30 / 35%),
+            0 1px 5px rgb(0 0 0 / 20%);
+    }
+
+    .joystick-zone[data-active='true'] :global(.front) {
+        border-color: white;
+        border-width: 3px;
+    }
+
+    .joystick-label {
+        position: absolute;
+        top: calc(50% + 64px);
+        left: 50%;
+        z-index: 10;
+        transform: translateX(-50%);
+        pointer-events: none;
+        border: 1px solid rgb(255 255 255 / 20%);
+        border-radius: 999px;
+        background: rgb(10 18 30 / 55%);
+        padding: 2px 8px;
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+</style>

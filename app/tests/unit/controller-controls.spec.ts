@@ -210,6 +210,22 @@ describe('controller panel', () => {
         expect(button('Play')!.disabled).toBe(false)
     })
 
+    it('names what each stick does in the mode of the robot they drive', () => {
+        const labels = () =>
+            ['#left', '#right'].map(
+                zone => document.body.querySelector(`${zone} .joystick-label`)!.textContent
+            )
+        open(ModesEnum.STAND)
+        expect(labels()).toEqual(['Shift', 'Tilt'])
+        mode.set(ModeData.create({ mode: ModesEnum.WALK }))
+        flushSync()
+        expect(labels()).toEqual(['Move', 'Turn'])
+        driveSimulation(true)
+        simulation.mode.set(ModesEnum.STAND)
+        flushSync()
+        expect(labels()).toEqual(['Shift', 'Tilt'])
+    })
+
     it('marks a preview without a robot and offers no Deactivate', () => {
         open(ModesEnum.DEACTIVATED, { linked: false })
         expect(button('Deactivate')).toBeUndefined()
