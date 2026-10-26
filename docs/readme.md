@@ -19,6 +19,7 @@ These are the steps it takes to get a fresh new robot up and barking.
 - [Robots capabilities](spot.md)
 - [Software description](software_description.md) (firmware tasks, sensors, feature flags and the web app)
 - [Kinematics](kinematics.md) (body pose, inverse kinematics and the hardware variants)
+- [Conventions](conventions.md) (the body frame, the leg numbering and the signs of the sticks, the body pose, the odometry and the goals)
 - [Motion system](motion_system.md) (modes, controller mapping and the trot and crawl gaits)
 - [Floor benchmark](benchmark.md) (scoring the odometry and goal moves against an overhead camera)
 - [Animations](animation.md) (playing, writing and uploading clips, and the clip format)
