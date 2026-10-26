@@ -83,6 +83,7 @@ PROGRAMS = {
     "sonar_test.cpp": [*NANOPB, API_PROTO],
     "power_sensor_test.cpp": [*NANOPB, API_PROTO],
     "link_watchdog_test.cpp": [],
+    "sign_convention_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
 }
 
 # Compiler flags a program needs besides the firmware's.
@@ -99,6 +100,7 @@ FLAGS = {
 ARGUMENTS = {
     "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
     "ble_frame_test.cpp": [os.path.join(REPO, "platform_shared", "ble_frame_vectors.json")],
+    "sign_convention_test.cpp": [os.path.join(REPO, "platform_shared", "sign_convention.json")],
 }
 
 

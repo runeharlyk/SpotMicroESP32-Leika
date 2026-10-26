@@ -52,6 +52,7 @@ uv run pytest -q
   Both are pinned to traces the firmware itself produces (`esp32/test/host/export_firmware_traces.py`, run in `firmware-port-tests.yml`); change the motion code and regenerate the traces in the same change.
 - Enums and message tags cross the wire by number, and the app on Pages may meet older firmware: never renumber or reuse a tag; retire it with `reserved` in `message.proto`.
 - The variant dimensions exist in the firmware (`KIN_CONFIG_*` in `esp32/include/kinematics.h`) and the app (`app/src/lib/kinematics-variants.ts`); a unit test compares them.
+- The body frame, the leg numbering and every sign of the sticks, the body pose, the odometry and the goals are stated in `docs/conventions.md` and held in `platform_shared/sign_convention.json`, which the firmware's host test, the simulation's and the app's tests each assert; a change of sign changes the fixture and all three copies together.
 - Hexapod (`../Hexapod`) is the sibling project on the same stack; a feature proven in one is ported to the other rather than redesigned.
 
 ## Firmware architecture in brief

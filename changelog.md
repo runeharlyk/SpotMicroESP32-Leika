@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Adds `servo_feasibility.py` and `servo_margin.py` to the simulation, ported from the Hexapod: the firmware's walk and animation traces against the MG92B's speed and joint travel, and how much slower servos they still follow
 - Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
 - Reports the internal RAM apart from PSRAM on the System Status page: free, the largest block and the least free since boot, with the allocations refused since boot, where the heap figures count PSRAM in and so never show internal RAM running out
+- Adds a sign-convention fixture, `platform_shared/sign_convention.json`, asserted by the firmware, simulation and app tests, and `docs/conventions.md`, which states the body frame, the leg numbering and the signs of the sticks, the body pose, the odometry and the goals
 
 ### Changed
 
