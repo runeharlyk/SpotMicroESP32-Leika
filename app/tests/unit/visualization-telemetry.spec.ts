@@ -100,7 +100,7 @@ describe.sequential('3D view telemetry', () => {
     const mountView = async () => {
         const { default: Visualization } =
             await import('../../src/lib/components/Visualization.svelte')
-        const view = mount(Visualization, { target: document.body, props: { panel: false } })
+        const view = mount(Visualization, { target: document.body, props: {} })
         flushSync()
         return view
     }

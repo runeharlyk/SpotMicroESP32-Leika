@@ -45,6 +45,6 @@
         {/if}
     </p>
     <div class="relative h-72 w-full overflow-hidden rounded-lg sm:h-96">
-        <Visualization {joints} {highlight} orbit={false} panel={false} defaultColor={null} />
+        <Visualization {joints} {highlight} orbit={false} defaultColor={null} />
     </div>
 </div>

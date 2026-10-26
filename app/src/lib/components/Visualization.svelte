@@ -1,9 +1,8 @@
 <script lang="ts">
-    import { onDestroy, onMount, untrack } from 'svelte'
+    import { onDestroy, onMount } from 'svelte'
     import { get } from 'svelte/store'
     import { Color, Mesh, MeshPhongMaterial, type Object3D } from 'three'
     import { lerp } from 'three/src/math/MathUtils'
-    import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
     import type { URDFRobot } from 'urdf-loader'
     import { model, modelVariant, socket } from '$lib/stores'
     import { populateModelCache, getToeWorldPositions } from '$lib/utilities/model-utilities'
@@ -13,7 +12,6 @@
     interface Props {
         defaultColor?: string | null
         orbit?: boolean
-        panel?: boolean
         ground?: boolean
         /** Joints to show instead of the ones the robot reports; given, the view asks the robot for nothing. */
         joints?: JointValues
@@ -24,7 +22,6 @@
     let {
         defaultColor = '#0091ff',
         orbit = false,
-        panel = true,
         ground = true,
         joints,
         highlight
@@ -32,18 +29,12 @@
 
     const sceneManager = new SceneBuilder()
     let canvas: HTMLCanvasElement
-    let gui_panel: GUI | undefined
     // The robot reports at 10 Hz; easing towards each report keeps the picture fluid between them.
     const SMOOTH_AMOUNT = 0.2
 
     let reportedJoints: JointValues = {}
     let stopFollowing: (() => void) | undefined
     let destroyed = false
-
-    const settings = {
-        'Smooth motion': true,
-        Background: untrack(() => defaultColor)
-    }
 
     onMount(() => {
         // Read with the model's loading, so the joints followed are those of the model shown.
@@ -60,7 +51,6 @@
         destroyed = true
         stopFollowing?.()
         if (sceneManager.renderer) sceneManager.stopRenderLoop()
-        gui_panel?.destroy()
         disconnectObservers.forEach(disconnect => disconnect())
         // The model is shared with the next view that shows it.
         highlighted.forEach(unhighlight)
@@ -71,7 +61,6 @@
         await populateModelCache()
         if (destroyed) return
         createScene()
-        if (panel) createPanel()
         observeCanvas()
     }
 
@@ -99,18 +88,6 @@
         )
     }
 
-    const createPanel = () => {
-        gui_panel = new GUI({ width: 310 })
-        gui_panel.close()
-        gui_panel.domElement.id = 'three-gui-panel'
-
-        const visibility = gui_panel.addFolder('Visualization')
-        visibility.add(settings, 'Smooth motion')
-        visibility.addColor(settings, 'Background').onChange(setSceneBackground).listen()
-    }
-
-    const setSceneBackground = (c: string | null) => (sceneManager.scene.background = new Color(c!))
-
     const createScene = () => {
         sceneManager
             .addRenderer({ antialias: true, canvas, alpha: true })
@@ -125,11 +102,8 @@
             .startRenderLoop()
 
         if (ground) sceneManager.addGroundPlane()
-        if (defaultColor) setSceneBackground(settings['Background'] || defaultColor)
+        if (defaultColor) sceneManager.scene.background = new Color(defaultColor)
     }
-
-    const smooth = (start: number, end: number) =>
-        settings['Smooth motion'] ? lerp(start, end, SMOOTH_AMOUNT) : end
 
     // Keeps the lowest toe on the ground, whatever the legs do.
     const standOnGround = (robot: URDFRobot) => {
@@ -170,7 +144,7 @@
         if (!robot) return
         for (const [name, target] of Object.entries(joints ?? reportedJoints)) {
             const joint = robot.joints[name]
-            if (joint) joint.setJointValue(smooth(joint.angle as number, target))
+            if (joint) joint.setJointValue(lerp(joint.angle as number, target, SMOOTH_AMOUNT))
         }
         standOnGround(robot)
         showHighlight(robot)

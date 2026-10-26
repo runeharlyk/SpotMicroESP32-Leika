@@ -43,7 +43,7 @@ Bluetooth carries the controls and telemetry only; WiFi setup, file transfers an
 
 Navigate to `/controller`.
 
-The controller shows two virtual sticks, a body height slider and a row of mode buttons.
+The controller shows two virtual sticks above one panel: a mode select, a Deactivate button and an "Adjustments" toggle that opens the "Body height" slider.
 The background is the selected view: 3D representation, Stream (the camera), Split screen, Simulation, or Robot and simulation, which shows the pose the robot reports beside the simulation, both driven by the same sticks.
 With no robot connected, the view defaults to the simulation.
 
@@ -56,7 +56,7 @@ With no robot connected, the view defaults to the simulation.
 | Stand       | Stands; the left stick shifts the body, the right stick rolls and pitches it |
 | Walk        | Walks; the left stick walks forward, back and sideways, the right stick turns (x) and pitches the body (y) |
 
-In Walk, the gait buttons choose Trot or Crawl, and the "Step height" and "Speed" sliders scale the steps.
+In Walk, the gait select chooses Trot, Crawl or Auto and the "Speed" slider sets the pace; the "Step height" slider is under "Adjustments".
 Keyboard: W, A, S and D move the left stick, and the left and right arrow keys move the right stick sideways.
 A gamepad works too: the face buttons set the mode (3 deactivates, 2 rests, 1 stands, 0 walks) and the d-pad up and down step the height.
 

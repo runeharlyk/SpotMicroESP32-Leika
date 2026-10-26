@@ -27,7 +27,7 @@
     onDestroy(() => stopImu?.())
 </script>
 
-<div class="absolute top-0 select-none w-screen h-dvh">
+<div class="absolute top-0 select-none w-full h-dvh">
     <Controls />
     <div class="absolute w-full h-dvh top-0 overflow-hidden lg:pt-16 pt-12">
         <WidgetContainer container={layout.content} />

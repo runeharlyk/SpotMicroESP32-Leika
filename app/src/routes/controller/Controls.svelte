@@ -14,15 +14,17 @@
         connectionFeatures
     } from '$lib/stores'
     import type { vector } from '$lib/types/models'
-    import { VerticalSlider } from '$lib/components/input'
     import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
     import { shapeStick } from '$lib/utilities/stick'
     import { notifications } from '$lib/components/toasts/notifications'
     import { ModeData, ModesEnum, WalkGaitData, WalkGaits } from '$lib/platform_shared/message'
     import { gamepadCommand, stepHeight } from '$lib/utilities/gamepad-mapping'
 
+    type SliderKey = 'speed' | 'height' | 's1'
+
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
+    let adjustmentsOpen = $state(false)
 
     $effect(() => {
         if ($hasGamepad) {
@@ -99,7 +101,7 @@
         })
     }
 
-    const handleRange = (value: number, key: 'speed' | 'height' | 's1') => {
+    const handleRange = (value: number, key: SliderKey) => {
         input.update(inputData => {
             inputData[key] = value
             return inputData
@@ -119,9 +121,12 @@
     const changeWalkGait = (walkGaitValue: WalkGaits) => {
         walkGait.set(WalkGaitData.create({ gait: walkGaitValue }))
     }
+
+    const offered: ModesEnum[] = $derived(selectableModes($connectionFeatures?.walkNn ?? false))
+    const walking = $derived($mode.mode === ModesEnum.WALK)
 </script>
 
-<div class="absolute top-0 left-0 h-dvh w-screen">
+<div class="absolute top-0 left-0 h-dvh w-full">
     <!-- Portrait phones put both sticks side by side above the control panel. -->
     <div class="absolute inset-0 flex px-[env(safe-area-inset-left)] max-sm:items-end max-sm:pb-40">
         <div id="left" class="relative h-full w-1/2 max-sm:h-44 sm:w-60"></div>
@@ -141,85 +146,87 @@
         </div>
     </div>
     <div
-        class="absolute bottom-0 z-10 flex max-w-full items-end pointer-events-none pl-[env(safe-area-inset-left)]"
+        class="bg-base-300/60 border-base-content/5 absolute bottom-0 left-0 z-10 flex max-h-[calc(100%-4rem)] w-full flex-col gap-2 overflow-y-auto border-t p-3 pl-[max(0.75rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:w-auto sm:max-w-xl sm:rounded-tr-2xl sm:border-r"
     >
-        <div
-            class="flex items-center flex-col backdrop-blur-sm bg-base-300/60 p-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] gap-2 rounded-tr-2xl border-t border-base-content/5 pointer-events-auto"
-        >
-            <VerticalSlider
-                min={0}
-                max={1}
-                step={0.01}
-                aria-label="Body height"
-                oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 'height')}
-            />
-            <span class="text-xs font-medium opacity-70" aria-hidden="true">Ht</span>
-        </div>
-        <div
-            class="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-r border-base-content/5 pointer-events-auto"
-        >
-            {#if $variantChoiceNeeded}
-                <p class="w-full text-xs opacity-70">
-                    Tell the robot which variant it is before it can move.
-                </p>
-            {/if}
-            <div class="join max-w-full shadow-lg max-sm:grid max-sm:grid-cols-3">
-                {#each selectableModes($connectionFeatures?.walkNn ?? false) as modeValue (modeValue)}
-                    <button
-                        class="btn join-item btn-sm pointer-coarse:btn-md transition-all duration-200"
-                        class:btn-primary={$mode.mode === modeValue}
-                        disabled={!movable(modeValue)}
-                        onclick={() => changeMode(modeValue)}
-                    >
+        {#if $variantChoiceNeeded}
+            <p class="text-xs opacity-70">Tell the robot which variant it is before it can move.</p>
+        {/if}
+        <div class="flex items-center gap-2">
+            <select
+                class="select select-primary select-sm pointer-coarse:select-md w-auto min-w-0"
+                aria-label="Mode"
+                value={$mode.mode}
+                onchange={event => changeMode(Number(event.currentTarget.value) as ModesEnum)}
+            >
+                {#if !offered.includes($mode.mode)}
+                    <option value={$mode.mode} disabled>{modeLabels[$mode.mode]}</option>
+                {/if}
+                {#each offered as modeValue (modeValue)}
+                    <option value={modeValue} disabled={!movable(modeValue)}>
                         {modeLabels[modeValue]}
-                    </button>
+                    </option>
                 {/each}
-            </div>
+            </select>
+            <button
+                class="btn btn-sm pointer-coarse:btn-md shrink-0"
+                class:btn-error={$mode.mode === ModesEnum.DEACTIVATED}
+                onclick={() => changeMode(ModesEnum.DEACTIVATED)}
+            >
+                Deactivate
+            </button>
+            <button
+                class="btn btn-sm pointer-coarse:btn-md shrink-0"
+                aria-expanded={adjustmentsOpen}
+                aria-controls="controller-adjustments"
+                onclick={() => (adjustmentsOpen = !adjustmentsOpen)}
+            >
+                Adjustments
+            </button>
+        </div>
 
-            {#if $mode.mode === ModesEnum.WALK}
-                <div class="join shadow-md">
+        {#if walking}
+            <div class="flex items-end gap-3">
+                <select
+                    class="select select-secondary select-sm pointer-coarse:select-md w-auto min-w-0"
+                    aria-label="Gait"
+                    value={$walkGait.gait}
+                    onchange={event =>
+                        changeWalkGait(Number(event.currentTarget.value) as WalkGaits)}
+                >
                     {#each walkGaits as gaitValue (gaitValue)}
-                        <button
-                            class="btn join-item btn-xs pointer-coarse:btn-sm transition-all duration-200"
-                            class:btn-secondary={$walkGait.gait === gaitValue}
-                            onclick={() => changeWalkGait(gaitValue)}
-                        >
-                            {walkGaitLabels[gaitValue]}
-                        </button>
+                        <option value={gaitValue}>{walkGaitLabels[gaitValue]}</option>
                     {/each}
-                </div>
+                </select>
+                <div class="min-w-0 flex-1">{@render slider('speed', 'Speed')}</div>
+            </div>
+        {/if}
 
-                <div class="flex gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label for="s1" class="text-xs font-medium opacity-70">Step height</label>
-                        <input
-                            type="range"
-                            id="s1"
-                            min="0"
-                            step="0.01"
-                            max="1"
-                            oninput={e =>
-                                handleRange(Number((e.target as HTMLInputElement).value), 's1')}
-                            class="range range-xs pointer-coarse:range-sm range-primary"
-                        />
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label for="speed" class="text-xs font-medium opacity-70">Speed</label>
-                        <input
-                            type="range"
-                            id="speed"
-                            min="0"
-                            step="0.01"
-                            max="1"
-                            oninput={e =>
-                                handleRange(Number((e.target as HTMLInputElement).value), 'speed')}
-                            class="range range-xs pointer-coarse:range-sm range-primary"
-                        />
-                    </div>
-                </div>
-            {/if}
+        <div id="controller-adjustments" hidden={!adjustmentsOpen}>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="min-w-0">{@render slider('height', 'Body height')}</div>
+                {#if walking}
+                    <div class="min-w-0">{@render slider('s1', 'Step height')}</div>
+                {/if}
+            </div>
         </div>
     </div>
 </div>
+
+{#snippet slider(key: SliderKey, label: string)}
+    <div class="flex items-baseline justify-between gap-2">
+        <label for={key} class="text-xs font-medium opacity-70">{label}</label>
+        <span class="font-mono text-xs tabular-nums opacity-70">{$input[key].toFixed(2)}</span>
+    </div>
+    <input
+        type="range"
+        id={key}
+        min="0"
+        step="0.01"
+        max="1"
+        value={$input[key]}
+        oninput={e => handleRange(Number((e.target as HTMLInputElement).value), key)}
+        class="range range-xs pointer-coarse:range-sm range-primary w-full"
+    />
+{/snippet}
 
 <svelte:window onkeyup={handleKeyup} onkeydown={handleKeyup} />
