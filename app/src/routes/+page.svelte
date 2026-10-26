@@ -211,12 +211,7 @@
 >
     <div class="w-full max-w-md">
         <div class="h-56 w-full sm:h-72">
-            <Visualization
-                defaultColor={null}
-                orbit={anythingOnline}
-                panel={false}
-                ground={false}
-            />
+            <Visualization defaultColor={null} orbit={anythingOnline} ground={false} />
         </div>
 
         {#if $socket}

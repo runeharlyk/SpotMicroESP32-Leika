@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shapeStick } from '../../src/lib/utilities/stick'
+import { gamepadSticks, shapeStick } from '../../src/lib/utilities/stick'
 
 const polar = (radius: number, degrees: number) => ({
     x: radius * Math.cos((degrees * Math.PI) / 180),
@@ -47,5 +47,26 @@ describe('shapeStick', () => {
             previous = current
         }
         expect(angle(shapeStick(polar(1, 20)))).toBeCloseTo(20)
+    })
+})
+
+describe('gamepadSticks', () => {
+    // nipplejs reports a stick pushed up as +y and to the right as +x; the standard gamepad mapping reads up as -1.
+    const onScreen = { up: shapeStick({ x: 0, y: 1 }), right: shapeStick({ x: 1, y: 0 }) }
+    const pushed = (axes: number[]) => gamepadSticks(axes)
+
+    it('reads either stick pushed up as the on-screen stick pushed up', () => {
+        expect(pushed([0, -1, 0, 0]).left).toEqual(onScreen.up)
+        expect(pushed([0, 0, 0, -1]).right).toEqual(onScreen.up)
+    })
+
+    it('reads either stick pushed right as the on-screen stick pushed right', () => {
+        expect(pushed([1, 0, 0, 0]).left).toEqual(onScreen.right)
+        expect(pushed([0, 0, 1, 0]).right).toEqual(onScreen.right)
+    })
+
+    it('leaves a pad without a second stick, or none at all, centred', () => {
+        expect(gamepadSticks([0, -1])).toEqual({ left: onScreen.up, right: { x: 0, y: 0 } })
+        expect(gamepadSticks([])).toEqual({ left: { x: 0, y: 0 }, right: { x: 0, y: 0 } })
     })
 })

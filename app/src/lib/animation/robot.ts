@@ -73,17 +73,23 @@ const BUILTIN_JSON = import.meta.glob('../../../../animations/*.json', {
     import: 'default'
 }) as Record<string, string>
 
+/** The names of the built-in clips the app has a copy of. */
+export const builtInClipNames = Object.keys(BUILTIN_JSON)
+    .map(file => file.slice(file.lastIndexOf('/') + 1, -'.json'.length))
+    .sort()
+
+/** The app's copy of a built-in clip. */
+export function builtInClip(name: string): Animation {
+    const text = Object.entries(BUILTIN_JSON).find(([file]) => file.endsWith(`/${name}.json`))?.[1]
+    if (!text) throw new Error(`This app has no copy of the built-in ${name}`)
+    const parsed = parseAnimationJson(text)
+    if ('error' in parsed) throw new Error(`${name}: ${parsed.error}`)
+    return parsed.animation
+}
+
 /** A clip to edit: a built-in from the app's copy of animations/, an uploaded one read back from the robot. */
 export async function fetchClip(entry: AnimationEntry): Promise<Animation> {
-    if (entry.builtin) {
-        const text = Object.entries(BUILTIN_JSON).find(([file]) =>
-            file.endsWith(`/${entry.name}.json`)
-        )?.[1]
-        if (!text) throw new Error(`This app has no copy of the built-in ${entry.name}`)
-        const parsed = parseAnimationJson(text)
-        if ('error' in parsed) throw new Error(`${entry.name}: ${parsed.error}`)
-        return parsed.animation
-    }
+    if (entry.builtin) return builtInClip(entry.name)
     const read = await fileSystemClient.downloadFile(clipPath(entry.name))
     if (!read.success || !read.data) throw new Error(read.error ?? `Could not read ${entry.name}`)
     const clip = froundAnimation(Animation.decode(read.data))

@@ -6,7 +6,13 @@ import path from 'node:path'
 import loadMujoco, { type MainModule } from '@mujoco/mujoco'
 import { RobotSim, type SimControls, type SimScene } from '../../src/lib/simulation/robot-sim'
 import { ROBOTS, type RobotId } from '../../src/lib/simulation/robots'
-import { ControllerData, ModesEnum, WalkGaits } from '../../src/lib/platform_shared/message'
+import {
+    AnimationState,
+    ControllerData,
+    ModesEnum,
+    WalkGaits
+} from '../../src/lib/platform_shared/message'
+import { builtInClip } from '../../src/lib/animation/robot'
 
 const repo = path.resolve(__dirname, '../../..')
 const resources = path.join(repo, 'simulation/src/resources')
@@ -130,6 +136,37 @@ describe('robot simulation', () => {
         const before = sim.time()
         sim.step(120)
         expect(sim.time() - before).toBeLessThanOrEqual(0.05 + 1e-9)
+    })
+
+    it("plays a clip on the firmware controller's Pico, which keeps its feet and stands again after", () => {
+        const [firmware, training] = ROBOTS.find(robot => robot.id === 'pico')!.controllers
+        sim = new RobotSim(mujoco, SCENES.pico(), training.create())
+        expect(sim.clips).toBeNull()
+        sim.dispose()
+
+        sim = new RobotSim(mujoco, SCENES.pico(), firmware.create())
+        run(1, controls(ModesEnum.STAND))
+        const stood = sim.jointAngles()
+        expect(sim.clips!.playClip(builtInClip('wave'), [])).toBe(true)
+        let moved = 0
+        // The clip starts on the next control tick.
+        let t = 0
+        do {
+            sim.step(0.05)
+            t += 0.05
+            const angles = sim.jointAngles()
+            moved = Math.max(moved, ...Object.keys(stood).map(j => Math.abs(angles[j] - stood[j])))
+        } while (t < 6 && sim.clips!.animationStatus().state !== AnimationState.ANIM_IDLE)
+        expect(sim.clips!.animationStatus()).toMatchObject({
+            name: 'wave',
+            state: AnimationState.ANIM_IDLE
+        })
+        expect(moved).toBeGreaterThan((10 * Math.PI) / 180)
+        expect(sim.hasFallen()).toBe(false)
+        run(1, controls(ModesEnum.STAND))
+        const angles = sim.jointAngles()
+        for (const joint of Object.keys(stood))
+            expect(Math.abs(angles[joint] - stood[joint]), joint).toBeLessThan(MAX_STAND_ERROR)
     })
 
     it('starts over on reset', () => {

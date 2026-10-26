@@ -35,3 +35,13 @@ export function shapeStick({ x, y }: Stick): Stick {
     const shaped = ((axis * 90 + Math.sign(off) * opened) * Math.PI) / 180
     return { x: length * Math.cos(shaped), y: length * Math.sin(shaped) }
 }
+
+// The standard gamepad mapping reports a stick pushed up as -1; the on-screen sticks and the firmware read up as +1.
+const gamepadStick = (axes: readonly number[], first: number) =>
+    shapeStick({ x: axes[first] ?? 0, y: -(axes[first + 1] ?? 0) })
+
+/** A gamepad's two sticks, the standard mapping's axes 0 and 1 and axes 2 and 3, shaped as the on-screen ones. */
+export const gamepadSticks = (axes: readonly number[]): { left: Stick; right: Stick } => ({
+    left: gamepadStick(axes, 0),
+    right: gamepadStick(axes, 2)
+})

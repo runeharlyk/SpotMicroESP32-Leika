@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { flushSync, mount, unmount } from 'svelte'
+import { get } from 'svelte/store'
 import { BufferGeometry, Mesh, MeshBasicMaterial } from 'three'
+import { simulation } from '../../src/lib/stores/drive'
 
 // The view's heavy parts are stubbed: WebGL (the scene builder), the 10 MB engine download and
 // the model loader. What remains is the view's own lifecycle, which is what this test is about.
-const created: { disposed: boolean; sceneId: string }[] = []
+const created: { disposed: boolean; sceneId: string; clips: object }[] = []
 const loads: { robotId: string; finish: () => void }[] = []
 
 vi.mock('$lib/sceneBuilder', () => {
@@ -58,6 +60,7 @@ vi.mock('$lib/simulation/robot-sim', () => ({
     RobotSim: class {
         disposed = false
         sceneId: string
+        clips = {}
         constructor(_mujoco: unknown, scene: { id: string }) {
             this.sceneId = scene.id
             created.push(this)
@@ -137,6 +140,17 @@ describe('SimulationView', () => {
 
         expect(freed).toEqual({ geometry: true, material: true })
         unmount(component)
+    })
+
+    it("offers the running robot's clip player to the controls, and withdraws it when the view is left", async () => {
+        const component = await mountView()
+        expect(get(simulation.player)).toBeNull()
+        loads.forEach(load => load.finish())
+        await settle()
+        expect(get(simulation.player)).toBe(created[0].clips)
+
+        unmount(component)
+        expect(get(simulation.player)).toBeNull()
     })
 
     it('keeps the chosen robot across a reload', async () => {

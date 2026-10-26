@@ -4,7 +4,6 @@
     interface Props {
         defaultColor?: string | null
         orbit?: boolean
-        panel?: boolean
         ground?: boolean
     }
 

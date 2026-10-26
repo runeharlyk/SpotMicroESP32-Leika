@@ -4,7 +4,7 @@ import { DIR, FirmwareMotion } from './firmware/motion'
 import { DEG2RAD_F, inverseKinematics } from './firmware/kinematics'
 import { JOINT_NAMES, PicoController } from './pico-gait'
 import { simulationSticks } from './controls'
-import type { SimController, SimControls } from './robot-sim'
+import type { ClipPlayer, SimController, SimControls } from './robot-sim'
 import { CONTROL_DT } from './timing'
 
 const named = (joints: string[], values: number[]) =>
@@ -50,13 +50,18 @@ const sameInput = (a: ControllerData, b: ControllerData) =>
 
 /**
  * The firmware's motion code (firmware/motion.ts, pinned to the headers). It receives mode, gait
- * and input only when they change, as the app's messages reach the robot, and holds its last
- * angles while deactivated, as the robot does.
+ * and input only when they change, as the app's messages reach the robot, plays clips as it does,
+ * and holds its last angles while deactivated.
  */
 export class FirmwareController implements SimController {
     private motion: FirmwareMotion
     private previous:
         { mode: SimControls['mode']; gait: SimControls['gait']; input: ControllerData } | undefined
+    readonly clips: ClipPlayer = {
+        playClip: (clip, params) => this.motion.playClip(clip, params),
+        stopClip: () => this.motion.stopClip(),
+        animationStatus: () => this.motion.animationStatus()
+    }
 
     constructor(
         private readonly variant: Variant,

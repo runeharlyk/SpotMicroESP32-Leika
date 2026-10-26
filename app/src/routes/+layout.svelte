@@ -14,6 +14,7 @@
         telemetry,
         mode,
         input,
+        outControllerData,
         socket,
         robotSocketUrl,
         apiLocation,
@@ -39,11 +40,11 @@
         addEventListeners()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        input.subscribe(data =>
+        outControllerData.subscribe(data =>
             inputThrottler.throttle(() => socket.emit(ControllerData, data), 100)
         )
         stopKeepAlive = keepControlAlive(
-            () => get(input),
+            () => get(outControllerData),
             data => socket.emit(ControllerData, data)
         )
         const modeMirror = mirrorRobot(
@@ -95,6 +96,7 @@
         notifications.error('Connection to device lost', 5000)
         telemetry.setRSSI(RSSIData.create({ rssi: 0 }))
         input.update(stopped)
+        outControllerData.update(stopped)
     }
 
     // A backgrounded tab stops driving the input store, so the robot would hold the last commanded
@@ -102,8 +104,9 @@
     // also throttles, and drops the call outright if a send is already pending.
     const handleVisibilityChange = () => {
         if (!document.hidden) return
-        const neutral = stopped(get(input))
-        input.set(neutral)
+        input.update(stopped)
+        const neutral = stopped(get(outControllerData))
+        outControllerData.set(neutral)
         socket.emit(ControllerData, neutral)
     }
 
