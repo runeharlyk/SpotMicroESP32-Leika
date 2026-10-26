@@ -11,9 +11,10 @@ the calibration message (ServoPWMData), one count every RAMP_S_PER_COUNT, in ste
 the stand's PWM between them, each held DWELL_S while the IMU's roll is averaged. Every other servo holds its stand PWM
 meanwhile. The left feet rise or sink together, the body rolls on the floor, and the roll each step adds, against the
 roll the firmware's kinematics predict for it at a given counts per degree, fits the counts per degree. At the end the
-hips ramp back to the stand's PWM and STAND is applied afresh, which hands the servos back to the motion. Nothing here
-walks; the largest step turns the hips about 8 degrees and rolls a MINI about 2 degrees. Keep a hand near it all the
-same. It exits 0 with a fit, 1 when the fit does not explain the measurement, and 2 when it refuses or loses the robot.
+hips ramp back to the stand's PWM and Robot.stand() applies STAND afresh, at its height, which hands the servos back to
+the motion. Nothing here walks; the largest step turns the hips about 8 degrees and rolls a MINI about 2 degrees. Keep
+a hand near it all the same. It exits 0 with a fit, 1 when the fit does not explain the measurement, and 2 when it
+refuses or loses the robot.
 
 Identifiability. Each step's roll is the average of DWELL_S / SAMPLE_S samples less the mean of the baselines on either
 side, so with the IMU's roll noise sigma (0.22 degrees per sample, recorded standing on the Pico) and N samples it is
@@ -29,7 +30,8 @@ without IMU noise and within 4 % with the Pico's (tests/test_measure_pwm_per_deg
 the feet, which slide sideways as the hips turn, a loose horn and the servos' deadband add to it; a residual well
 above the IMU's noise says the body did not roll as the kinematics expect (a foot off the floor, or slipping).
 
-`simulation` as the address runs it on the MuJoCo model, where --sim-scale sets the servos' true counts per degree.
+The address is the robot's (its WebSocket) or its native USB port (COMx), or `simulation` for the MuJoCo model, where
+--sim-scale sets the servos' true counts per degree.
 """
 import argparse
 import contextlib
@@ -38,7 +40,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.leika import joint_scale, speed_model
+from src.leika import Robot, joint_scale, speed_model
 from src.leika.backends.base import RobotError
 from src.leika.constants import Mode
 
@@ -64,26 +66,26 @@ class Refused(Exception):
     pass
 
 
-def tilt_samples(backend, seconds: float) -> np.ndarray:
+def tilt_samples(robot: Robot, seconds: float) -> np.ndarray:
     """Roll and pitch (degrees, rows) every SAMPLE_S for `seconds`."""
     samples = []
     for _ in range(max(1, round(seconds / SAMPLE_S))):
-        backend.sleep(SAMPLE_S)
-        state = backend.state()
+        robot.sleep(SAMPLE_S)
+        state = robot.state()
         samples.append((state.roll, state.pitch))
     return np.asarray(samples)
 
 
-def check_standing(backend, variant: str) -> tuple[np.ndarray, np.ndarray]:
+def check_standing(robot: Robot, variant: str) -> tuple[np.ndarray, np.ndarray]:
     """The stand's joint angles (servo space, degrees) and PWMs, once the robot is seen standing still on a flat floor."""
-    state = backend.state()
+    state = robot.state()
     if state.mode is not Mode.STAND:
         raise Refused(f"the robot is {state.mode.name}: stand it on a flat floor first")
-    samples = tilt_samples(backend, 2.0)
+    samples = tilt_samples(robot, 2.0)
     spread = samples.std(axis=0).max()
     if spread > MAX_STILL_SPREAD_DEG:
         raise Refused(f"the robot is not still: its tilt wavers by {spread:.2f} degrees")
-    angles, pwm = backend.servo_output()
+    angles, pwm = robot.servo_output()
     slope = samples.mean(axis=0) - joint_scale.stand_tilt(variant, angles)
     if np.max(np.abs(slope)) > MAX_FLOOR_SLOPE_DEG:
         raise Refused(f"the floor slopes {slope[0]:.1f} degrees in roll and {slope[1]:.1f} in pitch under the robot; "
@@ -94,33 +96,33 @@ def check_standing(backend, variant: str) -> tuple[np.ndarray, np.ndarray]:
 class HipSteps:
     """Writes the hips raw PWMs about the stand's, one count at a time."""
 
-    def __init__(self, backend, setup: joint_scale.ServoSetup, stand_pwm, joints):
-        self.backend, self.setup, self.stand_pwm, self.joints = backend, setup, stand_pwm, joints
+    def __init__(self, robot: Robot, setup: joint_scale.ServoSetup, stand_pwm, joints):
+        self.robot, self.setup, self.stand_pwm, self.joints = robot, setup, stand_pwm, joints
         self.offset = 0
 
     def hold(self) -> None:
         """Writes the hips their PWM at the current offset; the first write takes every servo off the motion."""
         for joint in self.joints:
             pwm = self.stand_pwm[joint] + self.setup.pwm_sign(joint) * self.offset
-            self.backend.set_servo_pwm(self.setup.channels[joint], int(pwm))
+            self.robot.set_servo_pwm(self.setup.channels[joint], int(pwm))
 
     def ramp(self, offset: int) -> None:
         step = 1 if offset > self.offset else -1
         while self.offset != offset:
             self.offset += step
             self.hold()
-            self.backend.sleep(RAMP_S_PER_COUNT)
+            self.robot.sleep(RAMP_S_PER_COUNT)
 
     def held(self, offset: int) -> np.ndarray:
         self.ramp(offset)
-        self.backend.sleep(SETTLE_S)
-        return tilt_samples(self.backend, DWELL_S).mean(axis=0)
+        self.robot.sleep(SETTLE_S)
+        return tilt_samples(self.robot, DWELL_S).mean(axis=0)
 
 
-def measure(backend, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) -> Measurement:
+def measure(robot: Robot, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) -> Measurement:
     """Steps the hips and fits the counts per degree; leaves the robot standing under the motion's control again."""
-    angles, stand_pwm = check_standing(backend, variant)
-    setup = backend.servo_settings()
+    angles, stand_pwm = check_standing(robot, variant)
+    setup = robot.servo_settings()
     if len(setup.center_pwm) != 12 or len(setup.direction) != 12:
         raise Refused("the robot reports no servo calibration or joint model for twelve joints")
     offsets = np.array([sign * n for n in steps for sign in (1, -1)])
@@ -128,7 +130,7 @@ def measure(backend, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) ->
         reach = stand_pwm[joint] + setup.pwm_sign(joint) * offsets
         if reach.min() < joint_scale.PWM_MIN or reach.max() > joint_scale.PWM_MAX:
             raise Refused(f"joint {joint} would leave the servos' PWM range ({reach.min():.0f}-{reach.max():.0f})")
-    hips = HipSteps(backend, setup, stand_pwm, joints)
+    hips = HipSteps(robot, setup, stand_pwm, joints)
     tilts = []
     try:
         hips.hold()  # the baselines too are taken with the servos held, as every step is
@@ -144,7 +146,7 @@ def measure(backend, variant: str, steps=STEPS, joints=joint_scale.LEFT_HIPS) ->
     finally:
         with contextlib.suppress(RobotError):  # without a link the robot's dead-man stop has halted it
             hips.ramp(0)
-            backend.set_mode(Mode.STAND)  # applies afresh, which hands the servos back to the motion
+            robot.stand()  # applies afresh, which hands the servos back to the motion
     fit = joint_scale.fit_scale(variant, angles, joints, offsets, tilts, setup.pwm_per_degree)
     return Measurement(offsets, np.asarray(tilts), fit)
 
@@ -169,19 +171,16 @@ def main() -> int:
     if args.address == "simulation":
         from src.leika.backends.sim import SimBackend
 
-        backend, variant = SimBackend(realtime=False, servo_scale=args.sim_scale), "SPOTMICRO_ESP32_MINI"
-        backend.connect()
-        backend.set_mode(Mode.STAND)
-        backend.sleep(2.0)
+        robot = Robot(backend=SimBackend(realtime=False, servo_scale=args.sim_scale))
     else:
-        from src.leika.backends.real import RealBackend
-
-        backend = RealBackend(args.address)
-        backend.connect()
-        variant = speed_model.known_variant(backend.features.variant)
+        robot = Robot(args.address)
     try:
-        result = measure(backend, variant)
-        return report(result, backend.servo_settings().pwm_per_degree)
+        robot.connect()
+        if args.address == "simulation":  # nobody stands a simulated robot by hand
+            robot.stand()
+            robot.sleep(2.0)
+        result = measure(robot, speed_model.known_variant(robot.features().variant))
+        return report(result, robot.servo_settings().pwm_per_degree)
     except Refused as refusal:
         print(f"refused: {refusal}")
         return 2
@@ -189,7 +188,7 @@ def main() -> int:
         print(f"stopped: {error}")
         return 2
     finally:
-        backend.close()
+        robot.close()
 
 
 if __name__ == "__main__":
