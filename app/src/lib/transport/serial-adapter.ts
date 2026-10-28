@@ -76,12 +76,14 @@ export const createSerialTransport = (
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
     let reading = Promise.resolve()
     let writeQueue = Promise.resolve()
+    let writing = 0
     let probeId: ReturnType<typeof setInterval> | undefined
     const abort = new AbortController()
 
     const decoder = new SerialFrameDecoder({
         onFrame: message => {
-            // The first frame only answers a probe, as nothing else is sent before it.
+            // The first frame answers a probe, or belongs to a stream an earlier session left
+            // subscribed: nothing of this session's is lost by dropping it.
             if (!answering) {
                 answering = true
                 clearInterval(probeId)
@@ -101,6 +103,7 @@ export const createSerialTransport = (
     const write = (frame: Uint8Array) => {
         const writable = port?.writable
         if (!writable) return
+        writing++
         writeQueue = writeQueue
             .then(async () => {
                 const writer = writable.getWriter()
@@ -111,6 +114,9 @@ export const createSerialTransport = (
                 }
             })
             .catch(error => console.error('Serial write failed:', error))
+            .then(() => {
+                if (--writing === 0) handlers.onDrained?.()
+            })
     }
 
     const stop = () => {
@@ -193,6 +199,8 @@ export const createSerialTransport = (
         },
 
         isConnected: () => answering && !closed,
+
+        busy: () => writing > 0,
 
         send: data => {
             if (!answering || closed) return

@@ -29,7 +29,19 @@ The solid leg in the diagram is where the joint is at the current PWM, and the f
 The real joint must move the same way as the faint leg when the PWM rises.
 If it moves the other way, your build does not match the joint model of the chosen variant.
 
+The web app also shows the robot's 3D model at the current PWM, with the selected joint's part highlighted; the app built into the robot leaves it out.
+The model's legs follow the firmware's leg numbers: leg 0 is the model's front left, then front right, rear left and rear right.
+On the Pico each knee turns through its four-bar linkage from where it is at its centre PWM, so the model shows where the real tibia goes.
+
 If a joint cannot reach its reference pose inside the PWM range, remove the servo horn and refit it one spline tooth over.
+
+### Set the servo supply
+
+Measure the voltage on the servo rail and enter it as "Servo supply" on the same page; it is sent when the field loses focus and takes effect at once, without a restart.
+The robot takes from it how fast its MG92B servos turn: 0.13 s per 60 degrees at 4.8 V and 0.08 s at 6 V, linear in between and held at the nearer rating outside.
+The servo controller moves each joint at most 96 % of that rating (720 degrees per second at 6 V), and the walk at most three quarters of it (540 degrees per second at 6 V), so a lower supply walks with slower steps instead of steps the servos cannot follow.
+The page shows both speeds for the entered supply.
+A robot that was never given a supply runs at 6 V.
 
 ### Level the IMU
 

@@ -28,7 +28,12 @@ jobs:
           python-version: "3.x"
 
       - name: Install Python dependencies
-        run: pip install protobuf grpcio-tools
+        run: pip install protobuf grpcio-tools pytest
+
+      - name: Check the wire numbers against platform_shared/wire_golden.json
+        run: |
+          python platform_shared/wire_golden.py --check
+          pytest -q platform_shared
 
       - name: Build Protocol Buffers (nanopb)
         run: python esp32/scripts/compile_protos.py

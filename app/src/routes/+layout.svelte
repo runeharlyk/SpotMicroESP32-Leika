@@ -14,21 +14,14 @@
         telemetry,
         mode,
         input,
-        servoAngles,
-        servoAnglesOut,
+        outControllerData,
         socket,
         robotSocketUrl,
         apiLocation,
         canReachRobot,
         walkGait
     } from '$lib/stores'
-    import {
-        AnglesData,
-        ControllerData,
-        ModeData,
-        RSSIData,
-        WalkGaitData
-    } from '$lib/platform_shared/message'
+    import { ControllerData, ModeData, RSSIData, WalkGaitData } from '$lib/platform_shared/message'
     import { Throttler } from '$lib/utilities'
     import { keepControlAlive, stopped } from '$lib/control-link'
     import { mirrorRobot } from '$lib/robot-mirror'
@@ -39,9 +32,7 @@
 
     let { children }: Props = $props()
 
-    // One per stream, so a burst of servo angles cannot hold back the next joystick command.
     const inputThrottler = new Throttler()
-    const anglesThrottler = new Throttler()
 
     onMount(async () => {
         if (canReachRobot(page.url, $apiLocation)) socket.init(robotSocketUrl())
@@ -49,11 +40,11 @@
         addEventListeners()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        input.subscribe(data =>
+        outControllerData.subscribe(data =>
             inputThrottler.throttle(() => socket.emit(ControllerData, data), 100)
         )
         stopKeepAlive = keepControlAlive(
-            () => get(input),
+            () => get(outControllerData),
             data => socket.emit(ControllerData, data)
         )
         const modeMirror = mirrorRobot(
@@ -71,9 +62,6 @@
             gaitMirror.stop,
             socket.on(ModeData, modeMirror.report),
             socket.on(WalkGaitData, gaitMirror.report)
-        )
-        servoAnglesOut.subscribe(data =>
-            anglesThrottler.throttle(() => socket.emit(AnglesData, data), 100)
         )
     })
 
@@ -94,10 +82,7 @@
             socket.onEvent('error', handleClose),
             socket.onEvent('unresponsive', handleClose),
             socket.onEvent('error', handleError),
-            socket.on(RSSIData, data => telemetry.setRSSI(data)),
-            socket.on(AnglesData, data => {
-                servoAngles.set(data)
-            })
+            socket.on(RSSIData, data => telemetry.setRSSI(data))
         )
     }
 
@@ -111,6 +96,7 @@
         notifications.error('Connection to device lost', 5000)
         telemetry.setRSSI(RSSIData.create({ rssi: 0 }))
         input.update(stopped)
+        outControllerData.update(stopped)
     }
 
     // A backgrounded tab stops driving the input store, so the robot would hold the last commanded
@@ -118,8 +104,9 @@
     // also throttles, and drops the call outright if a send is already pending.
     const handleVisibilityChange = () => {
         if (!document.hidden) return
-        const neutral = stopped(get(input))
-        input.set(neutral)
+        input.update(stopped)
+        const neutral = stopped(get(outControllerData))
+        outControllerData.set(neutral)
         socket.emit(ControllerData, neutral)
     }
 

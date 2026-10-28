@@ -9,6 +9,12 @@
 #define USE_CAMERA 0
 #endif
 
+// The robot's own download of an update (ota_http.h): TLS, the HTTP client and the certificate bundle take ~165 KB of
+// flash, more than the classic ESP32 envs' 1.9 MB app slots have left.
+#ifndef USE_OTA_DOWNLOAD
+#define USE_OTA_DOWNLOAD 1
+#endif
+
 namespace feature_service {
 
 /** What this boot runs with, as the robot reports it to the app. */
@@ -18,9 +24,11 @@ struct RuntimeFeatures {
     KinematicsVariant variant;
     SensorStatus sensors;
     bool servoDetected;
+    bool servosCalibrated;
     bool cameraDetected;
     bool cameraActive;
     bool ws2812;
+    bool walkNN;
 };
 
 /** The PlatformIO env this firmware was built for. */

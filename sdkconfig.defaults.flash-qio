@@ -1,0 +1,6 @@
+# Quad I/O flash for the esp32-s3-n8r2 build (platformio.ini; board_build.flash_mode = qio does not reach the
+# sdkconfig, which stayed at DIO). Measured on the Spot Pico's GD25Q64 on 2026-10-22: the bootloader enables QIO on the
+# chip, app_main starts 94 ms sooner, and the control loop's compute time fell from 107-116 us mean, 317-358 us p99 to
+# 73-76 us mean, 149-206 us p99, as code fetched from flash comes in four bits at a time. A flash without quad I/O does
+# not boot with it; the S3-EYE (esp32-wroom-camera) and XIAO builds stay at DIO until their boot logs show QIO works.
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y

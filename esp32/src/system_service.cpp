@@ -5,6 +5,11 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <mdns.h>
+#include <peripherals/i2c_bus.h>
+#include <utils/cpu_usage.h>
+#include <utils/task_stacks.h>
+#include <atomic>
+#include <cstring>
 #include <soc/soc.h>
 
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || \
@@ -54,19 +59,22 @@ void reset() {
     restart();
 }
 
+// Restarts a moment after the reply has gone out, from a timer made at boot. A task made at the end of an update found
+// no internal RAM for its stack on the Hexapod with the camera running, so the robot answered 200, kept the old image
+// and refused later updates (Hexapod 32f18c3). esp_restart() stops WiFi itself.
+static constexpr uint64_t RESTART_DELAY_US = 850 * 1000;
+static esp_timer_handle_t restartTimer = nullptr;
+
+void prepareRestart() {
+    esp_timer_create_args_t args = {};
+    args.callback = [](void *) { esp_restart(); };
+    args.name = "restart";
+    if (esp_timer_create(&args, &restartTimer) != ESP_OK) restartTimer = nullptr;
+}
+
 void restart() {
-    xTaskCreate(
-        [](void *pvParameters) {
-            for (;;) {
-                vTaskDelay(250 / portTICK_PERIOD_MS);
-                mdns_free();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                WiFi.disconnect(true);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-                esp_restart();
-            }
-        },
-        "Restart task", 4096, nullptr, 10, nullptr);
+    ESP_LOGI(TAG, "Restarting");
+    if (!restartTimer || esp_timer_start_once(restartTimer, RESTART_DELAY_US) != ESP_OK) esp_restart();
 }
 
 static const char *getChipModel() {
@@ -163,6 +171,16 @@ void getStaticSystemInformation(socket_message_StaticSystemInformation &info) {
     info.cpu_reset_reason = (char *)resetReason(esp_reset_reason());
 }
 
+static CpuUsage cpuUsage;
+
+void sampleCpuUsage() { cpuUsage.sample(); }
+
+static std::atomic<uint32_t> failedAllocations {0};
+
+void countFailedAllocations() {
+    heap_caps_register_failed_alloc_callback([](size_t, uint32_t, const char *) { failedAllocations++; });
+}
+
 void getAnalytics(socket_message_AnalyticsData &analytics) {
     size_t fs_total = 0, fs_used = 0;
     esp_littlefs_info("spiffs", &fs_total, &fs_used);
@@ -173,10 +191,37 @@ void getAnalytics(socket_message_AnalyticsData &analytics) {
     analytics.free_heap = esp_get_free_heap_size();
     analytics.total_heap = heap_caps_get_total_size(MALLOC_CAP_8BIT);
     analytics.min_free_heap = esp_get_minimum_free_heap_size();
+    analytics.free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    analytics.largest_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    analytics.min_free_internal = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+    analytics.failed_allocations = failedAllocations.load();
     analytics.core_temp = temperatureRead();
     analytics.fs_total = fs_total;
     analytics.fs_used = fs_used;
     analytics.uptime = esp_timer_get_time() / 1000;
+    analytics.cpu0_usage = cpuUsage.core(0);
+    analytics.cpu1_usage = cpuUsage.core(1);
+    analytics.cpu_usage = cpuUsage.total();
+
+    const auto devices = I2CBus::instance().errors();
+    const size_t count = std::min(devices.size(), std::size(analytics.i2c_errors));
+    for (size_t i = 0; i < count; i++)
+        analytics.i2c_errors[i] = {devices[i].address, devices[i].nacks, devices[i].timeouts};
+    analytics.i2c_errors_count = count;
+    analytics.i2c_bus_recoveries = I2CBus::instance().recoveries();
+
+    // One snapshot of every task, kept off the service task's stack.
+    static TaskStatus_t statuses[40];
+    static TaskStack stacks[40];
+    const UBaseType_t tasks = uxTaskGetSystemState(statuses, std::size(statuses), nullptr);
+    for (UBaseType_t i = 0; i < tasks; i++)
+        stacks[i] = {statuses[i].pcTaskName, static_cast<uint32_t>(statuses[i].usStackHighWaterMark)};
+    const size_t shown = tightestStacks(stacks, tasks, std::size(analytics.task_stacks));
+    for (size_t i = 0; i < shown; i++) {
+        strncpy(analytics.task_stacks[i].name, stacks[i].name, sizeof(analytics.task_stacks[i].name) - 1);
+        analytics.task_stacks[i].stack_free_min = stacks[i].freeMin;
+    }
+    analytics.task_stacks_count = shown;
 }
 
 const char *resetReason(esp_reset_reason_t reason) {

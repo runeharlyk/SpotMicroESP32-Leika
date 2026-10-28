@@ -1,16 +1,20 @@
 name: Frontend Tests
 
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:
       - "app/**"
       - "simulation/src/resources/**"
+      - "animations/**"
   pull_request:
     branches: [master]
     paths:
       - "app/**"
       - "simulation/src/resources/**"
+      - "animations/**"
 
 permissions:
   contents: read
@@ -52,8 +56,8 @@ jobs:
       - name: Type check
         run: pnpm check
 
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Run tests
         run: pnpm test
+
+      - name: Build
+        run: pnpm build

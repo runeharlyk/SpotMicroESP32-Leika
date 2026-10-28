@@ -2,26 +2,49 @@
     import nipplejs from 'nipplejs'
     import { haptics } from '$lib/utilities'
     import { onDestroy, onMount } from 'svelte'
+    import { get } from 'svelte/store'
     import {
         input,
-        mode,
-        walkGait,
-        modes,
+        socket,
+        selectableModes,
         modeLabels,
         walkGaits,
         walkGaitLabels,
-        variantChoiceNeeded
+        variantChoiceNeeded,
+        connectionFeatures
     } from '$lib/stores'
+    import {
+        drive,
+        driveGait,
+        driveMode,
+        drivenGait,
+        drivenMode,
+        drivesSimulation
+    } from '$lib/stores/drive'
     import type { vector } from '$lib/types/models'
-    import { VerticalSlider } from '$lib/components/input'
-    import { gamepadAxes, gamepadButtonsEdges, hasGamepad } from '$lib/stores/gamepad'
+    import { gamepadButtonsEdges, gamepadStickInput, hasGamepad } from '$lib/stores/gamepad'
     import { shapeStick } from '$lib/utilities/stick'
     import { notifications } from '$lib/components/toasts/notifications'
-    import { ModeData, ModesEnum, WalkGaitData, WalkGaits } from '$lib/platform_shared/message'
+    import { ModesEnum, WalkGaits, type ControllerData } from '$lib/platform_shared/message'
     import { gamepadCommand, stepHeight } from '$lib/utilities/gamepad-mapping'
+    import ClipControls from './ClipControls.svelte'
+
+    type SliderKey = 'speed' | 'height' | 's1'
 
     let left: nipplejs.JoystickManager
     let right: nipplejs.JoystickManager
+    let adjustmentsOpen = $state(false)
+    let leftActive = $state(false)
+    let rightActive = $state(false)
+
+    // While the layout shows the simulation, the controls drive its robot and never the real one (stores/drive.ts).
+    const steer = (change: (data: ControllerData) => void) => {
+        input.update(data => {
+            change(data)
+            return data
+        })
+        drive(get(input))
+    }
 
     $effect(() => {
         if ($hasGamepad) {
@@ -30,8 +53,8 @@
     })
 
     $effect(() => {
-        handleJoyMove('left', { x: $gamepadAxes[0], y: -$gamepadAxes[1] })
-        handleJoyMove('right', { x: $gamepadAxes[2], y: $gamepadAxes[3] })
+        handleJoyMove('left', $gamepadStickInput.left)
+        handleJoyMove('right', $gamepadStickInput.right)
     })
 
     $effect(() => {
@@ -39,38 +62,39 @@
         const b = $gamepadButtonsEdges
         if (!b.length) return
         const command = gamepadCommand(b)
-        if (command.mode !== undefined && movable(command.mode))
-            mode.set(ModeData.create({ mode: command.mode }))
+        if (command.mode !== undefined && movable(command.mode)) driveMode(command.mode)
         if (command.heightStep)
-            input.update(inputData => {
-                inputData.height = stepHeight(inputData.height, command.heightStep)
-                return inputData
-            })
+            steer(data => (data.height = stepHeight(data.height, command.heightStep)))
     })
 
     onMount(() => {
-        left = nipplejs.create({
-            zone: document.getElementById('left') as HTMLElement,
-            color: '#15191e80',
+        // The rings are drawn by the styles below, over any view and in either theme.
+        const options = {
+            color: 'transparent',
+            size: 104,
             dynamicPage: true,
-            mode: 'static',
+            mode: 'static' as const,
             position: { left: '50%', top: '50%' },
             restOpacity: 1
-        })
-
+        }
+        left = nipplejs.create({ zone: document.getElementById('left') as HTMLElement, ...options })
         right = nipplejs.create({
             zone: document.getElementById('right') as HTMLElement,
-            color: '#15191e80',
-            dynamicPage: true,
-            mode: 'static',
-            position: { left: '50%', top: '50%' },
-            restOpacity: 1
+            ...options
         })
 
+        left.on('start', () => (leftActive = true))
+        right.on('start', () => (rightActive = true))
         left.on('move', (_, data) => handleJoyMove('left', shapeStick(data.vector)))
-        left.on('end', () => handleJoyMove('left', { x: 0, y: 0 }))
+        left.on('end', () => {
+            leftActive = false
+            handleJoyMove('left', { x: 0, y: 0 })
+        })
         right.on('move', (_, data) => handleJoyMove('right', shapeStick(data.vector)))
-        right.on('end', () => handleJoyMove('right', { x: 0, y: 0 }))
+        right.on('end', () => {
+            rightActive = false
+            handleJoyMove('right', { x: 0, y: 0 })
+        })
     })
 
     onDestroy(() => {
@@ -78,54 +102,64 @@
         right?.destroy()
     })
 
-    const handleJoyMove = (key: 'left' | 'right', data: vector) => {
-        input.update(inputData => {
-            inputData[key] = data
-            return inputData
-        })
-    }
+    const handleJoyMove = (key: 'left' | 'right', stick: vector) =>
+        steer(data => (data[key] = stick))
 
     const handleKeyup = (event: KeyboardEvent) => {
         const down = event.type === 'keydown'
-        input.update(data => {
+        steer(data => {
             if (event.key === 'w') data.left!.y = down ? 1 : 0
             if (event.key === 'a') data.left!.x = down ? -1 : 0
             if (event.key === 's') data.left!.y = down ? -1 : 0
             if (event.key === 'd') data.left!.x = down ? 1 : 0
             if (event.key === 'ArrowLeft') data.right!.x = down ? 1 : 0
             if (event.key === 'ArrowRight') data.right!.x = down ? -1 : 0
-            return data
         })
     }
 
-    const handleRange = (value: number, key: 'speed' | 'height' | 's1') => {
-        input.update(inputData => {
-            inputData[key] = value
-            return inputData
-        })
-    }
+    const handleRange = (value: number, key: SliderKey) => steer(data => (data[key] = value))
 
-    // The robot refuses every other mode until it knows which variant it is.
+    // The robot refuses every other mode until it knows which variant it is; the simulation knows its own.
     const movable = (modeValue: ModesEnum) =>
-        !$variantChoiceNeeded || modeValue === ModesEnum.DEACTIVATED
+        $drivesSimulation || !$variantChoiceNeeded || modeValue === ModesEnum.DEACTIVATED
 
     const changeMode = (modeValue: ModesEnum) => {
         if (modeValue === ModesEnum.DEACTIVATED) haptics.stop()
         else haptics.modeChange()
-        mode.set(ModeData.create({ mode: modeValue }))
+        driveMode(modeValue)
     }
 
-    const changeWalkGait = (walkGaitValue: WalkGaits) => {
-        walkGait.set(WalkGaitData.create({ gait: walkGaitValue }))
-    }
+    // The simulation runs no learned walk.
+    const offered: ModesEnum[] = $derived(
+        selectableModes(!$drivesSimulation && ($connectionFeatures?.walkNn ?? false))
+    )
+    const walking = $derived($drivenMode === ModesEnum.WALK)
+    // Standing, the left stick shifts the body and the right one tilts it; otherwise they walk and turn.
+    const standing = $derived($drivenMode === ModesEnum.STAND)
+    // Clips are offered standing, where one starts from the stance, and while one runs in ANIMATE.
+    const clipsPlayable = $derived(
+        $drivenMode === ModesEnum.STAND || $drivenMode === ModesEnum.ANIMATE
+    )
 </script>
 
-<div class="absolute top-0 left-0 h-dvh w-screen">
+<div class="absolute top-0 left-0 h-dvh w-full">
     <!-- Portrait phones put both sticks side by side above the control panel. -->
     <div class="absolute inset-0 flex px-[env(safe-area-inset-left)] max-sm:items-end max-sm:pb-40">
-        <div id="left" class="relative h-full w-1/2 max-sm:h-44 sm:w-60"></div>
+        <div
+            id="left"
+            class="joystick-zone relative h-full w-1/2 max-sm:h-44 sm:w-60"
+            data-active={leftActive}
+        >
+            <span class="joystick-label">{standing ? 'Shift' : 'Move'}</span>
+        </div>
         <div class="flex-1 max-sm:hidden"></div>
-        <div id="right" class="relative h-full w-1/2 max-sm:h-44 sm:w-60"></div>
+        <div
+            id="right"
+            class="joystick-zone relative h-full w-1/2 max-sm:h-44 sm:w-60"
+            data-active={rightActive}
+        >
+            <span class="joystick-label">{standing ? 'Tilt' : 'Turn'}</span>
+        </div>
     </div>
     <div
         class="absolute bottom-0 right-0 p-4 z-10 gap-1.5 flex-col hidden lg:flex opacity-40 hover:opacity-80 transition-opacity duration-300"
@@ -140,85 +174,138 @@
         </div>
     </div>
     <div
-        class="absolute bottom-0 z-10 flex max-w-full items-end pointer-events-none pl-[env(safe-area-inset-left)]"
+        class="bg-base-300/60 border-base-content/5 absolute bottom-0 left-0 z-10 flex max-h-[calc(100%-4rem)] w-full flex-col gap-2 overflow-y-auto border-t p-3 pl-[max(0.75rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:w-auto sm:max-w-xl sm:rounded-tr-2xl sm:border-r"
     >
-        <div
-            class="flex items-center flex-col backdrop-blur-sm bg-base-300/60 p-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] gap-2 rounded-tr-2xl border-t border-base-content/5 pointer-events-auto"
-        >
-            <VerticalSlider
-                min={0}
-                max={1}
-                step={0.01}
-                aria-label="Body height"
-                oninput={e => handleRange(Number((e.target as HTMLInputElement).value), 'height')}
-            />
-            <span class="text-xs font-medium opacity-70" aria-hidden="true">Ht</span>
-        </div>
-        <div
-            class="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2 backdrop-blur-sm bg-base-300/60 h-min rounded-tr-2xl pl-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-r border-base-content/5 pointer-events-auto"
-        >
-            {#if $variantChoiceNeeded}
-                <p class="w-full text-xs opacity-70">
-                    Tell the robot which variant it is before it can move.
-                </p>
-            {/if}
-            <div class="join max-w-full shadow-lg max-sm:grid max-sm:grid-cols-3">
-                {#each modes as modeValue (modeValue)}
-                    <button
-                        class="btn join-item btn-sm pointer-coarse:btn-md transition-all duration-200"
-                        class:btn-primary={$mode.mode === modeValue}
-                        disabled={!movable(modeValue)}
-                        onclick={() => changeMode(modeValue)}
-                    >
+        {#if $variantChoiceNeeded && !$drivesSimulation}
+            <p class="text-xs opacity-70">Tell the robot which variant it is before it can move.</p>
+        {/if}
+        <div class="flex items-center gap-2">
+            <select
+                class="select select-primary select-sm pointer-coarse:select-md w-auto min-w-0"
+                aria-label="Mode"
+                value={$drivenMode}
+                onchange={event => changeMode(Number(event.currentTarget.value) as ModesEnum)}
+            >
+                {#if !offered.includes($drivenMode)}
+                    <option value={$drivenMode} disabled>{modeLabels[$drivenMode]}</option>
+                {/if}
+                {#each offered as modeValue (modeValue)}
+                    <option value={modeValue} disabled={!movable(modeValue)}>
                         {modeLabels[modeValue]}
-                    </button>
+                    </option>
                 {/each}
-            </div>
-
-            {#if $mode.mode === ModesEnum.WALK}
-                <div class="join shadow-md">
-                    {#each walkGaits as gaitValue (gaitValue)}
-                        <button
-                            class="btn join-item btn-xs pointer-coarse:btn-sm transition-all duration-200"
-                            class:btn-secondary={$walkGait.gait === gaitValue}
-                            onclick={() => changeWalkGait(gaitValue)}
-                        >
-                            {walkGaitLabels[gaitValue]}
-                        </button>
-                    {/each}
-                </div>
-
-                <div class="flex gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label for="s1" class="text-xs font-medium opacity-70">Step height</label>
-                        <input
-                            type="range"
-                            id="s1"
-                            min="0"
-                            step="0.01"
-                            max="1"
-                            oninput={e =>
-                                handleRange(Number((e.target as HTMLInputElement).value), 's1')}
-                            class="range range-xs pointer-coarse:range-sm range-primary"
-                        />
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label for="speed" class="text-xs font-medium opacity-70">Speed</label>
-                        <input
-                            type="range"
-                            id="speed"
-                            min="0"
-                            step="0.01"
-                            max="1"
-                            oninput={e =>
-                                handleRange(Number((e.target as HTMLInputElement).value), 'speed')}
-                            class="range range-xs pointer-coarse:range-sm range-primary"
-                        />
-                    </div>
-                </div>
+            </select>
+            {#if $socket && !$drivesSimulation}
+                <button
+                    class="btn btn-sm pointer-coarse:btn-md shrink-0"
+                    class:btn-error={$drivenMode === ModesEnum.DEACTIVATED}
+                    onclick={() => changeMode(ModesEnum.DEACTIVATED)}
+                >
+                    Deactivate
+                </button>
+            {/if}
+            <button
+                class="btn btn-sm pointer-coarse:btn-md shrink-0"
+                aria-expanded={adjustmentsOpen}
+                aria-controls="controller-adjustments"
+                onclick={() => (adjustmentsOpen = !adjustmentsOpen)}
+            >
+                Adjustments
+            </button>
+            {#if $drivesSimulation}
+                <span class="badge badge-info badge-sm shrink-0">Simulation only</span>
+            {:else if !$socket}
+                <span class="badge badge-warning badge-sm shrink-0">Preview</span>
             {/if}
         </div>
+
+        {#if walking}
+            <div class="flex items-end gap-3">
+                <select
+                    class="select select-secondary select-sm pointer-coarse:select-md w-auto min-w-0"
+                    aria-label="Gait"
+                    value={$drivenGait}
+                    onchange={event => driveGait(Number(event.currentTarget.value) as WalkGaits)}
+                >
+                    {#each walkGaits as gaitValue (gaitValue)}
+                        <option value={gaitValue}>{walkGaitLabels[gaitValue]}</option>
+                    {/each}
+                </select>
+                <div class="min-w-0 flex-1">{@render slider('speed', 'Speed')}</div>
+            </div>
+        {/if}
+
+        <div id="controller-adjustments" hidden={!adjustmentsOpen}>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="min-w-0">{@render slider('height', 'Body height')}</div>
+                {#if walking}
+                    <div class="min-w-0">{@render slider('s1', 'Step height')}</div>
+                {/if}
+            </div>
+        </div>
+
+        {#if clipsPlayable}
+            <ClipControls />
+        {/if}
     </div>
 </div>
 
+{#snippet slider(key: SliderKey, label: string)}
+    <div class="flex items-baseline justify-between gap-2">
+        <label for={key} class="text-xs font-medium opacity-70">{label}</label>
+        <span class="font-mono text-xs tabular-nums opacity-70">{$input[key].toFixed(2)}</span>
+    </div>
+    <input
+        type="range"
+        id={key}
+        min="0"
+        step="0.01"
+        max="1"
+        value={$input[key]}
+        oninput={e => handleRange(Number((e.target as HTMLInputElement).value), key)}
+        class="range range-xs pointer-coarse:range-sm range-primary w-full"
+    />
+{/snippet}
+
 <svelte:window onkeyup={handleKeyup} onkeydown={handleKeyup} />
+
+<style>
+    .joystick-zone :global(.back) {
+        opacity: 1 !important;
+        border: 2px solid rgb(255 255 255 / 75%);
+        box-shadow:
+            0 0 0 1px rgb(10 18 30 / 35%),
+            0 2px 8px rgb(0 0 0 / 20%);
+    }
+
+    .joystick-zone :global(.front) {
+        opacity: 1 !important;
+        border: 2px solid rgb(255 255 255 / 85%);
+        box-shadow:
+            0 0 0 1px rgb(10 18 30 / 35%),
+            0 1px 5px rgb(0 0 0 / 20%);
+    }
+
+    .joystick-zone[data-active='true'] :global(.front) {
+        border-color: white;
+        border-width: 3px;
+    }
+
+    .joystick-label {
+        position: absolute;
+        top: calc(50% + 64px);
+        left: 50%;
+        z-index: 10;
+        transform: translateX(-50%);
+        pointer-events: none;
+        border: 1px solid rgb(255 255 255 / 20%);
+        border-radius: 999px;
+        background: rgb(10 18 30 / 55%);
+        padding: 2px 8px;
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+</style>

@@ -6,7 +6,7 @@ import { DIR } from '$lib/simulation/firmware/motion'
 /** A point in legIk's frame: x towards the body's centreline, y up, z forward, in metres. */
 export type LegPoint = [number, number, number]
 
-export const LEG_NAMES = ['Front right', 'Front left', 'Rear right', 'Rear left']
+export const LEG_NAMES = ['Front left', 'Front right', 'Rear left', 'Rear right']
 export const JOINT_NAMES = ['Hip', 'Femur', 'Knee']
 
 /** The firmware's servo order (Kinematics::calculate_inverse_kinematics): three joints per leg. */

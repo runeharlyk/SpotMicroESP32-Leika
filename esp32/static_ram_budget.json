@@ -1,0 +1,25 @@
+{
+  "about": "Static internal RAM each board's firmware may use, in bytes (esp32/scripts/static_ram.py): the measured build plus 2 KiB, rounded up to 1 KiB. Raise one only in a commit that says why the growth is worth it.",
+  "envs": {
+    "esp32-camera": {
+      "dram_bytes": 131072,
+      "iram_bytes": 123904
+    },
+    "esp32dev": {
+      "dram_bytes": 110592,
+      "iram_bytes": 121856
+    },
+    "esp32-wroom-camera": {
+      "dram_bytes": 144384,
+      "iram_bytes": 92160
+    },
+    "esp32-s3-n8r2": {
+      "dram_bytes": 143360,
+      "iram_bytes": 89088
+    },
+    "seeed-xiao-esp32s3": {
+      "dram_bytes": 143360,
+      "iram_bytes": 92160
+    }
+  }
+}

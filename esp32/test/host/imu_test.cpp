@@ -26,6 +26,7 @@ class ScriptedImu final : public ImuDriver {
     bool present = true;
     int begins = 0;
     const char *label = "scripted";
+    uint32_t rate = 200;
     bool begin() override {
         begins++;
         return present;
@@ -35,7 +36,7 @@ class ScriptedImu final : public ImuDriver {
         return true;
     }
     const char *name() const override { return label; }
-    uint32_t rateHz() const override { return 200; }
+    uint32_t rateHz() const override { return rate; }
 };
 
 class ScriptedMag final : public MagDriver {
@@ -75,14 +76,57 @@ static void aStillRobotsGyroBiasIsRemoved() {
 
 static void aMovingRobotKeepsThePreviousBias() {
     ScriptedImu driver;
+    for (int i = 0; i < Imu::BIAS_SAMPLES; i++) driver.script.push_back(still({0.01f, 0, 0}));
     for (int i = 0; i < 400; i++) driver.script.push_back(still({(i % 2) ? 0.5f : -0.5f, 0, 0}));
     Imu imu(&driver, nullptr);
     CHECK(imu.begin(0));
     int64_t clock = 0;
+    CHECK(imu.estimateGyroBias([&] { return clock += 5000; }));
     CHECK(!imu.estimateGyroBias([&] { return clock += 5000; }));
     ImuSample sample;
     CHECK(imu.update(clock, sample));
-    CHECK(near(std::fabs(sample.gyro[0]), 0.5f, 1e-5f));  // nothing subtracted
+    CHECK(near(sample.gyro[0], -0.5f - 0.01f, 1e-5f));  // the first, still calibration's bias, not zero
+}
+
+// A steady tilt turns the gyro by a constant, with no spread to give it away; gravity turning in the body does.
+static void aSlowSteadyTiltIsNotTakenForBias() {
+    ScriptedImu driver;
+    const float rate = 0.05f;  // rad/s about x, slower than any handling
+    for (int i = 0; i < Imu::BIAS_SAMPLES; i++) {
+        RawImu raw = still({rate, 0, 0});
+        const float angle = rate * 0.005f * i;
+        raw.accel = {0, 9.81f * std::sin(angle), 9.81f * std::cos(angle)};
+        driver.script.push_back(raw);
+    }
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    int64_t clock = 0;
+    CHECK(!imu.estimateGyroBias([&] { return clock += 5000; }));
+}
+
+// The BNO055 updates at 100 Hz while the sensor task runs at 200 Hz: a second read of a sample is a duplicate.
+static void aChipSlowerThanTheSensorTaskIsReadOncePerSample() {
+    ScriptedImu driver;
+    driver.rate = 100;
+    driver.script = {still()};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    ImuSample sample;
+    int fresh = 0;
+    for (int64_t t = 5000; t <= 1000000; t += 5000) fresh += imu.update(t + (t % 3 ? -400 : 300), sample);
+    CHECK(fresh >= 99 && fresh <= 101);
+}
+
+// At the chip's own rate a jittery pacing timer still reads every sample.
+static void aChipAtTheSensorTaskRateIsReadOnEveryTick() {
+    ScriptedImu driver;
+    driver.script = {still()};
+    Imu imu(&driver, nullptr);
+    CHECK(imu.begin(0));
+    ImuSample sample;
+    int fresh = 0;
+    for (int64_t t = 5000; t <= 1000000; t += 5000) fresh += imu.update(t + (t % 3 ? -400 : 300), sample);
+    CHECK(fresh == 200);
 }
 
 static void theMountingTurnsChipReadingsIntoTheBodyFrame() {
@@ -366,6 +410,9 @@ int main() {
     aStoppedImuReportsNothing();
     aStillRobotsGyroBiasIsRemoved();
     aMovingRobotKeepsThePreviousBias();
+    aSlowSteadyTiltIsNotTakenForBias();
+    aChipSlowerThanTheSensorTaskIsReadOncePerSample();
+    aChipAtTheSensorTaskRateIsReadOnEveryTick();
     theMountingTurnsChipReadingsIntoTheBodyFrame();
     aTiltedRobotIsFoundWithinTheFastStart();
     withoutAMagnetometerYawIsMarkedAsDrifting();

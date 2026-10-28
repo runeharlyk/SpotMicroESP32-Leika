@@ -66,6 +66,40 @@ static void aSaveWithoutChannelsKeepsTheWiring() {
     CHECK(jointChannel(current, 0) == 15);
 }
 
+static void aSaveWithoutASupplyKeepsTheSupply() {
+    ServoSettings current = ServoSettings_defaults();
+    current.supply_voltage = 5.0f;
+    ServoSettings save = ServoSettings_defaults();
+    save.supply_voltage = 0;  // an app that never sends the supply
+    CHECK(ServoSettings_update(save, current) == StateUpdateResult::CHANGED);
+    CHECK(servoSupplyVolts(current) == 5.0f);
+    save.supply_voltage = 5.6f;
+    CHECK(ServoSettings_update(save, current) == StateUpdateResult::CHANGED);
+    CHECK(servoSupplyVolts(current) == 5.6f);
+}
+
+static void aNonFiniteOrNegativeSupplyIsRefused() {
+    ServoSettings current = ServoSettings_defaults();
+    for (float volts : {NAN, INFINITY, -5.0f}) {
+        ServoSettings save = ServoSettings_defaults();
+        save.supply_voltage = volts;
+        CHECK(ServoSettings_update(save, current) == StateUpdateResult::ERROR);
+    }
+    CHECK(current.supply_voltage == DEFAULT_SERVO_SUPPLY_VOLTS);
+}
+
+// A robot that stored its settings before the supply existed runs, and reports, the 6 V the servos were taken to run at.
+static void aFileWithoutASupplyRunsAtTheDefault() {
+    ServoSettings decoded = ServoSettings_defaults();
+    decoded.supply_voltage = 0;
+    ServoSettings current = api_ServoSettings_init_zero;  // the service's state before the file loads
+    CHECK(ServoSettings_update(decoded, current) == StateUpdateResult::CHANGED);
+    CHECK(servoSupplyVolts(current) == DEFAULT_SERVO_SUPPLY_VOLTS);
+    ServoSettings reply = api_ServoSettings_init_zero;
+    ServoSettings_read(current, reply, nullptr);
+    CHECK(reply.supply_voltage == DEFAULT_SERVO_SUPPLY_VOLTS);
+}
+
 static void theReplyReportsTheVariantsModel() {
     ServoSettings reply = api_ServoSettings_init_zero;
     ServoSettings_read(ServoSettings_defaults(), reply, &JOINT_MODEL_SPOTMICRO_ESP32_MINI);
@@ -119,12 +153,27 @@ static void aTodaysSettingsFileKeepsItsCentres() {
     CHECK(jointChannel(current, 7) == 7);
 }
 
+// The fleet view asks whether a robot was calibrated; nothing stores that, but a calibration moves some centre.
+static void onlyAMovedCentreCountsAsCalibrated() {
+    ServoSettings settings = ServoSettings_defaults();
+    CHECK(!servosCalibrated(settings));
+    settings.channels_count = SERVO_COUNT;
+    for (size_t i = 0; i < SERVO_COUNT; i++) settings.channels[i] = SERVO_COUNT - 1 - i;
+    CHECK(!servosCalibrated(settings));  // rewired, not calibrated
+    settings.servos[11].center_pwm = 243;
+    CHECK(servosCalibrated(settings));
+}
+
 int main() {
+    onlyAMovedCentreCountsAsCalibrated();
     theDefaultsWireJointToChannelInOrder();
     aChannelMapRoutesEachJoint();
     aBrokenChannelMapIsRefused();
     aNonFiniteOrOutOfRangeCentreIsRefused();
     aSaveWithoutChannelsKeepsTheWiring();
+    aSaveWithoutASupplyKeepsTheSupply();
+    aNonFiniteOrNegativeSupplyIsRefused();
+    aFileWithoutASupplyRunsAtTheDefault();
     theReplyReportsTheVariantsModel();
     withoutAVariantTheReplyHasNoModel();
     aTodaysSettingsFileKeepsItsCentres();

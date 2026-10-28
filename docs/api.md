@@ -7,14 +7,14 @@ There is no authentication; reach the robot only from a network you trust.
 Everything except the camera stream travels over the WebSocket at `/api/ws` as binary Protocol Buffers.
 The former per-feature REST endpoints (`/api/system/*`, `/api/wifi/*`, `/api/servo/*`, `/api/files`, and so on) no longer exist.
 See [websocket.md](websocket.md) for the framing, subscriptions, reply codes and telemetry.
-Over a USB cable, the same requests travel over the serial link, see [serial.md](serial.md).
+Over a USB cable, the same requests travel over the serial link, and on the board's native USB port the streams and controls too, see [serial.md](serial.md); over Bluetooth LE on boards with PSRAM, see [bluetooth.md](bluetooth.md).
 
 ## HTTP
 
 | Method | Path               | Description                                                                |
 | ------ | ------------------ | -------------------------------------------------------------------------- |
 | GET    | /api/ws            | WebSocket upgrade                                                          |
-| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when the build has a camera and it started |
+| GET    | /api/camera/stream | JPEG frames as `multipart/x-mixed-replace`; only when the build has a camera and it started; up to three viewers, sent from one task off the server's, 503 for a fourth |
 | GET    | /\*                | The embedded web app; a path outside `/api/` falls back to `index.html` |
 
 An unknown path under `/api/` answers 404.
@@ -44,9 +44,20 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 
 | Request      | Response         | Description                                                                                         |
 | ------------ | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 501 without a second slot |
-| `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, which ends the update     |
+| `ota_start`  | none (empty 200) | Open the free app slot for an image of `size` bytes; 409 unless deactivated or while an update runs, 413 when it does not fit, 415 when too small to be an app image, 507 without a second slot |
+| `ota_chunk`  | none (empty 200) | Write chunk `index` (at most 16 KiB) in order; 400 on a gap or excess data, 415 once the head shows a non-app (e.g. factory) image; each ends the update |
 | `ota_finish` | none (empty 200) | Validate the image and boot it next; 400 when incomplete, 422 when the robot rejects it              |
+| `ota_download` | `ota_status` | The robot downloads the image at an `https://` URL itself; 202, 409 unless deactivated or while an update runs, 422 for another URL, 400 on `esp32-camera` and `esp32dev`, which have no room for it; progress as `ota_status` ([the robot's own download](websocket.md#the-robots-own-download)) |
+
+### Crash dump
+
+The stored core dump; see [websocket.md](websocket.md#crash-dump) for the download and for decoding it.
+
+| Request              | Response                    | Description                                                                                       |
+| -------------------- | --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `core_dump_request`  | `core_dump_report`          | Whether a dump is stored, its size and, when its checksum holds, the summary of the crash         |
+| `core_dump_download` | 202, then streamed messages | Download the dump in chunks of up to 16 KiB, as `fs_download_request` does a file; WebSocket only |
+| `core_dump_erase`    | `core_dump_report`          | Erase the dump; 409 unless deactivated, 500 when the erase fails                                  |
 
 ### WiFi and access point
 
@@ -65,9 +76,13 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 | Request                                                | Response              | Description                                                                                                      |
 | ------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `servo_settings_request`, `servo_settings`             | `servo_settings`      | Read or write servo centres, names and PCA9685 channels; the reply also carries the `JointModel`, which a write ignores |
-| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled and the WS2812 strip; a strip on a pin it cannot use is refused with 400 |
+| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled, the WS2812 strip, the HC-SR04 sonars and the INA219 power sensor; a strip or a sonar on a pin it cannot use is refused with 400 |
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
+| `odometry_request`                                     | `odometry`            | Read the dead reckoning; with `reset`, the estimate reached before it starts afresh ([odometry](motion_system.md#odometry)) |
+| `goal_move`                                            | `goal_status`         | Walk a distance or turn an angle on the odometry; 202 with the goal's number, 409 unless in STAND or WALK or during an update, 400 for a malformed goal ([goal moves](motion_system.md#goal-moves)) |
+| `goal_cancel`, `goal_status_request`                   | `goal_status`         | Cancel the goal, or read the latest goal's state and progress                                                     |
+| `animation_pose`                                       | none (empty 200)      | Hold a pose, as the editor's Show on robot sends it; 409 unless in STAND or holding one, or while a clip plays, 422 for a malformed pose ([show on robot](animation.md#show-on-robot)) |
 
 ### Optional services
 
@@ -77,7 +92,8 @@ Over the WebSocket only; see [websocket.md](websocket.md#firmware-update) for th
 | `mdns_query_request`                          | `mdns_query_response` | Always; answered from its own task |
 | `camera_settings_request`, `camera_settings`  | `camera_settings`     | `USE_CAMERA` and `USE_DVP_CAMERA`  |
 
-A request that the build does not handle is answered with 400 "Unknown request".
+A request that the build does not handle is answered with 501 "Unknown request", a status given to nothing else, so a client tells a build that does not handle its request, an older one or one built without the feature, from a refusal.
+Firmware from before answered it with 400 and the same reason, which the app reads the same way.
 
 ### Filesystem
 
@@ -101,7 +117,7 @@ The firmware starts every reply at 200 and overrides it as follows.
 | ---- | ----------------------------------------------------------------------------------------------------------------------------- |
 | 200  | Done. `error_message` is empty.                                                                                               |
 | 202  | Accepted: a download has started, or a WiFi scan result is not ready yet.                                                     |
-| 400  | Refused. `error_message` is "Invalid state" for a rejected settings write, "Unknown request" for an unhandled request and "Not available over serial" for a filesystem request on the serial link; a refused rename sets no message. |
+| 400  | Refused. `error_message` is "Invalid state" for a rejected settings write, "Unknown request" for an unhandled request and "Only available over WiFi" for a filesystem or firmware update request over serial or Bluetooth; a refused rename sets no message. |
 | 409  | "Deactivate first": a variant change while the robot is in a mode other than deactivated.                                     |
 | 503  | "Sensor task busy": the I2C scan or the IMU calibration could not be queued.                                                  |
 

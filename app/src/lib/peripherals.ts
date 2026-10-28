@@ -1,7 +1,12 @@
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
-import type { LedSettings, PeripheralSettings } from '$lib/platform_shared/api'
+import type {
+    LedSettings,
+    PeripheralSettings,
+    PowerSensorSettings,
+    SonarSettings
+} from '$lib/platform_shared/api'
 
-export type ToggleableSensor = 'imu' | 'mag' | 'bmp' | 'gesture' | 'camera'
+export type ToggleableSensor = 'imu' | 'mag' | 'bmp' | 'gesture' | 'power' | 'camera'
 type Sensor = ToggleableSensor | 'servo'
 type DisabledFlag = `${ToggleableSensor}Disabled`
 
@@ -18,11 +23,12 @@ const SENSORS: SensorDefinition[] = [
     { sensor: 'mag', label: 'Magnetometer', toggle: 'mag', appliesOnRestart: false },
     { sensor: 'bmp', label: 'Barometer', toggle: 'bmp', appliesOnRestart: false },
     { sensor: 'gesture', label: 'Gesture sensor', toggle: 'gesture', appliesOnRestart: false },
+    { sensor: 'power', label: 'Power sensor', toggle: 'power', appliesOnRestart: false },
     { sensor: 'camera', label: 'Camera', toggle: 'camera', appliesOnRestart: true },
     { sensor: 'servo', label: 'Servo board', toggle: null, appliesOnRestart: false }
 ]
 
-const TOGGLEABLE: ToggleableSensor[] = ['imu', 'mag', 'bmp', 'gesture', 'camera']
+const TOGGLEABLE: ToggleableSensor[] = ['imu', 'mag', 'bmp', 'gesture', 'power', 'camera']
 
 const disabledFlag = (sensor: ToggleableSensor): DisabledFlag => `${sensor}Disabled`
 
@@ -64,13 +70,23 @@ export interface PeripheralsForm {
     use: Record<ToggleableSensor, boolean>
     /** Undefined when the robot did not report it, so a save leaves the stored one alone. */
     ws2812: LedSettings | undefined
+    espnowController: boolean
+    /** As the LEDs: undefined when the robot did not report them. */
+    leftSonar: SonarSettings | undefined
+    rightSonar: SonarSettings | undefined
+    /** As the LEDs: undefined when the robot did not report it. */
+    powerSensor: PowerSensorSettings | undefined
 }
 
 export const formFromSettings = (settings: PeripheralSettings): PeripheralsForm => ({
     use: Object.fromEntries(
         TOGGLEABLE.map(sensor => [sensor, !settings[disabledFlag(sensor)]])
     ) as Record<ToggleableSensor, boolean>,
-    ws2812: settings.ws2812 && { ...settings.ws2812 }
+    ws2812: settings.ws2812 && { ...settings.ws2812 },
+    espnowController: settings.espnowController,
+    leftSonar: settings.leftSonar && { ...settings.leftSonar },
+    rightSonar: settings.rightSonar && { ...settings.rightSonar },
+    powerSensor: settings.powerSensor && { ...settings.powerSensor }
 })
 
 /** The whole message to save: the robot takes the disabled flags as sent, so every one is set. */
@@ -82,17 +98,80 @@ export const settingsFromForm = (
     ...(Object.fromEntries(
         TOGGLEABLE.map(sensor => [disabledFlag(sensor), !form.use[sensor]])
     ) as Record<DisabledFlag, boolean>),
-    ws2812: form.ws2812 && { ...form.ws2812 }
+    ws2812: form.ws2812 && { ...form.ws2812 },
+    espnowController: form.espnowController,
+    leftSonar: form.leftSonar && { ...form.leftSonar },
+    rightSonar: form.rightSonar && { ...form.rightSonar },
+    powerSensor: form.powerSensor && { ...form.powerSensor }
 })
 
-/** Why the form cannot be saved, or null; the I2C pins are edited on the I2C page and only checked against here. */
-export const formProblem = (base: PeripheralSettings, form: PeripheralsForm): string | null => {
-    const led = form.ws2812
+const validPin = (pin: number) => Number.isInteger(pin) && pin >= 0
+
+const i2cPinName = (base: PeripheralSettings, pin: number) =>
+    pin === base.sda ? 'SDA'
+    : pin === base.scl ? 'SCL'
+    : null
+
+const ledProblem = (base: PeripheralSettings, led: LedSettings | undefined): string | null => {
     if (!led?.enabled) return null
-    if (!Number.isInteger(led.pin) || led.pin < 0) return 'The WS2812 LEDs need a pin number'
-    const i2c =
-        led.pin === base.sda ? 'SDA'
-        : led.pin === base.scl ? 'SCL'
-        : null
+    if (!validPin(led.pin)) return 'The WS2812 LEDs need a pin number'
+    const i2c = i2cPinName(base, led.pin)
     return i2c && `The WS2812 LEDs and I2C ${i2c} both use pin ${led.pin}`
 }
+
+const sonarPins = (sonar: SonarSettings | undefined) =>
+    sonar?.enabled ? [sonar.triggerPin, sonar.echoPin] : []
+
+const sonarProblem = (
+    base: PeripheralSettings,
+    form: PeripheralsForm,
+    name: 'left' | 'right'
+): string | null => {
+    const sonar = name === 'left' ? form.leftSonar : form.rightSonar
+    if (!sonar?.enabled) return null
+    const label = `The ${name} sonar`
+    if (!validPin(sonar.triggerPin) || !validPin(sonar.echoPin))
+        return `${label} needs a trigger and an echo pin`
+    if (sonar.triggerPin === sonar.echoPin) return `${label} needs its trigger and echo on two pins`
+    const other = sonarPins(name === 'left' ? form.rightSonar : form.leftSonar)
+    for (const pin of [sonar.triggerPin, sonar.echoPin]) {
+        const i2c = i2cPinName(base, pin)
+        if (i2c) return `${label} and I2C ${i2c} both use pin ${pin}`
+        if (form.ws2812?.enabled && form.ws2812.pin === pin)
+            return `${label} and the WS2812 LEDs both use pin ${pin}`
+        if (other.includes(pin)) return `The two sonars both use pin ${pin}`
+    }
+    return null
+}
+
+/** The INA219's addresses besides 0x40, which is the servo board's. */
+export const POWER_ADDRESSES = Array.from({ length: 15 }, (_, i) => 0x41 + i)
+
+// 0.32 V is the INA219's widest shunt range; the robot allows a hair over it, as floats multiply 3.2 A by 0.1 Ohm.
+const MAX_SHUNT_VOLTS = 0.3201
+
+const powerProblem = (power: PowerSensorSettings | undefined): string | null => {
+    if (!power) return null
+    if (!POWER_ADDRESSES.includes(power.address))
+        return 'The power sensor needs an address from 0x41 to 0x4F'
+    if (!(power.shuntOhms > 0)) return 'The power sensor needs a shunt resistance above 0'
+    if (!(power.maxCurrentA > 0)) return 'The power sensor needs a maximum current above 0'
+    if (power.maxCurrentA * power.shuntOhms > MAX_SHUNT_VOLTS)
+        return 'The maximum current puts more than 0.32 V across the shunt'
+    if (!(power.cutoffVoltage >= 0 && power.cutoffVoltage <= 26))
+        return 'The cut-off voltage must be from 0 (off) to 26 V'
+    if (!(power.stallCurrentA >= 0)) return 'The stall current must be 0 (off) or more'
+    if (!(Number.isInteger(power.stallTimeMs) && power.stallTimeMs >= 0))
+        return 'The stall time must be a whole number of milliseconds'
+    return null
+}
+
+/**
+ * Why the form cannot be saved, or null; the I2C pins are edited on the I2C page and only checked against here. The
+ * robot also refuses pins its chip cannot use or another driver holds, which only it knows.
+ */
+export const formProblem = (base: PeripheralSettings, form: PeripheralsForm): string | null =>
+    ledProblem(base, form.ws2812) ??
+    sonarProblem(base, form, 'left') ??
+    sonarProblem(base, form, 'right') ??
+    powerProblem(form.powerSensor)

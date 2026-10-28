@@ -2,7 +2,6 @@ import loadMujoco, { type MainModule } from '@mujoco/mujoco'
 import wasmUrl from '@mujoco/mujoco/mujoco.wasm?url'
 import uzip from 'uzip'
 import { resolve } from '$app/paths'
-import type { GaitCoef } from './pico-gait'
 import type { SimScene } from './robot-sim'
 import type { RobotDefinition } from './robots'
 
@@ -31,15 +30,14 @@ const meshesFrom = async (zipFile: string | null) => {
     )
 }
 
-/** The engine, a robot's scene and meshes, and the Pico training controller's gait tuning. */
+/** The engine, and a robot's scene and meshes. */
 export async function loadSimulation(
     robot: RobotDefinition
-): Promise<{ mujoco: MainModule; scene: SimScene; gaitCoef: GaitCoef }> {
-    const [mujoco, sceneXml, meshes, gaitCoef] = await Promise.all([
+): Promise<{ mujoco: MainModule; scene: SimScene }> {
+    const [mujoco, sceneXml, meshes] = await Promise.all([
         mujocoModule(),
         fetchOk(robot.sceneFile).then(response => response.text()),
-        meshesFrom(robot.meshZip),
-        fetchOk('spot_pico_gait.json').then(response => response.json())
+        meshesFrom(robot.meshZip)
     ])
-    return { mujoco, scene: { id: robot.id, sceneXml, meshes }, gaitCoef }
+    return { mujoco, scene: { id: robot.id, sceneXml, meshes } }
 }

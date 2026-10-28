@@ -86,10 +86,10 @@ describe('WiFi station settings', () => {
 
     // Over USB the page is open before the robot joins a network, so the status must follow the robot's reports.
     it('shows the robot joining a network after the page opened', async () => {
-        const listeners: ((status: WifiStatus) => void)[] = []
+        const listeners: ((status: WifiStatus, frame: ArrayBuffer) => void)[] = []
         const on = vi.spyOn(socket, 'on').mockImplementation(((
             type: unknown,
-            listener: (s: WifiStatus) => void
+            listener: (s: WifiStatus, frame: ArrayBuffer) => void
         ) => {
             if (type === WifiStatus) listeners.push(listener)
             return () => listeners.splice(listeners.indexOf(listener), 1)
@@ -106,7 +106,8 @@ describe('WiFi station settings', () => {
 
         listeners.forEach(report =>
             report(
-                WifiStatus.create({ status: 3, ssid: 'Home', localIp: ipToUint32('192.168.1.39') })
+                WifiStatus.create({ status: 3, ssid: 'Home', localIp: ipToUint32('192.168.1.39') }),
+                new ArrayBuffer(0)
             )
         )
         flushSync()

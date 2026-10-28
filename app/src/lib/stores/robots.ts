@@ -11,6 +11,8 @@ export interface Robot {
     lastSeenAt: number | null
     /** What the robot last reported running; absent for a robot saved before it was recorded. */
     firmware?: { version: string; build: string }
+    /** Whether its servo centres were calibrated; absent until firmware that reports it answered. */
+    servosCalibrated?: boolean
 }
 
 export interface RobotIdentity {
@@ -20,6 +22,7 @@ export interface RobotIdentity {
     hostname: string
     firmwareVersion?: string
     buildTarget?: string
+    servosCalibrated?: boolean
 }
 
 /**
@@ -61,6 +64,9 @@ const VARIANT_LABELS: Record<string, string> = {
 
 export const firmwareLabel = ({ firmware }: Robot) =>
     firmware ? [firmware.version, firmware.build].filter(Boolean).join(' on ') : null
+
+export const calibrationLabel = ({ servosCalibrated }: Robot) =>
+    servosCalibrated === false ? 'Servos not calibrated' : null
 
 export const variantLabel = (variant: string | null) =>
     variant ? (VARIANT_LABELS[variant.replace(/_V\d+$/, '')] ?? variant) : null
@@ -122,7 +128,8 @@ export const identify = (address: string, identity: RobotIdentity) => {
             firmware:
                 identity.firmwareVersion ?
                     { version: identity.firmwareVersion, build: identity.buildTarget ?? '' }
-                :   known?.firmware
+                :   known?.firmware,
+            servosCalibrated: identity.servosCalibrated ?? known?.servosCalibrated
         }
 
         let placed = false

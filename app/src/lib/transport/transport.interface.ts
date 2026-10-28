@@ -6,13 +6,16 @@ export interface TransportHandlers {
     onOpen: () => void
     onData: (data: ArrayBuffer) => void
     onClose: (reason: TransportCloseReason, event?: unknown) => void
+    /** The writes under way have all completed (busy turned false); motion frames waiting for them may go out. */
+    onDrained?: () => void
 }
 
 export interface ITransport {
     readonly kind: TransportKind
     /**
-     * WiFi and a serial port the user granted can silently redial; BLE pairing needs a user
-     * gesture, so the caller must not retry.
+     * WiFi, a serial port the user granted and a Bluetooth device the user chose can silently
+     * redial; choosing a port or a device needs a user gesture, so before that the caller must not
+     * retry.
      */
     readonly canAutoReconnect: boolean
     /** Largest frame the link carries, or null when it is effectively unlimited. */
@@ -21,4 +24,6 @@ export interface ITransport {
     close: () => void
     isConnected: () => boolean
     send: (data: Uint8Array) => void
+    /** Whether a write is under way, which a motion frame sent now would queue behind (LatestFrames). */
+    busy: () => boolean
 }

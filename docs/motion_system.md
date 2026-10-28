@@ -8,12 +8,12 @@ It runs in the control task every 10 ms, see [Software description](software_des
 The app selects one of six modes.
 Rest, stand and walk have a motion state; the others have none.
 
-| Mode | Motion state | Servo board | Behaviour |
-| ---- | ------------ | ----------- | --------- |
-| Deactivated, idle, calibration | None | Asleep | No motion is computed |
-| Rest | `RestState` | Awake | Flat body at the lowest height (45% of the maximum leg reach). Controller input is ignored |
-| Stand | `StandState` | Awake | Static posing from the controller, levelled against the IMU |
-| Walk | `WalkState` | Awake | Trot or crawl gait, selected separately |
+| Mode                           | Motion state | Servo board | Behaviour                                                                                  |
+| ------------------------------ | ------------ | ----------- | ------------------------------------------------------------------------------------------ |
+| Deactivated, idle, calibration | None         | Asleep      | No motion is computed                                                                      |
+| Rest                           | `RestState`  | Awake       | Flat body at the lowest height (45% of the maximum leg reach). Controller input is ignored |
+| Stand                          | `StandState` | Awake       | Static posing from the controller, levelled against the IMU                                |
+| Walk                           | `WalkState`  | Awake       | Trot, crawl or AUTO gait, selected separately                                              |
 
 A mode change replaces the motion state and resets its smoothing, so that a state taking over starts from a body at rest.
 A gesture from the optional gesture sensor also changes the mode: down selects rest, up selects stand, and left and right select walk.
@@ -24,28 +24,28 @@ The controller input is interpreted differently between the modes.
 Sticks are in the range -1 to 1, and the sliders in 0 to 1.
 For walking, it looks like this:
 
-| Controller Input | Mapped to Gait Step | Range   |
-| ---------------- | ------------------- | ------- |
+| Controller Input | Mapped to Gait Step         | Range   |
+| ---------------- | --------------------------- | ------- |
 | Left x joystick  | Step z (sideways), inverted | -1 to 1 |
-| Left y joystick  | Step x (forward)    | -1 to 1 |
-| Right x joystick | Step angle (turn)   | -1 to 1 |
-| Right y joystick | Body pitch angle    | -1 to 1 |
-| Height slider    | Body height         | 0 to 1  |
-| Speed slider     | Step velocity       | 0 to 1  |
-| S1 slider        | Step height         | 0 to 1  |
+| Left y joystick  | Step x (forward)            | -1 to 1 |
+| Right x joystick | Step angle (turn)           | -1 to 1 |
+| Right y joystick | Body pitch angle            | -1 to 1 |
+| Height slider    | Body height                 | 0 to 1  |
+| Speed slider     | Step velocity               | 0 to 1  |
+| S1 slider        | Step height                 | 0 to 1  |
 
 The step length is scaled by 80% of the maximum leg reach, the step height by 50% of it, the body pitch by 15 degrees, and the body height spans 45% to 90% of it.
 The limits per variant are in [Kinematics](kinematics.md#motion-limits).
 
 For standing, the sticks and the height slider pose the body:
 
-| Controller Input | Mapped to Body Pose                           | Limit                   |
-| ---------------- | --------------------------------------------- | ----------------------- |
-| Left x joystick  | Shift sideways                                | One third of body width |
-| Left y joystick  | Shift forward                                 | One third of body width |
-| Right x joystick | Rotation about the vertical axis (`phi`)      | 20 degrees              |
-| Right y joystick | Body pitch (`psi`)                            | 15 degrees              |
-| Height slider    | Body height                                   | 45% to 90% of leg reach |
+| Controller Input | Mapped to Body Pose                                                                          | Limit                   |
+| ---------------- | -------------------------------------------------------------------------------------------- | ----------------------- |
+| Left x joystick  | Shift sideways, right for a positive value, as the walk steps                                | One third of body width |
+| Left y joystick  | Shift forward                                                                                | One third of body width |
+| Right x joystick | Twist about the vertical axis (`phi`), anticlockwise for a positive value, as the walk turns | 20 degrees              |
+| Right y joystick | Body pitch (`psi`)                                                                           | 15 degrees              |
+| Height slider    | Body height                                                                                  | 45% to 90% of leg reach |
 
 The speed and S1 sliders are not used when standing.
 
@@ -59,6 +59,12 @@ If the robot has not heard from the controller for 500 ms while a stick was off 
 The mode, gait, height and step height are kept.
 The next controller input clears the condition.
 
+### Fall detection
+
+In rest, stand and walk, a body that leans more than 60 degrees from upright for 300 ms counts as fallen (`esp32/include/fall_detector.h`).
+The robot then deactivates, so the servo board sleeps and the legs go limp instead of pushing against the floor; selecting a mode again stands it up.
+Without an IMU orientation nothing is detected.
+
 ## Command smoothing
 
 Each motion state follows its targets through a critically damped smoother (`utils/critical_damper.h`).
@@ -66,11 +72,11 @@ It has no overshoot, the velocity ramps up and down instead of jumping with the 
 A step in a target settles to 95% in a third of a second.
 
 In rest and stand the body shift, rotation and height are smoothed.
-In walk the body height, pitch and the step length, sideways step, turn and depth are smoothed.
-The speed and the step height act at once.
+In walk the body height, pitch and the step length, sideways step, turn, depth and step height are smoothed.
+The speed acts at once, and so does the step height while every foot is down, where it moves nothing; with a foot in the air it is smoothed, as taken in one tick it moved a raised foot of the Pico by 35 mm at once.
 
 The smoother is not the only limit on motion.
-The servo controller also limits each joint to 720 degrees per second, see [Software description](software_description.md#servo-output).
+The servo controller also limits each joint to 720 degrees per second at the default 6 V servo supply, and less at a lower one, see [Software description](software_description.md#servo-output).
 
 ## Walking gait
 
@@ -89,19 +95,43 @@ $$t \leftarrow (t + \Delta t \cdot v \cdot k) \bmod 1$$
 where $v=\max(\text{speed}, 0.5)$ and $k$ is a rate factor of the gait.
 While the step length, sideways step and turn all are zero, the phase is held at 0 and the feet stay at their default positions.
 
+### Joint speed limit
+
+A tick of the walk may not turn any joint faster than three quarters of the servo controller's limit: 540 degrees per second at the default 6 V supply, 332 at 4.8 V.
+The MG92B's ratings (750 degrees per second at 6 V, 461 at 4.8 V) are unloaded; it slows under load, and the quarter in hand keeps the servo controller's own limit from clipping the steps.
+The limit follows the servo supply in the servo settings from the next tick, without a restart.
+Where a tick would turn a joint faster, the walk runs its clock (the phase above and its command smoothing) only for the largest number of 64ths of the tick that keep every joint under the limit, found by bisection through the kinematics of the variant.
+A long or high step so keeps its shape and duty and takes longer, mostly in its swing, while a step the servos can follow is walked as commanded.
+A jump that even a 64th of the tick does not keep under the limit, such as a foot lifted to its hip, is walked at full time, since creeping up to it would freeze the walk.
+At the app's settings (height 0.7, step height 0.5) a full forward trot at speed 0.5 slows from 1 to about 0.86 cycles per second, and at speed 1 from 2 to about 1.15.
+
+### Reach limit
+
+Every tick the walk shortens the commanded stroke (the translation and the turn together), the crawl's body shift and the step height as far as it takes to keep every foot of the stance and the swing within reach at the current body height.
+A full stick otherwise asked for more than the legs reach: the step length of 80% of the leg reach, the swing's overshoot of the stroke by about a third on either end, a turn on top of the translation, and a step height above about half the body height straightened a knee or folded a foot onto its hip in 259 of the Pico's 325 full-stick trot commands and 307 of its 325 crawl commands.
+The bound follows from each variant's leg geometry in `kinematics.h`.
+About each leg's mount it keeps a foot inside the sphere where the knee is still bent 10 degrees, and outside the one where it is bent 148 degrees, a degree short of where the full-size robot's tibia folds onto its femur.
+It takes the crawl's shift as moving the mount by up to a third of the distance from the body centre to a foot, in any direction.
+The stroke and the shift shrink together until every foot's path, which the swing carries up to 1.37 half strokes either side of the foot's default spot, stays inside the outer sphere at the depth of the stance's dip.
+The step height then drops until the swing, checked at 64 phases, stays outside the inner sphere, counting only the foot's sideways offset from its mount.
+That also keeps a foot that passes in under its mount more than a coxa below it, where the hip would turn past 90 degrees.
+A command that fits is walked as given, so short and medium steps keep their exact path.
+At the app's settings (height 0.7, step height 0.5) a full forward trot keeps its whole stroke on every variant, and a full turn keeps it on the full-size robot and the Yertle.
+The other full sticks walk slower than before, by the Python client's speed model: a sideways trot by about 5%, a turn on the Pico by 8%, and the crawl by 12% to 32% forward and up to half sideways and turning on the Pico.
+
 ### Phase condition
 
 Leg $i$ has a phase $t_i=(t+o_i) \bmod 1$, where $o_i$ is its phase offset.
 The leg is in stance while $t_i\le d$ and in swing otherwise, where $d$ is the duty factor, the share of the cycle spent in stance.
 The progress through stance is $t_i/d$, and through swing $(t_i-d)/(1-d)$.
 
-| Parameter                     | Trot                | Crawl                  |
-| ----------------------------- | ------------------- | ---------------------- |
-| Duty factor $d$               | 0.75                | 0.85                   |
-| Offsets $o_0, o_1, o_2, o_3$  | 0, 0.5, 0.5, 0      | 0.25, 0.75, 0.5, 0     |
-| Rate factor $k$               | 2                   | 0.5                    |
-| Cycle time at speed 0.5       | 1 s                 | 4 s                    |
-| Cycle time at speed 1         | 0.5 s               | 2 s                    |
+| Parameter                    | Trot           | Crawl              |
+| ---------------------------- | -------------- | ------------------ |
+| Duty factor $d$              | 0.75           | 0.85               |
+| Offsets $o_0, o_1, o_2, o_3$ | 0, 0.5, 0.5, 0 | 0.25, 0.75, 0.5, 0 |
+| Rate factor $k$              | 2              | 0.5                |
+| Cycle time at speed 0.5      | 1 s            | 4 s                |
+| Cycle time at speed 1        | 0.5 s          | 2 s                |
 
 ### Stance and swing controller
 
@@ -144,6 +174,23 @@ The trot has no body shift.
 
 This gait is derived from [mike4192 spotMicro](https://github.com/mike4192/spotMicro)
 
+## AUTO gait
+
+AUTO asks the body for the stick's share of the trot's top speed, whichever gait walks it, and picks the crawl for a short stick and the trot for a long one, by the larger of the stroke and the turn as a share of a full stick (`selectAutoGait` in `walk_state.h`).
+At the same stroke the crawl walks the body about 4.5 times slower than the trot, as its clock runs at a quarter of the trot's and its feet stand 0.85 of the cycle against 0.75, so under AUTO the crawl walks 4.5 times the stroke the stick asks.
+Its full stroke is so 0.22 of the trot's top speed, where AUTO swaps to the trot; when both gaits walked the stick's own stroke, the swap changed the commanded speed 4.5 times.
+The crawl holds up to 0.22 and the trot down to 0.16, so a stick held near the boundary does not swap the schedules back and forth.
+The [reach limit](#reach-limit) still shortens what the legs cannot reach: on the Pico at height 0.5 the crawl walks about 0.82 of its full forward stroke, so the walked speed there still rises about 1.2 times at the swap, while on the full-size robot and the Yertle it does not change.
+A swap reassigns every leg's phase, which mid-stride would lift a loaded foot or drop a swinging one, so the walk swaps only at a standstill with all four feet down, and restarts at phase 0, where every foot is down in both schedules.
+A stick that leaves the band of the gait in force mid-walk therefore brings the walk to a stop first, as releasing the stick would, and it walks on in the other gait.
+A start from a standstill waits 0.25 s for the stick to settle, since a stick pushed from the centre to the rim passes through the crawl's band on its way.
+A trot also waits for the body to centre to within 1 mm: the crawl leaves it shifted over three feet, and the trot's reach bound leaves no room for a shift.
+A gait chosen in the app mid-stride is taken the same way (`select_gait`): the walk stops on all four feet, takes the schedule and walks on; taking it at once moved a joint at up to 4,400 deg/s.
+The trot centres the body however it was chosen, where a chosen one used to walk on with the crawl's shift and put the Pico's feet out of reach.
+A goal move keeps the gait AUTO had when it started, since its stick slows into the crawl's band near the target and its timeout is reckoned at the starting gait's pace.
+The robot reports AUTO as its gait, and each telemetry tick's `walked` field says which schedule the legs walk.
+This follows the Hexapod's AUTO gait (e1bdc83), which swaps only while it is not stepping, for the same reason.
+
 ## Trot gait (12 point bezier curve)
 
 The trot lifts diagonal pairs of legs together: legs 0 and 3 swing during the last quarter of the cycle, and legs 1 and 2 during its second quarter.
@@ -152,3 +199,67 @@ The two pairs never swing together, and all four feet are on the ground in the q
 Each foot follows the stance and swing controller above, with the stance controller implementing a cosine curve to control the depth of steps and the swing controller a bezier curve using 12 control points centered around the robot leg.
 
 Rotation is calculated using the same curve.
+
+## Odometry
+
+The motion service keeps a dead-reckoning estimate of where the body has gone (`esp32/include/odometry.h`).
+A foot in stance is fixed to the floor, so in the body frame it moves by the inverse of the body's motion.
+Each control tick, the rigid motion that best carries the feet that were on the floor in both ticks from the last tick to this one is the body's motion, inverted.
+A foot counts while the walk has it in stance (every foot outside the walk), unless it is more than 3 mm above the lowest foot, as one is that a state eases down from mid-stride.
+The body's own shift and twist over the feet (`xm`, `zm`, `phi`) count as motion too.
+The body state's z axis points left (the left legs mount at +z) and a positive `phi` turns the body clockwise, as the animation module's `YAW_TO_PHI` has it, so the estimate is REP-103 and its yaw rate has the sign of the gyro's.
+
+The estimate is x and y in metres, yaw in radians counter-clockwise and the distance along the path, in the floor frame the robot faced at the last reset (REP-103: x forward, y left).
+It starts afresh on deactivation and on an `odometry_request` with `reset`; telemetry carries it in every `TickSample`.
+
+The heading fuses the feet's yaw rate with the gyro's z rate (`FusedOdometry`).
+The feet's yaw has no drift, but misses what the gait does not command: the trot rocks the body in yaw, and in MuJoCo a turn comes up 9 % short by the feet.
+The gyro has only white noise and the bias the boot calibration left.
+While the feet keep still, a scalar Kalman filter learns that bias from the difference of the two rates (a zero angular rate update); walking, it leaves the bias alone, since the difference then also holds the feet's undercount.
+It also leaves it alone while the body's pose moves (the stand's twist and shift) and for a while after: a slow twist turns the feet by less than the still threshold, but the servos follow it late, and the gyro would read their lag as bias.
+The heading integrates the two rates weighted by their variances: the gyro's while walking, mostly the feet's while standing.
+The position integrates the feet's displacement in that heading.
+The gyro's rate for a tick is its mean since the sample the last tick took (`GyroYawRate`): the sensor task integrates the z rate over every read, and the control task takes the newest sample at the same point of each tick, so one sample held for the tick would alias what the rate does between samples into the heading.
+In MuJoCo the servo targets, stepped once a tick, ripple the yaw rate with the tick, and a 96 degree turn read from 2.6 degrees short to 2.4 long depending on where in the tick the sample fell; the mean reads it 0.7 long.
+Without a fresh gyro reading (none, one older than 50 ms, or one more than 50 ms after the last) it is the feet's estimate alone.
+`OdometryData.kinematic_yaw` carries the feet's own heading, so their ratio over a turn on the real robot measures the gait's turn scale without a protractor.
+
+| Parameter              | Value                                                                    | Source                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Gyro z noise           | 0.0012 rad/s                                                             | a still Pico, measured 2026-10-01                                                                                              |
+| Bias prior             | 0.05 rad/s                                                               | `domain_rand.py`'s per-episode gyro bias, the scale a boot calibration that saw the robot move leaves                          |
+| Bias random walk       | 1e-4 rad/s per square-root second                                        | assumed: about 0.006 rad/s over an hour                                                                                        |
+| Feet yaw-rate error    | 0.0002 rad/s still, plus 2 rad/s per m/s and 0.4 per rad/s turned        | the standstill assumed; walking and turning from MuJoCo against its gyro (0.08 rad/s per tick at 0.04 m/s, 0.17 at 0.46 rad/s) |
+| Feet motion fades over | 0.2 s                                                                    | the body coasts after the feet stop (0.74 rad/s to 0.04 in 70 ms in MuJoCo), and the servos lag the commanded feet             |
+| Still below            | 0.01 rad/s of feet motion                                                | chosen: well under the 0.08 rad/s a walk shows                                                                                 |
+| Pose still below       | 0.0012 rad/s of twist, or of shift at 2 rad/s per m/s, fading over 0.2 s | chosen: what the gyro resolves                                                                                                 |
+
+In MuJoCo, with the gyro biased by 0.05 rad/s and given the measured noise after 2 s standing, the fused heading ends within 0.5 degrees of the base over 4 s turns of about 100 degrees each way and 8 s arcs of 124 and 248 degrees, where the feet's falls 6 to 22 degrees short.
+The compass stays out until it is calibrated, and so does the accelerometer: at a walk the body barely accelerates on average, and a degree of tilt error alone reads as 0.17 m/s^2, so a stall would not stand out.
+
+The estimate knows only what the gait commanded.
+On the real robot the servo smoothing, the error in the PWM per degree and servos near stall shorten the steps, so it runs ahead of the robot; in the MuJoCo simulation the swing's start and end push the body on and it falls 7 to 10 % short.
+Calibrate it against a tape measure before relying on a distance.
+
+## Goal moves
+
+A goal move walks a distance forward or sideways, or turns an angle, on the [odometry](#odometry) rather than on the link (`esp32/include/goal_controller.h`).
+The client sends one `goal_move` and waits for the `goal_status` that ends it, so a WiFi stall shorter than 2 s cannot cut the move short as the dead-man stop cuts a host-side move.
+From STAND or WALK the motion service switches to WALK and sets the sticks itself each control tick, through the same command the app's input sets; the app's height, cadence and step height stay in force.
+It sets them as the walk takes them: a goal to the left sets a negative `lx`, since the walk strafes right on a positive one, and a counter-clockwise turn sets a positive `rx`.
+The target lies along the axis the robot faced when the goal started, and a turn is the odometry's yaw, unwrapped.
+The goal judges the pose the robot would come to rest in were its sticks centred now: the walk predicts the step its stop would still take (`WalkState::stopStep`), the stroke easing out through the gait's dampers and the cycle walking on until every foot is down, and the odometry's fit of the feet that stay on the floor gives it.
+The stick slows in proportion over the last 5 cm or 30 degrees, or over two stops' coasts at the asked speed when that is longer, down to a fifth of the asked speed.
+Once the resting pose reaches the target the goal centres the sticks, waits for the walk to have stood still for 0.2 s and judges where the robot stands: within 1 cm or 3 degrees of the target, and a straight goal within 2 cm of its start line, it has arrived and stands.
+Otherwise a corrective pass walks the rest, back if it overshot, or only across the line if it is on the target but off the line; after three passes it gives up.
+A straight goal also holds the heading it started on with the turn stick and its start line with the stick across it.
+On the Pico in the host test it settles within 0.1 mm and 0.2 degrees of the target, by its odometry, and a walk whose gyro drifts 0.03 rad/s holds its line where it used to curve 26 cm off a metre.
+A turn closes on the fused heading, which at rest also holds the trot's yaw rocking: in MuJoCo a 90 degree goal ends 1.7 degrees off at half and at full speed, where it used to stop 4.4 past at full speed and report it reached, and a metre at full speed ends 0.5 mm off its line, where it used to curve 45 mm off.
+
+The dead-man stop guards the app's input and leaves a goal alone.
+A goal ends early on a `goal_cancel`, app input with a stick off centre (which then drives), any mode or gait change, the client that started it leaving its link or falling silent on it for 2 s, or a newer goal; a pass gives up after twice the time it should take plus 2 s, and `GoalStatus.timeout_s` is the time the passes so far took and the one under way may take.
+A link reports a client leaving when its socket closes, its Bluetooth central disconnects or its USB host stops reading, but not a USB serial port the host closed while it still polls the bus: so any frame from the client keeps its goal, and the Python client asks for the goal's status every half second while it waits.
+A WiFi stall longer than 2 s therefore cancels a goal, and the client hears so once the link is back.
+Every end but the app taking over centres the sticks.
+
+The goal is only as good as the odometry: until its distances are calibrated against a tape measure, the robot lands off by their error.

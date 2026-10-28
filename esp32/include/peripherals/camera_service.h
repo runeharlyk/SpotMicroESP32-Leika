@@ -38,6 +38,12 @@ class CameraService
     esp_err_t cameraStream(httpd_req_t *request);
 
 #if USE_DVP_CAMERA
+    /**
+     * Gives back the camera's internal DMA buffer, the largest block of internal RAM a camera board holds, to work
+     * that needs it more; the streams end and the camera stays off until the next boot.
+     */
+    void release();
+
     StatefulProtoHandler<CameraSettings, api_CameraSettings> protoHandler;
 
   private:

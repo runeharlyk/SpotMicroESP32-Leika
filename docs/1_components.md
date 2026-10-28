@@ -34,6 +34,8 @@ These are the electronics I used for mine, and they can easily be swapped to sui
 | Power switch              | Main power switch             | Yes      |                                                                                                         |
 | Power button w/ led       | Mode switch controller        | No       | The firmware does not read a button. Modes are switched from the web app                                |
 | BMP180                    | Barometer                     | No       | Detected at boot. Reports pressure, temperature and altitude over I2C                                   |
+| INA219                    | Servo rail voltage and current | No      | In the servo supply's positive line. Tie A0 high for 0x41, as 0x40 is the PCA9685's; set the address, the shunt and a low-battery cut-off on the Sensors page |
+| 2x HC-SR04                | Ultrasonic distance sensors   | No       | Enable each and set its trigger and echo pins on the Sensors page. The echo is 5 V: put a divider on it, such as 1 kOhm to the pin and 2 kOhm from the pin to ground |
 | WS2812 strip              | Status LEDs                   | No       | The firmware drives 13 LEDs; enable it and set its pin on the Sensors page, by default the board's `WS2812_PIN` |
 | LM2596 or XL4015          | DC-DC Stepdown Module         | Yes      | Should be set a 5V for the ESP32 and peripherals                                                        |
 | 0.96" SD1306              | OLED display                  | No       | The firmware has no display driver                                                                      |

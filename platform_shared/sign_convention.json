@@ -1,0 +1,102 @@
+{
+  "description": "Body-frame sign convention shared by the firmware (test esp32/test/host/sign_convention_test.cpp), the simulation's NumPy port and Python client (test simulation/tests/test_sign_convention.py) and the app's TypeScript ports (test app/tests/unit/sign-convention.spec.ts). Every sign is in the REP-103 body frame: x forward, y left, z up; a vector is [forward, left], a rotation [roll, pitch, yaw], each right-handed, so a positive roll lowers the right side, a positive pitch lowers the nose and a positive yaw turns anticlockwise seen from above. The firmware's kinematics frame is x forward, y up, z left, so its z is this y. Each leg's side is the sign of its mount. Each attitude is a body pose in degrees, and its rotation is read from the feet the inverse kinematics places in the body. Each walk command is the stick held in WALK (trot) from a stand, for settle_ticks and then ticks of dt_s each; a stance foot's sign is that of its mean displacement per tick in the body frame while it stays planted, and the odometry's signs are those of its x, y and yaw over the ticks. Each stand stick is held in STAND for settle_ticks, and its signs are those of the body's shift over its feet and of its rotation, read as for the attitudes. Each goal is a goal move from a stand; its stick signs are those of the sticks it sets on its first tick, and its odometry signs those of where it ends. The walk and the goals are held with the controller message sent again every resend_ticks, as the app does while a stick is off centre. Values within a zero band count as 0. docs/conventions.md derives every value.",
+  "legs": [
+    { "name": "front left", "side": [1, 1] },
+    { "name": "front right", "side": [1, -1] },
+    { "name": "rear left", "side": [-1, 1] },
+    { "name": "rear right", "side": [-1, -1] }
+  ],
+  "attitude": {
+    "zero_rad": 0.01,
+    "poses": [
+      { "name": "positive omega", "degrees": { "omega": 10, "phi": 0, "psi": 0 }, "rotation_sign": [-1, 0, 0] },
+      { "name": "positive phi", "degrees": { "omega": 0, "phi": 10, "psi": 0 }, "rotation_sign": [0, 0, -1] },
+      { "name": "positive psi", "degrees": { "omega": 0, "phi": 0, "psi": 10 }, "rotation_sign": [0, -1, 0] }
+    ]
+  },
+  "walk": {
+    "dt_s": 0.01,
+    "resend_ticks": 20,
+    "settle_ticks": 150,
+    "ticks": 300,
+    "zero_m_per_tick": 0.000001,
+    "zero_m": 0.01,
+    "zero_rad": 0.05,
+    "commands": [
+      {
+        "name": "forward",
+        "stick": { "lx": 0, "ly": 0.5, "rx": 0 },
+        "stance_foot_sign": [[-1, 0], [-1, 0], [-1, 0], [-1, 0]],
+        "odometry_sign": [1, 0, 0]
+      },
+      {
+        "name": "right strafe",
+        "stick": { "lx": 0.5, "ly": 0, "rx": 0 },
+        "stance_foot_sign": [[0, 1], [0, 1], [0, 1], [0, 1]],
+        "odometry_sign": [0, -1, 0]
+      },
+      {
+        "name": "anticlockwise turn",
+        "stick": { "lx": 0, "ly": 0, "rx": 0.5 },
+        "stance_foot_sign": [[1, -1], [-1, -1], [1, 1], [-1, 1]],
+        "odometry_sign": [0, 0, 1]
+      }
+    ]
+  },
+  "stand": {
+    "settle_ticks": 200,
+    "zero_m": 0.002,
+    "zero_rad": 0.02,
+    "sticks": [
+      {
+        "name": "left stick right",
+        "stick": { "lx": 0.5, "ly": 0, "rx": 0, "ry": 0 },
+        "shift_sign": [0, -1],
+        "rotation_sign": [0, 0, 0]
+      },
+      {
+        "name": "left stick up",
+        "stick": { "lx": 0, "ly": 0.5, "rx": 0, "ry": 0 },
+        "shift_sign": [1, 0],
+        "rotation_sign": [0, 0, 0]
+      },
+      {
+        "name": "right stick right",
+        "stick": { "lx": 0, "ly": 0, "rx": 0.5, "ry": 0 },
+        "shift_sign": [0, 0],
+        "rotation_sign": [0, 0, 1]
+      },
+      {
+        "name": "right stick up",
+        "stick": { "lx": 0, "ly": 0, "rx": 0, "ry": 0.5 },
+        "shift_sign": [0, 0],
+        "rotation_sign": [0, -1, 0]
+      }
+    ]
+  },
+  "goals": {
+    "zero_stick": 0.05,
+    "zero_m": 0.03,
+    "zero_rad": 0.05,
+    "moves": [
+      {
+        "name": "forward",
+        "goal": { "forward_m": 0.1, "sideways_m": 0, "turn_deg": 0 },
+        "stick_sign": { "lx": 0, "ly": 1, "rx": 0 },
+        "odometry_sign": [1, 0, 0]
+      },
+      {
+        "name": "left",
+        "goal": { "forward_m": 0, "sideways_m": 0.1, "turn_deg": 0 },
+        "stick_sign": { "lx": -1, "ly": 0, "rx": 0 },
+        "odometry_sign": [0, 1, 0]
+      },
+      {
+        "name": "anticlockwise",
+        "goal": { "forward_m": 0, "sideways_m": 0, "turn_deg": 90 },
+        "stick_sign": { "lx": 0, "ly": 0, "rx": 1 },
+        "odometry_sign": [0, 0, 1]
+      }
+    ]
+  }
+}

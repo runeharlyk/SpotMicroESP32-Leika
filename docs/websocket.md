@@ -22,8 +22,7 @@ The upgrade is allowed when any of these holds:
 - The origin's host is `localhost`, `[::1]`, a `.local` name, or an IPv4 address in 127/8, 10/8, 172.16/12, 192.168/16 or 169.254/16.
 - The origin's authority equals the request's `Host` header.
 
-The web app also has a Web Bluetooth transport for robots that expose the Nordic UART service.
-This firmware does not implement it.
+The same messages, apart from telemetry and file and firmware transfer, also travel over Bluetooth LE on boards with PSRAM, see [Bluetooth link](bluetooth.md).
 
 ## Message flow
 
@@ -40,10 +39,10 @@ A frame that does not decode, or whose member has no handler, is logged and drop
 | ----------------- | --- | -------------------------------------------------------------------------------------------- |
 | `controller_data` | 250 | Sticks `left` and `right` in [-1, 1]; `height`, `speed` and `s1` in [0, 1]. Values outside the range are clamped |
 | `mode`            | 130 | Sets the mode: `DEACTIVATED`, `IDLE`, `CALIBRATION`, `REST`, `STAND` or `WALK`               |
-| `walk_gait`       | 160 | Sets the gait: `TROT` or `CRAWL`                                                             |
+| `walk_gait`       | 160 | Sets the gait: `TROT`, `CRAWL` or `AUTO`                                                     |
 | `angles`          | 170 | Sets up to 12 joint angles                                                                   |
 | `servo_pwm`       | 210 | Sets the PWM of one servo, by `servo_id`                                                     |
-| `servo_state`     | 211 | Activates or deactivates the servo outputs                                                   |
+| `servo_state`     | 211 | Activates or deactivates the servo outputs; a deactivated robot's servos wake limp until a `servo_pwm` |
 | `ping`            |  30 | Answered with `pongmsg` (31)                                                                 |
 
 The input, mode and gait are handed to the control task, which applies them on its next 10 ms tick.
@@ -65,6 +64,9 @@ Subscriptions end with the connection and must be sent again after a reconnect.
 | `telemetry_batch`   | 271 | In batches, see [Telemetry](#telemetry)                                           |
 | `telemetry_network` | 272 | Every second while telemetry is recorded                                          |
 | `wifi_status`       | 280 | When the station gets an address or loses the network; also over the [serial link](serial.md) |
+| `sonar`             | 300 | Every 100 ms: each HC-SR04's distance, or no echo within 4 m, no sensor, or off   |
+| `power`             | 330 | Every 100 ms while the INA219 is active: the servo rail's voltage, current and power, the cut-off and the stall flag |
+| `goal_status`       | 310 | On every new [goal move](motion_system.md#goal-moves) and every change of its state |
 
 `telemetry_header` (270) is not subscribed to; it is sent to a client each time that client subscribes to 271.
 The robot never sends `angles`, `servo_pwm`, `servo_state` or `controller_data`.
@@ -76,7 +78,7 @@ The robot stops walking when its controller falls silent.
 If the last `controller_data` had a stick off centre and no further `controller_data` arrives for 500 ms, the robot zeroes the sticks and the speed, stops locomotion, and reports `link_lost` in its telemetry.
 The mode, gait, height and `s1` are unchanged.
 The next `controller_data` clears the condition.
-A closed or dropped connection is recognised the same way, by this silence.
+A closed or dropped connection, over WiFi or over the [USB serial link](serial.md), is recognised the same way, by this silence.
 
 A client must therefore re-send its input while a stick is held off centre.
 The web app sends on every change, throttled to 100 ms, and re-sends every 200 ms; the Python client re-sends every 100 ms.
@@ -100,9 +102,9 @@ Recording stops when the last subscriber to 271 is gone.
 
 The control task records one `TickSample` every 10 ms.
 The service task sends them in `TelemetryBatch` messages of 10 ticks, so about 10 batches a second.
-Each tick holds the IMU sample the tick used, the servo angles and targets in radians, the 12 PWM values, the command the motion state used and its age, the mode, the gait and `link_lost`.
+Each tick holds the IMU sample the tick used, the servo angles and targets in radians, the 12 PWM values, the command the motion state used and its age, the mode, the gait, `link_lost` and the [odometry](motion_system.md#odometry) after the tick.
 A full ring drops ticks rather than waiting; `dropped_ticks` counts them since boot and `batch_seq` numbers the batches.
-`TelemetryNetwork` adds RSSI, channel, batches sent and failed, and dropped ticks.
+`TelemetryNetwork` adds RSSI, channel, batches sent and failed, and dropped ticks, and with an INA219 the servo rail's voltage, its lowest voltage since the previous sample and its current.
 Vectors are in the body frame (x forward, y left, z up), and times are `esp_timer` microseconds.
 
 ## File transfer
@@ -127,6 +129,51 @@ A failed request, the client's socket closing, or 30 s without a chunk ends the 
 The new firmware boots on probation and confirms itself when the first socket client connects; a reset before that rolls back to the previous firmware.
 After the reconnect the app compares `firmware_elf_sha256` in the features with the image's to tell the new firmware from a rollback.
 
+### The robot's own download
+
+A robot on a WiFi network can fetch the image itself, which the Firmware page offers as "Install the latest release on the robot" when the robot's station is connected; it is a small request, so it also works over Bluetooth and USB.
+The `esp32-camera` and `esp32dev` builds leave it out (`USE_OTA_DOWNLOAD=0`): TLS, the HTTP client and the certificate bundle take about 165 KB of flash, more than their 1.9 MB app slots (`min_spiffs.csv`) have left, and growing the slots would move the partitions under robots already flashed.
+Their features say `ota_download: false`, the Firmware page offers only the update through the app, and `ota_download` is answered 400.
+
+1. `ota_download` with an `https://` URL; plain http is refused, as an unauthenticated image would be a flash write anyone on the network could make.
+   The robot answers 202 with an `ota_status`, and refuses unless deactivated or while an update runs.
+2. The robot follows redirects, checks the server against ESP-IDF's certificate bundle, and writes the body through the same session as `ota_chunk`, under a client of its own: an upload from the app and the download exclude each other, and the factory-image check, the validation and the 30 s timeout are the same.
+   It refuses a server that does not give the image's size.
+3. `ota_status` (320) goes to subscribers on every change of state and every 500 ms while it downloads: `written` of `size` bytes, then `OTA_DOWNLOADED` or `OTA_DOWNLOAD_FAILED` with the reason.
+4. `system_restart`, as after an upload.
+
+The app never holds the image, so it tells the new firmware from a rollback by the robot coming back with another `firmware_elf_sha256` than before; installing the release the robot already runs therefore reads as a rollback.
+
+## Crash dump
+
+On a panic the robot writes an ELF core dump to its `coredump` partition before it resets (`CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH`).
+The dump stays until it is erased or the next crash replaces it; the partition tables without a `coredump` partition (`default_8MB.csv`) keep none.
+The app's System Status page shows it as Last Crash, with buttons to download and erase it.
+
+1. `core_dump_request` is answered with a `core_dump_report`: whether the partition exists, whether a dump is stored and its size.
+   When the dump's checksum holds, the report also carries the summary `esp_core_dump_get_summary` reads from it: the task that crashed, the PC, the exception cause and address, up to 16 backtrace addresses (Xtensa only; a RISC-V dump holds the stack instead), the ELF SHA-256 of the firmware that crashed, and the message an abort, an assert or a watchdog leaves.
+2. `core_dump_download` streams the dump as a file download, over the WebSocket only: a 202 reply, then `fs_download_metadata`, `fs_download_data` chunks of up to 16 KiB and `fs_download_complete`.
+   Each chunk is read from flash as it is sent, so a board without PSRAM never holds the whole dump.
+   The bytes are the partition's from its first one, header and checksum included: the format esp-coredump calls raw.
+3. `core_dump_erase` erases the partition and is answered with the report that follows.
+   It is refused with 409 unless the robot is deactivated, since erasing flash stalls everything that runs from it, the control loop included.
+
+### Decoding a dump
+
+Decoding needs the ELF of the firmware that crashed.
+Its SHA-256 is the report's `app_elf_sha256`, which `sha256sum firmware.elf` reproduces; the app warns when it differs from the running firmware's `firmware_elf_sha256`.
+A PlatformIO build leaves the ELF at `.pio/build/<env>/firmware.elf`; the releases publish only the `.bin` images, so a crash in a release firmware needs a build of the same commit, and only a build whose hash matches decodes reliably.
+
+esp-coredump comes with PlatformIO's ESP-IDF platform (`~/.platformio/penv/Scripts/esp-coredump`) and is on PyPI as `esp-coredump`.
+It runs the toolchain's GDB, which PlatformIO keeps in `~/.platformio/packages/tool-xtensa-esp-elf-gdb/bin` (`tool-riscv32-esp-elf-gdb` for the ESP32-P4):
+
+```sh
+esp-coredump info_corefile --core coredump-1a2b3c4d.bin --core-format raw     --gdb ~/.platformio/packages/tool-xtensa-esp-elf-gdb/bin/xtensa-esp32-elf-gdb     .pio/build/esp32-s3-n8r2/firmware.elf
+```
+
+It prints the crashed task's registers and backtrace with source lines, then every task's stack; `dbg_corefile` instead of `info_corefile` opens the dump in GDB.
+In an ESP-IDF build of the project, `idf.py coredump-info --core coredump-1a2b3c4d.bin` does the same against the build's own ELF.
+
 ## Examples
 
 Send controller input with the app's socket store:
@@ -147,9 +194,18 @@ socket.emit(ControllerData, {
 Send a request and read its reply:
 
 ```typescript
-const response = await socket.request({ imuCalibrateExecute: {} });
+import { robotRequest } from "$lib/robot-request";
+
+const response = await robotRequest({ imuCalibrateExecute: {} });
 const result = response.imuCalibrateData;
 ```
+
+`robotRequest` rejects with the robot's reason when it refuses, and with a message naming firmware that does not handle the request when the robot answers 501; every request in the app goes through it.
+
+While no link is up, what becomes of a request depends on its kind (`app/src/lib/transport/request-kinds.ts`).
+An action, one that moves the robot or ends something under way, fails at once, since the robot may be elsewhere by the time a link comes.
+A settings write waits 3 s for a link, so a blip goes unnoticed, and then fails as not saved.
+A read waits for a link until its timeout, 30 s counted from the call.
 
 Subscribe to a message and stop listening:
 

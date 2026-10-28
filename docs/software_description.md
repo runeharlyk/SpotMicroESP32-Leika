@@ -27,7 +27,7 @@ An mDNS query (priority 3) and the restart sequence (priority 10) each run in a 
 
 The tasks share state in three ways, none of which can stall the control loop:
 
-- The socket's handlers post controller input, mode and gait to a mutex-guarded inbox (`motion_inbox.h`) that holds only the newest of each. The control task takes it once per tick, so only the control task touches the motion state.
+- The socket's handlers and the handheld controller's receiver post controller input, mode and gait to a mutex-guarded inbox (`motion_inbox.h`) that holds only the newest of each. The control task takes it once per tick, so only the control task touches the motion state.
 - The sensor task writes its latest readings under a lock that is held only for the copy. The control and service tasks copy them out.
 - The control task pushes telemetry ticks into a lock-free single-producer, single-consumer ring (`telemetry/spsc_ring.h`). A full ring refuses the tick and counts it as dropped; the control task never waits.
 
@@ -65,12 +65,29 @@ The `Imu` class (`peripherals/imu/imu.h`) turns a chip's readings into body-fram
 - The mounting matrix from the peripheral settings rotates the chip frame into the body frame.
 - The gyro bias is measured at boot while the robot is still, over 200 samples. If the robot moves, the bias is left at zero.
 - For the MPU6050 and the ICM-20948 a Madgwick filter fuses the gyro and the accelerometer, and the compass when a fresh reading exists. Its gain is an IMU setting that defaults to 0.1, and is 2.5 during the first two seconds so that the first estimate is quick. Without a compass the yaw drifts, and the sample says so with the `YAW_DRIFTS` flag.
+- Each sample also carries the gyro's z rate integrated over every read since the IMU started (`gyroYaw`), from which the odometry takes the mean rate between the samples two control ticks find.
 - The BNO055 reports its own fused quaternion, which is rotated by the mounting. The Madgwick filter is not used for it.
 - A separate HMC5883L compass (75 Hz) supplies the compass for a chip without one. Its alignment, hard-iron offset and soft-iron matrix are IMU settings. A compass that has been silent for three of its periods is ignored. A disabled compass is left out of the fusion, the chip's own as well as a separate one; the BNO055's own fusion keeps using its compass.
 - The tilt of a still robot can be folded into the stored mounting from the app, so that a robot on a level surface reads level. The tilt must be under 15 degrees.
 
-The other sensors are a PAJ7620U2 gesture sensor (read every 100 ms) and a BMP180 barometer (every 500 ms).
-A gesture changes the mode: down selects rest, up selects stand, and left and right select walk.
+The other sensors are read when due:
+
+| Chip | Address | Rate | Reports |
+| --- | --- | --- | --- |
+| PAJ7620U2 gesture sensor | 0x73 | 100 ms | A gesture, which steps the modes |
+| BMP180 barometer | 0x77 | 500 ms | Pressure, temperature and altitude |
+| INA219 power sensor | 0x41 by default, 0x41 - 0x4F | 100 ms | The servo rail's voltage and current |
+
+The INA219 sits in the servo rail; 0x40 is the PCA9685's, so its A0 is tied high, and its address is a peripheral setting.
+Its calibration follows from the shunt resistance and the largest current expected, both settings (0.1 Ohm and 3.2 A by default): the current's resolution is that current over 2^15, and the shunt range the narrowest of 40 - 320 mV that holds it.
+The bus voltage is averaged over 8.5 ms so that a dip shows, the shunt over 68 ms so that the current is the mean between reads.
+A chip that reset, by a dip on its own supply, is configured again on the next read.
+Below the cut-off voltage (a setting, 0 for off by default) for 2 s, the robot deactivates and logs why, and it is held deactivated until the rail rises 0.2 V above the cut-off; the servos going limp take their load off, so only a battery with charge left recovers that far.
+A current above the stall current (3 A by default) for the stall time (1 s) sets a stall flag, which is only reported.
+The readings stream as `PowerData`, and each telemetry network sample carries the rail's voltage, its lowest voltage since the previous sample and its current, so a recording shows the supply dips.
+A gesture steps along the ladder rest - sit - stand (`esp32/include/gesture_control.h`): down from walk stands, down from stand plays the built-in `sit` clip and holds it, down again rests, and up steps back up to stand; left and right select walk.
+From stand or walk, forward and backward walk 10 cm and anticlockwise and clockwise turn a full circle, as [goal moves](motion_system.md#goal-moves) on the odometry.
+A gesture that arrives while a clip moves the legs or a goal runs is discarded, not queued.
 
 #### Variant
 
@@ -93,7 +110,9 @@ Each joint's PWM follows from three parts:
 1. A clamp to 125 - 600 counts, the range the servos accept.
 
 The joints do not follow their targets directly.
-Each moves toward its target by at most 720 degrees per second, the rated speed of an MG92B servo, and a tick counts as at most 20 ms long so that a stall does not release a jump.
+Each moves toward its target by at most 96 % of the MG92B's rated speed at the servo supply stored in the servo settings (`supply_voltage`, 6 V when never set): 720 degrees per second at 6 V, 443 at 4.8 V, linear in between and held at the nearer rating outside (`servoSpeedLimit` in `peripherals/servo_output.h`).
+A tick counts as at most 20 ms long so that a stall does not release a jump.
+A new supply holds from the next tick, and the control task hands the same limit to the walk, which caps its joints at three quarters of it.
 This limit is the only filtering between the motion state's angles and the servos; the smoothing of the commands is done in the motion states.
 
 #### Settings and communication
@@ -103,11 +122,47 @@ An invalid settings write is refused and leaves the stored settings unchanged.
 
 Apart from the camera stream (`/api/camera/stream`, MJPEG) and the embedded web app, the robot's API is the WebSocket at `/api/ws`, carrying protobuf messages from `platform_shared/message.proto`.
 Commands, periodic broadcasts, settings, file transfer and the per-tick telemetry stream all travel over it, see [WebSocket](websocket.md).
-The same requests also arrive over the serial link on the console port, beside the log, for setup over a USB cable, see [Serial link](serial.md); a `SerialLink` adapter answers them, and the log goes out through its writer so a line never splits a frame.
-The service task broadcasts the IMU and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed.
+The protocol also travels over the serial link, beside the log, see [Serial link](serial.md): all of it on the USB-Serial-JTAG port, and requests only on the console UART.
+A `SerialLink` adapter handles both ports, each as one client, and the log goes out through its writer so a line never splits a frame.
+The firmware registers every handler on every link and sends each stream to its subscribers on each.
+On the S3 boards with PSRAM, a `NimbleLink` adapter serves the app over a Bluetooth LE Nordic UART Service, with the commands, requests and broadcasts of the WebSocket but no telemetry and no file or firmware transfer, see [Bluetooth link](bluetooth.md).
+The service task broadcasts the IMU, the sonars, the servo rail and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed on any link.
+The analytics include every task's least free stack since it started, tightest first (System metrics), which is what a stack can be trimmed by; the serial link's 8 KB read task is the one the heap budget points at.
 
 The telemetry stream is recorded only while a client is subscribed.
 The control task puts one sample per tick in a ring of 64 ticks, and the service task sends them in batches of 10, preceded by a header describing the robot's firmware, variant, IMU and settings.
+
+#### Handheld controller
+
+The robot can be driven without the app by the ESP-NOW handheld controller (the separate `esp-now-controller` firmware, shared with the Hexapod).
+The receiver is switched on in the peripheral settings (the Sensors page) and is off by default, since it beacons ten times a second.
+ESP-NOW broadcasts have no pairing, so the robot obeys the first controller whose frame it hears after the receiver starts and ignores every other sender; switching the receiver off and on lets another controller take over.
+The switch applies at once.
+The ESP32-P4 has no radio of its own for ESP-NOW, so it builds without the receiver and reports it unsupported (`espnow_controller_supported` in the features).
+
+The controller broadcasts a 14-byte packet (`communication/controller_packet.h`, kept byte-identical with the controller firmware): a version, a button mask and four sticks in -1000 to 1000.
+A frame of another length or version is ignored.
+`HandheldController` (`communication/handheld_controller.h`) maps it as the Hexapod does:
+
+| Input | Effect |
+| --- | --- |
+| Sticks | The app's sticks, scaled to -1 to 1 |
+| Left stick button | The next mode of deactivated, rest, stand and walk, and from walk back to deactivated; from idle or calibration it selects rest |
+| Right stick button | Toggles trot and crawl, except in stand |
+| Right stick button held in stand | The right stick's y sets the body height instead of the pitch: centred is the default 0.7, the ends are the lowest and the highest; the height stays when the button is released |
+| Both stick buttons | Deactivates, and does nothing else |
+| Buttons A, B and C | Not used |
+
+A button acts when it goes down; a press of both that lands one frame apart first acts as the single button.
+The controller has no sliders, so the speed and the step height are the app's defaults of 0.5.
+The receiver posts to the motion inbox as the socket's handlers do, so the controller is held to the same rules: no mode change during a firmware update, none but deactivated without a variant, and the dead-man stop when it falls silent while a stick is off centre.
+It posts the input with every frame while a stick is off centre, and otherwise only when it changes, so an idle controller does not override the app; whichever of the two moved last is followed.
+
+ESP-NOW hears only the channel the radio is on, and one radio serves the station, the access point and ESP-NOW: the channel is the router's while the station is joined and the access point's otherwise.
+The robot broadcasts a beacon with its channel every 100 ms, and the controller hunts the channels until it hears it.
+The beacon reads the channel at every send, so it follows every join and drop of the station, and the log reports each change.
+Unlike the Hexapod, the robot does not pin the radio to a fixed channel, which would move the access point off its configured channel and drop the app.
+While the station retries a network it cannot reach, its scans take the radio off the channel for a moment, and the controller may lose frames.
 
 #### Build-time options
 
@@ -119,6 +174,7 @@ What the board fixes stays a define in the environment's `build_flags`:
 | USE_CAMERA | Camera and its stream, with the camera model's pins (`CAMERA_MODEL_*`); 0 when undefined |
 | SDA_PIN, SCL_PIN | Default I2C pins, until the peripheral settings change them |
 | WS2812_PIN | Default LED strip pin, until the peripheral settings change it |
+| SD_CMD_PIN, SD_CLK_PIN, SD_D0_PIN | A 1-bit SD card slot (the ESP32-S3-EYE's, in `esp32-wroom-camera`); a card that answers at boot is mounted at `/sdcard` beside LittleFS, and a board without one boots as before |
 
 ### 📲 Controller
 

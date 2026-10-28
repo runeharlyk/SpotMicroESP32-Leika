@@ -3,8 +3,11 @@ name: Firmware Host Tests
 # Firmware code tested on the host. The web app's TypeScript port of the motion code is pinned to
 # traces of the firmware's own headers: this regenerates them from the current firmware and tests the
 # port against them, so a change to the motion code fails here instead of leaving the traces stale.
-# The secrets check and the merge of secrets.h's network into the stored ones run here too.
+# The secrets check, the merge of secrets.h's network into the stored ones and the release index the app's firmware
+# page reads run here too.
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:
@@ -12,9 +15,13 @@ on:
       - "esp32/include/**"
       - "esp32/test/**"
       - "esp32/scripts/secrets_file.py"
+      - "flasher/generate_manifests.py"
       - "platform_shared/**"
+      - "animations/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
+      - "app/src/lib/animation/**"
+      - "app/tests/unit/animation-player.spec.ts"
       - ".github/workflows/firmware-port-tests.yml"
   pull_request:
     branches: [master]
@@ -23,9 +30,13 @@ on:
       - "esp32/include/**"
       - "esp32/test/**"
       - "esp32/scripts/secrets_file.py"
+      - "flasher/generate_manifests.py"
       - "platform_shared/**"
+      - "animations/**"
       - "app/src/lib/simulation/firmware/**"
       - "app/tests/unit/firmware-motion.spec.ts"
+      - "app/src/lib/animation/**"
+      - "app/tests/unit/animation-player.spec.ts"
       - ".github/workflows/firmware-port-tests.yml"
 
 permissions:
@@ -44,10 +55,11 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Generate the nanopb headers the motion code includes
+      - name: Generate the nanopb headers the motion code includes, and the embedded animation clips
         run: |
           pip install protobuf grpcio-tools
           python esp32/scripts/compile_protos.py
+          python esp32/scripts/pack_animations.py
 
       - name: Test the firmware headers and scripts on the host
         run: |
@@ -56,6 +68,9 @@ jobs:
 
       - name: Trace the firmware motion code
         run: python esp32/test/host/export_firmware_traces.py
+
+      - name: Trace the firmware animation player
+        run: python esp32/test/host/export_animation_traces.py
 
       - uses: arduino/setup-protoc@v3
         with:
@@ -77,4 +92,4 @@ jobs:
           pnpm install
           pnpm proto
           pnpm exec svelte-kit sync
-          pnpm exec vitest run tests/unit/firmware-motion.spec.ts
+          pnpm exec vitest run tests/unit/firmware-motion.spec.ts tests/unit/animation-player.spec.ts

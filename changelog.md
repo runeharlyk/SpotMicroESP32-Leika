@@ -13,9 +13,35 @@ All notable changes to this project will be documented in this file.
 - Adds the `esp32-s3-n8r2` build for ESP32-S3 boards with 2 MB of quad PSRAM, such as the Spot Pico's, which the octal-PSRAM S3 builds left without it
 - Adds a Configuration page that saves a robot's servo calibration and peripheral settings to a file and loads them back, onto the same robot or as a starting point for another
 - Shows each saved robot's firmware version and build on the start page, as the robot last reported it
+- Adds animations: the robot plays sit, bow and wave from the new Animations page, with a slider for each clip's parameters, and plays clips uploaded there as JSON files
+- Adds an animation editor: a timeline of keyframes, body and leg poses, oscillations and sliders, previewed on the robot's 3D model as the firmware would play it, saved to the robot or downloaded as JSON
+- Shows the last crash on the System Status page: the summary of the core dump the robot kept, a download of the dump to decode with esp-coredump, and an erase
+- Adds a receiver for the ESP-NOW handheld controller, ported from the Hexapod: sticks, mode, gait and body height without the app, switched on in the peripheral settings
+- Adds the servo supply voltage to the servo settings, entered on the servo calibration page with the speeds it allows: the servo controller's slew limit and the walk's joint speed cap follow the MG92B's rating at that voltage, live, and stay at 720 and 540 degrees per second for a robot left at 6 V
+- Adds an ESP-IDF driver for two HC-SR04 sonars, set up on the Sensors page and shown on the IMU page: they ping in turn ten times a second each, timed by a GPIO interrupt, and report no echo or no sensor apart from a distance
+- Adds an INA219 power sensor on the servo rail, at 0x41 by default: its voltage, current and power on the IMU page and in each telemetry network sample with the lowest voltage since the last, a low-battery cut-off that deactivates the robot after 2 s under it, and a reported stall flag, set up on the Sensors page
+- Adds a Bluetooth LE link on the S3 boards with PSRAM (`esp32-wroom-camera`, `esp32-s3-n8r2`): the app drives the robot, hears its mode, gait and IMU, and changes its settings over Bluetooth, in Hexapod's framing; telemetry, files and firmware updates stay on WiFi
+- Adds telemetry recording to the System Metrics page: record, stop and download a `.leika` file the simulation tools read, with its latency and IMU-noise report shown when it stops
+- Drives the robot and streams its live data and telemetry over the USB cable on boards with a native USB port, in the app and in the Python client and recorder; a USB-serial chip's port still carries requests only
+- Shows the robot's 3D model on the servo calibration page, posed by the PWM being set, with the Pico's knees turned through their four-bar linkage
+- Adds a controller view with the robot's reported pose beside the simulation, both driven by the same sticks
+- Gives the simulated servos the MG92B's torque-speed line, so they slow under load and give way past stall, with the supply voltage randomised between its 4.8 and 6.0 V ratings
+- Adds terrain and payload stages to the simulation's training - a payload, bumps, slopes and stairs - advanced by how many episodes succeed
+- Adds dead reckoning from the commanded feet: position, heading and distance since the last reset, in every telemetry tick, as a request that reads and resets it, and from the Python client; it counts commanded steps, so calibrate it against a tape measure
+- Adds goal moves: the robot walks a distance or turns an angle itself, closed on its odometry, so a WiFi stall no longer cuts a move short; the Python client's moves and turns use them where the firmware has them
+- Fuses the gyro into the odometry's heading, learning its bias while the robot stands: in the simulation a turn's heading is now within 1 % instead of 9 % short, and goal turns land on it; the feet's own heading stays in the odometry as `kinematic_yaw`
+- Adds an AUTO gait, ported from the Hexapod: the crawl for a short stick and the trot for a long one, with hysteresis, swapped only at a standstill on all four feet; the telemetry reports the gait walked
+- Adds Show on robot to the animation editor, ported from the Hexapod: the robot holds the pose being edited and follows it, from stand, until switched off, its client leaves or another mode is chosen, easing back to stance
+- Adds firmware updates the robot downloads itself over its own WiFi, from an https URL checked against ESP-IDF's certificate bundle, ported from the Hexapod: the Firmware page offers to install the latest release on the robot when it has WiFi; the `esp32-camera` and `esp32dev` builds leave it out, as their app slots have no room for TLS
+- Adds `servo_feasibility.py` and `servo_margin.py` to the simulation, ported from the Hexapod: the firmware's walk and animation traces against the MG92B's speed and joint travel, and how much slower servos they still follow
+- Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
+- Reports the internal RAM apart from PSRAM on the System Status page: free, the largest block and the least free since boot, with the allocations refused since boot, where the heap figures count PSRAM in and so never show internal RAM running out
+- Adds a sign-convention fixture, `platform_shared/sign_convention.json`, asserted by the firmware, simulation and app tests, and `docs/conventions.md`, which states the body frame, the leg numbering and the signs of the sticks, the body pose, the odometry and the goals
 
 ### Changed
 
+- Answers a request the firmware does not know with 501 instead of 400, and the app says the robot's firmware does not handle it (older, or built without it), also for older firmware's 400
+- Reads the flash in quad I/O on the `esp32-s3-n8r2` build, as on the Spot Pico, where it cut the control loop's compute time by a third on average and by half at the 99th percentile
 - Requires one flash over the cable per robot for the first firmware that updates over the air, since it brings a new bootloader with rollback
 - Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
@@ -24,13 +50,42 @@ All notable changes to this project will be documented in this file.
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
 - Eases the feet over half a second when stand or rest takes over, instead of snapping a foot from mid-stride: walk to stand jumped a joint up to 47 degrees in one tick
+- Holds every joint inside its travel, a range per variant from the servos' travel and the robot models, before it reaches the servo board; the animation check now also warns of a clip that drives a joint past it, such as a crouch that folds a leg into the body
+- Levels the standing body fully on a slope with integral action in its IMU compensation, which left half the tilt, and holds a commanded stand tilt in full instead of half of it
+- Holds the stand's IMU compensation until the feet are eased in, so it no longer levels against, and integrates, the tilt the rise from rest causes by itself
+- Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
+- Shortens the walk's stroke, the crawl's body shift and the step height where they would put a foot out of reach, through each variant's leg geometry: at full stick, 259 of the Pico's 325 trot commands and 307 of its 325 crawl commands straightened a knee or folded a foot onto its hip. A forward trot at the app's settings keeps its whole stroke; sideways and turning full sticks, and the crawl, walk slower
+- Runs the simulation, its training and the app's Training controller on the firmware's own walk for the Spot Pico (the MINI's stand height, stride, lift, 1 Hz cadence and command smoothing, from the same velocity-to-sticks map the Python client sends the robot, with the walk's joint speed cap, stop and reach bound) instead of a gait tuned apart from it, and turns the Training controller the way the firmware does
 
 ### Fixed
 
+- Fixes a walk entered from stand, or switched to the other gait while it stands, snapping a foot into the air in one tick at up to 3,700 deg/s: it now starts at the start of the cycle, every foot down and no stroke left from the last walk
+- Fixes a gait chosen while walking putting a swinging foot down in one tick, at up to 4,400 deg/s: the walk now stops on all four feet, takes the gait and walks on, as AUTO does
+- Fixes a trot chosen after the crawl walking with the crawl's body shift, which put the Spot Pico's feet out of reach: the trot now centres the body first
+- Fixes the servo page's switch driving every servo back to the pose held before the robot was deactivated: the servos now wake limp and move only when the page sets a PWM, and the switch takes effect on the control task between servo writes
+- Fixes the charts' faded fills, grids and axis colours, which named daisyUI 4 colours or faded the hex primary into an invalid colour
+- Fixes a dialog that would not open after another one closed, such as the Wi-Fi scan after an info dialog: the dialogs now play their exit
+- Fixes the sticks lagging over Bluetooth and USB, where every frame queued behind the one being written: the app now sends only the newest once a write completes, and a released stick's stop always
+- Fixes an open camera stream holding the web server, which left the WebSocket's commands unread for as long as anyone watched: one task now sends each frame to up to three viewers, and a fourth is refused with 503; a frame in a format other than JPEG no longer leaks its converted copy, and the camera's 501 and 503 replies no longer go out as 200
+- Fixes settings stored as zero bytes, every field at zero as an uncalibrated sensor's are, being replaced by the defaults on every boot
+- Fixes a restart that could silently not happen when no internal RAM was left for the task that did it, as after an update on the Hexapod with its camera running: it now runs from a timer made at boot
+- Fixes the robot's own download failing on a GitHub release asset, whose signed redirect URL did not fit the HTTP client's buffers
+- Releases the camera on the S3 camera boards before the robot's own download, whose task could find no internal RAM for its stack with the camera running
+- Fixes `record.py` saying it wrote a recording when the robot never answered: it now says nothing was written and leaves no empty file
+- Fixes the robot's own download from a GitHub release asset running out of internal RAM in the TLS handshake with the asset's host: mbedTLS now allocates from PSRAM on the S3 and P4 builds
+- Fixes a page that is opened a second time getting no live data, such as the animation status, because its stream was never asked for again
+- Fixes the Python `Robot` API strafing the real robot right when asked to go left and turning it clockwise when asked to turn counter-clockwise
 - Fixes the robot rebooting whenever the app connected on a board without PSRAM: every protocol message held the 16 KB file chunks inline, which left too little heap to answer the first request
 - Fixes the link stalling for good under the app's IMU and status streams, when frames queued for a slow link took the heap the WiFi driver needed
 - Fixes log lines from different tasks being spliced together on the serial port
 - Fixes WebSocket clients timing out their keep-alive pings and waiting out every close, which the robot never answered
+- Fixes the swing foot dropping onto its stance spot for one tick at the end of a swing
+- Fixes a diagonal or turning stance ending about a millimetre in the air, so its foot jumped at the start of the swing
+- Fixes the odometry's heading taking the gyro's sample at one point of each control tick, which aliased a yaw rate that ripples with the tick into the heading (in the simulation a 96 degree turn read from 2.6 degrees short to 2.4 long, by where the sample fell): it now takes the gyro's mean rate between the samples two ticks find, which the sensor task integrates over every read
+- Fixes an input posted just after the control task read its clock counting as 49 days of silence, which stopped the walk for a moment and disarmed the dead-man stop
+- Fixes goal moves started over USB serial or Bluetooth walking on when their client went away: a goal now ends when its client leaves any link or sends nothing for 2 s, which a closed USB serial port does not otherwise signal, and the Python client asks for the goal's status every half second while it waits
+- Fixes goal moves reporting the target reached while the walk's stop still carried the robot on, 4.4 degrees past a 90 degree turn at full speed in the simulation, and curving off the line of a straight goal, 45 mm over a metre: a goal now judges where the walk's stop will leave the robot, slows over a zone its speed needs, holds a straight goal's heading and line, judges the pose once the walk has stood still and walks up to two corrective passes
+- Fixes the Python client's goal turns adding up the walks' heading drift, so a square of goals did not close: each turn now aims at the heading the script's goals meant; a goal whose reply was lost or interrupted by Ctrl-C is now cancelled
 
 ## [0.3.0]
 

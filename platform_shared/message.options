@@ -7,11 +7,10 @@ socket_message.StaticSystemInformation.cpu_type type:FT_POINTER
 socket_message.StaticSystemInformation.sdk_version type:FT_POINTER
 socket_message.StaticSystemInformation.cpu_reset_reason type:FT_POINTER
 
-socket_message.AnglesData.angles max_count:12
-
 socket_message.I2CScanData.devices max_count:16
-
-socket_message.SonarData.dummy_field max_size:16
+socket_message.AnalyticsData.i2c_errors max_count:16
+socket_message.AnalyticsData.task_stacks max_count:24
+socket_message.TaskStack.name max_size:16
 
 socket_message.FeaturesDataResponse.variant type:FT_POINTER
 socket_message.FeaturesDataResponse.firmware_built_target type:FT_POINTER
@@ -29,6 +28,11 @@ socket_message.CorrelationResponse.error_message max_size:64
 
 # A pointer, as the file chunks are (filesystem.options), so a Message stays small
 socket_message.OtaChunk.data type:FT_POINTER
+
+socket_message.CoreDumpReport.task max_size:16
+socket_message.CoreDumpReport.backtrace max_count:16
+socket_message.CoreDumpReport.app_elf_sha256 max_size:65
+socket_message.CoreDumpReport.panic_reason max_size:128
 
 socket_message.ImuSample.accel max_count:3 fixed_count:true
 socket_message.ImuSample.gyro max_count:3 fixed_count:true
@@ -50,3 +54,16 @@ socket_message.TelemetryHeader.variant type:FT_POINTER
 socket_message.TelemetryHeader.device_id type:FT_POINTER
 socket_message.TelemetryHeader.imu_driver type:FT_POINTER
 socket_message.TelemetryHeader.joint_direction max_count:12 fixed_count:true
+
+socket_message.AnimationPlay.name max_size:33
+socket_message.AnimationPlay.params max_count:10
+socket_message.AnimationStatus.name max_size:33
+socket_message.AnimationEntry.name max_size:33
+socket_message.AnimationList.animations max_count:16
+socket_message.AnimationValidate.name max_size:33
+socket_message.AnimationReport.error max_size:64
+socket_message.AnimationReport.description max_size:97
+socket_message.AnimationReport.params max_count:10
+socket_message.AnimationPose.legs max_count:4
+socket_message.OtaDownload.url max_size:256
+socket_message.OtaStatus.error max_size:64

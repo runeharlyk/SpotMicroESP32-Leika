@@ -33,8 +33,9 @@
     const reach = $derived(cfg.coxa + cfg.femur + cfg.tibia)
     const viewBox = $derived(`${-reach} ${-0.3 * reach} ${2 * reach} ${1.4 * reach}`)
 
-    // Seen from behind, so a right leg reaches out to the right; legIk's x points towards the body.
-    const front = (leg: number, [x, y]: LegPoint) => [leg % 2 === 0 ? -x : x, -y]
+    // Seen from behind, so a left leg (0 and 2: the body's +z is left) reaches out to the left; legIk's x points towards
+    // the body.
+    const front = (leg: number, [x, y]: LegPoint) => [leg % 2 === 0 ? x : -x, -y]
     // Seen from the robot's right, forward to the right.
     const side = ([, y, z]: LegPoint) => [z, -y]
 
@@ -57,7 +58,7 @@
     const moves = (leg: number) => jointId === -1 || selected?.leg === leg
 
     // Laid out as seen from above with the front at the top: left legs on the left.
-    const LAYOUT = [1, 0, 3, 2]
+    const LAYOUT = [0, 1, 2, 3]
 </script>
 
 <div class="flex flex-col gap-3 p-4 bg-base-200 rounded-xl">

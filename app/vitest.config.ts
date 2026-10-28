@@ -18,6 +18,8 @@ const config: UserConfigExport = {
             '$env/static/public': path.resolve(__dirname, './tests/stubs/env-static-public.ts')
         }
     },
+    // The built-in animation clips live beside the app, in the repository's animations/.
+    server: { fs: { allow: ['.', '../animations'] } },
     test: {
         globals: true,
         environment: 'jsdom',

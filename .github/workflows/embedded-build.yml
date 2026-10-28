@@ -2,6 +2,12 @@ name: PlatformIO CI
 
 on:
   workflow_call:
+    inputs:
+      # Only a release keeps the ELFs: decoding a core dump needs the exact build's, and at about 20 MB a board they
+      # are not worth uploading on every push.
+      elf:
+        type: boolean
+        default: false
   push:
     branches: [master]
     paths:
@@ -68,17 +74,28 @@ jobs:
         with:
           python-version: "3.13"
 
-      # Core 6.2 requires SCons 4.11, which dropped SCons.Tool.FortranCommon that the pinned
-      # pioarduino release (esp32-p4) still imports.
+      # The esp32-p4's pioarduino release requires core 6.2, whose SCons 4.11 an older pioarduino could not import.
       - name: Install PlatformIO and build script dependencies
-        run: pip install "platformio==6.1.19" protobuf grpcio-tools -r esp32/scripts/requirements.txt
+        run: pip install "platformio==6.2.0" protobuf grpcio-tools -r esp32/scripts/requirements.txt
 
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
+
+      # Internal RAM is what runs out first: a change that grows it statically fails here, not at the next boot.
+      - name: Static internal RAM within budget
+        run: python esp32/scripts/static_ram.py ${{ matrix.env }} .pio/build/${{ matrix.env }}/firmware.elf
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.env }}
           path: .pio/build/${{ matrix.env }}/*.bin
+          if-no-files-found: error
+
+      - name: Upload the ELF
+        if: inputs.elf
+        uses: actions/upload-artifact@v4
+        with:
+          name: elf-${{ matrix.env }}
+          path: .pio/build/${{ matrix.env }}/firmware.elf
           if-no-files-found: error

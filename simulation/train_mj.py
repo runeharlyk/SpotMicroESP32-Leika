@@ -8,6 +8,8 @@ and only learns stabilizing corrections.
 Examples:
   python train_mj.py --randomize --zero-final --init-std 0.3 --timesteps 5_000_000 --num-envs 16
   python train_mj.py --curriculum --resample-steps 300 --tag residual_dr
+  python train_mj.py --randomize --zero-final --stages  # terrain and payload stages, advanced by success
+  python train_mj.py --randomize --dr-centre recording.sysid.json  # ranges re-centred by identify.py
   python train_mj.py --smoke           # quick end-to-end sanity run
 """
 
@@ -20,6 +22,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMoni
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
 
 from src.envs.quadruped_mj_env import make_env
+from src.sim.stages import StageCurriculum
 
 _TERM_KEYS = ("r_vel", "r_yaw", "p_upright", "p_height", "p_vz", "p_energy", "p_power",
               "p_arate", "p_slip", "p_angvel", "p_res")
@@ -38,6 +41,25 @@ class Curriculum(BaseCallback):
         self.logger.record("curriculum/level", level)
 
     def _on_step(self):
+        return True
+
+
+class StageSchedule(BaseCallback):
+    """Moves the training envs through the terrain and payload stages (src/sim/stages.py) by the share of their
+    episodes that succeed; an env takes a new stage at its next reset."""
+
+    def __init__(self):
+        super().__init__()
+        self.curriculum = StageCurriculum()
+
+    def _on_step(self):
+        level = self.curriculum.level
+        for info, done in zip(self.locals["infos"], self.locals["dones"]):
+            if done and "success" in info:
+                self.curriculum.record(info["stage"], info["success"])
+        if self.curriculum.level != level:
+            self.training_env.env_method("set_stage", self.curriculum.level)
+        self.logger.record("curriculum/stage", self.curriculum.level)
         return True
 
 
@@ -65,9 +87,10 @@ class TermLogger(BaseCallback):
         return True
 
 
-def build_vecenv(n, randomize, seed, subproc, vn_load=None, resample_steps=0, terrain=0.0):
+def build_vecenv(n, randomize, seed, subproc, vn_load=None, resample_steps=0, terrain=0.0, stages=False,
+                 dr_centre=None):
     fns = [make_env(randomize=randomize, seed=seed + i, resample_steps=resample_steps,
-                    terrain=terrain) for i in range(n)]
+                    terrain=terrain, stages=stages, dr_centre=dr_centre) for i in range(n)]
     venv = SubprocVecEnv(fns) if (subproc and n > 1) else DummyVecEnv(fns)
     venv = VecMonitor(venv)
     if vn_load and os.path.exists(vn_load):
@@ -96,23 +119,33 @@ def main():
     ap.add_argument("--terrain", type=float, default=0.0,
                     help="max bump height (m) of per-episode random heightfield (e.g. 0.008)")
     ap.add_argument("--curriculum", action="store_true", help="ramp command forward->omnidirectional")
+    ap.add_argument("--stages", action="store_true",
+                    help="terrain and payload stages (flat, payload, bumps, slopes, stairs), advanced by success")
+    ap.add_argument("--dr-centre", default=None,
+                    help="identify.py's JSON file, which re-centres the randomisation ranges (needs --randomize)")
     ap.add_argument("--tag", default=None, help="override output run-dir name")
     ap.add_argument("--smoke", action="store_true", help="tiny run to verify the pipeline")
     args = ap.parse_args()
+    if args.stages and args.terrain > 0:
+        ap.error("--stages chooses the terrain; drop --terrain")
+    if args.dr_centre and not args.randomize:
+        ap.error("--dr-centre re-centres the randomisation; add --randomize")
 
     if args.smoke:
         args.timesteps, args.num_envs, args.no_subproc = 4000, 2, True
 
     tag = args.tag or (f"residual_pure{'_dr' if args.randomize else ''}"
-                       f"{'_terrain' if args.terrain > 0 else ''}")
+                       f"{'_terrain' if args.terrain > 0 else ''}{'_stages' if args.stages else ''}")
     rundir = os.path.join(args.logdir, tag)
     os.makedirs(rundir, exist_ok=True)
 
     vn_load = os.path.join(args.init_from, "vecnormalize.pkl") if args.init_from else None
     train_env = build_vecenv(args.num_envs, args.randomize, args.seed, not args.no_subproc,
-                             vn_load=vn_load, resample_steps=args.resample_steps, terrain=args.terrain)
+                             vn_load=vn_load, resample_steps=args.resample_steps, terrain=args.terrain,
+                             stages=args.stages, dr_centre=args.dr_centre)
+    # With --stages the eval env stays on flat ground: the best model is the one that still walks there.
     eval_env = build_vecenv(1, args.randomize, args.seed + 1000, False, vn_load=vn_load,
-                            terrain=args.terrain)
+                            terrain=args.terrain, dr_centre=args.dr_centre)
     eval_env.training = False
     eval_env.norm_reward = False
 
@@ -159,6 +192,8 @@ def main():
     ]
     if args.curriculum:
         callbacks.append(Curriculum(full_at=int(0.45 * args.timesteps)))
+    if args.stages:
+        callbacks.append(StageSchedule())
 
     model.learn(total_timesteps=args.timesteps, callback=callbacks, progress_bar=not args.smoke)
 

@@ -1,0 +1,43 @@
+# Bluetooth LE: the Nordic UART Service link to the app (communication/nimble_link.h), on boards with PSRAM only.
+# The settings below are Hexapod's, from the same S3 with WiFi STA+AP, the camera and BLE up at once: each fixed an
+# allocation from internal RAM that failed there.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
+
+# The controller allocates from internal RAM only; the host need not. Its buffer pools go to PSRAM, and one app at a
+# time connects, not the default three.
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=y
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+
+# The controller takes about 64 KB of internal RAM at defaults. It only advertises and takes one connection, so the
+# scan path and the spare activity slots are unreachable; running it from flash moves over 20 KB out of IRAM, at the
+# cost of a degraded link while flash is being erased.
+CONFIG_BT_CTRL_RUN_IN_FLASH_ONLY=y
+CONFIG_BT_CTRL_BLE_MAX_ACT=2
+CONFIG_BT_CTRL_BLE_SCAN=n
+CONFIG_BT_CTRL_DTM_ENABLE=n
+
+# WiFi and lwIP buffers in PSRAM, so the controller and its HCI buffers find internal RAM
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+
+# WiFi's static RX pool lives in internal DMA RAM. Hexapod's SoftAP allocations failed at 16 buffers once BLE and the
+# camera were up, and it runs 8; the default here is 10. (Hexapod also trims the TX cache, which exists only without
+# SPIRAM_IGNORE_NOTFOUND.)
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
+
+# WiFi's TX and RX paths run from flash rather than IRAM: about 18 KB more heap on the S3, which the controller needs
+# beside the camera and the SoftAP, for some WiFi throughput and latency
+CONFIG_ESP_WIFI_IRAM_OPT=n
+CONFIG_ESP_WIFI_RX_IRAM_OPT=n
+
+# Software AES and SHA: the hardware drivers' DMA buffers come from internal RAM, and failed to allocate in the WPA2
+# handshake with BLE, WiFi STA+AP and the camera up
+CONFIG_MBEDTLS_HARDWARE_AES=n
+CONFIG_MBEDTLS_HARDWARE_SHA=n
+
+# The camera's DMA line buffer comes from internal DMA RAM; at the 32 KB default no contiguous block was left
+CONFIG_CAMERA_DMA_BUFFER_SIZE_MAX=8192

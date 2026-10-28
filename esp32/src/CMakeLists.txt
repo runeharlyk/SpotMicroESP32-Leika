@@ -4,6 +4,8 @@ set(COMPONENT_REQUIRES
     esp_driver_uart
     esp_driver_usb_serial_jtag
     esp_http_server
+    esp_http_client
+    mbedtls
     nvs_flash
     esp_wifi
     esp_event
@@ -12,7 +14,10 @@ set(COMPONENT_REQUIRES
     esp_timer
     esp_psram
     spi_flash
+    espcoredump
     littlefs
+    fatfs
+    sdmmc
     esp-dsp
 )
 
@@ -20,6 +25,10 @@ if(IDF_TARGET STREQUAL "esp32p4")
     list(APPEND COMPONENT_REQUIRES esp_wifi_remote esp_hosted esp_driver_cam esp_driver_isp esp_driver_jpeg espressif__esp_sccb_intf espressif__esp_cam_sensor)
 else()
     list(APPEND COMPONENT_REQUIRES esp32-camera)
+endif()
+
+if(IDF_TARGET STREQUAL "esp32s3")
+    list(APPEND COMPONENT_REQUIRES esp-nimble-cpp)
 endif()
 
 idf_component_register(

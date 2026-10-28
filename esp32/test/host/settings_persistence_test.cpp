@@ -11,6 +11,12 @@
 
 namespace FileSystem {
 bool mkdirRecursive(const char *path) { return std::filesystem::create_directories(path); }
+// Replaces an existing destination, as LittleFS does; the Windows C runtime's rename refuses to.
+bool replaceFile(const char *from, const char *to) {
+    std::error_code error;
+    std::filesystem::rename(from, to, error);
+    return !error;
+}
 } // namespace FileSystem
 
 static int failures = 0;
@@ -26,6 +32,7 @@ static int failures = 0;
 using Settings = api_PeripheralSettings;
 static const char *FILE_PATH = "config/peripheralSettings.pb";
 static const std::string BACKUP_PATH = std::string(FILE_PATH) + ".bak";
+static const std::string TEMPORARY_PATH = std::string(FILE_PATH) + ".tmp";
 
 // As the settings headers do: the state is the proto, and an update may refuse what it is given.
 static void readSettings(const Settings &settings, Settings &proto) { proto = settings; }
@@ -95,6 +102,48 @@ static void savedSettingsSurviveARestart() {
     CHECK(!std::filesystem::exists(BACKUP_PATH));
 }
 
+// A save that cannot finish, here because its temporary file cannot be created, as when flash runs out or power
+// fails halfway, keeps the settings stored before it.
+static void aSaveThatCannotFinishKeepsTheStoredSettings() {
+    fresh();
+    {
+        Robot robot;
+        robot.persistence.readFromFS();
+        CHECK(robot.protoHandler.update(withPins(5, 6)) == StateUpdateResult::CHANGED);
+        std::filesystem::create_directories(TEMPORARY_PATH);
+        CHECK(robot.protoHandler.update(withPins(7, 8)) == StateUpdateResult::CHANGED);
+        CHECK(!robot.persistence.writeToFS());
+        std::filesystem::remove_all(TEMPORARY_PATH);
+    }
+    Robot restarted;
+    restarted.persistence.readFromFS();
+    CHECK(restarted.settings().sda == 5);
+    CHECK(restarted.settings().scl == 6);
+    CHECK(!std::filesystem::exists(BACKUP_PATH));
+}
+
+// A reset during a save leaves its partial temporary file behind: the next boot loads the stored settings, and the
+// next save writes over the leftover.
+static void aTemporaryFileLeftByAResetIsIgnoredAndReplaced() {
+    fresh();
+    {
+        Robot robot;
+        robot.persistence.readFromFS();
+        CHECK(robot.protoHandler.update(withPins(5, 6)) == StateUpdateResult::CHANGED);
+    }
+    write(TEMPORARY_PATH, {0x08});
+    Robot restarted;
+    restarted.persistence.readFromFS();
+    CHECK(restarted.settings().sda == 5);
+    CHECK(!std::filesystem::exists(BACKUP_PATH));
+    CHECK(restarted.protoHandler.update(withPins(7, 8)) == StateUpdateResult::CHANGED);
+    CHECK(!std::filesystem::exists(TEMPORARY_PATH));
+    Robot again;
+    again.persistence.readFromFS();
+    CHECK(again.settings().sda == 7);
+    CHECK(again.settings().scl == 8);
+}
+
 static void aFirstBootStoresTheDefaults() {
     fresh();
     Robot robot;
@@ -116,6 +165,27 @@ static void anUnreadableFileIsKeptAsABackupBeforeTheDefaultsReplaceIt() {
     Robot restarted;
     restarted.persistence.readFromFS();
     CHECK(restarted.settings().sda == 21);
+}
+
+// Settings whose every field is at zero, as an uncalibrated sensor's are, encode as zero bytes: a valid message, which
+// was refused as unreadable, so the defaults replaced it on every boot (Hexapod 9543aa7, found on its robot).
+static StateUpdateResult acceptSettings(const Settings &proto, Settings &settings) {
+    settings = proto;
+    return StateUpdateResult::CHANGED;
+}
+
+static void settingsStoredAsZeroBytesLoad() {
+    fresh();
+    write(FILE_PATH, {});
+    StatefulService<Settings> service;
+    FSPersistencePB<Settings> persistence {readSettings, acceptSettings, &service, FILE_PATH,
+                                           api_PeripheralSettings_fields, api_PeripheralSettings_size, defaults()};
+    persistence.readFromFS();
+    Settings loaded;
+    service.read([&](const Settings &state) { loaded = state; });
+    CHECK(loaded.sda == 0 && loaded.scl == 0 && loaded.frequency == 0);
+    CHECK(contents(FILE_PATH).empty());
+    CHECK(!std::filesystem::exists(BACKUP_PATH));
 }
 
 static void storedSettingsTheUpdateRefusesAreKeptAsABackupToo() {
@@ -165,8 +235,11 @@ static void aRefusedSaveStillReportsTheRefusal() {
 
 int main() {
     savedSettingsSurviveARestart();
+    aSaveThatCannotFinishKeepsTheStoredSettings();
+    aTemporaryFileLeftByAResetIsIgnoredAndReplaced();
     aFirstBootStoresTheDefaults();
     anUnreadableFileIsKeptAsABackupBeforeTheDefaultsReplaceIt();
+    settingsStoredAsZeroBytesLoad();
     storedSettingsTheUpdateRefusesAreKeptAsABackupToo();
     aSaveThatChangesNothingNeitherReconfiguresNorWrites();
     aRefusedSaveStillReportsTheRefusal();

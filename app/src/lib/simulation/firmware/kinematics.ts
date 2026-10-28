@@ -24,6 +24,11 @@ const clampUnit = (value: number) => Math.max(-1, Math.min(1, value))
 
 /** Kinematics::legIK: hip, femur and knee angles in degrees for a foot at (x, y, z) in the leg's frame. */
 export function legIk(cfg: KinConfig, x: number, y: number, z: number): number[] {
+    return solveLeg(cfg, x, y, z).angles
+}
+
+/** legIk, and whether the foot is in reach: legIK's return value. */
+function solveLeg(cfg: KinConfig, x: number, y: number, z: number) {
     const { coxa, coxa_offset, femur, tibia } = cfg
     const F = Math.sqrt(Math.max(0, x * x + y * y - coxa * coxa))
     const G = F - coxa_offset
@@ -36,11 +41,14 @@ export function legIk(cfg: KinConfig, x: number, y: number, z: number): number[]
         Math.atan2(z, G) - Math.atan2(tibia * Math.sin(theta3), femur + tibia * Math.cos(theta3))
     // Yertle's knee servo is referenced to the femur's world angle, not to the femur.
     const knee = cfg.variant === 'SPOTMICRO_YERTLE' ? theta3 + theta2 : theta3
-    return [theta1 * RAD2DEG_F, theta2 * RAD2DEG_F, knee * RAD2DEG_F]
+    return {
+        angles: [theta1 * RAD2DEG_F, theta2 * RAD2DEG_F, knee * RAD2DEG_F],
+        reachable: D >= -1 && D <= 1 && x * x + y * y >= coxa * coxa
+    }
 }
 
-/** Kinematics::calculate_inverse_kinematics: 12 joint angles in degrees, before MotionService's dir table. */
-export function inverseKinematics(cfg: KinConfig, body: BodyState): number[] {
+/** Kinematics::euler2R of the body's angles: body points to world, as world = rot * body + (xm, ym, zm). */
+export function bodyRotation(body: BodyState): number[][] {
     const roll = body.omega * DEG2RAD_F
     const pitch = body.phi * DEG2RAD_F
     const yaw = body.psi * DEG2RAD_F
@@ -52,11 +60,23 @@ export function inverseKinematics(cfg: KinConfig, body: BodyState): number[] {
         Math.cos(yaw),
         Math.sin(yaw)
     ]
-    const rot = [
+    return [
         [cp * cy, -sy * cp, sp],
         [sr * sp * cy + sy * cr, -sr * sp * sy + cr * cy, -sr * cp],
         [sr * sy - sp * cr * cy, sr * cy + sp * sy * cr, cr * cp]
     ]
+}
+
+/**
+ * Kinematics::calculate_inverse_kinematics: 12 joint angles in degrees, before MotionService's dir table. Bit `leg` of
+ * `unreachable.mask` is set for a foot the leg cannot reach, which it then bends as far as it goes.
+ */
+export function inverseKinematics(
+    cfg: KinConfig,
+    body: BodyState,
+    unreachable?: { mask: number }
+): number[] {
+    const rot = bodyRotation(body)
     const inv = [0, 1, 2].map(r => [0, 1, 2].map(c => rot[c][r]))
     const invTrans = inv.map(row => -row[0] * body.xm - row[1] * body.ym - row[2] * body.zm)
 
@@ -68,6 +88,8 @@ export function inverseKinematics(cfg: KinConfig, body: BodyState): number[] {
         const lx = -pz
         const ly = py
         const lz = px
-        return legIk(cfg, i % 2 === 1 ? -lx : lx, ly, lz)
+        const { angles, reachable } = solveLeg(cfg, i % 2 === 1 ? -lx : lx, ly, lz)
+        if (!reachable && unreachable) unreachable.mask |= 1 << i
+        return angles
     })
 }

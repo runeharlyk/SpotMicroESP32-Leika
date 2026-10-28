@@ -1,5 +1,5 @@
 import { readable, derived } from 'svelte/store'
-import { shapeStick } from '$lib/utilities/stick'
+import { gamepadSticks } from '$lib/utilities/stick'
 
 export type GamepadState = {
     available: boolean
@@ -54,14 +54,7 @@ export const gamepad = derived(gamepads, s =>
 export const hasGamepad = derived(gamepads, s => s.available && s.gamepads.length > 0)
 
 // Each stick is shaped as a whole: a dead zone per axis let a forward push's sideways drift through.
-const stick = (axes: readonly number[], first: number) => {
-    const shaped = shapeStick({ x: axes[first] ?? 0, y: axes[first + 1] ?? 0 })
-    return [shaped.x, shaped.y]
-}
-
-export const gamepadAxes = derived(gamepad, g =>
-    g ? [...stick(g.axes, 0), ...stick(g.axes, 2)] : [0, 0, 0, 0]
-)
+export const gamepadStickInput = derived(gamepad, g => gamepadSticks(g?.axes ?? []))
 
 type ButtonEdge = { pressed: boolean; value: number; justPressed: boolean; justReleased: boolean }
 const prev = new Map<number, { pressed: boolean; value: number }[]>()

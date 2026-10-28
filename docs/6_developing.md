@@ -51,14 +51,13 @@ pnpm install
 pnpm proto
 pnpm lint        # prettier --check . && eslint .
 pnpm check       # svelte-kit sync && svelte-check
-pnpm exec playwright install chromium
-pnpm test        # Playwright integration tests, then Vitest unit tests
+pnpm test        # Vitest unit tests, once
+pnpm build       # the hosted app, as the Deploy GitHub Pages workflow builds it
 ```
 
 - `pnpm format` rewrites the files with Prettier (`app/.prettierrc`).
-- `pnpm test:integration` builds the app and serves it with `vite preview` on port 4173 (`app/playwright.config.ts`), so it needs `protoc`.
-- `pnpm test` ends in `vitest`, which stays in watch mode in a terminal. Use `pnpm exec vitest run` for a single run, or `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
-- Unit tests are in `app/tests/unit`, integration tests in `app/tests/integration`.
+- `pnpm test:unit` runs Vitest in watch mode. Use `pnpm exec vitest run tests/unit/<file>.spec.ts` for one file.
+- Tests are in `app/tests/unit`. They mount pages and components in jsdom, and the socket tests talk to a real WebSocket server.
 
 This is the `Frontend Tests` workflow, triggered by changes in `app/**` and `simulation/src/resources/**`.
 
@@ -88,13 +87,15 @@ From the repository root:
 uv run --with protobuf --with grpcio-tools python esp32/scripts/compile_protos.py
 uv run --with pytest pytest -q esp32/test/scripts esp32/test/host
 uv run python esp32/test/host/export_firmware_traces.py
+uv run python esp32/test/host/export_animation_traces.py
 cd app
 pnpm proto
-pnpm exec vitest run tests/unit/firmware-motion.spec.ts
+pnpm exec vitest run tests/unit/firmware-motion.spec.ts tests/unit/animation-player.spec.ts
 ```
 
 - `esp32/test/scripts` tests the secrets check, and `esp32/test/host` builds and runs each C++ test program.
 - `export_firmware_traces.py` regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware code. The web app's TypeScript port of the motion code is tested against them, so commit the regenerated files when the motion code changes.
+- `export_animation_traces.py` does the same for the animation player: it regenerates `app/tests/fixtures/animation-trace-*.json` from the built-in clips, which pin `app/src/lib/animation/player.ts`. Run `esp32/scripts/pack_animations.py` first when a clip in `animations/` changed.
 
 ### Simulation (`simulation/`, `platform_shared/`)
 
@@ -108,6 +109,11 @@ uv run pytest -q
 ```
 
 It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` or `app/static/URDF/**` change.
+The workflow skips torch and its CUDA wheels, which no test imports, and runs every later `uv run` with `--no-sync` so they stay out.
+It regenerates `app/tests/fixtures/firmware-trace-*.json` from the firmware before the tests, so it also runs when `esp32/include/**` or `esp32/test/host/**` change.
+It also runs for changes in the firmware code the virtual robot is built from (`esp32/src/**`, `esp32/include/**`, `esp32/test/host/**`).
+The virtual robot's tests need the nanopb submodule and its headers: run `uv run python ../esp32/scripts/compile_protos.py` in `simulation/` first.
+The workflow builds the virtual robot, a robot on this computer from the firmware's own C++, and runs `release_smoke.py` against it; `uv run python virtual_robot.py --port 8765` serves it for `pnpm dev` at the address `localhost:8765`, without WiFi, the web server, I2C timing or FreeRTOS scheduling (see `simulation/README.md`).
 `uv run python export_gait_trace.py` regenerates `app/tests/fixtures/pico-gait-trace.json`, which the app's `pico-gait.spec.ts` checks.
 
 ### Protobuf schemas (`platform_shared/`)
@@ -115,7 +121,19 @@ It also runs when `app/static/spot_micro.urdf.xacro`, `app/static/yertle.URDF` o
 The `Proto Build` workflow compiles the schemas for the firmware (`python esp32/scripts/compile_protos.py`) and for the app (`pnpm proto`).
 A schema change must build for both, and for the simulation (`gen_protos.py`).
 
+It also checks the wire numbers against `platform_shared/wire_golden.json`, which lists every enum value and every message field with its number.
+A renumbered or removed field or enum value fails the check, because peers built from the older schemas decode by those numbers.
+Remove a field or value only by reserving its number.
+After adding to a schema, update the golden and commit it with the change:
+
+```sh
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py           # update
+uv run --with protobuf --with grpcio-tools python platform_shared/wire_golden.py --check   # what CI runs
+uv run --with protobuf --with grpcio-tools --with pytest pytest -q platform_shared
+```
+
 ## Releases
 
 Pushing a tag `v*` runs the `Release` workflow: it builds all environments and publishes each `firmware.factory.bin` as `<environment>.factory.bin` on a GitHub release, then redeploys the web flasher.
+It publishes only once the firmware host tests, the simulation tests (with the release smoke check) and the frontend tests pass on the tagged commit, since their pushes run only for the paths they cover.
 The `Deploy GitHub Pages` workflow publishes the hosted app and the flasher on every push to `master`.

@@ -1,31 +1,87 @@
-"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait, stepped at the control rate."""
+"""The MuJoCo spot_pico simulation behind the backend interface: the ported firmware gait, odometry and goal controller,
+stepped at the control rate.
+
+A goal move runs the firmware's controller on the firmware's odometry, as the robot does, rather than the host-side
+motions: so it lands where the robot would, by its odometry, whose distances fall 7 to 10 % short of MuJoCo's base
+and whose heading, fused with MuJoCo's gyro, turns within 1 % of it.
+
+Its telemetry is a TickSample at the end of every tick, on the simulation's clock, holding what state(), servo_output()
+and odometry() report then: no compute, servo write or command times, no command and no magnetometer.
+"""
 import math
+import re
 import threading
 import time
+from collections.abc import Callable
+from pathlib import Path
 
 import mujoco
 import numpy as np
 
-from ...robot.firmware_gait import GAIT_COEF, TROT, BodyState, GaitController, GaitState, analytic_gait_action, set_mode
+from ...proto import api_pb2, message_pb2 as pb
+from ...robot.firmware_gait import (DEFAULT_FEET, FIRMWARE_FEET, STAND_HEIGHT, TROT, VARIANT, BodyState, GaitController,
+                                    GaitState, gait_action, set_mode)
+from ...robot.stand_compensation import MODEL_TO_REP, StandCompensation, apply_firmware_attitude, imu_roll_pitch
+from ...robot.firmware_goal import Goal, GoalController, GoalState
+from ...robot.firmware_odometry import BodyStep, FusedOdometry, KinematicOdometry
 from ...sim.mj_runtime import CONTROL_DT, SpotPicoSim
+from ...sim.recording import from_model_joints, to_model_joints
+from .. import speed_model
+from ..joint_scale import JOINT_DIRECTION, PWM_MAX, PWM_MIN, ServoSetup
 from ..constants import Gait, Mode
-from .base import ZERO, Calibration, RobotError, RobotState, Velocity
+from .base import ZERO, Calibration, GoalCancelled, Odometry, RobotError, RobotState, RobotTimeout, Velocity
 
-# The model's axes are +X left, +Y rear, +Z up; REP-103 is forward, left, up.
-MODEL_TO_REP = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+NO_STICKS = speed_model.Sticks(0.0, 0.0, 0.0)
+# The frame odometry.h takes the feet in: forward, up, left.
+MODEL_TO_FIRMWARE = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+# The firmware's odometry sees its own feet: each foot's offset from its home, about the firmware's home.
+TO_FIRMWARE_FEET = np.column_stack([FIRMWARE_FEET, DEFAULT_FEET[:, 2]]) - DEFAULT_FEET
+# The MINI's joint model (joint_model.h) at the factory centre PWM, each joint on its own channel: the PWM the simulated
+# firmware writes, through the fitted joint map (src/sim/recording.py) between its angles and the model's joints.
+PICO_SERVOS = ServoSetup(center_pwm=(306.0,) * 12, channels=tuple(range(12)),
+                         direction=(1, 1, -1, 1, -1, 1, -1, 1, -1, -1, -1, 1),
+                         center_angle=(0, -45, -90, 0, 45, 90, 0, -45, -90, 0, 45, 90), pwm_per_degree=2.0)
+FACTORY_SETTINGS = Path(__file__).resolve().parents[4] / "esp32" / "factory_settings.ini"
+TICK_US = round(CONTROL_DT * 1e6)
+BATCH_TICKS = 10  # telemetry.h Telemetry::BATCH_TICKS
+IMU_VALID = 1 | 2 | 8  # ImuSample.valid: accel, gyro and orientation
+
+
+def firmware_version() -> str:
+    """APP_VERSION, as esp32/factory_settings.ini gives it to every build and the robot reports it."""
+    return re.search(r'APP_VERSION=\\"([^"\\]*)\\"', FACTORY_SETTINGS.read_text())[1]
 
 
 class SimBackend:
-    def __init__(self, realtime: bool = True):
+    """`servo_scale` is the servos' true PWM counts per degree, where the firmware writes the joint model's: given, every
+    joint goes where its PWM turns such a servo; None keeps each joint at its target, as without the PWM."""
+
+    def __init__(self, realtime: bool = True, supply_volts: float = speed_model.DEFAULT_SUPPLY_VOLTS,
+                 servo_scale: float | None = None):
         self.realtime = realtime
+        self._supply_volts = supply_volts
         self.sim = SpotPicoSim()
+        self.servos = PICO_SERVOS
+        self._servo_scale = servo_scale
+        self._output_angles = np.zeros(12)  # degrees, servo space, as the firmware's telemetry reports them
+        self._output_pwm = np.zeros(12)
+        self._held_pwm = None  # while a raw PWM holds the servos, as ServoController's PWM state
         self._gait = GaitState()
         set_mode(self._gait, TROT)
-        self._controller = GaitController()
+        self._controller = GaitController(supply_volts)
         self._body = BodyState()
+        self._levelling = StandCompensation()
+        self._odometry = FusedOdometry()
+        self._gyro_rate = 0.0
+        self._goal = GoalController()
         self._mode = Mode.REST
-        self._velocity = ZERO
+        self._top = speed_model.max_velocity(VARIANT, Gait.TROT, STAND_HEIGHT, supply_volts)
+        self._sticks = NO_STICKS
         self._t = 0.0
+        self._ticks = 0
+        self._telemetry: Callable[[bytes, int], None] | None = None
+        self._batch = pb.TelemetryBatch()
+        self._batches = 0
         self._lock = threading.Lock()
         self._running = False
         self._thread = None
@@ -48,16 +104,102 @@ class SimBackend:
             self._step()
             time.sleep(max(0.0, CONTROL_DT - (time.monotonic() - start)))
 
-    # One control tick: the gait follows the velocity while walking, as the firmware's does, and holds still otherwise.
+    # One control tick: the gait follows the velocity while walking, as the firmware's does, and holds still otherwise;
+    # in STAND the body levels itself against the IMU's tilt, as the firmware's stand state does.
     def _step(self) -> None:
         with self._lock:
-            v = self._velocity if self._mode is Mode.WALK else ZERO
-            analytic_gait_action(np.array([v.vx, v.vy, v.yaw_rate], dtype=np.float32), self._gait)
-            self._controller.advance_phase(self._gait, CONTROL_DT)
+            walking = self._mode is Mode.WALK
+            gait_action(self._sticks if walking else NO_STICKS, self._gait)
+            if not walking:
+                # The firmware's walk state is not running, so no stroke eases out; a raised foot lands along its swing.
+                self._gait.step_x = self._gait.step_z = self._gait.step_angle = 0.0
+                self._gait.smoothing = np.zeros(3)
+            self._controller.step(self._gait, CONTROL_DT)
             self._controller.generate_feet(self._gait, self._body)
-            self.sim.set_joint_targets(self.sim.body_targets_from_feet(self._body))
-            self.sim.step_physics()
-            self._t += CONTROL_DT
+            roll, pitch = imu_roll_pitch(self.sim.base_quat())
+            omega, psi = self._levelling.step(roll, pitch, CONTROL_DT, self._mode is Mode.STAND)
+            apply_firmware_attitude(self._body, omega, psi)
+            step = self._odometry.update((self._body.feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T,
+                                         self._controller.stance(self._gait), gyro_rate=self._gyro_rate, dt=CONTROL_DT)
+            if self._goal.running:
+                self._drive_goal(step, CONTROL_DT)
+            self.sim.set_joint_targets(self._servo_targets(self.sim.body_targets_from_feet(self._body)))
+            self._gyro_rate = self._step_physics()
+            self._ticks += 1
+            self._t = self._ticks * CONTROL_DT
+            if self._telemetry is not None:
+                self._send_tick()
+
+    # Steps the physics through one control tick and returns the gyro's mean yaw rate over it, as the firmware takes it
+    # (odometry.h GyroYawRate): the sensor task integrates every read, which the physics steps' samples stand for here.
+    # MuJoCo's gyro has no bias.
+    def _step_physics(self) -> float:
+        rates = []
+        for _ in range(self.sim.frame_skip):
+            self.sim.step_physics(1)
+            rates.append(float((MODEL_TO_REP @ self.sim.gyro())[2]))
+        return float(np.mean(rates))
+
+    # As ServoController: the motion's angles become PWMs, which a raw PWM replaces until a mode applies again; the
+    # telemetry's angles and PWMs stay those of the last write the motion made.
+    def _servo_targets(self, targets: np.ndarray) -> np.ndarray:
+        if self._held_pwm is not None:
+            return self._joints_at(self._held_pwm)
+        self._output_angles = np.degrees(from_model_joints(targets))
+        self._output_pwm = self.servos.pwm(self._output_angles)
+        return targets if self._servo_scale is None else self._joints_at(self._output_pwm)
+
+    def _joints_at(self, pwm: np.ndarray) -> np.ndarray:
+        scale = self._servo_scale or self.servos.pwm_per_degree
+        return to_model_joints(np.radians(self.servos.servo_angles(pwm, scale)))
+
+    # As the firmware's MotionService: the goal's sticks for the next tick, from where the walk's stop would leave the
+    # body, and once reached, STAND with them centred.
+    def _drive_goal(self, step: BodyStep, dt: float) -> None:
+        sticks = self._goal.update(step, self._stop_step(), self._controller.stands_still(self._gait), dt)
+        self._sticks = speed_model.Sticks(-sticks.left, sticks.forward, sticks.turn)
+        if self._goal.state is GoalState.REACHED:
+            self._mode = Mode.STAND
+
+    # WalkState::stopStep: the firmware's odometry over the feet the walk's stop would leave on the floor.
+    def _stop_step(self) -> BodyStep:
+        odometry = KinematicOdometry()
+        for feet, stance in self._controller.stop_feet(self._gait):
+            odometry.update((feet + TO_FIRMWARE_FEET) @ MODEL_TO_FIRMWARE.T, stance)
+        rest = odometry.estimate
+        return BodyStep(rest.x, rest.y, rest.yaw)
+
+    def _cancel_goal(self) -> None:
+        if self._goal.running:
+            self._goal.cancel()
+            self._sticks = NO_STICKS
+
+    def supports_goals(self) -> bool:
+        return True
+
+    def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None:
+        goal = Goal(forward, sideways, math.radians(turn_deg), speed)
+        if not goal.valid():
+            raise ValueError(f"a goal takes one target at a speed up to 1, not {goal}")
+        with self._lock:
+            if self._mode not in (Mode.STAND, Mode.WALK):
+                raise RobotError(f"the robot is {self._mode.name}: a goal starts from STAND or WALK")
+            # As MotionService::goalMove, at the speeds a full stick commands (WalkState::stanceRate).
+            linear, angular = speed_model.per_stick(VARIANT, Gait.TROT)
+            self._goal = GoalController()
+            self._goal.start(goal, linear, angular)
+            self._mode = Mode.WALK
+            self._drive_goal(BodyStep(), 0.0)
+        try:
+            while self._goal.running:
+                self.sleep(CONTROL_DT)
+        finally:
+            with self._lock:
+                self._cancel_goal()  # an exception, Ctrl-C included, leaves no goal walking
+        if self._goal.state is GoalState.TIMED_OUT:
+            raise RobotTimeout(f"the goal came {self._goal.progress:.3f} of {goal} in {self._goal.timeout:.1f} s")
+        if self._goal.state is GoalState.CANCELLED:
+            raise GoalCancelled("the goal was cancelled")
 
     def now(self) -> float:
         return self._t
@@ -71,50 +213,150 @@ class SimBackend:
 
     def set_mode(self, mode: Mode) -> None:
         with self._lock:
+            self._cancel_goal()
+            if mode is not self._mode or self._held_pwm is not None:
+                self._levelling.reset()
+            self._held_pwm = None
             self._mode = mode
+            if mode is Mode.DEACTIVATED:
+                self._odometry = FusedOdometry()
 
-    # The gait's command gains (GAIT_COEF) are fitted for trot: in crawl it walks about a fifth of the velocity it
-    # reports, so a distance move would land far short.
+    # The port has the trot only: it lacks the crawl's body shift over the stance feet (WalkState::updateBodyPosition).
     def set_gait(self, gait: Gait) -> None:
         if gait is not Gait.TROT:
             raise RobotError(f"the simulation models the trot only, not {gait.name}")
         with self._lock:
+            self._cancel_goal()
             set_mode(self._gait, TROT)
 
     def set_height(self, height: float) -> None:
-        """The simulated gait stands at one height."""
+        """The simulated gait stands at the one height the client defaults to (firmware_gait.STAND_HEIGHT)."""
 
     def max_velocity(self) -> Velocity:
-        return Velocity(GAIT_COEF["gain_x"], GAIT_COEF["gain_y"], GAIT_COEF["gain_yaw"])
+        return self._top
 
     def set_velocity(self, velocity: Velocity) -> Velocity:
         top = self.max_velocity()
         clamp = lambda value, limit: max(-limit, min(limit, value))
         commanded = Velocity(clamp(velocity.vx, top.vx), clamp(velocity.vy, top.vy), clamp(velocity.yaw_rate, top.yaw_rate))
+        sticks = speed_model.sticks_for(VARIANT, Gait.TROT, commanded, STAND_HEIGHT, self._supply_volts)
         with self._lock:
-            self._velocity = commanded
+            # As the app's sticks: centred ones leave a goal its own, any other takes over.
+            if self._goal.running:
+                if commanded == ZERO:
+                    return commanded
+                self._goal.cancel()
+            self._sticks = sticks
         return commanded
 
     def state(self) -> RobotState:
         with self._lock:
-            matrix = np.zeros(9)
-            mujoco.mju_quat2Mat(matrix, self.sim.base_quat())
-            r = MODEL_TO_REP @ matrix.reshape(3, 3) @ MODEL_TO_REP.T
-            gyro = MODEL_TO_REP @ self.sim.gyro()
-            accel = MODEL_TO_REP @ self.sim.accel()
-            joints = np.degrees(self.sim.data.qpos[self.sim.qpos_adr])
-            return RobotState(
-                t=self._t,
-                mode=self._mode,
-                roll=math.degrees(math.atan2(r[2, 1], r[2, 2])),
-                pitch=math.degrees(-math.asin(max(-1.0, min(1.0, r[2, 0])))),
-                yaw=math.degrees(math.atan2(r[1, 0], r[0, 0])),
-                gyro=tuple(float(g) for g in gyro),
-                accel=tuple(float(a) for a in accel),
-                joints=tuple(float(j) for j in joints),
-                link_lost=False,
-                link_drops=0,
-            )
+            return self._state()
+
+    def _state(self) -> RobotState:
+        matrix = np.zeros(9)
+        mujoco.mju_quat2Mat(matrix, self.sim.base_quat())
+        r = MODEL_TO_REP @ matrix.reshape(3, 3) @ MODEL_TO_REP.T
+        gyro = MODEL_TO_REP @ self.sim.gyro()
+        accel = MODEL_TO_REP @ self.sim.accel()
+        joints = np.degrees(self.sim.data.qpos[self.sim.qpos_adr])
+        return RobotState(
+            t=self._t,
+            mode=self._mode,
+            roll=math.degrees(math.atan2(r[2, 1], r[2, 2])),
+            pitch=math.degrees(-math.asin(max(-1.0, min(1.0, r[2, 0])))),
+            yaw=math.degrees(math.atan2(r[1, 0], r[0, 0])),
+            gyro=tuple(float(g) for g in gyro),
+            accel=tuple(float(a) for a in accel),
+            joints=tuple(float(j) for j in joints),
+            link_lost=False,
+            link_drops=0,
+        )
+
+    @property
+    def features(self) -> pb.FeaturesDataResponse:
+        return pb.FeaturesDataResponse(variant=VARIANT, firmware_built_target="simulation",
+                                       firmware_version=firmware_version(), imu=True, imu_detected=True, servo=True,
+                                       servo_detected=True, device_id="simulation")
+
+    # As the robot: a header on subscribing, then the ticks in batches; a batch not yet full when the stream stops is
+    # dropped, as the robot drops what is left once nobody listens.
+    def stream_telemetry(self, sink: Callable[[bytes, int], None] | None) -> None:
+        with self._lock:
+            self._telemetry = sink
+            self._batch = pb.TelemetryBatch()
+            if sink is not None:
+                sink(pb.Message(telemetry_header=self._header()).SerializeToString(), round(self._t * 1e6))
+
+    def _header(self) -> pb.TelemetryHeader:
+        setup = self.servos
+        settings = api_pb2.ServoSettings(servos=[api_pb2.Servo(center_pwm=pwm) for pwm in setup.center_pwm],
+                                         channels=setup.channels, supply_voltage=self._supply_volts)
+        settings.model.direction[:] = setup.direction
+        settings.model.center_angle[:] = setup.center_angle
+        settings.model.pwm_per_degree = setup.pwm_per_degree
+        return pb.TelemetryHeader(firmware_version=firmware_version(), build_target="simulation", variant=VARIANT,
+                                  device_id="simulation", imu_driver="simulation", imu_rate_hz=round(1 / CONTROL_DT),
+                                  control_rate_hz=round(1 / CONTROL_DT), servo_settings=settings,
+                                  batch_ticks=BATCH_TICKS, joint_direction=JOINT_DIRECTION)
+
+    def _send_tick(self) -> None:
+        state = self._state()
+        estimate = self._odometry.estimate
+        t_us = round(self._t * 1e6)
+        tick = self._batch.ticks.add(
+            seq=self._ticks, t_us=t_us, period_us=TICK_US, angles=np.radians(self._output_angles),
+            targets=np.radians(self._output_angles), pwm=self._output_pwm.astype(int), mode=self._mode.value,
+            gait=Gait.TROT.value, walked=Gait.TROT.value,
+            odometry=pb.OdometryData(x=estimate.x, y=estimate.y, yaw=estimate.yaw, distance=estimate.distance,
+                                     kinematic_yaw=self._odometry.kinematic_yaw))
+        tick.imu.t_us = t_us
+        tick.imu.valid = IMU_VALID
+        tick.imu.accel[:] = state.accel
+        tick.imu.gyro[:] = state.gyro
+        tick.imu.rpy[:] = np.radians([state.roll, state.pitch, state.yaw])
+        if len(self._batch.ticks) == BATCH_TICKS:
+            self._batch.batch_seq = self._batches
+            self._batches += 1
+            self._telemetry(pb.Message(telemetry_batch=self._batch).SerializeToString(), t_us)
+            self._batch = pb.TelemetryBatch()
+
+    # --- the servos, as RealBackend reaches them -------------------------------------------------------------------
+    def servo_settings(self) -> ServoSetup:
+        return self.servos
+
+    def servo_output(self) -> tuple[np.ndarray, np.ndarray]:
+        """The last write's joint angles (degrees, servo space) and PWMs, in joint order."""
+        with self._lock:
+            return self._output_angles.copy(), self._output_pwm.copy()
+
+    def set_servo_pwm(self, channel: int, pwm: int) -> None:
+        """ServoController::setServoPWM: one channel, or every joint's for -1, to a raw PWM; the others hold theirs."""
+        if not -1 <= channel < 16:
+            raise ValueError(f"no channel {channel}")
+        with self._lock:
+            if self._held_pwm is None:
+                self._held_pwm = self._output_pwm.copy()
+            bounded = float(np.clip(pwm, PWM_MIN, PWM_MAX))
+            if channel == -1:
+                self._held_pwm[:] = bounded
+            elif channel < 12:
+                self._held_pwm[channel] = bounded
 
     def calibrate(self) -> Calibration:
         return Calibration(still=True, levelled=True, tilt_deg=0.0)
+
+    def odometry(self) -> Odometry:
+        with self._lock:
+            return self._reported()
+
+    def reset_odometry(self) -> Odometry:
+        with self._lock:
+            reached = self._reported()
+            self._odometry.reset()
+            return reached
+
+    def _reported(self) -> Odometry:
+        e = self._odometry.estimate
+        return Odometry(x=e.x, y=e.y, yaw=math.degrees(e.yaw), distance=e.distance,
+                        kinematic_yaw=math.degrees(self._odometry.kinematic_yaw))

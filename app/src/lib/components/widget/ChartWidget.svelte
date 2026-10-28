@@ -25,8 +25,8 @@
                 datasets: [
                     {
                         label,
-                        borderColor: daisyColor('--p'),
-                        backgroundColor: daisyColor('--p', 50),
+                        borderColor: daisyColor('--color-primary'),
+                        backgroundColor: daisyColor('--color-primary', 50),
                         borderWidth: 2,
                         data,
                         yAxisID: 'y'
@@ -53,10 +53,10 @@
                 scales: {
                     x: {
                         grid: {
-                            color: daisyColor('--bc', 10)
+                            color: daisyColor('--color-base-content', 10)
                         },
                         ticks: {
-                            color: daisyColor('--bc')
+                            color: daisyColor('--color-base-content')
                         },
                         display: false
                     },
@@ -65,7 +65,7 @@
                         title: {
                             display: true,
                             text: title,
-                            color: daisyColor('--bc'),
+                            color: daisyColor('--color-base-content'),
                             font: {
                                 size: 16,
                                 weight: 'bold'
@@ -74,11 +74,11 @@
                         position: 'left',
                         min: 0,
                         max: 100,
-                        grid: { color: daisyColor('--bc', 10) },
+                        grid: { color: daisyColor('--color-base-content', 10) },
                         ticks: {
-                            color: daisyColor('--bc')
+                            color: daisyColor('--color-base-content')
                         },
-                        border: { color: daisyColor('--bc', 10) }
+                        border: { color: daisyColor('--color-base-content', 10) }
                     }
                 }
             }

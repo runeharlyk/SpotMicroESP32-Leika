@@ -26,6 +26,7 @@
         subnetPrefix,
         variantLabel,
         firmwareLabel,
+        calibrationLabel,
         type Robot
     } from '$lib/stores'
     import { renameConnectedRobot } from '$lib/services/robot-names'
@@ -210,12 +211,7 @@
 >
     <div class="w-full max-w-md">
         <div class="h-56 w-full sm:h-72">
-            <Visualization
-                defaultColor={null}
-                orbit={anythingOnline}
-                panel={false}
-                ground={false}
-            />
+            <Visualization defaultColor={null} orbit={anythingOnline} ground={false} />
         </div>
 
         {#if $socket}
@@ -289,6 +285,7 @@
                                     {[
                                         variantLabel(robot.variant),
                                         firmwareLabel(robot),
+                                        calibrationLabel(robot),
                                         statusLabel(robot)
                                     ]
                                         .filter(Boolean)
@@ -398,7 +395,8 @@
                 </button>
                 <p class="mt-2 mb-4 text-xs opacity-60">
                     For a robot on this computer's USB cable: set up its wifi, variant and name, and
-                    read its log. Driving needs WiFi or Bluetooth.
+                    read its log. On a board's native USB port it also drives and streams live data;
+                    through a USB-serial chip, driving needs WiFi or Bluetooth.
                 </p>
             {/if}
 

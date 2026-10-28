@@ -10,6 +10,11 @@
 
 static const char* TAG = "WebServer";
 
+// Besides its sessions, httpd holds three sockets of its own (the listener and two for control messages) and the
+// access point's DNS server one; httpd refuses to start when the sessions and its own do not fit.
+static constexpr uint16_t MAX_SESSIONS = 7;
+static_assert(MAX_SESSIONS + 3 + 1 < CONFIG_LWIP_MAX_SOCKETS, "Raise CONFIG_LWIP_MAX_SOCKETS in sdkconfig.defaults");
+
 WebServer server;
 
 WebServer::WebServer() {
@@ -26,6 +31,7 @@ void WebServer::config(size_t maxUriHandlers, size_t stackSize) {
     config_.max_uri_handlers = maxUriHandlers;
     config_.stack_size = stackSize;
     config_.max_resp_headers = 16;
+    config_.max_open_sockets = MAX_SESSIONS;
     config_.lru_purge_enable = true;
     config_.uri_match_fn = httpd_uri_match_wildcard;
     config_.global_user_ctx = this;
@@ -319,12 +325,14 @@ esp_err_t WebServer::sendError(httpd_req_t* req, int status, const char* message
 esp_err_t WebServer::sendOk(httpd_req_t* req) { return send(req, 200, nullptr, 0); }
 
 esp_err_t WebServer::send(httpd_req_t* req, int status, const uint8_t* data, size_t len) {
+    // A status missing here used to go out as 200 OK, the camera's 501 and 503 among them.
     httpd_resp_set_status(req, status == 200   ? "200 OK"
                                : status == 202 ? "202 Accepted"
                                : status == 400 ? "400 Bad Request"
                                : status == 404 ? "404 Not Found"
-                               : status == 500 ? "500 Internal Server Error"
-                                               : "200 OK");
+                               : status == 501 ? "501 Not Implemented"
+                               : status == 503 ? "503 Service Unavailable"
+                                               : "500 Internal Server Error");
     httpd_resp_set_type(req, "application/x-protobuf");
     return httpd_resp_send(req, (const char*)data, len);
 }

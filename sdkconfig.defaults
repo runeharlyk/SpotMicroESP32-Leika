@@ -16,9 +16,10 @@ CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=16
 # A new firmware boots on probation and rolls back unless it accepts a socket client first (ota_flash.h)
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 
-# The whole ELF SHA-256 in the app description, not the first 9 characters: the app compares it with the image file's
-# to tell an update that came up from a rollback
-CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64
+# Sockets: httpd takes up to 10 (sessions plus its own, see MAX_SESSIONS in webserver.cpp) and the access point's DNS
+# server one; at the default of 10, with the access point up, a seventh session could not be accepted. mDNS uses raw
+# lwIP and needs none.
+CONFIG_LWIP_MAX_SOCKETS=16
 
 # mDNS
 CONFIG_MDNS_MAX_SERVICES=10
@@ -33,6 +34,11 @@ CONFIG_LITTLEFS_MAX_PARTITIONS=3
 # CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_160 is not set
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# Run time per task, counted in esp_timer microseconds: each core's CPU usage in the analytics (utils/cpu_usage.h)
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER=y
 
 # Main task stack
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
@@ -54,6 +60,13 @@ CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
 # without that partition (default_8MB.csv) only log that there is none
 CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+# The dump names the crashed firmware by its ELF's SHA-256 in this many hex digits (9 by default): all 64, as the
+# robot reports the running firmware's, so the status page matches the two
+CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64
+
+# A task the watchdog watches (the control and sensor tasks, and the idle tasks) that stops for 5 s restarts the
+# board, which puts the PCA9685 to sleep, instead of only logging while the legs hold their last pose
+CONFIG_ESP_TASK_WDT_PANIC=y
 
 # Partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y

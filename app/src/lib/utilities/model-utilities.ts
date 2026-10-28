@@ -2,7 +2,7 @@ import { Vector3 } from 'three'
 import URDFLoader, { type URDFRobot } from 'urdf-loader'
 import { XacroLoader } from 'xacro-parser'
 import { Result } from '$lib/utilities'
-import { currentVariant, jointNames, model } from '$lib/stores'
+import { currentVariant, model } from '$lib/stores'
 import uzip from 'uzip'
 import { fileService } from '$lib/services'
 import { get } from 'svelte/store'
@@ -13,9 +13,7 @@ export const populateModelCache = async () => {
     const { model: modelUrl, modelYaw } = get(currentVariant)
     const modelRes = await loadModel(modelUrl, modelYaw)
     if (modelRes.isOk()) {
-        const [urdf, JOINT_NAME] = modelRes.inner
-        jointNames.set(JOINT_NAME)
-        model.set(urdf)
+        model.set(modelRes.inner)
     } else {
         console.error(modelRes.inner, { exception: modelRes.exception })
     }
@@ -34,10 +32,7 @@ export const cacheModelFiles = async (meshZipUrl: string) => {
     }
 }
 
-export const loadModel = async (
-    url: string,
-    yaw: number
-): Promise<Result<[URDFRobot, string[]], string>> => {
+export const loadModel = async (url: string, yaw: number): Promise<Result<URDFRobot, string>> => {
     const urdfLoader = new URDFLoader()
 
     let xml =
@@ -51,11 +46,7 @@ export const loadModel = async (
         try {
             const model = urdfLoader.parse(xml)
             setupRobot(model, yaw)
-            const joints = Object.entries(model.joints)
-                .filter(joint => joint[1].jointType !== 'fixed')
-                .map(joint => joint[0])
-
-            resolve(Result.ok([model, joints]))
+            resolve(Result.ok(model))
         } catch (error) {
             resolve(Result.err('Failed to load model', error))
         }

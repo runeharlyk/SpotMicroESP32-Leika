@@ -1,0 +1,16 @@
+{
+  "name": "sit",
+  "description": "Sits down on the rear legs with the nose up, and holds until stopped",
+  "schema": 1,
+  "holdEnd": true,
+  "entryTime": 0.6,
+  "exitTime": 0.8,
+  "keyframes": [
+    {"time": 0},
+    {"time": 1.2, "ease": "EASE_IN_OUT", "body": {"pitch": -0.3, "x": -12, "z": -14}}
+  ],
+  "params": [
+    {"id": "BODY_PITCH", "min": 0, "defaultValue": 1, "max": 1.2},
+    {"id": "SPEED", "min": 0.5, "defaultValue": 1, "max": 2}
+  ]
+}

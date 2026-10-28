@@ -6,14 +6,17 @@ Verified facts:
   - IK matches MuJoCo forward kinematics to 0.0 mm (see the module self-test), so
     ctrl[joint] = ik_angle_in_radians directly.
   - Physics timestep 0.002 s; gait/policy control at 0.01 s (100 Hz, firmware rate) -> frame_skip = 5.
+  - The position actuators follow the servos' torque-speed line (src/sim/servo.py).
 """
 
 import os
 
 import numpy as np
 import mujoco
+from scipy.spatial import ConvexHull
 
 from src.robot.firmware_gait import Kinematics, BodyState, STAND_Z
+from src.sim.servo import Servos
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "resources", "spot_pico", "scene.xml")
 TERRAIN_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "resources", "spot_pico", "scene_terrain.xml")
@@ -25,17 +28,22 @@ JOINT_NAMES = [f"{lg}_{j}_joint" for lg in LEG_NAMES for j in ("hip", "femur", "
 class SpotPicoSim:
     """Thin wrapper: loads the model, maps IK angles (rad) to actuators, steps physics."""
 
-    def __init__(self, model_path: str = MODEL_PATH):
-        self.model = mujoco.MjModel.from_xml_path(os.path.abspath(model_path))
+    def __init__(self, model_path: str = MODEL_PATH, floor_quat=None):
+        """`floor_quat` (w, x, y, z) tilts the floor plane about the origin; it is compiled in, since MuJoCo places
+        the world body's geoms once and ignores a later change to model.geom_quat."""
+        spec = mujoco.MjSpec.from_file(os.path.abspath(model_path))
+        if floor_quat is not None:
+            spec.geom("floor").quat = floor_quat
+        self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
         self.kin = Kinematics()
         self.frame_skip = int(round(CONTROL_DT / self.model.opt.timestep))
 
         nid = lambda kind, n: mujoco.mj_name2id(self.model, kind, n)
         self.act_ids = np.array([nid(mujoco.mjtObj.mjOBJ_ACTUATOR, n) for n in JOINT_NAMES])
-        self.qpos_adr = np.array(
-            [self.model.jnt_qposadr[nid(mujoco.mjtObj.mjOBJ_JOINT, n)] for n in JOINT_NAMES]
-        )
+        joint_ids = np.array([nid(mujoco.mjtObj.mjOBJ_JOINT, n) for n in JOINT_NAMES])
+        self.qpos_adr = self.model.jnt_qposadr[joint_ids]
+        self.servo = Servos(self.model, self.act_ids, joint_ids)
         self.base_id = nid(mujoco.mjtObj.mjOBJ_BODY, "base_link")
         self.base_qposadr = self.model.jnt_qposadr[nid(mujoco.mjtObj.mjOBJ_JOINT, "root")]
         self.imu_site = nid(mujoco.mjtObj.mjOBJ_SITE, "imu")
@@ -59,6 +67,18 @@ class SpotPicoSim:
         mujoco.mj_forward(self.model, self.data)
         self.data.ctrl[self.act_ids] = stand
 
+    def reset_to_joints(self, angles_rad: np.ndarray):
+        """Level, at rest, with these joint angles and the lowest foot just touching the floor."""
+        mujoco.mj_resetData(self.model, self.data)
+        a = self.base_qposadr
+        self.data.qpos[a : a + 7] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+        self.data.qpos[self.qpos_adr] = angles_rad
+        mujoco.mj_kinematics(self.model, self.data)
+        lowest = np.min(self.data.geom_xpos[self.foot_geom_ids, 2] - self.model.geom_size[self.foot_geom_ids, 0])
+        self.data.qpos[a + 2] = -lowest
+        mujoco.mj_forward(self.model, self.data)
+        self.data.ctrl[self.act_ids] = angles_rad
+
     def set_joint_targets(self, angles_rad: np.ndarray):
         self.data.ctrl[self.act_ids] = angles_rad
 
@@ -76,6 +96,30 @@ class SpotPicoSim:
 
     def base_height(self) -> float:
         return float(self.data.qpos[self.base_qposadr + 2])
+
+    def tilt_deg(self) -> float:
+        """The angle between the body's up axis and the world's."""
+        _, x, y, _ = self.base_quat()
+        return float(np.degrees(np.arccos(np.clip(1.0 - 2.0 * (x * x + y * y), -1.0, 1.0))))
+
+    def ground_contacts(self) -> tuple[tuple[int, ...], bool]:
+        """The feet on the ground (indices into LEG_NAMES), and whether anything other than a foot touches it."""
+        feet, knock = set(), False
+        for c in self.data.contact[: self.data.ncon]:
+            if self.ground_geom_id not in (c.geom1, c.geom2):
+                continue
+            other = c.geom2 if c.geom1 == self.ground_geom_id else c.geom1
+            if other in self.foot_geom_ids:
+                feet.add(int(np.flatnonzero(self.foot_geom_ids == other)[0]))
+            else:
+                knock = True
+        return tuple(sorted(feet)), knock
+
+    def support_margin(self, feet: tuple[int, ...]) -> float:
+        """How far (m) the centre of mass stands inside the polygon of these feet on the floor, negative outside."""
+        corners = self.data.geom_xpos[self.foot_geom_ids[list(feet)], :2]
+        com = self.data.subtree_com[self.base_id, :2]
+        return float(min(-(edge[:2] @ com + edge[2]) for edge in ConvexHull(corners).equations))
 
     def gyro(self) -> np.ndarray:
         return self.data.sensordata[self._gyro_slice].copy()

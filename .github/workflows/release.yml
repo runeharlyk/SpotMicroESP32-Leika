@@ -10,9 +10,21 @@ permissions:
 jobs:
   firmware:
     uses: ./.github/workflows/embedded-build.yml
+    with:
+      elf: true
+
+  # The pushes that run these filter by path, so a tag can land on a commit they never tested.
+  firmware-tests:
+    uses: ./.github/workflows/firmware-port-tests.yml
+
+  simulation-tests:
+    uses: ./.github/workflows/simulation-tests.yml
+
+  frontend-tests:
+    uses: ./.github/workflows/frontend-tests.yml
 
   release:
-    needs: firmware
+    needs: [firmware, firmware-tests, simulation-tests, frontend-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -23,20 +35,26 @@ jobs:
         with:
           pattern: firmware-*
 
-      - name: Collect factory and app images
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: elf-*
+
+      # The ELF decodes a core dump the robot kept (docs/websocket.md); deploy.yml takes only the *.bin images.
+      - name: Collect factory and app images, and the ELFs
         run: |
           mkdir release
           for dir in firmware-*; do
             env="${dir#firmware-}"
             cp "$dir/firmware.factory.bin" "release/$env.factory.bin"
             cp "$dir/firmware.bin" "release/$env.bin"
+            cp "elf-$env/firmware.elf" "release/$env.elf"
           done
           ls -l release
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" release/*.bin --repo "${{ github.repository }}" --generate-notes
+        run: gh release create "${{ github.ref_name }}" release/*.bin release/*.elf --repo "${{ github.repository }}" --generate-notes
 
       - name: Redeploy the web flasher from master
         env:

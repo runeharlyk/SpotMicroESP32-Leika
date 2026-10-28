@@ -1,5 +1,4 @@
 #include <peripherals/peripherals.h>
-#include <utils/sleep.h>
 #include <esp_timer.h>
 #include <cmath>
 
@@ -13,12 +12,7 @@ Peripherals::Peripherals()
     addUpdateHandler(
         [&](const std::string &originId) {
             updatePins();
-            runOnSensorTask([this] {
-                _imu.configure(imuConfig());
-                // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
-                const SensorOptions options = sensorOptions();
-                if (!(options == _probedOptions)) probeSensors(options);
-            });
+            _sensorSettingsChanged.store(true);
         },
         false);
 }
@@ -32,6 +26,39 @@ void Peripherals::begin() {
 void Peripherals::beginSensors() {
     _imu.configure(imuConfig());
     probeSensors(sensorOptions());
+    probePower(powerOptions());
+    _powerGuard.configure(powerGuardConfig());
+    applySonars(sonarWiring());
+}
+
+// Sonars on pins they cannot take stay off, as a strip on such a pin stays dark: a stored file is loaded as it is.
+Peripherals::SonarWiring Peripherals::sonarWiring() const {
+    SonarWiring wiring {};
+    read([&wiring](const PeripheralsConfiguration &settings) {
+        const std::array<api_SonarSettings, 2> sonars = effectiveSonarSettings(settings);
+        if (!sonars[0].enabled && !sonars[1].enabled) return;
+        if (const char *problem = sonarProblem(sonars, settings, effectiveLedSettings(settings))) {
+            ESP_LOGW("Peripherals", "Sonars left off: %s", problem);
+            return;
+        }
+        for (size_t i = 0; i < sonars.size(); i++) {
+            wiring[i] = {sonars[i].enabled, static_cast<gpio_num_t>(sonars[i].trigger_pin),
+                         static_cast<gpio_num_t>(sonars[i].echo_pin)};
+        }
+    });
+    return wiring;
+}
+
+void Peripherals::applySonars(const SonarWiring &wiring) {
+    _appliedSonars = wiring;
+    _sonarPins.attach(wiring);
+    _ranger.enable({_sonarPins.attached(0), _sonarPins.attached(1)});
+    {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.sonars = _ranger.readings();
+    }
+    std::lock_guard<std::mutex> lock(_statusMutex);
+    _status.sonarActive = _sonarPins.attached(0) || _sonarPins.attached(1);
 }
 
 Peripherals::SensorOptions Peripherals::sensorOptions() const {
@@ -77,6 +104,9 @@ void Peripherals::probeSensors(const SensorOptions &options) {
     _probedOptions = options;
     {
         std::lock_guard<std::mutex> lock(_statusMutex);
+        status.sonarActive = _status.sonarActive;
+        status.powerDetected = _status.powerDetected;
+        status.powerActive = _status.powerActive;
         _status = status;
     }
     ESP_LOGI("Peripherals", "IMU %s %s at %u Hz, compass %s at %u Hz, barometer %s, gesture sensor %s",
@@ -85,15 +115,64 @@ void Peripherals::probeSensors(const SensorOptions &options) {
              describe(status.bmpDetected, status.bmpActive), describe(status.gestureDetected, status.gestureActive));
 }
 
+Peripherals::PowerOptions Peripherals::powerOptions() const {
+    PowerOptions options;
+    read([&options](const PeripheralsConfiguration &settings) {
+        const api_PowerSensorSettings power = effectivePowerSettings(settings);
+        options = {settings.power_disabled, power.address, power.shunt_ohms, power.max_current_a};
+    });
+    return options;
+}
+
+PowerGuardConfig Peripherals::powerGuardConfig() const {
+    PowerGuardConfig config;
+    read([&config](const PeripheralsConfiguration &settings) {
+        config = powerGuardConfigFrom(effectivePowerSettings(settings));
+    });
+    return config;
+}
+
+// Probed apart from the other sensors, so a change of its address or shunt does not restart the IMU's fusion.
+void Peripherals::probePower(const PowerOptions &options) {
+    bool detected, active = false;
+    beginTransaction();
+    _ina.setAddress(options.address);
+    if (options.disabled) detected = _ina.identify();
+    else active = detected = _ina.begin(options.shuntOhms, options.maxCurrentA);
+    endTransaction();
+    _probedPower = options;
+    if (!active) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.power = {};
+        _readings.lowVoltage = _readings.stalled = false;
+        _readings.railVoltageMin = 0;
+        _powerRead = false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(_statusMutex);
+        _status.powerDetected = detected;
+        _status.powerActive = active;
+    }
+    ESP_LOGI("Peripherals", "Power sensor at 0x%02X %s", (unsigned)options.address, describe(detected, active));
+}
+
 SensorStatus Peripherals::status() const {
     std::lock_guard<std::mutex> lock(_statusMutex);
     return _status;
 }
 
 void Peripherals::sensorTick() {
-    runQueuedWork();
+    if (_sensorSettingsChanged.exchange(false)) applySensorSettings();
+    runOldestQueuedWork();
     readImu();
-    EXECUTE_EVERY_N_MS(100, { readGesture(); });
+    if (_ranger.tick(static_cast<uint32_t>(esp_timer_get_time()))) {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        _readings.sonars = _ranger.readings();
+    }
+    EXECUTE_EVERY_N_MS(100, {
+        readGesture();
+        readPower();
+    });
     EXECUTE_EVERY_N_MS(500, { readBMP(); });
 }
 
@@ -139,6 +218,39 @@ void Peripherals::getIMUProto(socket_message_IMUData &data) {
     data.altitude = _readings.altitude;
     data.bmp_temp = _readings.temperature;
     data.pressure = _readings.pressure;
+}
+
+void Peripherals::applySensorSettings() {
+    const SonarWiring sonars = sonarWiring();
+    if (!(sonars == _appliedSonars)) applySonars(sonars);
+    _imu.configure(imuConfig());
+    // Only a change of what is disabled: probing again restarts the fusion and resets the BNO055.
+    const SensorOptions options = sensorOptions();
+    if (!(options == _probedOptions)) probeSensors(options);
+    const PowerOptions power = powerOptions();
+    if (!(power == _probedPower)) probePower(power);
+    _powerGuard.configure(powerGuardConfig());
+}
+
+static socket_message_SonarStatus sonarStatusProto(sonar::Status status) {
+    switch (status) {
+        case sonar::Status::Distance: return socket_message_SonarStatus_SONAR_DISTANCE;
+        case sonar::Status::NoEcho: return socket_message_SonarStatus_SONAR_NO_ECHO;
+        case sonar::Status::NoSensor: return socket_message_SonarStatus_SONAR_NO_SENSOR;
+        case sonar::Status::Off: break;
+    }
+    return socket_message_SonarStatus_SONAR_OFF;
+}
+
+void Peripherals::getSonarProto(socket_message_SonarData &data) {
+    std::array<sonar::Reading, sonar::COUNT> sonars;
+    {
+        std::lock_guard<std::mutex> lock(_readingsMutex);
+        sonars = _readings.sonars;
+    }
+    data.has_left = data.has_right = true;
+    data.left = {sonarStatusProto(sonars[0].status), sonars[0].distanceCm};
+    data.right = {sonarStatusProto(sonars[1].status), sonars[1].distanceCm};
 }
 
 void Peripherals::readImu() {
@@ -187,6 +299,44 @@ void Peripherals::readGesture() {
     endTransaction();
 }
 
+void Peripherals::readPower() {
+    PowerReading reading;
+    beginTransaction();
+    const bool fresh = _ina.read(reading);
+    endTransaction();
+    if (!fresh) return;
+    _powerGuard.update(static_cast<uint32_t>(esp_timer_get_time() / 1000), reading.busVoltage, reading.current);
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    const bool firstReading = !_powerRead;
+    _powerRead = true;
+    _readings.power = reading;
+    _readings.lowVoltage = _powerGuard.lowVoltage();
+    _readings.stalled = _powerGuard.stalled();
+    if (firstReading || reading.busVoltage < _readings.railVoltageMin) _readings.railVoltageMin = reading.busVoltage;
+}
+
+void Peripherals::getPowerProto(socket_message_PowerData &data) {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    data.bus_voltage = _readings.power.busVoltage;
+    data.shunt_voltage = _readings.power.shuntVoltage;
+    data.current = _readings.power.current;
+    data.power = _readings.power.power;
+    data.low_voltage = _readings.lowVoltage;
+    data.stalled = _readings.stalled;
+}
+
+bool Peripherals::powerCutoff() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    return _readings.lowVoltage;
+}
+
+RailSample Peripherals::takeRailSample() {
+    std::lock_guard<std::mutex> lock(_readingsMutex);
+    const RailSample sample {_readings.power.busVoltage, _readings.railVoltageMin, _readings.power.current};
+    _readings.railVoltageMin = _readings.power.busVoltage;
+    return sample;
+}
+
 gesture_t Peripherals::takeGesture() {
     std::lock_guard<std::mutex> lock(_readingsMutex);
     const gesture_t gesture = _readings.gesture;
@@ -201,26 +351,24 @@ bool Peripherals::runOnSensorTask(std::function<void()> work) {
     return true;
 }
 
-void Peripherals::runQueuedWork() {
-    for (;;) {
-        std::function<void()> work;
-        {
-            std::lock_guard<std::mutex> lock(_workMutex);
-            if (_work.empty()) return;
-            work = std::move(_work.front());
-            _work.pop_front();
-        }
-        work();
+void Peripherals::runOldestQueuedWork() {
+    std::function<void()> work;
+    {
+        std::lock_guard<std::mutex> lock(_workMutex);
+        if (_work.empty()) return;
+        work = std::move(_work.front());
+        _work.pop_front();
     }
+    work();
 }
 
-Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level) {
+Peripherals::ImuCalibration Peripherals::calibrateIMU(bool level, const std::function<void()> &waitForNextRead) {
     ImuCalibration result;
     Vec3 up {};
     beginTransaction();
     result.still = _imu.estimateGyroBias(
-        [] {
-            sleepAtLeastMs(5);
+        [&] {
+            waitForNextRead();
             return esp_timer_get_time();
         },
         level ? &up : nullptr);

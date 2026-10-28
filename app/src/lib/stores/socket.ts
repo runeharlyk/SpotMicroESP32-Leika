@@ -12,8 +12,13 @@ import { protoMetadata as apiProtoMetadata } from '$lib/platform_shared/api'
 import { telemetry } from './telemetry'
 import type { ITransport, TransportHandlers } from '$lib/transport/transport.interface'
 import { createWebSocketTransport } from '$lib/transport/websocket-adapter'
-import { createBleTransport } from '$lib/transport/ble-adapter'
+import { BLE_RECONNECT_ATTEMPTS, createBleTransport } from '$lib/transport/ble-adapter'
 import { createSerialTransport } from '$lib/transport/serial-adapter'
+import { LatestFrames } from '$lib/transport/latest-frames'
+import { SETTING_GRACE_MS, kindOfRequest } from '$lib/transport/request-kinds'
+
+// The messages only the newest of which counts: a stick frame waiting behind a slow write is replaced by the next.
+const MOTION_FRAMES: ReadonlySet<MessageFns<unknown>> = new Set([Messages.ControllerData])
 
 export const MESSAGE_TYPE_TO_KEY = new Map<MessageFns<unknown>, string>()
 export const MESSAGE_TYPE_TO_TAG = new Map<MessageFns<unknown>, number>()
@@ -73,7 +78,12 @@ function getTagFromMessageType<T>(event_type: MessageFns<T>): number {
     return fieldNumber
 }
 
-type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive'
+/**
+ * `robot`: the user chose a robot, which may be another than the one before, so what the app knows
+ * of the last one is to be forgotten. It comes before the chosen robot's link opens. A link that
+ * drops and comes back reaches the same robot, and says nothing.
+ */
+type SocketEvent = 'open' | 'close' | 'error' | 'message' | 'unresponsive' | 'robot'
 
 type TaggedMessage = { tag: number; msg: Message }
 
@@ -98,8 +108,15 @@ export const encodeMessage = (data: Message): Uint8Array<ArrayBuffer> => {
     return encoded
 }
 
-export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
-    const message_listeners = new Map<number, Set<(data?: unknown) => void>>()
+/** What a request that cannot reach the robot fails with. */
+export const NOT_CONNECTED = 'The robot is not connected'
+
+export function createWebSocket({
+    requestTimeoutTime = 30000,
+    settingGraceTime = SETTING_GRACE_MS
+} = {}) {
+    // Listeners also get the frame as it arrived, for a recorder that keeps the robot's bytes.
+    const message_listeners = new Map<number, Set<(data: unknown, frame: ArrayBuffer) => void>>()
     const event_listeners = new Map<string, Set<(data?: unknown) => void>>()
     const pending_requests = new Map<number, PendingRequest>()
     const queued_requests = new Map<
@@ -109,6 +126,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
             resolve: (r: CorrelationResponse) => void
             reject: (e: Error) => void
             timeoutId: ReturnType<typeof setTimeout>
+            deadline: number
         }
     >()
     const { subscribe, set } = writable(false)
@@ -126,9 +144,18 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     let socketUrl: string | URL
     // The port the user granted; a serial link that is lost, as in a reset, reopens it.
     let serialPort: SerialPort | undefined
+    // The device the user chose; a Bluetooth link that drops reconnects it, without the chooser.
+    let bluetoothDevice: BluetoothDevice | undefined
+    // A device or port the user chose, from a chooser or another than the one in use: the robot on
+    // it is told as chosen when its link opens, since a chooser names it only then.
+    let robotChosen = false
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
+    const motionFrames = new LatestFrames({
+        busy: () => transport?.busy() ?? false,
+        write: data => transport?.send(data)
+    })
 
     function getRequestKey(data: CorrelationRequestData): string {
         return (
@@ -138,6 +165,8 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     }
 
     function init(url: string | URL) {
+        robotChosen = false
+        if (socketUrl !== undefined && String(url) !== String(socketUrl)) chooseRobot()
         socketUrl = url
         connect()
     }
@@ -149,6 +178,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         previous?.close()
         set(false)
         activeTransport.set(null)
+        motionFrames.clear()
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
         clearInterval(pingIntervalId)
@@ -175,6 +205,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
             },
             onClose: (reason, event) => {
                 if (transport === next) disconnect(reason, event)
+            },
+            onDrained: () => {
+                if (transport === next) motionFrames.drained()
             }
         })
         transport = next
@@ -183,16 +216,19 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
 
     /**
      * Web Bluetooth needs a user gesture, so this is called from a click rather than on mount.
-     * BLE carries the same protobuf envelope as the WebSocket (robot_comm_ble attaches to the same
-     * broker), but only messages that fit in one ATT frame.
+     * BLE carries the same protobuf envelope as the WebSocket, length-prefixed and chunked to the
+     * ATT payload; the robot streams no telemetry over it and moves no files or firmware.
      */
     async function connectBluetooth() {
         const ble = attach(createBleTransport)
+        robotChosen = true
         try {
             await ble.connect()
+            bluetoothDevice = ble.device
         } catch (error) {
+            robotChosen = false
             // Pairing was cancelled or failed. Fall back to WiFi, or a dead BLE transport would be
-            // left in place, whose canAutoReconnect: false also suppresses the WebSocket retry.
+            // left in place, and nothing would redial.
             if (socketUrl) connect()
             throw error
         }
@@ -200,15 +236,17 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
 
     /**
      * Web Serial asks for a port with a user gesture, so this is called from a click unless `port`
-     * was granted before. The robot answers the same requests over USB as over WiFi, but streams
-     * nothing.
+     * was granted before. On the robot's native USB port the link carries all the WebSocket does;
+     * through a USB-serial chip, on the console UART, it carries requests only.
      */
     async function connectSerial(port?: SerialPort) {
         const serial = attach(handlers => createSerialTransport(handlers, port))
+        robotChosen = port === undefined || port !== serialPort
         try {
             await serial.connect()
             serialPort = serial.port
         } catch (error) {
+            robotChosen = false
             // The port chooser was cancelled or the port would not open; as for BLE, fall back to WiFi.
             if (socketUrl) connect()
             throw error
@@ -226,17 +264,44 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         )
     }
 
+    /** Reconnects the device the user chose, which needs no user gesture. */
+    function reconnectBluetooth() {
+        const ble = attach(handlers => createBleTransport(handlers, bluetoothDevice))
+        ble.connect().catch(error => {
+            if (transport === ble) disconnect('error', error)
+        })
+    }
+
+    const redial = (kind: ITransport['kind'] | undefined) =>
+        kind === 'serial' ? reopenSerial
+        : kind === 'bluetooth' ? reconnectBluetooth
+        : connect
+
     function disconnect(reason: SocketEvent, event?: unknown) {
         const closed = detach()
         event_listeners.get(reason)?.forEach(listener => listener(event))
-        // Re-pairing a BLE device requires a user gesture, so only WiFi and serial redial themselves.
+        // Choosing a Bluetooth device or a serial port needs a user gesture, so a link that never had one stays down.
         if (closed && !closed.canAutoReconnect) return
+        // A robot out of range or switched off is not tried for ever; the user connects it again.
+        if (closed?.kind === 'bluetooth' && reconnectAttempts >= BLE_RECONNECT_ATTEMPTS) {
+            console.warn(`Bluetooth reconnect gave up after ${BLE_RECONNECT_ATTEMPTS} attempts`)
+            reconnectAttempts = 0
+            return
+        }
         const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempts, reconnectMaxDelay)
         reconnectAttempts++
-        reconnectTimeoutId = setTimeout(closed?.kind === 'serial' ? reopenSerial : connect, delay)
+        reconnectTimeoutId = setTimeout(redial(closed?.kind), delay)
+    }
+
+    function chooseRobot() {
+        event_listeners.get('robot')?.forEach(listener => listener(undefined))
     }
 
     function handleOpen() {
+        if (robotChosen) {
+            robotChosen = false
+            chooseRobot()
+        }
         reconnectAttempts = 0
         set(true)
         activeTransport.set(transport?.kind ?? null)
@@ -271,7 +336,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         }
         if (tag) {
             const key = MESSAGE_TAG_TO_KEY.get(tag)!
-            message_listeners.get(tag)?.forEach(listener => listener(msg[key as keyof typeof msg]))
+            message_listeners
+                .get(tag)
+                ?.forEach(listener => listener(msg[key as keyof typeof msg], data))
         }
     }
 
@@ -279,13 +346,18 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         attach(handlers => createWebSocketTransport(socketUrl, handlers)).connect()
     }
 
-    function unsubscribe<MT>(event_type: MessageFns<MT>, listener: (data: MT) => void) {
+    function unsubscribe<MT>(
+        event_type: MessageFns<MT>,
+        listener: (data: MT, frame: ArrayBuffer) => void
+    ) {
         const tag = getTagFromMessageType(event_type)
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
-        message_listeners_totag?.delete(listener as (data?: unknown) => void)
+        message_listeners_totag.delete(listener as (data: unknown, frame: ArrayBuffer) => void)
         if (message_listeners_totag.size == 0) {
+            // Dropped, so the next listener for this tag subscribes again.
+            message_listeners.delete(tag)
             unsubscribeToMessageFromServer(event_type)
         }
     }
@@ -310,7 +382,9 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         const type = getNameFromMessageType(event)
         const wsm = Message.create() as Record<string, unknown>
         wsm[type] = data
-        send(wsm as Message)
+        if (MOTION_FRAMES.has(event as MessageFns<unknown>))
+            motionFrames.offer(getTagFromMessageType(event), encodeMessage(wsm as Message))
+        else send(wsm as Message)
     }
 
     function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
@@ -350,13 +424,14 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
     function request(
         data: CorrelationRequestData,
         resolve: (r: CorrelationResponse) => void,
-        reject: (e: Error) => void
+        reject: (e: Error) => void,
+        timeout = requestTimeoutTime
     ) {
         const correlationId = ++correlationIdCounter
         const timeoutId = setTimeout(() => {
             pending_requests.delete(correlationId)
             reject(new Error(`Request timeout (id: ${correlationId})`))
-        }, requestTimeoutTime)
+        }, timeout)
 
         pending_requests.set(correlationId, { resolve, reject, timeoutId })
 
@@ -364,10 +439,11 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         send(Message.create({ correlationRequest: request }))
     }
 
+    // A request held for a link keeps the timeout it got when it was made.
     function flushQueuedRequests() {
-        for (const [, { data, resolve, reject, timeoutId }] of queued_requests) {
+        for (const [, { data, resolve, reject, timeoutId, deadline }] of queued_requests) {
             clearTimeout(timeoutId)
-            request(data, resolve, reject)
+            request(data, resolve, reject, deadline - Date.now())
         }
         queued_requests.clear()
     }
@@ -379,7 +455,10 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
         connectBluetooth,
         connectSerial,
         transport: { subscribe: activeTransport.subscribe },
-        on: <MT>(event_type: MessageFns<MT>, listener: (data: MT) => void): (() => void) => {
+        on: <MT>(
+            event_type: MessageFns<MT>,
+            listener: (data: MT, frame: ArrayBuffer) => void
+        ): (() => void) => {
             const tag = getTagFromMessageType(event_type)
 
             let message_listeners_totag = message_listeners.get(tag)
@@ -388,7 +467,7 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                 message_listeners.set(tag, message_listeners_totag)
                 subscribeToEvent(event_type)
             }
-            message_listeners_totag.add(listener as (data: unknown) => void)
+            message_listeners_totag.add(listener as (data: unknown, frame: ArrayBuffer) => void)
 
             return () => {
                 unsubscribe(event_type, listener)
@@ -410,11 +489,14 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                 if (isOpen()) {
                     request(data, ownResolve, ownReject)
                 } else {
+                    // While no link is up, the request's kind decides (transport/request-kinds.ts).
+                    const kind = kindOfRequest(data)
+                    if (kind === 'action') return ownReject(new Error(NOT_CONNECTED))
                     const key = getRequestKey(data)
                     let resolve: (response: CorrelationResponse) => void = ownResolve
                     let reject: (error: Error) => void = ownReject
-                    // Only the newest request of a kind is sent; an older caller waiting for the
-                    // same kind of answer settles with it.
+                    // Only the newest of the same request is sent; an older caller waiting for the
+                    // same answer settles with it.
                     const existing = queued_requests.get(key)
                     if (existing) {
                         clearTimeout(existing.timeoutId)
@@ -428,12 +510,24 @@ export function createWebSocket({ requestTimeoutTime = 30000 } = {}) {
                         }
                     }
                     // A queued request must expire too, or a request issued while disconnected
-                    // never settles and its caller waits forever.
-                    const timeoutId = setTimeout(() => {
-                        queued_requests.delete(key)
-                        reject(new Error(`Request timeout while disconnected (${key})`))
-                    }, requestTimeoutTime)
-                    queued_requests.set(key, { data, resolve, reject, timeoutId })
+                    // never settles and its caller waits forever. A settings write waits out a
+                    // link blip only, and then fails as not saved.
+                    const setting = kind === 'setting'
+                    const timeoutId = setTimeout(
+                        () => {
+                            queued_requests.delete(key)
+                            reject(
+                                new Error(
+                                    setting ? NOT_CONNECTED : (
+                                        `Request timeout while disconnected (${key})`
+                                    )
+                                )
+                            )
+                        },
+                        setting ? settingGraceTime : requestTimeoutTime
+                    )
+                    const deadline = Date.now() + requestTimeoutTime
+                    queued_requests.set(key, { data, resolve, reject, timeoutId, deadline })
                 }
             })
         }

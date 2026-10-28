@@ -1,5 +1,12 @@
 import type { MainModule, MjData, MjModel } from '@mujoco/mujoco'
-import type { ControllerData, ModesEnum, WalkGaits } from '$lib/platform_shared/message'
+import type { Animation } from '$lib/platform_shared/animation'
+import type {
+    AnimationParam,
+    AnimationStatus,
+    ControllerData,
+    ModesEnum,
+    WalkGaits
+} from '$lib/platform_shared/message'
 import { CONTROL_DT } from './timing'
 
 /** What a controller reads each tick: the app's controls, and the IMU as Peripherals reports it. */
@@ -15,6 +22,16 @@ export interface SimController {
     reset(): Record<string, number>
     /** One 10 ms control tick; joint targets in radians, by joint name. */
     tick(controls: SimControls): Record<string, number>
+    /** The robot's clips, for a controller that plays them as the firmware does. */
+    readonly clips?: ClipPlayer
+}
+
+/** Clips played on the simulated robot, taking effect on its next control tick. */
+export interface ClipPlayer {
+    /** False when the robot refuses, as the firmware does while its legs are unpowered. */
+    playClip(clip: Animation, params: AnimationParam[]): boolean
+    stopClip(): void
+    animationStatus(): AnimationStatus
 }
 
 export interface SimScene {
@@ -79,6 +96,11 @@ export class RobotSim {
         this.data.qpos[2] = this.spawnHeight
         this.mujoco.mj_forward(this.model, this.data)
         this.pending = 0
+    }
+
+    /** The clips the robot plays, or null when its controller plays none. */
+    get clips(): ClipPlayer | null {
+        return this.controller.clips ?? null
     }
 
     setControls(controls: SimControls) {

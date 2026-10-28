@@ -1,5 +1,4 @@
 import type { Variant } from '$lib/kinematics-variants'
-import type { GaitCoef } from './pico-gait'
 import { FirmwareController, TrainingController, type JointMap } from './controllers'
 import type { SimController } from './robot-sim'
 
@@ -8,7 +7,7 @@ export type RobotId = 'pico' | 'spot_micro' | 'yertle'
 export interface ControllerDefinition {
     id: 'firmware' | 'training'
     label: string
-    create(assets: { gaitCoef: GaitCoef }): SimController
+    create(): SimController
 }
 
 export interface RobotDefinition {
@@ -53,6 +52,13 @@ const PICO_JOINTS: JointMap = {
     offset: degrees([7.3, 54.6, 101.2, 6.0, 52.9, -99.4, 5.8, 54.4, 100.4, 6.7, 50.6, -98.1])
 }
 
+/** How each variant's firmware angles land on its model's joints, in the simulation and the app's previews. */
+export const JOINT_MAPS: Record<Variant, JointMap> = {
+    SPOTMICRO_ESP32: SPOT_MICRO_JOINTS,
+    SPOTMICRO_ESP32_MINI: PICO_JOINTS,
+    SPOTMICRO_YERTLE: YERTLE_JOINTS
+}
+
 export const ROBOTS: RobotDefinition[] = [
     {
         id: 'pico',
@@ -70,7 +76,7 @@ export const ROBOTS: RobotDefinition[] = [
             {
                 id: 'training',
                 label: 'Training (Python)',
-                create: ({ gaitCoef }) => new TrainingController(gaitCoef)
+                create: () => new TrainingController()
             }
         ]
     },

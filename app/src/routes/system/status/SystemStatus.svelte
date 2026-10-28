@@ -8,6 +8,7 @@
     import { slide } from 'svelte/transition'
     import { cubicOut } from 'svelte/easing'
     import { socket } from '$lib/stores/socket'
+    import { robotRequest } from '$lib/robot-request'
     import { factoryResetRobot, restartRobot } from '$lib/robot-commands'
     import { convertSeconds } from '$lib/utilities'
     import {
@@ -34,7 +35,7 @@
     let systemInformation: SystemInformation | null = $state(null)
 
     async function getSystemStatus() {
-        const response = await socket.request({ systemInformationRequest: {} })
+        const response = await robotRequest({ systemInformationRequest: {} })
         if (!response.systemInformationResponse) {
             throw new TypeError('System information not found in response')
         }
@@ -159,6 +160,15 @@
                         title="Heap (Free / Max Alloc)"
                         description={`${systemInformation.analyticsData?.freeHeap} / ${systemInformation.analyticsData?.maxAllocHeap} bytes`}
                     />
+
+                    {#if systemInformation.analyticsData?.freeInternal}
+                        {@const ram = systemInformation.analyticsData}
+                        <StatusItem
+                            icon={Heap}
+                            title="Internal RAM (Free / Largest block / Least free)"
+                            description={`${ram.freeInternal} / ${ram.largestInternalBlock} / ${ram.minFreeInternal} bytes${ram.failedAllocations ? `, ${ram.failedAllocations} allocations refused` : ''}`}
+                        />
+                    {/if}
 
                     <StatusItem
                         icon={Pyramid}

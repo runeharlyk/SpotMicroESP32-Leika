@@ -7,6 +7,7 @@
 #include <utils/critical_damper.h>
 #include <utils/math_utils.h>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 class MotionState {
@@ -17,6 +18,15 @@ class MotionState {
     // A step in the body or gait targets settles to 95% in a third of a second, without overshoot.
     static constexpr float smoothing_omega = CriticalDamper::omegaFor(0.333f);
     float omega_offset = 0, psi_offset = 0;
+
+    // The IMU compensation's integral action: the proportional term alone, at gain 1, leaves half the attitude error
+    // (on a slope the body settled at -slope / 2, and a commanded tilt came out halved). Slow next to the smoothing,
+    // so the loop stays damped: in the simulation an 8 degree slope is levelled to 0.5 degrees 4 s after the
+    // compensation starts, without overshoot, where a gain of 20/s overshoots (not yet tried on the robot). The step
+    // is capped so a long gap between ticks cannot kick it.
+    static constexpr float IMU_INTEGRAL_GAIN = 1.0f;  // 1/s
+    static constexpr float MAX_INTEGRATION_DT = 0.05f;
+    float omega_integral = 0, psi_integral = 0;
 
     struct BodyDampers {
         CriticalDamper xm, ym, zm, phi, psi, omega;
@@ -33,18 +43,36 @@ class MotionState {
         value = damper.step(value, target, dt, smoothing_omega);
     }
 
+    // The attitude that drives the measured one toward the commanded one, held to the limit. The integral stops
+    // while the output is clamped in the error's direction (anti-windup) and is itself held to the limit.
+    static float levelTarget(float target, float offset, float& integral, float limit, float dt) {
+        const float error = target - offset;
+        const float raw = error + integral;
+        if (!(std::fabs(raw) >= limit && raw * error > 0))
+            integral = clamp(integral + IMU_INTEGRAL_GAIN * error * std::min(dt, MAX_INTEGRATION_DT), -limit, limit);
+        return clamp(error + integral, -limit, limit);
+    }
+
     void smoothToBody(body_state_t& body_state, float dt, const bool imuCompensate = false) {
         follow(body_dampers.xm, body_state.xm, target_body_state.xm, dt);
         follow(body_dampers.ym, body_state.ym, target_body_state.ym, dt);
         follow(body_dampers.zm, body_state.zm, target_body_state.zm, dt);
         follow(body_dampers.phi, body_state.phi, target_body_state.phi, dt);
         const float target_psi =
-            clamp(target_body_state.psi - imuCompensate * psi_offset, -kin->max_pitch, kin->max_pitch);
+            imuCompensate ? levelTarget(target_body_state.psi, psi_offset, psi_integral, kin->max_pitch, dt)
+                          : clamp(target_body_state.psi, -kin->max_pitch, kin->max_pitch);
         const float target_omega =
-            clamp(target_body_state.omega - imuCompensate * omega_offset, -kin->max_roll, kin->max_roll);
+            imuCompensate ? levelTarget(target_body_state.omega, omega_offset, omega_integral, kin->max_roll, dt)
+                          : clamp(target_body_state.omega, -kin->max_roll, kin->max_roll);
         follow(body_dampers.psi, body_state.psi, target_psi, dt);
         follow(body_dampers.omega, body_state.omega, target_omega, dt);
     }
+
+    // A takeover has settled once the feet are eased in; the body's height is then within 1% of its step as well.
+    // Until then the stand holds its IMU compensation: the rise from REST can tip the body by itself (the Pico tipped
+    // by up to 13 degrees), and levelling against that tilt winds the integral up, which leaves the body tilted the
+    // other way for seconds after the rise (in the simulation, with one leg's servos lagging).
+    bool takeoverSettled() const { return feet_eased_s >= FEET_EASE_S; }
 
     void updateFeet(body_state_t& body_state) {
         if (std::memcmp(target_body_state.feet, body_state.feet, sizeof(body_state.feet)) != 0) {
@@ -71,6 +99,9 @@ class MotionState {
     }
 
   public:
+    /** How fast the body and the gait follow their targets: a step settles to 95 % in a third of a second. */
+    static constexpr float smoothingOmega() { return smoothing_omega; }
+
     // Measured on the Pico: a positive omega lowers REP-103 roll and a positive psi lowers REP-103 pitch, so the
     // offsets are the IMU's angles with their signs reversed.
     void updateImuOffsets(const ImuSample& imu) {
@@ -85,9 +116,12 @@ class MotionState {
         target_body_state.ym = config.default_body_height;
     }
 
-    // A state taking over starts from the body at rest: the dampers' velocities are from when it last ran.
+    // A state taking over starts from the body at rest: the dampers' velocities and the integrals are from when it
+    // last ran.
     virtual void resetSmoothing() {
         body_dampers = {};
+        omega_integral = 0;
+        psi_integral = 0;
         feet_captured = false;
         feet_eased_s = 0;
     }
@@ -99,4 +133,8 @@ class MotionState {
     virtual void handleCommand(const CommandMsg& cmd) {}
 
     virtual void step(body_state_t& body_state, float dt = 0.02f) {}
+
+    // A state that drives the joints itself writes their IK-space angles (degrees) over the last tick's and returns
+    // true; the others leave them to the inverse kinematics of the body state.
+    virtual bool jointAngles(float degrees[12]) { return false; }
 };

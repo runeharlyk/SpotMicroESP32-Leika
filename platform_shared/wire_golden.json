@@ -1,0 +1,863 @@
+{
+  "enums": {
+    "animation.Ease": {
+      "LINEAR": 0,
+      "EASE_IN": 1,
+      "EASE_OUT": 2,
+      "EASE_IN_OUT": 3
+    },
+    "animation.ParamId": {
+      "SPEED": 0,
+      "BODY_X": 1,
+      "BODY_Y": 2,
+      "BODY_Z": 3,
+      "BODY_ROLL": 4,
+      "BODY_PITCH": 5,
+      "BODY_YAW": 6,
+      "FOOT_LIFT": 7,
+      "OVERLAY_AMPLITUDE": 8,
+      "REPEAT": 9
+    },
+    "api.APNetworkStatus": {
+      "AP_ACTIVE": 0,
+      "AP_INACTIVE": 1,
+      "AP_LINGERING": 2
+    },
+    "api.APProvisionMode": {
+      "AP_MODE_ALWAYS": 0,
+      "AP_MODE_DISCONNECTED": 1,
+      "AP_MODE_NEVER": 2
+    },
+    "socket_message.AnimationState": {
+      "ANIM_IDLE": 0,
+      "ANIM_ENTRY": 1,
+      "ANIM_PLAYING": 2,
+      "ANIM_HOLD": 3,
+      "ANIM_EXIT": 4
+    },
+    "socket_message.GoalState": {
+      "GOAL_IDLE": 0,
+      "GOAL_RUNNING": 1,
+      "GOAL_REACHED": 2,
+      "GOAL_CANCELLED": 3,
+      "GOAL_TIMED_OUT": 4
+    },
+    "socket_message.KinematicsVariant": {
+      "KINEMATICS_VARIANT_UNSET": 0,
+      "SPOTMICRO_ESP32": 1,
+      "SPOTMICRO_ESP32_MINI": 2,
+      "SPOTMICRO_YERTLE": 3
+    },
+    "socket_message.ModesEnum": {
+      "DEACTIVATED": 0,
+      "IDLE": 1,
+      "CALIBRATION": 2,
+      "REST": 3,
+      "STAND": 4,
+      "WALK": 5,
+      "ANIMATE": 6,
+      "WALK_NN": 7
+    },
+    "socket_message.OtaDownloadState": {
+      "OTA_DOWNLOAD_IDLE": 0,
+      "OTA_DOWNLOADING": 1,
+      "OTA_DOWNLOADED": 2,
+      "OTA_DOWNLOAD_FAILED": 3
+    },
+    "socket_message.SonarStatus": {
+      "SONAR_OFF": 0,
+      "SONAR_DISTANCE": 1,
+      "SONAR_NO_ECHO": 2,
+      "SONAR_NO_SENSOR": 3
+    },
+    "socket_message.WalkGaits": {
+      "TROT": 0,
+      "CRAWL": 1,
+      "AUTO": 2
+    }
+  },
+  "messages": {
+    "animation.Animation": {
+      "name": 1,
+      "description": 2,
+      "schema": 3,
+      "loop": 4,
+      "hold_end": 5,
+      "entry_time": 6,
+      "exit_time": 7,
+      "keyframes": 8,
+      "overlays": 9,
+      "params": 10,
+      "ride_height": 11
+    },
+    "animation.BodyPose": {
+      "roll": 1,
+      "pitch": 2,
+      "yaw": 3,
+      "x": 4,
+      "y": 5,
+      "z": 6
+    },
+    "animation.FootOffset": {
+      "x": 1,
+      "y": 2,
+      "z": 3
+    },
+    "animation.JointAngles": {
+      "coxa": 1,
+      "femur": 2,
+      "tibia": 3
+    },
+    "animation.Keyframe": {
+      "time": 1,
+      "ease": 2,
+      "body": 3,
+      "legs": 4
+    },
+    "animation.LegTarget": {
+      "foot": 1,
+      "joints": 2
+    },
+    "animation.Overlay": {
+      "body_axis": 1,
+      "foot_channel": 2,
+      "amplitude": 3,
+      "frequency": 4,
+      "phase": 5,
+      "start": 6,
+      "end": 7
+    },
+    "animation.ParamSpec": {
+      "id": 1,
+      "min": 2,
+      "default_value": 3,
+      "max": 4
+    },
+    "api.APSettings": {
+      "provision_mode": 1,
+      "ssid": 2,
+      "password": 3,
+      "channel": 4,
+      "ssid_hidden": 5,
+      "max_clients": 6,
+      "local_ip": 7,
+      "gateway_ip": 8,
+      "subnet_mask": 9
+    },
+    "api.APSettingsRequest": {},
+    "api.APStatus": {
+      "status": 1,
+      "ip_address": 2,
+      "mac_address": 3,
+      "station_num": 4
+    },
+    "api.APStatusRequest": {},
+    "api.CameraSettings": {
+      "pixformat": 1,
+      "framesize": 2,
+      "quality": 3,
+      "brightness": 4,
+      "contrast": 5,
+      "saturation": 6,
+      "sharpness": 7,
+      "denoise": 8,
+      "gainceiling": 9,
+      "whitebal": 10,
+      "special_effect": 11,
+      "wb_mode": 12,
+      "awb": 13,
+      "exposure_ctrl": 14,
+      "awb_gain": 15,
+      "gain_ctrl": 16,
+      "aec": 17,
+      "aec2": 18,
+      "ae_level": 19,
+      "aec_value": 20,
+      "agc": 21,
+      "agc_gain": 22,
+      "bpc": 23,
+      "wpc": 24,
+      "raw_gma": 25,
+      "lenc": 26,
+      "hmirror": 27,
+      "vflip": 28,
+      "dcw": 29,
+      "colorbar": 30
+    },
+    "api.CameraSettingsRequest": {},
+    "api.ImuSettings": {
+      "mounting": 1,
+      "mag_alignment": 2,
+      "mag_offset": 3,
+      "mag_soft_iron": 4,
+      "fusion_gain": 5
+    },
+    "api.JointModel": {
+      "direction": 1,
+      "center_angle": 2,
+      "pwm_per_degree": 3
+    },
+    "api.LedSettings": {
+      "enabled": 1,
+      "pin": 2
+    },
+    "api.MDNSQueryRequest": {
+      "service": 1,
+      "protocol": 2
+    },
+    "api.MDNSQueryResponse": {
+      "services": 1
+    },
+    "api.MDNSQueryResult": {
+      "name": 1,
+      "ip": 2,
+      "port": 3
+    },
+    "api.MDNSServiceDef": {
+      "service": 1,
+      "protocol": 2,
+      "port": 3,
+      "txt_records": 4
+    },
+    "api.MDNSStatus": {
+      "started": 1,
+      "hostname": 2,
+      "instance": 3,
+      "services": 4
+    },
+    "api.MDNSStatusRequest": {},
+    "api.MDNSTxtRecord": {
+      "key": 1,
+      "value": 2
+    },
+    "api.PeripheralSettings": {
+      "sda": 1,
+      "scl": 2,
+      "frequency": 3,
+      "pins": 4,
+      "imu": 5,
+      "imu_disabled": 6,
+      "mag_disabled": 7,
+      "bmp_disabled": 8,
+      "gesture_disabled": 9,
+      "camera_disabled": 10,
+      "ws2812": 11,
+      "espnow_controller": 12,
+      "power_disabled": 13,
+      "left_sonar": 20,
+      "right_sonar": 21,
+      "power_sensor": 22
+    },
+    "api.PeripheralSettingsRequest": {},
+    "api.PinConfig": {
+      "pin": 1,
+      "mode": 2,
+      "type": 3,
+      "role": 4
+    },
+    "api.PowerSensorSettings": {
+      "address": 1,
+      "shunt_ohms": 2,
+      "max_current_a": 3,
+      "cutoff_voltage": 4,
+      "stall_current_a": 5,
+      "stall_time_ms": 6
+    },
+    "api.Servo": {
+      "center_pwm": 1,
+      "name": 5
+    },
+    "api.ServoSettings": {
+      "servos": 1,
+      "channels": 2,
+      "model": 3,
+      "supply_voltage": 4
+    },
+    "api.ServoSettingsRequest": {},
+    "api.SonarSettings": {
+      "enabled": 1,
+      "trigger_pin": 2,
+      "echo_pin": 3
+    },
+    "api.WifiNetwork": {
+      "ssid": 1,
+      "password": 2,
+      "static_ip_config": 3,
+      "local_ip": 4,
+      "gateway_ip": 5,
+      "subnet_mask": 6,
+      "dns_ip_1": 7,
+      "dns_ip_2": 8
+    },
+    "api.WifiNetworkList": {
+      "networks": 1
+    },
+    "api.WifiNetworkScan": {
+      "rssi": 1,
+      "ssid": 2,
+      "bssid": 3,
+      "channel": 4,
+      "encryption_type": 5
+    },
+    "api.WifiNetworksRequest": {},
+    "api.WifiScanStart": {},
+    "api.WifiSettings": {
+      "hostname": 1,
+      "priority_rssi": 2,
+      "wifi_networks": 3,
+      "selected_network": 4,
+      "applied_secret": 5
+    },
+    "api.WifiSettingsRequest": {},
+    "api.WifiStatus": {
+      "status": 1,
+      "local_ip": 2,
+      "mac_address": 3,
+      "rssi": 4,
+      "ssid": 5,
+      "bssid": 6,
+      "channel": 7,
+      "subnet_mask": 8,
+      "gateway_ip": 9,
+      "dns_ip_1": 10,
+      "dns_ip_2": 11
+    },
+    "api.WifiStatusRequest": {},
+    "socket_message.AnalyticsData": {
+      "max_alloc_heap": 1,
+      "psram_size": 2,
+      "free_psram": 3,
+      "free_heap": 4,
+      "total_heap": 5,
+      "min_free_heap": 6,
+      "core_temp": 7,
+      "fs_total": 8,
+      "fs_used": 9,
+      "uptime": 10,
+      "cpu0_usage": 11,
+      "cpu1_usage": 12,
+      "cpu_usage": 13,
+      "i2c_errors": 14,
+      "i2c_bus_recoveries": 15,
+      "task_stacks": 16,
+      "free_internal": 17,
+      "largest_internal_block": 18,
+      "min_free_internal": 19,
+      "failed_allocations": 20
+    },
+    "socket_message.AnimationEntry": {
+      "name": 1,
+      "builtin": 2,
+      "size": 3
+    },
+    "socket_message.AnimationList": {
+      "animations": 1
+    },
+    "socket_message.AnimationListRequest": {},
+    "socket_message.AnimationParam": {
+      "id": 1,
+      "value": 2
+    },
+    "socket_message.AnimationPlay": {
+      "name": 1,
+      "params": 2
+    },
+    "socket_message.AnimationPose": {
+      "body": 1,
+      "legs": 2
+    },
+    "socket_message.AnimationReport": {
+      "ok": 1,
+      "error": 2,
+      "clamped_mask": 3,
+      "description": 4,
+      "params": 5,
+      "duration": 6,
+      "loop": 7,
+      "hold_end": 8
+    },
+    "socket_message.AnimationStatus": {
+      "name": 1,
+      "state": 2,
+      "t": 3,
+      "clamped_mask": 4
+    },
+    "socket_message.AnimationStop": {},
+    "socket_message.AnimationValidate": {
+      "name": 1
+    },
+    "socket_message.ControllerData": {
+      "left": 10,
+      "right": 11,
+      "height": 20,
+      "speed": 21,
+      "s1": 22
+    },
+    "socket_message.CoreDumpDownload": {},
+    "socket_message.CoreDumpErase": {},
+    "socket_message.CoreDumpReport": {
+      "partition": 1,
+      "stored": 2,
+      "size": 3,
+      "readable": 4,
+      "task": 5,
+      "pc": 6,
+      "exc_cause": 7,
+      "exc_vaddr": 8,
+      "backtrace": 9,
+      "backtrace_corrupted": 10,
+      "app_elf_sha256": 11,
+      "panic_reason": 12,
+      "riscv": 13
+    },
+    "socket_message.CoreDumpRequest": {},
+    "socket_message.CorrelationRequest": {
+      "correlation_id": 1,
+      "features_data_request": 10,
+      "i2c_scan_data_request": 20,
+      "imu_calibrate_execute": 30,
+      "system_information_request": 40,
+      "fs_delete_request": 50,
+      "fs_mkdir_request": 60,
+      "fs_list_request": 70,
+      "fs_download_request": 80,
+      "fs_upload_start": 100,
+      "fs_cancel_transfer": 120,
+      "robot_name_update": 130,
+      "robot_variant_update": 131,
+      "wifi_settings_request": 140,
+      "wifi_settings": 141,
+      "wifi_status_request": 142,
+      "wifi_scan_start": 143,
+      "wifi_networks_request": 144,
+      "ap_settings_request": 150,
+      "ap_settings": 151,
+      "ap_status_request": 152,
+      "mdns_status_request": 160,
+      "mdns_query_request": 161,
+      "camera_settings_request": 170,
+      "camera_settings": 171,
+      "servo_settings_request": 180,
+      "servo_settings": 181,
+      "peripheral_settings_request": 190,
+      "peripheral_settings": 191,
+      "system_restart": 200,
+      "system_reset": 201,
+      "ota_start": 210,
+      "ota_chunk": 211,
+      "ota_finish": 212,
+      "animation_list_request": 220,
+      "animation_validate": 221,
+      "animation_play": 222,
+      "animation_stop": 223,
+      "core_dump_request": 230,
+      "core_dump_download": 231,
+      "core_dump_erase": 232,
+      "odometry_request": 240,
+      "goal_move": 250,
+      "goal_cancel": 251,
+      "goal_status_request": 252,
+      "ota_download": 270,
+      "animation_pose": 271
+    },
+    "socket_message.CorrelationResponse": {
+      "correlation_id": 1,
+      "status_code": 2,
+      "error_message": 3,
+      "features_data_response": 10,
+      "i2c_scan_data": 20,
+      "imu_calibrate_data": 30,
+      "system_information_response": 40,
+      "fs_delete_response": 50,
+      "fs_mkdir_response": 60,
+      "fs_list_response": 70,
+      "fs_upload_start_response": 100,
+      "fs_cancel_transfer_response": 120,
+      "wifi_settings": 140,
+      "wifi_status": 142,
+      "wifi_network_list": 144,
+      "ap_settings": 150,
+      "ap_status": 152,
+      "mdns_status": 160,
+      "mdns_query_response": 161,
+      "camera_settings": 170,
+      "servo_settings": 180,
+      "peripheral_settings": 190,
+      "animation_list": 220,
+      "animation_report": 221,
+      "core_dump_report": 230,
+      "odometry": 240,
+      "goal_status": 250,
+      "ota_status": 270
+    },
+    "socket_message.Directory": {
+      "name": 1
+    },
+    "socket_message.FSCancelTransfer": {
+      "transfer_id": 1
+    },
+    "socket_message.FSCancelTransferResponse": {
+      "transfer_id": 1,
+      "success": 2
+    },
+    "socket_message.FSDeleteRequest": {
+      "path": 1
+    },
+    "socket_message.FSDeleteResponse": {
+      "success": 1,
+      "error": 2
+    },
+    "socket_message.FSDownloadComplete": {
+      "transfer_id": 1,
+      "success": 2,
+      "error": 3,
+      "total_chunks": 4,
+      "file_size": 5
+    },
+    "socket_message.FSDownloadData": {
+      "transfer_id": 1,
+      "chunk_index": 2,
+      "data": 3
+    },
+    "socket_message.FSDownloadMetadata": {
+      "transfer_id": 1,
+      "success": 2,
+      "error": 3,
+      "file_size": 4,
+      "total_chunks": 5
+    },
+    "socket_message.FSDownloadRequest": {
+      "path": 1
+    },
+    "socket_message.FSListRequest": {
+      "path": 1
+    },
+    "socket_message.FSListResponse": {
+      "success": 1,
+      "error": 2,
+      "files": 3,
+      "directories": 4
+    },
+    "socket_message.FSMkdirRequest": {
+      "path": 1
+    },
+    "socket_message.FSMkdirResponse": {
+      "success": 1,
+      "error": 2
+    },
+    "socket_message.FSUploadComplete": {
+      "transfer_id": 1,
+      "success": 2,
+      "error": 3,
+      "chunks_received": 4
+    },
+    "socket_message.FSUploadData": {
+      "transfer_id": 1,
+      "chunk_index": 2,
+      "data": 3
+    },
+    "socket_message.FSUploadStart": {
+      "path": 1,
+      "file_size": 2,
+      "total_chunks": 3
+    },
+    "socket_message.FSUploadStartResponse": {
+      "success": 1,
+      "error": 2,
+      "transfer_id": 3
+    },
+    "socket_message.FeaturesDataRequest": {},
+    "socket_message.FeaturesDataResponse": {
+      "variant": 10,
+      "firmware_built_target": 20,
+      "firmware_name": 30,
+      "firmware_version": 40,
+      "firmware_elf_sha256": 41,
+      "camera": 50,
+      "camera_detected": 51,
+      "imu": 60,
+      "imu_detected": 61,
+      "mag": 70,
+      "mag_detected": 71,
+      "bmp": 80,
+      "bmp_detected": 81,
+      "servo": 100,
+      "servo_detected": 101,
+      "servos_calibrated": 102,
+      "gesture": 105,
+      "gesture_detected": 106,
+      "ws2812": 110,
+      "espnow_controller_supported": 115,
+      "mdns": 120,
+      "embed_www": 130,
+      "device_id": 140,
+      "robot_name": 150,
+      "hostname": 160,
+      "sonar": 170,
+      "walk_nn": 230,
+      "ota_download": 240,
+      "power": 250,
+      "power_detected": 251
+    },
+    "socket_message.File": {
+      "name": 10,
+      "size": 20
+    },
+    "socket_message.GoalCancel": {},
+    "socket_message.GoalMove": {
+      "forward_m": 1,
+      "sideways_m": 2,
+      "turn_deg": 3,
+      "speed": 4
+    },
+    "socket_message.GoalStatus": {
+      "id": 1,
+      "state": 2,
+      "forward_m": 3,
+      "sideways_m": 4,
+      "turn_deg": 5,
+      "progress": 6,
+      "timeout_s": 7
+    },
+    "socket_message.GoalStatusRequest": {},
+    "socket_message.I2CDevice": {
+      "address": 1,
+      "part_number": 2,
+      "name": 3
+    },
+    "socket_message.I2CDeviceErrors": {
+      "address": 1,
+      "nacks": 2,
+      "timeouts": 3
+    },
+    "socket_message.I2CScanData": {
+      "devices": 1
+    },
+    "socket_message.I2CScanDataRequest": {},
+    "socket_message.IMUCalibrateData": {
+      "success": 1,
+      "levelled": 2,
+      "tilt_deg": 3
+    },
+    "socket_message.IMUCalibrateExecute": {},
+    "socket_message.IMUData": {
+      "x": 1,
+      "y": 2,
+      "z": 3,
+      "heading": 4,
+      "altitude": 5,
+      "bmp_temp": 6,
+      "pressure": 7
+    },
+    "socket_message.ImuSample": {
+      "t_us": 1,
+      "accel": 2,
+      "gyro": 3,
+      "mag": 4,
+      "mag_t_us": 5,
+      "gravity": 6,
+      "quat": 7,
+      "rpy": 8,
+      "temperature": 9,
+      "valid": 10
+    },
+    "socket_message.KinematicData": {
+      "omega": 1,
+      "phi": 2,
+      "psi": 3,
+      "xm": 4,
+      "ym": 5,
+      "zm": 6
+    },
+    "socket_message.Message": {
+      "correlation_request": 10,
+      "correlation_response": 11,
+      "sub_notif": 20,
+      "unsub_notif": 21,
+      "pingmsg": 30,
+      "pongmsg": 31,
+      "fs_download_metadata": 39,
+      "fs_download_data": 40,
+      "fs_download_complete": 41,
+      "fs_upload_data": 42,
+      "fs_upload_complete": 43,
+      "imu": 110,
+      "mode": 130,
+      "analytics": 150,
+      "walk_gait": 160,
+      "servo_pwm": 210,
+      "servo_state": 211,
+      "controller_data": 250,
+      "rssi": 260,
+      "telemetry_header": 270,
+      "telemetry_batch": 271,
+      "telemetry_network": 272,
+      "wifi_status": 280,
+      "animation_status": 292,
+      "sonar": 300,
+      "goal_status": 310,
+      "ota_status": 320,
+      "power": 330
+    },
+    "socket_message.ModeData": {
+      "mode": 1
+    },
+    "socket_message.OdometryData": {
+      "x": 1,
+      "y": 2,
+      "yaw": 3,
+      "distance": 4,
+      "kinematic_yaw": 5
+    },
+    "socket_message.OdometryRequest": {
+      "reset": 1
+    },
+    "socket_message.OtaChunk": {
+      "index": 1,
+      "data": 2
+    },
+    "socket_message.OtaDownload": {
+      "url": 1
+    },
+    "socket_message.OtaFinish": {},
+    "socket_message.OtaStart": {
+      "size": 1
+    },
+    "socket_message.OtaStatus": {
+      "state": 1,
+      "written": 2,
+      "size": 3,
+      "error": 4
+    },
+    "socket_message.PingMsg": {},
+    "socket_message.PongMsg": {},
+    "socket_message.PowerData": {
+      "bus_voltage": 1,
+      "shunt_voltage": 2,
+      "current": 3,
+      "power": 4,
+      "low_voltage": 5,
+      "stalled": 6
+    },
+    "socket_message.RSSIData": {
+      "rssi": 1
+    },
+    "socket_message.RobotNameUpdate": {
+      "name": 1
+    },
+    "socket_message.RobotSettings": {
+      "name": 1,
+      "variant": 2
+    },
+    "socket_message.RobotVariantUpdate": {
+      "variant": 1
+    },
+    "socket_message.ServoPWMData": {
+      "servo_id": 1,
+      "servo_pwm": 2
+    },
+    "socket_message.ServoStateData": {
+      "active": 1
+    },
+    "socket_message.SonarData": {
+      "left": 2,
+      "right": 3
+    },
+    "socket_message.SonarReading": {
+      "status": 1,
+      "distance_cm": 2
+    },
+    "socket_message.StaticSystemInformation": {
+      "esp_platform": 1,
+      "firmware_version": 2,
+      "cpu_freq_mhz": 3,
+      "cpu_type": 4,
+      "cpu_rev": 5,
+      "cpu_cores": 6,
+      "sketch_size": 7,
+      "free_sketch_space": 8,
+      "sdk_version": 9,
+      "flash_chip_size": 11,
+      "flash_chip_speed": 12,
+      "cpu_reset_reason": 13
+    },
+    "socket_message.SubscribeNotification": {
+      "tag": 1
+    },
+    "socket_message.SystemInformation": {
+      "analytics_data": 1,
+      "static_system_information": 2
+    },
+    "socket_message.SystemInformationRequest": {},
+    "socket_message.SystemInformationResponse": {
+      "analytics_data": 1,
+      "static_system_information": 2
+    },
+    "socket_message.SystemReset": {},
+    "socket_message.SystemRestart": {},
+    "socket_message.TaskStack": {
+      "name": 1,
+      "stack_free_min": 2
+    },
+    "socket_message.TelemetryBatch": {
+      "batch_seq": 1,
+      "dropped_ticks": 2,
+      "ticks": 3
+    },
+    "socket_message.TelemetryHeader": {
+      "firmware_version": 1,
+      "build_target": 2,
+      "variant": 3,
+      "device_id": 4,
+      "imu_driver": 5,
+      "imu_rate_hz": 6,
+      "mag_rate_hz": 7,
+      "control_rate_hz": 8,
+      "servo_settings": 9,
+      "imu_settings": 10,
+      "batch_ticks": 11,
+      "joint_direction": 12
+    },
+    "socket_message.TelemetryNetwork": {
+      "t_us": 1,
+      "rssi": 2,
+      "channel": 3,
+      "batches_sent": 4,
+      "batches_failed": 5,
+      "ticks_dropped": 6,
+      "rail_voltage": 7,
+      "rail_voltage_min": 8,
+      "rail_current": 9
+    },
+    "socket_message.TickSample": {
+      "seq": 1,
+      "t_us": 2,
+      "period_us": 3,
+      "compute_us": 4,
+      "imu": 5,
+      "angles": 6,
+      "targets": 7,
+      "pwm": 8,
+      "servo_write_us": 9,
+      "servo_ok": 10,
+      "command": 11,
+      "command_age_us": 12,
+      "command_rx_us": 13,
+      "mode": 14,
+      "gait": 15,
+      "link_lost": 16,
+      "odometry": 17,
+      "walked": 18
+    },
+    "socket_message.UnsubscribeNotification": {
+      "tag": 1
+    },
+    "socket_message.Vector": {
+      "x": 1,
+      "y": 2
+    },
+    "socket_message.WalkGaitData": {
+      "gait": 1
+    }
+  }
+}

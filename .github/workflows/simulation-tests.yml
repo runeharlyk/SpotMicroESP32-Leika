@@ -1,23 +1,51 @@
 name: Simulation Tests
 
+# The speed model is pinned to traces of the firmware's own motion headers: this regenerates the traces
+# from the current firmware, so a change to the motion code runs these tests and fails them if they disagree.
 on:
+  # A release runs these before it publishes (release.yml).
+  workflow_call:
   push:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # sim_vs_real.py holds a copy of the Pico joint map
+      - "app/src/lib/simulation/robots.ts"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
+      - "app/src/lib/simulation/robots.ts"
+      - "animations/**"
+      - "esp32/scripts/**"
       - ".github/workflows/simulation-tests.yml"
   pull_request:
     branches: [master]
     paths:
       - "simulation/**"
+      - "esp32/test/host/**"
       - "platform_shared/**"
+      - "esp32/include/**"
+      - "esp32/test/host/**"
       - "app/static/spot_micro.urdf.xacro"
       - "app/static/yertle.URDF"
       - "app/static/URDF/**"
+      # sim_vs_real.py holds a copy of the Pico joint map
+      - "app/src/lib/simulation/robots.ts"
+      # The virtual robot is built from the firmware's code
+      - "esp32/src/**"
+      - "esp32/factory_settings.ini"
+      - "esp32/scripts/compile_protos.py"
+      - "app/src/lib/simulation/robots.ts"
+      - "animations/**"
+      - "esp32/scripts/**"
       - ".github/workflows/simulation-tests.yml"
 
 permissions:
@@ -32,17 +60,63 @@ jobs:
         working-directory: ./simulation
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           cache-dependency-glob: "simulation/uv.lock"
 
-      - name: Install dependencies
-        run: uv sync --locked
+      # No test imports torch; skipping it and its CUDA wheels saves gigabytes per run.
+      - name: Install dependencies without torch
+        run: >-
+          uv sync --locked
+          --no-install-package torch --no-install-package triton
+          --no-install-package cuda-bindings --no-install-package cuda-pathfinder
+          --no-install-package cuda-toolkit --no-install-package nvidia-cublas
+          --no-install-package nvidia-cuda-cupti --no-install-package nvidia-cuda-nvrtc
+          --no-install-package nvidia-cuda-runtime --no-install-package nvidia-cudnn-cu13
+          --no-install-package nvidia-cufft --no-install-package nvidia-cufile
+          --no-install-package nvidia-curand --no-install-package nvidia-cusolver
+          --no-install-package nvidia-cusparse --no-install-package nvidia-cusparselt-cu13
+          --no-install-package nvidia-nccl-cu13 --no-install-package nvidia-nvjitlink
+          --no-install-package nvidia-nvshmem-cu13 --no-install-package nvidia-nvtx
 
+      # --no-sync from here on: a plain uv run would install torch after all.
       - name: Generate the protocol classes the recording loader reads
-        run: uv run python gen_protos.py
+        run: uv run --no-sync python gen_protos.py
+
+      # The nanopb headers this generates also build the virtual robot.
+      - name: Trace the firmware motion code
+        run: |
+          uv run --no-sync python ../esp32/scripts/compile_protos.py
+          uv run --no-sync python ../esp32/test/host/export_firmware_traces.py
+
+      # check_animation.py plays the firmware's own animation player on the Pico: trace the current firmware rather
+      # than trust the committed fixture to be fresh.
+      - name: Trace the firmware animation player
+        working-directory: .
+        run: |
+          uv run --no-project --with protobuf --with grpcio-tools python esp32/scripts/compile_protos.py
+          uv run --no-project --with protobuf --with grpcio-tools python esp32/scripts/pack_animations.py
+          uv run --no-project python esp32/test/host/export_animation_traces.py
 
       - name: Run tests
-        run: uv run pytest -q
+        run: uv run --no-sync pytest -q
+
+      # The host's g++, as the Firmware Host Tests workflow builds the firmware code with.
+      - name: Run the release smoke check against the virtual robot
+        run: |
+          uv run --no-sync python virtual_robot.py --build "$RUNNER_TEMP/virtual_robot"
+          uv run --no-sync python virtual_robot.py --binary "$RUNNER_TEMP/virtual_robot" --port 8765 > "$RUNNER_TEMP/virtual_robot.log" 2>&1 &
+          timeout 30 sh -c 'until grep -q api/ws "$RUNNER_TEMP/virtual_robot.log"; do sleep 0.2; done'
+          uv run --no-sync python release_smoke.py localhost:8765
+          kill %1
+
+      # The pytest checks the same comparison; this step prints the drift report into the log.
+      - name: Compare the simulation with the virtual robot
+        run: uv run python sim_vs_real.py --virtual --binary "$RUNNER_TEMP/virtual_robot"
+
+      - name: Firmware golden vectors are up to date
+        run: uv run --no-sync python export_golden.py --check

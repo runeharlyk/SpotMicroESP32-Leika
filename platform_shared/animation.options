@@ -1,0 +1,6 @@
+animation.Animation.name max_size:33
+animation.Animation.description max_size:97
+animation.Animation.keyframes max_count:32
+animation.Animation.overlays max_count:8
+animation.Animation.params max_count:10
+animation.Keyframe.legs max_count:4

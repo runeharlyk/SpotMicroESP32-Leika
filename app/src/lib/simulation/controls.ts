@@ -1,22 +1,14 @@
 import { ModesEnum, type ControllerData } from '$lib/platform_shared/message'
-import type { Command } from './pico-gait'
+import type { Sticks } from './pico-gait'
 
-// Limits of simulation/src/leika/robot.py.
-const MAX_VX = 0.06
-const MAX_VY = 0.03
-const MAX_YAW = 2.0
 const unit = (value: number | undefined) => Math.min(Math.max(value ?? 0, -1), 1)
 
 /**
- * The app's controls as a simulation command, with the firmware's signs (walk_state.h: step_x
- * from ly, step_z from -lx, step_angle from rx; the gait maps a positive step_angle to -yaw).
+ * The app's controls as the sticks the simulated Pico walks, the ones the robot is sent: a stick
+ * to the right strafes right (step_z = -lx, z left) and a positive rx turns left (walk_state.h).
  */
-export function simulationCommand(input: ControllerData, mode: ModesEnum): Command {
+export function simulationSticks(input: ControllerData, mode: ModesEnum): Sticks {
     if (mode !== ModesEnum.WALK) return [0, 0, 0]
     // + 0 turns -0 into 0, so a centred stick reads as exactly zero.
-    return [
-        unit(input.left?.y) * MAX_VX,
-        -unit(input.left?.x) * MAX_VY + 0,
-        -unit(input.right?.x) * MAX_YAW + 0
-    ]
+    return [unit(input.left?.x) + 0, unit(input.left?.y) + 0, unit(input.right?.x) + 0]
 }

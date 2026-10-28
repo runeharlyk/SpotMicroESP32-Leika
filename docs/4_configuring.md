@@ -27,6 +27,7 @@ With the factory settings the access point runs whenever the robot is not connec
 1. Navigate to WiFi, then WiFi Station, scan for your network and add it.
 
 The robot keeps the networks it stores and reconnects to them after a restart.
+While joined it pings its router every 5 seconds, and after three unanswered pings in a row it drops the network and joins again, since a link that silently stops working sends no disconnect.
 
 ### Finding the robot
 
@@ -51,6 +52,14 @@ The Sensors page under Peripherals shows each sensor as active, detected but dis
 Switch off a sensor that is wired but not mounted, such as an IMU lying loose on the bench; the robot then leaves the chip alone.
 The change applies at once, except for the camera, which follows at the next restart.
 The same page enables the WS2812 strip and sets its pin; a pin on the I2C bus or one that the flash, the PSRAM or another driver holds is refused.
+It also enables the two HC-SR04 sonars and sets each one's trigger and echo pin.
+A sonar pin on the I2C bus, the strip, the camera, the other sonar, or one the chip cannot drive or read is refused.
+The echo pin carries 5 V, so wire it to a 3.3 V GPIO through a divider, such as 1 kOhm from the echo to the pin and 2 kOhm from the pin to ground.
+The sensors ping in turn, so neither hears the other, ten times a second each; the IMU page then shows each distance, or no echo within 4 m, or no sensor when the echo never rises.
+The INA219 power sensor takes its address (0x41 to 0x4F), its shunt resistance and the largest current expected, which may put at most 0.32 V across the shunt.
+A cut-off voltage deactivates the robot once the servo rail has stayed under it for 2 s, and keeps it deactivated until the rail rises 0.2 V above it; 0 turns it off, which is the default.
+A current above the stall current for the stall time is reported, never acted on.
+The IMU page then shows the rail's voltage, current, power and lowest voltage over the last 10 s.
 
 ## Calibrating servos
 

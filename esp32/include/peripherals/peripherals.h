@@ -9,6 +9,7 @@
 #include <settings/peripherals_settings.h>
 #include <platform_shared/message.pb.h>
 
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <list>
@@ -22,6 +23,9 @@
 #include <peripherals/drivers/hmc5883l.h>
 #include <peripherals/barometer.h>
 #include <peripherals/gesture.h>
+#include <peripherals/sonar.h>
+#include <peripherals/drivers/ina219.h>
+#include <peripherals/power_guard.h>
 
 /**
  * The sensors' latest values. The sensor task writes them; the control and service tasks copy them out
@@ -33,6 +37,15 @@ struct SensorReadings {
     float temperature {0};
     float pressure {0};
     gesture_t gesture {eGestureNone};
+    std::array<sonar::Reading, sonar::COUNT> sonars {};  // left, right
+    PowerReading power;
+    bool lowVoltage = false, stalled = false;
+    float railVoltageMin = 0;  // since the last takeRailSample(), whose reading it starts from
+};
+
+/** The servo rail for a telemetry sample: all 0 without an active power sensor. */
+struct RailSample {
+    float voltage = 0, voltageMin = 0, current = 0;
 };
 
 /** What the last probe found: a sensor is detected when it answered, and active when it is also not disabled. */
@@ -41,6 +54,8 @@ struct SensorStatus {
     bool magDetected = false, magActive = false;
     bool bmpDetected = false, bmpActive = false;
     bool gestureDetected = false, gestureActive = false;
+    bool powerDetected = false, powerActive = false;
+    bool sonarActive = false;  // a sonar is enabled on pins it could take
     const char *imuDriver = "none";
     uint32_t imuRateHz = 0, magRateHz = 0;
 };
@@ -58,7 +73,8 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     SensorStatus status() const;
 
-    // One pass of the sensor task: queued bus work, the IMU every time, the slower sensors when due.
+    // One pass of the sensor task: the oldest queued bus work, the IMU every time, the slower sensors when due. One
+    // piece of work per pass, so a backlog of probes and calibrations cannot add up past the task watchdog's timeout.
     void sensorTick();
 
     void updatePins();
@@ -67,6 +83,14 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     void getI2CScanProto(socket_message_I2CScanData &data);
     void getIMUProto(socket_message_IMUData &data);
+    void getSonarProto(socket_message_SonarData &data);
+    void getPowerProto(socket_message_PowerData &data);
+
+    /** The rail has been under the cut-off voltage long enough that the robot must not stay active. */
+    bool powerCutoff();
+
+    /** The latest rail reading and the lowest voltage since the previous call, which starts the next window. */
+    RailSample takeRailSample();
 
     ImuSample imuSample();
     const char *imuDriverName() const;
@@ -83,9 +107,10 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
 
     /**
      * The gyro bias of a still robot; with `level`, also its tilt folded into the stored mounting, so a robot lying
-     * on a level surface reads level. Runs on the sensor task; the robot must stay still for about a second.
+     * on a level surface reads level. Runs on the sensor task, which `waitForNextRead` blocks until the next read is
+     * due; the robot must stay still for about a second.
      */
-    ImuCalibration calibrateIMU(bool level);
+    ImuCalibration calibrateIMU(bool level, const std::function<void()> &waitForNextRead);
 
     /**
      * Queues bus work too slow for the socket task, such as a scan or a calibration, to run on the sensor task
@@ -104,20 +129,41 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     void probeSensors(const SensorOptions &options);
     SensorOptions _probedOptions {};
 
+    struct PowerOptions {
+        bool disabled;
+        uint32_t address;
+        float shuntOhms, maxCurrentA;
+        bool operator==(const PowerOptions &) const = default;
+    };
+    PowerOptions powerOptions() const;
+    void probePower(const PowerOptions &options);
+    PowerOptions _probedPower {};
+    PowerGuardConfig powerGuardConfig() const;
+
+    using SonarWiring = std::array<SonarPins::Wiring, sonar::COUNT>;
+    SonarWiring sonarWiring() const;
+    void applySonars(const SonarWiring &wiring);
+    SonarWiring _appliedSonars {};
+
     void readImu();
+    void applySensorSettings();
     ImuConfig imuConfig() const;
     void readBMP();
     void readGesture();
+    void readPower();
 
     FSPersistencePB<PeripheralsConfiguration> _persistence;
 
     std::mutex _readingsMutex;
     SensorReadings _readings;
 
+    // Set by a settings save, taken by the sensor task: a flag, unlike the bounded work queue, cannot drop a save.
+    std::atomic<bool> _sensorSettingsChanged {false};
+
     static constexpr size_t MAX_QUEUED_WORK = 4;
     std::mutex _workMutex;
     std::deque<std::function<void()>> _work;
-    void runQueuedWork();
+    void runOldestQueuedWork();
 
     SemaphoreHandle_t _accessMutex;
     inline void beginTransaction() { xSemaphoreTakeRecursive(_accessMutex, portMAX_DELAY); }
@@ -131,6 +177,11 @@ class Peripherals : public StatefulService<PeripheralsConfiguration> {
     Imu _imu;
     Barometer _bmp;
     GestureSensor _gesture;
+    INA219Driver _ina;
+    PowerGuard _powerGuard;
+    bool _powerRead = false;  // under _readingsMutex: a reading came since the sensor started
+    SonarPins _sonarPins;
+    sonar::Ranger<SonarPins> _ranger {_sonarPins};
 
     mutable std::mutex _statusMutex;
     SensorStatus _status;

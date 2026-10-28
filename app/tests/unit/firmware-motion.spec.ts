@@ -61,6 +61,7 @@ describe.each([esp32, mini, yertle] as Trace[])('firmware motion port ($variant)
 
             const angles = motion.update(trace.dt, tick.imu as [number, number])
             const where = `step ${tick.step} (mode ${tick.mode}, gait ${tick.gait})`
+            expect(motion.walkedGait(), `${where} walked`).toBe(tick.walked)
             const { body } = motion
             const { feet, ...pose } = tick.body
             for (const [key, value] of Object.entries(pose)) {

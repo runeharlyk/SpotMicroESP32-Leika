@@ -60,7 +60,7 @@ export function encodeSerialFrame(message: Uint8Array): Uint8Array {
 
 const cobsDecode = (segment: number[]): Uint8Array | undefined => {
     const body: number[] = []
-    for (let i = 0; i < segment.length; ) {
+    for (let i = 0; i < segment.length;) {
         const code = segment[i++]
         if (i + code - 1 > segment.length) return
         for (let end = i + code - 1; i < end; i++) body.push(segment[i])

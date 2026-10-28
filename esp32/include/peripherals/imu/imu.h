@@ -24,6 +24,7 @@ class Imu {
     static constexpr int64_t FAST_START_US = 2000000;  // high gain after start, so the first estimate is quick
     static constexpr float FAST_START_GAIN = 2.5f;
     static constexpr float STILL_GYRO_STD = 0.02f;      // rad/s; well above the chips' noise, below any handling
+    static constexpr float STILL_TILT_RAD = 0.01f;      // gravity turning this far between the halves is a rotation
     static constexpr int BIAS_SAMPLES = 200;
     static constexpr float MAX_DT_S = 0.05f;           // a longer gap is a stall, not motion to integrate
     static constexpr int MAG_STALE_PERIODS = 3;         // a compass silent this long is treated as gone
@@ -50,6 +51,7 @@ class Imu {
         _hasSeparateMag = _ready && useMag && _mag && _mag->begin();
         _magValid = false;
         _lastUs = 0;
+        _dueUs = 0;
         _startUs = nowUs;
         _filter.reset();
         return _ready;
@@ -81,14 +83,16 @@ class Imu {
 
     /**
      * Averages the gyro over BIAS_SAMPLES reads while the robot is still. A robot that moves keeps the previous
-     * bias and gets false. `readClockAndWait` waits for the next read and returns the time in microseconds. With
+     * bias and gets false: one whose gyro spreads, or whose gravity turns between the first and the second half, which
+     * a slow steady tilt does without any spread. A steady turn about the vertical stays indistinguishable from bias. `readClockAndWait` waits for the next read and returns the time in microseconds. With
      * `meanAccel`, a still robot also gets the mean accelerometer, in the body frame: its measured up.
      */
     bool estimateGyroBias(const std::function<int64_t()> &readClockAndWait, Vec3 *meanAccel = nullptr) {
         if (!_ready) return false;
         // The orientation stays; only the second spent here must not count as one integration step.
         _lastUs = 0;
-        double sum[3] = {0, 0, 0}, sumSquares[3] = {0, 0, 0}, accelSum[3] = {0, 0, 0};
+        _dueUs = 0;
+        double sum[3] = {0, 0, 0}, sumSquares[3] = {0, 0, 0}, accelSum[2][3] = {{0, 0, 0}, {0, 0, 0}};
         for (int i = 0; i < BIAS_SAMPLES; i++) {
             readClockAndWait();
             RawImu raw;
@@ -96,25 +100,34 @@ class Imu {
             for (int axis = 0; axis < 3; axis++) {
                 sum[axis] += raw.gyro[axis];
                 sumSquares[axis] += raw.gyro[axis] * raw.gyro[axis];
-                accelSum[axis] += raw.accel[axis];
+                accelSum[2 * i / BIAS_SAMPLES][axis] += raw.accel[axis];
             }
         }
-        Vec3 bias, accel;
+        Vec3 bias, accel, firstHalf, secondHalf;
         for (int axis = 0; axis < 3; axis++) {
             const double mean = sum[axis] / BIAS_SAMPLES;
             const double variance = sumSquares[axis] / BIAS_SAMPLES - mean * mean;
             if (std::sqrt(std::fmax(variance, 0.0)) > STILL_GYRO_STD) return false;
             bias[axis] = static_cast<float>(mean);
-            accel[axis] = static_cast<float>(accelSum[axis] / BIAS_SAMPLES);
+            firstHalf[axis] = static_cast<float>(accelSum[0][axis]);
+            secondHalf[axis] = static_cast<float>(accelSum[1][axis]);
+            accel[axis] = static_cast<float>((accelSum[0][axis] + accelSum[1][axis]) / BIAS_SAMPLES);
         }
+        if (angleBetween(firstHalf, secondHalf) > STILL_TILT_RAD) return false;
         _gyroBias = bias;
         if (meanAccel) *meanAccel = mul(_config.mounting, accel);
         return true;
     }
 
+    /** Reads the chip when its next sample is due, so a chip slower than the sensor task is not read twice. */
     bool update(int64_t nowUs, ImuSample &out) {
+        if (!_ready) return false;
+        // A quarter period early still counts as due, so the pacing timer's jitter does not skip a sample.
+        const int64_t period = 1000000 / _driver->rateHz();
+        if (_dueUs && nowUs < _dueUs - period / 4) return false;
+        _dueUs = _dueUs + period > nowUs ? _dueUs + period : nowUs + period;
         RawImu raw;
-        if (!_ready || !_driver->read(raw)) return false;
+        if (!_driver->read(raw)) return false;
         ImuSample sample;
         sample.t_us = nowUs;
         sample.accel = mul(_config.mounting, raw.accel);
@@ -131,6 +144,8 @@ class Imu {
 
         const float dt = _lastUs ? std::min((nowUs - _lastUs) * 1e-6f, MAX_DT_S) : 0;
         _lastUs = nowUs;
+        _gyroYaw = std::remainder(_gyroYaw + sample.gyro[2] * dt, 2.0f * static_cast<float>(M_PI));
+        sample.gyroYaw = _gyroYaw;
         if (raw.hasOrientation) {
             sample.quat = quatMul(raw.quat, quatConj(quatFromMatrix(_config.mounting)));
         } else {
@@ -151,6 +166,12 @@ class Imu {
     }
 
   private:
+    static float angleBetween(const Vec3 &a, const Vec3 &b) {
+        const float cross[3] = {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+        const float dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        return std::atan2(std::sqrt(cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]), dot);
+    }
+
     std::vector<ImuDriver *> _candidates;
     ImuDriver *_driver = nullptr;
     MagDriver *_mag;
@@ -162,6 +183,8 @@ class Imu {
     Vec3 _gyroBias {};  // chip frame, so a later mounting change leaves it right
     int64_t _startUs = 0;
     int64_t _lastUs = 0;
+    int64_t _dueUs = 0;
+    float _gyroYaw = 0;
     bool _magValid = false;
     Vec3 _magBody {};
     int64_t _magUs = 0;

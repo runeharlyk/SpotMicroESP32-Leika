@@ -2,9 +2,9 @@ import type { ControllerData } from '$lib/platform_shared/message'
 import type { Variant } from '$lib/kinematics-variants'
 import { DIR, FirmwareMotion } from './firmware/motion'
 import { DEG2RAD_F, inverseKinematics } from './firmware/kinematics'
-import { JOINT_NAMES, PicoController, type GaitCoef } from './pico-gait'
-import { simulationCommand } from './controls'
-import type { SimController, SimControls } from './robot-sim'
+import { JOINT_NAMES, PicoController } from './pico-gait'
+import { simulationSticks } from './controls'
+import type { ClipPlayer, SimController, SimControls } from './robot-sim'
 import { CONTROL_DT } from './timing'
 
 const named = (joints: string[], values: number[]) =>
@@ -12,19 +12,15 @@ const named = (joints: string[], values: number[]) =>
 
 /** The Python simulation's controller (pico-gait.ts); in every mode but Walk it holds the stand pose. */
 export class TrainingController implements SimController {
-    private controller: PicoController
-
-    constructor(private readonly coef: GaitCoef) {
-        this.controller = new PicoController(coef)
-    }
+    private controller = new PicoController()
 
     reset() {
-        this.controller = new PicoController(this.coef)
-        return named(JOINT_NAMES, new PicoController(this.coef).tick([0, 0, 0]))
+        this.controller = new PicoController()
+        return named(JOINT_NAMES, new PicoController().tick([0, 0, 0]))
     }
 
     tick({ input, mode }: SimControls) {
-        return named(JOINT_NAMES, this.controller.tick(simulationCommand(input, mode)))
+        return named(JOINT_NAMES, this.controller.tick(simulationSticks(input, mode)))
     }
 }
 
@@ -54,14 +50,18 @@ const sameInput = (a: ControllerData, b: ControllerData) =>
 
 /**
  * The firmware's motion code (firmware/motion.ts, pinned to the headers). It receives mode, gait
- * and input only when they change, as the app's messages reach the robot, and holds its last
- * angles while deactivated, as the robot does.
+ * and input only when they change, as the app's messages reach the robot, plays clips as it does,
+ * and holds its last angles while deactivated.
  */
 export class FirmwareController implements SimController {
     private motion: FirmwareMotion
     private previous:
-        | { mode: SimControls['mode']; gait: SimControls['gait']; input: ControllerData }
-        | undefined
+        { mode: SimControls['mode']; gait: SimControls['gait']; input: ControllerData } | undefined
+    readonly clips: ClipPlayer = {
+        playClip: (clip, params) => this.motion.playClip(clip, params),
+        stopClip: () => this.motion.stopClip(),
+        animationStatus: () => this.motion.animationStatus()
+    }
 
     constructor(
         private readonly variant: Variant,
@@ -88,14 +88,19 @@ export class FirmwareController implements SimController {
     }
 
     private targets(servoDegrees: number[]) {
-        const { joints, sign, offset, kneeRelativeToBody } = this.map
-        const degrees =
-            kneeRelativeToBody ?
-                servoDegrees.map((angle, i) => (i % 3 === 2 ? angle - servoDegrees[i - 1] : angle))
-            :   servoDegrees
-        return named(
-            joints,
-            degrees.map((angle, i) => angle * DEG2RAD_F * sign[i] + offset[i])
-        )
+        return jointTargets(this.map, servoDegrees)
     }
+}
+
+/** The model's joint values (rad, by joint name) for the firmware's 12 servo angles (deg, after DIR). */
+export function jointTargets(map: JointMap, servoDegrees: number[]) {
+    const { joints, sign, offset, kneeRelativeToBody } = map
+    const degrees =
+        kneeRelativeToBody ?
+            servoDegrees.map((angle, i) => (i % 3 === 2 ? angle - servoDegrees[i - 1] : angle))
+        :   servoDegrees
+    return named(
+        joints,
+        degrees.map((angle, i) => angle * DEG2RAD_F * sign[i] + offset[i])
+    )
 }

@@ -1,4 +1,5 @@
 #include <filesystem_ws.h>
+#include <fs_paths.h>
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <esp_littlefs.h>
@@ -12,6 +13,7 @@
 #include <vector>
 
 static const char* TAG = "FileSystemWS";
+static const char* PATH_REFUSED = "Path not allowed";
 
 namespace FileSystemWS {
 
@@ -64,6 +66,10 @@ void FileSystemHandler::cleanupExpiredTransfers() {
 
 socket_message_FSDeleteResponse FileSystemHandler::handleDelete(const socket_message_FSDeleteRequest& req) {
     socket_message_FSDeleteResponse response = socket_message_FSDeleteResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Delete request: %s", path.c_str());
@@ -113,6 +119,10 @@ bool FileSystemHandler::deleteRecursive(const std::string& path) {
 
 socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_message_FSMkdirRequest& req) {
     socket_message_FSMkdirResponse response = socket_message_FSMkdirResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Mkdir request: %s", path.c_str());
@@ -134,7 +144,9 @@ socket_message_FSMkdirResponse FileSystemHandler::handleMkdir(const socket_messa
     return response;
 }
 
-void FileSystemHandler::listDirectory(const std::string& path, socket_message_FSListResponse& response) {
+// Entries the file API would refuse, /config among them, are left out, so the app does not offer to open them.
+void FileSystemHandler::listDirectory(const std::string& path, const std::string& listed,
+                                      socket_message_FSListResponse& response) {
     DIR* dir = opendir(path.c_str());
     if (!dir) {
         return;
@@ -145,9 +157,8 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr && listedFiles_.size() < MAX_LISTED &&
            listedDirectories_.size() < MAX_LISTED) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
+        const std::string child = (listed.back() == '/' ? listed : listed + "/") + entry->d_name;
+        if (!fsPathAllowed(child)) continue;
 
         std::string fullPath = path + "/" + entry->d_name;
         struct stat st;
@@ -175,11 +186,13 @@ void FileSystemHandler::listDirectory(const std::string& path, socket_message_FS
 socket_message_FSListResponse FileSystemHandler::handleList(const socket_message_FSListRequest& req) {
     socket_message_FSListResponse response = socket_message_FSListResponse_init_zero;
 
-    std::string path = std::string(MOUNT_POINT);
-    if (strlen(req.path) > 0 && req.path[0] != '\0') {
-        path += req.path;
+    const std::string listed = req.path[0] ? req.path : "/";
+    if (!fsPathAllowed(listed)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
     }
 
+    std::string path = std::string(MOUNT_POINT) + listed;
     ESP_LOGI(TAG, "List request: %s", path.c_str());
 
     struct stat st;
@@ -189,42 +202,62 @@ socket_message_FSListResponse FileSystemHandler::handleList(const socket_message
         return response;
     }
 
-    listDirectory(path, response);
+    listDirectory(path, listed, response);
     response.success = true;
 
     return response;
 }
 
+namespace {
+class FileSource : public DownloadSource {
+  public:
+    explicit FileSource(FILE* file) : file_(file) {}
+    ~FileSource() override { fclose(file_); }
+    size_t read(uint8_t* into, size_t size) override { return fread(into, 1, size, file_); }
+
+  private:
+    FILE* file_;
+};
+} // namespace
+
 void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadRequest& req, int clientId) {
     cleanupExpiredTransfers();
+    if (!fsEntryAllowed(req.path)) {
+        if (sendMetadataCallback_) {
+            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+            strncpy(metadata.error, PATH_REFUSED, sizeof(metadata.error) - 1);
+            sendMetadataCallback_(metadata, clientId);
+        }
+        return;
+    }
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Download request: %s", path.c_str());
 
     struct stat st;
-    if (stat(path.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) {
-        if (sendMetadataCallback_) {
-            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
-            metadata.success = false;
-            strncpy(metadata.error, "File not found", sizeof(metadata.error) - 1);
-            sendMetadataCallback_(metadata, clientId);
-        }
-        return;
-    }
+    if (stat(path.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) return refuseDownload("File not found", clientId);
 
     FILE* file = fopen(path.c_str(), "rb");
-    if (!file) {
-        if (sendMetadataCallback_) {
-            socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
-            metadata.success = false;
-            strncpy(metadata.error, "Cannot open file for reading", sizeof(metadata.error) - 1);
-            sendMetadataCallback_(metadata, clientId);
-        }
-        return;
+    if (!file) return refuseDownload("Cannot open file for reading", clientId);
+    std::unique_ptr<DownloadSource> source(new (std::nothrow) FileSource(file));
+    if (!source) {
+        fclose(file);
+        return refuseDownload("Out of memory", clientId);
     }
+    startDownload(std::move(source), st.st_size, clientId);
+}
 
-    uint32_t fileSize = st.st_size;
+void FileSystemHandler::refuseDownload(const char* error, int clientId) {
+    if (!sendMetadataCallback_) return;
+    socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
+    metadata.success = false;
+    strncpy(metadata.error, error, sizeof(metadata.error) - 1);
+    sendMetadataCallback_(metadata, clientId);
+}
+
+void FileSystemHandler::startDownload(std::unique_ptr<DownloadSource> source, uint32_t size, int clientId) {
+    cleanupExpiredTransfers();
     uint32_t chunkSize = FS_MAX_CHUNK_SIZE;
-    uint32_t totalChunks = (fileSize + chunkSize - 1) / chunkSize;
+    uint32_t totalChunks = (size + chunkSize - 1) / chunkSize;
     if (totalChunks == 0) totalChunks = 1;
 
     uint32_t transferId = generateTransferId();
@@ -233,24 +266,23 @@ void FileSystemHandler::handleDownloadRequest(const socket_message_FSDownloadReq
         socket_message_FSDownloadMetadata metadata = socket_message_FSDownloadMetadata_init_zero;
         metadata.transfer_id = transferId;
         metadata.success = true;
-        metadata.file_size = fileSize;
+        metadata.file_size = size;
         metadata.total_chunks = totalChunks;
         sendMetadataCallback_(metadata, clientId);
     }
 
     DownloadState state;
-    state.path = path;
-    state.file = file;
-    state.fileSize = fileSize;
+    state.source = std::move(source);
+    state.fileSize = size;
     state.chunkSize = chunkSize;
     state.totalChunks = totalChunks;
     state.chunksSent = 0;
     state.lastActivityTime = esp_timer_get_time() / 1000;
     state.clientId = clientId;
 
-    downloads_[transferId] = state;
+    downloads_[transferId] = std::move(state);
 
-    ESP_LOGI(TAG, "Download started: %s, size=%u, chunks=%u, id=%u", path.c_str(), fileSize, totalChunks, transferId);
+    ESP_LOGI(TAG, "Download started: size=%u, chunks=%u, id=%u", size, totalChunks, transferId);
 
     pumpDownload(transferId);
 }
@@ -278,7 +310,6 @@ void FileSystemHandler::failDownload(uint32_t transferId, const char* error) {
         complete.file_size = state.fileSize;
         sendCompleteCallback_(complete, state.clientId);
     }
-    fclose(state.file);
     downloads_.erase(it);
     ESP_LOGW(TAG, "Download %u failed: %s", transferId, error);
 }
@@ -289,7 +320,6 @@ void FileSystemHandler::dropClient(int clientId) {
             ++it;
             continue;
         }
-        fclose(it->second.file);
         ESP_LOGI(TAG, "Download %u ended with its client", it->first);
         it = downloads_.erase(it);
     }
@@ -324,7 +354,6 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
             sendCompleteCallback_(complete, state.clientId);
         }
 
-        fclose(state.file);
         downloads_.erase(it);
         ESP_LOGI(TAG, "Download completed: %u", transferId);
         return false;
@@ -347,9 +376,9 @@ bool FileSystemHandler::sendNextDownloadChunk(uint32_t transferId) {
         bytesToRead = state.fileSize - position;
     }
 
-    size_t bytesRead = fread(chunk->bytes, 1, bytesToRead, state.file);
+    size_t bytesRead = state.source->read(chunk->bytes, bytesToRead);
     if (bytesRead == 0 && bytesToRead > 0) {
-        failDownload(transferId, "Failed to read file");
+        failDownload(transferId, "Failed to read");
         return false;
     }
     chunk->size = bytesRead;
@@ -368,6 +397,10 @@ socket_message_FSUploadStartResponse FileSystemHandler::handleUploadStart(const 
                                                                           int clientId) {
     cleanupExpiredTransfers();
     socket_message_FSUploadStartResponse response = socket_message_FSUploadStartResponse_init_zero;
+    if (!fsEntryAllowed(req.path)) {
+        strncpy(response.error, PATH_REFUSED, sizeof(response.error) - 1);
+        return response;
+    }
 
     std::string path = std::string(MOUNT_POINT) + req.path;
     ESP_LOGI(TAG, "Upload start request: %s, size=%u, chunks=%u", path.c_str(), req.file_size, req.total_chunks);
@@ -519,9 +552,6 @@ socket_message_FSCancelTransferResponse FileSystemHandler::handleCancelTransfer(
 
     auto dlIt = downloads_.find(transferId);
     if (dlIt != downloads_.end()) {
-        if (dlIt->second.file) {
-            fclose(dlIt->second.file);
-        }
         downloads_.erase(dlIt);
         response.success = true;
         ESP_LOGI(TAG, "Download cancelled: %u", transferId);

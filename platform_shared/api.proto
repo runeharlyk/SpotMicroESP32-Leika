@@ -63,6 +63,9 @@ message ServoSettings {
     repeated Servo servos = 1; // max 12 servos
     repeated uint32 channels = 2; // PCA9685 channel of each joint; empty means joint j on channel j
     JointModel model = 3;
+    // Volts the servos run at, from which the robot takes how fast they turn; 0, from an app before it, keeps the
+    // supply in force, and a robot that never stored one reports 6.
+    float supply_voltage = 4;
 }
 
 message ServoSettingsRequest {}
@@ -232,6 +235,26 @@ message LedSettings {
     int32 pin = 2;
 }
 
+// An HC-SR04 ultrasonic sensor; a settings file without it leaves the sensor off. Its echo is 5 V: a 3.3 V GPIO
+// needs a divider on it.
+message SonarSettings {
+    bool enabled = 1;
+    int32 trigger_pin = 2;
+    int32 echo_pin = 3;
+}
+
+// An INA219 on the servo rail: its bus voltage, and the current through its shunt. A settings file without it gets the
+// defaults: 0x41 (A0 tied high, as 0x40 is the servo board's), a 0.1 Ohm shunt rated for 3.2 A, no cut-off and a stall
+// above 3 A held for 1 s.
+message PowerSensorSettings {
+    uint32 address = 1;          // 0x41 to 0x4F
+    float shunt_ohms = 2;
+    float max_current_a = 3;     // sets the current's resolution and the shunt range; at most 0.32 V across the shunt
+    float cutoff_voltage = 4;    // below it for 2 s the robot deactivates; 0 turns the cut-off off
+    float stall_current_a = 5;   // above it for stall_time_ms the stall flag is reported; 0 turns it off
+    uint32 stall_time_ms = 6;
+}
+
 // The I2C sensors and the camera are used when detected; a disabled one is not probed, for a chip that is wired
 // but not mounted. Disabled rather than enabled flags, so a settings file from before them leaves all in use.
 message PeripheralSettings {
@@ -246,6 +269,12 @@ message PeripheralSettings {
     bool gesture_disabled = 9;
     bool camera_disabled = 10;
     LedSettings ws2812 = 11;
+    // Listen for the ESP-NOW handheld controller; off by default, since it drives the robot from any sender in range.
+    bool espnow_controller = 12;
+    SonarSettings left_sonar = 20;
+    SonarSettings right_sonar = 21;
+    bool power_disabled = 13;
+    PowerSensorSettings power_sensor = 22;
 }
 
 message PeripheralSettingsRequest {}

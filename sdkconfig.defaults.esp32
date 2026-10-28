@@ -1,0 +1,5 @@
+# Assertions abort without their message on the classic ESP32, whose 1.9 MB app slots (min_spiffs.csv) are full: the
+# expression, file and line strings cost 65,404 bytes on esp32-camera (1,965,630 to 1,900,226 of 1,966,080) and 64,224
+# on esp32dev, measured on 2026-10-23. A failed assertion still prints its backtrace and writes a core dump, which the
+# release's ELF decodes.
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y

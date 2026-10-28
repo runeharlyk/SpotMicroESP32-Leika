@@ -5,7 +5,7 @@ import { APSettings, APStatus } from '../../src/lib/platform_shared/api'
 const reply = vi.fn<() => Promise<CorrelationResponse>>()
 vi.mock('$lib/stores/socket', () => ({ socket: { request: () => reply() } }))
 
-const { robotRequest } = await import('../../src/lib/robot-request')
+const { robotRequest, UNHANDLED } = await import('../../src/lib/robot-request')
 
 const response = (fields: Partial<CorrelationResponse>) =>
     CorrelationResponse.create({ correlationId: 1, ...fields })
@@ -33,9 +33,32 @@ describe('robotRequest', () => {
         )
     })
 
+    it('says the firmware does not handle a request it does not know', async () => {
+        reply.mockResolvedValue(response({ statusCode: 501, errorMessage: 'Unknown request' }))
+        await expect(robotRequest({ odometryRequest: { reset: false } })).rejects.toThrow(UNHANDLED)
+    })
+
+    it('reads the unknown-request refusal of firmware from before the 501 the same way', async () => {
+        reply.mockResolvedValue(response({ statusCode: 400, errorMessage: 'Unknown request' }))
+        await expect(robotRequest({ odometryRequest: { reset: false } })).rejects.toThrow(UNHANDLED)
+    })
+
     it('resolves a reply that says the work is still in progress', async () => {
         const scanning = response({ statusCode: 202 })
         reply.mockResolvedValue(scanning)
         await expect(robotRequest({ wifiNetworksRequest: {} })).resolves.toBe(scanning)
+    })
+
+    it('resolves a refusal the caller reads itself, but not a request the firmware does not know', async () => {
+        const refused = response({ statusCode: 400 })
+        reply.mockResolvedValue(refused)
+        await expect(
+            robotRequest({ robotNameUpdate: { name: 'Pico' } }, { accept: [400] })
+        ).resolves.toBe(refused)
+
+        reply.mockResolvedValue(response({ statusCode: 400, errorMessage: 'Unknown request' }))
+        await expect(
+            robotRequest({ robotNameUpdate: { name: 'Pico' } }, { accept: [400] })
+        ).rejects.toThrow(UNHANDLED)
     })
 })

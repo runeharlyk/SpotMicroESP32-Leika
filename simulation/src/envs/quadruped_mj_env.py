@@ -13,6 +13,11 @@ Observation (hardware-available ONLY -- open-loop micro-servos have no encoders)
   + gait phase clock [sin, cos] (2) + command (3) + previous action (12) = 38.
 Deliberately excludes base position, base linear velocity, measured joint pos/vel (unobservable
 on the real robot). Those are used for REWARD only.
+
+Ground: flat, random bumps (`terrain`), or with `stages=True` the terrain and payload stage set by
+`set_stage` (src/sim/stages.py). The info of an episode's last step then reports its stage and
+whether it succeeded: it did not fall, and its velocity-tracking kernel averaged SUCCESS_TRACKING or
+more over the episode.
 """
 
 from __future__ import annotations
@@ -24,8 +29,9 @@ import gymnasium as gym
 import mujoco
 
 from src.sim.mj_runtime import SpotPicoSim, CONTROL_DT, TERRAIN_MODEL_PATH
-from src.sim.domain_rand import DomainRandomizer
-from src.sim.terrain import randomize_hfield
+from src.sim.domain_rand import DomainRandomizer, Ranges
+from src.sim.stages import STAGES, apply_stage
+from src.sim.terrain import ground_height, randomize_hfield
 from src.robot.firmware_gait import (
     GaitController,
     GaitState,
@@ -53,6 +59,7 @@ ZERO_CMD_PROB = 0.05
 # gives a strong gradient across the command range: err 0.01 -> 0.96, err 0.05 -> 0.37 of peak.
 VEL_SIGMA = 0.0025
 YAW_SIGMA = 0.15
+SUCCESS_TRACKING = 0.5
 
 
 def _quat_to_rpy(q):
@@ -76,22 +83,26 @@ class QuadrupedMjEnv(gym.Env):
 
     def __init__(self, randomize: bool = False, episode_seconds: float = 20.0,
                  seed: int | None = None, command: tuple | None = None,
-                 resample_steps: int = 0, terrain: float = 0.0):
+                 resample_steps: int = 0, terrain: float = 0.0, stages: bool = False, dr_ranges: Ranges = Ranges()):
         super().__init__()
+        if terrain > 0 and stages:
+            raise ValueError("the stages choose the terrain; pass terrain or stages, not both")
         self.randomize = randomize
         self.terrain = terrain  # >0: max bump height (m) of per-episode random heightfield
+        self.stages = stages
+        self.stage = 0
         self.fixed_command = None if command is None else np.asarray(command, dtype=np.float32)
         self.curriculum = 1.0  # 0 = forward only, 1 = full command range
         self.resample_steps = resample_steps
         self.max_steps = int(episode_seconds / CONTROL_DT)
 
-        self.sim = SpotPicoSim(TERRAIN_MODEL_PATH) if terrain > 0 else SpotPicoSim()
+        self.sim = SpotPicoSim(TERRAIN_MODEL_PATH) if terrain > 0 or stages else SpotPicoSim()
         self.gc = GaitController()
         self.gait = GaitState()
         set_mode(self.gait, TROT)
         self.body = BodyState()
         self.np_random_, _ = gym.utils.seeding.np_random(seed)
-        self.dr = DomainRandomizer(self.sim.model) if randomize else None
+        self.dr = DomainRandomizer(self.sim.model, dr_ranges) if randomize else None
         self._cmd_buffer: deque = deque(maxlen=8)
 
         self.act_dim = ACT_DIM
@@ -112,10 +123,16 @@ class QuadrupedMjEnv(gym.Env):
         if seed is not None:
             self.np_random_, _ = gym.utils.seeding.np_random(seed)
         if self.randomize:
-            self.dr.reset_episode(self.sim.model, self.np_random_)
-        if self.terrain > 0:
+            self.dr.reset_episode(self.sim.model, self.sim.servo, self.np_random_)
+        ground_z = 0.0
+        if self.stages:
+            ground_z = apply_stage(self.sim.model, self.np_random_, STAGES[self.stage])
+        elif self.terrain > 0:
             randomize_hfield(self.sim.model, self.np_random_, self.terrain)
         self.sim.reset_to_stand()
+        if ground_z:
+            self.sim.data.qpos[self.sim.base_qposadr + 2] += ground_z
+            mujoco.mj_forward(self.sim.model, self.sim.data)
         self.gc = GaitController()
         self.gait = GaitState()
         set_mode(self.gait, TROT)
@@ -126,10 +143,15 @@ class QuadrupedMjEnv(gym.Env):
         self._cmd_buffer.clear()
         self._sample_command()
         self.current_step = 0
+        self._tracking = 0.0
         return self._get_obs(), {}
 
     def set_curriculum(self, level):
         self.curriculum = float(np.clip(level, 0.0, 1.0))
+
+    def set_stage(self, stage):
+        """The terrain and payload stage of the episodes from the next reset on."""
+        self.stage = int(np.clip(stage, 0, len(STAGES) - 1))
 
     def _sample_command(self):
         if self.fixed_command is not None:
@@ -170,6 +192,9 @@ class QuadrupedMjEnv(gym.Env):
         if self.resample_steps and self.fixed_command is None and self.current_step % self.resample_steps == 0:
             self._sample_command()
         truncated = self.current_step >= self.max_steps
+        if self.stages and (terminated or truncated):
+            terms["stage"] = self.stage
+            terms["success"] = not terminated and self._tracking / self.current_step >= SUCCESS_TRACKING
 
         self.prev_action = action
         self.prev_joint_cmd = joint_cmd.astype(np.float32)
@@ -179,7 +204,7 @@ class QuadrupedMjEnv(gym.Env):
         # analytic baseline gait from the command (mirrors the firmware), then advance phase,
         # generate the foot targets, and add the policy's per-leg foot residuals.
         analytic_gait_action(self.cmd, self.gait)
-        self.gc.advance_phase(self.gait, CONTROL_DT)
+        self.gc.step(self.gait, CONTROL_DT)
         self.gait_phase = self.gc.phase
         self.gc.generate_feet(self.gait, self.body)
         res = action.reshape(4, 3) * FOOT_RESIDUAL
@@ -199,6 +224,13 @@ class QuadrupedMjEnv(gym.Env):
         return obs.astype(np.float32)
 
     # ------------------------------------------------------------------ reward
+    def _clearance(self):
+        """The base's height (m) above the ground beneath it."""
+        if not (self.terrain > 0 or self.stages):
+            return self.sim.base_height()
+        x, y, z = self.sim.data.qpos[self.sim.base_qposadr:self.sim.base_qposadr + 3]
+        return z - ground_height(self.sim.model, x, y)
+
     def _reward_and_done(self):
         d = self.sim.data
         q = self.sim.base_quat()
@@ -212,8 +244,10 @@ class QuadrupedMjEnv(gym.Env):
 
         r_vel = np.exp(-((fwd - self.cmd[0]) ** 2 + (left - self.cmd[1]) ** 2) / VEL_SIGMA)
         r_yaw = np.exp(-((yaw_rate - self.cmd[2]) ** 2) / YAW_SIGMA)
+        self._tracking += r_vel
         pen_upright = grav[0] ** 2 + grav[1] ** 2
-        pen_height = (self.sim.base_height() - STAND_Z) ** 2
+        clearance = self._clearance()
+        pen_height = (clearance - STAND_Z) ** 2
         pen_vz = d.qvel[2] ** 2
         pen_energy = np.sum(d.actuator_force ** 2)
         pen_arate = np.sum((self._cur_action - self.prev_action) ** 2)
@@ -243,15 +277,17 @@ class QuadrupedMjEnv(gym.Env):
         }
         reward = sum(v for k, v in terms.items() if k.startswith(("r_", "p_", "alive")))
 
-        terminated = bool((grav[2] > -0.5) or (self.sim.base_height() < 0.03))
+        terminated = bool((grav[2] > -0.5) or (clearance < 0.03))
         if terminated:
             reward -= 1.0
         return reward, terminated, terms
 
 
-def make_env(randomize=False, seed=0, resample_steps=0, terrain=0.0):
-    """Factory for SubprocVecEnv (must be picklable / module-level)."""
+def make_env(randomize=False, seed=0, resample_steps=0, terrain=0.0, stages=False, dr_centre=None):
+    """Factory for SubprocVecEnv (must be picklable / module-level). `dr_centre`: identify.py's JSON file, which
+    re-centres the randomisation ranges."""
     def _thunk():
+        ranges = Ranges.identified(dr_centre) if dr_centre else Ranges()
         return QuadrupedMjEnv(randomize=randomize, seed=seed, resample_steps=resample_steps,
-                              terrain=terrain)
+                              terrain=terrain, stages=stages, dr_ranges=ranges)
     return _thunk

@@ -2,10 +2,26 @@
 
 protoc's Python output imports its siblings as top-level modules (import api_pb2), so this folder goes on the path.
 """
-import os
+import subprocess
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = Path(__file__).resolve().parent
+BINDING = HERE / "message_pb2.py"
+SCHEMAS = HERE.parents[2] / "platform_shared"
+GENERATOR = HERE.parents[1] / "gen_protos.py"
+
+
+def regenerate_if_stale(binding: Path = BINDING, schemas: Path = SCHEMAS, generator: Path = GENERATOR) -> None:
+    """Generates the bindings when they are missing or older than any schema: ones from before a field was added drop
+    it from every message, without an error."""
+    newest_schema = max(schema.stat().st_mtime for schema in schemas.glob("*.proto"))
+    if not binding.exists() or newest_schema > binding.stat().st_mtime:
+        subprocess.run([sys.executable, str(generator)], check=True)
+
+
+regenerate_if_stale()
+sys.path.insert(0, str(HERE))
 
 import message_pb2  # noqa: E402
 

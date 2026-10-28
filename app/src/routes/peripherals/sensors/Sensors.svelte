@@ -7,6 +7,7 @@
     import { robotRequest } from '$lib/robot-request'
     import { applyFeatures, connectionFeatures } from '$lib/stores/featureFlags'
     import {
+        POWER_ADDRESSES,
         SENSOR_STATUS_LABELS,
         formFromSettings,
         formProblem,
@@ -157,6 +158,142 @@
                     />
                 </label>
             </div>
+        {/if}
+
+        {#if $connectionFeatures?.espnowControllerSupported}
+            <div class="divider my-1">Handheld controller</div>
+            <label class="label gap-2">
+                <input
+                    type="checkbox"
+                    class="toggle toggle-sm toggle-primary"
+                    bind:checked={form.espnowController}
+                />
+                Listen for the ESP-NOW controller
+            </label>
+            <p class="text-xs opacity-70">
+                The robot obeys the first controller it hears after this is switched on.
+            </p>
+        {/if}
+
+        {#if form.leftSonar && form.rightSonar}
+            <div class="divider my-1">HC-SR04 sonars</div>
+            {#each [{ name: 'Left', sonar: form.leftSonar }, { name: 'Right', sonar: form.rightSonar }] as side (side.name)}
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="label w-28 gap-2">
+                        <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            aria-label="Use the {side.name.toLowerCase()} sonar"
+                            bind:checked={side.sonar.enabled}
+                        />
+                        {side.name}
+                    </label>
+                    <label class="input input-sm w-36">
+                        Trigger
+                        <input
+                            type="number"
+                            min="0"
+                            aria-label="{side.name} sonar trigger pin"
+                            disabled={!side.sonar.enabled}
+                            bind:value={side.sonar.triggerPin}
+                        />
+                    </label>
+                    <label class="input input-sm w-36">
+                        Echo
+                        <input
+                            type="number"
+                            min="0"
+                            aria-label="{side.name} sonar echo pin"
+                            disabled={!side.sonar.enabled}
+                            bind:value={side.sonar.echoPin}
+                        />
+                    </label>
+                </div>
+            {/each}
+            <p class="text-xs opacity-70">
+                The echo pin carries 5 V: wire it through a divider, such as 1 kOhm from the echo to
+                the pin and 2 kOhm from the pin to ground. The sensors ping in turn, ten times a
+                second each.
+            </p>
+        {/if}
+
+        {#if form.powerSensor}
+            <div class="divider my-1">INA219 power sensor</div>
+            <div class="flex flex-wrap items-center gap-4">
+                <label class="select select-sm w-36">
+                    <span class="label">Address</span>
+                    <select aria-label="Power sensor address" bind:value={form.powerSensor.address}>
+                        {#each POWER_ADDRESSES as address (address)}
+                            <option value={address}>0x{address.toString(16).toUpperCase()}</option>
+                        {/each}
+                    </select>
+                </label>
+                <label class="input input-sm w-40">
+                    Shunt
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        aria-label="Shunt resistance in ohms"
+                        bind:value={form.powerSensor.shuntOhms}
+                    />
+                    Ohm
+                </label>
+                <label class="input input-sm w-40">
+                    Max
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        aria-label="Maximum current in amperes"
+                        bind:value={form.powerSensor.maxCurrentA}
+                    />
+                    A
+                </label>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+                <label class="input input-sm w-44">
+                    Cut-off
+                    <input
+                        type="number"
+                        min="0"
+                        max="26"
+                        step="0.1"
+                        aria-label="Cut-off voltage"
+                        bind:value={form.powerSensor.cutoffVoltage}
+                    />
+                    V
+                </label>
+                <label class="input input-sm w-44">
+                    Stall
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        aria-label="Stall current in amperes"
+                        bind:value={form.powerSensor.stallCurrentA}
+                    />
+                    A
+                </label>
+                <label class="input input-sm w-44">
+                    for
+                    <input
+                        type="number"
+                        min="0"
+                        step="100"
+                        aria-label="Stall time in milliseconds"
+                        bind:value={form.powerSensor.stallTimeMs}
+                    />
+                    ms
+                </label>
+            </div>
+            <p class="text-xs opacity-70">
+                0x40 is the servo board's: tie the INA219's A0 high for 0x41. The maximum current
+                sets the resolution and may put at most 0.32 V across the shunt. Under the cut-off
+                for 2 s the robot deactivates, and stays so until the rail rises 0.2 V above it; 0
+                turns it off. A current over the stall current for the stall time is only reported;
+                0 turns it off.
+            </p>
         {/if}
 
         {#if problem}

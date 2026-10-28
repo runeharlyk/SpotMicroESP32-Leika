@@ -6,10 +6,7 @@ import {
     WalkGaitData,
     WalkGaits
 } from '$lib/platform_shared/message'
-import { persistentStore } from '$lib/utilities/svelte-utilities'
 import { writable, type Writable } from 'svelte/store'
-
-export const jointNames = persistentStore('joint_names', <string[]>[])
 
 export const model = writable()
 
@@ -21,7 +18,8 @@ export const walkGait: Writable<WalkGaitData> = writable(
 
 export const kinematicData = writable(KinematicData.create())
 
-export const input: Writable<ControllerData> = writable(
+/** Centred sticks with the sliders where the app starts them. */
+export const startingInput = () =>
     ControllerData.create({
         left: { x: 0, y: 0 },
         right: { x: 0, y: 0 },
@@ -29,7 +27,12 @@ export const input: Writable<ControllerData> = writable(
         s1: 0.5,
         speed: 0.5
     })
-)
+
+/** The controls as they stand: the sticks and sliders shown, for the robot they drive (stores/drive.ts). */
+export const input: Writable<ControllerData> = writable(startingInput())
+
+/** The sticks and sliders the robot is sent. */
+export const outControllerData: Writable<ControllerData> = writable(startingInput())
 
 function enumToValuesAndLabels<T extends number>(enumObj: Record<string, T | string>) {
     const entries = Object.entries(enumObj).filter(
@@ -45,8 +48,16 @@ function enumToValuesAndLabels<T extends number>(enumObj: Record<string, T | str
 }
 
 const modesData = enumToValuesAndLabels<ModesEnum>(ModesEnum)
-export const modes = modesData.values
-export const modeLabels = modesData.labels
+// A clip puts the robot in ANIMATE and takes it out again; it is not a mode to pick.
+export const modes = modesData.values.filter(mode => mode !== ModesEnum.ANIMATE)
+export const modeLabels: Record<ModesEnum, string> = {
+    ...modesData.labels,
+    [ModesEnum.WALK_NN]: 'Learned walk'
+}
+
+/** The modes to offer: WALK_NN only on a robot that reports a policy which passed its self-check. */
+export const selectableModes = (walkNn: boolean) =>
+    modes.filter(mode => mode !== ModesEnum.WALK_NN || walkNn)
 
 const walkGaitsData = enumToValuesAndLabels<WalkGaits>(WalkGaits)
 export const walkGaits = walkGaitsData.values

@@ -16,7 +16,7 @@ INCLUDES = [os.path.join(HERE, "stubs"), os.path.join(REPO, "submodules", "nanop
 FIRMWARE_INCLUDES = [os.path.join(REPO, "esp32", "include"), os.path.join(REPO, "esp32", "src")]
 SOURCES = [os.path.join(REPO, "submodules", "nanopb", name) for name in ("pb_common.c", "pb_encode.c", "pb_decode.c")]
 SOURCES += [os.path.join(REPO, "esp32", "src", "platform_shared", name)
-            for name in ("api.pb.c", "filesystem.pb.c", "message.pb.c")]
+            for name in ("api.pb.c", "filesystem.pb.c", "message.pb.c", "animation.pb.c")]
 
 
 def main() -> None:
