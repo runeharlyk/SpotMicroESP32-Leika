@@ -115,3 +115,8 @@ CONFIG_JPEG_ENABLE_DEBUG_LOG=n
 
 # mbedTLS from PSRAM, as on the S3 builds (sdkconfig.defaults.esp32s3): its handshakes ran out of internal RAM there
 CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+
+# Bootloader logs warnings only: at INFO it measured 24,896 bytes, past the 24,576 between its offset (0x2000) and the
+# partition table (0x8000), so merge-bin refused the factory image and a flash of the parts overwrote its tail; at
+# WARN it is 22,144 bytes
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
