@@ -63,10 +63,13 @@ The same board and build (ELF cb0e8df4), standing on the floor and never walking
 |---|---|---|
 | Right stick right in STAND twists the body anticlockwise | USB, telemetry | pass: IMU yaw +16.5 degrees at a stick of 0.6 |
 | Right stick up in STAND raises the nose | USB, telemetry | pass: IMU pitch -8.8 degrees (nose up) at a stick of 0.6 |
-| Left stick right and up in STAND shift the body right and forward | USB | not judged: the IMU cannot see a shift, and the moves were not announced one by one |
+| Left stick right in STAND shifts the body right | USB | pass, seen by the user on a rerun announced move by move |
+| Left stick up in STAND shifts the body forward | USB | pass, seen by the user |
 | The fused heading standing still | USB | pass: `yaw` 0.011 degrees after 60 s |
-| The rise from REST to STAND | USB, telemetry | the body lurches: roll to -49 degrees by the accelerometer for about 2 s, settled near -9 degrees after 3.3 s, with a live IMU |
-| Wave, bow and sit on the floor | USB, telemetry | ran and handed back to STAND; during the wave the body rolled from -7 to about -35 degrees while the foot was up, with a live IMU |
+| The rise from REST to STAND | USB, telemetry | first run: the body lurched, roll to -49 degrees by the accelerometer for about 2 s, settled near -9 degrees after 3.3 s; rerun after a restart: smooth, seen by the user, roll -16.7 to -1.8 degrees with no overshoot |
+| Standing level | USB | fail, then fixed: it stood with its right side lower with the sticks centred, as the IMU's level calibration had never run (the stored mounting held no tilt) and the IMU board sits about 6 degrees off level; calibrating with the robot limp on the floor refused at 17.6 degrees of tilt (above the 15 degree limit), then with the body propped level it folded 6.2 degrees into the mounting, and the robot stood level |
+| Wave, bow and sit on the floor | USB, telemetry | ran and handed back to STAND; during the wave the body rolled from -7 to about -35 degrees while the foot was up |
+| The wave before and after the IMU's level calibration | USB, telemetry | before: tipped over, roll to -25 degrees; after: wobbly but stayed up, seen by the user, roll at most -7.1 degrees |
 | The robot's power cut and restored with the ESP32 on USB | USB, telemetry | fail: the last IMU sample was held, up to 7.8 s old and still valid, and after the power returned the MPU6050 read all zeros as valid until a restart; the servo board recovered |
 
 ## Open checks
