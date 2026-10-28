@@ -14,7 +14,8 @@ The ESP32-S3 test board inside a Spot Pico, as recorded between 2026-09-30 and 2
 | PSRAM | 2 MB embedded, quad (the `esp32-s3-n8r2` env) |
 | Robot | Spot Pico, stored variant `SPOTMICRO_ESP32_MINI`, MG92B servos on a PCA9685 at 0x40 |
 | Sensors | GY-87 (MPU6050 at 0x68, HMC5883L at 0x1E behind its bypass, BMP180 at 0x77), PAJ7620 at 0x73; no camera |
-| Backup | the whole flash before the 2026-10-22 session, firmware v0.3.0-40: `C:\data\repos\Robotics\leika-pico-flash-backup-2026-10-22.bin` |
+| Backup | the whole flash before the 2026-10-22 session, firmware v0.3.0-40: `C:\data\repos\Robotics\leika-pico-flash-backup-2026-10-22.bin`; before the 2026-10-28 session, the 2026-10-22 build of `hexapod-ports-2` (ELF 7e97e8e9): `C:\data\repos\Robotics\leika-pico-flash-backup-2026-10-28.bin` |
+| USB | on 2026-10-28 the board's native USB-Serial-JTAG port (VID 303A, PID 1001, MAC 3c:84:27:27:cb:70) as COM4, which carries the robot's protobuf link, not the log |
 
 ## 2026-10-22, branch `hexapod-ports-2`
 
@@ -35,6 +36,25 @@ The WiFi link was poor throughout: ping 22 ms to 2.3 s, telemetry batches lost a
 | lwIP and httpd pinned to a core (a4624253, dropped) | WebSocket | fail: a client that sent a request and then subscribed got no reply and its link reset in 3 of 3 runs, against about 7 of 9 clean without the pinning; suggestive only, on the noisy link |
 | The Python client's keep-alive | WebSocket | the robot held pongs back past 10 s; the timeout is 20 s since 42f47f1d |
 
+## 2026-10-28, branch `hexapod-ports-2` (4a106c3e)
+
+Flashed over the native USB port (COM4) with the `esp32-s3-n8r2` env, ELF ad9f6ada for the first run and cb0e8df4 (the same commit, rebuilt) for the rest; every test ran over that port with the Python client, recording telemetry throughout.
+The robot sat on a stand with its legs free and its servos powered, so nothing that needs the floor was tested; the user watched.
+For comparison the same sequence ran on the 2026-10-22 build (ELF 7e97e8e9) from the flash backup, then the new build went back on.
+
+| Feature | Transport | Outcome |
+|---|---|---|
+| Sensors and the servo board at 400 kHz | USB | pass: the IMU, compass, barometer, gesture sensor and servo board detected; one NACK from the PAJ7620 in 8 s, no other I2C error |
+| The 100 Hz loop, deactivated | USB, telemetry | pass: 800 ticks in 8 s, none missing, period 10.0 ms mean and 12.3 ms max, compute 114 us mean and 215 us max; internal RAM 62 KB free, 26 KB largest block, 46 KB low mark; CPU 11 % |
+| The 100 Hz loop, moving | USB, telemetry | fail, and the same on the 2026-10-22 build: the servo write takes 1.9 ms mean and 7.3 ms p99 (up to 12.7 ms), compute 0.6 ms in STAND and ANIMATE and 1.6 ms mean, 4.3 ms p99 in WALK, so a walking tick runs up to 14 ms apart (18 ms on the older build) |
+| Stand from DEACTIVATED | USB, telemetry | pass: no joint faster than the 720 deg/s slew limit |
+| The built-in clips wave, bow and sit, and stop after sit holds | USB | pass: each ran Entry, Playing, Exit and handed back to STAND, no joint clamped, at most 329 deg/s; tipping not tested, the legs were free |
+| Wave lifts the front left foot | USB | pass, seen by the user; the telemetry's largest move was joint 0, leg 0 |
+| Walk to stand | USB, telemetry | pass: no joint faster than the walk's 540 deg/s cap; the older build the same |
+| A gait chosen mid-stride, trot to crawl and back (dbe92937) | USB, telemetry | pass: no joint faster than 540 deg/s, nothing seen to jump |
+| AUTO with a standstill between speeds (bd96d22a) | USB | pass, seen by the user: a slow stick crawled, the fast one trotted, the slow one crawled again; straight from slow to fast it kept the crawl, as AUTO swaps only at a standstill; the walked speed at the swap was not measured, the legs were free |
+| Rest, then deactivate | USB, telemetry | pass: at most 439 deg/s |
+
 ## Open checks
 
 Checks that wait for the powered Pico, with the procedure that settles each, cheapest and safest first.
@@ -43,8 +63,6 @@ Write every outcome, failures included, into a new section above, headed with th
 
 ### Boot and sensors
 
-- **The sensors and the servo board at 400 kHz:** with the servos powered, read the boot log and run Peripherals, I2C, Scan.
-  Expected: the MPU6050, HMC5883L, BMP180, PAJ7620 and PCA9685 are all detected, and the control loop holds 100 Hz with the servo writes at 400 kHz (the telemetry's period on the status page or in `report_recording.py`).
 - **WiFi with Bluetooth on:** the S3 boards move the WiFi buffers to PSRAM to make room for Bluetooth; read the boot log's `Bluetooth took N bytes` line and time a file download over WiFi.
   Record: the bytes, and the download's time against a build without Bluetooth.
 - **Internal RAM after camera init:** on a camera board with the camera env, the status page's internal RAM, largest block and low mark after the camera has started.
@@ -53,7 +71,7 @@ Write every outcome, failures included, into a new section above, headed with th
 ### Signs and conventions
 
 - **The +z convention, on the floor, at a small stick:** in STAND the left stick right leans the body right; in WALK +lx strafes right and the right stick left (+rx) turns anticlockwise seen from above.
-  Then `odometry_request` gives `yaw` and `kinematic_yaw` with the same sign, positive for an anticlockwise turn; `goal_move(sideways=0.1)` goes left and `goal_move(turn_deg=90)` turns anticlockwise and stops; wave lifts the front left foot; the calibration page's "Front left" is the leg that moves.
+  Then `odometry_request` gives `yaw` and `kinematic_yaw` with the same sign, positive for an anticlockwise turn; `goal_move(sideways=0.1)` goes left and `goal_move(turn_deg=90)` turns anticlockwise and stops; the calibration page's "Front left" is the leg that moves.
   Expected: every one as stated; if the servo wiring were mirrored, all of them flip at once, and this is the one check that settles it.
 - **The four-bar knee:** on the calibration page set one knee to its centre PWM + 40.
   Expected: the real tibia turns about 1.7 times the 2D diagram's turn.
@@ -73,10 +91,8 @@ Write every outcome, failures included, into a new section above, headed with th
 
 ### Walking
 
-- **A gait button pressed while walking:** walk forward in the trot and press CRAWL, then TROT.
-  Expected: the walk stops on all four feet, takes the gait and walks on, with no joint jumping.
-- **AUTO's stop, swap and restart:** in AUTO push the stick slowly from the centre to the rim and back.
-  Expected: the crawl up to about a fifth of the stick, a stop on four feet, the trot above, and the crawl again below about a sixth; the commanded speed does not jump at the swap, while the Pico's reach limit leaves the crawl at its full stroke about 0.82 of it, so the walked speed still rises about 1.2 times there (`docs/motion_system.md`, AUTO gait).
+- **AUTO's walked speed at the swap, on the floor:** the swap itself passed on the stand on 2026-10-28; on the floor walk just below and just above a fifth of the stick, with a standstill between, against a tape measure.
+  Expected: the commanded speed does not jump at the swap, while the Pico's reach limit leaves the crawl at its full stroke about 0.82 of it, so the walked speed still rises about 1.2 times there (`docs/motion_system.md`, AUTO gait).
 - **A new step height mid-walk:** walk forward and move the step height slider from 0.25 to 1.
   Expected: the raised feet rise over about a third of a second instead of jumping.
 - **The sticks over Bluetooth:** drive from the app over Bluetooth on the stand, then on the floor.
@@ -96,8 +112,8 @@ Write every outcome, failures included, into a new section above, headed with th
 
 ### Animations
 
-- **The built-in clips:** `robot_animate.py --robot <usb> list`, `mode STAND`, then `play sit`, `play bow` and `play wave`, and `stop` after sit holds.
-  Expected: each runs Entry, Playing, Exit and hands back to STAND, and the wave, which keeps only 9 mm of centre-of-mass margin in the simulation, lifts the front left foot without tipping.
+- **The built-in clips on the floor:** they passed on the stand on 2026-10-28; play them standing on the floor.
+  Expected: the wave, which keeps only 9 mm of centre-of-mass margin in the simulation, does not tip the robot.
 - **Show on robot:** drag a pose in the editor with Show on robot on, then close the app mid-pose.
   Expected: the robot follows the drag, and eases back to stance once the app is gone.
 - **An uploaded clip:** `robot_animate.py --robot <ip> upload <clip.json>`, then play it over USB.
