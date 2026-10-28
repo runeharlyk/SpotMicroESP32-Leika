@@ -43,7 +43,11 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
     fd_res.has_servos_calibrated = true;
     fd_res.servos_calibrated = features.servosCalibrated;
     fd_res.ws2812 = features.ws2812;
-    fd_res.espnow_controller_supported = SOC_WIFI_SUPPORTED;
+#if SOC_WIFI_SUPPORTED
+    fd_res.espnow_controller_supported = true;
+#else
+    fd_res.espnow_controller_supported = false;  // the P4 has no radio of its own, so no ESP-NOW
+#endif
     fd_res.walk_nn = features.walkNN;
     fd_res.ota_download = USE_OTA_DOWNLOAD;
     fd_res.mdns = true;
