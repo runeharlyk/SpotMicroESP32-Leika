@@ -55,6 +55,20 @@ For comparison the same sequence ran on the 2026-10-22 build (ELF 7e97e8e9) from
 | AUTO with a standstill between speeds (bd96d22a) | USB | pass, seen by the user: a slow stick crawled, the fast one trotted, the slow one crawled again; straight from slow to fast it kept the crawl, as AUTO swaps only at a standstill; the walked speed at the swap was not measured, the legs were free |
 | Rest, then deactivate | USB, telemetry | pass: at most 439 deg/s |
 
+## 2026-10-28, on the floor, branch `hexapod-ports-2` (4a106c3e)
+
+The same board and build (ELF cb0e8df4), standing on the floor and never walking, over the native USB port with telemetry recorded.
+
+| Feature | Transport | Outcome |
+|---|---|---|
+| Right stick right in STAND twists the body anticlockwise | USB, telemetry | pass: IMU yaw +16.5 degrees at a stick of 0.6 |
+| Right stick up in STAND raises the nose | USB, telemetry | pass: IMU pitch -8.8 degrees (nose up) at a stick of 0.6 |
+| Left stick right and up in STAND shift the body right and forward | USB | not judged: the IMU cannot see a shift, and the moves were not announced one by one |
+| The fused heading standing still | USB | pass: `yaw` 0.011 degrees after 60 s |
+| The rise from REST to STAND | USB, telemetry | the body lurches: roll to -49 degrees by the accelerometer for about 2 s, settled near -9 degrees after 3.3 s, with a live IMU |
+| Wave, bow and sit on the floor | USB, telemetry | ran and handed back to STAND; during the wave the body rolled from -7 to about -35 degrees while the foot was up, with a live IMU |
+| The robot's power cut and restored with the ESP32 on USB | USB, telemetry | fail: the last IMU sample was held, up to 7.8 s old and still valid, and after the power returned the MPU6050 read all zeros as valid until a restart; the servo board recovered |
+
 ## Open checks
 
 Checks that wait for the powered Pico, with the procedure that settles each, cheapest and safest first.
