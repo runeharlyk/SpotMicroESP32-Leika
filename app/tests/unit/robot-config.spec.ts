@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { fakeRobot } from './fake-robot'
+import { fakeRobot, fakeSettingsRobot } from './fake-robot'
 import { FeaturesDataResponse } from '../../src/lib/platform_shared/message'
 import { PeripheralSettings, ServoSettings } from '../../src/lib/platform_shared/api'
 import {
@@ -53,11 +53,12 @@ describe('robot configuration', () => {
     afterEach(() => robot?.restore())
 
     it('exports the calibration and peripheral settings, without the variant joint model', async () => {
-        robot = fakeRobot(name => {
-            if (name === 'featuresDataRequest') return { featuresDataResponse: pico }
-            if (name === 'servoSettingsRequest') return { servoSettings: servo }
-            return { peripheralSettings: peripherals }
-        })
+        robot = fakeSettingsRobot(
+            { servoSettings: servo, peripheralSettings: peripherals },
+            () => ({
+                featuresDataResponse: pico
+            })
+        )
 
         const config = await exportConfig(new Date('2026-10-05T12:00:00Z'))
 

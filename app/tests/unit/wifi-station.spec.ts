@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte'
 import Wifi from '../../src/routes/wifi/sta/Wifi.svelte'
 import { WifiSettings, WifiStatus, type WifiNetwork } from '../../src/lib/platform_shared/api'
 import { ipToUint32 } from '../../src/lib/utilities'
-import { fakeRobot, fakeStates } from './fake-robot'
+import { fakeRobot, fakeStates, servesSettings } from './fake-robot'
 
 // Dialogs need the modal host of the app's layout; here a confirmation is given straight away.
 vi.mock('svelte-modals', async original => ({
@@ -50,6 +50,7 @@ describe('WiFi station settings', () => {
     let component: ReturnType<typeof mount> | undefined
     let robot: ReturnType<typeof fakeRobot> | undefined
     let states: ReturnType<typeof fakeStates> | undefined
+    let unserve = () => {}
     let saved: WifiSettings[] = []
     let refuseSaves = false
 
@@ -58,18 +59,17 @@ describe('WiFi station settings', () => {
         refuseSaves = false
         states = fakeStates()
         states.set(WifiStatus, WifiStatus.create({ status: 3, ssid: 'Home' }))
-        robot = fakeRobot((name, data) => {
-            if (name === 'wifiSettingsRequest')
-                return {
-                    wifiSettings: WifiSettings.create({
-                        hostname: 'spot-micro',
-                        wifiNetworks: networks
-                    })
-                }
-            if (refuseSaves) return { statusCode: 400, errorMessage: 'Invalid state' }
-            saved.push(structuredClone(data.wifiSettings!))
-            return { wifiSettings: data.wifiSettings }
+        unserve = servesSettings(states, {
+            wifiSettings: WifiSettings.create({ hostname: 'spot-micro', wifiNetworks: networks })
         })
+        robot = fakeRobot(
+            (name, data) => {
+                if (refuseSaves) return { statusCode: 400, errorMessage: 'Invalid state' }
+                saved.push(structuredClone(data.wifiSettings!))
+                return { wifiSettings: data.wifiSettings }
+            },
+            { states }
+        )
         component = mount(Wifi, { target: document.body })
         await vi.waitFor(() =>
             expect(document.body.textContent).toMatch(networks[0]?.ssid ?? 'Saved Networks')
@@ -82,6 +82,7 @@ describe('WiFi station settings', () => {
         component = undefined
         robot?.restore()
         states?.restore()
+        unserve()
         document.body.innerHTML = ''
     })
 
