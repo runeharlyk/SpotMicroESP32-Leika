@@ -50,7 +50,7 @@ describe('animation editor', () => {
         expect(error).toBeNull()
         expect(selected).toBe(2)
         expect(document.keyframes.map(k => k.time)).toEqual(
-            [0, 0.7, 1, 1.3, 3.3, 3.9, 4.6].map(Math.fround)
+            [0, 0.7, 1, 1.3, 1.6, 1.85, 2.1, 2.35, 2.6, 2.85, 3.1, 3.5, 4.1, 4.8].map(Math.fround)
         )
     })
 
@@ -60,7 +60,7 @@ describe('animation editor', () => {
         editor.setTime(0, 0.5)
         editor.deleteKeyframe(0)
         expect(get(editor).document.keyframes[0].time).toBe(0)
-        expect(get(editor).document.keyframes).toHaveLength(6)
+        expect(get(editor).document.keyframes).toHaveLength(13)
     })
 
     it('moves a keyframe past its neighbour and keeps it selected', () => {
@@ -70,11 +70,11 @@ describe('animation editor', () => {
         const { document, selected } = get(editor)
         expect(document.keyframes[selected].time).toBe(2)
         expect(document.keyframes.map(k => k.time)).toEqual(
-            [0, 1.3, 2, 3.3, 3.9, 4.6].map(Math.fround)
+            [0, 1.3, 1.6, 1.85, 2, 2.1, 2.35, 2.6, 2.85, 3.1, 3.5, 4.1, 4.8].map(Math.fround)
         )
     })
 
-    // Without the wave's overlay, which moves foot targets only, so a switch inside it does move the foot.
+    // Without overlays, which move foot targets only, so a switch inside one would move the foot.
     it('switches a leg between foot and joints without moving the foot', () => {
         const editor = createEditor('SPOTMICRO_ESP32_MINI')
         editor.open(wave())
