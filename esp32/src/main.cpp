@@ -613,8 +613,16 @@ void setupEventSocket() {
                                res.response.camera_settings);
          }},
 
+        // A value the fitted sensor refuses is refused with the reason rather than stored as if it applied.
         {socket_message_CorrelationRequest_camera_settings_tag,
          [](const auto &req, auto &res, Client client) {
+             if (const char *refusal = cameraService.refusal(req.request.camera_settings)) {
+                 res.status_code = 400;
+                 strncpy(res.error_message, refusal, sizeof(res.error_message) - 1);
+                 return replyWithSettings(cameraService.protoHandler, res,
+                                          socket_message_CorrelationResponse_camera_settings_tag,
+                                          res.response.camera_settings);
+             }
              applySettings(cameraService.protoHandler, req.request.camera_settings, res,
                            socket_message_CorrelationResponse_camera_settings_tag, res.response.camera_settings);
          }},

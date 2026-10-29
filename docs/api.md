@@ -122,5 +122,6 @@ The firmware starts every reply at 200 and overrides it as follows.
 | 503  | "Sensor task busy": the I2C scan or the IMU calibration could not be queued.                                                  |
 
 The settings replies (`wifi_settings`, `ap_settings`, `servo_settings`, `peripheral_settings`, `camera_settings`) always hold the settings in force, so a 400 reply shows the unchanged values.
+A refused `camera_settings` write names the value and why instead of "Invalid state": one out of the range every likely sensor takes, a frame size larger than the frame buffers (SVGA), or a setting the fitted sensor does not have, such as the OV2640's sharpness and denoise.
 The I2C scan, the IMU calibration and the mDNS query send their one reply later, with 200.
 They send nothing if the client has disconnected in the meantime.
