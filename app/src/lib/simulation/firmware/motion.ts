@@ -85,6 +85,8 @@ export class FirmwareMotion {
     private currentMode = ModesEnum.DEACTIVATED
     private returnMode = ModesEnum.DEACTIVATED
     private angles = new Array(12).fill(0)
+    /** The last input, which a state taking over follows from its first tick (MotionService::setState). */
+    private command: CommandMsg | null = null
 
     constructor(variant: Variant) {
         this.cfg = kinConfig(variant)
@@ -162,6 +164,7 @@ export class FirmwareMotion {
             s: data.speed,
             s1: data.s1
         }
+        this.command = cmd
         if (this.state instanceof MotionState) this.state.handleCommand(cmd)
     }
 
@@ -199,6 +202,7 @@ export class FirmwareMotion {
         if (next instanceof MotionState) {
             next.resetSmoothing()
             next.begin()
+            if (this.command) next.handleCommand(this.command)
         }
     }
 
