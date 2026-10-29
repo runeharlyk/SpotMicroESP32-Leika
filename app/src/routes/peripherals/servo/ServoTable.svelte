@@ -1,9 +1,10 @@
 <script lang="ts">
     import { robotRequest } from '$lib/robot-request'
-    import type { ServoSettings } from '$lib/platform_shared/api'
+    import { ServoSettings } from '$lib/platform_shared/api'
     import { notifications } from '$lib/components/toasts/notifications'
     import Spinner from '$lib/components/Spinner.svelte'
-    import LoadError from '$lib/components/LoadError.svelte'
+    import { Warning } from '$lib/components/icons'
+    import { SettingsForm } from '$lib/robot/settings.svelte'
     import {
         JOINT_NAMES,
         LEG_NAMES,
@@ -29,6 +30,16 @@
     let channelsEdited = $state(false)
     const channelError = $derived(channelsEdited ? channelsProblem(channels) : null)
 
+    // The stored settings as the robot pushes them, and every client's calibration with them; the table edits a copy.
+    const form = new SettingsForm(ServoSettings, stored => stored)
+    $effect(() => form.follow())
+    $effect(() => {
+        const draft = form.draft
+        servoSettings = draft
+        if (draft && !channelsEdited)
+            channels = draft.servos.map((_, joint) => jointChannel(draft, joint))
+    })
+
     const syncConfig = async () => {
         if (!servoSettings || channelError) return
         const saved: ServoSettings = {
@@ -39,24 +50,13 @@
         }
         notifications.info('Uploading servo config...', 3000)
         try {
-            await robotRequest({ servoSettings: saved })
-            servoSettings.channels = saved.channels
+            await form.save(() => robotRequest({ servoSettings: saved }))
+            channelsEdited = false
             notifications.success('Servo config uploaded successfully', 3000)
         } catch (error) {
             notifications.error(`Servo config upload failed: ${(error as Error).message}`, 5000)
         }
     }
-
-    const getServoConfig = async () => {
-        const reply = await robotRequest({ servoSettingsRequest: {} })
-        const settings = reply.servoSettings
-        if (!settings) throw new Error('The robot sent no servo config')
-        servoSettings = settings
-        channels = settings.servos.map((_, joint) => jointChannel(settings, joint))
-        channelsEdited = false
-    }
-
-    let loading = $state(getServoConfig())
 
     const setCenterPWM = async () => {
         if (!servoSettings || jointId === -1) return
@@ -86,11 +86,14 @@
     </button>
 </div>
 
-{#await loading}
+{#if !servoSettings && form.problem}
+    <div role="alert" class="alert alert-error alert-soft">
+        <Warning class="h-6 w-6 shrink-0" />
+        <span>{form.problem}</span>
+    </div>
+{:else if !servoSettings}
     <Spinner />
-{:catch error}
-    <LoadError {error} retry={() => (loading = getServoConfig())} />
-{/await}
+{/if}
 
 {#if servoSettings}
     {#if servoSettings.model}

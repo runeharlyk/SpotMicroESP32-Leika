@@ -13,6 +13,9 @@ inline void odometryToProto(const FusedEstimate &estimate, socket_message_Odomet
     proto.kinematic_yaw = estimate.kinematicYaw;
 }
 
+/** A part of a tick, saturated at 16 bits so a batch of ten still fits one serial frame. */
+inline uint32_t tickPartUs(int64_t us) { return std::clamp<int64_t>(us, 0, UINT16_MAX); }
+
 /** When a control tick's parts ran, in esp_timer microseconds. */
 struct TickTimes {
     uint32_t seq;
@@ -42,6 +45,14 @@ inline void fillTickSample(socket_message_TickSample &tick, const TickTimes &tim
     }
     tick.servo_write_us = write.attempted ? times.written - times.computed : 0;
     tick.servo_ok = write.ok;
+    tick.servo_bus_wait_us = tickPartUs(write.bus.waitUs);
+    tick.servo_transfer_us = tickPartUs(write.bus.transferUs);
+    const MotionService::Timing &motionTiming = motion.timing();
+    tick.motion_us = tickPartUs(motionTiming.totalUs);
+    tick.motion_step_us = tickPartUs(motionTiming.stepUs);
+    tick.odometry_us = tickPartUs(motionTiming.odometryUs);
+    tick.goal_us = tickPartUs(motionTiming.goalUs);
+    tick.kinematics_us = tickPartUs(motionTiming.kinematicsUs);
     const CommandMsg &command = motion.currentCommand();
     const float values[7] = {command.lx, command.ly, command.rx, command.ry, command.h, command.s, command.s1};
     std::copy(values, values + 7, tick.command);

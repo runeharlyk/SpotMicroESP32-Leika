@@ -15,9 +15,15 @@ A clip plays as ANIMATE for `clip_s` from the mode it was played in, reporting i
 subscribed to it: sit holds its end and wave loops until stopped, and the rest play once.
 
 Each subscription to the telemetry batches is answered with a TelemetryHeader, as the firmware's sendTelemetryHeader
-does, and a client subscribed to the network samples gets one with every batch (the robot sends one a second)."""
+does, and a client subscribed to the network samples gets one with every batch (the robot sends one a second).
+
+A subscribe is answered as the firmware answers it (esp32/test/host/topic_snapshot_test.cpp): a state topic of
+platform_shared/topics.json with its current value, then every subscribe with its echo as the ack. `snapshots=False`
+answers none, as firmware from before the state topics."""
 import asyncio
+import json
 import math
+import os
 import threading
 import time
 
@@ -32,12 +38,16 @@ BUILTIN_CLIPS = ("bow", "sit", "wave")
 ANIMATION_STATUS = pb.Message.DESCRIPTOR.fields_by_name["animation_status"].number
 TELEMETRY_BATCH = pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number
 TELEMETRY_NETWORK = pb.Message.DESCRIPTOR.fields_by_name["telemetry_network"].number
+with open(os.path.join(os.path.dirname(__file__), "..", "..", "platform_shared", "topics.json")) as _topics:
+    STATE_TOPICS = {topic["tag"]: topic["name"] for topic in json.load(_topics)["topics"] if topic["kind"] == "state"}
 
 
 class FakeRobot:
     def __init__(self, variant="SPOTMICRO_ESP32_MINI_V2", obey=True, transport="websocket", goals=True,
-                 supply_voltage=6.0):
+                 supply_voltage=6.0, snapshots=True):
         self.variant, self.obey, self.silent = variant, obey, False
+        self.snapshots = snapshots
+        self.animation = pb.AnimationStatus()  # the clip's last status, which a subscribe is answered with
         self.supply_voltage = supply_voltage
         self.status = 200
         self.connections = 0
@@ -91,10 +101,15 @@ class FakeRobot:
                 elif kind == "pingmsg":
                     await send(pb.Message(pongmsg=pb.PongMsg()).SerializeToString())
                 elif kind == "sub_notif":
-                    self.subscribed.add(message.sub_notif.tag)
-                    if message.sub_notif.tag == TELEMETRY_BATCH:
+                    tag = message.sub_notif.tag
+                    self.subscribed.add(tag)
+                    if tag == TELEMETRY_BATCH:
                         header = pb.TelemetryHeader(firmware_version="fake", variant=self.variant, batch_ticks=1)
                         await send(pb.Message(telemetry_header=header).SerializeToString())
+                    if self.snapshots:
+                        if tag in STATE_TOPICS:
+                            await send(self._snapshot(STATE_TOPICS[tag]).SerializeToString())
+                        await send(pb.Message(sub_notif=pb.SubscribeNotification(tag=tag)).SerializeToString())
                 elif kind == "unsub_notif":
                     self.subscribed.discard(message.unsub_notif.tag)
                 elif kind == "fs_upload_data" and self.transport == "websocket":
@@ -111,6 +126,15 @@ class FakeRobot:
         finally:
             sender.cancel()
             self.connections -= 1
+
+    def _snapshot(self, name):
+        values = {"mode": pb.ModeData(mode=self.mode), "walk_gait": pb.WalkGaitData(gait=self.gait),
+                  "wifi_status": api_pb2.WifiStatus(), "animation_status": self.animation, "goal_status": self.goal,
+                  "ota_status": pb.OtaStatus(),
+                  "stored_servo_settings": api_pb2.ServoSettings(supply_voltage=self.supply_voltage),
+                  "stored_peripheral_settings": self.peripheral_settings,
+                  "stored_wifi_settings": api_pb2.WifiSettings(), "stored_ap_settings": api_pb2.APSettings()}
+        return pb.Message(**{name: values[name]})
 
     def _reply(self, request):
         response = pb.CorrelationResponse(correlation_id=request.correlation_id, status_code=self.status)
@@ -129,11 +153,9 @@ class FakeRobot:
             self.goal.state = pb.GOAL_CANCELLED
         elif kind == "features_data_request":
             response.features_data_response.variant = self.variant
-        elif kind == "servo_settings_request":
-            response.servo_settings.supply_voltage = self.supply_voltage
-        elif kind in ("peripheral_settings_request", "peripheral_settings"):
-            if kind == "peripheral_settings":
-                self.peripheral_settings.CopyFrom(request.peripheral_settings)
+            response.features_data_response.settings_topics = self.snapshots
+        elif kind == "peripheral_settings":
+            self.peripheral_settings.CopyFrom(request.peripheral_settings)
             response.peripheral_settings.CopyFrom(self.peripheral_settings)
         elif kind == "odometry_request":
             response.odometry.CopyFrom(self.odometry)
@@ -213,9 +235,9 @@ class FakeRobot:
         self.mode = pb.STAND if before == pb.WALK else before
 
     async def _report(self, name, state, t, wait=True):
+        self.animation = pb.AnimationStatus(name=name, state=state, t=t)
         if ANIMATION_STATUS in self.subscribed:
-            status = pb.AnimationStatus(name=name, state=state, t=t)
-            await self._send(pb.Message(animation_status=status).SerializeToString())
+            await self._send(pb.Message(animation_status=self.animation).SerializeToString())
         if wait:
             await asyncio.sleep(0.1)
 

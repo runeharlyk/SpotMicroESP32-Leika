@@ -15,7 +15,8 @@ describe('a store the robot reports and the user changes', () => {
         expect(sent).toContain(ModesEnum.STAND)
     })
 
-    // The robot reports once a second: echoing that back would re-apply its mode and restart its gait.
+    // The robot reports every change and answers every subscribe: echoing that back would re-apply its mode and restart
+    // its gait.
     it("shows the robot's report without sending it back", () => {
         const store = writable(mode(ModesEnum.DEACTIVATED))
         const sent: ModesEnum[] = []

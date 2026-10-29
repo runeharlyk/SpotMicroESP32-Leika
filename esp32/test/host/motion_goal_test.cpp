@@ -401,7 +401,39 @@ static void aStraightGoalHoldsItsLineOnADriftingHeading() {
     }
 }
 
+// On a clock that moves on with every read, each part update() times lies inside the whole, a deactivated robot times
+// none, and a goal is timed only while one runs.
+static void anUpdateTimesItsPartsAndAGoalOnlyWhileOneRuns() {
+    MotionService motion;
+    motion.useConfig(&PICO);
+    motion.begin();
+    fake_timer::source = [] { return fake_timer::nowUs + 1; };
+    motion.update(ImuSample {}, eGestureNone);
+    const MotionService::Timing deactivated = motion.timing();
+    fake_timer::source = nullptr;
+    CHECK(deactivated.totalUs > 0);
+    CHECK(deactivated.stepUs == 0 && deactivated.odometryUs == 0 && deactivated.kinematicsUs == 0);
+
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    tick(motion, TICKS_PER_S);
+    fake_timer::source = [] { return fake_timer::nowUs + 1; };
+    motion.update(ImuSample {}, eGestureNone);
+    const MotionService::Timing standing = motion.timing();
+    motion.inbox.postGoal({0.3f, 0, 0, 0.5f});
+    motion.update(ImuSample {}, eGestureNone);
+    const MotionService::Timing driving = motion.timing();
+    fake_timer::source = nullptr;
+    CHECK(motion.goalStatus().state == GoalState::RUNNING);
+    CHECK(standing.goalUs == 0);
+    CHECK(driving.goalUs > 0);
+    for (const MotionService::Timing &timing : {standing, driving}) {
+        CHECK(timing.stepUs > 0 && timing.odometryUs > 0 && timing.kinematicsUs > 0);
+        CHECK(timing.stepUs + timing.odometryUs + timing.goalUs + timing.kinematicsUs < timing.totalUs);
+    }
+}
+
 int main() {
+    anUpdateTimesItsPartsAndAGoalOnlyWhileOneRuns();
     aForwardGestureStepsOnceAndIgnoresAnotherMeanwhile();
     aClockwiseGestureTurnsAFullCircle();
     aGoalWalksTheOdometryToItsTarget();

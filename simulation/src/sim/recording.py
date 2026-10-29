@@ -29,8 +29,11 @@ PICO_JOINT_SIGN = np.array([-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1], dtype=f
 PICO_JOINT_OFFSET = np.radians([7.3, 54.6, 101.2, 6.0, 52.9, -99.4, 5.8, 54.4, 100.4, 6.7, 50.6, -98.1])
 FIRMWARE_LEGS_IN_MODEL_ORDER = [1, 0, 3, 2]  # the model's joints run fr, fl, rr, rl
 
+# Where a tick's time went (message.proto's TickSample); a recording from older firmware holds zeros.
+TICK_PARTS = ("motion_us", "motion_step_us", "odometry_us", "goal_us", "kinematics_us", "servo_bus_wait_us",
+              "servo_transfer_us")
 _TICK_SCALARS = ("seq", "t_us", "period_us", "compute_us", "servo_write_us", "servo_ok", "command_age_us",
-                 "command_rx_us", "mode", "gait", "link_lost")
+                 "command_rx_us", "mode", "gait", "link_lost", *TICK_PARTS)
 _TICK_VECTORS = ("angles", "targets", "pwm", "command")
 _IMU_SCALARS = ("t_us", "mag_t_us", "temperature", "valid")
 _IMU_VECTORS = ("accel", "gyro", "mag", "gravity", "quat", "rpy")

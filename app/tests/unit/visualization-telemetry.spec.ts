@@ -9,12 +9,17 @@ import esp32 from '../fixtures/firmware-trace-SPOTMICRO_ESP32.json'
 
 // WebGL and the model files are stubbed; the robot link is the app's own socket against a fake robot, since what is
 // under test is the stream the view asks the robot for and what it does with it.
-const scene: { render?: () => void } = {}
+const scene: { render?: () => boolean } = {}
 const joints = Object.fromEntries(
     JOINT_MAPS.SPOTMICRO_ESP32.joints.map(name => {
         const joint = {
             angle: 0,
-            setJointValue: (value: number) => (joint.angle = value)
+            // As urdf-loader's: whether the value changed.
+            setJointValue: (value: number) => {
+                const changed = value !== joint.angle
+                joint.angle = value
+                return changed
+            }
         }
         return [name, joint]
     })
@@ -42,7 +47,7 @@ vi.mock('$lib/sceneBuilder', () => {
             ])
                 Object.assign(this, { [name]: chain })
         }
-        addRenderCb(callback: () => void) {
+        addRenderCb(callback: () => boolean) {
             scene.render = callback
             return this
         }
@@ -139,6 +144,37 @@ describe.sequential('3D view telemetry', () => {
             for (const [name, value] of Object.entries(expected))
                 expect(joints[name].angle).toBeCloseTo(value, 6)
         })
+        unmount(view)
+    })
+
+    // The scene is drawn only on a frame that changed it, so an idle view stops drawing once the model rests.
+    it('reports a frame as changed while the model eases to a report, and as unchanged once it rests', async () => {
+        const view = await mountView()
+        await vi.waitFor(() => expect(telemetry()).toEqual(['sub 271']))
+        await vi.waitFor(() => expect(scene.render).toBeDefined())
+        const report = (tick: (typeof esp32.ticks)[number]) => {
+            const sample = TickSample.create({
+                seq: tick.step,
+                angles: tick.angles.map(a => (a * Math.PI) / 180)
+            })
+            const batch = TelemetryBatch.create({ ticks: [sample] })
+            robot.send(Message.encode(Message.create({ telemetryBatch: batch })).finish())
+            return tickJointValues('SPOTMICRO_ESP32', sample.angles)
+        }
+        // Frames until one changes nothing, once the report has come: the model then shows it.
+        const easeTo = (expected: Record<string, number>) =>
+            vi.waitFor(() => {
+                for (let frame = 0; frame < 1000 && scene.render!(); frame++);
+                for (const [name, value] of Object.entries(expected))
+                    expect(joints[name].angle).toBeCloseTo(value, 6)
+            })
+
+        await easeTo(report(esp32.ticks[400]))
+        expect(scene.render!()).toBe(false)
+        const next = report(esp32.ticks[450])
+        await vi.waitFor(() => expect(scene.render!()).toBe(true))
+        await easeTo(next)
+        expect(scene.render!()).toBe(false)
         unmount(view)
     })
 })

@@ -9,7 +9,7 @@ import {
 } from '../../src/lib/peripherals'
 import { PeripheralSettings } from '../../src/lib/platform_shared/api'
 import { FeaturesDataResponse } from '../../src/lib/platform_shared/message'
-import { fakeRobot } from './fake-robot'
+import { fakeSettingsRobot } from './fake-robot'
 
 const stored = () =>
     PeripheralSettings.create({
@@ -36,6 +36,7 @@ const stored = () =>
 // The magnetometer answers but is switched off; the barometer is switched off and so never probed.
 const reported = () =>
     FeaturesDataResponse.create({
+        settingsTopics: true,
         variant: 'SPOTMICRO_ESP32_MINI',
         imu: true,
         imuDetected: true,
@@ -274,7 +275,7 @@ describe('peripheral settings form', () => {
 
 describe('Sensors page', () => {
     let component: ReturnType<typeof mount> | undefined
-    let robot: ReturnType<typeof fakeRobot> | undefined
+    let robot: ReturnType<typeof fakeSettingsRobot> | undefined
 
     afterEach(() => {
         if (component) unmount(component)
@@ -284,13 +285,13 @@ describe('Sensors page', () => {
 
     it('shows a detected but disabled sensor and saves its toggle as a disabled flag', async () => {
         const saves: PeripheralSettings[] = []
-        robot = fakeRobot((name, data) => {
+        robot = fakeSettingsRobot({ peripheralSettings: stored() }, (name, data) => {
             if (name === 'featuresDataRequest') return { featuresDataResponse: reported() }
             if (name === 'peripheralSettings') {
                 saves.push(data.peripheralSettings!)
                 return { peripheralSettings: data.peripheralSettings }
             }
-            return { peripheralSettings: stored() }
+            return {}
         })
         component = mount(Sensors, { target: document.body })
         await vi.waitFor(() => expect(document.body.querySelector('tbody tr')).not.toBeNull())
@@ -332,13 +333,13 @@ describe('Sensors page', () => {
 
     it('saves a sonar switched on with its pins, and holds back a clash', async () => {
         const saves: PeripheralSettings[] = []
-        robot = fakeRobot((name, data) => {
+        robot = fakeSettingsRobot({ peripheralSettings: stored() }, (name, data) => {
             if (name === 'featuresDataRequest') return { featuresDataResponse: reported() }
             if (name === 'peripheralSettings') {
                 saves.push(data.peripheralSettings!)
                 return { peripheralSettings: data.peripheralSettings }
             }
-            return { peripheralSettings: stored() }
+            return {}
         })
         component = mount(Sensors, { target: document.body })
         await vi.waitFor(() =>
@@ -378,13 +379,13 @@ describe('Sensors page', () => {
 
     it('saves the power sensor at another address with a cut-off, and holds back too large a current', async () => {
         const saves: PeripheralSettings[] = []
-        robot = fakeRobot((name, data) => {
+        robot = fakeSettingsRobot({ peripheralSettings: stored() }, (name, data) => {
             if (name === 'featuresDataRequest') return { featuresDataResponse: reported() }
             if (name === 'peripheralSettings') {
                 saves.push(data.peripheralSettings!)
                 return { peripheralSettings: data.peripheralSettings }
             }
-            return { peripheralSettings: stored() }
+            return {}
         })
         component = mount(Sensors, { target: document.body })
         await vi.waitFor(() =>
@@ -425,13 +426,13 @@ describe('Sensors page', () => {
     })
 
     const mountWith = async (features: FeaturesDataResponse, saves: PeripheralSettings[] = []) => {
-        robot = fakeRobot((name, data) => {
+        robot = fakeSettingsRobot({ peripheralSettings: stored() }, (name, data) => {
             if (name === 'featuresDataRequest') return { featuresDataResponse: features }
             if (name === 'peripheralSettings') {
                 saves.push(data.peripheralSettings!)
                 return { peripheralSettings: data.peripheralSettings }
             }
-            return { peripheralSettings: stored() }
+            return {}
         })
         component = mount(Sensors, { target: document.body })
         await vi.waitFor(() => expect(document.body.querySelector('tbody tr')).not.toBeNull())

@@ -5,16 +5,18 @@ import ServoTable from '../../src/routes/peripherals/servo/ServoTable.svelte'
 import { notifications } from '../../src/lib/components/toasts/notifications'
 import { ServoSettings } from '../../src/lib/platform_shared/api'
 import { CorrelationResponse } from '../../src/lib/platform_shared/message'
-import { fakeRobot } from './fake-robot'
+import { fakeSettingsRobot } from './fake-robot'
 
 const servoSettings = ServoSettings.create({
     servos: [{ centerPwm: 306, name: 'fl' }]
 })
 
-let robot: ReturnType<typeof fakeRobot> | undefined
+let robot: ReturnType<typeof fakeSettingsRobot> | undefined
 
 async function mountWithSaveReply(saveReply: () => Partial<CorrelationResponse> | Promise<never>) {
-    robot = fakeRobot(name => (name === 'servoSettings' ? saveReply() : { servoSettings }))
+    robot = fakeSettingsRobot({ servoSettings }, name =>
+        name === 'servoSettings' ? saveReply() : {}
+    )
     const component = mount(ServoTable, { target: document.body })
     await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
     return component
@@ -63,7 +65,7 @@ describe('ServoTable', () => {
     const speeds = () => document.body.querySelector('[data-testid="servo-speeds"]')!.textContent!
 
     it('shows the supply and the speeds it allows, and a robot without a supply at 6 V', async () => {
-        robot = fakeRobot(() => ({ servoSettings: { ...servoSettings, supplyVoltage: 0 } }))
+        robot = fakeSettingsRobot({ servoSettings: { ...servoSettings, supplyVoltage: 0 } })
         component = mount(ServoTable, { target: document.body })
         await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
 
@@ -73,12 +75,13 @@ describe('ServoTable', () => {
 
     it('saves an edited supply and shows the slower speeds it derives', async () => {
         const saved: ServoSettings[] = []
-        robot = fakeRobot((name, data) => {
-            if (name === 'servoSettings') saved.push(data.servoSettings!)
-            return name === 'servoSettings' ?
-                    {}
-                :   { servoSettings: { ...servoSettings, supplyVoltage: 6 } }
-        })
+        robot = fakeSettingsRobot(
+            { servoSettings: { ...servoSettings, supplyVoltage: 6 } },
+            (name, data) => {
+                if (name === 'servoSettings') saved.push(data.servoSettings!)
+                return {}
+            }
+        )
         component = mount(ServoTable, { target: document.body })
         await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
 
@@ -94,12 +97,13 @@ describe('ServoTable', () => {
 
     it('sends no supply while the field is empty, so the robot keeps its own', async () => {
         const saved: ServoSettings[] = []
-        robot = fakeRobot((name, data) => {
-            if (name === 'servoSettings') saved.push(data.servoSettings!)
-            return name === 'servoSettings' ?
-                    {}
-                :   { servoSettings: { ...servoSettings, supplyVoltage: 5 } }
-        })
+        robot = fakeSettingsRobot(
+            { servoSettings: { ...servoSettings, supplyVoltage: 5 } },
+            (name, data) => {
+                if (name === 'servoSettings') saved.push(data.servoSettings!)
+                return {}
+            }
+        )
         component = mount(ServoTable, { target: document.body })
         await vi.waitFor(() => expect(document.body.querySelector('table')).not.toBeNull())
 

@@ -34,6 +34,9 @@ void MotionService::setState(MotionState* newState) {
     if (state) {
         state->resetSmoothing();
         state->begin();
+        // At the height and with the sticks a client last sent, which a client that sends them only once the robot
+        // reports the mode would otherwise see the body leave for the state's own until they came.
+        if (commandRxUs) state->handleCommand(command);
     }
 }
 
@@ -285,7 +288,14 @@ void MotionService::handleGestures(const gesture_t ges) {
 }
 
 bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
-    int64_t now = esp_timer_get_time();
+    const int64_t start = esp_timer_get_time();
+    lastTiming = {};
+    const bool updated = advance(imu, gesture, start);
+    lastTiming.totalUs = esp_timer_get_time() - start;
+    return updated;
+}
+
+bool MotionService::advance(const ImuSample& imu, gesture_t gesture, int64_t now) {
     lastImuValid = imu.valid;
     applyMail(inbox.take(now / 1000));
     handleGestures(gesture);
@@ -298,11 +308,17 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
     }
     float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
+    int64_t lapStart = esp_timer_get_time();
+    const auto lap = [&lapStart] {
+        const int64_t at = esp_timer_get_time();
+        return at - std::exchange(lapStart, at);
+    };
     state->updateImuOffsets(imu);
 #if WALK_NN_POLICY
     if (state == &walkNNState) walkNNState.observe(imu);
 #endif
     state->step(body_state, dt);
+    lastTiming.stepUs = lap();
     BodyStep step;
     {
         // Outside the walk every foot stands; one a state eases down from mid-stride counts once it is down.
@@ -311,15 +327,21 @@ bool MotionService::update(const ImuSample& imu, gesture_t gesture) {
         std::lock_guard<std::mutex> lock(odometryMutex);
         step = fusedOdometry.update(body_state, stance, gyroYawRate.update(imu, now), dt);
     }
+    lastTiming.odometryUs = lap();
     if (state == &animateState) {
         std::copy(animateState.angles(), animateState.angles() + 12, new_angles);
         recordAnimationStatus();
         if (animateState.finished()) applyMode(returnMode);
     } else {
-        if (goal.running()) driveGoal(step, dt);
+        if (goal.running()) {
+            driveGoal(step, dt);
+            lastTiming.goalUs = lap();
+        }
         if (!state->jointAngles(new_angles)) kinematics->calculate_inverse_kinematics(body_state, new_angles);
     }
-    return update_angles(new_angles, angles);
+    const bool updated = update_angles(new_angles, angles);
+    lastTiming.kinematicsUs = lap();
+    return updated;
 }
 
 bool MotionService::update_angles(float new_angles[12], float angles[12]) {

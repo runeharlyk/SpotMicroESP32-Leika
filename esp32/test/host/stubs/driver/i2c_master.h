@@ -9,6 +9,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <set>
@@ -66,6 +67,10 @@ inline std::set<uint8_t> absent;
 inline std::map<uint8_t, int> attempts;
 // How long a failed transfer takes on the fake clock: a NACK ends at once, a timeout spends the transfer's whole time.
 inline int64_t failureUs = 0;
+// How long an answered transfer takes on the fake clock.
+inline int64_t transferUs = 0;
+// Runs at the start of every transfer to a device, with the bus held: a test acts as another task meanwhile.
+inline std::function<void(uint8_t address)> duringTransfer;
 
 inline bool isLive(const void *handle) {
     std::lock_guard<std::mutex> lock(mutex);
@@ -80,7 +85,8 @@ inline void reset() {
     absent.clear();
     wordAddressed.clear();
     attempts.clear();
-    failureUs = 0;
+    failureUs = transferUs = 0;
+    duringTransfer = nullptr;
     devicesAdded = staleUses = transfers = 0;
     deviceSpeedHz = 0;
 }
@@ -136,10 +142,14 @@ inline esp_err_t fakeTransfer(const void *handle) {
 inline esp_err_t fakeDeviceTransfer(i2c_master_dev_handle_t device) {
     esp_err_t result = fakeTransfer(device);
     if (result != ESP_OK) return result;
+    if (fake_i2c::duringTransfer) fake_i2c::duringTransfer(device->address);
     std::lock_guard<std::mutex> lock(fake_i2c::mutex);
     fake_i2c::attempts[device->address]++;
     const bool held = gpio_get_level(device->bus->sda) == 0 || gpio_get_level(device->bus->scl) == 0;
-    if (!held && !fake_i2c::absent.count(device->address)) return ESP_OK;
+    if (!held && !fake_i2c::absent.count(device->address)) {
+        fake_timer::nowUs += fake_i2c::transferUs;
+        return ESP_OK;
+    }
     fake_timer::nowUs += fake_i2c::failureUs;
     return ESP_ERR_INVALID_STATE;
 }

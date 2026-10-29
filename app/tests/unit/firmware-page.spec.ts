@@ -13,9 +13,9 @@ import {
     OtaStatus
 } from '../../src/lib/platform_shared/message'
 import { WifiStatus } from '../../src/lib/platform_shared/api'
-import { socket } from '../../src/lib/stores/socket'
+
 import { RELEASE_SITE } from '../../src/lib/firmware/release'
-import { fakeRobot } from './fake-robot'
+import { fakeRobot, fakeStates } from './fake-robot'
 
 const head = readFileSync(path.join(__dirname, 'fixtures', 'firmware-head.bin'))
 
@@ -38,14 +38,15 @@ describe('Firmware page', () => {
     // The robot's station: 3 is connected, 6 disconnected.
     let wifi = 6
     let robot: ReturnType<typeof fakeRobot>
+    let states: ReturnType<typeof fakeStates>
     const downloads: string[] = []
 
     beforeEach(() => {
         wifi = 6
         downloads.length = 0
+        states = fakeStates()
+        states.set(OtaStatus, OtaStatus.create())
         robot = fakeRobot((name, data) => {
-            if (name === 'wifiStatusRequest')
-                return { wifiStatus: WifiStatus.create({ status: wifi }) }
             if (name === 'otaDownload') {
                 downloads.push(data.otaDownload!.url)
                 return { statusCode: 202 }
@@ -71,6 +72,7 @@ describe('Firmware page', () => {
             })
         )
         mode.set(ModeData.create({ mode: robotMode }))
+        states.set(WifiStatus, WifiStatus.create({ status: wifi }))
         component = mount(Firmware, { target: document.body })
         flushSync()
     }
@@ -79,36 +81,27 @@ describe('Firmware page', () => {
 
     it('offers the install on the robot only when the robot has WiFi of its own', async () => {
         open(ModesEnum.DEACTIVATED)
-        await vi.waitFor(() => expect(robot.sent).toContain('wifiStatusRequest'))
-        flushSync()
         expect(installButton()).toBeUndefined()
         unmount(component!)
         wifi = 3
         open(ModesEnum.STAND)
         await vi.waitFor(() => expect(installButton()).toBeDefined())
         expect(installButton().disabled).toBe(true)
+
+        // The status from before the link dropped may no longer hold.
+        states.lose(WifiStatus)
+        flushSync()
+        expect(installButton()).toBeUndefined()
     })
 
     it('does not offer the install on the robot when its build cannot download', async () => {
         wifi = 3
         open(ModesEnum.DEACTIVATED, false)
-        await vi.waitFor(() => expect(robot.sent).toContain('wifiStatusRequest'))
-        // A macrotask, so the WiFi status reply has landed and only the feature flag holds the button back.
-        await new Promise(resolve => setTimeout(resolve, 0))
-        flushSync()
         expect(installButton()).toBeUndefined()
         expect(button(/Latest release/)).toBeDefined()
     })
 
     it('has the robot download the latest release for its board and shows why it failed', async () => {
-        let report: ((status: OtaStatus) => void) | undefined
-        vi.spyOn(socket, 'on').mockImplementation(((
-            _type: unknown,
-            listener: (s: OtaStatus) => void
-        ) => {
-            report = listener
-            return () => {}
-        }) as unknown as typeof socket.on)
         vi.stubGlobal('fetch', async (url: string) =>
             url.endsWith('ota.json') ?
                 new Response(
@@ -125,12 +118,14 @@ describe('Firmware page', () => {
         await vi.waitFor(() => expect(installButton()).toBeDefined())
         installButton().click()
         await vi.waitFor(() => expect(downloads).toEqual([`${RELEASE_SITE}esp32-wroom-camera.bin`]))
-        report!(
+        states.set(
+            OtaStatus,
             OtaStatus.create({ state: OtaDownloadState.OTA_DOWNLOADING, written: 250, size: 1000 })
         )
         flushSync()
         expect(document.body.textContent).toMatch('The robot downloads v0.4.0: 25 %')
-        report!(
+        states.set(
+            OtaStatus,
             OtaStatus.create({
                 state: OtaDownloadState.OTA_DOWNLOAD_FAILED,
                 written: 250,

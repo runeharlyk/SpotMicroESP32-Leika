@@ -152,6 +152,8 @@ static void subscriptionsEndWithTheConnection() {
     subscribe.which_message = socket_message_Message_sub_notif_tag;
     subscribe.message.sub_notif.tag = socket_message_Message_imu_tag;
     radio.write(subscribe);
+    CHECK(radio.heard().size() == 1 && radio.heard()[0].which_message == socket_message_Message_sub_notif_tag);
+    radio.notifications.clear();
     socket_message_IMUData imu = socket_message_IMUData_init_zero;
     imu.x = 1;
 

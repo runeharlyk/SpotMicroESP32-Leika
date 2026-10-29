@@ -57,6 +57,13 @@ function variedTick(seq: number): Partial<TickSample> {
         periodUs: seq % 11 === 0 ? 0 : 10_000 + ((seq * 373) % 900) - 450,
         computeUs: 1_200 + ((seq * 131) % 700),
         servoWriteUs: seq % 9 === 4 ? 0 : 1_800 + ((seq * 59) % 500),
+        motionUs: 1_000 + ((seq * 113) % 600),
+        motionStepUs: 200 + ((seq * 37) % 150),
+        odometryUs: 80 + ((seq * 17) % 60),
+        goalUs: seq % 5 === 0 ? 0 : 150 + ((seq * 23) % 90),
+        kinematicsUs: 450 + ((seq * 71) % 300),
+        servoBusWaitUs: seq % 6 === 1 && seq % 9 !== 4 ? 2_000 + ((seq * 89) % 5_000) : 0,
+        servoTransferUs: seq % 9 === 4 ? 0 : 1_050 + ((seq * 7) % 100),
         servoOk: seq % 13 !== 5,
         commandRxUs: seq < 5 ? 0 : tUs - 20_000,
         commandAgeUs: seq < 5 ? 0 : 15_000 + ((seq * 977) % 9_000),
@@ -130,6 +137,10 @@ describe('the .leika recording', () => {
         expect(stats.sensor_to_servo_ms_p50).toBeCloseTo(6.5, 9)
         expect(stats.command_age_ms_p50).toBeCloseTo(20.0, 9)
         expect(stats.servo_ok_fraction).toBeCloseTo(1.0, 9)
+        expect(stats.motion_ms_mean).toBeCloseTo(1.2, 9)
+        expect(stats.goal_ms_mean).toBeCloseTo(0.2 / 3, 9) // only ticks 30-39 of the 30 recorded drove a goal
+        expect(stats.servo_bus_wait_ms_mean).toBeCloseTo(0.06, 9)
+        expect(stats.servo_transfer_ms_p50).toBeCloseTo(1.1, 9)
         expect(stats.gyro_bias_x).toBeCloseTo(0.01, 6)
         expect(stats.gyro_bias_y).toBeCloseTo(-0.02, 6)
         expect(stats.gyro_noise_std).toBeCloseTo(0.0, 6)

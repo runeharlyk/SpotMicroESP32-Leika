@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { Chip, UploadIcon, DownloadIcon } from '$lib/components/icons'
     import { connectionFeatures } from '$lib/stores/featureFlags'
@@ -13,7 +12,7 @@
         sendFirmware,
         type BootOutcome
     } from '$lib/firmware/ota'
-    import { robotRequest } from '$lib/robot-request'
+    import { wifiState } from '$lib/robot/state'
 
     type Step =
         | { kind: 'idle' }
@@ -32,15 +31,9 @@
     const deactivated = $derived($mode.mode === ModesEnum.DEACTIVATED)
     const working = $derived(['busy', 'sending', 'downloading', 'restarting'].includes(step.kind))
     // A station with an address: the robot can reach the release site itself (WifiStatus 3 is connected).
-    let robotOnline = $state(false)
+    const robotOnline = $derived(!$wifiState.stale && $wifiState.value?.status === 3)
     // Builds whose app slot has no room for TLS (esp32-camera, esp32dev) cannot download their own update.
     const canDownload = $derived($connectionFeatures?.otaDownload ?? false)
-
-    onMount(() => {
-        robotRequest({ wifiStatusRequest: {} })
-            .then(reply => (robotOnline = reply.wifiStatus?.status === 3))
-            .catch(() => (robotOnline = false))
-    })
 
     function choose(bytes: Uint8Array, source: string) {
         try {

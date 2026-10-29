@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
 - Reports the internal RAM apart from PSRAM on the System Status page: free, the largest block and the least free since boot, with the allocations refused since boot, where the heap figures count PSRAM in and so never show internal RAM running out
 - Adds a sign-convention fixture, `platform_shared/sign_convention.json`, asserted by the firmware, simulation and app tests, and `docs/conventions.md`, which states the body frame, the leg numbering and the signs of the sticks, the body pose, the odometry and the goals
+- Adds where each control tick's time went to the telemetry: the motion update and its state step, odometry, goal and kinematics within the compute, and within the servo write the wait for the I2C bus apart from the transfer; the recording report prints them per mode, and the System Metrics page beside the other timings
 
 ### Changed
 
@@ -46,6 +47,12 @@ All notable changes to this project will be documented in this file.
 - Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
+- Answers a subscribe to a state topic (the mode, gait, WiFi status, clip, goal and update status) with its current value and then an ack, on every link, ported from the Hexapod; a push a client could not take is sent again as the current value, and the mode and gait are no longer repeated every second
+- Follows the mode, gait, WiFi status, clip status and the robot's own download in the app from their state topics with `watch()`, ported from the Hexapod: a value kept from a dropped link is marked as the last known, and firmware from before the topics is named as too old; the robot's own download no longer reads an earlier download's end as its own
+- Serves the servo, peripheral, WiFi and access point settings as state topics, pushed to every client on every stored change, and reads the servo and compass settings from them in the Python client; the features say `settings_topics`
+- Shows the WiFi, access point, servo, I2C and sensor settings in the app as the robot stores them, from their topics: a change saved by another client or by the robot appears at once, an edit under way is kept apart from it with a note, and firmware from before the settings topics is named as too old
+- Retires the settings get requests (`wifi_settings_request`, `ap_settings_request`, `servo_settings_request`, `peripheral_settings_request`), which the settings topics replaced; the Python client still connects to firmware from before them, at the default servo supply
+- Follows a goal move in the Python client by subscribing to its status again rather than asking for it, on firmware with the state topics, and `robot_animate.py` no longer ends following a clip at the idle status the subscribe is answered with
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
@@ -56,9 +63,12 @@ All notable changes to this project will be documented in this file.
 - Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
 - Shortens the walk's stroke, the crawl's body shift and the step height where they would put a foot out of reach, through each variant's leg geometry: at full stick, 259 of the Pico's 325 trot commands and 307 of its 325 crawl commands straightened a knee or folded a foot onto its hip. A forward trot at the app's settings keeps its whole stroke; sideways and turning full sticks, and the crawl, walk slower
 - Runs the simulation, its training and the app's Training controller on the firmware's own walk for the Spot Pico (the MINI's stand height, stride, lift, 1 Hz cadence and command smoothing, from the same velocity-to-sticks map the Python client sends the robot, with the walk's joint speed cap, stop and reach bound) instead of a gait tuned apart from it, and turns the Training controller the way the firmware does
+- Draws the 3D views (the simulation, the robot's pose and the animation preview) only on a frame that changed what they show, instead of every animation frame, so an idle page leaves the GPU alone (Hexapod 442b4b5)
 
 ### Fixed
 
+- Fixes a walk entered from stand, a stand from the walk and a stand after a clip easing the body toward the state's own height until the client sent its sticks again: the state taking over follows the last input from its first tick. In the sim-versus-real harness this made a stance foot of the virtual robot read as lifted when its sticks came a tick later, so its forward trot read 1.5 % fast in about half the runs under load
+- Fixes the camera's stored settings never reaching the sensor at boot, and a camera settings write the sensor refuses, such as any sharpness or denoise on the OV2640, being stored as if it applied: the write is now refused with the reason, and a stored value the sensor refuses at boot is logged (Hexapod 502c5e6)
 - Fixes a walk entered from stand, or switched to the other gait while it stands, snapping a foot into the air in one tick at up to 3,700 deg/s: it now starts at the start of the cycle, every foot down and no stroke left from the last walk
 - Fixes a gait chosen while walking putting a swinging foot down in one tick, at up to 4,400 deg/s: the walk now stops on all four feet, takes the gait and walks on, as AUTO does
 - Fixes a trot chosen after the crawl walking with the crawl's body shift, which put the Spot Pico's feet out of reach: the trot now centres the body first
@@ -86,6 +96,7 @@ All notable changes to this project will be documented in this file.
 - Fixes goal moves started over USB serial or Bluetooth walking on when their client went away: a goal now ends when its client leaves any link or sends nothing for 2 s, which a closed USB serial port does not otherwise signal, and the Python client asks for the goal's status every half second while it waits
 - Fixes goal moves reporting the target reached while the walk's stop still carried the robot on, 4.4 degrees past a 90 degree turn at full speed in the simulation, and curving off the line of a straight goal, 45 mm over a metre: a goal now judges where the walk's stop will leave the robot, slows over a zone its speed needs, holds a straight goal's heading and line, judges the pose once the walk has stood still and walks up to two corrective passes
 - Fixes the Python client's goal turns adding up the walks' heading drift, so a square of goals did not close: each turn now aims at the heading the script's goals meant; a goal whose reply was lost or interrupted by Ctrl-C is now cancelled
+- Fixes the wave tipping the Spot Pico towards its raised front left foot: it now shifts the body 20 mm back and 25 mm right before the foot lifts, instead of 10 mm each, which keeps the centre of mass 26 mm inside the three planted feet in the simulation instead of 9 mm
 
 ## [0.3.0]
 

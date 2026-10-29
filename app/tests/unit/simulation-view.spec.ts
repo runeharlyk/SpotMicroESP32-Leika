@@ -6,8 +6,15 @@ import { simulation } from '../../src/lib/stores/drive'
 
 // The view's heavy parts are stubbed: WebGL (the scene builder), the 10 MB engine download and
 // the model loader. What remains is the view's own lifecycle, which is what this test is about.
-const created: { disposed: boolean; sceneId: string; clips: object }[] = []
+const created: {
+    disposed: boolean
+    sceneId: string
+    clips: object
+    position: number[]
+    joints: Record<string, number>
+}[] = []
 const loads: { robotId: string; finish: () => void }[] = []
+const frames: (() => boolean)[] = []
 
 vi.mock('$lib/sceneBuilder', () => {
     class FakeSceneBuilder {
@@ -26,11 +33,14 @@ vi.mock('$lib/sceneBuilder', () => {
                 'addFogExp2',
                 'addGroundPlane',
                 'fillParent',
-                'addRenderCb',
                 'startRenderLoop',
                 'stopRenderLoop'
             ])
                 Object.assign(this, { [name]: chain })
+        }
+        addRenderCb(callback: () => boolean) {
+            frames.push(callback)
+            return this
         }
     }
     return { default: FakeSceneBuilder }
@@ -51,6 +61,11 @@ vi.mock('$lib/utilities/model-utilities', () => ({
     cacheModelFiles: async () => {},
     loadModel: async () => {
         const model = new Mesh(new BufferGeometry(), new MeshBasicMaterial())
+        const knee = {
+            angle: 0,
+            setJointValue: (angle: number) => knee.angle !== (knee.angle = angle)
+        }
+        Object.assign(model, { joints: { knee } })
         models.push(model)
         return { isErr: () => false, inner: model }
     }
@@ -60,10 +75,27 @@ vi.mock('$lib/simulation/robot-sim', () => ({
     RobotSim: class {
         disposed = false
         sceneId: string
-        clips = {}
+        clips = { animationStatus: () => ({ name: '', state: 0, t: 0, clampedMask: 0 }) }
+        // The pose a step leaves the robot in, which a test moves.
+        position = [0, 0, 0.1]
+        joints = { knee: 0.5 }
         constructor(_mujoco: unknown, scene: { id: string }) {
             this.sceneId = scene.id
             created.push(this)
+        }
+        setControls() {}
+        step() {}
+        basePosition() {
+            return this.position
+        }
+        baseQuaternion() {
+            return [1, 0, 0, 0]
+        }
+        jointAngles() {
+            return this.joints
+        }
+        hasFallen() {
+            return false
         }
         dispose() {
             this.disposed = true
@@ -86,6 +118,7 @@ describe('SimulationView', () => {
         created.length = 0
         loads.length = 0
         models.length = 0
+        frames.length = 0
         localStorage.clear()
         document.body.innerHTML = ''
         vi.stubGlobal(
@@ -179,6 +212,26 @@ describe('SimulationView', () => {
         expect(document.querySelector<HTMLSelectElement>('select[name="robot"]')!.value).toBe(
             'pico'
         )
+        unmount(component)
+    })
+
+    // The scene is drawn only on a frame that changed it, so a robot standing still stops being drawn.
+    it('reports a frame as changed only when the step moved the robot', async () => {
+        const component = await mountView()
+        const [frame] = frames
+        expect(frame()).toBe(false)
+        loads.forEach(load => load.finish())
+        await settle()
+        const [sim] = created
+
+        expect(frame()).toBe(true)
+        expect(frame()).toBe(false)
+        sim.joints = { knee: 0.6 }
+        expect(frame()).toBe(true)
+        expect(frame()).toBe(false)
+        sim.position = [0.01, 0, 0.1]
+        expect(frame()).toBe(true)
+        expect(frame()).toBe(false)
         unmount(component)
     })
 })

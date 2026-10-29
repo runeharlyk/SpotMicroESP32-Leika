@@ -45,8 +45,11 @@ A robot that was never given a supply runs at 6 V.
 
 ### Level the IMU
 
-With an IMU detected and not disabled, open `/peripherals/imu` and click "Calibrate IMU" while the robot lies still and level.
+With an IMU detected and not disabled, open `/peripherals/imu` and click "Calibrate IMU" while the robot's body is propped still and level, for example on a box with the legs hanging free.
+The calibration takes the body's attitude at that moment as level, so the body itself must be level, not only the floor under it.
+A robot lying limp on its folded legs is not: the Spot Pico lies about 17.6 degrees off level that way.
 The calibration fails if the robot moves, and a tilt above 15 degrees is not levelled.
+Without it the stand holds the body as far off level as the IMU board sits (about 6 degrees on the Spot Pico), which is enough to tip the robot while one foot is raised.
 
 ## Circuit diagram
 

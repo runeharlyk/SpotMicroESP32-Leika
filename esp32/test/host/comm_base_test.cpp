@@ -19,7 +19,11 @@ struct FakeLink : CommAdapterBase {
     std::set<int> full;
     std::vector<int> sentTo;
 
-    void join(int cid, int32_t tag) { subscribe(tag, cid); }
+    // Subscribes, and forgets the subscribe's ack, which topic_snapshot_test.cpp covers.
+    void join(int cid, int32_t tag) {
+        subscribe(tag, cid);
+        sentTo.clear();
+    }
 
   protected:
     bool ready(int cid) override { return !full.count(cid); }

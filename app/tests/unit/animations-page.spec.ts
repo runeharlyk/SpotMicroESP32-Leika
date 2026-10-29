@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushSync, mount, unmount } from 'svelte'
 import Animations from '../../src/routes/animations/Animations.svelte'
-import { socket } from '../../src/lib/stores/socket'
 import { mode } from '../../src/lib/stores/model-store'
 import { fileSystemClient } from '../../src/lib/filesystem/chunkedTransfer'
 import {
@@ -12,7 +11,7 @@ import {
     ModesEnum
 } from '../../src/lib/platform_shared/message'
 import { ParamId } from '../../src/lib/platform_shared/animation'
-import { fakeRobot } from './fake-robot'
+import { fakeRobot, fakeStates } from './fake-robot'
 import { robotClips } from '../../src/lib/animation/robot'
 
 const CLIPS = [
@@ -49,7 +48,7 @@ describe('Animations page', () => {
     let robot: ReturnType<typeof fakeRobot>
     let played: unknown[]
     let reports: Record<string, AnimationReport>
-    let statusListener: ((data: AnimationStatus) => void) | undefined
+    let states: ReturnType<typeof fakeStates>
 
     beforeEach(() => {
         robotClips.set(null)
@@ -69,10 +68,7 @@ describe('Animations page', () => {
             if (name === 'animationPlay') played.push(data.animationPlay)
             return {}
         })
-        vi.spyOn(socket, 'on').mockImplementation(((type: unknown, listener: never) => {
-            if (type === AnimationStatus) statusListener = listener
-            return () => {}
-        }) as typeof socket.on)
+        states = fakeStates()
     })
 
     afterEach(() => {
@@ -137,7 +133,8 @@ describe('Animations page', () => {
         await open(ModesEnum.STAND)
         expect(button(/Stop/).disabled).toBe(true)
 
-        statusListener!(
+        states.set(
+            AnimationStatus,
             AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_HOLD, t: 1.22 })
         )
         flushSync()
@@ -145,10 +142,22 @@ describe('Animations page', () => {
         button(/Stop/).click()
         await vi.waitFor(() => expect(robot.sent).toContain('animationStop'))
 
-        statusListener!(AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_IDLE }))
+        states.set(
+            AnimationStatus,
+            AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_IDLE })
+        )
         flushSync()
         expect(text()).toMatch('No clip is playing.')
         expect(button(/Stop/).disabled).toBe(true)
+
+        // A clip from before the link dropped may have ended meanwhile: none is shown until the robot says.
+        states.set(
+            AnimationStatus,
+            AnimationStatus.create({ name: 'wave', state: AnimationState.ANIM_PLAYING, t: 0.5 })
+        )
+        states.lose(AnimationStatus)
+        flushSync()
+        expect(text()).toMatch('No clip is playing.')
     })
 
     it('uploads a valid clip and shows the robot report for it', async () => {

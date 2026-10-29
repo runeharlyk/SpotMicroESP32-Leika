@@ -22,7 +22,14 @@
     const timings: [key: string, label: string][] = [
         ['period', 'Tick period'],
         ['compute', 'Compute'],
+        ['motion', 'Motion update'],
+        ['motion_step', 'Motion step'],
+        ['odometry', 'Odometry'],
+        ['goal', 'Goal'],
+        ['kinematics', 'Kinematics'],
         ['servo_write', 'Servo write'],
+        ['servo_bus_wait', 'Servo bus wait'],
+        ['servo_transfer', 'Servo transfer'],
         ['imu_age', 'IMU age'],
         ['sensor_to_servo', 'Sensor to servo'],
         ['command_age', 'Command age']

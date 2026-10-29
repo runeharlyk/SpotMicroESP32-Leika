@@ -133,6 +133,12 @@ CameraService::CameraService()
     addUpdateHandler([&](const std::string &originId) { updateCamera(); }, false);
 }
 
+static_assert(CAMERA_PIXFORMAT_JPEG == PIXFORMAT_JPEG && CAMERA_FRAMESIZE_VGA == FRAMESIZE_VGA &&
+                  CAMERA_FRAMESIZE_SVGA == FRAMESIZE_SVGA && CAMERA_GAINCEILING_2X == GAINCEILING_2X,
+              "settings/camera_settings.h names pixformat_t's, framesize_t's and gainceiling_t's values");
+static_assert(CAMERA_OV2640_PID == OV2640_PID && CAMERA_MEGA_CCM_PID == MEGA_CCM_PID,
+              "settings/camera_settings.h names camera_pid_t's values");
+
 esp_err_t CameraService::begin() {
     _persistence.readFromFS();
     camera_config_t camera_config;
@@ -157,14 +163,14 @@ esp_err_t CameraService::begin() {
     camera_config.xclk_freq_hz = 20000000;
     camera_config.pixel_format = PIXFORMAT_JPEG;
 
+    // The frame buffers are sized for this frame size, which bounds every stored one (CameraSettings_problem).
+    camera_config.frame_size = static_cast<framesize_t>(CAMERA_BUFFER_FRAMESIZE);
     if (heap_caps_get_total_size(MALLOC_CAP_SPIRAM) > 0) {
-        camera_config.frame_size = FRAMESIZE_SVGA;
         camera_config.jpeg_quality = 10;
         camera_config.fb_location = CAMERA_FB_IN_PSRAM;
         camera_config.fb_count = 2;
         camera_config.grab_mode = CAMERA_GRAB_LATEST;
     } else {
-        camera_config.frame_size = FRAMESIZE_SVGA;
         camera_config.jpeg_quality = 12;
         camera_config.fb_count = 1;
     }
@@ -173,6 +179,8 @@ esp_err_t CameraService::begin() {
     esp_err_t err = esp_camera_init(&camera_config);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "Camera probe successful");
+        // The stored settings were read before the sensor was up, which their update handler needs.
+        updateCamera();
         startStreamWorker();
     } else {
         ESP_LOGE(TAG, "Camera probe failed with error 0x%x", err);
@@ -216,40 +224,56 @@ static void giveFrame() {
     vTaskDelay(pdMS_TO_TICKS(30));
 }
 
+// Sets each value the sensor does not hold already (sensor_t::status, which every setter updates when it succeeds), so
+// an unchanged frame size does not reset the sensor's window and a sensor without sharpness keeps the zero it reports.
+// A value the sensor refuses is logged; it stays stored, as the update that stored it passed CameraSettings_refusal.
 void CameraService::updateCamera() {
-    ESP_LOGI("CameraSettings", "Updating camera settings");
     sensor_t *s = safe_sensor_get();
     if (!s) {
-        ESP_LOGE("CameraSettings", "Failed to update camera settings");
         safe_sensor_return();
         return;
     }
     const CameraSettings settings = snapshot();
-    s->set_pixformat(s, static_cast<pixformat_t>(settings.pixformat));
-    s->set_framesize(s, static_cast<framesize_t>(settings.framesize));
-    s->set_brightness(s, settings.brightness);
-    s->set_contrast(s, settings.contrast);
-    s->set_saturation(s, settings.saturation);
-    s->set_sharpness(s, settings.sharpness);
-    s->set_denoise(s, settings.denoise);
-    s->set_gainceiling(s, static_cast<gainceiling_t>(settings.gainceiling));
-    s->set_quality(s, settings.quality);
-    s->set_colorbar(s, settings.colorbar);
-    s->set_awb_gain(s, settings.awb_gain);
-    s->set_wb_mode(s, settings.wb_mode);
-    s->set_aec2(s, settings.aec2);
-    s->set_ae_level(s, settings.ae_level);
-    s->set_aec_value(s, settings.aec_value);
-    s->set_agc_gain(s, settings.agc_gain);
-    s->set_bpc(s, settings.bpc);
-    s->set_wpc(s, settings.wpc);
-    s->set_special_effect(s, settings.special_effect);
-    s->set_raw_gma(s, settings.raw_gma);
-    s->set_lenc(s, settings.lenc);
-    s->set_hmirror(s, settings.hmirror);
-    s->set_vflip(s, settings.vflip);
-    s->set_dcw(s, settings.dcw);
+    const auto refused = [](const char *name, int value) { ESP_LOGW(TAG, "The sensor refused %s %d", name, value); };
+    const auto set = [&](const char *name, int held, int wanted, int (*setter)(sensor_t *, int)) {
+        if (held != wanted && setter(s, wanted) != 0) refused(name, wanted);
+    };
+    const auto pixformat = static_cast<pixformat_t>(settings.pixformat);
+    if (s->pixformat != pixformat && s->set_pixformat(s, pixformat) != 0) refused("pixformat", pixformat);
+    const auto framesize = static_cast<framesize_t>(settings.framesize);
+    if (s->status.framesize != framesize && s->set_framesize(s, framesize) != 0) refused("framesize", framesize);
+    const auto gainceiling = static_cast<gainceiling_t>(settings.gainceiling);
+    if (s->status.gainceiling != gainceiling && s->set_gainceiling(s, gainceiling) != 0)
+        refused("gainceiling", gainceiling);
+    set("brightness", s->status.brightness, settings.brightness, s->set_brightness);
+    set("contrast", s->status.contrast, settings.contrast, s->set_contrast);
+    set("saturation", s->status.saturation, settings.saturation, s->set_saturation);
+    set("sharpness", s->status.sharpness, settings.sharpness, s->set_sharpness);
+    set("denoise", s->status.denoise, settings.denoise, s->set_denoise);
+    set("quality", s->status.quality, settings.quality, s->set_quality);
+    set("colorbar", s->status.colorbar, settings.colorbar, s->set_colorbar);
+    set("awb_gain", s->status.awb_gain, settings.awb_gain, s->set_awb_gain);
+    set("wb_mode", s->status.wb_mode, settings.wb_mode, s->set_wb_mode);
+    set("aec2", s->status.aec2, settings.aec2, s->set_aec2);
+    set("ae_level", s->status.ae_level, settings.ae_level, s->set_ae_level);
+    set("aec_value", s->status.aec_value, settings.aec_value, s->set_aec_value);
+    set("agc_gain", s->status.agc_gain, settings.agc_gain, s->set_agc_gain);
+    set("bpc", s->status.bpc, settings.bpc, s->set_bpc);
+    set("wpc", s->status.wpc, settings.wpc, s->set_wpc);
+    set("special_effect", s->status.special_effect, settings.special_effect, s->set_special_effect);
+    set("raw_gma", s->status.raw_gma, settings.raw_gma, s->set_raw_gma);
+    set("lenc", s->status.lenc, settings.lenc, s->set_lenc);
+    set("hmirror", s->status.hmirror, settings.hmirror, s->set_hmirror);
+    set("vflip", s->status.vflip, settings.vflip, s->set_vflip);
+    set("dcw", s->status.dcw, settings.dcw, s->set_dcw);
     safe_sensor_return();
+}
+
+const char *CameraService::refusal(const CameraSettings &settings) {
+    const sensor_t *s = safe_sensor_get();
+    const char *reason = CameraSettings_refusal(s ? s->id.PID : 0, settings);
+    safe_sensor_return();
+    return reason;
 }
 
 #elif USE_CSI_CAMERA

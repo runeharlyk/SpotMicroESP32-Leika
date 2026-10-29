@@ -37,7 +37,7 @@ def test_the_trace_holds_every_built_in_clip():
 
 
 @pytest.mark.parametrize("case", BUILTIN, ids=[case["label"] for case in BUILTIN])
-def test_the_built_in_clips_play_on_the_pico_without_a_clamp_overspeed_knock_tip_or_fall(case, sim):
+def test_the_built_in_clips_play_on_the_pico_without_a_clamp_overspeed_knock_tip_narrow_margin_or_fall(case, sim):
     r = ca.check(case, sim)
     assert r.ok(), ca.format_row(r)
     assert r.peak_joint_speed > 0.0 and r.steps > len(case["ticks"])
@@ -100,6 +100,16 @@ def test_the_fall_verdict_follows_the_tilt_threshold(sim, monkeypatch):
     assert not r.fell and 5.0 < r.tilt_max_deg < ca.FALL_TILT_DEG
     monkeypatch.setattr(ca, "FALL_TILT_DEG", 5.0)
     assert "fell" in ca.check(lift, sim).failures()
+
+
+def test_a_clip_played_to_its_end_fails_below_the_required_margin_and_a_stopped_one_is_exempt(sim, monkeypatch):
+    wave = next(case for case in BUILTIN if case["label"] == "wave at its defaults")
+    stopped = next(case for case in BUILTIN if case["label"] == "wave, stopped while it waves")
+    margin = ca.check(wave, sim).support_margin_mm
+    monkeypatch.setattr(ca, "MIN_SUPPORT_MARGIN_MM", margin + 1.0)
+    assert ca.check(wave, sim).failures() == ["narrow"]
+    monkeypatch.setattr(ca, "MIN_SUPPORT_MARGIN_MM", 1000.0)
+    assert "narrow" not in ca.check(stopped, sim).failures()
 
 
 def test_main_passes_the_built_in_clips_and_fails_a_trace_that_tips(tmp_path, capsys):

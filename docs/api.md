@@ -61,22 +61,23 @@ The stored core dump; see [websocket.md](websocket.md#crash-dump) for the downlo
 
 ### WiFi and access point
 
+The settings groups are read from their [state topics](websocket.md#subscriptions); the get requests (140, 150, 180, 190) are retired, and firmware from before the topics answers them.
+
 | Request                               | Response            | Description                                                           |
 | ------------------------------------- | ------------------- | --------------------------------------------------------------------- |
-| `wifi_settings_request`               | `wifi_settings`     | Read the station settings                                             |
-| `wifi_settings`                       | `wifi_settings`     | Write the station settings; the reply holds the settings now in force |
+| `wifi_settings`                       | `wifi_settings`     | Write the station settings; the reply holds the settings now in force, which the `stored_wifi_settings` topic carries |
 | `wifi_status_request`                 | `wifi_status`       | Connection status                                                     |
 | `wifi_scan_start`                     | none (empty 200)    | Start an asynchronous scan                                            |
 | `wifi_networks_request`               | `wifi_network_list` | The scan result, or an empty 202 while the scan is running            |
-| `ap_settings_request`, `ap_settings`  | `ap_settings`       | Read or write the access point settings                               |
+| `ap_settings`                         | `ap_settings`       | Write the access point settings, which the `stored_ap_settings` topic carries |
 | `ap_status_request`                   | `ap_status`         | Access point status                                                   |
 
 ### Servo, peripherals and sensors
 
 | Request                                                | Response              | Description                                                                                                      |
 | ------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `servo_settings_request`, `servo_settings`             | `servo_settings`      | Read or write servo centres, names and PCA9685 channels; the reply also carries the `JointModel`, which a write ignores |
-| `peripheral_settings_request`, `peripheral_settings`   | `peripheral_settings` | Read or write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled, the WS2812 strip, the HC-SR04 sonars and the INA219 power sensor; a strip or a sonar on a pin it cannot use is refused with 400 |
+| `servo_settings`                                       | `servo_settings`      | Write servo centres, names and PCA9685 channels; the reply, as the `stored_servo_settings` topic, also carries the `JointModel`, which a write ignores |
+| `peripheral_settings`                                  | `peripheral_settings` | Write the I2C pins and frequency, the pin map, the `ImuSettings`, which sensors are disabled, the WS2812 strip, the HC-SR04 sonars and the INA219 power sensor; a strip or a sonar on a pin it cannot use is refused with 400 |
 | `i2c_scan_data_request`                                | `i2c_scan_data`       | Scan the I2C bus; answered from the sensor task                                                                  |
 | `imu_calibrate_execute`                                | `imu_calibrate_data`  | Take the gyro bias and, below 15 degrees of tilt, level the IMU; answered from the sensor task                   |
 | `odometry_request`                                     | `odometry`            | Read the dead reckoning; with `reset`, the estimate reached before it starts afresh ([odometry](motion_system.md#odometry)) |
@@ -122,5 +123,6 @@ The firmware starts every reply at 200 and overrides it as follows.
 | 503  | "Sensor task busy": the I2C scan or the IMU calibration could not be queued.                                                  |
 
 The settings replies (`wifi_settings`, `ap_settings`, `servo_settings`, `peripheral_settings`, `camera_settings`) always hold the settings in force, so a 400 reply shows the unchanged values.
+A refused `camera_settings` write names the value and why instead of "Invalid state": one out of the range every likely sensor takes, a frame size larger than the frame buffers (SVGA), or a setting the fitted sensor does not have, such as the OV2640's sharpness and denoise.
 The I2C scan, the IMU calibration and the mDNS query send their one reply later, with 200.
 They send nothing if the client has disconnected in the meantime.

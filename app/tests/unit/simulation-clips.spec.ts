@@ -85,9 +85,9 @@ describe('a clip in the simulation', () => {
             lifted = Math.max(lifted, motion.body.feet[0][1] - motion.cfg.defaultFeet[0][1])
             ticks++
         }
-        // wave lifts the front left foot 30 mm and plays 4.6 s at 1.5 times its speed, between its blends.
+        // wave lifts the front left foot 30 mm and plays 4.8 s at 1.5 times its speed, between its blends.
         expect(lifted).toBeGreaterThan(0.025)
-        expect(ticks * CONTROL_DT).toBeCloseTo(0.5 + 4.6 / 1.5 + 0.5, 1)
+        expect(ticks * CONTROL_DT).toBeCloseTo(0.5 + 4.8 / 1.5 + 0.5, 1)
         expect(motion.animationStatus()).toMatchObject({
             name: 'wave',
             state: AnimationState.ANIM_IDLE

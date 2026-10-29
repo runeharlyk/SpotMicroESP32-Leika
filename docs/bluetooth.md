@@ -41,7 +41,7 @@ The reconnected link subscribes to its streams again.
 
 - Commands: `controller_data`, `mode`, `walk_gait`, `angles`, `servo_pwm` and `servo_state`, so the robot can be driven and calibrated.
 - `CorrelationRequest` and its `CorrelationResponse`, as listed in [API](api.md#requests-over-the-websocket), except the filesystem and firmware update requests, which are refused with 400 "Only available over WiFi".
-- Subscriptions to `mode`, `walk_gait`, `imu`, `rssi`, `analytics` and `wifi_status`, sent as over the WebSocket.
+- Subscriptions to every topic but telemetry, answered as over the WebSocket: a state topic's snapshot, then the ack.
 - `PingMsg` and `PongMsg`.
 
 Telemetry, file transfer and firmware updates stay on the WebSocket.

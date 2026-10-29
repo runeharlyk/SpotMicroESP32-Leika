@@ -107,6 +107,7 @@
     const show = (f: Frame) => {
         if (!robot) return
         pose(f.angles)
+        scene.invalidate()
         if (!modelFrame) return
         const { rotation: r, translation: t } = bodyTransform(
             modelFrame,
@@ -141,6 +142,7 @@
                 sphere.position.fromArray(footHandleScene(modelFrame!, cfg, leg, handle.offset))
         })
         if (control?.object && !control.object.visible) control.detach()
+        scene.invalidate()
     }
 
     const grab = (event: PointerEvent) => {
@@ -160,12 +162,16 @@
             )
         )
         control.attach(hit.object)
+        scene.invalidate()
     }
 
+    // Advances playback, which changes nothing here itself: the frame it moves to comes back as `frame`, and show()
+    // marks the scene for the next animation frame.
     const render = () => {
         const now = performance.now()
         onTick?.(Math.min(0.1, (now - last) / 1000))
         last = now
+        return false
     }
 
     onMount(async () => {
@@ -205,6 +211,7 @@
         control = new TransformControls(scene.camera, scene.renderer.domElement)
         control.setMode('translate')
         control.setSize(0.6)
+        control.addEventListener('change', scene.invalidate)
         control.addEventListener('dragging-changed', event => {
             dragging = event.value as boolean
             scene.orbit.enabled = !dragging

@@ -230,11 +230,44 @@ def test_storing_a_compass_offset_keeps_every_other_peripheral_setting(fake):
     assert list(stored.imu.mounting) == [0, 1, 0, -1, 0, 0, 0, 0, 1]
 
 
+# The settings groups are read from their topics, each subscribed to only until its value is in.
+def test_the_settings_are_read_from_their_topics(make_fake):
+    fake = make_fake(supply_voltage=7.4)
+    backend = RealBackend(fake.target)
+    backend.connect()
+    try:
+        assert backend._supply_volts == pytest.approx(7.4)
+        assert backend.servo_settings() is not None
+        backend.set_mag_offset([1.0, 2.0, 3.0])
+    finally:
+        backend.close()
+    subscribed = [_sub_tag_name(m) for _, m in fake.received if m.WhichOneof("message") == "sub_notif"]
+    assert subscribed.count("stored_servo_settings") == 2 and "stored_peripheral_settings" in subscribed
+    assert "stored_servo_settings" not in fake.subscribed
+    assert list(fake.peripheral_settings.imu.mag_offset) == [1.0, 2.0, 3.0]
+
+
+# Firmware from before the settings topics still connects, at the default supply, and is named as too old for a read.
+def test_firmware_without_the_settings_topics_connects_and_is_too_old_to_read_them(make_fake):
+    fake = make_fake(snapshots=False, supply_voltage=7.4)
+    backend = RealBackend(fake.target)
+    backend.connect()
+    try:
+        assert backend._supply_volts == speed_model.DEFAULT_SUPPLY_VOLTS
+        with pytest.raises(RobotError, match="older than the settings topics"):
+            backend.servo_settings()
+        with pytest.raises(RobotError, match="older than the settings topics"):
+            backend.set_mag_offset([1.0, 2.0, 3.0])
+    finally:
+        backend.close()
+
+
 # A robot keeps streaming to a serial port the client closed until its buffer stays full for seconds.
 def test_closing_ends_the_telemetry_subscription(robot, fake):
+    before = len(fake.received)
     robot.close()
-    _eventually(lambda: "unsub_notif" in fake.kinds())
-    unsubscribed = [message.unsub_notif.tag for _, message in fake.received if message.HasField("unsub_notif")]
+    _eventually(lambda: "unsub_notif" in fake.kinds()[before:])
+    unsubscribed = [message.unsub_notif.tag for _, message in fake.received[before:] if message.HasField("unsub_notif")]
     assert unsubscribed == [pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number]
 
 
@@ -318,14 +351,27 @@ def test_a_goal_whose_end_was_not_heard_is_asked_after(robot, fake, monkeypatch)
 
 
 # The robot cancels a goal whose client has been silent for 2 s, which is how it finds a closed USB port: while a goal
-# runs, the client asks for its status every GOAL_POLL_S, broadcasts heard or not.
-def test_a_running_goals_client_keeps_asking_for_its_status(robot, fake):
+# runs, the client subscribes to its status again every GOAL_POLL_S, pushes heard or not, which the robot answers with
+# the status now; it asks firmware from before the state topics, which answers no subscribe, instead.
+@pytest.mark.parametrize("snapshots", [True, False])
+def test_a_running_goals_client_keeps_asking_for_its_status(make_fake, monkeypatch, snapshots):
+    fake = make_fake(snapshots=snapshots)
     fake.goal_s = 2.0
-    robot.stand()
-    robot.goal_move(forward=0.1)
-    asked = [t for t, m in fake.received if m.WhichOneof("message") == "correlation_request"
-             and m.correlation_request.HasField("goal_status_request")]
-    assert len(asked) >= 3
+    monkeypatch.setattr(real, "MODE_TIMEOUT_S", 1.0)
+    client = Robot(backend=RealBackend(fake.target))
+    client.connect()
+    try:
+        client.stand()
+        started = time.monotonic()
+        client.goal_move(forward=0.1)
+    finally:
+        client.close()
+    subscribed = [t for t, m in fake.received if t > started and m.WhichOneof("message") == "sub_notif"
+                  and _sub_tag_name(m) == "goal_status"]
+    requested = [t for t, m in fake.received if m.WhichOneof("message") == "correlation_request"
+                 and m.correlation_request.HasField("goal_status_request")]
+    asked, never = (subscribed, requested) if snapshots else (requested, subscribed)
+    assert len(asked) >= 3 and never == []
     assert max(b - a for a, b in zip(asked, asked[1:])) < 2 * real.GOAL_POLL_S
 
 
@@ -379,7 +425,7 @@ def test_an_interrupted_goal_is_cancelled_on_the_robot(robot, fake, monkeypatch)
 
 
 def test_a_firmware_without_goals_moves_host_side():
-    fake = FakeRobot(goals=False)
+    fake = FakeRobot(goals=False, snapshots=False)
     try:
         client = Robot(backend=RealBackend(fake.target))
         client.connect()

@@ -45,7 +45,7 @@ On UART0:
 
 - `CorrelationRequest` and its `CorrelationResponse`, as listed in [API](api.md#requests-over-the-websocket), with the same exceptions.
 - `PingMsg` and `PongMsg`.
-- A subscription to `wifi_status`, so a robot set up over its USB-serial chip shows it joining the network.
+- Subscriptions to the state topics (`mode`, `walk_gait`, `wifi_status` and the rest of [the table](websocket.md#subscriptions)), which send only their changes, so a robot set up over its USB-serial chip shows it joining the network.
 
 A reply sent later, such as an I2C scan's, goes to whoever is on the port when it is ready.
 

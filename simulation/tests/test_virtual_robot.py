@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import time
 
+import numpy as np
 import pytest
 import websockets
 
@@ -10,7 +11,6 @@ import virtual_robot
 from src.leika import Mode, Robot, RobotError
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
-from src.proto import api_pb2
 from src.proto import message_pb2 as pb
 from src.sim import recording
 
@@ -96,9 +96,9 @@ def test_the_dead_man_stop_halts_a_walk_whose_input_falls_silent(robot, monkeypa
     assert _joint_spread(robot, 1.0) > 5
 
 
-def test_it_answers_the_servo_settings_and_refuses_what_it_does_not_have(backend):
-    servo = backend.request(pb.CorrelationRequest(servo_settings_request=api_pb2.ServoSettingsRequest())).servo_settings
-    assert len(servo.servos) == 12
+def test_it_serves_the_servo_settings_and_refuses_what_it_does_not_have(backend):
+    servo = backend.servo_settings()
+    assert len(servo.center_pwm) == 12 and len(servo.direction) == 12
     with pytest.raises(RobotError, match="Not available on the virtual robot"):
         backend.request(pb.CorrelationRequest(i2c_scan_data_request=pb.I2CScanDataRequest()))
     assert backend.state().mode is Mode.DEACTIVATED  # the link outlives a refusal
@@ -126,3 +126,18 @@ def test_a_recording_holds_the_firmwares_header_and_every_tick_of_its_block(robo
     assert len(rec.ticks["seq"]) >= 50 and rec.missing_ticks == 0
     modes = rec.ticks["mode"]
     assert modes[0] == Mode.DEACTIVATED.value and modes[-1] == Mode.STAND.value
+    # The firmware's own clock times the tick's parts, each inside the whole it belongs to.
+    t = rec.ticks
+    standing = modes == Mode.STAND.value
+    assert t["motion_us"][standing].sum() > 0 and t["kinematics_us"][standing].sum() > 0
+    assert np.all(t["motion_step_us"] + t["odometry_us"] + t["goal_us"] + t["kinematics_us"] <= t["motion_us"])
+    assert np.all(t["motion_us"] <= t["compute_us"])
+    assert np.all(t["servo_bus_wait_us"] + t["servo_transfer_us"] <= t["servo_write_us"])
+
+
+# The firmware's own CommAdapterBase answers a subscribe to a state topic with its value, then the ack.
+def test_a_subscribe_to_the_mode_is_answered_with_the_mode_then_the_ack(backend):
+    heard = []
+    backend.listen("mode", lambda mode: heard.append(("mode", mode.mode)))
+    assert heard == [("mode", pb.DEACTIVATED)]
+    assert backend._snapshots

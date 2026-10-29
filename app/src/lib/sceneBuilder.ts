@@ -44,19 +44,26 @@ interface arrowOptions {
 
 type directionalLight = position & light
 
+/** Called every animation frame before the scene is drawn; returns whether it changed what the scene shows. */
+export type FrameCallback = () => boolean
+
 export default class SceneBuilder {
     public scene: Scene
     public camera!: PerspectiveCamera
     public ground!: Mesh
     public renderer!: WebGLRenderer
     public orbit!: OrbitControls
-    public callback: (() => void) | undefined
+    public callback: FrameCallback | undefined
     public gridHelper!: GridHelper
     public model!: URDFRobot
-    public liveStreamTexture!: CanvasTexture
     private fog!: FogExp2
-    private isLoaded: boolean = false
     public modelGroup!: Group
+    // A frame costs the GPU as much when nothing moved as when everything did, so one is drawn only after a change:
+    // the frame callback reports its own, the orbit controls report a camera move, an object joining or leaving the
+    // scene counts (a URDF model's meshes load after the model is shown), and invalidate() marks the rest, such as a
+    // resize.
+    private changed = true
+    private objects = 0
 
     constructor() {
         this.scene = new Scene()
@@ -122,6 +129,7 @@ export default class SceneBuilder {
         this.orbit.autoRotate = autoRotate
         this.orbit.update()
         this.orbit.minDistance = minDistance
+        this.orbit.addEventListener('change', this.invalidate)
         return this
     }
 
@@ -186,23 +194,42 @@ export default class SceneBuilder {
         this.renderer.setPixelRatio(window.devicePixelRatio)
         this.camera.aspect = width / height
         this.camera.updateProjectionMatrix()
+        this.invalidate()
         return this
     }
 
-    public addRenderCb = (callback: () => void) => {
+    /** Marks the scene as changed, so the next animation frame draws it. */
+    public invalidate = () => {
+        this.changed = true
+    }
+
+    public addRenderCb = (callback: FrameCallback) => {
         this.callback = callback
         return this
     }
 
     public startRenderLoop = () => {
-        this.renderer.setAnimationLoop(() => {
-            this.renderer.render(this.scene, this.camera)
-            this.orbit.update()
-            this.handleRobotShadow()
-            if (this.callback) this.callback()
-            if (!this.liveStreamTexture) return
-        })
+        this.renderer.setAnimationLoop(this.frame)
         return this
+    }
+
+    private frame = () => {
+        if (this.callback?.()) this.changed = true
+        this.orbit.update()
+        if (this.objectCountChanged()) this.changed = true
+        if (!this.changed) return
+        this.changed = false
+        this.renderer.render(this.scene, this.camera)
+    }
+
+    // A mesh of the model casts a shadow from when it arrives.
+    private objectCountChanged = () => {
+        let objects = 0
+        this.scene.traverse(() => objects++)
+        if (objects === this.objects) return false
+        this.objects = objects
+        this.model?.traverse(child => (child.castShadow = true))
+        return true
     }
 
     public stopRenderLoop = () => {
@@ -241,12 +268,6 @@ export default class SceneBuilder {
 
     public toggleFog = () => {
         this.scene.fog = this.scene.fog ? null : this.fog
-    }
-
-    private handleRobotShadow = () => {
-        if (this.isLoaded) return
-        const intervalId = setInterval(() => this.model?.traverse(c => (c.castShadow = true)), 10)
-        setTimeout(() => clearInterval(intervalId), 1000)
-        this.isLoaded = true
+        this.invalidate()
     }
 }

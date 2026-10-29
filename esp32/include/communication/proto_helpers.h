@@ -51,12 +51,15 @@ DEFINE_MESSAGE_TRAITS(FSUploadComplete, fs_upload_complete)
 
 #undef DEFINE_MESSAGE_TRAITS
 
-template <>
-struct MessageTraits<api_WifiStatus> {
-    static constexpr pb_size_t tag = socket_message_Message_wifi_status_tag;
-    static void assign(socket_message_Message& msg, const api_WifiStatus& data) { msg.message.wifi_status = data; }
-    static const api_WifiStatus& access(const socket_message_Message& msg) { return msg.message.wifi_status; }
-};
+#define DEFINE_API_MESSAGE_TRAITS(DataType, field)                                                              template <>                                                                                                 struct MessageTraits<api_##DataType> {                                                                          static constexpr pb_size_t tag = socket_message_Message_##field##_tag;                                      static void assign(socket_message_Message& msg, const api_##DataType& data) { msg.message.field = data; }         static const api_##DataType& access(const socket_message_Message& msg) { return msg.message.field; }        };
+
+DEFINE_API_MESSAGE_TRAITS(WifiStatus, wifi_status)
+DEFINE_API_MESSAGE_TRAITS(ServoSettings, stored_servo_settings)
+DEFINE_API_MESSAGE_TRAITS(PeripheralSettings, stored_peripheral_settings)
+DEFINE_API_MESSAGE_TRAITS(WifiSettings, stored_wifi_settings)
+DEFINE_API_MESSAGE_TRAITS(APSettings, stored_ap_settings)
+
+#undef DEFINE_API_MESSAGE_TRAITS
 
 class ProtoDecoder {
   public:

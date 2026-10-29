@@ -62,6 +62,9 @@ message FeaturesDataResponse {
     bool walk_nn = 230;
     // The robot can download its own update over HTTPS (OtaDownload); esp32-camera and esp32dev have no room for it.
     bool ota_download = 240;
+    // The servo, peripheral, WiFi and access point settings are state topics (Message's stored_*_settings): a
+    // subscribe is answered with the stored group, and every stored change is pushed to every subscriber.
+    bool settings_topics = 245;
 }
 
 message FeaturesDataRequest { }
@@ -249,6 +252,10 @@ message GoalStatus {
 }
 
 message CorrelationRequest {
+    // Retired, and never to be reused: the settings get requests (140, 150, 180, 190), which the settings topics
+    // replaced (Message's stored_*_settings).
+    reserved 140, 150, 180, 190;
+    reserved "wifi_settings_request", "ap_settings_request", "servo_settings_request", "peripheral_settings_request";
     uint32 correlation_id = 1;
     oneof request {
         FeaturesDataRequest features_data_request = 10;
@@ -263,21 +270,17 @@ message CorrelationRequest {
         FSCancelTransfer fs_cancel_transfer = 120;
         RobotNameUpdate robot_name_update = 130;
         RobotVariantUpdate robot_variant_update = 131;
-        api.WifiSettingsRequest wifi_settings_request = 140;
         api.WifiSettings wifi_settings = 141;
         api.WifiStatusRequest wifi_status_request = 142;
         api.WifiScanStart wifi_scan_start = 143;
         api.WifiNetworksRequest wifi_networks_request = 144;
-        api.APSettingsRequest ap_settings_request = 150;
         api.APSettings ap_settings = 151;
         api.APStatusRequest ap_status_request = 152;
         api.MDNSStatusRequest mdns_status_request = 160;
         api.MDNSQueryRequest mdns_query_request = 161;
         api.CameraSettingsRequest camera_settings_request = 170;
         api.CameraSettings camera_settings = 171;
-        api.ServoSettingsRequest servo_settings_request = 180;
         api.ServoSettings servo_settings = 181;
-        api.PeripheralSettingsRequest peripheral_settings_request = 190;
         api.PeripheralSettings peripheral_settings = 191;
         SystemRestart system_restart = 200;
         SystemReset system_reset = 201;
@@ -525,6 +528,15 @@ message TickSample {
     WalkGaits walked = 18;       // the schedule the legs walk, TROT or CRAWL: under AUTO, the one it picked
     bool link_lost = 16;         // the dead-man stop is in force
     OdometryData odometry = 17;  // after this tick's motion
+    // Where the tick's time went, each saturated at 65535: compute_us holds motion_us, which holds the next four and
+    // the inbox, gestures and fall check; servo_write_us holds the last two and the PWM conversion.
+    uint32 motion_us = 19;          // the motion update as a whole
+    uint32 motion_step_us = 20;     // the motion state's step
+    uint32 odometry_us = 21;        // the dead reckoning and its gyro fusion
+    uint32 goal_us = 22;            // driving a goal, its stop step included; 0 while none runs
+    uint32 kinematics_us = 23;      // the joint angles: the inverse kinematics, or the state's own
+    uint32 servo_bus_wait_us = 24;  // waiting for the I2C bus while another task held it
+    uint32 servo_transfer_us = 25;  // the I2C transfer to the servo board
 }
 
 message TelemetryBatch {
@@ -601,5 +613,11 @@ message Message {
         GoalStatus goal_status = 310;
         OtaStatus ota_status = 320;
         PowerData power = 330;
+        // Each settings group as stored, as its reply carries it: on every subscribe and every stored change. Not
+        // `peripheral_settings` or `wifi_settings`, names an earlier member held and that stay reserved.
+        api.ServoSettings stored_servo_settings = 331;
+        api.PeripheralSettings stored_peripheral_settings = 332;
+        api.WifiSettings stored_wifi_settings = 333;
+        api.APSettings stored_ap_settings = 334;
     }
 }

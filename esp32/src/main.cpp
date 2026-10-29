@@ -39,6 +39,7 @@
 #include <telemetry/tick_sample.h>
 #include <settings/placeholders.h>
 #include <settings/imu_settings.h>
+#include <settings/settings_topic.h>
 #include <variant.h>
 #include <algorithm>
 #include <atomic>
@@ -86,6 +87,11 @@ static bool anySubscribers(int32_t tag) {
                        [tag](CommAdapterBase *link) { return link->hasSubscribers(tag); });
 }
 
+// Sends a state topic's current value to its subscribers on every link (CommAdapterBase::push).
+static void pushToAll(int32_t tag) {
+    for (CommAdapterBase *link : links) link->push(tag);
+}
+
 // The links that carry the telemetry stream: a batch a second of 100 ticks is more than Bluetooth carries.
 static CommAdapterBase *const telemetryLinks[] = {&wsSocket, &serialLink};
 
@@ -128,6 +134,12 @@ MDNSService mdnsService;
 WiFiService wifiService;
 APService apService;
 RobotService robotService;
+
+// The settings groups as state topics: pushed on every stored change, whichever client or task made it.
+static SettingsTopic<api_ServoSettings> servoSettingsTopic {servoController.protoHandler};
+static SettingsTopic<api_PeripheralSettings> peripheralSettingsTopic {peripherals.protoHandler};
+static SettingsTopic<api_WifiSettings> wifiSettingsTopic {wifiService.protoHandler};
+static SettingsTopic<api_APSettings> apSettingsTopic {apService.protoHandler};
 Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
@@ -261,9 +273,7 @@ static void publishOtaStatus() {
     if (!changed && (now.state != OtaDownloadState::DOWNLOADING || nowAt - lastSentAt < 500)) return;
     last = now;
     lastSentAt = nowAt;
-    socket_message_OtaStatus status = socket_message_OtaStatus_init_zero;
-    otaStatusToProto(now, status);
-    emitToAll(status);
+    pushToAll(socket_message_Message_ota_status_tag);
 }
 #endif
 
@@ -338,6 +348,8 @@ static std::vector<std::function<void(const ReplyFiller &)>> variantReplies;
 
 static void finishVariantSwitch() {
     mdnsService.setVariant(variantName(activeVariant.load()));
+    // The servo settings carry the variant's joint model.
+    pushToAll(socket_message_Message_stored_servo_settings_tag);
     std::vector<std::function<void(const ReplyFiller &)>> replies;
     {
         std::lock_guard<std::mutex> lock(variantRepliesMutex);
@@ -385,6 +397,76 @@ static void sendTelemetryHeader(CommAdapterBase &link, int clientId) {
     link.emit(header, clientId);
 }
 
+// What a subscribe to each topic is answered with, and what a push sends (communication/topics.h): the owner's value
+// now. A snapshot runs under the link's encode lock, so it never waits on a task that sends on a link: the owners
+// below are read lock-free or under a lock of their own that no sender holds.
+static constexpr Topic TOPICS[] = {
+    {socket_message_Message_imu_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_mode_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { sink.put(socket_message_ModeData {.mode = motionService.mode()}); }},
+    {socket_message_Message_analytics_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_walk_gait_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { sink.put(socket_message_WalkGaitData {.gait = motionService.gait()}); }},
+    {socket_message_Message_rssi_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_telemetry_batch_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_telemetry_network_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_wifi_status_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) {
+         api_WifiStatus status = api_WifiStatus_init_zero;
+         WiFiService::status(status);
+         sink.put(status);
+     }},
+    {socket_message_Message_animation_status_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) {
+         const MotionService::AnimationStatus now = motionService.animationStatus();
+         socket_message_AnimationStatus status = socket_message_AnimationStatus_init_zero;
+         strncpy(status.name, now.name, sizeof(status.name) - 1);
+         status.state = static_cast<socket_message_AnimationState>(now.state);
+         status.t = now.t;
+         status.clamped_mask = now.clampedMask;
+         sink.put(status);
+     }},
+    {socket_message_Message_sonar_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_goal_status_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) {
+         socket_message_GoalStatus status = socket_message_GoalStatus_init_zero;
+         goalStatusToProto(motionService.goalStatus(), status);
+         sink.put(status);
+     }},
+    // A board without the robot's own download never leaves idle.
+    {socket_message_Message_ota_status_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) {
+         socket_message_OtaStatus status = socket_message_OtaStatus_init_zero;
+#if USE_OTA_DOWNLOAD
+         otaStatusToProto(otaDownload.status(), status);
+#endif
+         sink.put(status);
+     }},
+    {socket_message_Message_power_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_stored_servo_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { servoSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_peripheral_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { peripheralSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_wifi_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { wifiSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_ap_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { apSettingsTopic.snapshot(sink); }},
+};
+static_assert(servesEveryTopic(TOPICS), "TOPICS serves every topic of TOPIC_KINDS, a snapshot for each state");
+
+// Pushes a settings group on every stored change. Registered before the tasks start, as an update handler list is not
+// locked against registration.
+static void pushSettingsOnChange() {
+    servoController.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_servo_settings_tag); }, false);
+    peripherals.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_peripheral_settings_tag); }, false);
+    wifiService.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_wifi_settings_tag); }, false);
+    apService.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_ap_settings_tag); }, false);
+}
+
 void setupEventSocket() {
     FileSystemWS::fsHandler.setSendCallbacks(
         [](const socket_message_FSDownloadMetadata &metadata, int clientId) { wsSocket.emit(metadata, clientId); },
@@ -402,6 +484,7 @@ void setupEventSocket() {
     // A client that leaves any link ends what it owns there, and a goal's owner that falls silent loses it
     // (MotionInbox::OWNER_SILENCE_MS).
     for (CommAdapterBase *link : links) {
+        link->setTopics(TOPICS);
         link->onClientGone([link](int clientId) { motionService.inbox.dropClient({link, clientId}); });
         link->onHeard([link](int clientId) {
             motionService.inbox.heard({link, clientId}, static_cast<uint32_t>(esp_timer_get_time() / 1000));
@@ -539,12 +622,6 @@ void setupEventSocket() {
                  FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer);
          }},
 
-        {socket_message_CorrelationRequest_wifi_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(wifiService.protoHandler, res, socket_message_CorrelationResponse_wifi_settings_tag,
-                               res.response.wifi_settings);
-         }},
-
         {socket_message_CorrelationRequest_wifi_settings_tag,
          [](const auto &req, auto &res, Client client) {
              applySettings(wifiService.protoHandler, req.request.wifi_settings, res,
@@ -566,12 +643,6 @@ void setupEventSocket() {
                  res.which_response = socket_message_CorrelationResponse_wifi_network_list_tag;
              else
                  res.status_code = 202;
-         }},
-
-        {socket_message_CorrelationRequest_ap_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(apService.protoHandler, res, socket_message_CorrelationResponse_ap_settings_tag,
-                               res.response.ap_settings);
          }},
 
         {socket_message_CorrelationRequest_ap_settings_tag,
@@ -613,30 +684,25 @@ void setupEventSocket() {
                                res.response.camera_settings);
          }},
 
+        // A value the fitted sensor refuses is refused with the reason rather than stored as if it applied.
         {socket_message_CorrelationRequest_camera_settings_tag,
          [](const auto &req, auto &res, Client client) {
+             if (const char *refusal = cameraService.refusal(req.request.camera_settings)) {
+                 res.status_code = 400;
+                 strncpy(res.error_message, refusal, sizeof(res.error_message) - 1);
+                 return replyWithSettings(cameraService.protoHandler, res,
+                                          socket_message_CorrelationResponse_camera_settings_tag,
+                                          res.response.camera_settings);
+             }
              applySettings(cameraService.protoHandler, req.request.camera_settings, res,
                            socket_message_CorrelationResponse_camera_settings_tag, res.response.camera_settings);
          }},
 #endif
 
-        {socket_message_CorrelationRequest_servo_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(servoController.protoHandler, res,
-                               socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
-         }},
-
         {socket_message_CorrelationRequest_servo_settings_tag,
          [](const auto &req, auto &res, Client client) {
              applySettings(servoController.protoHandler, req.request.servo_settings, res,
                            socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
-         }},
-
-        {socket_message_CorrelationRequest_peripheral_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(peripherals.protoHandler, res,
-                               socket_message_CorrelationResponse_peripheral_settings_tag,
-                               res.response.peripheral_settings);
          }},
 
         {socket_message_CorrelationRequest_peripheral_settings_tag,
@@ -945,8 +1011,10 @@ void SpotControlLoopEntry(void *) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
-    startRequiredTask(sensorLoopEntry, "Sensor task", 4, 1);
+    // The servo board starts before the sensor task probes the IMU: started in either order at once, their start-ups
+    // shared the bus and the IMU went undetected on about half the boots of one build on the Spot Pico (2026-10-29).
     servoController.begin();
+    startRequiredTask(sensorLoopEntry, "Sensor task", 4, 1);
     motionService.begin();
     const char *sitError = nullptr;
     motionService.setSitClip(animationStore.load("sit", sitError));
@@ -988,22 +1056,17 @@ void SpotControlLoopEntry(void *) {
     }
 }
 
-// The robot owns its mode and gait: apps hear of a change on the service loop's next pass, and a newly
-// opened app within a second, so after a reload it shows what the robot does rather than a default.
+// The robot owns its mode and gait: apps hear of a change on the service loop's next pass, and a newly opened app
+// from its subscribe's snapshot, so after a reload it shows what the robot does rather than a default.
 static void publishMotion() {
     static socket_message_ModesEnum lastMode = socket_message_ModesEnum_DEACTIVATED;
     static socket_message_WalkGaits lastGait = socket_message_WalkGaits_TROT;
-    static uint32_t lastSentAt = 0;
-    uint32_t now = esp_timer_get_time() / 1000;
-    socket_message_ModesEnum mode = motionService.mode();
-    socket_message_WalkGaits gait = motionService.gait();
-    bool changed = mode != lastMode || gait != lastGait;
-    if (!changed && now - lastSentAt < 1000) return;
+    const socket_message_ModesEnum mode = motionService.mode();
+    const socket_message_WalkGaits gait = motionService.gait();
+    if (mode != lastMode) pushToAll(socket_message_Message_mode_tag);
+    if (gait != lastGait) pushToAll(socket_message_Message_walk_gait_tag);
     lastMode = mode;
     lastGait = gait;
-    lastSentAt = now;
-    emitToAll(socket_message_ModeData {.mode = mode});
-    emitToAll(socket_message_WalkGaitData {.gait = gait});
 }
 
 // Every change of the clip or its state, and every 200 ms while a clip runs, so an app sees it progress.
@@ -1017,12 +1080,7 @@ static void publishAnimationStatus() {
     if (!changed && (now.state == anim::State::IDLE || nowMs - lastSentAt < 200)) return;
     last = now;
     lastSentAt = nowMs;
-    socket_message_AnimationStatus status = socket_message_AnimationStatus_init_zero;
-    strncpy(status.name, now.name, sizeof(status.name) - 1);
-    status.state = static_cast<socket_message_AnimationState>(now.state);
-    status.t = now.t;
-    status.clamped_mask = now.clampedMask;
-    emitToAll(status);
+    pushToAll(socket_message_Message_animation_status_tag);
 }
 
 // On every new goal and every change of its state, so a client waiting on one hears how it ended, over whichever
@@ -1033,9 +1091,7 @@ static void publishGoalStatus() {
     const MotionService::GoalStatus now = motionService.goalStatus();
     if (now.id == last.id && now.state == last.state) return;
     last = now;
-    socket_message_GoalStatus status = socket_message_GoalStatus_init_zero;
-    goalStatusToProto(now, status);
-    emitToAll(status);
+    pushToAll(socket_message_Message_goal_status_tag);
 }
 
 // Held deactivated while the rail stays under the cut-off: an activation from the app or a gesture is undone here.
@@ -1116,11 +1172,10 @@ void serviceLoopEntry(void *) {
             publishGoalStatus();
 
             // Also on the console UART: a robot set up over its USB-serial chip shows it joining the network.
-            if (wifiService.takeStatusChanged()) {
-                api_WifiStatus status = api_WifiStatus_init_zero;
-                WiFiService::status(status);
-                emitToAll(status);
-            }
+            if (wifiService.takeStatusChanged()) pushToAll(socket_message_Message_wifi_status_tag);
+
+            // A state push a client could not take is sent again, as the current value, once it can.
+            for (CommAdapterBase *link : links) link->resendDirty();
 
             if (anySubscribers(socket_message_Message_imu_tag)) {
                 socket_message_IMUData imu = socket_message_IMUData_init_zero;
@@ -1202,6 +1257,7 @@ extern "C" void app_main(void) {
     peripherals.begin();
     driveLeds();
     peripherals.addUpdateHandler([](const std::string &) { driveLeds(); }, false);
+    pushSettingsOnChange();
 
     startRequiredTask(serviceLoopEntry, "Service task", 2, tskNO_AFFINITY);
 
