@@ -126,3 +126,11 @@ def test_a_recording_holds_the_firmwares_header_and_every_tick_of_its_block(robo
     assert len(rec.ticks["seq"]) >= 50 and rec.missing_ticks == 0
     modes = rec.ticks["mode"]
     assert modes[0] == Mode.DEACTIVATED.value and modes[-1] == Mode.STAND.value
+
+
+# The firmware's own CommAdapterBase answers a subscribe to a state topic with its value, then the ack.
+def test_a_subscribe_to_the_mode_is_answered_with_the_mode_then_the_ack(backend):
+    heard = []
+    backend.listen("mode", lambda mode: heard.append(("mode", mode.mode)))
+    assert heard == [("mode", pb.DEACTIVATED)]
+    assert backend._snapshots

@@ -86,7 +86,10 @@ def test_records_over_the_usb_port_and_unsubscribes_at_the_end(tmp_path, monkeyp
         robot.stop()
     rec = load(path)
     assert rec.header.variant == robot.variant and len(rec.ticks["t_us"]) >= 3
-    assert 1 + len(rec.ticks["t_us"]) + len(rec.network["t_us"]) == frames  # one tick per batch from the fake robot
+    # The header, one tick per batch from the fake robot, the network samples, and the goal's status the subscribe to it
+    # is answered with.
+    assert len(rec.goals["host_rx_us"]) == 1
+    assert 1 + len(rec.ticks["t_us"]) + len(rec.network["t_us"]) + 1 == frames
     assert sorted(message.unsub_notif.tag for _, message in robot.received if message.HasField("unsub_notif")) == sorted(
         record._tag(name) for name in record.TAGS
     )

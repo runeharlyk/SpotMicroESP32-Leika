@@ -3,8 +3,11 @@ keep-alive, telemetry.
 
 One thread runs an asyncio loop that owns the link; the public methods are synchronous and wait on what telemetry
 reports. While the velocity is not zero the input is re-sent every KEEPALIVE_S, inside the firmware's 500 ms dead-man.
-A goal move runs on the robot, which needs only a status request every GOAL_POLL_S until it reports the end: a client
-silent for 2 s has gone, to the robot, and its goal with it.
+A goal move runs on the robot, which pushes its status on every change; a client silent for 2 s has gone, to the robot,
+and its goal with it. So every GOAL_POLL_S until the end, the client subscribes to the goal's status again, which the
+robot answers with the status now (its snapshot, platform_shared/topics.json), or asks for it, on firmware from before
+the state topics, which acks no subscribe. The goal_status subscribe at connect tells the two apart: its ack, or none,
+comes before the reply to the features request after it, as the robot answers in order.
 """
 import asyncio
 import math
@@ -67,6 +70,8 @@ class RealBackend:
         self._goals: bool | None = None
         self._listeners: dict[str, Callable] = {}
         self._subscribed: set[str] = set()
+        self._pongs: list[asyncio.Future] = []
+        self._snapshots = False  # the firmware answers a subscribe with a state topic's current value and an ack
 
     # --- connection --------------------------------------------------------------------------------------------
     # A connect that fails partway closes what it opened: the robot would otherwise keep streaming to a dead subscriber.
@@ -140,6 +145,13 @@ class RealBackend:
                         self._changed.notify_all()
                 elif kind == "goal_status":
                     self._heard_goal(message.goal_status)
+                elif kind == "sub_notif":
+                    self._snapshots = True
+                elif kind == "pongmsg":
+                    for pong in self._pongs:
+                        if not pong.done():
+                            pong.set_result(None)
+                    self._pongs.clear()
                 elif kind == "correlation_response":
                     future = self._replies.pop(message.correlation_response.correlation_id, None)
                     if future is not None and not future.done():
@@ -176,6 +188,13 @@ class RealBackend:
 
     async def _send(self, message: pb.Message) -> None:
         await self._link.send(message.SerializeToString())
+
+    # The robot answers in order on a link, so once a ping's pong is in, so is everything it answered before the ping.
+    async def _answered(self) -> None:
+        pong = self._loop.create_future()
+        self._pongs.append(pong)
+        await self._send(pb.Message(pingmsg=pb.PingMsg()))
+        await asyncio.wait_for(pong, REQUEST_TIMEOUT_S)
 
     async def _ask(self, request: pb.CorrelationRequest) -> pb.CorrelationResponse:
         request.correlation_id = self._next_id
@@ -215,7 +234,9 @@ class RealBackend:
     def listen(self, kind: str, handler: Callable | None, subscribe: bool = True) -> None:
         """Calls `handler` with each message of `kind` (a field of Message) from the robot, on the link's thread, and
         with `subscribe` asks the robot for them, once per kind and until the link closes; None stops the calls. The
-        robot sends some kinds, such as a file transfer's end, to the client concerned without a subscription."""
+        robot sends some kinds, such as a file transfer's end, to the client concerned without a subscription. A
+        subscribe returns once the robot answered it, so a state topic's current value, which the robot answers it with
+        (platform_shared/topics.json), has reached `handler` before anything asked for after."""
         if handler is None:
             self._listeners.pop(kind, None)
             return
@@ -223,6 +244,7 @@ class RealBackend:
         if subscribe and kind not in self._subscribed:
             self.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag(kind))))
             self._subscribed.add(kind)
+            self._run(self._answered(), REQUEST_TIMEOUT_S + 1)
 
     def _wait(self, done, timeout: float, what: str) -> None:
         deadline = time.monotonic() + timeout
@@ -356,10 +378,11 @@ class RealBackend:
 
     # --- goal moves ----------------------------------------------------------------------------------------------
     def supports_goals(self) -> bool:
-        """Whether the firmware takes goal moves; one from before them refuses the status request as unknown."""
+        """Whether the firmware takes goal moves: every one with the state topics does, and one from before the goals
+        refuses the status request as unknown."""
         if self._goals is None:
-            reply = self.ask(pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest()))
-            self._goals = reply.status_code < 400
+            self._goals = self._snapshots or self.ask(
+                pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest())).status_code < 400
         return self._goals
 
     def goal_move(self, forward: float, sideways: float, turn_deg: float, speed: float) -> None:
@@ -387,6 +410,14 @@ class RealBackend:
         except RobotError:
             pass  # the link is gone, and the robot cancels the goal of a client that left or fell silent
 
+    # Subscribed to again, the robot answers with the goal's status now; firmware from before the state topics answers
+    # nothing to that, and is asked for it instead.
+    def _refresh_goal(self) -> None:
+        if self._snapshots:
+            self.send(pb.Message(sub_notif=pb.SubscribeNotification(tag=_tag("goal_status"))))
+        else:
+            self._heard_goal(self.request(pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest())).goal_status)
+
     def _heard_goal(self, status: pb.GoalStatus) -> None:
         with self._changed:
             if status.id >= self._goal_status.id:
@@ -411,8 +442,7 @@ class RealBackend:
             if now > deadline:
                 raise RobotTimeout(f"the robot never reported the end of goal {goal}")
             if now - asked >= GOAL_POLL_S:
-                reply = self.request(pb.CorrelationRequest(goal_status_request=pb.GoalStatusRequest()))
-                self._heard_goal(reply.goal_status)
+                self._refresh_goal()
                 asked = time.monotonic()
                 continue
             with self._changed:

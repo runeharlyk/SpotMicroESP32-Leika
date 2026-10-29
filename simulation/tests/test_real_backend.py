@@ -318,14 +318,27 @@ def test_a_goal_whose_end_was_not_heard_is_asked_after(robot, fake, monkeypatch)
 
 
 # The robot cancels a goal whose client has been silent for 2 s, which is how it finds a closed USB port: while a goal
-# runs, the client asks for its status every GOAL_POLL_S, broadcasts heard or not.
-def test_a_running_goals_client_keeps_asking_for_its_status(robot, fake):
+# runs, the client subscribes to its status again every GOAL_POLL_S, pushes heard or not, which the robot answers with
+# the status now; it asks firmware from before the state topics, which answers no subscribe, instead.
+@pytest.mark.parametrize("snapshots", [True, False])
+def test_a_running_goals_client_keeps_asking_for_its_status(make_fake, monkeypatch, snapshots):
+    fake = make_fake(snapshots=snapshots)
     fake.goal_s = 2.0
-    robot.stand()
-    robot.goal_move(forward=0.1)
-    asked = [t for t, m in fake.received if m.WhichOneof("message") == "correlation_request"
-             and m.correlation_request.HasField("goal_status_request")]
-    assert len(asked) >= 3
+    monkeypatch.setattr(real, "MODE_TIMEOUT_S", 1.0)
+    client = Robot(backend=RealBackend(fake.target))
+    client.connect()
+    try:
+        client.stand()
+        started = time.monotonic()
+        client.goal_move(forward=0.1)
+    finally:
+        client.close()
+    subscribed = [t for t, m in fake.received if t > started and m.WhichOneof("message") == "sub_notif"
+                  and _sub_tag_name(m) == "goal_status"]
+    requested = [t for t, m in fake.received if m.WhichOneof("message") == "correlation_request"
+                 and m.correlation_request.HasField("goal_status_request")]
+    asked, never = (subscribed, requested) if snapshots else (requested, subscribed)
+    assert len(asked) >= 3 and never == []
     assert max(b - a for a, b in zip(asked, asked[1:])) < 2 * real.GOAL_POLL_S
 
 
@@ -379,7 +392,7 @@ def test_an_interrupted_goal_is_cancelled_on_the_robot(robot, fake, monkeypatch)
 
 
 def test_a_firmware_without_goals_moves_host_side():
-    fake = FakeRobot(goals=False)
+    fake = FakeRobot(goals=False, snapshots=False)
     try:
         client = Robot(backend=RealBackend(fake.target))
         client.connect()
