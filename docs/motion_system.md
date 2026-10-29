@@ -16,6 +16,7 @@ Rest, stand and walk have a motion state; the others have none.
 | Walk                           | `WalkState`  | Awake       | Trot, crawl or AUTO gait, selected separately                                              |
 
 A mode change replaces the motion state and resets its smoothing, so that a state taking over starts from a body at rest.
+Once a client has sent input, the state taking over also follows the last input from its first tick: a client that sends its sticks again only after the robot reports the mode, as the Python client does, used to see the body ease toward the new state's own height until they came, by about 7 mm on the Pico within 0.2 s.
 A gesture from the optional gesture sensor also changes the mode: down selects rest, up selects stand, and left and right select walk.
 
 ## Controller input mapping

@@ -34,6 +34,9 @@ void MotionService::setState(MotionState* newState) {
     if (state) {
         state->resetSmoothing();
         state->begin();
+        // At the height and with the sticks a client last sent, which a client that sends them only once the robot
+        // reports the mode would otherwise see the body leave for the state's own until they came.
+        if (commandRxUs) state->handleCommand(command);
     }
 }
 

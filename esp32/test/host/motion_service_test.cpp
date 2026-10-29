@@ -374,6 +374,42 @@ static void standAsPico(MotionService &motion) {
     for (int i = 0; i < 100; i++) tick(motion);
 }
 
+// The largest difference of any joint's commanded angle from `angles`, over `ticks` ticks.
+static float largestDrift(MotionService &motion, const float (&angles)[12], int ticks) {
+    float largest = 0;
+    for (int i = 0; i < ticks; i++) {
+        tick(motion);
+        for (int joint = 0; joint < 12; joint++)
+            largest = std::max(largest, std::fabs(motion.getAngles()[joint] - angles[joint]));
+    }
+    return largest;
+}
+
+// A client sends the mode, waits for the robot to report it and only then sends its sticks again (the Python client
+// does). Until they came, a walk entered from the stand eased the body toward its own last height, here its default,
+// by some 7 mm on the Pico in 200 ms; a stand entered from the walk eased it to half height. Each state now takes
+// over at the height, and with the sticks, the client last sent.
+static void aModeTakingOverKeepsTheHeightTheClientAskedFor() {
+    MotionService motion;
+    standAsPico(motion);
+    socket_message_ControllerData high = stick(0, 0, 0, 0);
+    high.height = 0.7f;
+    motion.inbox.postInput(high, fake_timer::nowUs / 1000, fake_timer::nowUs);
+    for (int i = 0; i < 100; i++) tick(motion);
+    float standing[12];
+    std::copy(motion.getAngles(), motion.getAngles() + 12, standing);
+
+    motion.inbox.postMode(socket_message_ModesEnum_WALK);
+    const float walking = largestDrift(motion, standing, 30);
+    if (walking > 0.1f) std::printf("a walk entered from the stand moved a joint %.2f deg\n", walking);
+    CHECK(walking <= 0.1f);
+
+    motion.inbox.postMode(socket_message_ModesEnum_STAND);
+    const float standingAgain = largestDrift(motion, standing, 60);
+    if (standingAgain > 0.1f) std::printf("a stand entered from the walk moved a joint %.2f deg\n", standingAgain);
+    CHECK(standingAgain <= 0.1f);
+}
+
 // From stand into the clip and back to stand without a jump: entry, half a second; the clip, a second; exit, half.
 static void aClipPlaysFromStandAndHandsBackToStand() {
     MotionService motion;
@@ -569,6 +605,7 @@ int main() {
     aRobotLyingOnItsSideDeactivates();
     aTiltedOrKnockedRobotKeepsStanding();
     leavingAWalkMovesTheLegsSmoothly();
+    aModeTakingOverKeepsTheHeightTheClientAskedFor();
     aGaitChosenMidStrideIsTakenAtAStandstill();
     withoutAVariantEveryModeButDeactivatedIsRefused();
     withAVariantTheRobotStandsOnItsOwnGeometry();

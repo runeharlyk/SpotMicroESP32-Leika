@@ -5,7 +5,7 @@ import yertle from '../fixtures/firmware-trace-SPOTMICRO_YERTLE.json'
 import { ANGLE_EPSILON, DIR, FirmwareMotion } from '../../src/lib/simulation/firmware/motion'
 import { inverseKinematics } from '../../src/lib/simulation/firmware/kinematics'
 import { kinConfig, type Variant } from '../../src/lib/simulation/firmware/kin-config'
-import { ControllerData } from '../../src/lib/platform_shared/message'
+import { ControllerData, ModesEnum } from '../../src/lib/platform_shared/message'
 
 // The traces come from the firmware's own headers compiled on the host
 // (esp32/test/host/export_firmware_traces.py); regenerate them when the motion code changes.
@@ -91,5 +91,28 @@ describe.each([esp32, mini, yertle] as Trace[])('firmware motion port ($variant)
             })
             sent = tick.angles
         }
+    })
+})
+
+// MotionService::setState: a client that sends its sticks only once the robot reports the mode (the Python client
+// does) saw the body leave for the new state's own height until they came, 14 degrees at a joint within 0.3 s.
+describe('firmware motion port, a mode taking over', () => {
+    it('keeps the height and the sticks the controller last sent', () => {
+        const motion = new FirmwareMotion('SPOTMICRO_ESP32_MINI')
+        const drift = (ticks: number, from: number[]) =>
+            Math.max(
+                ...Array.from({ length: ticks }, () => worst(motion.update(0.01, [0, 0]), from))
+            )
+        motion.setMode(ModesEnum.STAND)
+        motion.handleInput(
+            ControllerData.create({ left: {}, right: {}, height: 0.7, speed: 0.5, s1: 0.5 })
+        )
+        for (let i = 0; i < 100; i++) motion.update(0.01, [0, 0])
+        const standing = motion.update(0.01, [0, 0])
+
+        motion.setMode(ModesEnum.WALK)
+        expect(drift(30, standing)).toBeLessThanOrEqual(ANGLE_EPSILON)
+        motion.setMode(ModesEnum.STAND)
+        expect(drift(60, standing)).toBeLessThanOrEqual(ANGLE_EPSILON)
     })
 })

@@ -44,6 +44,9 @@ class CameraService
      */
     void release();
 
+    /** Why a write of `settings` is refused, by their ranges or by the sensor up now, or nullptr. */
+    const char *refusal(const CameraSettings &settings);
+
     StatefulProtoHandler<CameraSettings, api_CameraSettings> protoHandler;
 
   private:

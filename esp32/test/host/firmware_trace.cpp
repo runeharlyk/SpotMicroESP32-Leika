@@ -75,6 +75,7 @@ struct Motion {
     std::optional<float> gyro;
     float new_angles[12] = {0};
     float angles[12] = {0};
+    std::optional<CommandMsg> command;  // the last input, which a state taking over follows from its first tick
 
     explicit Motion(const KinConfig &config) : config(config), kinematics(config) {
         rest.configure(config);
@@ -90,6 +91,12 @@ struct Motion {
         state = states[mode - REST];
         state->resetSmoothing();
         state->begin();
+        if (command) state->handleCommand(*command);
+    }
+
+    void handleCommand(const CommandMsg &cmd) {
+        command = cmd;
+        state->handleCommand(cmd);
     }
 
     void setGait(Gait gait) {
@@ -163,7 +170,7 @@ int main(int argc, char **argv) {
         if (segment.gait != gait) motion.setGait(gait = segment.gait);
         if (!started || !sameCommand(segment.cmd, cmd)) {
             cmd = segment.cmd;
-            motion.state->handleCommand(cmd);
+            motion.handleCommand(cmd);
         }
         started = true;
         for (int t = 0; t < segment.ticks; t++, step++) {

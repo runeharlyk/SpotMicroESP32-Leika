@@ -39,6 +39,7 @@ PROGRAMS = {
     "walk_nn_test.cpp": [os.path.join(REPO, "esp32", "src", "motion.cpp")],
     "servo_output_test.cpp": [],
     "servo_settings_test.cpp": [*NANOPB, API_PROTO],
+    "camera_settings_test.cpp": [],
     "servo_controller_test.cpp": [*NANOPB, API_PROTO],
     "i2c_bus_test.cpp": [],
     "pca9685_test.cpp": [],
