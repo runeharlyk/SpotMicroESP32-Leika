@@ -10,6 +10,7 @@ import {
     walkGait
 } from '../../src/lib/stores/model-store'
 import { socket } from '../../src/lib/stores/socket'
+import { fakeStates } from './fake-robot'
 import { driveSimulation, simulation } from '../../src/lib/stores/drive'
 import type { ClipPlayer } from '../../src/lib/simulation/robot-sim'
 import {
@@ -198,13 +199,12 @@ describe('controller panel', () => {
     })
 
     it("shows the robot's clip playing while the controls drive the robot", () => {
-        let report: ((data: AnimationStatus) => void) | undefined
-        vi.spyOn(socket, 'on').mockImplementation(((type: unknown, listener: never) => {
-            if (type === AnimationStatus) report = listener
-            return () => {}
-        }) as typeof socket.on)
+        const states = fakeStates()
         open(ModesEnum.ANIMATE)
-        report!(AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_HOLD }))
+        states.set(
+            AnimationStatus,
+            AnimationStatus.create({ name: 'sit', state: AnimationState.ANIM_HOLD })
+        )
         flushSync()
         expect(text()).toMatch('Playing sit')
         expect(button('Play')!.disabled).toBe(false)

@@ -119,6 +119,10 @@ def follow(robot: RealBackend, start) -> None:
     ends there with the reason; Ctrl-C ends it too."""
     statuses = queue.Queue()
     robot.listen("animation_status", statuses.put)
+    # The robot answered the subscribe with the clip's status as it was, before the request: history, such as an idle
+    # that would end the following at once.
+    while not statuses.empty():
+        statuses.get_nowait()
     mode = robot.state().mode
     try:
         start()

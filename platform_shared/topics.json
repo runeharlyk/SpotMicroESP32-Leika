@@ -1,0 +1,22 @@
+{
+  "description": "The robot's server-to-client topics in the Message oneof of platform_shared/message.proto, by tag, with their kind. A state topic holds one current value: a subscribe to it is answered with that value (the snapshot), then with the subscribe echoed as its ack, and every change follows; a push a client could not take is sent again, as the current value, once it can. A stream topic is a sequence of frames: a subscribe to it is answered with the ack alone, and its frames follow while the client subscribes. A subscribe to a tag that is no topic is acked as a stream. The firmware's table (esp32/include/communication/topics.h, test esp32/test/host/topic_snapshot_test.cpp) and the app's (app/src/lib/transport/topics.ts, test app/tests/unit/topics.spec.ts) are both checked against this file.",
+  "topics": [
+    { "name": "imu", "tag": 110, "kind": "stream" },
+    { "name": "mode", "tag": 130, "kind": "state" },
+    { "name": "analytics", "tag": 150, "kind": "stream" },
+    { "name": "walk_gait", "tag": 160, "kind": "state" },
+    { "name": "rssi", "tag": 260, "kind": "stream" },
+    { "name": "telemetry_batch", "tag": 271, "kind": "stream" },
+    { "name": "telemetry_network", "tag": 272, "kind": "stream" },
+    { "name": "wifi_status", "tag": 280, "kind": "state" },
+    { "name": "animation_status", "tag": 292, "kind": "state" },
+    { "name": "sonar", "tag": 300, "kind": "stream" },
+    { "name": "goal_status", "tag": 310, "kind": "state" },
+    { "name": "ota_status", "tag": 320, "kind": "state" },
+    { "name": "power", "tag": 330, "kind": "stream" },
+    { "name": "stored_servo_settings", "tag": 331, "kind": "state" },
+    { "name": "stored_peripheral_settings", "tag": 332, "kind": "state" },
+    { "name": "stored_wifi_settings", "tag": 333, "kind": "state" },
+    { "name": "stored_ap_settings", "tag": 334, "kind": "state" }
+  ]
+}

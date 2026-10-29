@@ -63,6 +63,8 @@ PROGRAMS = {
     "gait_speed_test.cpp": [],
     "ws_frame_test.cpp": [],
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
+    "topic_snapshot_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
+    "settings_topic_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "animation_test.cpp": [],
@@ -102,6 +104,7 @@ ARGUMENTS = {
     "serial_frame_test.cpp": [os.path.join(REPO, "platform_shared", "serial_frame_vectors.json")],
     "ble_frame_test.cpp": [os.path.join(REPO, "platform_shared", "ble_frame_vectors.json")],
     "sign_convention_test.cpp": [os.path.join(REPO, "platform_shared", "sign_convention.json")],
+    "topic_snapshot_test.cpp": [os.path.join(REPO, "platform_shared", "topics.json")],
 }
 
 

@@ -1,12 +1,11 @@
 <script lang="ts">
-    import { onDestroy, onMount } from 'svelte'
+    import { onMount } from 'svelte'
     import SettingsCard from '$lib/components/SettingsCard.svelte'
     import { Delete, Edit, Paw, Play, Reload, Stop, UploadIcon } from '$lib/components/icons'
-    import { socket } from '$lib/stores/socket'
     import { mode } from '$lib/stores/model-store'
+    import { animationStatus } from '$lib/robot/state'
     import {
         AnimationState,
-        AnimationStatus,
         ModeData,
         ModesEnum,
         type AnimationEntry,
@@ -52,7 +51,7 @@
     let selected = $state<string | null>(null)
     let report = $state<AnimationReport | null>(null)
     let values = $state<Record<number, number>>({})
-    let status = $state<AnimationStatus | null>(null)
+    const status = $derived($animationStatus)
     let problem = $state<string | null>(null)
     let working = $state(false)
     let fileInput = $state<HTMLInputElement | undefined>()
@@ -135,12 +134,9 @@
 
     const standUp = () => mode.set(ModeData.create({ mode: ModesEnum.STAND }))
 
-    let stopStatus: (() => void) | undefined
     onMount(() => {
-        stopStatus = socket.on(AnimationStatus, (data: AnimationStatus) => (status = data))
         refresh()
     })
-    onDestroy(() => stopStatus?.())
 </script>
 
 <SettingsCard collapsible={false}>

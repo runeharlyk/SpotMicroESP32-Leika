@@ -19,6 +19,7 @@
 #include <communication/comm_base.hpp>
 #include <motion.h>
 #include <peripherals/servo_controller.h>
+#include <settings/settings_topic.h>
 #include <telemetry/tick_sample.h>
 #include <variant.h>
 
@@ -124,6 +125,7 @@ void reportFeatures(socket_message_CorrelationResponse &res) {
     std::strncpy(features.firmware_elf_sha256, elfSha256, sizeof(features.firmware_elf_sha256) - 1);
     features.imu = features.imu_detected = true;
     features.servo = features.servo_detected = servoController.detected();
+    features.settings_topics = true;
     features.device_id = text("virtual");
     std::strncpy(features.robot_name, "Virtual robot", sizeof(features.robot_name) - 1);
     std::strncpy(features.hostname, "localhost", sizeof(features.hostname) - 1);
@@ -135,10 +137,6 @@ void answer(const socket_message_CorrelationRequest &req, int clientId) {
     res.status_code = 200;
     switch (req.which_request) {
         case socket_message_CorrelationRequest_features_data_request_tag: reportFeatures(res); break;
-        case socket_message_CorrelationRequest_servo_settings_request_tag:
-            res.which_response = socket_message_CorrelationResponse_servo_settings_tag;
-            servoController.protoHandler.read(res.response.servo_settings);
-            break;
         default:
             res.status_code = 400;
             std::strncpy(res.error_message, "Not available on the virtual robot", sizeof(res.error_message) - 1);
@@ -163,8 +161,45 @@ void sendTelemetryHeader(int clientId) {
     pipeLink.emit(header, clientId);
 }
 
+template <typename T>
+void putIdle(SnapshotSink &sink) {
+    sink.put(T {});
+}
+
+// A settings group the virtual robot does not have: a subscribe to it is never acked, as its request was refused.
+void putNothing(SnapshotSink &) {}
+
+SettingsTopic<api_ServoSettings> servoSettingsTopic {servoController.protoHandler};
+
+// main.cpp's topic table. The virtual robot answers no goal or clip request and has no network or update, so their
+// statuses stay at their idle value.
+constexpr Topic TOPICS[] = {
+    {socket_message_Message_imu_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_mode_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { sink.put(socket_message_ModeData {.mode = motionService.mode()}); }},
+    {socket_message_Message_analytics_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_walk_gait_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { sink.put(socket_message_WalkGaitData {.gait = motionService.gait()}); }},
+    {socket_message_Message_rssi_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_telemetry_batch_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_telemetry_network_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_wifi_status_tag, TopicKind::STATE, putIdle<api_WifiStatus>},
+    {socket_message_Message_animation_status_tag, TopicKind::STATE, putIdle<socket_message_AnimationStatus>},
+    {socket_message_Message_sonar_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_goal_status_tag, TopicKind::STATE, putIdle<socket_message_GoalStatus>},
+    {socket_message_Message_ota_status_tag, TopicKind::STATE, putIdle<socket_message_OtaStatus>},
+    {socket_message_Message_power_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_stored_servo_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { servoSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_peripheral_settings_tag, TopicKind::STATE, putNothing},
+    {socket_message_Message_stored_wifi_settings_tag, TopicKind::STATE, putNothing},
+    {socket_message_Message_stored_ap_settings_tag, TopicKind::STATE, putNothing},
+};
+static_assert(servesEveryTopic(TOPICS), "TOPICS serves every topic of TOPIC_KINDS, a snapshot for each state");
+
 // The firmware's socket handlers for driving the robot (main.cpp's setupEventSocket).
 void handleMessages() {
+    pipeLink.setTopics(TOPICS);
     pipeLink.on<socket_message_ControllerData>([](const socket_message_ControllerData &data, int) {
         const int64_t now = esp_timer_get_time();
         motionService.inbox.postInput(data, now / 1000, now);
@@ -179,20 +214,16 @@ void handleMessages() {
     });
 }
 
-// As main.cpp's publishMotion: the robot reports its mode and gait on a change and every second.
+// As main.cpp's publishMotion: the robot pushes its mode and gait on a change.
 void publishMotion() {
     static socket_message_ModesEnum lastMode = socket_message_ModesEnum_DEACTIVATED;
     static socket_message_WalkGaits lastGait = socket_message_WalkGaits_TROT;
-    static int64_t lastSentAt = 0;
-    const int64_t now = esp_timer_get_time() / 1000;
     const socket_message_ModesEnum mode = motionService.mode();
     const socket_message_WalkGaits gait = motionService.gait();
-    if (mode == lastMode && gait == lastGait && now - lastSentAt < 1000) return;
+    if (mode != lastMode) pipeLink.push(socket_message_Message_mode_tag);
+    if (gait != lastGait) pipeLink.push(socket_message_Message_walk_gait_tag);
     lastMode = mode;
     lastGait = gait;
-    lastSentAt = now;
-    pipeLink.emit(socket_message_ModeData {.mode = mode});
-    pipeLink.emit(socket_message_WalkGaitData {.gait = gait});
 }
 
 void streamTelemetry() {

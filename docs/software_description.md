@@ -125,6 +125,7 @@ Commands, periodic broadcasts, settings, file transfer and the per-tick telemetr
 The protocol also travels over the serial link, beside the log, see [Serial link](serial.md): all of it on the USB-Serial-JTAG port, and requests only on the console UART.
 A `SerialLink` adapter handles both ports, each as one client, and the log goes out through its writer so a line never splits a frame.
 The firmware registers every handler on every link and sends each stream to its subscribers on each.
+A state topic, such as the mode or the goal's status, answers a subscribe with its current value and is pushed on every change; a push a client could not take is sent again as the current value on the service task's next pass, see [Subscriptions](websocket.md#subscriptions).
 On the S3 boards with PSRAM, a `NimbleLink` adapter serves the app over a Bluetooth LE Nordic UART Service, with the commands, requests and broadcasts of the WebSocket but no telemetry and no file or firmware transfer, see [Bluetooth link](bluetooth.md).
 The service task broadcasts the IMU, the sonars, the servo rail and RSSI every 100 ms and the system analytics every 2 s, to the clients that subscribed on any link.
 The analytics include every task's least free stack since it started, tightest first (System metrics), which is what a stack can be trimmed by; the serial link's 8 KB read task is the one the heap budget points at.

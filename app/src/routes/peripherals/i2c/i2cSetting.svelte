@@ -1,23 +1,18 @@
 <script lang="ts">
-    import { Cancel, Edit, EditOff, Power } from '$lib/components/icons'
+    import { Cancel, Edit, EditOff, Power, Warning } from '$lib/components/icons'
     import { robotRequest } from '$lib/robot-request'
     import { modals } from 'svelte-modals'
     import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
-    import LoadError from '$lib/components/LoadError.svelte'
     import { notifications } from '$lib/components/toasts/notifications'
-    import type { PeripheralSettings } from '$lib/platform_shared/api'
+    import { PeripheralSettings } from '$lib/platform_shared/api'
+    import { SettingsForm } from '$lib/robot/settings.svelte'
 
-    let settings = $state<PeripheralSettings | null>(null)
+    // The stored settings as the robot pushes them; the form edits a copy.
+    const form = new SettingsForm(PeripheralSettings, stored => stored)
+    $effect(() => form.follow())
+    const settings = $derived(form.draft)
     let isEditing = $state(false)
-
-    const getPeripheralSettings = async () => {
-        const reply = await robotRequest({ peripheralSettingsRequest: {} })
-        if (!reply.peripheralSettings) throw new Error('The robot sent no peripheral settings')
-        settings = reply.peripheralSettings
-    }
-
-    let loading = $state(getPeripheralSettings())
 
     const handleSave = () => {
         modals.open(ConfirmDialog, {
@@ -31,9 +26,9 @@
             onConfirm: async () => {
                 modals.close()
                 if (!settings) return
+                const saved = $state.snapshot(settings)
                 try {
-                    const reply = await robotRequest({ peripheralSettings: settings })
-                    if (reply.peripheralSettings) settings = reply.peripheralSettings
+                    await form.save(() => robotRequest({ peripheralSettings: saved }))
                     isEditing = false
                 } catch (error) {
                     notifications.error(
@@ -48,11 +43,14 @@
     const Icon = $derived(isEditing ? EditOff : Edit)
 </script>
 
-{#await loading}
+{#if !settings && form.problem}
+    <div role="alert" class="alert alert-error alert-soft">
+        <Warning class="h-6 w-6 shrink-0" />
+        <span>{form.problem}</span>
+    </div>
+{:else if !settings}
     <Spinner />
-{:catch error}
-    <LoadError {error} retry={() => (loading = getPeripheralSettings())} />
-{/await}
+{/if}
 
 {#if settings}
     <div class="collapse bg-base-100 border-base-300 border">
@@ -113,9 +111,19 @@
                         <Icon class="h-6 w-6" />
                     </button>
                     {#if isEditing}
-                        <button class="btn btn-outline btn-primary" onclick={handleSave}
-                            >Save</button
+                        <button
+                            class="btn btn-outline btn-primary"
+                            onclick={handleSave}
+                            disabled={form.saving}>Save</button
                         >
+                    {/if}
+                    {#if form.changedOnRobot}
+                        <p class="text-warning text-sm" data-testid="changed-on-robot">
+                            Changed on the robot meanwhile.
+                            <button class="link" type="button" onclick={() => form.reset()}>
+                                Show the robot's
+                            </button>
+                        </p>
                     {/if}
                 </div>
             </div>

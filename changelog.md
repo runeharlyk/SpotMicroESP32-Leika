@@ -47,6 +47,12 @@ All notable changes to this project will be documented in this file.
 - Moves the AI-Thinker (`esp32-camera`) to a partition table with two app slots and a 128 KB filesystem, so its flash over the cable erases its settings
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
+- Answers a subscribe to a state topic (the mode, gait, WiFi status, clip, goal and update status) with its current value and then an ack, on every link, ported from the Hexapod; a push a client could not take is sent again as the current value, and the mode and gait are no longer repeated every second
+- Follows the mode, gait, WiFi status, clip status and the robot's own download in the app from their state topics with `watch()`, ported from the Hexapod: a value kept from a dropped link is marked as the last known, and firmware from before the topics is named as too old; the robot's own download no longer reads an earlier download's end as its own
+- Serves the servo, peripheral, WiFi and access point settings as state topics, pushed to every client on every stored change, and reads the servo and compass settings from them in the Python client; the features say `settings_topics`
+- Shows the WiFi, access point, servo, I2C and sensor settings in the app as the robot stores them, from their topics: a change saved by another client or by the robot appears at once, an edit under way is kept apart from it with a note, and firmware from before the settings topics is named as too old
+- Retires the settings get requests (`wifi_settings_request`, `ap_settings_request`, `servo_settings_request`, `peripheral_settings_request`), which the settings topics replaced; the Python client still connects to firmware from before them, at the default servo supply
+- Follows a goal move in the Python client by subscribing to its status again rather than asking for it, on firmware with the state topics, and `robot_animate.py` no longer ends following a clip at the idle status the subscribe is answered with
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default

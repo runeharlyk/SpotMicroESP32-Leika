@@ -16,6 +16,7 @@ import { BLE_RECONNECT_ATTEMPTS, createBleTransport } from '$lib/transport/ble-a
 import { createSerialTransport } from '$lib/transport/serial-adapter'
 import { LatestFrames } from '$lib/transport/latest-frames'
 import { SETTING_GRACE_MS, kindOfRequest } from '$lib/transport/request-kinds'
+import { ACK_TIMEOUT_MS, StateEntry, type StateLink, type Watched } from '$lib/transport/topics'
 
 // The messages only the newest of which counts: a stick frame waiting behind a slow write is replaced by the next.
 const MOTION_FRAMES: ReadonlySet<MessageFns<unknown>> = new Set([Messages.ControllerData])
@@ -113,7 +114,8 @@ export const NOT_CONNECTED = 'The robot is not connected'
 
 export function createWebSocket({
     requestTimeoutTime = 30000,
-    settingGraceTime = SETTING_GRACE_MS
+    settingGraceTime = SETTING_GRACE_MS,
+    ackTimeoutTime = ACK_TIMEOUT_MS
 } = {}) {
     // Listeners also get the frame as it arrived, for a recorder that keeps the robot's bytes.
     const message_listeners = new Map<number, Set<(data: unknown, frame: ArrayBuffer) => void>>()
@@ -152,6 +154,21 @@ export function createWebSocket({
     const activeTransport = writable<ITransport['kind'] | null>(null)
 
     const isOpen = () => transport?.isConnected() === true
+
+    // The state topics followed (follow()), each with the listener that feeds it the topic's values.
+    const states = new Map<
+        number,
+        { entry: StateEntry<unknown>; listener: (data: unknown) => void }
+    >()
+    // What the link up now has carried: frames of any kind, and whether it acked a subscribe.
+    let framesHeard = 0
+    let ackHeard = false
+    const stateLink: StateLink = {
+        linked: isOpen,
+        subscribe: tag => sendSubscribe(tag),
+        framesHeard: () => framesHeard,
+        ackHeard: () => ackHeard
+    }
     const motionFrames = new LatestFrames({
         busy: () => transport?.busy() ?? false,
         write: data => transport?.send(data)
@@ -182,6 +199,7 @@ export function createWebSocket({
         clearTimeout(unresponsiveTimeoutId)
         clearTimeout(reconnectTimeoutId)
         clearInterval(pingIntervalId)
+        states.forEach(({ entry }) => entry.linkLost())
         // What was sent on the old link can never be answered: its callers learn so now, not at the timeout.
         for (const [correlationId, pending] of pending_requests) {
             clearTimeout(pending.timeoutId)
@@ -294,6 +312,7 @@ export function createWebSocket({
     }
 
     function chooseRobot() {
+        states.forEach(({ entry }) => entry.forget())
         event_listeners.get('robot')?.forEach(listener => listener(undefined))
     }
 
@@ -310,7 +329,9 @@ export function createWebSocket({
         clearInterval(pingIntervalId)
         pingIntervalId = setInterval(ping, pingIntervalTime)
         resetUnresponsiveCheck()
+        ackHeard = false
         resubscribeAll()
+        states.forEach(({ entry }) => entry.subscribed())
         flushQueuedRequests()
         event_listeners.get('open')?.forEach(listener => listener(undefined))
     }
@@ -320,7 +341,14 @@ export function createWebSocket({
 
         const decoded = decodeMessage(data)
         if (!decoded) return
+        framesHeard++
         const { tag, msg } = decoded
+        if (msg.subNotif) {
+            // The robot echoes a subscribe as its ack, after a state topic's current value.
+            ackHeard = true
+            states.get(msg.subNotif.tag)?.entry.acked()
+            return
+        }
         if (msg.pongmsg !== undefined) {
             if (lastPingSentAt > 0) telemetry.setLatency(Date.now() - lastPingSentAt)
             return
@@ -346,19 +374,52 @@ export function createWebSocket({
         attach(handlers => createWebSocketTransport(socketUrl, handlers)).connect()
     }
 
-    function unsubscribe<MT>(
-        event_type: MessageFns<MT>,
-        listener: (data: MT, frame: ArrayBuffer) => void
-    ) {
-        const tag = getTagFromMessageType(event_type)
+    /** Adds a listener for a tag; true when it is the tag's first, which the robot is to be subscribed for. */
+    function addListener(tag: number, listener: (data: unknown, frame: ArrayBuffer) => void) {
+        let listeners = message_listeners.get(tag)
+        const first = !listeners
+        if (!listeners) {
+            listeners = new Set()
+            message_listeners.set(tag, listeners)
+        }
+        listeners.add(listener)
+        return first
+    }
+
+    function removeListener(tag: number, listener: (data: unknown, frame: ArrayBuffer) => void) {
         const message_listeners_totag = message_listeners.get(tag)
         if (!message_listeners_totag) return
 
-        message_listeners_totag.delete(listener as (data: unknown, frame: ArrayBuffer) => void)
+        message_listeners_totag.delete(listener)
         if (message_listeners_totag.size == 0) {
             // Dropped, so the next listener for this tag subscribes again.
             message_listeners.delete(tag)
-            unsubscribeToMessageFromServer(event_type)
+            sendUnsubscribe(tag)
+        }
+    }
+
+    /**
+     * Follows a state topic (transport/topics.ts): `watcher` gets its state now and on every change. Every follower of
+     * a tag shares one entry and one subscription; the robot is asked for the current value when the first follows,
+     * even where a listener of the tag already subscribed. Returns the function that stops following.
+     */
+    function follow<T>(fns: MessageFns<T>, watcher: (state: Watched<T>) => void): () => void {
+        const tag = getTagFromMessageType(fns)
+        let state = states.get(tag)
+        if (!state) {
+            const entry = new StateEntry<unknown>(tag, stateLink, ackTimeoutTime)
+            const created = { entry, listener: (data: unknown) => entry.received(data) }
+            states.set(tag, created)
+            addListener(tag, created.listener)
+            entry.subscribe()
+            state = created
+        }
+        const { listener } = state
+        const remove = state.entry.add(watcher as (state: Watched<unknown>) => void)
+        return () => {
+            if (!remove()) return
+            states.delete(tag)
+            removeListener(tag, listener)
         }
     }
 
@@ -387,27 +448,16 @@ export function createWebSocket({
         else send(wsm as Message)
     }
 
-    function unsubscribeToMessageFromServer<T>(event_type: MessageFns<T>) {
-        if (!isOpen()) return
-        const unsub_msg = Messages.UnsubscribeNotification.create({
-            tag: getTagFromMessageType(event_type)
-        })
-        send(Message.create({ unsubNotif: unsub_msg }))
+    function sendUnsubscribe(tag: number) {
+        send(Message.create({ unsubNotif: Messages.UnsubscribeNotification.create({ tag }) }))
     }
 
-    function subscribeToEvent<T>(event_type: MessageFns<T>) {
-        if (!isOpen()) return
-        const sub_msg = Messages.SubscribeNotification.create({
-            tag: getTagFromMessageType(event_type)
-        })
-        send(Message.create({ subNotif: sub_msg }))
+    function sendSubscribe(tag: number) {
+        send(Message.create({ subNotif: Messages.SubscribeNotification.create({ tag }) }))
     }
 
     function resubscribeAll() {
-        for (const tag of message_listeners.keys()) {
-            const sub_msg = Messages.SubscribeNotification.create({ tag })
-            send(Message.create({ subNotif: sub_msg }))
-        }
+        for (const tag of message_listeners.keys()) sendSubscribe(tag)
     }
 
     function send(data: Message) {
@@ -460,19 +510,11 @@ export function createWebSocket({
             listener: (data: MT, frame: ArrayBuffer) => void
         ): (() => void) => {
             const tag = getTagFromMessageType(event_type)
-
-            let message_listeners_totag = message_listeners.get(tag)
-            if (!message_listeners_totag) {
-                message_listeners_totag = new Set()
-                message_listeners.set(tag, message_listeners_totag)
-                subscribeToEvent(event_type)
-            }
-            message_listeners_totag.add(listener as (data: unknown, frame: ArrayBuffer) => void)
-
-            return () => {
-                unsubscribe(event_type, listener)
-            }
+            const untyped = listener as (data: unknown, frame: ArrayBuffer) => void
+            if (addListener(tag, untyped)) sendSubscribe(tag)
+            return () => removeListener(tag, untyped)
         },
+        follow,
         onEvent: (event_type: SocketEvent, listener: (data: unknown) => void): (() => void) => {
             let listeners = event_listeners.get(event_type)
             if (!listeners) {

@@ -25,6 +25,7 @@
     import { Throttler } from '$lib/utilities'
     import { keepControlAlive, stopped } from '$lib/control-link'
     import { mirrorRobot } from '$lib/robot-mirror'
+    import { gaitState, modeState } from '$lib/robot/state'
 
     interface Props {
         children?: import('svelte').Snippet
@@ -60,8 +61,8 @@
         eventListeners.push(
             modeMirror.stop,
             gaitMirror.stop,
-            socket.on(ModeData, modeMirror.report),
-            socket.on(WalkGaitData, gaitMirror.report)
+            modeState.subscribe(({ value }) => value && modeMirror.report(value)),
+            gaitState.subscribe(({ value }) => value && gaitMirror.report(value))
         )
     })
 

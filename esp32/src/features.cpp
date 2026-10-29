@@ -50,6 +50,7 @@ void features_request(const RuntimeFeatures &features, socket_message_FeaturesDa
 #endif
     fd_res.walk_nn = features.walkNN;
     fd_res.ota_download = USE_OTA_DOWNLOAD;
+    fd_res.settings_topics = true;
     fd_res.mdns = true;
     fd_res.embed_www = true;
     fd_res.firmware_version = const_cast<char *>(APP_VERSION);

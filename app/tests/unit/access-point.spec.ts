@@ -2,38 +2,48 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { flushSync, mount, unmount } from 'svelte'
 import Accesspoint from '../../src/routes/wifi/ap/Accesspoint.svelte'
 import { APSettings, APStatus } from '../../src/lib/platform_shared/api'
-import { fakeRobot } from './fake-robot'
+import { fakeRobot, fakeStates, servesSettings } from './fake-robot'
 import { ipToUint32 } from '../../src/lib/utilities'
+import { FeaturesDataResponse } from '../../src/lib/platform_shared/message'
+import { connectionFeatures } from '../../src/lib/stores/featureFlags'
 
 const status = { apStatus: APStatus.create({ macAddress: 'AA:BB' }) }
-const settings = { apSettings: APSettings.create({}) }
 
 describe('Accesspoint', () => {
     let component: ReturnType<typeof mount> | undefined
     let robot: ReturnType<typeof fakeRobot> | undefined
+    let states: ReturnType<typeof fakeStates> | undefined
+    let unserve = () => {}
 
     afterEach(() => {
         if (component) unmount(component)
         robot?.restore()
+        states?.restore()
+        unserve()
         document.body.innerHTML = ''
         vi.useRealTimers()
     })
 
-    it('asks for its settings once on load', async () => {
-        robot = fakeRobot(name => (name === 'apSettingsRequest' ? settings : status))
+    // Firmware from before the settings topics would answer the subscribe with nothing.
+    it('names firmware without the settings topics as too old and asks it for nothing but its status', async () => {
+        states = fakeStates()
+        robot = fakeRobot(() => status)
+        connectionFeatures.set(FeaturesDataResponse.create({ settingsTopics: false }))
+        unserve = () => connectionFeatures.set(null)
         component = mount(Accesspoint, { target: document.body })
 
         await vi.waitFor(() => expect(document.body.textContent).toMatch(/AA:BB/))
-        expect(robot.sent.filter(name => name === 'apSettingsRequest')).toHaveLength(1)
+        expect(document.body.textContent).toMatch(
+            "The robot's firmware does not report these settings"
+        )
+        expect(states.following(APSettings)).toBe(false)
+        expect(robot.sent.every(name => name === 'apStatusRequest')).toBe(true)
     })
 
     it('shows a failed status poll and clears it once the robot answers again', async () => {
         vi.useFakeTimers()
         let statusFails = false
-        robot = fakeRobot(name => {
-            if (name === 'apSettingsRequest') return settings
-            return statusFails ? { statusCode: 503 } : status
-        })
+        robot = fakeRobot(() => (statusFails ? { statusCode: 503 } : status))
         component = mount(Accesspoint, { target: document.body })
         await vi.waitFor(() => expect(document.body.textContent).toMatch(/AA:BB/))
 
@@ -71,14 +81,18 @@ describe('Accesspoint', () => {
 
     async function mountSettings() {
         const saves: APSettings[] = []
-        robot = fakeRobot((name, data) => {
-            if (name === 'apSettingsRequest') return { apSettings }
-            if (name === 'apSettings') {
-                saves.push(data.apSettings!)
-                return { apSettings: data.apSettings }
-            }
-            return status
-        })
+        states = fakeStates()
+        unserve = servesSettings(states, { apSettings })
+        robot = fakeRobot(
+            (name, data) => {
+                if (name === 'apSettings') {
+                    saves.push(data.apSettings!)
+                    return { apSettings: data.apSettings }
+                }
+                return status
+            },
+            { states }
+        )
         component = mount(Accesspoint, { target: document.body })
         await vi.waitFor(() => expect(document.getElementById('gateway')).not.toBeNull())
         return saves
@@ -111,5 +125,28 @@ describe('Accesspoint', () => {
         await vi.waitFor(() => expect(saves).toHaveLength(1))
 
         expect(saves[0]).toEqual({ ...apSettings, gatewayIp: ipToUint32('192.168.4.254') })
+        expect(document.body.querySelector('[data-testid=changed-on-robot]')).toBeNull()
+    })
+
+    // Another client, or the robot itself, changes the settings while the page is open.
+    it('takes a stored change while nothing is edited, and keeps an edit apart from one', async () => {
+        await mountSettings()
+        states!.set(APSettings, { ...apSettings, ssid: 'Pico' })
+        flushSync()
+        expect((document.getElementById('ssid') as HTMLInputElement).value).toBe('Pico')
+
+        set('channel', '6')
+        states!.set(APSettings, { ...apSettings, ssid: 'Yertle' })
+        flushSync()
+        expect((document.getElementById('ssid') as HTMLInputElement).value).toBe('Pico')
+        expect((document.getElementById('channel') as HTMLInputElement).value).toBe('6')
+        expect(document.body.querySelector('[data-testid=changed-on-robot]')).not.toBeNull()
+
+        document.body
+            .querySelector<HTMLButtonElement>('[data-testid=changed-on-robot] button')!
+            .click()
+        flushSync()
+        expect((document.getElementById('ssid') as HTMLInputElement).value).toBe('Yertle')
+        expect(document.body.querySelector('[data-testid=changed-on-robot]')).toBeNull()
     })
 })

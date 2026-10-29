@@ -16,7 +16,8 @@
         type PeripheralsForm,
         type SensorStatus
     } from '$lib/peripherals'
-    import type { PeripheralSettings } from '$lib/platform_shared/api'
+    import { PeripheralSettings } from '$lib/platform_shared/api'
+    import { SettingsForm } from '$lib/robot/settings.svelte'
 
     const STATUS_BADGES: Record<SensorStatus, string> = {
         active: 'badge-success',
@@ -25,14 +26,14 @@
         absent: 'badge-ghost'
     }
 
-    let settings = $state<PeripheralSettings | null>(null)
-    let form = $state<PeripheralsForm | null>(null)
-    let saving = $state(false)
-
-    const applySettings = (received: PeripheralSettings) => {
-        settings = received
-        form = formFromSettings(received)
-    }
+    // The stored settings as the robot pushes them, and the form's copy of them.
+    const peripherals = new SettingsForm<typeof PeripheralSettings, PeripheralsForm>(
+        PeripheralSettings,
+        formFromSettings
+    )
+    $effect(() => peripherals.follow())
+    const settings = $derived(peripherals.stored)
+    const form = $derived(peripherals.draft)
 
     // The robot re-probes its sensors when the settings change, so what it detected is asked anew.
     const refreshFeatures = async () => {
@@ -41,16 +42,7 @@
         applyFeatures(reply.featuresDataResponse)
     }
 
-    const load = async () => {
-        const [reply] = await Promise.all([
-            robotRequest({ peripheralSettingsRequest: {} }),
-            refreshFeatures()
-        ])
-        if (!reply.peripheralSettings) throw new Error('The robot sent no peripheral settings')
-        applySettings(reply.peripheralSettings)
-    }
-
-    let loading = $state(load())
+    let loading = $state(refreshFeatures())
 
     const rows = $derived(
         $connectionFeatures && settings ? sensorRows($connectionFeatures, settings) : []
@@ -59,18 +51,13 @@
 
     const save = async () => {
         if (!settings || !form) return
-        saving = true
+        const saved = settingsFromForm($state.snapshot(settings), $state.snapshot(form))
         try {
-            const reply = await robotRequest({
-                peripheralSettings: settingsFromForm(settings, form)
-            })
-            if (reply.peripheralSettings) applySettings(reply.peripheralSettings)
+            await peripherals.save(() => robotRequest({ peripheralSettings: saved }))
             notifications.success('Sensor settings saved', 3000)
         } catch (error) {
             notifications.error(`Saving sensor settings failed: ${(error as Error).message}`, 5000)
             return
-        } finally {
-            saving = false
         }
         await refreshFeatures().catch(() =>
             notifications.error('What the robot detected could not be fetched again', 5000)
@@ -89,8 +76,22 @@
     {#await loading}
         <Spinner />
     {:catch error}
-        <LoadError {error} retry={() => (loading = load())} />
+        <LoadError {error} retry={() => (loading = refreshFeatures())} />
     {/await}
+
+    {#if !settings && peripherals.problem}
+        <div role="alert" class="alert alert-error alert-soft">
+            <span>{peripherals.problem}</span>
+        </div>
+    {/if}
+    {#if peripherals.changedOnRobot}
+        <p class="text-warning text-sm" data-testid="changed-on-robot">
+            Changed on the robot meanwhile.
+            <button class="link" type="button" onclick={() => peripherals.reset()}>
+                Show the robot's
+            </button>
+        </p>
+    {/if}
 
     {#if settings && form}
         <div class="overflow-x-auto">
@@ -300,8 +301,12 @@
             <div role="alert" class="alert alert-error alert-soft">{problem}; not saved.</div>
         {/if}
         <div>
-            <button class="btn btn-primary btn-sm" onclick={save} disabled={saving || !!problem}>
-                {#if saving}
+            <button
+                class="btn btn-primary btn-sm"
+                onclick={save}
+                disabled={peripherals.saving || !!problem}
+            >
+                {#if peripherals.saving}
                     <span class="loading loading-spinner loading-xs"></span>
                 {/if}
                 Save

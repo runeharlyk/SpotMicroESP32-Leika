@@ -3,6 +3,7 @@ import { chooseVariant } from '$lib/services/robot-variant'
 import { knownVariant, type Variant } from '$lib/kinematics-variants'
 import { PeripheralSettings, ServoSettings } from '$lib/platform_shared/api'
 import type { FeaturesDataResponse } from '$lib/platform_shared/message'
+import { settingsOnce } from '$lib/robot/settings.svelte'
 
 const FORMAT = 'leika-robot-config'
 const VERSION = 1
@@ -35,8 +36,8 @@ export interface ImportPlan {
 
 export async function exportConfig(now = new Date()): Promise<RobotConfig> {
     const features = (await robotRequest({ featuresDataRequest: {} })).featuresDataResponse
-    const servo = (await robotRequest({ servoSettingsRequest: {} })).servoSettings
-    const peripherals = (await robotRequest({ peripheralSettingsRequest: {} })).peripheralSettings
+    const servo = await settingsOnce(ServoSettings, 'its servo settings')
+    const peripherals = await settingsOnce(PeripheralSettings, 'its peripheral settings')
     if (!features || !servo || !peripherals)
         throw new Error('The robot did not send all of its settings')
     return {

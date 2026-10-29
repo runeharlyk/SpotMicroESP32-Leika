@@ -81,7 +81,8 @@ static void theUsbPortTakesDrivingAndStreams() {
     CHECK(link.subscriptions.size() == 1 && link.subscriptions[0].first == socket_message_Message_telemetry_batch_tag);
 }
 
-// At 115200 baud beside the log, the console UART could carry neither a telemetry stream nor timely input.
+// At 115200 baud beside the log, the console UART could carry neither a telemetry stream nor timely input; a state
+// topic sends only its changes.
 static void theConsoleUartDropsDrivingAndStreamsButAnswersRequests() {
     SerialDecoder link;
     CHECK(link.feed(controllerInput(), UART));
@@ -89,9 +90,12 @@ static void theConsoleUartDropsDrivingAndStreamsButAnswersRequests() {
     CHECK(link.feed(subscription(socket_message_Message_imu_tag), UART));
     CHECK(link.feed(request(), UART));
     CHECK(link.feed(subscription(socket_message_Message_wifi_status_tag), UART));
+    CHECK(link.feed(subscription(socket_message_Message_goal_status_tag), UART));
     CHECK(link.inputsFrom.empty());
     CHECK(link.requestsFrom == std::vector<int>({UART}));
-    CHECK(link.subscriptions.size() == 1 && link.subscriptions[0].first == socket_message_Message_wifi_status_tag);
+    CHECK(link.subscriptions.size() == 2);
+    CHECK(link.subscriptions[0].first == socket_message_Message_wifi_status_tag);
+    CHECK(link.subscriptions[1].first == socket_message_Message_goal_status_tag);
 }
 
 // The largest batch the robot can send, every field at the widest encoding it can reach: times since boot under 2^49 us
