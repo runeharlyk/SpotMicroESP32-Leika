@@ -622,12 +622,6 @@ void setupEventSocket() {
                  FileSystemWS::fsHandler.handleCancelTransfer(req.request.fs_cancel_transfer);
          }},
 
-        {socket_message_CorrelationRequest_wifi_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(wifiService.protoHandler, res, socket_message_CorrelationResponse_wifi_settings_tag,
-                               res.response.wifi_settings);
-         }},
-
         {socket_message_CorrelationRequest_wifi_settings_tag,
          [](const auto &req, auto &res, Client client) {
              applySettings(wifiService.protoHandler, req.request.wifi_settings, res,
@@ -649,12 +643,6 @@ void setupEventSocket() {
                  res.which_response = socket_message_CorrelationResponse_wifi_network_list_tag;
              else
                  res.status_code = 202;
-         }},
-
-        {socket_message_CorrelationRequest_ap_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(apService.protoHandler, res, socket_message_CorrelationResponse_ap_settings_tag,
-                               res.response.ap_settings);
          }},
 
         {socket_message_CorrelationRequest_ap_settings_tag,
@@ -703,23 +691,10 @@ void setupEventSocket() {
          }},
 #endif
 
-        {socket_message_CorrelationRequest_servo_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(servoController.protoHandler, res,
-                               socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
-         }},
-
         {socket_message_CorrelationRequest_servo_settings_tag,
          [](const auto &req, auto &res, Client client) {
              applySettings(servoController.protoHandler, req.request.servo_settings, res,
                            socket_message_CorrelationResponse_servo_settings_tag, res.response.servo_settings);
-         }},
-
-        {socket_message_CorrelationRequest_peripheral_settings_request_tag,
-         [](const auto &req, auto &res, Client client) {
-             replyWithSettings(peripherals.protoHandler, res,
-                               socket_message_CorrelationResponse_peripheral_settings_tag,
-                               res.response.peripheral_settings);
          }},
 
         {socket_message_CorrelationRequest_peripheral_settings_tag,

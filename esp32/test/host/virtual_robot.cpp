@@ -137,10 +137,6 @@ void answer(const socket_message_CorrelationRequest &req, int clientId) {
     res.status_code = 200;
     switch (req.which_request) {
         case socket_message_CorrelationRequest_features_data_request_tag: reportFeatures(res); break;
-        case socket_message_CorrelationRequest_servo_settings_request_tag:
-            res.which_response = socket_message_CorrelationResponse_servo_settings_tag;
-            servoController.protoHandler.read(res.response.servo_settings);
-            break;
         default:
             res.status_code = 400;
             std::strncpy(res.error_message, "Not available on the virtual robot", sizeof(res.error_message) - 1);

@@ -10,7 +10,6 @@ import virtual_robot
 from src.leika import Mode, Robot, RobotError
 from src.leika.backends import real
 from src.leika.backends.real import RealBackend
-from src.proto import api_pb2
 from src.proto import message_pb2 as pb
 from src.sim import recording
 
@@ -96,9 +95,9 @@ def test_the_dead_man_stop_halts_a_walk_whose_input_falls_silent(robot, monkeypa
     assert _joint_spread(robot, 1.0) > 5
 
 
-def test_it_answers_the_servo_settings_and_refuses_what_it_does_not_have(backend):
-    servo = backend.request(pb.CorrelationRequest(servo_settings_request=api_pb2.ServoSettingsRequest())).servo_settings
-    assert len(servo.servos) == 12
+def test_it_serves_the_servo_settings_and_refuses_what_it_does_not_have(backend):
+    servo = backend.servo_settings()
+    assert len(servo.center_pwm) == 12 and len(servo.direction) == 12
     with pytest.raises(RobotError, match="Not available on the virtual robot"):
         backend.request(pb.CorrelationRequest(i2c_scan_data_request=pb.I2CScanDataRequest()))
     assert backend.state().mode is Mode.DEACTIVATED  # the link outlives a refusal

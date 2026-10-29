@@ -230,30 +230,36 @@ def test_storing_a_compass_offset_keeps_every_other_peripheral_setting(fake):
     assert list(stored.imu.mounting) == [0, 1, 0, -1, 0, 0, 0, 0, 1]
 
 
-# The settings groups are read from their topics, each subscribed to only until its value is in; firmware from before
-# the settings topics is asked by request.
-@pytest.mark.parametrize("snapshots", [True, False])
-def test_the_settings_are_read_from_their_topics_or_by_request(make_fake, snapshots):
-    fake = make_fake(snapshots=snapshots, supply_voltage=7.4)
+# The settings groups are read from their topics, each subscribed to only until its value is in.
+def test_the_settings_are_read_from_their_topics(make_fake):
+    fake = make_fake(supply_voltage=7.4)
     backend = RealBackend(fake.target)
     backend.connect()
     try:
+        assert backend._supply_volts == pytest.approx(7.4)
         assert backend.servo_settings() is not None
         backend.set_mag_offset([1.0, 2.0, 3.0])
-        assert backend._supply_volts == pytest.approx(7.4)
     finally:
         backend.close()
-    asked = [m.correlation_request.WhichOneof("request") for _, m in fake.received
-             if m.WhichOneof("message") == "correlation_request"]
-    gets = [kind for kind in asked if kind in ("servo_settings_request", "peripheral_settings_request")]
     subscribed = [_sub_tag_name(m) for _, m in fake.received if m.WhichOneof("message") == "sub_notif"]
-    if snapshots:
-        assert gets == []
-        assert subscribed.count("stored_servo_settings") == 2 and "stored_peripheral_settings" in subscribed
-        assert "stored_servo_settings" not in fake.subscribed
-    else:
-        assert gets == ["servo_settings_request", "servo_settings_request", "peripheral_settings_request"]
+    assert subscribed.count("stored_servo_settings") == 2 and "stored_peripheral_settings" in subscribed
+    assert "stored_servo_settings" not in fake.subscribed
     assert list(fake.peripheral_settings.imu.mag_offset) == [1.0, 2.0, 3.0]
+
+
+# Firmware from before the settings topics still connects, at the default supply, and is named as too old for a read.
+def test_firmware_without_the_settings_topics_connects_and_is_too_old_to_read_them(make_fake):
+    fake = make_fake(snapshots=False, supply_voltage=7.4)
+    backend = RealBackend(fake.target)
+    backend.connect()
+    try:
+        assert backend._supply_volts == speed_model.DEFAULT_SUPPLY_VOLTS
+        with pytest.raises(RobotError, match="older than the settings topics"):
+            backend.servo_settings()
+        with pytest.raises(RobotError, match="older than the settings topics"):
+            backend.set_mag_offset([1.0, 2.0, 3.0])
+    finally:
+        backend.close()
 
 
 # A robot keeps streaming to a serial port the client closed until its buffer stays full for seconds.

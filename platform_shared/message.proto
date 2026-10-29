@@ -252,6 +252,10 @@ message GoalStatus {
 }
 
 message CorrelationRequest {
+    // Retired, and never to be reused: the settings get requests (140, 150, 180, 190), which the settings topics
+    // replaced (Message's stored_*_settings).
+    reserved 140, 150, 180, 190;
+    reserved "wifi_settings_request", "ap_settings_request", "servo_settings_request", "peripheral_settings_request";
     uint32 correlation_id = 1;
     oneof request {
         FeaturesDataRequest features_data_request = 10;
@@ -266,21 +270,17 @@ message CorrelationRequest {
         FSCancelTransfer fs_cancel_transfer = 120;
         RobotNameUpdate robot_name_update = 130;
         RobotVariantUpdate robot_variant_update = 131;
-        api.WifiSettingsRequest wifi_settings_request = 140;
         api.WifiSettings wifi_settings = 141;
         api.WifiStatusRequest wifi_status_request = 142;
         api.WifiScanStart wifi_scan_start = 143;
         api.WifiNetworksRequest wifi_networks_request = 144;
-        api.APSettingsRequest ap_settings_request = 150;
         api.APSettings ap_settings = 151;
         api.APStatusRequest ap_status_request = 152;
         api.MDNSStatusRequest mdns_status_request = 160;
         api.MDNSQueryRequest mdns_query_request = 161;
         api.CameraSettingsRequest camera_settings_request = 170;
         api.CameraSettings camera_settings = 171;
-        api.ServoSettingsRequest servo_settings_request = 180;
         api.ServoSettings servo_settings = 181;
-        api.PeripheralSettingsRequest peripheral_settings_request = 190;
         api.PeripheralSettings peripheral_settings = 191;
         SystemRestart system_restart = 200;
         SystemReset system_reset = 201;

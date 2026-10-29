@@ -37,10 +37,8 @@ GOAL_POLL_S = 0.5
 GOAL_START_S = 3.0  # the control task takes a goal within a tick: this long without its status, it is lost
 GOAL_MARGIN_S = 2.0  # waited beyond the robot's own timeout for the goal's end
 RECORDED = ("telemetry_header", "telemetry_batch", "telemetry_network", "goal_status")  # as record.py keeps them
-# The settings groups read from their state topics, by group, and the requests firmware from before them answers.
+# The settings groups read from their state topics, by group.
 STORED_SETTINGS = {"servo_settings": "stored_servo_settings", "peripheral_settings": "stored_peripheral_settings"}
-STORED_SETTINGS_REQUESTS = {"servo_settings": api_pb2.ServoSettingsRequest,
-                            "peripheral_settings": api_pb2.PeripheralSettingsRequest}
 
 
 def _tag(name: str) -> int:
@@ -88,7 +86,9 @@ class RealBackend:
             self._variant = speed_model.known_variant(self._features.variant)
             # How fast the servos turn, so how much the walk slows, follows the supply the robot was told; a firmware
             # from before the setting reports none and runs at the default.
-            self._supply_volts = self._stored("servo_settings").supply_voltage or speed_model.DEFAULT_SUPPLY_VOLTS
+            # Firmware from before the settings topics, and from before the setting, reports no supply: the default.
+            stored = self._stored("servo_settings").supply_voltage if self._features.settings_topics else 0
+            self._supply_volts = stored or speed_model.DEFAULT_SUPPLY_VOLTS
             # A USB-serial chip's port reaches the console UART, which answers requests but streams nothing.
             hint = " (driving and telemetry need the board's native USB port)" if is_serial_port(self._target) else ""
             self._wait(lambda: self._tick is not None, MODE_TIMEOUT_S, "no telemetry from the robot" + hint)
@@ -255,11 +255,10 @@ class RealBackend:
 
     def _stored(self, group: str):
         """A settings group as the robot stores it (`servo_settings`, `peripheral_settings`): the value its topic's
-        subscribe is answered with, the subscription ended once that answer is in. Firmware from before the settings
-        topics is asked by request."""
+        subscribe is answered with, the subscription ended once that answer is in."""
         if not self._features.settings_topics:
-            request = pb.CorrelationRequest(**{f"{group}_request": STORED_SETTINGS_REQUESTS[group]()})
-            return getattr(self.request(request), group)
+            raise RobotError(f"the robot's firmware is older than the settings topics: update it to read its "
+                             f"{group.replace('_', ' ')}")
         topic = STORED_SETTINGS[group]
         with self._changed:
             self._stored_heard.pop(topic, None)

@@ -154,11 +154,8 @@ class FakeRobot:
         elif kind == "features_data_request":
             response.features_data_response.variant = self.variant
             response.features_data_response.settings_topics = self.snapshots
-        elif kind == "servo_settings_request":
-            response.servo_settings.supply_voltage = self.supply_voltage
-        elif kind in ("peripheral_settings_request", "peripheral_settings"):
-            if kind == "peripheral_settings":
-                self.peripheral_settings.CopyFrom(request.peripheral_settings)
+        elif kind == "peripheral_settings":
+            self.peripheral_settings.CopyFrom(request.peripheral_settings)
             response.peripheral_settings.CopyFrom(self.peripheral_settings)
         elif kind == "odometry_request":
             response.odometry.CopyFrom(self.odometry)

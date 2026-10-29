@@ -38,7 +38,6 @@ message APStatus {
 }
 
 // Empty request types for GET-like operations
-message APSettingsRequest {}
 message APStatusRequest {}
 
 // =============================================================================
@@ -68,8 +67,6 @@ message ServoSettings {
     float supply_voltage = 4;
 }
 
-message ServoSettingsRequest {}
-
 // =============================================================================
 // WiFi STA Settings - shared data types
 // =============================================================================
@@ -94,7 +91,6 @@ message WifiSettings {
     uint32 applied_secret = 5;
 }
 
-message WifiSettingsRequest {}
 message WifiStatusRequest {}
 message WifiScanStart {}
 message WifiNetworksRequest {}
@@ -277,4 +273,3 @@ message PeripheralSettings {
     PowerSensorSettings power_sensor = 22;
 }
 
-message PeripheralSettingsRequest {}

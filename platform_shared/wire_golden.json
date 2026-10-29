@@ -144,7 +144,6 @@
       "gateway_ip": 8,
       "subnet_mask": 9
     },
-    "api.APSettingsRequest": {},
     "api.APStatus": {
       "status": 1,
       "ip_address": 2,
@@ -248,7 +247,6 @@
       "right_sonar": 21,
       "power_sensor": 22
     },
-    "api.PeripheralSettingsRequest": {},
     "api.PinConfig": {
       "pin": 1,
       "mode": 2,
@@ -273,7 +271,6 @@
       "model": 3,
       "supply_voltage": 4
     },
-    "api.ServoSettingsRequest": {},
     "api.SonarSettings": {
       "enabled": 1,
       "trigger_pin": 2,
@@ -308,7 +305,6 @@
       "selected_network": 4,
       "applied_secret": 5
     },
-    "api.WifiSettingsRequest": {},
     "api.WifiStatus": {
       "status": 1,
       "local_ip": 2,
@@ -425,21 +421,17 @@
       "fs_cancel_transfer": 120,
       "robot_name_update": 130,
       "robot_variant_update": 131,
-      "wifi_settings_request": 140,
       "wifi_settings": 141,
       "wifi_status_request": 142,
       "wifi_scan_start": 143,
       "wifi_networks_request": 144,
-      "ap_settings_request": 150,
       "ap_settings": 151,
       "ap_status_request": 152,
       "mdns_status_request": 160,
       "mdns_query_request": 161,
       "camera_settings_request": 170,
       "camera_settings": 171,
-      "servo_settings_request": 180,
       "servo_settings": 181,
-      "peripheral_settings_request": 190,
       "peripheral_settings": 191,
       "system_restart": 200,
       "system_reset": 201,
