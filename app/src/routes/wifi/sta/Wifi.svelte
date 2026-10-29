@@ -11,9 +11,10 @@
     import Spinner from '$lib/components/Spinner.svelte'
     import LoadError from '$lib/components/LoadError.svelte'
     import InfoDialog from '$lib/components/InfoDialog.svelte'
-    import { WifiNetwork, WifiStatus, type WifiSettings } from '$lib/platform_shared/api'
-    import { socket } from '$lib/stores'
+    import { WifiNetwork, type WifiSettings } from '$lib/platform_shared/api'
     import { robotRequest } from '$lib/robot-request'
+    import { wifiState } from '$lib/robot/state'
+    import { describeWatchFailure } from '$lib/transport/topics'
     import { uint32ToIp } from '$lib/utilities'
     import {
         draftFromNetwork,
@@ -40,14 +41,15 @@
         DNS,
         Add,
         Scan,
-        Edit
+        Edit,
+        Warning
     } from '$lib/components/icons'
     import StatusItem from '$lib/components/StatusItem.svelte'
 
     // The robot stores at most this many networks (api.options).
     const MAX_NETWORKS = 5
 
-    let wifiStatus: WifiStatus | null = $state(null)
+    const wifiStatus = $derived($wifiState.value ?? null)
     // The settings as the robot holds them; the page changes them only through a save the robot accepts.
     let settings: WifiSettings | null = $state(null)
     let general = $state({ hostname: '', priorityRssi: false })
@@ -62,13 +64,6 @@
 
     let showWifiDetails = $state(false)
 
-    async function getWifiStatus() {
-        const reply = await robotRequest({ wifiStatusRequest: {} })
-        if (!reply.wifiStatus) throw new Error('The robot sent no Wi-Fi status')
-        wifiStatus = reply.wifiStatus
-        return wifiStatus
-    }
-
     async function getWifiSettings() {
         const reply = await robotRequest({ wifiSettingsRequest: {} })
         if (!reply.wifiSettings) throw new Error('The robot sent no Wi-Fi settings')
@@ -77,10 +72,6 @@
         return settings
     }
 
-    let statusLoad = $state(getWifiStatus())
-
-    // The robot reports every change of the station, which a page opened over USB sees it join the network by.
-    $effect(() => socket.on(WifiStatus, status => (wifiStatus = status)))
     let settingsLoad = $state(getWifiSettings())
 
     /** Saves `changes` on top of the stored settings; true once the robot accepted them. */
@@ -177,91 +168,93 @@
         <span>WiFi Connection</span>
     {/snippet}
     <div class="w-full overflow-x-auto">
-        {#await statusLoad}
-            <Spinner />
-        {:then}
-            {#if wifiStatus}
+        {#if wifiStatus}
+            <div
+                class="flex w-full flex-col space-y-1"
+                transition:slide|local={{ duration: 300, easing: cubicOut }}
+            >
+                {#if $wifiState.stale}
+                    <p class="text-base-content/60 text-sm" data-testid="wifi-status-stale">
+                        Last known, while the robot is not connected
+                    </p>
+                {/if}
+                <StatusItem
+                    icon={AP}
+                    title="Status"
+                    variant={wifiStatus.status === 3 ? 'success' : 'error'}
+                    description={wifiStatus.status === 3 ? 'Connected' : 'Inactive'}
+                />
+
+                {#if wifiStatus.status === 3}
+                    <StatusItem icon={SSID} title="SSID" description={wifiStatus.ssid} />
+
+                    <StatusItem
+                        icon={Home}
+                        title="IP Address"
+                        description={uint32ToIp(wifiStatus.localIp)}
+                    />
+
+                    <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
+                        <button
+                            aria-label="Toggle connection details"
+                            class="btn btn-circle btn-ghost btn-sm modal-button"
+                            onclick={() => {
+                                showWifiDetails = !showWifiDetails
+                            }}
+                        >
+                            <Down
+                                class="text-base-content h-auto w-6 transition-transform duration-300 ease-in-out {(
+                                    showWifiDetails
+                                ) ?
+                                    'rotate-180'
+                                :   ''}"
+                            />
+                        </button>
+                    </StatusItem>
+                {/if}
+            </div>
+
+            <!-- Folds open -->
+            {#if showWifiDetails}
                 <div
-                    class="flex w-full flex-col space-y-1"
+                    class="flex w-full flex-col space-y-1 pt-1"
                     transition:slide|local={{ duration: 300, easing: cubicOut }}
                 >
                     <StatusItem
-                        icon={AP}
-                        title="Status"
-                        variant={wifiStatus.status === 3 ? 'success' : 'error'}
-                        description={wifiStatus.status === 3 ? 'Connected' : 'Inactive'}
+                        icon={MAC}
+                        title="MAC Address"
+                        description={wifiStatus.macAddress}
                     />
 
-                    {#if wifiStatus.status === 3}
-                        <StatusItem icon={SSID} title="SSID" description={wifiStatus.ssid} />
+                    <StatusItem icon={Channel} title="Channel" description={wifiStatus.channel} />
 
-                        <StatusItem
-                            icon={Home}
-                            title="IP Address"
-                            description={uint32ToIp(wifiStatus.localIp)}
-                        />
+                    <StatusItem
+                        icon={Gateway}
+                        title="Gateway IP"
+                        description={uint32ToIp(wifiStatus.gatewayIp)}
+                    />
 
-                        <StatusItem icon={WiFi} title="RSSI" description={`${wifiStatus.rssi} dBm`}>
-                            <button
-                                aria-label="Toggle connection details"
-                                class="btn btn-circle btn-ghost btn-sm modal-button"
-                                onclick={() => {
-                                    showWifiDetails = !showWifiDetails
-                                }}
-                            >
-                                <Down
-                                    class="text-base-content h-auto w-6 transition-transform duration-300 ease-in-out {(
-                                        showWifiDetails
-                                    ) ?
-                                        'rotate-180'
-                                    :   ''}"
-                                />
-                            </button>
-                        </StatusItem>
-                    {/if}
+                    <StatusItem
+                        icon={Subnet}
+                        title="Subnet Mask"
+                        description={uint32ToIp(wifiStatus.subnetMask)}
+                    />
+
+                    <StatusItem
+                        icon={DNS}
+                        title="DNS"
+                        description={uint32ToIp(wifiStatus.dnsIp1)}
+                    />
                 </div>
-
-                <!-- Folds open -->
-                {#if showWifiDetails}
-                    <div
-                        class="flex w-full flex-col space-y-1 pt-1"
-                        transition:slide|local={{ duration: 300, easing: cubicOut }}
-                    >
-                        <StatusItem
-                            icon={MAC}
-                            title="MAC Address"
-                            description={wifiStatus.macAddress}
-                        />
-
-                        <StatusItem
-                            icon={Channel}
-                            title="Channel"
-                            description={wifiStatus.channel}
-                        />
-
-                        <StatusItem
-                            icon={Gateway}
-                            title="Gateway IP"
-                            description={uint32ToIp(wifiStatus.gatewayIp)}
-                        />
-
-                        <StatusItem
-                            icon={Subnet}
-                            title="Subnet Mask"
-                            description={uint32ToIp(wifiStatus.subnetMask)}
-                        />
-
-                        <StatusItem
-                            icon={DNS}
-                            title="DNS"
-                            description={uint32ToIp(wifiStatus.dnsIp1)}
-                        />
-                    </div>
-                {/if}
             {/if}
-        {:catch error}
-            <LoadError {error} retry={() => (statusLoad = getWifiStatus())} />
-        {/await}
+        {:else if $wifiState.status === 'error' && $wifiState.failure}
+            <div role="alert" class="alert alert-error alert-soft">
+                <Warning class="h-6 w-6 shrink-0" />
+                <span>{describeWatchFailure($wifiState.failure, 'its Wi-Fi status')}</span>
+            </div>
+        {:else}
+            <Spinner />
+        {/if}
     </div>
 
     <div class="bg-base-200 relative grid w-full max-w-2xl self-center overflow-hidden">

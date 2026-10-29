@@ -3,8 +3,7 @@ import { flushSync, mount, unmount } from 'svelte'
 import Wifi from '../../src/routes/wifi/sta/Wifi.svelte'
 import { WifiSettings, WifiStatus, type WifiNetwork } from '../../src/lib/platform_shared/api'
 import { ipToUint32 } from '../../src/lib/utilities'
-import { fakeRobot } from './fake-robot'
-import { socket } from '../../src/lib/stores/socket'
+import { fakeRobot, fakeStates } from './fake-robot'
 
 // Dialogs need the modal host of the app's layout; here a confirmation is given straight away.
 vi.mock('svelte-modals', async original => ({
@@ -50,15 +49,16 @@ function type(id: string, value: string) {
 describe('WiFi station settings', () => {
     let component: ReturnType<typeof mount> | undefined
     let robot: ReturnType<typeof fakeRobot> | undefined
+    let states: ReturnType<typeof fakeStates> | undefined
     let saved: WifiSettings[] = []
     let refuseSaves = false
 
     async function mountWith(networks: WifiNetwork[]) {
         saved = []
         refuseSaves = false
+        states = fakeStates()
+        states.set(WifiStatus, WifiStatus.create({ status: 3, ssid: 'Home' }))
         robot = fakeRobot((name, data) => {
-            if (name === 'wifiStatusRequest')
-                return { wifiStatus: WifiStatus.create({ status: 3, ssid: 'Home' }) }
             if (name === 'wifiSettingsRequest')
                 return {
                     wifiSettings: WifiSettings.create({
@@ -81,43 +81,51 @@ describe('WiFi station settings', () => {
         if (component) unmount(component)
         component = undefined
         robot?.restore()
+        states?.restore()
         document.body.innerHTML = ''
     })
 
     // Over USB the page is open before the robot joins a network, so the status must follow the robot's reports.
     it('shows the robot joining a network after the page opened', async () => {
-        const listeners: ((status: WifiStatus, frame: ArrayBuffer) => void)[] = []
-        const on = vi.spyOn(socket, 'on').mockImplementation(((
-            type: unknown,
-            listener: (s: WifiStatus, frame: ArrayBuffer) => void
-        ) => {
-            if (type === WifiStatus) listeners.push(listener)
-            return () => listeners.splice(listeners.indexOf(listener), 1)
-        }) as typeof socket.on)
-        robot = fakeRobot(name => {
-            if (name === 'wifiStatusRequest')
-                return { wifiStatus: WifiStatus.create({ status: 6 }) }
-            return {
-                wifiSettings: WifiSettings.create({ hostname: 'spot-micro', wifiNetworks: [home] })
-            }
-        })
+        states = fakeStates()
+        states.set(WifiStatus, WifiStatus.create({ status: 6 }))
+        robot = fakeRobot(() => ({
+            wifiSettings: WifiSettings.create({ hostname: 'spot-micro', wifiNetworks: [home] })
+        }))
         component = mount(Wifi, { target: document.body })
         await vi.waitFor(() => expect(document.body.textContent).toMatch('Inactive'))
 
-        listeners.forEach(report =>
-            report(
-                WifiStatus.create({ status: 3, ssid: 'Home', localIp: ipToUint32('192.168.1.39') }),
-                new ArrayBuffer(0)
-            )
+        states.set(
+            WifiStatus,
+            WifiStatus.create({ status: 3, ssid: 'Home', localIp: ipToUint32('192.168.1.39') })
         )
         flushSync()
         expect(document.body.textContent).toMatch('Connected')
         expect(document.body.textContent).toMatch('192.168.1.39')
+        expect(document.body.querySelector('[data-testid=wifi-status-stale]')).toBeNull()
+
+        // The link drops: the status stays, as the last known.
+        states.lose(WifiStatus)
+        flushSync()
+        expect(document.body.textContent).toMatch('192.168.1.39')
+        expect(document.body.querySelector('[data-testid=wifi-status-stale]')).not.toBeNull()
 
         unmount(component)
         component = undefined
-        expect(listeners).toHaveLength(0)
-        on.mockRestore()
+        expect(states.following(WifiStatus)).toBe(false)
+    })
+
+    it('says a firmware too old to report its WiFi status is too old', async () => {
+        states = fakeStates()
+        robot = fakeRobot(() => ({
+            wifiSettings: WifiSettings.create({ hostname: 'spot-micro', wifiNetworks: [home] })
+        }))
+        component = mount(Wifi, { target: document.body })
+        states.fail(WifiStatus, 'too-old')
+        flushSync()
+        expect(document.body.textContent).toMatch(
+            "The robot's firmware does not report its Wi-Fi status; update it"
+        )
     })
 
     it('keeps a network on its static address when it is edited and saved', async () => {

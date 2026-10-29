@@ -1,6 +1,7 @@
 import { socket } from '$lib/stores/socket'
 import { robotRequest } from '$lib/robot-request'
 import { OtaDownloadState, OtaStatus } from '$lib/platform_shared/message'
+import type { Follower } from '$lib/robot/watch'
 
 /** What the robot's OtaChunk holds (platform_shared/message.options). */
 export const OTA_CHUNK_SIZE = 2 ** 14
@@ -39,14 +40,22 @@ export async function sendFirmware(image: Uint8Array, onProgress: (fraction: num
  * Has the robot download the app image at `url` itself, over its own WiFi, into its free update slot, as sendFirmware
  * writes it; resolves once the robot validated and selected it, and fails with the robot's reason, or when it stops
  * reporting for `silentForMs` (it reports every half second while it downloads).
+ *
+ * The robot keeps the last download's end as its update status, and answers the subscribe with it, so the download is
+ * asked for only once that answer is in, live or failed, and only the statuses after it are this download's. Firmware
+ * from before the state topics answers nothing and pushes only changes.
  */
 export async function downloadFirmwareOnRobot(
     url: string,
     onProgress: (fraction: number) => void,
-    { silentForMs = 30000 } = {}
+    { silentForMs = 30000, from = socket as Follower } = {}
 ): Promise<void> {
-    let stopListening = () => {}
+    let stopFollowing = () => {}
     let silence: ReturnType<typeof setTimeout> | undefined
+    let asked = false
+    let seen: OtaStatus | undefined
+    let answered = () => {}
+    const subscribed = new Promise<void>(resolve => (answered = resolve))
     const finished = new Promise<void>((resolve, reject) => {
         const quiet = () => {
             clearTimeout(silence)
@@ -55,21 +64,30 @@ export async function downloadFirmwareOnRobot(
                 silentForMs
             )
         }
-        quiet()
-        stopListening = socket.on(OtaStatus, status => {
+        stopFollowing = from.follow(OtaStatus, ({ value, status }) => {
+            if (!asked) {
+                seen = value
+                if (status !== 'subscribing') answered()
+                return
+            }
+            if (value === undefined || value === seen) return
+            seen = value
             quiet()
-            if (status.size > 0) onProgress(status.written / status.size)
-            if (status.state === OtaDownloadState.OTA_DOWNLOADED) resolve()
-            if (status.state === OtaDownloadState.OTA_DOWNLOAD_FAILED)
-                reject(new Error(status.error || 'The download failed'))
+            if (value.size > 0) onProgress(value.written / value.size)
+            if (value.state === OtaDownloadState.OTA_DOWNLOADED) resolve()
+            if (value.state === OtaDownloadState.OTA_DOWNLOAD_FAILED)
+                reject(new Error(value.error || 'The download failed'))
         })
+        quiet()
     })
     try {
+        await Promise.race([subscribed, finished])
+        asked = true
         await robotRequest({ otaDownload: { url } })
         await finished
     } finally {
         clearTimeout(silence)
-        stopListening()
+        stopFollowing()
     }
 }
 

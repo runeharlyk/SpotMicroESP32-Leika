@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
 - Joins the network at 20 MHz instead of 40 MHz, which kept a crowded 2.4 GHz link clear
 - Sends each small socket frame as one TCP segment, and skips stream frames a client cannot take yet instead of queueing them
 - Answers a subscribe to a state topic (the mode, gait, WiFi status, clip, goal and update status) with its current value and then an ack, on every link, ported from the Hexapod; a push a client could not take is sent again as the current value, and the mode and gait are no longer repeated every second
+- Follows the mode, gait, WiFi status, clip status and the robot's own download in the app from their state topics with `watch()`, ported from the Hexapod: a value kept from a dropped link is marked as the last known, and firmware from before the topics is named as too old; the robot's own download no longer reads an earlier download's end as its own
 - Closes a client that stops taking frames, and finds a client that vanished without closing within seconds
 - Shapes the gamepad and on-screen sticks alike: a round dead zone, and a snap to the axes so a stick pushed mostly forward walks straight instead of crabbing sideways
 - Runs the I2C bus at 400 kHz, the most its IMUs, compass and gesture sensor are rated for, also on robots that stored the old 1 MHz default
