@@ -130,7 +130,7 @@ Write every outcome, failures included, into a new section above, headed with th
 ### Animations
 
 - **The built-in clips on the floor:** they passed on the stand on 2026-10-28; play them standing on the floor.
-  Expected: the wave, which keeps only 9 mm of centre-of-mass margin in the simulation, does not tip the robot.
+  Expected: the wave, which keeps 26 mm of centre-of-mass margin in the simulation (9 mm before it tipped the robot on 2026-10-28), does not tip the robot or rock it.
 - **Show on robot:** drag a pose in the editor with Show on robot on, then close the app mid-pose.
   Expected: the robot follows the drag, and eases back to stance once the app is gone.
 - **An uploaded clip:** `robot_animate.py --robot <ip> upload <clip.json>`, then play it over USB.
