@@ -292,11 +292,33 @@ static void aModeAfterTheServoPageDrivesTheServos() {
     I2CBus::instance().end();
 }
 
+// A tick's write reports its burst's own time on the bus, not that of the transfers that start a board again after it.
+static void aWriteReportsItsBurstsTimeOnTheBus() {
+    fake_i2c::reset();
+    I2CBus::instance().begin(21, 22);
+    static ServoController controller;
+    wireReversed(controller);
+    controller.activate();
+    fake_i2c::transferUs = 1100;
+    const ServoWrite write = tick(controller);
+    CHECK(write.ok && write.bus.transferUs == 1100 && write.bus.waitUs == 0);
+    fake_i2c::absent = {0x40};
+    for (int i = 0; i < 3; i++) CHECK(!tick(controller).ok);
+    fake_i2c::registers[0x40] = {};  // lost power: it answers asleep, without auto-increment
+    fake_i2c::absent.clear();
+    ServoWrite restarted;
+    while (!(restarted = tick(controller)).ok && fake_timer::nowUs < 100000000) {}
+    CHECK(fake_i2c::registers[0x40][0x00] & 0x20);
+    CHECK(restarted.bus.transferUs == 1100);
+    I2CBus::instance().end();
+}
+
 int main() {
     theServoPageWakesTheServosWithoutDrivingThem();
     aModeAfterTheServoPageDrivesTheServos();
     aBoardThatStopsAnsweringIsTriedTwiceASecond();
     aBoardThatLostPowerIsStartedAgain();
+    aWriteReportsItsBurstsTimeOnTheBus();
     aSwitchedJointModelIsUsedAndReported();
     withoutAVariantTheServosStayAsleep();
     withAVariantActivatingWakesTheServos();

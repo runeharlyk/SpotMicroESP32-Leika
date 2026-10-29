@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - Adds system identification to the simulation: `identify.py` fits the servo supply voltage, servo strength, actuator lag and IMU noise to a telemetry recording, says which of them the recording cannot pin, and re-centres the training's randomisation on the rest
 - Reports the internal RAM apart from PSRAM on the System Status page: free, the largest block and the least free since boot, with the allocations refused since boot, where the heap figures count PSRAM in and so never show internal RAM running out
 - Adds a sign-convention fixture, `platform_shared/sign_convention.json`, asserted by the firmware, simulation and app tests, and `docs/conventions.md`, which states the body frame, the leg numbering and the signs of the sticks, the body pose, the odometry and the goals
+- Adds where each control tick's time went to the telemetry: the motion update and its state step, odometry, goal and kinematics within the compute, and within the servo write the wait for the I2C bus apart from the transfer; the recording report prints them per mode, and the System Metrics page beside the other timings
 
 ### Changed
 

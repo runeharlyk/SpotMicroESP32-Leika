@@ -103,6 +103,8 @@ Recording stops when the last subscriber to 271 is gone.
 The control task records one `TickSample` every 10 ms.
 The service task sends them in `TelemetryBatch` messages of 10 ticks, so about 10 batches a second.
 Each tick holds the IMU sample the tick used, the servo angles and targets in radians, the 12 PWM values, the command the motion state used and its age, the mode, the gait, `link_lost` and the [odometry](motion_system.md#odometry) after the tick.
+Each tick also says where its time went: `compute_us` and within it the motion update (`motion_us`) with the state's step, the odometry, a goal and the joint angles; `servo_write_us` and within it the wait for the I2C bus another task held (`servo_bus_wait_us`) and the transfer itself (`servo_transfer_us`).
+`simulation/report_recording.py` prints them per mode as mean, p99 and max.
 A full ring drops ticks rather than waiting; `dropped_ticks` counts them since boot and `batch_seq` numbers the batches.
 `TelemetryNetwork` adds RSSI, channel, batches sent and failed, and dropped ticks, and with an INA219 the servo rail's voltage, its lowest voltage since the previous sample and its current.
 Vectors are in the body frame (x forward, y left, z up), and times are `esp_timer` microseconds.

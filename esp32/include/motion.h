@@ -49,6 +49,16 @@ class MotionService {
 
     bool update(const ImuSample& imu, gesture_t gesture);
 
+    /** Where the last update()'s time went, in esp_timer microseconds; parts it did not run are 0. */
+    struct Timing {
+        int64_t totalUs = 0;
+        int64_t stepUs = 0;        // the state's step, with its IMU input
+        int64_t odometryUs = 0;
+        int64_t goalUs = 0;        // driving a goal, its stop step included
+        int64_t kinematicsUs = 0;  // the joint angles: the inverse kinematics, the state's own or the clip's
+    };
+    const Timing& timing() const { return lastTiming; }
+
     /** How fast the servos turn a joint (deg/s), which caps the walk; from the control task, before update(). */
     void useServoSpeedLimit(float limit) { walkState.useServoSpeedLimit(limit); }
 
@@ -121,6 +131,7 @@ class MotionService {
     }
 
   private:
+    bool advance(const ImuSample& imu, gesture_t gesture, int64_t now);
     void applyMail(const MotionInbox::Mail& mail);
     // Every mode change, from the app or a gesture, goes through here.
     void setMode(socket_message_ModesEnum mode);
@@ -187,6 +198,7 @@ class MotionService {
     float angles[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     int64_t lastUpdate = esp_timer_get_time();
+    Timing lastTiming;
 };
 
 #endif

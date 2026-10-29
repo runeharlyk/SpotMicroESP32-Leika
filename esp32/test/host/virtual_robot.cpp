@@ -97,10 +97,10 @@ char elfSha256[65];
 
 const auto boot = std::chrono::steady_clock::now();
 
-// The firmware code reads the stubbed esp_timer; it shows the time since start whenever it is read here.
+// The stubbed esp_timer runs as the firmware's does, so the telemetry times the firmware code's parts.
 int64_t clockUs() {
     using namespace std::chrono;
-    return fake_timer::nowUs = duration_cast<microseconds>(steady_clock::now() - boot).count() + 1;
+    return duration_cast<microseconds>(steady_clock::now() - boot).count() + 1;
 }
 
 // Level and still, as an IMU on a flat floor reads.
@@ -211,9 +211,9 @@ void controlTick(uint32_t seq, int64_t previousStart, int64_t start) {
     if (motionService.takeModeApplied())
         motionService.isActive() ? servoController.activate() : servoController.deactivate();
     servoController.setAngles(motionService.getAngles());
-    const int64_t computed = clockUs();
+    const int64_t computed = esp_timer_get_time();
     const ServoWrite write = servoController.update((start - previousStart) / 1e6f);
-    const int64_t written = clockUs();
+    const int64_t written = esp_timer_get_time();
     if (telemetry.recording()) {
         static socket_message_TickSample tick;
         fillTickSample(tick, {seq, start, previousStart, computed, written}, imu, write, motionService, servoController);
@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
 
-    clockUs();
+    fake_timer::source = clockUs;
     I2CBus::instance().begin(21, 22);
     motionService.useConfig(kinConfigFor(variant));
     servoController.useJointModel(jointModelFor(variant));
@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
     uint32_t seq = 0;
     int64_t previousStart = 0;
     while (!wrapperGone) {
-        const int64_t start = clockUs();
+        const int64_t start = esp_timer_get_time();
         for (const Frame &frame : takeFrames()) pipeLink.receive(frame);
         controlTick(seq++, previousStart, start);
         previousStart = start;

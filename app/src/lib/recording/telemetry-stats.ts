@@ -1,7 +1,21 @@
+import type { TickSample } from '$lib/platform_shared/message'
 import type { Recording } from './leika-recording'
 
 /** The statistics of simulation/src/sim/telemetry_stats.py, under the same names, so the two can be compared. */
 export type TelemetryStats = Record<string, number>
+
+// The parts of computeUs and of servoWriteUs a tick carries, under telemetry_stats.py's names.
+const computeParts: [name: string, us: (tick: TickSample) => number][] = [
+    ['motion', t => t.motionUs],
+    ['motion_step', t => t.motionStepUs],
+    ['odometry', t => t.odometryUs],
+    ['goal', t => t.goalUs],
+    ['kinematics', t => t.kinematicsUs]
+]
+const servoParts: [name: string, us: (tick: TickSample) => number][] = [
+    ['servo_bus_wait', t => t.servoBusWaitUs],
+    ['servo_transfer', t => t.servoTransferUs]
+]
 
 const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
 
@@ -53,6 +67,20 @@ export function summarize(rec: Recording): TelemetryStats {
         'servo_write',
         written.map(t => t.servoWriteUs / 1000),
         stats
+    )
+    computeParts.forEach(([name, us]) =>
+        percentiles(
+            name,
+            ticks.map(t => us(t) / 1000),
+            stats
+        )
+    )
+    servoParts.forEach(([name, us]) =>
+        percentiles(
+            name,
+            written.map(t => us(t) / 1000),
+            stats
+        )
     )
     stats.servo_ok_fraction = written.length ? mean(written.map(t => (t.servoOk ? 1 : 0))) : 0
     const withImu = ticks.filter(t => ((t.imu?.valid ?? 0) & 1) !== 0)

@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import time
 
+import numpy as np
 import pytest
 import websockets
 
@@ -126,3 +127,10 @@ def test_a_recording_holds_the_firmwares_header_and_every_tick_of_its_block(robo
     assert len(rec.ticks["seq"]) >= 50 and rec.missing_ticks == 0
     modes = rec.ticks["mode"]
     assert modes[0] == Mode.DEACTIVATED.value and modes[-1] == Mode.STAND.value
+    # The firmware's own clock times the tick's parts, each inside the whole it belongs to.
+    t = rec.ticks
+    standing = modes == Mode.STAND.value
+    assert t["motion_us"][standing].sum() > 0 and t["kinematics_us"][standing].sum() > 0
+    assert np.all(t["motion_step_us"] + t["odometry_us"] + t["goal_us"] + t["kinematics_us"] <= t["motion_us"])
+    assert np.all(t["motion_us"] <= t["compute_us"])
+    assert np.all(t["servo_bus_wait_us"] + t["servo_transfer_us"] <= t["servo_write_us"])

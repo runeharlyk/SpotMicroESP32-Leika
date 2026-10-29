@@ -25,6 +25,7 @@ enum class SERVO_CONTROL_STATE { DEACTIVATED, PWM, ANGLE };
 struct ServoWrite {
     bool attempted = false;
     bool ok = false;
+    I2CBus::Timing bus;  // the burst to the board
 };
 
 class ServoController : public StatefulService<ServoSettings> {
@@ -116,7 +117,7 @@ class ServoController : public StatefulService<ServoSettings> {
 
     // Each joint moves toward its target no faster than the servos can at their supply, and its PWM goes to its
     // channel; channels no joint uses are written off.
-    bool calculatePWM(float dt) {
+    bool calculatePWM(float dt, I2CBus::Timing *timing = nullptr) {
         const JointModel *model = _model.load();
         if (!model) return false;
         uint32_t written = 0;
@@ -131,7 +132,7 @@ class ServoController : public StatefulService<ServoSettings> {
                 written = std::max(written, channel + 1);
             }
         });
-        return _pca.setMultiplePWM(_channelPwm, written) == 0;
+        return _pca.setMultiplePWM(_channelPwm, written, timing) == 0;
     }
 
     /**
@@ -147,10 +148,11 @@ class ServoController : public StatefulService<ServoSettings> {
         const int64_t now = esp_timer_get_time();
         if (_failedWrites >= FAILURES_BEFORE_BACKOFF && now - _lastAttemptUs < RETRY_INTERVAL_US) return {};
         _lastAttemptUs = now;
-        const bool ok = calculatePWM(dt);
-        if (ok && _failedWrites > 0) restartBoardIfReset();
-        _failedWrites = ok ? 0 : _failedWrites + 1;
-        return {true, ok};
+        ServoWrite write {.attempted = true};
+        write.ok = calculatePWM(dt, &write.bus);
+        if (write.ok && _failedWrites > 0) restartBoardIfReset();
+        _failedWrites = write.ok ? 0 : _failedWrites + 1;
+        return write;
     }
 
     const float *outputAngles() const { return angles; }

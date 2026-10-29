@@ -32,7 +32,14 @@ static socket_message_TickSample tick(uint32_t n) {
     t.t_us = 1000000 + 10000ULL * n;
     t.period_us = n ? 10000 : 0;
     t.compute_us = 1500;
+    t.motion_us = 1200;
+    t.motion_step_us = 300;
+    t.odometry_us = 100;
+    t.goal_us = n >= 30 ? 200 : 0;
+    t.kinematics_us = 500;
     t.servo_write_us = 2000;
+    t.servo_bus_wait_us = n % 10 == 9 ? 600 : 0;
+    t.servo_transfer_us = 1100;
     t.servo_ok = true;
     t.has_imu = true;
     ImuSample imu;

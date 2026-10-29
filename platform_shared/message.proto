@@ -525,6 +525,15 @@ message TickSample {
     WalkGaits walked = 18;       // the schedule the legs walk, TROT or CRAWL: under AUTO, the one it picked
     bool link_lost = 16;         // the dead-man stop is in force
     OdometryData odometry = 17;  // after this tick's motion
+    // Where the tick's time went, each saturated at 65535: compute_us holds motion_us, which holds the next four and
+    // the inbox, gestures and fall check; servo_write_us holds the last two and the PWM conversion.
+    uint32 motion_us = 19;          // the motion update as a whole
+    uint32 motion_step_us = 20;     // the motion state's step
+    uint32 odometry_us = 21;        // the dead reckoning and its gyro fusion
+    uint32 goal_us = 22;            // driving a goal, its stop step included; 0 while none runs
+    uint32 kinematics_us = 23;      // the joint angles: the inverse kinematics, or the state's own
+    uint32 servo_bus_wait_us = 24;  // waiting for the I2C bus while another task held it
+    uint32 servo_transfer_us = 25;  // the I2C transfer to the servo board
 }
 
 message TelemetryBatch {
