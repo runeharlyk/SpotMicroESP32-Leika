@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import { get } from 'svelte/store'
-    import { Group, Mesh, Vector3 } from 'three'
+    import { Group, Mesh, Quaternion, Vector3 } from 'three'
     import type { URDFRobot } from 'urdf-loader'
     import SceneBuilder from '$lib/sceneBuilder'
     import { reportedVariant, variants } from '$lib/stores'
@@ -110,8 +110,12 @@
         robot = undefined
     }
 
+    const lastPosition = new Vector3()
+    const lastQuaternion = new Quaternion()
+
+    // Whether the step moved the robot: a robot standing still in the physics leaves the scene undrawn.
     function frame() {
-        if (!sim || !robot) return
+        if (!sim || !robot) return false
         const now = performance.now()
         sim.setControls({
             input: get(simulation.input),
@@ -125,15 +129,19 @@
 
         const [x, y, z] = sim.basePosition()
         const [w, qx, qy, qz] = sim.baseQuaternion()
+        lastPosition.copy(robot.position)
+        lastQuaternion.copy(robot.quaternion)
         robot.position.set(x, y, z)
         robot.quaternion.set(qx, qy, qz, w)
+        let moved = !robot.position.equals(lastPosition) || !robot.quaternion.equals(lastQuaternion)
         for (const [name, angle] of Object.entries(sim.jointAngles())) {
-            robot.joints[name]?.setJointValue(angle)
+            moved = robot.joints[name]?.setJointValue(angle) || moved
         }
         followRobot()
 
         const hasFallen = sim.hasFallen()
         if (hasFallen !== fallen) fallen = hasFallen
+        return moved
     }
 
     function showClipStatus(next: AnimationStatus) {

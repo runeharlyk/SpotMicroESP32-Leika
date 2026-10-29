@@ -56,6 +56,7 @@ All notable changes to this project will be documented in this file.
 - Slows the walk where a step would turn a joint faster than 540 degrees per second, instead of commanding up to 2,000 degrees per second that the servos clipped into shorter, later steps: the step keeps its shape and takes longer
 - Shortens the walk's stroke, the crawl's body shift and the step height where they would put a foot out of reach, through each variant's leg geometry: at full stick, 259 of the Pico's 325 trot commands and 307 of its 325 crawl commands straightened a knee or folded a foot onto its hip. A forward trot at the app's settings keeps its whole stroke; sideways and turning full sticks, and the crawl, walk slower
 - Runs the simulation, its training and the app's Training controller on the firmware's own walk for the Spot Pico (the MINI's stand height, stride, lift, 1 Hz cadence and command smoothing, from the same velocity-to-sticks map the Python client sends the robot, with the walk's joint speed cap, stop and reach bound) instead of a gait tuned apart from it, and turns the Training controller the way the firmware does
+- Draws the 3D views (the simulation, the robot's pose and the animation preview) only on a frame that changed what they show, instead of every animation frame, so an idle page leaves the GPU alone (Hexapod 442b4b5)
 
 ### Fixed
 

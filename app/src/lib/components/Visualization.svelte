@@ -105,10 +105,17 @@
         if (defaultColor) sceneManager.scene.background = new Color(defaultColor)
     }
 
-    // Keeps the lowest toe on the ground, whatever the legs do.
+    // A toe this close to the ground stands on it: the world matrices' rounding would otherwise move the robot, and
+    // draw it again, every frame.
+    const GROUND_TOLERANCE = 1e-6
+
+    // Keeps the lowest toe on the ground, whatever the legs do; whether that moved the robot.
     const standOnGround = (robot: URDFRobot) => {
         const toes = getToeWorldPositions(robot)
-        if (toes.length) robot.position.y -= Math.min(...toes.map(toe => toe.y))
+        const lowest = toes.length ? Math.min(...toes.map(toe => toe.y)) : 0
+        if (Math.abs(lowest) < GROUND_TOLERANCE) return false
+        robot.position.y -= lowest
+        return true
     }
 
     const HIGHLIGHT = new MeshPhongMaterial({ color: 0xff9f1c })
@@ -127,27 +134,37 @@
         return meshes
     }
 
+    // Whether a mesh changed its material.
     const showHighlight = (robot: URDFRobot) => {
         const meshes =
             highlight && robot.joints[highlight] ? linkMeshes(robot.joints[highlight]) : []
-        highlighted.filter(mesh => !meshes.includes(mesh)).forEach(unhighlight)
+        const left = highlighted.filter(mesh => !meshes.includes(mesh))
+        left.forEach(unhighlight)
+        let changed = left.length > 0
         for (const mesh of meshes)
             if (mesh.material !== HIGHLIGHT) {
                 mesh.userData.unhighlighted = mesh.material
                 mesh.material = HIGHLIGHT
+                changed = true
             }
         highlighted = meshes
+        return changed
     }
 
+    // Whether the frame moved a joint, the robot or a highlight: the joints ease towards their targets and then rest.
     const render = () => {
         const robot = sceneManager.model
-        if (!robot) return
+        if (!robot) return false
+        let changed = false
         for (const [name, target] of Object.entries(joints ?? reportedJoints)) {
             const joint = robot.joints[name]
-            if (joint) joint.setJointValue(lerp(joint.angle as number, target, SMOOTH_AMOUNT))
+            if (joint)
+                changed =
+                    joint.setJointValue(lerp(joint.angle as number, target, SMOOTH_AMOUNT)) ||
+                    changed
         }
-        standOnGround(robot)
-        showHighlight(robot)
+        changed = standOnGround(robot) || changed
+        return showHighlight(robot) || changed
     }
 </script>
 
