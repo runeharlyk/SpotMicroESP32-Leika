@@ -1,7 +1,14 @@
 """Statistics of a telemetry recording, in the units domain_rand.py uses."""
 import numpy as np
 
+from src.proto import message_pb2
 from src.sim.recording import Recording
+
+# The parts of compute_us and of servo_write_us that TickSample carries, without their _us.
+COMPUTE_PARTS = ("motion", "motion_step", "odometry", "goal", "kinematics")
+SERVO_PARTS = ("servo_bus_wait", "servo_transfer")
+# A tick that starts more than this after the one before came late: the one before overran its 10 ms.
+LATE_PERIOD_MS = 10.5
 
 
 def _percentiles(name: str, values_ms: np.ndarray, stats: dict) -> None:
@@ -27,6 +34,10 @@ def summarize(rec: Recording) -> dict[str, float]:
     _percentiles("compute", t["compute_us"] / 1000.0, stats)
     written = t["servo_write_us"] > 0
     _percentiles("servo_write", t["servo_write_us"][written] / 1000.0, stats)
+    for part in COMPUTE_PARTS:
+        _percentiles(part, t[f"{part}_us"] / 1000.0, stats)
+    for part in SERVO_PARTS:
+        _percentiles(part, t[f"{part}_us"][written] / 1000.0, stats)
     stats["servo_ok_fraction"] = float(np.mean(t["servo_ok"][written])) if written.any() else 0.0
     has_imu = (t["imu_valid"] & 1) != 0
     imu_age = (t["t_us"] - t["imu_t_us"])[has_imu] / 1000.0
@@ -42,3 +53,25 @@ def summarize(rec: Recording) -> dict[str, float]:
         stats["gyro_noise_std"] = float(np.mean(np.std(gyro, axis=0)))
         stats["rpy_noise_deg"] = float(np.degrees(np.mean(np.std(t["rpy"][has_imu][:, :2], axis=0))))
     return stats
+
+
+def profile_by_mode(rec: Recording) -> dict[str, dict[str, float]]:
+    """Each mode's tick timings in ms, the parts of compute and servo write among them, and the share of its ticks that
+    came late; the servo figures count only ticks that wrote. Modes in ModesEnum's order, by name."""
+    t = rec.ticks
+    profile: dict[str, dict[str, float]] = {}
+    for mode in np.unique(t["mode"]):
+        in_mode = t["mode"] == mode
+        timed = in_mode & (t["period_us"] > 0)
+        written = in_mode & (t["servo_write_us"] > 0)
+        periods = t["period_us"][timed] / 1000.0
+        stats: dict[str, float] = {"ticks": int(np.sum(in_mode))}
+        if len(periods):
+            stats["late_fraction"] = float(np.mean(periods > LATE_PERIOD_MS))
+        _percentiles("period", periods, stats)
+        for part in ("compute", *COMPUTE_PARTS):
+            _percentiles(part, t[f"{part}_us"][in_mode] / 1000.0, stats)
+        for part in ("servo_write", *SERVO_PARTS):
+            _percentiles(part, t[f"{part}_us"][written] / 1000.0, stats)
+        profile[message_pb2.ModesEnum.Name(int(mode))] = stats
+    return profile
