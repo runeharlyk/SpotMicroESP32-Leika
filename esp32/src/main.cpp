@@ -953,8 +953,10 @@ void SpotControlLoopEntry(void *) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(10);
 
-    startRequiredTask(sensorLoopEntry, "Sensor task", 4, 1);
+    // The servo board starts before the sensor task probes the IMU: started in either order at once, their start-ups
+    // shared the bus and the IMU went undetected on about half the boots of one build on the Spot Pico (2026-10-29).
     servoController.begin();
+    startRequiredTask(sensorLoopEntry, "Sensor task", 4, 1);
     motionService.begin();
     const char *sitError = nullptr;
     motionService.setSitClip(animationStore.load("sit", sitError));
