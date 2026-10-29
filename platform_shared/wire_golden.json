@@ -847,7 +847,14 @@
       "gait": 15,
       "link_lost": 16,
       "odometry": 17,
-      "walked": 18
+      "walked": 18,
+      "motion_us": 19,
+      "motion_step_us": 20,
+      "odometry_us": 21,
+      "goal_us": 22,
+      "kinematics_us": 23,
+      "servo_bus_wait_us": 24,
+      "servo_transfer_us": 25
     },
     "socket_message.UnsubscribeNotification": {
       "tag": 1

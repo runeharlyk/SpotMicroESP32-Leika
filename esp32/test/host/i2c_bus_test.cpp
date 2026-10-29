@@ -246,6 +246,36 @@ static void aHeldClockIsNotRecovered() {
     bus.end();
 }
 
+// The control task's servo write times its wait for the bus apart from its transfer: while the sensor task's IMU read
+// holds the bus for 3 ms, the write waits that long plus the read's own transfer, and then spends only its own.
+static void aWriteTimesItsWaitForTheBusApartFromItsTransfer() {
+    fake_i2c::reset();
+    fake_timer::nowUs = 0;
+    I2CBus &bus = I2CBus::instance();
+    bus.begin(21, 22);
+    fake_i2c::transferUs = 1100;
+    const uint8_t pwm[48] = {};
+    I2CBus::Timing alone;
+    CHECK(bus.writeReg(PCA9685, 0x06, pwm, sizeof(pwm), &alone) == ESP_OK);
+    CHECK(alone.waitUs == 0 && alone.transferUs == 1100);
+
+    I2CBus::Timing waited;
+    std::thread control;
+    fake_i2c::duringTransfer = [&](uint8_t address) {
+        if (address != MPU6050) return;
+        control = std::thread([&] { bus.writeReg(PCA9685, 0x06, pwm, sizeof(pwm), &waited); });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));  // the write now waits for the bus
+        fake_timer::nowUs += 3000;
+    };
+    uint8_t imu[14];
+    CHECK(bus.readReg(MPU6050, 0x3B, imu, sizeof(imu)) == ESP_OK);
+    control.join();
+    fake_i2c::duringTransfer = nullptr;
+    CHECK(waited.waitUs == 3000 + 1100);
+    CHECK(waited.transferUs == 1100);
+    bus.end();
+}
+
 int main() {
     aDeviceHoldingSdaIsClockedFreeAndTheBusWorksAgain();
     aDeviceThatNeverLetsGoIsRecoveredAtMostOnceASecond();
@@ -259,6 +289,7 @@ int main() {
     aRegisterWriteSendsTheRegisterThenTheDataInOneTransaction();
     transfersNeverUseAFreedHandleWhileTheBusRestarts();
     aScanNeverProbesAFreedBusWhileTheBusRestarts();
+    aWriteTimesItsWaitForTheBusApartFromItsTransfer();
     std::printf(failures ? "%d failed\n" : "all passed\n", failures);
     return failures ? 1 : 0;
 }

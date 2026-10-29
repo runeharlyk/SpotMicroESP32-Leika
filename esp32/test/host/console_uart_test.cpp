@@ -94,31 +94,40 @@ static void theConsoleUartDropsDrivingAndStreamsButAnswersRequests() {
     CHECK(link.subscriptions.size() == 1 && link.subscriptions[0].first == socket_message_Message_wifi_status_tag);
 }
 
-// The largest batch the robot can send, every field at its widest encoding. nanopb's socket_message_TelemetryBatch_size
-// (4232) is over a frame's limit, but it counts the fixed arrays unpacked; they go out packed.
+// The largest batch the robot can send, every field at the widest encoding it can reach: times since boot under 2^49 us
+// (17 years), durations under 2^23 us (8 s; the task watchdog restarts a robot whose task is stuck 5 s), 16-bit PWM
+// values, the tick's parts saturated at 16 bits and the command's age at 32. nanopb's socket_message_TelemetryBatch_size
+// is over a frame's limit, but it counts the fixed arrays unpacked; they go out packed.
 static void aFullTelemetryBatchFitsOneFrame() {
     static socket_message_Message message = socket_message_Message_init_zero;
     message.which_message = socket_message_Message_telemetry_batch_tag;
     socket_message_TelemetryBatch &batch = message.message.telemetry_batch;
     constexpr uint32_t u32 = std::numeric_limits<uint32_t>::max();
-    constexpr uint64_t u64 = std::numeric_limits<uint64_t>::max();
+    constexpr uint32_t duration = (1u << 23) - 1;
+    constexpr uint32_t part = std::numeric_limits<uint16_t>::max();
+    constexpr uint64_t sinceBoot = (1ull << 49) - 1;
     batch.batch_seq = batch.dropped_ticks = u32;
     batch.ticks_count = sizeof(batch.ticks) / sizeof(batch.ticks[0]);
     for (pb_size_t i = 0; i < batch.ticks_count; i++) {
         socket_message_TickSample &tick = batch.ticks[i];
-        tick.seq = tick.period_us = tick.compute_us = tick.servo_write_us = tick.command_age_us = u32;
-        tick.t_us = tick.command_rx_us = u64;
+        tick.seq = tick.command_age_us = u32;
+        tick.period_us = tick.compute_us = tick.servo_write_us = duration;
+        tick.motion_us = tick.motion_step_us = tick.odometry_us = tick.goal_us = tick.kinematics_us = part;
+        tick.servo_bus_wait_us = tick.servo_transfer_us = part;
+        tick.t_us = tick.command_rx_us = sinceBoot;
         tick.servo_ok = tick.link_lost = true;
         tick.mode = _socket_message_ModesEnum_MAX;
-        tick.gait = _socket_message_WalkGaits_MAX;
+        tick.gait = tick.walked = _socket_message_WalkGaits_MAX;
+        tick.has_odometry = true;
+        tick.odometry = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
         for (float &angle : tick.angles) angle = 1.0f;
         for (float &target : tick.targets) target = 1.0f;
-        for (uint32_t &pwm : tick.pwm) pwm = u32;
+        for (uint32_t &pwm : tick.pwm) pwm = std::numeric_limits<uint16_t>::max();
         for (float &value : tick.command) value = 1.0f;
         tick.has_imu = true;
-        tick.imu.t_us = tick.imu.mag_t_us = u64;
+        tick.imu.t_us = tick.imu.mag_t_us = sinceBoot;
         tick.imu.temperature = 1.0f;
-        tick.imu.valid = u32;
+        tick.imu.valid = 31;
     }
     const std::vector<uint8_t> bytes = encoded(message);
     CHECK(!bytes.empty());

@@ -82,11 +82,20 @@ class I2CBus {
         });
     }
 
-    esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len) {
-        return transfer(addr, [&](i2c_master_dev_handle_t device) {
-            i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
-            return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
-        });
+    /** Where a transfer's time went, in esp_timer microseconds: waiting while another task held the bus, then on it. */
+    struct Timing {
+        int64_t waitUs = 0;
+        int64_t transferUs = 0;
+    };
+
+    esp_err_t writeReg(uint8_t addr, uint8_t reg, const uint8_t* data, size_t len, Timing* timing = nullptr) {
+        return transfer(
+            addr,
+            [&](i2c_master_dev_handle_t device) {
+                i2c_master_transmit_multi_buffer_info_t parts[] = {{&reg, 1}, {data, data != nullptr ? len : 0}};
+                return i2c_master_multi_buffer_transmit(device, parts, 2, TIMEOUT_MS);
+            },
+            timing);
     }
 
     esp_err_t readReg(uint8_t addr, uint8_t reg, uint8_t* data, size_t len) {
@@ -178,13 +187,15 @@ class I2CBus {
     uint32_t _recoveries = 0;
 
     template <typename Transfer>
-    esp_err_t transfer(uint8_t addr, Transfer &&run) {
+    esp_err_t transfer(uint8_t addr, Transfer &&run, Timing *timing = nullptr) {
+        const int64_t requested = timing ? esp_timer_get_time() : 0;
         Lock lock(_mutex);
         i2c_master_dev_handle_t device;
         esp_err_t err = deviceAt(addr, device);
         if (err != ESP_OK) return err;
         const int64_t start = esp_timer_get_time();
         err = run(device);
+        if (timing) *timing = {start - requested, esp_timer_get_time() - start};
         if (err != ESP_OK) afterFailure(addr, start, err);
         return err;
     }

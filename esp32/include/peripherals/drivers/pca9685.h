@@ -52,7 +52,7 @@ class PCA9685Driver {
         return I2CBus::instance().writeReg(_addr, REG_LED0_ON_L + 4 * channel, buf, 4) == ESP_OK ? 0 : 1;
     }
 
-    uint8_t setMultiplePWM(const uint16_t* values, uint8_t length) {
+    uint8_t setMultiplePWM(const uint16_t* values, uint8_t length, I2CBus::Timing* timing = nullptr) {
         if (length > 16) length = 16;
 
         uint8_t buf[64];
@@ -74,7 +74,7 @@ class PCA9685Driver {
                 b[3] = val >> 8;
             }
         }
-        return I2CBus::instance().writeReg(_addr, REG_LED0_ON_L, buf, length * 4) == ESP_OK ? 0 : 1;
+        return I2CBus::instance().writeReg(_addr, REG_LED0_ON_L, buf, length * 4, timing) == ESP_OK ? 0 : 1;
     }
 
     bool isInitialized() const { return _initialized; }
