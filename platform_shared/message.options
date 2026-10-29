@@ -43,8 +43,17 @@ socket_message.ImuSample.rpy max_count:3 fixed_count:true
 
 socket_message.TickSample.angles max_count:12 fixed_count:true
 socket_message.TickSample.targets max_count:12 fixed_count:true
-socket_message.TickSample.pwm max_count:12 fixed_count:true
+socket_message.TickSample.pwm max_count:12 fixed_count:true int_size:IS_16
 socket_message.TickSample.command max_count:7 fixed_count:true
+# The PWM values are the servo controller's 16 bits, and the parts of a tick saturate at 16 (telemetry/tick_sample.h):
+# the telemetry ring and every Message stay small in internal RAM
+socket_message.TickSample.motion_us int_size:IS_16
+socket_message.TickSample.motion_step_us int_size:IS_16
+socket_message.TickSample.odometry_us int_size:IS_16
+socket_message.TickSample.goal_us int_size:IS_16
+socket_message.TickSample.kinematics_us int_size:IS_16
+socket_message.TickSample.servo_bus_wait_us int_size:IS_16
+socket_message.TickSample.servo_transfer_us int_size:IS_16
 
 socket_message.TelemetryBatch.ticks max_count:10
 

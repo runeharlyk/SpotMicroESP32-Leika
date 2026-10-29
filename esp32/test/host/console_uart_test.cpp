@@ -122,7 +122,7 @@ static void aFullTelemetryBatchFitsOneFrame() {
         tick.odometry = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
         for (float &angle : tick.angles) angle = 1.0f;
         for (float &target : tick.targets) target = 1.0f;
-        for (uint32_t &pwm : tick.pwm) pwm = std::numeric_limits<uint16_t>::max();
+        for (uint16_t &pwm : tick.pwm) pwm = std::numeric_limits<uint16_t>::max();
         for (float &value : tick.command) value = 1.0f;
         tick.has_imu = true;
         tick.imu.t_us = tick.imu.mag_t_us = sinceBoot;
