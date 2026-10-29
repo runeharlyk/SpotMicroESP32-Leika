@@ -1,7 +1,9 @@
 """Plays the firmware's animation traces on the Pico in MuJoCo and reports what the reachability sweep cannot:
 clamped joints, commanded joint speed against the servos' speed limit, body tilt, how much of the time something
 other than a foot touches the ground, how long fewer than three feet held the body up, how close the centre of mass
-came to the edge of the feet it stood on, and whether it fell.
+came to the edge of the feet it stood on, and whether it fell. A clip played to its end must keep the centre of mass
+MIN_SUPPORT_MARGIN_MM inside its feet; a stopped one is exempt, as Exit carries the body back to the middle while a
+raised foot is still coming down, whatever the clip does.
 
     uv run python check_animation.py           # the built-in clips in the MINI trace
     uv run python check_animation.py --all     # every case in it, the synthetic ones that pin the app too
@@ -30,6 +32,9 @@ FALL_TILT_DEG = 45.0
 # as long as a foot takes to land.
 TIP_SECONDS = 0.1
 SETTLE_SECONDS = 1.0
+# The wave kept 9 mm and tipped the Pico while its IMU, 6 degrees off level, tilted the body enough to carry the centre
+# of mass about as far (8 mm at the 81 mm stand); with the IMU levelled it stayed up, but rocked.
+MIN_SUPPORT_MARGIN_MM = 20.0
 
 
 def cpp_constant(path: Path, name: str) -> np.ndarray:
@@ -76,13 +81,14 @@ class Report:
     # The centre of mass's least distance inside the feet on the ground, taken once three or more of them have stood
     # for TIP_SECONDS: a static reading, which a foot landing or a brisk move carries below zero without a tip.
     support_margin_mm: float = np.inf
+    required_margin_mm: float = MIN_SUPPORT_MARGIN_MM
     fell: bool = False
     steps: int = 0
 
     def failures(self) -> list[str]:
         checks = [(self.clamped_mask != 0, "clamped"), (self.peak_joint_speed > SERVO_MAX_SPEED_DEG_S, "too fast"),
                   (self.knock_fraction > 0.0, "knocks"), (self.unsupported_seconds > TIP_SECONDS, "tips"),
-                  (self.fell, "fell")]
+                  (self.support_margin_mm < self.required_margin_mm, "narrow"), (self.fell, "fell")]
         return [name for failed, name in checks if failed]
 
     def ok(self) -> bool:
@@ -90,7 +96,7 @@ class Report:
 
 
 def check(case: dict, sim: SpotPicoSim) -> Report:
-    report = Report(case["label"])
+    report = Report(case["label"], required_margin_mm=MIN_SUPPORT_MARGIN_MM if case.get("stopAt", -1) < 0 else -np.inf)
     ticks = case["ticks"]
     low, high = sim.model.actuator_ctrlrange[sim.act_ids].T
     servo = np.array(ticks[0]["angles"]) * JOINT_DIRECTION

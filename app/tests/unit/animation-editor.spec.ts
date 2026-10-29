@@ -35,7 +35,7 @@ describe('animation editor', () => {
         editor.select(1)
         const before = get(editor).frame
         editor.setClip({ name: 'Wave 2' })
-        editor.setBody(3, -20)
+        editor.setBody(3, (get(editor).document.keyframes[1].body?.x ?? 0) - 10)
         const s = get(editor)
         expect(s.error).toBe('name must be 1-32 characters of [a-z0-9_-]')
         expect(s.frame).not.toEqual(before)

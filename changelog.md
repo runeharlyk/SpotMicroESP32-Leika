@@ -86,6 +86,7 @@ All notable changes to this project will be documented in this file.
 - Fixes goal moves started over USB serial or Bluetooth walking on when their client went away: a goal now ends when its client leaves any link or sends nothing for 2 s, which a closed USB serial port does not otherwise signal, and the Python client asks for the goal's status every half second while it waits
 - Fixes goal moves reporting the target reached while the walk's stop still carried the robot on, 4.4 degrees past a 90 degree turn at full speed in the simulation, and curving off the line of a straight goal, 45 mm over a metre: a goal now judges where the walk's stop will leave the robot, slows over a zone its speed needs, holds a straight goal's heading and line, judges the pose once the walk has stood still and walks up to two corrective passes
 - Fixes the Python client's goal turns adding up the walks' heading drift, so a square of goals did not close: each turn now aims at the heading the script's goals meant; a goal whose reply was lost or interrupted by Ctrl-C is now cancelled
+- Fixes the wave tipping the Spot Pico towards its raised front left foot: it now shifts the body 20 mm back and 25 mm right before the foot lifts, instead of 10 mm each, which keeps the centre of mass 26 mm inside the three planted feet in the simulation instead of 9 mm
 
 ## [0.3.0]
 
