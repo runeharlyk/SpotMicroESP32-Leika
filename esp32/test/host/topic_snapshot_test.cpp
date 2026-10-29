@@ -1,7 +1,7 @@
 // Host test of a subscription on CommAdapterBase (communication/comm_base.hpp), on a fake link that decodes what it
-// sends (fake_link.h), built and run by test_host_programs.py with platform_shared/topics.json as its argument. A client
-// subscribes to a tag with sub_notif. A state topic answers with its owner's current value (the snapshot), then with the
-// sub_notif echoed as the ack, and pushes every change after; a stream answers with the ack alone.
+// sends (fake_link.h), built and run by test_host_programs.py with platform_shared/topics.json as its argument. A
+// client subscribes to a tag with sub_notif. A state topic answers with its owner's current value (the snapshot), then
+// with the sub_notif echoed as the ack, and pushes every change after; a stream answers with the ack alone.
 #include <atomic>
 #include <chrono>
 #include <cstdio>

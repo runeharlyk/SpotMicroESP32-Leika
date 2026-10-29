@@ -15,8 +15,7 @@ inline bool accepts(const socket_message_Message &message) {
         case socket_message_Message_correlation_request_tag:
         case socket_message_Message_pingmsg_tag:
         case socket_message_Message_unsub_notif_tag: return true;
-        case socket_message_Message_sub_notif_tag:
-            return isStateTopic(message.message.sub_notif.tag);
+        case socket_message_Message_sub_notif_tag: return isStateTopic(message.message.sub_notif.tag);
         default: return false;
     }
 }

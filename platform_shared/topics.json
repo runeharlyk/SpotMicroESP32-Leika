@@ -13,6 +13,10 @@
     { "name": "sonar", "tag": 300, "kind": "stream" },
     { "name": "goal_status", "tag": 310, "kind": "state" },
     { "name": "ota_status", "tag": 320, "kind": "state" },
-    { "name": "power", "tag": 330, "kind": "stream" }
+    { "name": "power", "tag": 330, "kind": "stream" },
+    { "name": "stored_servo_settings", "tag": 331, "kind": "state" },
+    { "name": "stored_peripheral_settings", "tag": 332, "kind": "state" },
+    { "name": "stored_wifi_settings", "tag": 333, "kind": "state" },
+    { "name": "stored_ap_settings", "tag": 334, "kind": "state" }
   ]
 }

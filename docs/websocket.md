@@ -81,7 +81,13 @@ A subscribe from a client that cannot take a frame now is answered by that resen
 | `goal_status`       | 310 | state  | On every new [goal move](motion_system.md#goal-moves) and every change of its state |
 | `ota_status`        | 320 | state  | On a change of the robot's own download, and every 500 ms while it runs    |
 | `power`             | 330 | stream | Every 100 ms while the INA219 is active: the servo rail's voltage, current and power, the cut-off and the stall flag |
+| `stored_servo_settings` | 331 | state | On every stored change, and on a switch of the variant, whose joint model it carries |
+| `stored_peripheral_settings` | 332 | state | On every stored change, by any client or by the robot itself, as the IMU levelling |
+| `stored_wifi_settings` | 333 | state | On every stored change; stored passwords as the mask the replies show |
+| `stored_ap_settings` | 334 | state | On every stored change; the stored password as the mask the replies show |
 
+A settings group's topic carries what its reply carries, and a write is still a request; a write that stores nothing new pushes nothing.
+The features say `settings_topics` on firmware that serves them; the camera settings stay a request, as builds without a camera have none.
 The console UART of the [serial link](serial.md) takes subscriptions to the state topics only.
 `telemetry_header` (270) is not subscribed to; it is sent to a client each time that client subscribes to 271, before the ack.
 The robot never sends `angles`, `servo_pwm`, `servo_state` or `controller_data`.

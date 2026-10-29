@@ -19,6 +19,7 @@
 #include <communication/comm_base.hpp>
 #include <motion.h>
 #include <peripherals/servo_controller.h>
+#include <settings/settings_topic.h>
 #include <telemetry/tick_sample.h>
 #include <variant.h>
 
@@ -124,6 +125,7 @@ void reportFeatures(socket_message_CorrelationResponse &res) {
     std::strncpy(features.firmware_elf_sha256, elfSha256, sizeof(features.firmware_elf_sha256) - 1);
     features.imu = features.imu_detected = true;
     features.servo = features.servo_detected = servoController.detected();
+    features.settings_topics = true;
     features.device_id = text("virtual");
     std::strncpy(features.robot_name, "Virtual robot", sizeof(features.robot_name) - 1);
     std::strncpy(features.hostname, "localhost", sizeof(features.hostname) - 1);
@@ -168,6 +170,11 @@ void putIdle(SnapshotSink &sink) {
     sink.put(T {});
 }
 
+// A settings group the virtual robot does not have: a subscribe to it is never acked, as its request was refused.
+void putNothing(SnapshotSink &) {}
+
+SettingsTopic<api_ServoSettings> servoSettingsTopic {servoController.protoHandler};
+
 // main.cpp's topic table. The virtual robot answers no goal or clip request and has no network or update, so their
 // statuses stay at their idle value.
 constexpr Topic TOPICS[] = {
@@ -186,6 +193,11 @@ constexpr Topic TOPICS[] = {
     {socket_message_Message_goal_status_tag, TopicKind::STATE, putIdle<socket_message_GoalStatus>},
     {socket_message_Message_ota_status_tag, TopicKind::STATE, putIdle<socket_message_OtaStatus>},
     {socket_message_Message_power_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_stored_servo_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { servoSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_peripheral_settings_tag, TopicKind::STATE, putNothing},
+    {socket_message_Message_stored_wifi_settings_tag, TopicKind::STATE, putNothing},
+    {socket_message_Message_stored_ap_settings_tag, TopicKind::STATE, putNothing},
 };
 static_assert(servesEveryTopic(TOPICS), "TOPICS serves every topic of TOPIC_KINDS, a snapshot for each state");
 

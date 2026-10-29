@@ -33,6 +33,10 @@ inline constexpr TopicKindEntry TOPIC_KINDS[] = {
     {socket_message_Message_goal_status_tag, TopicKind::STATE},
     {socket_message_Message_ota_status_tag, TopicKind::STATE},
     {socket_message_Message_power_tag, TopicKind::STREAM},
+    {socket_message_Message_stored_servo_settings_tag, TopicKind::STATE},
+    {socket_message_Message_stored_peripheral_settings_tag, TopicKind::STATE},
+    {socket_message_Message_stored_wifi_settings_tag, TopicKind::STATE},
+    {socket_message_Message_stored_ap_settings_tag, TopicKind::STATE},
 };
 
 constexpr bool isStateTopic(int32_t tag) {

@@ -130,7 +130,10 @@ class FakeRobot:
     def _snapshot(self, name):
         values = {"mode": pb.ModeData(mode=self.mode), "walk_gait": pb.WalkGaitData(gait=self.gait),
                   "wifi_status": api_pb2.WifiStatus(), "animation_status": self.animation, "goal_status": self.goal,
-                  "ota_status": pb.OtaStatus()}
+                  "ota_status": pb.OtaStatus(),
+                  "stored_servo_settings": api_pb2.ServoSettings(supply_voltage=self.supply_voltage),
+                  "stored_peripheral_settings": self.peripheral_settings,
+                  "stored_wifi_settings": api_pb2.WifiSettings(), "stored_ap_settings": api_pb2.APSettings()}
         return pb.Message(**{name: values[name]})
 
     def _reply(self, request):
@@ -150,6 +153,7 @@ class FakeRobot:
             self.goal.state = pb.GOAL_CANCELLED
         elif kind == "features_data_request":
             response.features_data_response.variant = self.variant
+            response.features_data_response.settings_topics = self.snapshots
         elif kind == "servo_settings_request":
             response.servo_settings.supply_voltage = self.supply_voltage
         elif kind in ("peripheral_settings_request", "peripheral_settings"):

@@ -39,6 +39,7 @@
 #include <telemetry/tick_sample.h>
 #include <settings/placeholders.h>
 #include <settings/imu_settings.h>
+#include <settings/settings_topic.h>
 #include <variant.h>
 #include <algorithm>
 #include <atomic>
@@ -133,6 +134,12 @@ MDNSService mdnsService;
 WiFiService wifiService;
 APService apService;
 RobotService robotService;
+
+// The settings groups as state topics: pushed on every stored change, whichever client or task made it.
+static SettingsTopic<api_ServoSettings> servoSettingsTopic {servoController.protoHandler};
+static SettingsTopic<api_PeripheralSettings> peripheralSettingsTopic {peripherals.protoHandler};
+static SettingsTopic<api_WifiSettings> wifiSettingsTopic {wifiService.protoHandler};
+static SettingsTopic<api_APSettings> apSettingsTopic {apService.protoHandler};
 Telemetry telemetry;
 EspOtaFlash otaFlash;
 OtaSession otaSession {otaFlash};
@@ -341,6 +348,8 @@ static std::vector<std::function<void(const ReplyFiller &)>> variantReplies;
 
 static void finishVariantSwitch() {
     mdnsService.setVariant(variantName(activeVariant.load()));
+    // The servo settings carry the variant's joint model.
+    pushToAll(socket_message_Message_stored_servo_settings_tag);
     std::vector<std::function<void(const ReplyFiller &)>> replies;
     {
         std::lock_guard<std::mutex> lock(variantRepliesMutex);
@@ -434,8 +443,29 @@ static constexpr Topic TOPICS[] = {
          sink.put(status);
      }},
     {socket_message_Message_power_tag, TopicKind::STREAM, nullptr},
+    {socket_message_Message_stored_servo_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { servoSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_peripheral_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { peripheralSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_wifi_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { wifiSettingsTopic.snapshot(sink); }},
+    {socket_message_Message_stored_ap_settings_tag, TopicKind::STATE,
+     [](SnapshotSink &sink) { apSettingsTopic.snapshot(sink); }},
 };
 static_assert(servesEveryTopic(TOPICS), "TOPICS serves every topic of TOPIC_KINDS, a snapshot for each state");
+
+// Pushes a settings group on every stored change. Registered before the tasks start, as an update handler list is not
+// locked against registration.
+static void pushSettingsOnChange() {
+    servoController.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_servo_settings_tag); }, false);
+    peripherals.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_peripheral_settings_tag); }, false);
+    wifiService.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_wifi_settings_tag); }, false);
+    apService.addUpdateHandler(
+        [](const std::string &) { pushToAll(socket_message_Message_stored_ap_settings_tag); }, false);
+}
 
 void setupEventSocket() {
     FileSystemWS::fsHandler.setSendCallbacks(
@@ -1242,6 +1272,7 @@ extern "C" void app_main(void) {
     peripherals.begin();
     driveLeds();
     peripherals.addUpdateHandler([](const std::string &) { driveLeds(); }, false);
+    pushSettingsOnChange();
 
     startRequiredTask(serviceLoopEntry, "Service task", 2, tskNO_AFFINITY);
 

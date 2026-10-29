@@ -6,7 +6,26 @@ import {
     WalkGaitData,
     type MessageFns
 } from '$lib/platform_shared/message'
-import { WifiStatus } from '$lib/platform_shared/api'
+import {
+    APSettings,
+    PeripheralSettings,
+    ServoSettings,
+    WifiSettings,
+    WifiStatus
+} from '$lib/platform_shared/api'
+
+/**
+ * The settings groups the robot serves as state topics, when its features say `settingsTopics`: the group as stored,
+ * pushed on every stored change; a page writes it by request.
+ */
+export const SETTINGS_TOPICS = [
+    ServoSettings,
+    PeripheralSettings,
+    WifiSettings,
+    APSettings
+] as const
+
+export type SettingsTopic = (typeof SETTINGS_TOPICS)[number]
 
 /**
  * The robot's state topics, as platform_shared/topics.json lists them (tests/unit/topics.spec.ts checks this table
@@ -20,7 +39,8 @@ export const STATE_TOPICS = [
     WifiStatus,
     AnimationStatus,
     GoalStatus,
-    OtaStatus
+    OtaStatus,
+    ...SETTINGS_TOPICS
 ] as const
 
 /** A state topic's message type: `watch(IMUData)` does not type-check. */

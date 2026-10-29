@@ -63,6 +63,7 @@ PROGRAMS = {
     "ws_frame_test.cpp": [],
     "comm_base_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "topic_snapshot_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
+    "settings_topic_test.cpp": [*NANOPB, API_PROTO, MESSAGE_PROTO, FILESYSTEM_PROTO, ANIMATION_PROTO],
     "stall_tracker_test.cpp": [],
     "serial_frame_test.cpp": [],
     "animation_test.cpp": [],

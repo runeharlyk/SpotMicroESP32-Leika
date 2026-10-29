@@ -13,7 +13,13 @@ import {
     type CorrelationRequest,
     type MessageFns
 } from '../../src/lib/platform_shared/message'
-import { WifiStatus } from '../../src/lib/platform_shared/api'
+import {
+    APSettings,
+    PeripheralSettings,
+    ServoSettings,
+    WifiSettings,
+    WifiStatus
+} from '../../src/lib/platform_shared/api'
 import { MESSAGE_TYPE_TO_KEY, MESSAGE_TYPE_TO_TAG } from '../../src/lib/stores/socket'
 import type { StateTopic, ValueOf } from '../../src/lib/transport/topics'
 
@@ -30,7 +36,11 @@ const BOOT_VALUES: Record<string, unknown> = {
     wifiStatus: WifiStatus.create(),
     animationStatus: AnimationStatus.create(),
     goalStatus: GoalStatus.create(),
-    otaStatus: OtaStatus.create()
+    otaStatus: OtaStatus.create(),
+    storedServoSettings: ServoSettings.create(),
+    storedPeripheralSettings: PeripheralSettings.create(),
+    storedWifiSettings: WifiSettings.create(),
+    storedApSettings: APSettings.create()
 }
 
 export type Responder = (

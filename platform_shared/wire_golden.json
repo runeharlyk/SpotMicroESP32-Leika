@@ -596,6 +596,7 @@
       "sonar": 170,
       "walk_nn": 230,
       "ota_download": 240,
+      "settings_topics": 245,
       "power": 250,
       "power_detected": 251
     },
@@ -697,7 +698,11 @@
       "sonar": 300,
       "goal_status": 310,
       "ota_status": 320,
-      "power": 330
+      "power": 330,
+      "stored_servo_settings": 331,
+      "stored_peripheral_settings": 332,
+      "stored_wifi_settings": 333,
+      "stored_ap_settings": 334
     },
     "socket_message.ModeData": {
       "mode": 1

@@ -230,11 +230,38 @@ def test_storing_a_compass_offset_keeps_every_other_peripheral_setting(fake):
     assert list(stored.imu.mounting) == [0, 1, 0, -1, 0, 0, 0, 0, 1]
 
 
+# The settings groups are read from their topics, each subscribed to only until its value is in; firmware from before
+# the settings topics is asked by request.
+@pytest.mark.parametrize("snapshots", [True, False])
+def test_the_settings_are_read_from_their_topics_or_by_request(make_fake, snapshots):
+    fake = make_fake(snapshots=snapshots, supply_voltage=7.4)
+    backend = RealBackend(fake.target)
+    backend.connect()
+    try:
+        assert backend.servo_settings() is not None
+        backend.set_mag_offset([1.0, 2.0, 3.0])
+        assert backend._supply_volts == pytest.approx(7.4)
+    finally:
+        backend.close()
+    asked = [m.correlation_request.WhichOneof("request") for _, m in fake.received
+             if m.WhichOneof("message") == "correlation_request"]
+    gets = [kind for kind in asked if kind in ("servo_settings_request", "peripheral_settings_request")]
+    subscribed = [_sub_tag_name(m) for _, m in fake.received if m.WhichOneof("message") == "sub_notif"]
+    if snapshots:
+        assert gets == []
+        assert subscribed.count("stored_servo_settings") == 2 and "stored_peripheral_settings" in subscribed
+        assert "stored_servo_settings" not in fake.subscribed
+    else:
+        assert gets == ["servo_settings_request", "servo_settings_request", "peripheral_settings_request"]
+    assert list(fake.peripheral_settings.imu.mag_offset) == [1.0, 2.0, 3.0]
+
+
 # A robot keeps streaming to a serial port the client closed until its buffer stays full for seconds.
 def test_closing_ends_the_telemetry_subscription(robot, fake):
+    before = len(fake.received)
     robot.close()
-    _eventually(lambda: "unsub_notif" in fake.kinds())
-    unsubscribed = [message.unsub_notif.tag for _, message in fake.received if message.HasField("unsub_notif")]
+    _eventually(lambda: "unsub_notif" in fake.kinds()[before:])
+    unsubscribed = [message.unsub_notif.tag for _, message in fake.received[before:] if message.HasField("unsub_notif")]
     assert unsubscribed == [pb.Message.DESCRIPTOR.fields_by_name["telemetry_batch"].number]
 
 

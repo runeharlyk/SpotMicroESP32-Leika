@@ -16,8 +16,8 @@
 class CommAdapterBase;
 
 // Where a state topic's snapshot puts its owner's current value (communication/topics.h): to one client, as a
-// subscribe's answer or a resend, or to every subscriber, as a push. Only the link makes one, with its encode lock held,
-// so a snapshot sends nowhere else and at no other time.
+// subscribe's answer or a resend, or to every subscriber, as a push. Only the link makes one, with its encode lock
+// held, so a snapshot sends nowhere else and at no other time.
 class SnapshotSink {
   public:
     template <typename T>
@@ -148,10 +148,11 @@ class CommAdapterBase {
     virtual bool sendStream(const uint8_t* data, size_t len, int cid) { return ready(cid) && send(data, len, cid); }
 
     // A client resubscribes on every reconnect, so a subscribe it already holds adds nothing; it is answered again all
-    // the same. A state topic is answered with its snapshot, then every subscribe with its ack (communication/topics.h),
-    // both under encode_mutex_, which every push to this link takes, so a push made after the snapshot follows it. The
-    // answer goes out as a stream's frame does, never waiting on the client: one that cannot take it now gets neither
-    // snapshot nor ack, its state topic is marked for resendDirty, and the client, without its ack, subscribes again.
+    // the same. A state topic is answered with its snapshot, then every subscribe with its ack
+    // (communication/topics.h), both under encode_mutex_, which every push to this link takes, so a push made after the
+    // snapshot follows it. The answer goes out as a stream's frame does, never waiting on the client: one that cannot
+    // take it now gets neither snapshot nor ack, its state topic is marked for resendDirty, and the client, without its
+    // ack, subscribes again.
     void subscribe(int32_t tag, int cid = 0) {
         {
             ScopedLock lock(mutex_);
@@ -279,8 +280,10 @@ class CommAdapterBase {
         uint8_t bytes[16];
         pb_ostream_t stream = pb_ostream_from_buffer(bytes, sizeof(bytes));
         if (!pb_encode(&stream, socket_message_Message_fields, &msg_)) return;
-        if (asStream) sendStream(bytes, stream.bytes_written, cid);
-        else send(bytes, stream.bytes_written, cid);
+        if (asStream)
+            sendStream(bytes, stream.bytes_written, cid);
+        else
+            send(bytes, stream.bytes_written, cid);
     }
 
     const Topic* topicOf(int32_t tag) const {
