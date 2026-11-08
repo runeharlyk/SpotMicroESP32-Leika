@@ -14,9 +14,10 @@ const SWEEP_CONCURRENCY = 16
 const SWEEP_FIRST_HOST = 1
 const SWEEP_LAST_HOST = 254
 
-// spot-micro.local is the factory hostname (esp32/factory_settings.ini), and 192.168.4.1 is the
-// SoftAP address the robot serves on when it hosts its own network.
-const WELL_KNOWN_HOSTS = ['spot-micro.local', 'esp32.local', '192.168.4.1']
+// spot-micro.local is the factory hostname (esp32/factory_settings.ini)
+// 192.168.4.1 is the SoftAP address the robot serves on when it hosts its own network
+// 127.0.0.1:8765 is the default address used by the virtual robot
+const WELL_KNOWN_HOSTS = ['spot-micro.local', 'esp32.local', '192.168.4.1', '127.0.0.1:8765']
 
 const PRIVATE_IPV4 = /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/
 
