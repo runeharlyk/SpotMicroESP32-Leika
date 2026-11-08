@@ -113,6 +113,14 @@ def test_only_the_robot_socket_is_served(served):
         asyncio.run(connect("/ws"))
 
 
+def test_it_greets_a_new_socket_with_a_pong(served):
+    async def greet():
+        async with websockets.connect(f"ws://127.0.0.1:{served.port}/api/ws", open_timeout=2) as ws:
+            return pb.Message.FromString(await asyncio.wait_for(ws.recv(), timeout=1))
+
+    assert asyncio.run(greet()).WhichOneof("message") == "pongmsg"
+
+
 def test_a_recording_holds_the_firmwares_header_and_every_tick_of_its_block(robot, tmp_path):
     path = tmp_path / "stand.leika"
     with robot.recording(path):

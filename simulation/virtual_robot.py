@@ -101,6 +101,7 @@ class VirtualRobot:
         client = self._next_client
         self._next_client += 1
         self._clients[client] = socket
+        await self._to_program(b"o", client, b"")
         try:
             async for frame in socket:
                 await self._to_program(b"m", client, frame)

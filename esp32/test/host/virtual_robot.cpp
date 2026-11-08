@@ -3,9 +3,9 @@
 // stepped every 10 ms as the control task steps them. simulation/virtual_robot.py builds it and serves it on a
 // WebSocket. Usage: virtual_robot <variant> <elf sha256>
 //
-// It talks to the wrapper over stdin and stdout, each frame <kind: u8><client: u32 LE><length: u32 LE><bytes>, kind 'm'
-// for a message and 'c' (no bytes) for a client that left: pipes need no ports or libraries on either side, and the
-// program ends with its wrapper, when stdin closes.
+// It talks to the wrapper over stdin and stdout, each frame <kind: u8><client: u32 LE><length: u32 LE><bytes>, kind 'o'
+// (no bytes) for a client that connected, 'm' for a message and 'c' (no bytes) for a client that left: pipes need no
+// ports or libraries on either side, and the program ends with its wrapper, when stdin closes.
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -76,7 +76,8 @@ std::deque<Frame> takeFrames() {
 class PipeLink : public CommAdapterBase {
   public:
     void receive(const Frame &frame) {
-        if (frame.kind == 'c') removeClient(frame.client);
+        if (frame.kind == 'o') sendPong(frame.client);
+        else if (frame.kind == 'c') removeClient(frame.client);
         else handleIncoming(frame.bytes.data(), frame.bytes.size(), frame.client);
     }
 
