@@ -67,6 +67,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixes the odometry of a robot standing still turning and creeping by a hair each tick, a rounding left by the fused multiply-add the firmware is built to use
 - Fixes a walk entered from stand, a stand from the walk and a stand after a clip easing the body toward the state's own height until the client sent its sticks again: the state taking over follows the last input from its first tick. In the sim-versus-real harness this made a stance foot of the virtual robot read as lifted when its sticks came a tick later, so its forward trot read 1.5 % fast in about half the runs under load
 - Fixes the camera's stored settings never reaching the sensor at boot, and a camera settings write the sensor refuses, such as any sharpness or denoise on the OV2640, being stored as if it applied: the write is now refused with the reason, and a stored value the sensor refuses at boot is logged (Hexapod 502c5e6)
 - Fixes a walk entered from stand, or switched to the other gait while it stands, snapping a foot into the air in one tick at up to 3,700 deg/s: it now starts at the start of the cycle, every foot down and no stroke left from the last walk

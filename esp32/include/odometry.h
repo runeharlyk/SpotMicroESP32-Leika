@@ -94,7 +94,9 @@ class KinematicOdometry {
             if (!contact[leg] || !previousContact[leg]) continue;
             const float px = previous[leg][0] - before[0], py = previous[leg][1] - before[1];
             const float qx = feet[leg][0] - after[0], qy = feet[leg][1] - after[1];
-            cross += px * qy - py * qx;
+            // px * qy - py * qx, from the foot's change: -Ofast fuses the products into a multiply-add, whose rounding
+            // left a still foot's px * py - py * px a hair off zero, and a robot standing still turned and crept.
+            cross += px * (qy - py) - py * (qx - px);
             dot += px * qx + py * qy;
         }
         sawTurn = count > 1;
