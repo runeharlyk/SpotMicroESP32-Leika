@@ -85,6 +85,7 @@ From the repository root:
 
 ```sh
 uv run --with protobuf --with grpcio-tools python esp32/scripts/compile_protos.py
+uv run --with protobuf --with grpcio-tools python esp32/scripts/pack_animations.py
 uv run --with pytest pytest -q esp32/test/scripts esp32/test/host
 uv run python esp32/test/host/export_firmware_traces.py
 uv run python esp32/test/host/export_animation_traces.py

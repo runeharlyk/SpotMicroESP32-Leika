@@ -7,6 +7,7 @@
 #include <esp_log.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <cstring>
 #include <memory>
 #include <new>
