@@ -27,7 +27,8 @@ class SettingsTopic {
     void snapshot(SnapshotSink& sink) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         if (!copy_)
-            copy_ = static_cast<T*>(heap_caps_malloc_prefer(sizeof(T), 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_INTERNAL));
+            copy_ = static_cast<T*>(
+                heap_caps_malloc_prefer(sizeof(T), 2, MALLOC_CAP_SPIRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
         if (copy_) {
             handler_.read(*copy_);
             sink.put(*copy_);
